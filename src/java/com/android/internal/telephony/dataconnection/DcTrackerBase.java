@@ -71,6 +71,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.PriorityQueue;
@@ -237,7 +238,7 @@ public abstract class DcTrackerBase extends Handler {
 
     // When false we will not auto attach and manually attaching is required.
     protected boolean mAutoAttachOnCreationConfig = false;
-    protected boolean mAutoAttachOnCreation = false;
+    protected AtomicBoolean mAutoAttachOnCreation = new AtomicBoolean(false);;
 
     // State of screen
     // (TODO: Reconsider tying directly to screen, maybe this is
@@ -610,7 +611,7 @@ public abstract class DcTrackerBase extends Handler {
         }
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        mAutoAttachOnCreation = sp.getBoolean(PhoneBase.DATA_DISABLED_ON_BOOT_KEY, false);
+        mAutoAttachOnCreation.set(sp.getBoolean(PhoneBase.DATA_DISABLED_ON_BOOT_KEY, false));
 
         mSubscriptionManager = SubscriptionManager.from(mPhone.getContext());
         mSubscriptionManager
@@ -1954,6 +1955,10 @@ public abstract class DcTrackerBase extends Handler {
         sendMessage(msg);
     }
 
+    public boolean getAutoAttachOnCreation() {
+        return mAutoAttachOnCreation.get();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("DcTrackerBase:");
         pw.println(" RADIO_TESTS=" + RADIO_TESTS);
@@ -1984,7 +1989,7 @@ public abstract class DcTrackerBase extends Handler {
         pw.println(" mIsWifiConnected=" + mIsWifiConnected);
         pw.println(" mReconnectIntent=" + mReconnectIntent);
         pw.println(" mCidActive=" + mCidActive);
-        pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation);
+        pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
         pw.flush();

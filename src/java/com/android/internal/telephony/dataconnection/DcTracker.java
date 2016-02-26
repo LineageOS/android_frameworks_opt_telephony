@@ -847,7 +847,7 @@ public final class DcTracker extends DcTrackerBase {
             notifyOffApnsOfAvailability(Phone.REASON_DATA_ATTACHED);
         }
         if (mAutoAttachOnCreationConfig) {
-            mAutoAttachOnCreation = true;
+            mAutoAttachOnCreation.set(true);
         }
         setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED);
     }
@@ -892,7 +892,7 @@ public final class DcTracker extends DcTrackerBase {
             state = mPhone.getCallTracker().getState();
         }
         boolean allowed =
-                    (attachedState || mAutoAttachOnCreation) &&
+                    (attachedState || mAutoAttachOnCreation.get()) &&
                     (subscriptionFromNv || recordsLoaded) &&
                     (state == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
@@ -903,8 +903,8 @@ public final class DcTracker extends DcTrackerBase {
                     desiredPowerState;
         if (!allowed && DBG) {
             String reason = "";
-            if (!(attachedState || mAutoAttachOnCreation)) {
-                reason += " - Attached= " + attachedState;
+            if (!(attachedState || mAutoAttachOnCreation.get())) {
+                reason += " - Attached= " + attachedState.get();
             }
             if (!(subscriptionFromNv || recordsLoaded)) {
                 reason += " - SIM not loaded and not NV subscription";
@@ -1482,8 +1482,8 @@ public final class DcTracker extends DcTrackerBase {
         Message msg = obtainMessage();
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
         msg.obj = apnContext;
-        dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech, mAutoAttachOnCreation,
-                msg);
+        dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech, 
+                mAutoAttachOnCreation.get(), msg);
 
         if (DBG) log("setupData: initing!");
         return true;
