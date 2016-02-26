@@ -339,8 +339,8 @@ public class ContextFixture implements TestFixture<Context> {
             return true;
         }
 
-        public int testMethod1() {
-            return 0;
+        public boolean testMethod1() {
+            return true;
         }
     }
 

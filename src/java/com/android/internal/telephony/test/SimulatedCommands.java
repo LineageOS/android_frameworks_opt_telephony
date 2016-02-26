@@ -17,10 +17,12 @@
 package com.android.internal.telephony.test;
 
 import android.os.AsyncResult;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
+import android.os.Registrant;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.Rlog;
@@ -1975,6 +1977,31 @@ public class SimulatedCommands extends BaseCommands
         if (mIccSmsFullRegistrant != null) {
             mIccSmsFullRegistrant.notifyRegistrant();
         }
+    }
+
+    public void notifyEmergencyCallbackMode() {
+        if (mEmergencyCallbackModeRegistrant != null) {
+            mEmergencyCallbackModeRegistrant.notifyRegistrant();
+        }
+    }
+
+    @Override
+    public void setEmergencyCallbackMode(Handler h, int what, Object obj) {
+        SimulatedCommandsVerifier.getInstance().setEmergencyCallbackMode(h, what, obj);
+        super.setEmergencyCallbackMode(h, what, obj);
+    }
+
+    public void notifyExitEmergencyCallbackMode() {
+        if (mExitEmergencyCallbackModeRegistrants != null) {
+            mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
+                    new AsyncResult (null, null, null));
+        }
+    }
+
+    @Override
+    public void registerForExitEmergencyCallbackMode(Handler h, int what, Object obj) {
+        SimulatedCommandsVerifier.getInstance().registerForExitEmergencyCallbackMode(h, what, obj);
+        super.registerForExitEmergencyCallbackMode(h, what, obj);
     }
 
     public void notifyRadioOn() {
