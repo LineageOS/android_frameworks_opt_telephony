@@ -36,6 +36,7 @@ import com.android.internal.telephony.uicc.IccRecords;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import com.android.internal.telephony.uicc.IccCardProxy;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import static org.mockito.Mockito.*;
 import org.junit.After;
