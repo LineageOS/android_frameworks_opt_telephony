@@ -997,6 +997,10 @@ public abstract class SMSDispatcher extends Handler {
 
             sendSms(tracker);
         }
+
+        if (PhoneNumberUtils.isLocalEmergencyNumber(mContext, tracker.mDestAddress)) {
+            new AsyncEmergencyContactNotifier(mContext).execute();
+        }
     }
 
     /**
