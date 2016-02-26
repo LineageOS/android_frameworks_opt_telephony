@@ -138,7 +138,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         if (mCdmaInboundSmsHandler.getWakeLock().isHeld()) {
-            waitForMs(mCdmaInboundSmsHandler.getWakeLockTimeout() + 50);
+            waitForMs(mCdmaInboundSmsHandler.getWakeLockTimeout() + 200);
         }
         assertFalse(mCdmaInboundSmsHandler.getWakeLock().isHeld());
         mCdmaInboundSmsHandler = null;
