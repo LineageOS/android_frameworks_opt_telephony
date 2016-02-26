@@ -454,7 +454,8 @@ public class UiccCard {
     }
 
     private void onCarrierPriviligesLoadedMessage() {
-        UsageStatsManager usm = mContext.getSystemService(UsageStatsManager.class);
+        UsageStatsManager usm = (UsageStatsManager) mContext.getSystemService(
+                Context.USAGE_STATS_SERVICE);
         if (usm != null) {
             usm.onCarrierPrivilegedAppsChanged();
         }
