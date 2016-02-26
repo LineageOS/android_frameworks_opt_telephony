@@ -157,6 +157,14 @@ public class DcSwitchStateMachine extends StateMachine {
                 log("AttachingState: Data already registered. Move to Attached");
                 transitionTo(mAttachedState);
             }
+            final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+            // if we're on a carrier that unattaches us if we're idle for too long
+            // (on wifi) and they won't re-attach until we poke them.  Poke them!
+            // essentially react as Attached does here in Attaching.
+            if (pb.mDcTracker.getAutoAttachOnCreation()) {
+                if (DBG) log("AttachingState executeAll due to autoAttach");
+                DctController.getInstance().executeAllRequests(mId);
+             }
         }
 
         @Override
@@ -165,10 +173,16 @@ public class DcSwitchStateMachine extends StateMachine {
 
             switch (msg.what) {
                 case DcSwitchAsyncChannel.REQ_CONNECT: {
-                    if (DBG) {
-                        log("AttachingState: REQ_CONNECT");
+                    RequestInfo apnRequest = (RequestInfo)msg.obj;
+                    if (DBG) log("AttachingState: REQ_CONNECT, apnRequest=" + apnRequest);
+ 
+                    final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+                    if (pb.mDcTracker.getAutoAttachOnCreation() == false) {
+                        // do nothing - wait til we attach and then we'll execute all requests
+                    } else {
+                        if (DBG) log("AttachingState executeAll due to autoAttach");
+                        DctController.getInstance().executeRequest(apnRequest);
                     }
-
                     mAc.replyToMessage(msg, DcSwitchAsyncChannel.RSP_CONNECT,
                             PhoneConstants.APN_REQUEST_STARTED);
                     retVal = HANDLED;
