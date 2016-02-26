@@ -27,6 +27,7 @@ import org.junit.Test;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
