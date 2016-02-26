@@ -64,6 +64,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
@@ -2673,6 +2674,11 @@ public class GsmCdmaPhone extends Phone {
         }
         // if exiting ecm success
         if (ar.exception == null) {
+            // release wakeLock
+            if (mWakeLock.isHeld()) {
+                mWakeLock.release();
+            }
+
             if (mIsPhoneInEcmState) {
                 mIsPhoneInEcmState = false;
                 setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
@@ -3041,11 +3047,7 @@ public class GsmCdmaPhone extends Phone {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
-        // Unit test cannot send protected broadcasts
-        // todo: get rid of unitTestMode check
-        if (!getUnitTestMode()) {
-            ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
-        }
+        ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
     }
 
     private void switchVoiceRadioTech(int newVoiceRadioTech) {
@@ -3268,4 +3270,10 @@ public class GsmCdmaPhone extends Phone {
                 CarrierConfigManager.KEY_GSM_DTMF_TONE_DELAY_INT :
                 CarrierConfigManager.KEY_CDMA_DTMF_TONE_DELAY_INT;
     }
+
+    @VisibleForTesting
+    public PowerManager.WakeLock getWakeLock() {
+        return mWakeLock;
+    }
+
 }
