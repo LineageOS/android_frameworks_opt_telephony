@@ -26,6 +26,7 @@ import org.mockito.stubbing.Answer;
 import android.app.AlarmManager;
 import android.app.AppOpsManager;
 import android.app.NotificationManager;
+import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentProvider;
@@ -185,6 +186,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mAlarmManager;
                 case Context.CONNECTIVITY_SERVICE:
                     return mConnectivityManager;
+                case Context.USAGE_STATS_SERVICE:
+                    return mUsageStatManager;
                 default:
                     return null;
             }
@@ -377,6 +380,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final SubscriptionManager mSubscriptionManager = mock(SubscriptionManager.class);
     private final AlarmManager mAlarmManager = mock(AlarmManager.class);
     private final ConnectivityManager mConnectivityManager = mock(ConnectivityManager.class);
+    private final UsageStatsManager mUsageStatManager = null;
     private final WifiManager mWifiManager = mock(WifiManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
