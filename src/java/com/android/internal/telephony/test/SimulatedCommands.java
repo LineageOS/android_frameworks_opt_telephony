@@ -34,6 +34,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
@@ -1072,7 +1073,10 @@ public class SimulatedCommands extends BaseCommands
      *      less the SMSC address
      */
     @Override
-    public void sendSMS (String smscPDU, String pdu, Message result) {unimplemented(result);}
+    public void sendSMS (String smscPDU, String pdu, Message result) {
+        SimulatedCommandsVerifier.getInstance().sendSMS(smscPDU, pdu, result);
+        resultSuccess(result, new SmsResponse(0 /*messageRef*/, null, 0));
+    }
 
     /**
      * Send an SMS message, Identical to sendSMS,

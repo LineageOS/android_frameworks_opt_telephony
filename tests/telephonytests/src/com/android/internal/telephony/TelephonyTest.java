@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
@@ -38,7 +38,6 @@ import android.os.IBinder;
 import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
 import android.provider.BlockedNumberContract;
-import android.provider.Telephony;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
@@ -404,15 +403,23 @@ public abstract class TelephonyTest {
 
     public static class FakeBlockedNumberContentProvider extends MockContentProvider {
         public Set<String> mBlockedNumbers = new HashSet<>();
+        public int mNumEmergencyContactNotifications = 0;
 
         @Override
         public Bundle call(String method, String arg, Bundle extras) {
-            assertEquals(BlockedNumberContract.SystemContract.METHOD_SHOULD_SYSTEM_BLOCK_NUMBER,
-                    method);
-            Bundle bundle = new Bundle();
-            bundle.putBoolean(
-                    BlockedNumberContract.RES_NUMBER_IS_BLOCKED, mBlockedNumbers.contains(arg));
-            return bundle;
+            switch (method) {
+                case BlockedNumberContract.SystemContract.METHOD_SHOULD_SYSTEM_BLOCK_NUMBER:
+                    Bundle bundle = new Bundle();
+                    bundle.putBoolean(BlockedNumberContract.RES_NUMBER_IS_BLOCKED,
+                            mBlockedNumbers.contains(arg));
+                    return bundle;
+                case BlockedNumberContract.SystemContract.METHOD_NOTIFY_EMERGENCY_CONTACT:
+                    mNumEmergencyContactNotifications++;
+                    return new Bundle();
+                default:
+                    fail("Method not expected: " + method);
+            }
+            return null;
         }
     }
 }
