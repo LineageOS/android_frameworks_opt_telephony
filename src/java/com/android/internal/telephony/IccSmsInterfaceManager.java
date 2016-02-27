@@ -678,7 +678,6 @@ public class IccSmsInterfaceManager {
     }
 
     synchronized public boolean disableGsmBroadcastRange(int startMessageId, int endMessageId) {
-        if (DBG) log("disableGsmBroadcastRange");
 
         Context context = mPhone.getContext();
 
@@ -705,7 +704,6 @@ public class IccSmsInterfaceManager {
     }
 
     synchronized public boolean enableCdmaBroadcastRange(int startMessageId, int endMessageId) {
-        if (DBG) log("enableCdmaBroadcastRange");
 
         Context context = mPhone.getContext();
 
@@ -732,7 +730,6 @@ public class IccSmsInterfaceManager {
     }
 
     synchronized public boolean disableCdmaBroadcastRange(int startMessageId, int endMessageId) {
-        if (DBG) log("disableCdmaBroadcastRange");
 
         Context context = mPhone.getContext();
 

@@ -1026,7 +1026,8 @@ public class DcTracker extends Handler {
             }
             log("initApnContexts: apnContext=" + apnContext);
         }
-        log("initApnContexts: X mApnContexts=" + mApnContexts);
+
+        if (VDBG) log("initApnContexts: X mApnContexts=" + mApnContexts);
     }
 
     public LinkProperties getLinkProperties(String apnType) {
@@ -2455,7 +2456,7 @@ public class DcTracker extends Handler {
                 retVal = TelephonyManager.getIntWithSubId(mResolver, Settings.Global.MOBILE_DATA,
                         phoneSubId) != 0;
             }
-            if (DBG) log("getDataEnabled: getIntWithSubId retVal=" + retVal);
+            if (VDBG) log("getDataEnabled: getIntWithSubId retVal=" + retVal);
         } catch (SettingNotFoundException snfe) {
             retVal = "true".equalsIgnoreCase(
                     SystemProperties.get("ro.com.android.mobiledata", "true"));
