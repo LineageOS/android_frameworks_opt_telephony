@@ -96,14 +96,6 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mBackgroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
-        /* debug */
-        assertTrue(mPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
-        assertFalse(mCTUT.mRingingCall.isRinging());
-        assertFalse(mCTUT.mForegroundCall.getState().isAlive());
-        assertFalse(mCTUT.mBackgroundCall.getState().isAlive());
-        assertFalse(SystemProperties.get(
-                TelephonyProperties.PROPERTY_DISABLE_CALL, "false").equals("true"));
-
         try {
             mCTUT.dial(mDialString);
         } catch(Exception ex) {

@@ -330,6 +330,7 @@ public abstract class TelephonyTest {
         doReturn(true).when(mPhone).getUnitTestMode();
         doReturn(mIccCardProxy).when(mPhone).getIccCard();
         doReturn(mServiceState).when(mPhone).getServiceState();
+        doReturn(mServiceState).when(mImsPhone).getServiceState();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
