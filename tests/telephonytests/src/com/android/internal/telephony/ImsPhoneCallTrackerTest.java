@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.HandlerThread;
+import android.os.Message;
+import android.telephony.PhoneNumberUtils;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCall;
@@ -53,6 +55,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsCall mImsCall;
     private ImsCall mSecondImsCall;
     private Bundle mBundle = new Bundle();
+    private int mServiceId;
     @Mock
     private ImsCallSession mImsCallSession;
 
@@ -122,6 +125,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
+        mServiceId = 0;
         mImsCallProfile.mCallExtras = mBundle;
         mImsManagerInstances.put(mImsPhone.getPhoneId(), mImsManager);
         mImsCall = spy(new ImsCall(mContext, mImsCallProfile));
@@ -129,13 +133,16 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         imsCallMocking(mImsCall);
         imsCallMocking(mSecondImsCall);
 
+        doReturn(mImsCallProfile).when(mImsManager).createCallProfile(eq(mServiceId),
+                anyInt(), anyInt());
+
         //cache the listener
         doAnswer(new Answer<Integer>() {
             @Override
             public Integer answer(InvocationOnMock invocation) throws Throwable {
                 mImsConnectionStateListener =
                         (ImsConnectionStateListener) invocation.getArguments()[2];
-                return 0;
+                return mServiceId;
             }
         }).when(mImsManager).open(anyInt(), (PendingIntent) any(),
                 (ImsConnectionStateListener) any());
@@ -147,7 +154,17 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                         (ImsCall.Listener) invocation.getArguments()[2];
                 return mImsCall;
             }
-        }).when(mImsManager).takeCall(eq(0), (Intent) any(), (ImsCall.Listener) any());
+        }).when(mImsManager).takeCall(eq(mServiceId), (Intent) any(), (ImsCall.Listener) any());
+
+        doAnswer(new Answer<ImsCall>() {
+            @Override
+            public ImsCall answer(InvocationOnMock invocation) throws Throwable {
+                mImsCallListener =
+                        (ImsCall.Listener) invocation.getArguments()[3];
+                return mSecondImsCall;
+            }
+        }).when(mImsManager).makeCall(eq(mServiceId), eq(mImsCallProfile), (String []) any(),
+                (ImsCall.Listener) any());
 
         new ImsCTHandlerThread(this.getClass().getSimpleName()).start();
 
@@ -213,8 +230,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertTrue(mCTUT.mRingingCall.isRinging());
         try {
             mCTUT.acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
-            verify(mImsCall, times(1)).accept(eq(ImsCallProfile.
-                    getCallTypeFromVideoState(ImsCallProfile.CALL_TYPE_VOICE)));
+            verify(mImsCall, times(1)).accept(eq(ImsCallProfile
+                    .getCallTypeFromVideoState(ImsCallProfile.CALL_TYPE_VOICE)));
         } catch (Exception ex) {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
@@ -295,5 +312,90 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertFalse(mCTUT.mRingingCall.isRinging());
         assertEquals(Call.State.HOLDING, mCTUT.mBackgroundCall.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsMOCallDial() {
+        assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        try {
+            mCTUT.dial("+17005554141", ImsCallProfile.CALL_TYPE_VOICE, null);
+            verify(mImsManager, times(1)).makeCall(eq(0), eq(mImsCallProfile),
+                    eq(new String[]{"+17005554141"}), (ImsCall.Listener) any());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+        assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
+        assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
+        //call established
+        mImsCallListener.onCallProgressing(mSecondImsCall);
+        assertEquals(Call.State.ALERTING, mCTUT.mForegroundCall.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsMTActiveMODial() {
+        assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
+        assertEquals(Call.State.IDLE, mCTUT.mBackgroundCall.getState());
+
+        testImsMTCallAccept();
+
+        assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
+        assertEquals(Call.State.IDLE, mCTUT.mBackgroundCall.getState());
+        try {
+            mCTUT.dial("+17005554141", ImsCallProfile.CALL_TYPE_VOICE, null);
+            verify(mImsManager, times(1)).makeCall(eq(mServiceId), eq(mImsCallProfile),
+                    eq(new String[]{"+17005554141"}), (ImsCall.Listener) any());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+        waitForMs(100);
+        assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
+        assertEquals(Call.State.HOLDING, mCTUT.mBackgroundCall.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsMOCallHangup() {
+        testImsMOCallDial();
+        //hangup before call go to active
+        try {
+            mCTUT.hangup(mCTUT.mForegroundCall);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsSendDtmf() {
+        //establish a MT call
+        testImsMTCallAccept();
+        mCTUT.sendDtmf(PhoneNumberUtils.PAUSE, null);
+        //verify trigger sendDtmf to mImsCall
+        verify(mImsCall, times(1)).sendDtmf(eq(PhoneNumberUtils.PAUSE), (Message) isNull());
+        // mock a new MT
+        try {
+            doReturn(mSecondImsCall).when(mImsManager).takeCall(eq(mServiceId), (Intent) any(),
+                    (ImsCall.Listener) any());
+            Intent mIntent = new Intent(ImsManager.ACTION_IMS_INCOMING_CALL);
+            mContext.sendBroadcast(mIntent);
+            mCTUT.acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+
+        waitForMs(100);
+
+        mCTUT.sendDtmf(PhoneNumberUtils.WAIT, null);
+        //verify trigger sendDtmf to mImsSecondCall
+        verify(mSecondImsCall, times(1)).sendDtmf(eq(PhoneNumberUtils.WAIT), (Message) isNull());
     }
 }
