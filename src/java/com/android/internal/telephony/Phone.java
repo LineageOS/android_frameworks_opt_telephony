@@ -230,7 +230,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // to recover from the state. We cache it and notify listeners when they register.
     protected boolean mIsVideoCapable = false;
     protected UiccController mUiccController = null;
-    public final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
+    protected final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     public SmsStorageMonitor mSmsStorageMonitor;
     public SmsUsageMonitor mSmsUsageMonitor;
     protected AtomicReference<UiccCardApplication> mUiccApplication =
@@ -317,6 +317,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected SimulatedRadioControl mSimulatedRadioControl;
 
     private boolean mUnitTestMode;
+
+    public IccRecords getIccRecords() {
+        return mIccRecords.get();
+    }
 
     /**
      * Returns a string identifier for this phone interface for parties
