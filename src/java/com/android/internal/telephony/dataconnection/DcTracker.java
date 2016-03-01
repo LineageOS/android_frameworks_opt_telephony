@@ -902,7 +902,7 @@ public final class DcTracker extends DcTrackerBase {
         if (!allowed && DBG) {
             String reason = "";
             if (!(attachedState || mAutoAttachOnCreation.get())) {
-                reason += " - Attached= " + attachedState.get();
+                reason += " - Attached= " + attachedState;
             }
             if (!(subscriptionFromNv || recordsLoaded)) {
                 reason += " - SIM not loaded and not NV subscription";
