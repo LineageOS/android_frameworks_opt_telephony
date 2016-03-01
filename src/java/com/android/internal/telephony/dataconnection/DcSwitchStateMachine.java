@@ -56,6 +56,7 @@ public class DcSwitchStateMachine extends StateMachine {
     private IdleState mIdleState = new IdleState();
     private EmergencyState mEmergencyState = new EmergencyState();
     private AttachingState mAttachingState = new AttachingState();
+    private DataAllowedState mDataAllowedState = new DataAllowedState();
     private AttachedState mAttachedState = new AttachedState();
     private DetachingState mDetachingState = new DetachingState();
     private DefaultState mDefaultState = new DefaultState();
@@ -74,6 +75,7 @@ public class DcSwitchStateMachine extends StateMachine {
         addState(mIdleState, mDefaultState);
         addState(mEmergencyState, mDefaultState);
         addState(mAttachingState, mDefaultState);
+        addState(mDataAllowedState, mAttachingState);
         addState(mAttachedState, mDefaultState);
         addState(mDetachingState, mDefaultState);
         setInitialState(mIdleState);
@@ -312,6 +314,10 @@ public class DcSwitchStateMachine extends StateMachine {
                             if (dataState == ServiceState.STATE_IN_SERVICE) {
                                 logd("AttachingState: Already attached, move to ATTACHED state");
                                 transitionTo(mAttachedState);
+                            } else {
+                                logd("AttachingState: Received success on Data allowed, " +
+                                     "move to Data Allowed state");
+                                transitionTo(mDataAllowedState);
                             }
 
                         }
@@ -356,7 +362,9 @@ public class DcSwitchStateMachine extends StateMachine {
                         DctController.getInstance().releaseAllRequests(mId);
                     }
 
-                    transitionTo(mIdleState);
+                    // Wait for data allowed response to allow further
+                    // changes in DDS configuration.
+                    deferMessage(msg);
                     retVal = HANDLED;
                     break;
                 }
@@ -364,6 +372,46 @@ public class DcSwitchStateMachine extends StateMachine {
                 default:
                     if (VDBG) {
                         log("AttachingState: nothandled msg.what=0x" +
+                                Integer.toHexString(msg.what));
+                    }
+                    retVal = NOT_HANDLED;
+                    break;
+            }
+            return retVal;
+        }
+    }
+
+    private class DataAllowedState extends State {
+        private int mCurrentAllowedSequence = 0;
+        @Override
+        public void enter() {
+            log("DataAllowedState: enter");
+        }
+
+        @Override
+        public boolean processMessage(Message msg) {
+            boolean retVal;
+
+            switch (msg.what) {
+                case DcSwitchAsyncChannel.REQ_DISCONNECT_ALL: {
+                    if (DBG) {
+                        log("DataAllowedState: REQ_DISCONNECT_ALL" );
+                    }
+                    final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+                    if (pb.mDcTracker.getAutoAttachOnCreation()) {
+                        // if AutoAttachOnCreation, then we may have executed requests
+                        // without ever actually getting to Attached, so release the request
+                        // here in that case.
+                        if (DBG) log("releasingAll due to autoAttach");
+                        DctController.getInstance().releaseAllRequests(mId);
+                    }
+                    transitionTo(mIdleState);
+                    retVal = HANDLED;
+                    break;
+                }
+                default:
+                    if (VDBG) {
+                        log("DataAllowedState: nothandled msg.what=0x" +
                                 Integer.toHexString(msg.what));
                     }
                     retVal = NOT_HANDLED;
