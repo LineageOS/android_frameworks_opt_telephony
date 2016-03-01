@@ -106,8 +106,7 @@ public class IccSmsInterfaceManager {
                             if (Rlog.isLoggable("SMS", Log.DEBUG)) {
                                 log("Cannot load Sms records");
                             }
-                            if (mSms != null)
-                                mSms.clear();
+                            mSms = null;
                         }
                         mLock.notifyAll();
                     }
@@ -297,10 +296,8 @@ public class IccSmsInterfaceManager {
             IccFileHandler fh = mPhone.getIccFileHandler();
             if (fh == null) {
                 Rlog.e(LOG_TAG, "Cannot load Sms records. No icc card?");
-                if (mSms != null) {
-                    mSms.clear();
-                    return mSms;
-                }
+                mSms = null;
+                return mSms;
             }
 
             Message response = mHandler.obtainMessage(EVENT_LOAD_DONE);
