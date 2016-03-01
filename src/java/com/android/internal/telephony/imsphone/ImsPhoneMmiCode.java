@@ -469,7 +469,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         super(phone.getHandler().getLooper());
         mPhone = phone;
         mContext = phone.getContext();
-        mIccRecords = mPhone.mDefaultPhone.mIccRecords.get();
+        mIccRecords = mPhone.mDefaultPhone.getIccRecords();
     }
 
     //***** MmiCode implementation
