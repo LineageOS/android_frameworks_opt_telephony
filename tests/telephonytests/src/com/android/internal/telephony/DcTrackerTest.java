@@ -74,14 +74,14 @@ public class DcTrackerTest extends TelephonyTest {
     private final List<String> sApnTypes = Arrays.asList(
             "default", "mms", "cbs", "fota", "supl", "ia", "emergency", "dun", "hipri", "ims");
 
-    private final String FAKE_APN1 = "FAKE APN 1";
-    private final String FAKE_APN2 = "FAKE APN 2";
-    private final String FAKE_APN3 = "FAKE APN 3";
-    private final String FAKE_IFNAME = "FAKE IFNAME";
-    private final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
-    private final String FAKE_GATEWAY = "11.22.33.44";
-    private final String FAKE_DNS = "55.66.77.88";
-    private final String FAKE_ADDRESS = "99.88.77.66";
+    private static final String FAKE_APN1 = "FAKE APN 1";
+    private static final String FAKE_APN2 = "FAKE APN 2";
+    private static final String FAKE_APN3 = "FAKE APN 3";
+    private static final String FAKE_IFNAME = "FAKE IFNAME";
+    private static final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
+    private static final String FAKE_GATEWAY = "11.22.33.44";
+    private static final String FAKE_DNS = "55.66.77.88";
+    private static final String FAKE_ADDRESS = "99.88.77.66";
 
     @Mock
     ISub mIsub;
@@ -303,7 +303,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     // Create a successful data response
-    private DataCallResponse createDataCallResponse() {
+    public static DataCallResponse createDataCallResponse() {
 
         DataCallResponse dcResponse = new DataCallResponse();
 
