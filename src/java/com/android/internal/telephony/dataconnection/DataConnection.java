@@ -73,7 +73,7 @@ import java.util.HashMap;
  * NOTE: All DataConnection objects must be running on the same looper, which is the default
  * as the coordinator has members which are used without synchronization.
  */
-public final class DataConnection extends StateMachine {
+public class DataConnection extends StateMachine {
     private static final boolean DBG = true;
     private static final boolean VDBG = true;
 
@@ -96,7 +96,7 @@ public final class DataConnection extends StateMachine {
     /**
      * Used internally for saving connecting parameters.
      */
-    static class ConnectionParams {
+    public static class ConnectionParams {
         int mTag;
         ApnContext mApnContext;
         int mProfileId;
@@ -164,8 +164,8 @@ public final class DataConnection extends StateMachine {
 
     //***** Package visible variables
     int mTag;
-    int mCid;
-    HashMap<ApnContext, ConnectionParams> mApnContexts = null;
+    public int mCid;
+    public HashMap<ApnContext, ConnectionParams> mApnContexts = null;
     PendingIntent mReconnectIntent = null;
 
 
@@ -277,7 +277,7 @@ public final class DataConnection extends StateMachine {
         mLinkProperties.setHttpProxy(proxy);
     }
 
-    static class UpdateLinkPropertyResult {
+    public static class UpdateLinkPropertyResult {
         public DataCallResponse.SetupResult setupResult = DataCallResponse.SetupResult.SUCCESS;
         public LinkProperties oldLp;
         public LinkProperties newLp;
@@ -321,7 +321,7 @@ public final class DataConnection extends StateMachine {
         return ret;
     }
 
-    UpdateLinkPropertyResult updateLinkProperty(DataCallResponse newState) {
+    public UpdateLinkPropertyResult updateLinkProperty(DataCallResponse newState) {
         UpdateLinkPropertyResult result = new UpdateLinkPropertyResult(mLinkProperties);
 
         if (newState == null) return result;
@@ -715,7 +715,7 @@ public final class DataConnection extends StateMachine {
             result = DataCallResponse.SetupResult.ERR_RilError;
             result.mFailCause = DcFailCause.fromInt(response.status);
         } else {
-            if (DBG) log("onSetupConnectionCompleted received DataCallResponse: " + response);
+            if (DBG) log("onSetupConnectionCompleted received successful DataCallResponse");
             mCid = response.cid;
 
             mPcscfAddr = response.pcscf;
