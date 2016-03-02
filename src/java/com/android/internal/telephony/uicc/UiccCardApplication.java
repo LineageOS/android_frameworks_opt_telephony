@@ -87,7 +87,7 @@ public class UiccCardApplication {
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
     private RegistrantList mNetworkLockedRegistrants = new RegistrantList();
 
-    UiccCardApplication(UiccCard uiccCard,
+    public UiccCardApplication(UiccCard uiccCard,
                         IccCardApplicationStatus as,
                         Context c,
                         CommandsInterface ci) {
@@ -115,7 +115,7 @@ public class UiccCardApplication {
         mCi.registerForNotAvailable(mHandler, EVENT_RADIO_UNAVAILABLE, null);
     }
 
-    void update (IccCardApplicationStatus as, Context c, CommandsInterface ci) {
+    public void update (IccCardApplicationStatus as, Context c, CommandsInterface ci) {
         synchronized (mLock) {
             if (mDestroyed) {
                 loge("Application updated after destroyed! Fix me!");
@@ -207,7 +207,7 @@ public class UiccCardApplication {
     }
 
     /** Assumes mLock is held. */
-    void queryFdn() {
+    public void queryFdn() {
         //This shouldn't change run-time. So needs to be called only once.
         int serviceClassX;
 
