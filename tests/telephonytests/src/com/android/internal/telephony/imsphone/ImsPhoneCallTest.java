@@ -13,24 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+
+package com.android.internal.telephony.imsphone;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsStreamMediaProfile;
-import com.android.internal.telephony.imsphone.ImsPhoneCall;
-import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.imsphone.ImsPhoneConnection;
-
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import com.android.internal.telephony.Call;
+import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
-public class ImsPhoneCallTest extends TelephonyTest{
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+public class ImsPhoneCallTest extends TelephonyTest {
     @Mock
     ImsPhoneConnection mConnection1;
     @Mock
