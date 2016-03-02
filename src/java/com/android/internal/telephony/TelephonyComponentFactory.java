@@ -26,6 +26,8 @@ import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.uicc.IccCardProxy;
 
 /**
@@ -99,6 +101,10 @@ public class TelephonyComponentFactory {
             int messageCount, boolean is3gpp2WapPdu) {
         return new InboundSmsTracker(pdu, timestamp, destPort, is3gpp2, address, referenceNumber,
                 sequenceNumber, messageCount, is3gpp2WapPdu);
+    }
+
+    public ImsPhoneCallTracker makeImsPhoneCallTracker(ImsPhone imsPhone) {
+        return new ImsPhoneCallTracker(imsPhone);
     }
 
     public CdmaSubscriptionSourceManager

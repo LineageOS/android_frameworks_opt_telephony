@@ -299,12 +299,10 @@ public abstract class TelephonyTest {
         //mTelephonyComponentFactory
         doReturn(mSST).when(mTelephonyComponentFactory)
                 .makeServiceStateTracker(any(GsmCdmaPhone.class), any(CommandsInterface.class));
-
         doReturn(mIccCardProxy).when(mTelephonyComponentFactory)
                 .makeIccCardProxy(any(Context.class), any(CommandsInterface.class), anyInt());
         doReturn(mCT).when(mTelephonyComponentFactory)
                 .makeGsmCdmaCallTracker(any(GsmCdmaPhone.class));
-
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
                 .makeIccPhoneBookInterfaceManager(any(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory)
@@ -317,6 +315,8 @@ public abstract class TelephonyTest {
         doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
                         anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
+        doReturn(mImsCT).when(mTelephonyComponentFactory)
+                .makeImsPhoneCallTracker(any(ImsPhone.class));
         doReturn(mCdmaSSM).when(mTelephonyComponentFactory)
                 .getCdmaSubscriptionSourceManagerInstance(any(Context.class),
                         any(CommandsInterface.class), any(Handler.class),
@@ -386,6 +386,7 @@ public abstract class TelephonyTest {
         doReturn(mIIntentSender).when(mIActivityManager).getIntentSender(anyInt(),
                 anyString(), any(IBinder.class), anyString(), anyInt(), any(Intent[].class),
                 any(String[].class), anyInt(), any(Bundle.class), anyInt());
+        mSST.mSS = mServiceState;
 
         setReady(false);
     }

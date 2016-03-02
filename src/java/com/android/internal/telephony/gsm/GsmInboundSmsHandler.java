@@ -131,7 +131,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         return dispatchNormalMessage(smsb);
     }
 
-    /* package */ void updateMessageWaitingIndicator(int voicemailCount) {
+    private void updateMessageWaitingIndicator(int voicemailCount) {
         // range check
         if (voicemailCount < 0) {
             voicemailCount = -1;
