@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb9cba7_deb5f0ef",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 904,
+      "author": {
+        "id": 1829
+      },
+      "writtenOn": "2016-03-02T04:18:59Z",
+      "side": 1,
+      "message": "Fails to build with error: boolean cannot be dereferenced",
+      "revId": "8f331eedcf4293136dd6fe8887ba8a39eb069d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
