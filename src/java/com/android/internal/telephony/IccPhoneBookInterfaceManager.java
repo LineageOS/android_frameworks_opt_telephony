@@ -112,7 +112,7 @@ public class IccPhoneBookInterfaceManager {
 
     public IccPhoneBookInterfaceManager(Phone phone) {
         this.mPhone = phone;
-        IccRecords r = phone.mIccRecords.get();
+        IccRecords r = phone.getIccRecords();
         if (r != null) {
             mAdnCache = r.getAdnCache();
         }

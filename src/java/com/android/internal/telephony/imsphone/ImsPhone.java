@@ -1094,10 +1094,6 @@ public class ImsPhone extends ImsPhoneBase {
         return mDefaultPhone.getPhoneId();
     }
 
-    private IccRecords getIccRecords() {
-        return mDefaultPhone.mIccRecords.get();
-    }
-
     private CallForwardInfo getCallForwardInfo(ImsCallForwardInfo info) {
         CallForwardInfo cfInfo = new CallForwardInfo();
         cfInfo.status = info.mStatus;
@@ -1116,7 +1112,7 @@ public class ImsPhone extends ImsPhoneBase {
             cfInfos = new CallForwardInfo[infos.length];
         }
 
-        IccRecords r = getIccRecords();
+        IccRecords r = mDefaultPhone.getIccRecords();
         if (infos == null || infos.length == 0) {
             if (r != null) {
                 // Assume the default is not active
@@ -1191,7 +1187,7 @@ public class ImsPhone extends ImsPhoneBase {
         if (DBG) Rlog.d(LOG_TAG, "handleMessage what=" + msg.what);
         switch (msg.what) {
             case EVENT_SET_CALL_FORWARD_DONE:
-                IccRecords r = getIccRecords();
+                IccRecords r = mDefaultPhone.getIccRecords();
                 Cf cf = (Cf) ar.userObj;
                 if (cf.mIsCfu && ar.exception == null && r != null) {
                     setVoiceCallForwardingFlag(r, 1, msg.arg1 == 1, cf.mSetCfNumber);

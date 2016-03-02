@@ -328,6 +328,11 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public int checkCallingOrSelfPermission(String permission) {
+            return PackageManager.PERMISSION_GRANTED;
+        }
+
+        @Override
         public SharedPreferences getSharedPreferences(String name, int mode) {
             return mSharedPreferences;
         }
