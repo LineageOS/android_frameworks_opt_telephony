@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+package com.android.internal.telephony.imsphone;
 
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.PhoneNumberUtils;
@@ -30,9 +31,11 @@ import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.internal.ImsCallSession;
-import com.android.internal.telephony.imsphone.ImsPhoneCall;
-import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import android.os.Bundle;
+import com.android.internal.telephony.Call;
+import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyTest;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -41,12 +44,20 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;

@@ -112,7 +112,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("GsmCdmaPhoneTest");
+        super.setUp(getClass().getSimpleName());
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
         mTelephonyManager = TelephonyManager.from(mContext);

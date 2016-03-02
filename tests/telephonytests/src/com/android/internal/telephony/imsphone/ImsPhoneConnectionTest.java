@@ -13,28 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+package com.android.internal.telephony.imsphone;
 
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.test.suitebuilder.annotation.MediumTest;
-import android.telephony.DisconnectCause;
+import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
-import com.android.internal.telephony.imsphone.ImsPhoneCall;
-import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.imsphone.ImsPhoneConnection;
-import static org.mockito.Mockito.doAnswer;
+import com.android.internal.telephony.Call;
+import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.GsmCdmaCall;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyTest;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,6 +44,17 @@ import org.mockito.stubbing.Answer;
 import java.lang.reflect.Field;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyChar;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class ImsPhoneConnectionTest extends TelephonyTest {
     private ImsPhoneConnection mConnectionUT;

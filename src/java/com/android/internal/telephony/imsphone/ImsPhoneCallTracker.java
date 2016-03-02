@@ -182,12 +182,12 @@ public class ImsPhoneCallTracker extends CallTracker {
     private RegistrantList mVoiceCallEndedRegistrants = new RegistrantList();
     private RegistrantList mVoiceCallStartedRegistrants = new RegistrantList();
 
-    public final ImsPhoneCall mRingingCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_RINGING);
-    public final ImsPhoneCall mForegroundCall = new ImsPhoneCall(this,
+    public ImsPhoneCall mRingingCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_RINGING);
+    public ImsPhoneCall mForegroundCall = new ImsPhoneCall(this,
             ImsPhoneCall.CONTEXT_FOREGROUND);
-    public final ImsPhoneCall mBackgroundCall = new ImsPhoneCall(this,
+    public ImsPhoneCall mBackgroundCall = new ImsPhoneCall(this,
             ImsPhoneCall.CONTEXT_BACKGROUND);
-    public final ImsPhoneCall mHandoverCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_HANDOVER);
+    public ImsPhoneCall mHandoverCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_HANDOVER);
 
     private ImsPhoneConnection mPendingMO;
     private int mClirMode = CommandsInterface.CLIR_DEFAULT;
