@@ -23,6 +23,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
+import android.telephony.ImsFeatureCapability;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
@@ -309,6 +310,17 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
 
     @Override
     public void notifyCarrierNetworkChange(boolean active) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    @Override
+    public void notifyImsRegisteredChangedForSubscriber(int subId, boolean isImsRegistered) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    @Override
+    public void notifyImsFeatureCapabilityChangedForSubscriber(int subId,
+            ImsFeatureCapability imsFeatureCapability) {
         throw new RuntimeException("Not implemented");
     }
 }

@@ -680,6 +680,23 @@ public class GsmCdmaPhone extends Phone {
         mNotifier.notifyCallForwardingChanged(this);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Probably called from
+     * {@link com.android.internal.telephony.ServiceStateTracker#setImsRegistered(boolean)}
+     */
+    @Override
+    public void notifyImsRegisteredChanged() {
+        if (mImsPhone != null) {
+            // According to {@link com.android.internal.telephony.Phone#isImsRegistered()},
+            // if mImsPhone is not null, the IMS registered state of ImsPhone should be prioritized.
+            // So ignore to notify IMS registered changed event.
+            return;
+        }
+        super.notifyImsRegisteredChanged();
+    }
+
     // override for allowing access from other classes of this package
     /**
      * {@inheritDoc}

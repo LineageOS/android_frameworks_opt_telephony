@@ -936,7 +936,7 @@ public class ServiceStateTracker extends Handler {
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
                     int[] responseArray = (int[])ar.result;
-                    mImsRegistered = (responseArray[0] == 1) ? true : false;
+                    setImsRegistered((responseArray[0] == 1) ? true : false);
                 }
                 break;
 
@@ -4773,6 +4773,14 @@ public class ServiceStateTracker extends Handler {
     public boolean isImsRegistered() {
         return mImsRegistered;
     }
+
+    private void setImsRegistered(boolean value) {
+        if (mImsRegistered != value) {
+            mImsRegistered = value;
+            mPhone.notifyImsRegisteredChanged();
+        }
+    }
+
     /**
      * Verifies the current thread is the same as the thread originally
      * used in the initialization of this instance. Throws RuntimeException

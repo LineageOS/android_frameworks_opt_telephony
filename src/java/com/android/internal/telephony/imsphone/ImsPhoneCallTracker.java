@@ -40,6 +40,7 @@ import android.telecom.ConferenceParticipant;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
+import android.telephony.ImsFeatureCapability;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -2219,7 +2220,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onFeatureCapabilityChanged(int serviceClass,
                 int[] enabledFeatures, int[] disabledFeatures) {
             if (serviceClass == ImsServiceClass.MMTEL) {
-                boolean tmpIsVideoCallEnabled = isVideoCallEnabled();
+                ImsFeatureCapability preImsFeatureCapability =
+                        ImsFeatureCapability.newFromBoolArrary(mImsFeatureEnabled);
                 // Check enabledFeatures to determine capabilities. We ignore disabledFeatures.
                 StringBuilder sb;
                 if (DBG) {
@@ -2257,7 +2259,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (DBG) {
                     log(sb.toString());
                 }
-                if (tmpIsVideoCallEnabled != isVideoCallEnabled()) {
+                if (preImsFeatureCapability.isVideoCallEnabled() != isVideoCallEnabled()) {
                     mPhone.notifyForVideoCapabilityChanged(isVideoCallEnabled());
                 }
 
@@ -2272,7 +2274,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     connection.updateWifiState();
                 }
 
-                mPhone.onFeatureCapabilityChanged();
+                ImsFeatureCapability curImsFeatureCapability =
+                        ImsFeatureCapability.newFromBoolArrary(mImsFeatureEnabled);
+                if (!preImsFeatureCapability.equals(curImsFeatureCapability)) {
+                    mPhone.onFeatureCapabilityChanged();
+                    mPhone.notifyImsFeatureCapabilityChanged(curImsFeatureCapability);
+                }
 
                 mMetrics.writeOnImsCapabilities(
                         mPhone.getPhoneId(), mImsFeatureEnabled);
@@ -2527,10 +2534,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mPhone=" + mPhone);
         pw.println(" mDesiredMute=" + mDesiredMute);
         pw.println(" mState=" + mState);
-        for (int i = 0; i < mImsFeatureEnabled.length; i++) {
-            pw.println(" " + mImsFeatureStrings[i] + ": "
-                    + ((mImsFeatureEnabled[i]) ? "enabled" : "disabled"));
-        }
+        pw.println(ImsFeatureCapability.newFromBoolArrary(mImsFeatureEnabled));
         pw.println(" mTotalVtDataUsage=" + mTotalVtDataUsage);
         for (Map.Entry<Integer, Long> entry : mVtDataUsageMap.entrySet()) {
             pw.println("    id=" + entry.getKey() + " ,usage=" + entry.getValue());
