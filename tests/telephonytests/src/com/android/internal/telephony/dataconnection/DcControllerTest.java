@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
 
 import android.net.LinkProperties;
 import android.os.AsyncResult;
@@ -22,12 +22,10 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.internal.telephony.dataconnection.ApnContext;
-import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DataConnection;
+import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
-import com.android.internal.telephony.dataconnection.DcController;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
