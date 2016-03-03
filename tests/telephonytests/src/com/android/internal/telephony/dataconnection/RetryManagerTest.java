@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
 
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.internal.telephony.dataconnection.ApnSetting;
+import com.android.internal.telephony.RetryManager;
+import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.UiccController;
 
 import org.junit.After;
@@ -35,7 +37,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * APN retry manager tests
  */
-public class TelephonyUtilsTest extends TelephonyTest {
+public class RetryManagerTest extends TelephonyTest {
 
     // This is the real APN data for the Japanese carrier NTT Docomo.
     private ApnSetting mApn1 = new ApnSetting(
