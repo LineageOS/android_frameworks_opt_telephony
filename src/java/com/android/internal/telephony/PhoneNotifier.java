@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.telephony.CellInfo;
+import android.telephony.ImsFeatureCapability;
 import android.telephony.VoLteServiceState;
 
 import java.util.List;
@@ -58,6 +59,11 @@ public interface PhoneNotifier {
             String apn, String failCause);
 
     public void notifyVoLteServiceStateChanged(Phone sender, VoLteServiceState lteState);
+
+    public void notifyImsRegisteredChanged(Phone sender, boolean isImsRegistered);
+
+    public void notifyImsFeatureCapabilityChanged(Phone sender,
+            ImsFeatureCapability imsFeatureCapability);
 
     public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData);
 }
