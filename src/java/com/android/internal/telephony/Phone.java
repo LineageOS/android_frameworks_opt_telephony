@@ -2771,6 +2771,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Notify registrants if IMS Registered state is changed.
+     */
+    public void notifyImsRegisteredChanged() {
+        mNotifier.notifyImsRegisteredChanged(this, isImsRegistered());
+    }
+
+    /**
      * Notify registrants of a RING event.
      */
     private void notifyIncomingRing() {
