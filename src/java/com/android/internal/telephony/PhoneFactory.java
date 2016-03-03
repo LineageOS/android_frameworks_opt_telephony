@@ -284,37 +284,6 @@ public class PhoneFactory {
         return SipPhoneFactory.makePhone(sipUri, sContext, sPhoneNotifier);
     }
 
-    /* Sets the default subscription. If only one phone instance is active that
-     * subscription is set as default subscription. If both phone instances
-     * are active the first instance "0" is set as default subscription
-     */
-    public static void setDefaultSubscription(int subId) {
-        SystemProperties.set(PROPERTY_DEFAULT_SUBSCRIPTION, Integer.toString(subId));
-        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
-
-        synchronized (sLockProxyPhones) {
-            // Set the default phone in base class
-            if (phoneId >= 0 && phoneId < sPhones.length) {
-                sPhone = sPhones[phoneId];
-                sCommandsInterface = sCommandsInterfaces[phoneId];
-                sMadeDefaults = true;
-            }
-        }
-
-        // Update MCC MNC device configuration information
-        String defaultMccMnc = TelephonyManager.getDefault().getSimOperatorNumericForPhone(phoneId);
-        if (DBG) Rlog.d(LOG_TAG, "update mccmnc=" + defaultMccMnc);
-        MccTable.updateMccMncConfiguration(sContext, defaultMccMnc, false);
-
-        // Broadcast an Intent for default sub change
-        Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
-        Rlog.d(LOG_TAG, "setDefaultSubscription : " + subId
-                + " Broadcasting Default Subscription Changed...");
-        sContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-    }
-
     /**
      * Returns the preferred network type that should be set in the modem.
      *
@@ -336,44 +305,6 @@ public class PhoneFactory {
         return SubscriptionController.getInstance().getDefaultSubId();
     }
 
-    /* Gets User preferred Voice subscription setting*/
-    public static int getVoiceSubscription() {
-        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-
-        try {
-            subId = Settings.Global.getInt(sContext.getContentResolver(),
-                    Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION);
-        } catch (SettingNotFoundException snfe) {
-            Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Voice Call Values");
-        }
-
-        return subId;
-    }
-
-    /* Returns User Prompt property,  enabed or not */
-    public static boolean isPromptEnabled() {
-        boolean prompt = false;
-        int value = 0;
-        try {
-            value = Settings.Global.getInt(sContext.getContentResolver(),
-                    Settings.Global.MULTI_SIM_VOICE_PROMPT);
-        } catch (SettingNotFoundException snfe) {
-            Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Voice Prompt Values");
-        }
-        prompt = (value == 0) ? false : true ;
-        Rlog.d(LOG_TAG, "Prompt option:" + prompt);
-
-       return prompt;
-    }
-
-    /*Sets User Prompt property,  enabed or not */
-    public static void setPromptEnabled(boolean enabled) {
-        int value = (enabled == false) ? 0 : 1;
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_VOICE_PROMPT, value);
-        Rlog.d(LOG_TAG, "setVoicePromptOption to " + enabled);
-    }
-
     /* Returns User SMS Prompt property,  enabled or not */
     public static boolean isSMSPromptEnabled() {
         boolean prompt = false;
@@ -388,41 +319,6 @@ public class PhoneFactory {
         Rlog.d(LOG_TAG, "SMS Prompt option:" + prompt);
 
        return prompt;
-    }
-
-    /*Sets User SMS Prompt property,  enable or not */
-    public static void setSMSPromptEnabled(boolean enabled) {
-        int value = (enabled == false) ? 0 : 1;
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_SMS_PROMPT, value);
-        Rlog.d(LOG_TAG, "setSMSPromptOption to " + enabled);
-    }
-
-    /* Gets User preferred Data subscription setting*/
-    public static long getDataSubscription() {
-        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-
-        try {
-            subId = Settings.Global.getInt(sContext.getContentResolver(),
-                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION);
-        } catch (SettingNotFoundException snfe) {
-            Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Data Call Values");
-        }
-
-        return subId;
-    }
-
-    /* Gets User preferred SMS subscription setting*/
-    public static int getSMSSubscription() {
-        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-        try {
-            subId = Settings.Global.getInt(sContext.getContentResolver(),
-                    Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION);
-        } catch (SettingNotFoundException snfe) {
-            Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim SMS Values");
-        }
-
-        return subId;
     }
 
     /**
