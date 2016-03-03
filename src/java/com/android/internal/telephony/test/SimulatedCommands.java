@@ -72,10 +72,10 @@ public class SimulatedCommands extends BaseCommands
     }
 
     private final static SimLockState INITIAL_LOCK_STATE = SimLockState.NONE;
-    private final static String DEFAULT_SIM_PIN_CODE = "1234";
+    public final static String DEFAULT_SIM_PIN_CODE = "1234";
     private final static String SIM_PUK_CODE = "12345678";
     private final static SimFdnState INITIAL_FDN_STATE = SimFdnState.NONE;
-    private final static String DEFAULT_SIM_PIN2_CODE = "5678";
+    public final static String DEFAULT_SIM_PIN2_CODE = "5678";
     private final static String SIM_PUK2_CODE = "87654321";
     public final static String FAKE_LONG_NAME = "Fake long name";
     public final static String FAKE_SHORT_NAME = "Fake short name";
@@ -84,6 +84,7 @@ public class SimulatedCommands extends BaseCommands
     public final static String FAKE_IMEISV = "99";
     public final static String FAKE_ESN = "1234";
     public final static String FAKE_MEID = "1234";
+    public final static int DEFAULT_PIN1_ATTEMPT = 5;
 
     private String mImei;
     private String mImeiSv;
@@ -97,6 +98,7 @@ public class SimulatedCommands extends BaseCommands
     int mPinUnlockAttempts;
     int mPukUnlockAttempts;
     String mPinCode;
+    int mPin1attemptsRemaining = DEFAULT_PIN1_ATTEMPT;
     SimFdnState mSimFdnEnabledState;
     boolean mSimFdnEnabled;
     int mPin2UnlockAttempts;
@@ -350,7 +352,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void changeIccPin2(String oldPin2, String newPin2, Message result)  {
+    public void changeIccPin2(String oldPin2, String newPin2, Message result) {
         if (oldPin2 != null && oldPin2.equals(mPin2Code)) {
             mPin2Code = newPin2;
             if (result != null) {
@@ -1762,7 +1764,17 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void supplyIccPinForApp(String pin, String aid, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().supplyIccPinForApp(pin, aid, response);
+        if (mPinCode != null && mPinCode.equals(pin)) {
+            resultSuccess(response, null);
+            return;
+        }
+
+        Rlog.i(LOG_TAG, "[SimCmd] supplyIccPinForApp: pin failed!");
+        CommandException ex = new CommandException(
+                CommandException.Error.PASSWORD_INCORRECT);
+        resultFail(response, new int[]{
+                (--mPin1attemptsRemaining < 0) ? 0 : mPin1attemptsRemaining}, ex);
     }
 
     @Override
@@ -1782,7 +1794,9 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void changeIccPinForApp(String oldPin, String newPin, String aidPtr, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().changeIccPinForApp(oldPin, newPin, aidPtr,
+                response);
+        changeIccPin(oldPin, newPin, response);
     }
 
     @Override
@@ -2027,6 +2041,10 @@ public class SimulatedCommands extends BaseCommands
 
     public void setOpenChannelId(int channelId) {
         mChannelId = channelId;
+    }
+
+    public void setPin1RemainingAttempt(int pin1attemptsRemaining) {
+        mPin1attemptsRemaining = pin1attemptsRemaining;
     }
 
     private AtomicBoolean mAllowed = new AtomicBoolean(false);
