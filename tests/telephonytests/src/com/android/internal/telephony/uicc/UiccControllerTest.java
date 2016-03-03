@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+package com.android.internal.telephony.uicc;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -23,9 +23,9 @@ import android.test.suitebuilder.annotation.SmallTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.IccCardStatus;
-import com.android.internal.telephony.uicc.UiccController;
+
+import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.TelephonyTest;
 
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;

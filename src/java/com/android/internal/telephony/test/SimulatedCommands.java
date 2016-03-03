@@ -85,6 +85,7 @@ public class SimulatedCommands extends BaseCommands
     public final static String FAKE_ESN = "1234";
     public final static String FAKE_MEID = "1234";
     public final static int DEFAULT_PIN1_ATTEMPT = 5;
+    public final static int DEFAULT_PIN2_ATTEMPT = 5;
 
     private String mImei;
     private String mImeiSv;
@@ -166,8 +167,7 @@ public class SimulatedCommands extends BaseCommands
                     mSimLockedState);
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
             return;
         }
 
@@ -177,10 +177,7 @@ public class SimulatedCommands extends BaseCommands
             mSimLockedState = SimLockState.NONE;
             mIccStatusChangedRegistrants.notifyRegistrants();
 
-            if (result != null) {
-                AsyncResult.forMessage(result, null, null);
-                result.sendToTarget();
-            }
+            resultSuccess(result, null);
 
             return;
         }
@@ -190,15 +187,14 @@ public class SimulatedCommands extends BaseCommands
 
             Rlog.i(LOG_TAG, "[SimCmd] supplyIccPin: failed! attempt=" +
                     mPinUnlockAttempts);
-            if (mPinUnlockAttempts >= 3) {
+            if (mPinUnlockAttempts >= DEFAULT_PIN1_ATTEMPT) {
                 Rlog.i(LOG_TAG, "[SimCmd] supplyIccPin: set state to REQUIRE_PUK");
                 mSimLockedState = SimLockState.REQUIRE_PUK;
             }
 
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
         }
     }
 
@@ -209,8 +205,7 @@ public class SimulatedCommands extends BaseCommands
                     mSimLockedState);
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
             return;
         }
 
@@ -220,11 +215,7 @@ public class SimulatedCommands extends BaseCommands
             mPukUnlockAttempts = 0;
             mIccStatusChangedRegistrants.notifyRegistrants();
 
-            if (result != null) {
-                AsyncResult.forMessage(result, null, null);
-                result.sendToTarget();
-            }
-
+            resultSuccess(result, null);
             return;
         }
 
@@ -240,8 +231,7 @@ public class SimulatedCommands extends BaseCommands
 
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
         }
     }
 
@@ -252,8 +242,7 @@ public class SimulatedCommands extends BaseCommands
                     mSimFdnEnabledState);
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
             return;
         }
 
@@ -262,11 +251,7 @@ public class SimulatedCommands extends BaseCommands
             mPin2UnlockAttempts = 0;
             mSimFdnEnabledState = SimFdnState.NONE;
 
-            if (result != null) {
-                AsyncResult.forMessage(result, null, null);
-                result.sendToTarget();
-            }
-
+            resultSuccess(result, null);
             return;
         }
 
@@ -275,15 +260,14 @@ public class SimulatedCommands extends BaseCommands
 
             Rlog.i(LOG_TAG, "[SimCmd] supplyIccPin2: failed! attempt=" +
                     mPin2UnlockAttempts);
-            if (mPin2UnlockAttempts >= 3) {
+            if (mPin2UnlockAttempts >= DEFAULT_PIN2_ATTEMPT) {
                 Rlog.i(LOG_TAG, "[SimCmd] supplyIccPin2: set state to REQUIRE_PUK2");
                 mSimFdnEnabledState = SimFdnState.REQUIRE_PUK2;
             }
 
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
         }
     }
 
@@ -294,8 +278,7 @@ public class SimulatedCommands extends BaseCommands
                     mSimLockedState);
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
             return;
         }
 
@@ -304,11 +287,7 @@ public class SimulatedCommands extends BaseCommands
             mSimFdnEnabledState = SimFdnState.NONE;
             mPuk2UnlockAttempts = 0;
 
-            if (result != null) {
-                AsyncResult.forMessage(result, null, null);
-                result.sendToTarget();
-            }
-
+            resultSuccess(result, null);
             return;
         }
 
@@ -324,8 +303,7 @@ public class SimulatedCommands extends BaseCommands
 
             CommandException ex = new CommandException(
                     CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
+            resultFail(result, null, ex);
         }
     }
 
@@ -333,44 +311,32 @@ public class SimulatedCommands extends BaseCommands
     public void changeIccPin(String oldPin, String newPin, Message result)  {
         if (oldPin != null && oldPin.equals(mPinCode)) {
             mPinCode = newPin;
-            if (result != null) {
-                AsyncResult.forMessage(result, null, null);
-                result.sendToTarget();
-            }
+            resultSuccess(result, null);
 
             return;
         }
 
-        if (result != null) {
-            Rlog.i(LOG_TAG, "[SimCmd] changeIccPin: pin failed!");
+        Rlog.i(LOG_TAG, "[SimCmd] changeIccPin: pin failed!");
 
-            CommandException ex = new CommandException(
-                    CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
-        }
+        CommandException ex = new CommandException(
+                CommandException.Error.PASSWORD_INCORRECT);
+        resultFail(result, null, ex);
     }
 
     @Override
     public void changeIccPin2(String oldPin2, String newPin2, Message result) {
         if (oldPin2 != null && oldPin2.equals(mPin2Code)) {
             mPin2Code = newPin2;
-            if (result != null) {
-                AsyncResult.forMessage(result, null, null);
-                result.sendToTarget();
-            }
+            resultSuccess(result, null);
 
             return;
         }
 
-        if (result != null) {
-            Rlog.i(LOG_TAG, "[SimCmd] changeIccPin2: pin2 failed!");
+        Rlog.i(LOG_TAG, "[SimCmd] changeIccPin2: pin2 failed!");
 
-            CommandException ex = new CommandException(
-                    CommandException.Error.PASSWORD_INCORRECT);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
-        }
+        CommandException ex = new CommandException(
+                CommandException.Error.PASSWORD_INCORRECT);
+        resultFail(result, null, ex);
     }
 
     @Override
@@ -406,8 +372,7 @@ public class SimulatedCommands extends BaseCommands
                 r[0] = (mSimLockEnabled ? 1 : 0);
                 Rlog.i(LOG_TAG, "[SimCmd] queryFacilityLock: SIM is "
                         + (r[0] == 0 ? "unlocked" : "locked"));
-                AsyncResult.forMessage(result, r, null);
-                result.sendToTarget();
+                resultSuccess(result, r);
             }
             return;
         } else if (facility != null && facility.equals(CommandsInterface.CB_FACILITY_BA_FD)) {
@@ -416,8 +381,7 @@ public class SimulatedCommands extends BaseCommands
                 r[0] = (mSimFdnEnabled ? 1 : 0);
                 Rlog.i(LOG_TAG, "[SimCmd] queryFacilityLock: FDN is "
                         + (r[0] == 0 ? "disabled" : "enabled"));
-                AsyncResult.forMessage(result, r, null);
-                result.sendToTarget();
+                resultSuccess(result, r);
             }
             return;
         }
@@ -441,22 +405,16 @@ public class SimulatedCommands extends BaseCommands
                 Rlog.i(LOG_TAG, "[SimCmd] setFacilityLock: pin is valid");
                 mSimLockEnabled = lockEnabled;
 
-                if (result != null) {
-                    AsyncResult.forMessage(result, null, null);
-                    result.sendToTarget();
-                }
+                resultSuccess(result, null);
 
                 return;
             }
 
-            if (result != null) {
-                Rlog.i(LOG_TAG, "[SimCmd] setFacilityLock: pin failed!");
+            Rlog.i(LOG_TAG, "[SimCmd] setFacilityLock: pin failed!");
 
-                CommandException ex = new CommandException(
-                        CommandException.Error.GENERIC_FAILURE);
-                AsyncResult.forMessage(result, null, ex);
-                result.sendToTarget();
-            }
+            CommandException ex = new CommandException(
+                    CommandException.Error.GENERIC_FAILURE);
+            resultFail(result, null, ex);
 
             return;
         }  else if (facility != null &&
@@ -465,22 +423,16 @@ public class SimulatedCommands extends BaseCommands
                 Rlog.i(LOG_TAG, "[SimCmd] setFacilityLock: pin2 is valid");
                 mSimFdnEnabled = lockEnabled;
 
-                if (result != null) {
-                    AsyncResult.forMessage(result, null, null);
-                    result.sendToTarget();
-                }
+                resultSuccess(result, null);
 
                 return;
             }
 
-            if (result != null) {
-                Rlog.i(LOG_TAG, "[SimCmd] setFacilityLock: pin2 failed!");
+            Rlog.i(LOG_TAG, "[SimCmd] setFacilityLock: pin2 failed!");
 
-                CommandException ex = new CommandException(
-                        CommandException.Error.GENERIC_FAILURE);
-                AsyncResult.forMessage(result, null, ex);
-                result.sendToTarget();
-            }
+            CommandException ex = new CommandException(
+                    CommandException.Error.GENERIC_FAILURE);
+            resultFail(result, null, ex);
 
             return;
         }
