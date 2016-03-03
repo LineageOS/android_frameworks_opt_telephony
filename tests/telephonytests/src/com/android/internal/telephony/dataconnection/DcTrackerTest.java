@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -34,8 +34,12 @@ import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 
-import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.ISub;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
