@@ -54,7 +54,6 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -67,12 +66,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -92,6 +90,7 @@ import static org.mockito.Mockito.when;
  */
 public class ContextFixture implements TestFixture<Context> {
     private static final String TAG = "ContextFixture";
+    public static final String PERMISSION_ENABLE_ALL = "android.permission.STUB_PERMISSION";
 
     public class FakeContentProvider extends MockContentProvider {
         @Override
@@ -119,7 +118,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final HashMap<String, Object> mSystemServices = new HashMap<String, Object>();
 
     public void setSystemService(String name, Object service) {
-        synchronized(mSystemServices) {
+        synchronized (mSystemServices) {
             mSystemServices.put(name, service);
         }
     }
@@ -221,7 +220,7 @@ public class ContextFixture implements TestFixture<Context> {
         public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
             Intent result = null;
             synchronized (mBroadcastReceiversByAction) {
-                for (int i = 0 ; i < filter.countActions(); i++) {
+                for (int i = 0 ; i < filter.countActions() ; i++) {
                     mBroadcastReceiversByAction.put(filter.getAction(i), receiver);
                     if (result == null) {
                         result = mStickyBroadcastByAction.get(filter.getAction(i));
@@ -324,7 +323,12 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public void enforceCallingOrSelfPermission(String permission, String message) {
-            // Don't bother enforcing anything in mock.
+            if (mPermissionTable.contains(permission)
+                    || mPermissionTable.contains(PERMISSION_ENABLE_ALL)) {
+                return;
+            }
+            logd("requested permission: " + permission + " got denied");
+            throw new SecurityException(permission + " denied: " + message);
         }
 
         @Override
@@ -367,6 +371,9 @@ public class ContextFixture implements TestFixture<Context> {
             new HashMap<String, Intent>();
     private final Multimap<Intent, BroadcastReceiver> mOrderedBroadcastReceivers =
             ArrayListMultimap.create();
+    private final HashSet<String> mPermissionTable = new HashSet<>();
+
+
 
     // The application context is the most important object this class provides to the system
     // under test.
@@ -391,8 +398,8 @@ public class ContextFixture implements TestFixture<Context> {
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
     private final Configuration mConfiguration = new Configuration();
-    private final SharedPreferences mSharedPreferences = PreferenceManager.
-            getDefaultSharedPreferences(TestApplication.getAppContext());
+    private final SharedPreferences mSharedPreferences = PreferenceManager
+            .getDefaultSharedPreferences(TestApplication.getAppContext());
     private final MockContentResolver mContentResolver = new MockContentResolver();
     private final PersistableBundle mBundle = new PersistableBundle();
 
@@ -423,6 +430,7 @@ public class ContextFixture implements TestFixture<Context> {
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
         mContentResolver.addProvider(Settings.System.CONTENT_URI.getAuthority(), mContentProvider);
+        mPermissionTable.add(PERMISSION_ENABLE_ALL);
     }
 
     @Override
@@ -484,6 +492,23 @@ public class ContextFixture implements TestFixture<Context> {
             for (Map.Entry<Intent, BroadcastReceiver> entry : map) {
                 entry.getValue().onReceive(mContext, entry.getKey());
                 mOrderedBroadcastReceivers.remove(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    public void addCallingOrSelfPermission(String permission) {
+        synchronized (mPermissionTable) {
+            if (mPermissionTable != null && permission != null) {
+                mPermissionTable.remove(PERMISSION_ENABLE_ALL);
+                mPermissionTable.add(permission);
+            }
+        }
+    }
+
+    public void removeCallingOrSelfPermission(String permission) {
+        synchronized (mPermissionTable) {
+            if (mPermissionTable != null && permission != null) {
+                mPermissionTable.remove(permission);
             }
         }
     }

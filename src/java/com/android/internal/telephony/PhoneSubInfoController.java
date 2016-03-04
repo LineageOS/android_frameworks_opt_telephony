@@ -53,7 +53,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             ServiceManager.addService("iphonesubinfo", this);
         }
         mContext = context;
-        mAppOps = mContext.getSystemService(AppOpsManager.class);
+        mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
     }
 
     public String getDeviceId(String callingPackage) {
