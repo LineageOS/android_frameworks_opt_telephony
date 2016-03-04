@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+package com.android.internal.telephony.uicc;
 
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -24,11 +24,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cat.CatService;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.IccCardStatus;
-import com.android.internal.telephony.uicc.IccUtils;
-import com.android.internal.telephony.uicc.UiccCard;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import static org.mockito.Mockito.*;
@@ -38,8 +35,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
-import com.android.internal.telephony.uicc.IccIoResult;
 
 public class UiccCardTest extends TelephonyTest {
     private UiccCard mUicccard;

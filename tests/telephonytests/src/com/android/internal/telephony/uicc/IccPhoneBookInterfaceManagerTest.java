@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+package com.android.internal.telephony.uicc;
 
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.AsyncResult;
 
-import com.android.internal.telephony.uicc.AdnRecord;
-import com.android.internal.telephony.uicc.AdnRecordCache;
-import com.android.internal.telephony.uicc.IccConstants;
+import com.android.internal.telephony.IccPhoneBookInterfaceManager;
+import com.android.internal.telephony.TelephonyTest;
 
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.doAnswer;

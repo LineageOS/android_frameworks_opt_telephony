@@ -13,15 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+package com.android.internal.telephony.uicc;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.test.SimulatedCommands;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.UiccCard;
-import com.android.internal.telephony.uicc.UiccCardApplication;
-import com.android.internal.telephony.uicc.IccCardStatus;
 
 import org.junit.After;
 import org.junit.Before;

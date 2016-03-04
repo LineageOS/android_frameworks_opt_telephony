@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.telephony;
+package com.android.internal.telephony.uicc;
 
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 
-import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.IccCardStatus;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
