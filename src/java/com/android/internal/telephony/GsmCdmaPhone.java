@@ -833,9 +833,14 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public Call getRingingCall() {
         Phone imsPhone = mImsPhone;
-        if ( mCT.mRingingCall != null && mCT.mRingingCall.isRinging() ) {
-            return mCT.mRingingCall;
-        } else if ( imsPhone != null ) {
+        // It returns the ringing call of ImsPhone if the ringing call of GSMPhone isn't ringing.
+        // In CallManager.registerPhone(), it always registers ringing call of ImsPhone, because
+        // the ringing call of GSMPhone isn't ringing. Consequently, it can't answer GSM call
+        // successfully by invoking TelephonyManager.answerRingingCall() since the implementation
+        // in PhoneInterfaceManager.answerRingingCallInternal() could not get the correct ringing
+        // call from CallManager. So we check the ringing call state of imsPhone first as
+        // accpetCall() does.
+        if ( imsPhone != null && imsPhone.getRingingCall().isRinging()) {
             return imsPhone.getRingingCall();
         }
         return mCT.mRingingCall;
