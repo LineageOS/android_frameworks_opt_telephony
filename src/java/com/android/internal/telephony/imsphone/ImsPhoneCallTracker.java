@@ -403,6 +403,7 @@ public class ImsPhoneCallTracker extends CallTracker {
             mPendingMO = new ImsPhoneConnection(mPhone,
                     checkForTestEmergencyNumber(dialString), this, mForegroundCall,
                     isEmergencyNumber);
+            mPendingMO.setVideoState(videoState);
         }
         addConnection(mPendingMO);
 
@@ -1074,9 +1075,9 @@ public class ImsPhoneCallTracker extends CallTracker {
         // It should modify only other capabilities of call through updateMediaCapabilities
         // State updates will be triggered through individual callbacks
         // i.e. onCallHeld, onCallResume, etc and conn.update will be responsible for the update
+        conn.updateMediaCapabilities(imsCall);
         if (ignoreState) {
             conn.updateAddressDisplay(imsCall);
-            conn.updateMediaCapabilities(imsCall);
             conn.updateExtras(imsCall);
             return;
         }
