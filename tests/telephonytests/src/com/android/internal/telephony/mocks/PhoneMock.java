@@ -1029,10 +1029,6 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public void updateParentPhone(Phone parentPhone) {
-        throw new RuntimeException("not implemented");
-    }
-
     public void startRingbackTone() {
         throw new RuntimeException("not implemented");
     }
