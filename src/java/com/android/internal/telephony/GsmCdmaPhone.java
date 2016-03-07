@@ -3066,10 +3066,6 @@ public class GsmCdmaPhone extends Phone {
                     " is not CDMA or GSM (error) - aborting!");
             return;
         }
-
-        if (mImsPhone != null) {
-            mImsPhone.updateParentPhone(this);
-        }
     }
 
     @Override

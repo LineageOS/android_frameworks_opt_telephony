@@ -3136,9 +3136,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
-    public void updateParentPhone(Phone parentPhone) {
-    }
-
     public void startRingbackTone() {
     }
 
