@@ -445,7 +445,7 @@ public class ApnContext {
         requestLog("ApnContext.resetErrorCodeRetries");
         if (DBG) log("ApnContext.resetErrorCodeRetries");
 
-        String[] config = Resources.getSystem().getStringArray(
+        String[] config = mPhone.getContext().getResources().getStringArray(
                 com.android.internal.R.array.config_cell_retries_per_error_code);
         synchronized (mRetriesLeftPerErrorCode) {
             mRetriesLeftPerErrorCode.clear();
