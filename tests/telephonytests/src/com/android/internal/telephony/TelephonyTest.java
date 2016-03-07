@@ -76,15 +76,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
 
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.eq;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
 public abstract class TelephonyTest {
     protected static String TAG;
 
