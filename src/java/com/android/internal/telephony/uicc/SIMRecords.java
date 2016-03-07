@@ -33,7 +33,6 @@ import android.content.res.Resources;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.SmsConstants;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -1484,11 +1483,8 @@ public class SIMRecords extends IccRecords {
         if (!TextUtils.isEmpty(operator)) {
             log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                     operator + "'");
-            log("update icc_operator_numeric=" + operator);
             mTelephonyManager.setSimOperatorNumericForPhone(
                     mParentApp.getPhoneId(), operator);
-            final SubscriptionController subController = SubscriptionController.getInstance();
-            subController.setMccMnc(operator, subController.getDefaultSubId());
         } else {
             log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
         }
