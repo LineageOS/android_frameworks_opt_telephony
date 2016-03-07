@@ -197,25 +197,6 @@ public class ImsPhone extends ImsPhoneBase {
 
     //todo: get rid of this function. It is not needed since parentPhone obj never changes
     @Override
-    public void updateParentPhone(Phone parentPhone) {
-        synchronized (Phone.lockForRadioTechnologyChange) {
-            mDefaultPhone = parentPhone;
-            mPhoneId = mDefaultPhone.getPhoneId();
-            if (mDefaultPhone.getServiceStateTracker() != null) {
-                mDefaultPhone.getServiceStateTracker()
-                        .registerForDataRegStateOrRatChanged(this,
-                                EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
-            }
-            updateDataServiceState();
-
-            // When the parent phone is updated, we need to notify listeners of the cached video
-            // capability.
-            Rlog.d(LOG_TAG, "updateParentPhone - Notify video capability changed " + mIsVideoCapable);
-            notifyForVideoCapabilityChanged(mIsVideoCapable);
-        }
-    }
-
-    @Override
     public void dispose() {
         Rlog.d(LOG_TAG, "dispose");
         // Nothing to dispose in Phone
