@@ -290,6 +290,10 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(mBinder).when(mServiceCache).get(anyString());
         replaceInstance(ServiceManager.class, "sCache", null, mServiceCache);
 
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_cell_retries_per_error_code,
+                new String[]{"36,2"});
+
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
 
         new DcTrackerTestHandler(getClass().getSimpleName()).start();
