@@ -39,7 +39,6 @@ import android.telecom.VideoProfile;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
-import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -1621,31 +1620,53 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private int getCallForwardingIndicatorFromSharedPref() {
         int status = IccRecords.CALL_FORWARDING_STATUS_DISABLED;
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String subscriberId = sp.getString(CF_ID, null);
-        String currentSubscriberId = getSubscriberId();
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+            status = sp.getInt(CF_STATUS + subId, IccRecords.CALL_FORWARDING_STATUS_UNKNOWN);
+            Rlog.d(LOG_TAG, "getCallForwardingIndicatorFromSharedPref: for subId " + subId + "= " +
+                    status);
+            // Check for old preference if status is UNKNOWN for current subId. This part of the
+            // code is needed only when upgrading from M to N.
+            if (status == IccRecords.CALL_FORWARDING_STATUS_UNKNOWN) {
+                String subscriberId = sp.getString(CF_ID, null);
+                if (subscriberId != null) {
+                    String currentSubscriberId = getSubscriberId();
 
-        if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
-            // get call forwarding status from preferences
-            status = sp.getInt(CF_STATUS, IccRecords.CALL_FORWARDING_STATUS_DISABLED);
-            Rlog.d(LOG_TAG, "Call forwarding status from preference = " + status);
+                    if (subscriberId.equals(currentSubscriberId)) {
+                        // get call forwarding status from preferences
+                        status = sp.getInt(CF_STATUS, IccRecords.CALL_FORWARDING_STATUS_DISABLED);
+                        setCallForwardingIndicatorInSharedPref(
+                                status == IccRecords.CALL_FORWARDING_STATUS_ENABLED ? true : false);
+                        Rlog.d(LOG_TAG, "getCallForwardingIndicatorFromSharedPref: " + status);
+                    } else {
+                        Rlog.d(LOG_TAG, "getCallForwardingIndicatorFromSharedPref: returning " +
+                                "DISABLED as status for matching subscriberId not found");
+                    }
+
+                    // get rid of old preferences.
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.remove(CF_ID);
+                    editor.remove(CF_STATUS);
+                    editor.apply();
+                }
+            }
         } else {
-            Rlog.d(LOG_TAG, "Call forwarding status retrieval returning DISABLED as status for " +
-                    "matching subscriberId not found");
-
+            Rlog.e(LOG_TAG, "getCallForwardingIndicatorFromSharedPref: invalid subId " + subId);
         }
         return status;
     }
 
     private void setCallForwardingIndicatorInSharedPref(boolean enable) {
+        int status = enable ? IccRecords.CALL_FORWARDING_STATUS_ENABLED :
+                IccRecords.CALL_FORWARDING_STATUS_DISABLED;
+        int subId = getSubId();
+        Rlog.d(LOG_TAG, "setCallForwardingIndicatorInSharedPref: Storing status = " + status +
+                " in pref " + CF_STATUS + subId);
+
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sp.edit();
-
-        String imsi = getSubscriberId();
-
-        editor.putInt(CF_STATUS, enable ? IccRecords.CALL_FORWARDING_STATUS_ENABLED :
-                IccRecords.CALL_FORWARDING_STATUS_DISABLED);
-        editor.putString(CF_ID, imsi);
+        editor.putInt(CF_STATUS + subId, status);
         editor.apply();
     }
 
@@ -2060,13 +2081,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /** sets the voice mail count of the phone and notifies listeners. */
     public void setVoiceMessageCount(int countWaiting) {
         mVmCount = countWaiting;
+        int subId = getSubId();
 
         Rlog.d(LOG_TAG, "setVoiceMessageCount: Storing Voice Mail Count = " + countWaiting +
-                " for mVmCountKey = " + VM_COUNT + getSubId() + " in preferences.");
+                " for mVmCountKey = " + VM_COUNT + subId + " in preferences.");
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(VM_COUNT + getSubId(), countWaiting);
+        editor.putInt(VM_COUNT + subId, countWaiting);
         editor.apply();
 
         // notify listeners of voice mail
@@ -2076,33 +2098,42 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /** gets the voice mail count from preferences */
     protected int getStoredVoiceMessageCount() {
         int countVoiceMessages = 0;
-        int invalidCount = -2;  //-1 is not really invalid. It is used for unknown number of vm
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        int countFromSP = sp.getInt(VM_COUNT + getSubId(), invalidCount);
-        if (countFromSP != invalidCount) {
-            countVoiceMessages = countFromSP;
-        } else {
-            // Check for old preference if count not found for current subId. This part of the code
-            // is needed only when upgrading from M to N.
-            String subscriberId = sp.getString(VM_ID, null);
-            if (subscriberId != null) {
-                String currentSubscriberId = getSubscriberId();
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            int invalidCount = -2;  //-1 is not really invalid. It is used for unknown number of vm
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+            int countFromSP = sp.getInt(VM_COUNT + subId, invalidCount);
+            if (countFromSP != invalidCount) {
+                countVoiceMessages = countFromSP;
+                Rlog.d(LOG_TAG, "getStoredVoiceMessageCount: from preference for subId " + subId +
+                        "= " + countVoiceMessages);
+            } else {
+                // Check for old preference if count not found for current subId. This part of the
+                // code is needed only when upgrading from M to N.
+                String subscriberId = sp.getString(VM_ID, null);
+                if (subscriberId != null) {
+                    String currentSubscriberId = getSubscriberId();
 
-                if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
-                    // get voice mail count from preferences
-                    countVoiceMessages = sp.getInt(VM_COUNT, 0);
-                    Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
-                } else {
-                    Rlog.d(LOG_TAG, "Voicemail count retrieval returning 0 as count for matching " +
-                            "subscriberId not found");
+                    if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
+                        // get voice mail count from preferences
+                        countVoiceMessages = sp.getInt(VM_COUNT, 0);
+                        setVoiceMessageCount(countVoiceMessages);
+                        Rlog.d(LOG_TAG, "getStoredVoiceMessageCount: from preference = " +
+                                countVoiceMessages);
+                    } else {
+                        Rlog.d(LOG_TAG, "getStoredVoiceMessageCount: returning 0 as count for " +
+                                "matching subscriberId not found");
 
+                    }
+                    // get rid of old preferences.
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.remove(VM_ID);
+                    editor.remove(VM_COUNT);
+                    editor.apply();
                 }
-                // get rid of old preferences.
-                SharedPreferences.Editor editor = sp.edit();
-                editor.remove(VM_ID);
-                editor.remove(VM_COUNT);
-                editor.apply();
             }
+        } else {
+            Rlog.e(LOG_TAG, "getStoredVoiceMessageCount: invalid subId " + subId);
         }
         return countVoiceMessages;
     }

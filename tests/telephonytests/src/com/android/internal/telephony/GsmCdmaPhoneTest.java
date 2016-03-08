@@ -31,6 +31,7 @@ import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
@@ -470,9 +471,13 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         SharedPreferences sharedPreferences = PreferenceManager.
                 getDefaultSharedPreferences(mContext);
         assertEquals(IccRecords.CALL_FORWARDING_STATUS_DISABLED,
-                sharedPreferences.getInt(Phone.CF_STATUS,
+                sharedPreferences.getInt(Phone.CF_STATUS + mPhoneUT.getSubId(),
                         IccRecords.CALL_FORWARDING_STATUS_ENABLED));
-        assertEquals(imsi, sharedPreferences.getString(Phone.CF_ID, null));
+
+        // clean up
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.remove(Phone.CF_STATUS + mPhoneUT.getSubId());
+        editor.apply();
     }
 
     @Test
@@ -635,5 +640,59 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // verify wakeLock released
         assertEquals(false, mPhoneUT.getWakeLock().isHeld());
+    }
+
+    @Test
+    @SmallTest
+    public void testCallForwardingIndicator() {
+        doReturn(IccRecords.CALL_FORWARDING_STATUS_UNKNOWN).when(mSimRecords).
+                getVoiceCallForwardingFlag();
+
+        // invalid subId
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mSubscriptionController).
+                getSubIdUsingPhoneId(anyInt());
+        assertEquals(false, mPhoneUT.getCallForwardingIndicator());
+
+        // valid subId, sharedPreference not present
+        int subId1 = 0;
+        int subId2 = 1;
+        doReturn(subId1).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+        assertEquals(false, mPhoneUT.getCallForwardingIndicator());
+
+        // old sharedPreference present
+        String imsi = "1234";
+        doReturn(imsi).when(mSimRecords).getIMSI();
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putString(Phone.CF_ID, imsi);
+        editor.putInt(Phone.CF_STATUS, IccRecords.CALL_FORWARDING_STATUS_ENABLED);
+        editor.apply();
+        assertEquals(true, mPhoneUT.getCallForwardingIndicator());
+
+        // old sharedPreference should be removed now
+        assertEquals(null, sp.getString(Phone.CF_ID, null));
+        assertEquals(IccRecords.CALL_FORWARDING_STATUS_UNKNOWN,
+                sp.getInt(Phone.CF_ID, IccRecords.CALL_FORWARDING_STATUS_UNKNOWN));
+
+        // now verify value from new sharedPreference
+        assertEquals(true, mPhoneUT.getCallForwardingIndicator());
+
+        // check for another subId
+        doReturn(subId2).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+        assertEquals(false, mPhoneUT.getCallForwardingIndicator());
+
+        // set value for the new subId in sharedPreference
+        editor.putInt(Phone.CF_STATUS + subId2, IccRecords.CALL_FORWARDING_STATUS_ENABLED);
+        editor.apply();
+        assertEquals(true, mPhoneUT.getCallForwardingIndicator());
+
+        // switching back to previous subId, stored value should still be available
+        doReturn(subId1).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+        assertEquals(true, mPhoneUT.getCallForwardingIndicator());
+
+        // cleanup
+        editor.remove(Phone.CF_STATUS + subId1);
+        editor.remove(Phone.CF_STATUS + subId2);
+        editor.apply();
     }
 }
