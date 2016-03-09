@@ -70,7 +70,7 @@ public class DataProfile {
         this.enabled = enabled;
     }
 
-    DataProfile(ApnSetting apn, boolean isRoaming) {
+    public DataProfile(ApnSetting apn, boolean isRoaming) {
         this(apn.profileId, apn.apn, isRoaming? apn.roamingProtocol : apn.protocol,
                 apn.authType, apn.user, apn.password, apn.bearerBitmask == 0
                         ? TYPE_COMMON : (ServiceState.bearerBitmapHasCdma(apn.bearerBitmask)
