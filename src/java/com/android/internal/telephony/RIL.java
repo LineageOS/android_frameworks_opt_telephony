@@ -243,10 +243,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      * Wake lock timeout should be longer than the longest timeout in
      * the vendor ril.
      */
-    private static final int DEFAULT_WAKE_LOCK_TIMEOUT = 60000;
+    private static final int DEFAULT_WAKE_LOCK_TIMEOUT_MS = 60000;
 
     // Wake lock default timeout associated with ack
-    private static final int DEFAULT_ACK_WAKE_LOCK_TIMEOUT = 20000;
+    private static final int DEFAULT_ACK_WAKE_LOCK_TIMEOUT_MS = 200;
 
     // Variables used to differentiate ack messages from request while calling clearWakeLock()
     private static final boolean FOR_ACK_WAKELOCK = true;
@@ -441,7 +441,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     // The timer of WAKE_LOCK_TIMEOUT is reset with each
                     // new send request. So when WAKE_LOCK_TIMEOUT occurs
                     // all requests in mRequestList already waited at
-                    // least DEFAULT_WAKE_LOCK_TIMEOUT but no response.
+                    // least DEFAULT_WAKE_LOCK_TIMEOUT_MS but no response.
                     //
                     // Note: Keep mRequestList so that delayed response
                     // can still be handled when response finally comes.
@@ -681,9 +681,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         mAckWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_ACK_WAKELOCK_NAME);
         mAckWakeLock.setReferenceCounted(false);
         mWakeLockTimeout = SystemProperties.getInt(TelephonyProperties.PROPERTY_WAKE_LOCK_TIMEOUT,
-                DEFAULT_WAKE_LOCK_TIMEOUT);
+                DEFAULT_WAKE_LOCK_TIMEOUT_MS);
         mAckWakeLockTimeout = SystemProperties.getInt(
-                TelephonyProperties.PROPERTY_WAKE_LOCK_TIMEOUT, DEFAULT_ACK_WAKE_LOCK_TIMEOUT);
+                TelephonyProperties.PROPERTY_WAKE_LOCK_TIMEOUT, DEFAULT_ACK_WAKE_LOCK_TIMEOUT_MS);
         mWakeLockCount = 0;
 
         mSenderThread = new HandlerThread("RILSender" + mInstanceId);
