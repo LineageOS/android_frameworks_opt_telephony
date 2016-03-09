@@ -34,7 +34,6 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -53,7 +52,6 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
@@ -932,6 +930,19 @@ public abstract class InboundSmsHandler extends StateMachine {
     public void dispatchIntent(Intent intent, String permission, int appOp,
             Bundle opts, BroadcastReceiver resultReceiver, UserHandle user) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
+        final String action = intent.getAction();
+        if (Intents.SMS_DELIVER_ACTION.equals(action)
+                || Intents.SMS_RECEIVED_ACTION.equals(action)
+                || Intents.WAP_PUSH_DELIVER_ACTION.equals(action)
+                || Intents.WAP_PUSH_RECEIVED_ACTION.equals(action)) {
+            // Some intents need to be delivered with high priority:
+            // SMS_DELIVER, SMS_RECEIVED, WAP_PUSH_DELIVER, WAP_PUSH_RECEIVED
+            // In some situations, like after boot up or system under load, normal
+            // intent delivery could take a long time.
+            // This flag should only be set for intents for visible, timely operations
+            // which is true for the intents above.
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        }
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         if (user.equals(UserHandle.ALL)) {
             // Get a list of currently started users.
