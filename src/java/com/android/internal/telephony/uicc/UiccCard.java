@@ -17,8 +17,14 @@
 package com.android.internal.telephony.uicc;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
+
+import android.app.ActivityManager;
 import android.app.ActivityManagerNative;
 import android.app.AlertDialog;
+import android.app.INotificationManager;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -33,6 +39,8 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.RemoteException;
+import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
@@ -69,6 +77,9 @@ public class UiccCard {
     protected static final boolean DBG = true;
 
     private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
+
+    private static final Intent MOBILE_NETWORK_SETTINGS_MSIM
+            = new Intent("com.android.settings.sim.SIM_SUB_INFO_SETTINGS");
 
     private final Object mLock = new Object();
     private CardState mCardState;
@@ -350,6 +361,12 @@ public class UiccCard {
 
         if (isHotSwapSupported) {
             log("onIccSwap: isHotSwapSupported is true, don't prompt for rebooting");
+            // If an Icc card is being removed, it may be the default data/voice/messaging
+            // subscription holder. We need to notify the user that they may have to configure
+            // their defaults again. Relevant only in MSIM scenario
+            if (isAdded && (TelephonyManager.getDefault().getPhoneCount() > 1)) {
+                notifyOfPotentialConfigurationNeeded();
+            }
             return;
         }
         log("onIccSwap: isHotSwapSupported is false, prompt for rebooting");
@@ -395,6 +412,39 @@ public class UiccCard {
             .create();
             dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
             dialog.show();
+        }
+    }
+
+    private void notifyOfPotentialConfigurationNeeded() {
+        INotificationManager inm = NotificationManager.getService();
+        if (inm == null) {
+            return;
+        }
+
+        Resources r = Resources.getSystem();
+
+        Notification notification = new Notification.Builder(mContext)
+                .setSmallIcon(com.android.internal.R.drawable.stat_notify_disabled_data)
+                .setColor(r.getColor(com.android.internal.R.color.system_notification_accent_color))
+                .setContentTitle(r.getString(
+                        com.android.internal.R.string.uicc_hot_swapped_event_title))
+                .setContentText(r.getString(
+                        com.android.internal.R.string.uicc_hot_swapped_event_text))
+                .setDefaults(Notification.DEFAULT_VIBRATE)
+                .setPriority(Notification.PRIORITY_MAX)
+                .setContentIntent(PendingIntent.getActivityAsUser(mContext, 0,
+                        MOBILE_NETWORK_SETTINGS_MSIM, PendingIntent.FLAG_CANCEL_CURRENT, null,
+                        new UserHandle(0)))
+                        .build();
+
+        // Since this is coming from android's phone process, manually enqueue this notification
+        try {
+            int[] outId = new int[1];
+            inm.enqueueNotificationWithTag("android", "android", null,
+                    com.android.internal.R.string.uicc_hot_swapped_event_title,
+                    notification, outId, ActivityManager.getCurrentUser());
+        } catch (RuntimeException | RemoteException e) {
+            log(e.toString());
         }
     }
 
