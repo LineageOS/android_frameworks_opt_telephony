@@ -34,6 +34,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -1830,7 +1831,7 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void getImsRegistrationState(Message response) {
         if (mImsRegState == null) {
-            mImsRegState = new int[]{1};
+            mImsRegState = new int[]{1, PhoneConstants.PHONE_TYPE_NONE};
         }
 
         resultSuccess(response, mImsRegState);
@@ -1839,13 +1840,16 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
             Message response){
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().sendImsCdmaSms(pdu, retry, messageRef, response);
+        resultSuccess(response, new SmsResponse(0 /*messageRef*/, null, 0));
     }
 
     @Override
     public void sendImsGsmSms(String smscPDU, String pdu,
             int retry, int messageRef, Message response){
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().sendImsGsmSms(smscPDU, pdu, retry, messageRef,
+                response);
+        resultSuccess(response, new SmsResponse(0 /*messageRef*/, null, 0));
     }
 
     @Override
@@ -1970,6 +1974,12 @@ public class SimulatedCommands extends BaseCommands
         if (mExitEmergencyCallbackModeRegistrants != null) {
             mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
                     new AsyncResult (null, null, null));
+        }
+    }
+
+    public void notifyImsNetworkStateChanged() {
+        if(mImsNetworkStateChangedRegistrants != null) {
+            mImsNetworkStateChangedRegistrants.notifyRegistrants();
         }
     }
 

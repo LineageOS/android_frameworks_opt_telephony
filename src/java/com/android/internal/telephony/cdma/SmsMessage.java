@@ -837,11 +837,15 @@ public class SmsMessage extends SmsMessageBase {
         // Hence, avoid 0 -- constraining the range to 1..65535.
         int msgId = SystemProperties.getInt(TelephonyProperties.PROPERTY_CDMA_MSG_ID, 1);
         String nextMsgId = Integer.toString((msgId % 0xFFFF) + 1);
-        SystemProperties.set(TelephonyProperties.PROPERTY_CDMA_MSG_ID, nextMsgId);
-        if (Rlog.isLoggable(LOGGABLE_TAG, Log.VERBOSE)) {
-            Rlog.d(LOG_TAG, "next " + TelephonyProperties.PROPERTY_CDMA_MSG_ID + " = " + nextMsgId);
-            Rlog.d(LOG_TAG, "readback gets " +
-                    SystemProperties.get(TelephonyProperties.PROPERTY_CDMA_MSG_ID));
+        try{
+            SystemProperties.set(TelephonyProperties.PROPERTY_CDMA_MSG_ID, nextMsgId);
+            if (Rlog.isLoggable(LOGGABLE_TAG, Log.VERBOSE)) {
+                Rlog.d(LOG_TAG, "next " + TelephonyProperties.PROPERTY_CDMA_MSG_ID + " = " + nextMsgId);
+                Rlog.d(LOG_TAG, "readback gets " +
+                        SystemProperties.get(TelephonyProperties.PROPERTY_CDMA_MSG_ID));
+            }
+        } catch(RuntimeException ex) {
+            Rlog.e(LOG_TAG, "set nextMessage ID failed: " + ex);
         }
         return msgId;
     }
