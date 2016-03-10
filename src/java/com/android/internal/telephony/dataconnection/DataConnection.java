@@ -878,6 +878,10 @@ public class DataConnection extends StateMachine {
                         result.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
                         break;
                     }
+                    case PhoneConstants.APN_TYPE_EMERGENCY: {
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
+                        break;
+                    }
                     default:
                 }
             }
