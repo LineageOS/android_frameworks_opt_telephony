@@ -223,17 +223,6 @@ public class RetryManager {
         mApnType = apnType;
     }
 
-    @Override
-    public String toString() {
-        String ret = "RetryManager: { forever=" + mRetryForever + " maxRetry=" + mMaxRetryCount
-                + " retry=" + mRetryCount + " config={" + mConfig + "} retryArray={";
-        for (RetryRec r : mRetryArray) {
-            ret += r.mDelayTime + ":" + r.mRandomizationTime + " ";
-        }
-        ret += "}}";
-        return ret;
-    }
-
     /**
      * Configure for using string which allow arbitrary
      * sequences of times. See class comments for the
@@ -368,7 +357,8 @@ public class RetryManager {
         }
 
         if (VDBG) {
-            log("mInterApnDelay = " + mInterApnDelay + ", mFailFastInterApnDelay = " + mFailFastInterApnDelay);
+            log("mInterApnDelay = " + mInterApnDelay + ", mFailFastInterApnDelay = " +
+                    mFailFastInterApnDelay);
         }
 
         configure(configString);
@@ -546,8 +536,9 @@ public class RetryManager {
 
         if (failFastEnabled && delay > mFailFastInterApnDelay) {
             // If we enable fail fast mode, and the delay we got is longer than
-            // fail-fast delay (mFailFastInterApnDelay), use the fail-fast delay. If the delay we calculated
-            // is already shorter than fail-fast delay, then ignore fail-fast delay.
+            // fail-fast delay (mFailFastInterApnDelay), use the fail-fast delay.
+            // If the delay we calculated is already shorter than fail-fast delay,
+            // then ignore fail-fast delay.
             delay = mFailFastInterApnDelay;
         }
 
@@ -630,6 +621,14 @@ public class RetryManager {
      */
     public long getInterApnDelay(boolean failFastEnabled) {
         return (failFastEnabled) ? mFailFastInterApnDelay : mInterApnDelay;
+    }
+
+    public String toString() {
+        return "mApnType=" + mApnType + " mRetryCount=" + mRetryCount +
+                " mMaxRetryCount=" + mMaxRetryCount + " mCurrentApnIndex=" + mCurrentApnIndex +
+                " mSameApnRtryCount=" + mSameApnRetryCount + " mModemSuggestedDelay=" +
+                mModemSuggestedDelay + " mRetryForever=" + mRetryForever +
+                " mConfig={" + mConfig + "}";
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
