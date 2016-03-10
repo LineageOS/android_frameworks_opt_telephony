@@ -125,9 +125,9 @@ public class DataConnection extends StateMachine {
     /**
      * Used internally for saving disconnecting parameters.
      */
-    static class DisconnectParams {
+    public static class DisconnectParams {
         int mTag;
-        ApnContext mApnContext;
+        public ApnContext mApnContext;
         String mReason;
         Message mOnCompletedMsg;
 
@@ -162,7 +162,6 @@ public class DataConnection extends StateMachine {
     private NetworkInfo mNetworkInfo;
     private NetworkAgent mNetworkAgent;
 
-    //***** Package visible variables
     int mTag;
     public int mCid;
     public HashMap<ApnContext, ConnectionParams> mApnContexts = null;
@@ -236,7 +235,7 @@ public class DataConnection extends StateMachine {
      * @param id the connection id
      * @return DataConnection that was created.
      */
-    static DataConnection makeDataConnection(Phone phone, int id,
+    public static DataConnection makeDataConnection(Phone phone, int id,
             DcTracker dct, DcTesterFailBringUpAll failBringUpAll,
             DcController dcc) {
         DataConnection dc = new DataConnection(phone,
