@@ -1434,10 +1434,6 @@ public class DcTracker extends Handler {
         if (apnContext.isConnectable() && (isEmergencyApn ||
                 (isDataAllowed(failureReason) && isDataAllowedForApn(apnContext) &&
                 getAnyDataEnabled(checkUserDataEnabled) && !isEmergency()))) {
-            if (!failureReason.toString().isEmpty()) {
-                if (DBG) log(failureReason.toString());
-                apnContext.requestLog(failureReason.toString());
-            }
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 String str ="trySetupData: make a FAILED ApnContext IDLE so its reusable";
                 if (DBG) log(str);
@@ -1477,17 +1473,36 @@ public class DcTracker extends Handler {
                 mPhone.notifyDataConnectionFailed(apnContext.getReason(), apnContext.getApnType());
             }
             notifyOffApnsOfAvailability(apnContext.getReason());
-            String str = "trySetupData: X apnContext not 'ready' retValue=false";
-            apnContext.requestLog(str);
-            if (DBG) {
-                log(str);
-                if (!apnContext.isConnectable()) log("apnContext.isConnectable = false");
-                if (!isDataAllowed(failureReason)) log(failureReason.toString());
-                if (!isDataAllowedForApn(apnContext)) log("isDataAllowedForApn = false");
-                if (!getAnyDataEnabled(checkUserDataEnabled)) {
-                    log("getAnyDataEnabled(" + checkUserDataEnabled + ") = false");
-                }
+
+            StringBuilder str = new StringBuilder();
+
+            str.append("trySetupData failed. apnContext = [type=" + apnContext.getApnType() +
+                    ", mState=" + apnContext.getState() + ", mDataEnabled=" +
+                    apnContext.isEnabled() + ", mDependencyMet=" +
+                    apnContext.getDependencyMet() + "] ");
+
+            if (!apnContext.isConnectable()) {
+                str.append("isConnectable = false. ");
             }
+            if (!isDataAllowed(failureReason)) {
+                str.append("data not allowed: " + failureReason.toString() + ". ");
+            }
+            if (!isDataAllowedForApn(apnContext)) {
+                str.append("isDataAllowedForApn = false. RAT = " +
+                        mPhone.getServiceState().getRilDataRadioTechnology());
+            }
+            if (!getAnyDataEnabled(checkUserDataEnabled)) {
+                str.append("getAnyDataEnabled(" + checkUserDataEnabled + ") = false. " +
+                        "mInternalDataEnabled = " + mInternalDataEnabled + " , mUserDataEnabled = "
+                        + mUserDataEnabled + ", sPolicyDataEnabled = " + sPolicyDataEnabled + " ");
+            }
+            if (isEmergency()) {
+                str.append("emergency = true");
+            }
+
+            if (DBG) log(str.toString());
+            apnContext.requestLog(str.toString());
+
             return false;
         }
     }
