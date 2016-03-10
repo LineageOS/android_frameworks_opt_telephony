@@ -76,6 +76,7 @@ public class PhoneFactory {
     static private PhoneNotifier sPhoneNotifier;
     static private Context sContext;
     static private PhoneSwitcher sPhoneSwitcher;
+    static private SubscriptionMonitor sSubscriptionMonitor;
     static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
@@ -212,8 +213,7 @@ public class PhoneFactory {
                         ServiceManager.getService("telephony.registry"));
                 SubscriptionController sc = SubscriptionController.getInstance();
 
-                SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(tr,
-                        sContext, sc, numPhones);
+                sSubscriptionMonitor = new SubscriptionMonitor(tr, sContext, sc, numPhones);
 
                 sPhoneSwitcher = new PhoneSwitcher(MAX_ACTIVE_PHONES, numPhones,
                         sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
@@ -225,7 +225,7 @@ public class PhoneFactory {
                 sTelephonyNetworkFactories = new TelephonyNetworkFactory[numPhones];
                 for (int i = 0; i < numPhones; i++) {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                            sPhoneSwitcher, sc, subscriptionMonitor, Looper.myLooper(),
+                            sPhoneSwitcher, sc, sSubscriptionMonitor, Looper.myLooper(),
                             sContext, i, sPhones[i].mDcTracker);
                 }
             }
@@ -366,7 +366,8 @@ public class PhoneFactory {
         }
     }
 
-    public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    public static void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printwriter, "  ");
         pw.println("PhoneFactory:");
         pw.println(" sMadeDefaults=" + sMadeDefaults);
 
@@ -375,6 +376,7 @@ public class PhoneFactory {
 
         Phone[] phones = (Phone[])PhoneFactory.getPhones();
         for (int i = 0; i < phones.length; i++) {
+            pw.increaseIndent();
             Phone phone = phones[i];
 
             try {
@@ -398,42 +400,64 @@ public class PhoneFactory {
                 e.printStackTrace();
             }
             pw.flush();
+            pw.decreaseIndent();
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
+        pw.println("SubscriptionMonitor:");
+        pw.increaseIndent();
+        try {
+            sSubscriptionMonitor.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.decreaseIndent();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        pw.println("UiccController:");
+        pw.increaseIndent();
         try {
             sUiccController.dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }
         pw.flush();
+        pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
 
+        pw.println("SubscriptionController:");
+        pw.increaseIndent();
         try {
             SubscriptionController.getInstance().dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }
         pw.flush();
+        pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
 
+        pw.println("SubInfoRecordUpdater:");
+        pw.increaseIndent();
         try {
             sSubInfoRecordUpdater.dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }
         pw.flush();
-
+        pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
+
+        pw.println("LocalLogs:");
+        pw.increaseIndent();
         synchronized (sLocalLogs) {
-            final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
             for (String key : sLocalLogs.keySet()) {
-                ipw.println(key);
-                ipw.increaseIndent();
-                sLocalLogs.get(key).dump(fd, ipw, args);
-                ipw.decreaseIndent();
+                pw.println(key);
+                pw.increaseIndent();
+                sLocalLogs.get(key).dump(fd, pw, args);
+                pw.decreaseIndent();
             }
-            ipw.flush();
+            pw.flush();
         }
+        pw.decreaseIndent();
     }
 }

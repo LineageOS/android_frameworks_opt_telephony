@@ -30,6 +30,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
+import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ISub;
@@ -37,6 +38,8 @@ import com.android.internal.telephony.IOnSubscriptionsChangedListener;
 import com.android.internal.telephony.ITelephonyRegistry;
 import com.android.internal.telephony.PhoneConstants;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.lang.IllegalArgumentException;
 
 /**
@@ -60,6 +63,9 @@ public class SubscriptionMonitor {
 
     private final static boolean VDBG = true;
     private final static String LOG_TAG = "SubscriptionMonitor";
+
+    private final static int MAX_LOGLINES = 100;
+    private final LocalLog mLocalLog = new LocalLog(MAX_LOGLINES);
 
     public SubscriptionMonitor(ITelephonyRegistry tr, Context context,
             SubscriptionController subscriptionController, int numPhones) {
@@ -102,16 +108,14 @@ public class SubscriptionMonitor {
             new IOnSubscriptionsChangedListener.Stub() {
         @Override
         public void onSubscriptionsChanged() {
-            if (VDBG) log("onSubscriptionsChanged");
             synchronized (mLock) {
                 for (int phoneId = 0; phoneId < mPhoneSubId.length; phoneId++) {
                     final int newSubId = mSubscriptionController.getSubIdUsingPhoneId(phoneId);
                     final int oldSubId = mPhoneSubId[phoneId];
                     if (oldSubId != newSubId) {
-                        if (VDBG) {
-                            log("Phone[" + phoneId + "] subId changed " + oldSubId + "->"
-                                    + newSubId);
-                        }
+                        log("Phone[" + phoneId + "] subId changed " + oldSubId + "->" +
+                                newSubId + ", " +
+                                mSubscriptionsChangedRegistrants[phoneId].size() + " registrants");
                         mPhoneSubId[phoneId] = newSubId;
                         mSubscriptionsChangedRegistrants[phoneId].notifyRegistrants();
 
@@ -120,7 +124,9 @@ public class SubscriptionMonitor {
 
                         // check if this affects default data
                         if (newSubId == mDefaultDataSubId || oldSubId == mDefaultDataSubId) {
-                            if (VDBG) log("mDefaultDataSubId = " + mDefaultDataSubId);
+                            log("mDefaultDataSubId = " + mDefaultDataSubId + ", " +
+                                    mDefaultDataSubChangedRegistrants[phoneId].size() +
+                                    " registrants");
                             mDefaultDataSubChangedRegistrants[phoneId].notifyRegistrants();
                             if (newSubId == mDefaultDataSubId) {
                                 mDefaultDataPhoneId = phoneId;
@@ -139,14 +145,9 @@ public class SubscriptionMonitor {
             final int newDefaultDataSubId = mSubscriptionController.getDefaultDataSubId();
             synchronized (mLock) {
                 if (mDefaultDataSubId != newDefaultDataSubId) {
-                    if (VDBG) log("Got Default changed " + mDefaultDataSubId + "->" +
-                            newDefaultDataSubId);
+                    log("Default changed " + mDefaultDataSubId + "->" + newDefaultDataSubId);
                     final int oldDefaultDataSubId = mDefaultDataSubId;
                     final int oldDefaultDataPhoneId = mDefaultDataPhoneId;
-                    if (VDBG) {
-                        log("oldDefaultDataSubId=" + mDefaultDataSubId +
-                                ", oldDefaultDataPhoneId=" + mDefaultDataPhoneId);
-                    }
                     mDefaultDataSubId = newDefaultDataSubId;
 
                     int newDefaultDataPhoneId =
@@ -162,6 +163,15 @@ public class SubscriptionMonitor {
                     }
 
                     if (newDefaultDataPhoneId != oldDefaultDataPhoneId) {
+                        log("Default phoneId changed " + oldDefaultDataPhoneId + "->" +
+                                newDefaultDataPhoneId + ", " +
+                                (invalidPhoneId(oldDefaultDataPhoneId) ?
+                                 0 :
+                                 mDefaultDataSubChangedRegistrants[oldDefaultDataPhoneId].size()) +
+                                "," + (invalidPhoneId(newDefaultDataPhoneId) ?
+                                  0 :
+                                  mDefaultDataSubChangedRegistrants[newDefaultDataPhoneId].size()) +
+                                " registrants");
                         mDefaultDataPhoneId = newDefaultDataPhoneId;
                         if (!invalidPhoneId(oldDefaultDataPhoneId)) {
                             mDefaultDataSubChangedRegistrants[oldDefaultDataPhoneId].
@@ -217,5 +227,12 @@ public class SubscriptionMonitor {
 
     private void log(String s) {
         Rlog.d(LOG_TAG, s);
+        mLocalLog.log(s);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        synchronized (mLock) {
+            mLocalLog.dump(fd, printWriter, args);
+        }
     }
 }

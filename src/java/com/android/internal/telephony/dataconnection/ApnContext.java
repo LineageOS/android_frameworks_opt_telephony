@@ -36,6 +36,7 @@ import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -388,6 +389,8 @@ public class ApnContext {
     }
 
     private final ArrayList<LocalLog> mLocalLogs = new ArrayList<LocalLog>();
+    private final ArrayDeque<LocalLog> mHistoryLogs = new ArrayDeque<LocalLog>();
+    private final static int MAX_HISTORY_LOG_COUNT = 4;
 
     public void requestLog(String str) {
         synchronized (mRefCountLock) {
@@ -399,12 +402,6 @@ public class ApnContext {
 
     public void incRefCount(LocalLog log) {
         synchronized (mRefCountLock) {
-            if (mRefCount == 0) {
-               // we wanted to leave the last in so it could actually capture the tear down
-               // of the network
-               requestLog("clearing log with size=" + mLocalLogs.size());
-               mLocalLogs.clear();
-            }
             if (mLocalLogs.contains(log)) {
                 log.log("ApnContext.incRefCount has duplicate add - " + mRefCount);
             } else {
@@ -419,15 +416,14 @@ public class ApnContext {
 
     public void decRefCount(LocalLog log) {
         synchronized (mRefCountLock) {
-            // leave the last log alive to capture the actual tear down
-            if (mRefCount != 1) {
-                if (mLocalLogs.remove(log)) {
-                    log.log("ApnContext.decRefCount - " + mRefCount);
-                } else {
-                    log.log("ApnContext.decRefCount didn't find log - " + mRefCount);
+            if (mLocalLogs.remove(log)) {
+                log.log("ApnContext.decRefCount - " + mRefCount);
+                mHistoryLogs.addFirst(log);
+                while (mHistoryLogs.size() > MAX_HISTORY_LOG_COUNT) {
+                    mHistoryLogs.removeLast();
                 }
             } else {
-                log.log("ApnContext.decRefCount - 1");
+                log.log("ApnContext.decRefCount didn't find log - " + mRefCount);
             }
             if (mRefCount-- == 1) {
                 mDcTracker.setEnabled(apnIdForApnName(mApnType), false);
@@ -681,15 +677,16 @@ public class ApnContext {
         final IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         synchronized (mRefCountLock) {
             pw.println(toString());
-            if (mRefCount > 0) {
-                pw.increaseIndent();
-                for (LocalLog l : mLocalLogs) {
-                    l.dump(fd, pw, args);
-                }
-                pw.decreaseIndent();
+            pw.increaseIndent();
+            for (LocalLog l : mLocalLogs) {
+                l.dump(fd, pw, args);
             }
+            if (mHistoryLogs.size() > 0) pw.println("Historical Logs:");
+            for (LocalLog l : mHistoryLogs) {
+                l.dump(fd, pw, args);
+            }
+            pw.decreaseIndent();
+            pw.println("mRetryManager={" + mRetryManager.toString() + "}");
         }
-
-        mRetryManager.dump(fd, pw, args);
     }
 }

@@ -228,6 +228,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
             localLog = mDefaultRequests.get(networkRequest);
             if (localLog == null) {
                 localLog = new LocalLog(REQUEST_LOG_SIZE);
+                localLog.log("created for " + networkRequest);
                 mDefaultRequests.put(networkRequest, localLog);
                 isApplicable = mIsDefault;
             }
