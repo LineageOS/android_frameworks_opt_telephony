@@ -1105,7 +1105,10 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void deactivateDataCall(int cid, int reason, Message result) {unimplemented(result);}
+    public void deactivateDataCall(int cid, int reason, Message result) {
+        SimulatedCommandsVerifier.getInstance().deactivateDataCall(cid, reason, result);
+        resultSuccess(result, null);
+    }
 
     @Override
     public void setPreferredNetworkType(int networkType , Message result) {

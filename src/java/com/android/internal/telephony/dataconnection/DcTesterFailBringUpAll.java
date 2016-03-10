@@ -98,7 +98,7 @@ public class DcTesterFailBringUpAll {
         }
     }
 
-    DcFailBringUp getDcFailBringUp() {
+    public DcFailBringUp getDcFailBringUp() {
         return mFailBringUp;
     }
 
