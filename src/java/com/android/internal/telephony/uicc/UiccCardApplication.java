@@ -55,9 +55,9 @@ public class UiccCardApplication {
     /**
      * These values are for authContext (parameter P2) per 3GPP TS 31.102 (Section 7.1.2)
      */
-    public static final int AUTH_CONTEXT_EAP_SIM = 128;
-    public static final int AUTH_CONTEXT_EAP_AKA = 129;
-    public static final int AUTH_CONTEXT_UNDEFINED = -1;
+    public static final int AUTH_CONTEXT_EAP_SIM = PhoneConstants.AUTH_CONTEXT_EAP_SIM;
+    public static final int AUTH_CONTEXT_EAP_AKA = PhoneConstants.AUTH_CONTEXT_EAP_AKA;
+    public static final int AUTH_CONTEXT_UNDEFINED = PhoneConstants.AUTH_CONTEXT_UNDEFINED;
 
     private final Object  mLock = new Object();
     private UiccCard      mUiccCard; //parent
