@@ -25,7 +25,6 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src/java) \
 	$(call all-logtags-files-under, src/java)
 
 LOCAL_JAVA_LIBRARIES := voip-common ims-common
-LOCAL_STATIC_JAVA_LIBRARIES := org.cyanogenmod.platform.internal
 LOCAL_REQUIRED_MODULES := telresources
 
 ifneq ($(BOARD_RIL_CLASS),)

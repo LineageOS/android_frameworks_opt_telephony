@@ -24,6 +24,7 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
@@ -35,8 +36,6 @@ import com.android.internal.telephony.*;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
-
-import cyanogenmod.providers.CMSettings;
 
 /**
  * {@hide}
@@ -602,8 +601,8 @@ public class GsmConnection extends Connection {
         mCnapNamePresentation = dc.namePresentation;
 
         boolean connectedLineIdentification =
-                CMSettings.System.getInt(mOwner.mPhone.getContext().getContentResolver(),
-                        CMSettings.System.CONNECTED_LINE_IDENTIFICATION, 1) != 0;
+                Settings.Global.getInt(mOwner.mPhone.getContext().getContentResolver(),
+                        Settings.Global.CONNECTED_LINE_IDENTIFICATION, 1) != 0;
         if (mIsIncoming || connectedLineIdentification)
             mNumberPresentation = dc.numberPresentation;
 
