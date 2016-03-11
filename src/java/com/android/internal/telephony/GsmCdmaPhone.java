@@ -1850,8 +1850,8 @@ public class GsmCdmaPhone extends Phone {
          * The exception is cancellation of an incoming USSD-REQUEST, which is
          * not on the list.
          */
-        if (mPendingMMIs.remove(mmi) && (!isPhoneTypeGsm() || mmi.isUssdRequest() ||
-                ((GsmMmiCode)mmi).isSsInfo())) {
+        if (mPendingMMIs.remove(mmi) || (isPhoneTypeGsm() && (mmi.isUssdRequest() ||
+                ((GsmMmiCode)mmi).isSsInfo()))) {
             mMmiCompleteRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
         }
     }
