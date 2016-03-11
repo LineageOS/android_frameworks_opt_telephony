@@ -31,6 +31,7 @@ import android.os.Message;
 import android.os.UserHandle;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.service.carrier.CarrierService;
 
@@ -49,6 +50,7 @@ public class CarrierServiceBindHelper {
 
     private Context mContext;
     private AppBinding[] mBindings;
+    private String[] mLastSimState;
     private final BroadcastReceiver mReceiver = new PackageChangedBroadcastReceiver();
 
     private static final int EVENT_BIND = 0;
@@ -100,6 +102,7 @@ public class CarrierServiceBindHelper {
 
         int numPhones = TelephonyManager.from(context).getPhoneCount();
         mBindings = new AppBinding[numPhones];
+        mLastSimState = new String[numPhones];
 
         for (int phoneId = 0; phoneId < numPhones; phoneId++) {
             mBindings[phoneId] = new AppBinding(phoneId);
@@ -120,11 +123,17 @@ public class CarrierServiceBindHelper {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             return;
         }
+        if (TextUtils.isEmpty(simState)) return;
+        if (simState.equals(mLastSimState[phoneId])) {
+            // ignore consecutive duplicated events
+            return;
+        } else {
+            mLastSimState[phoneId] = simState;
+        }
         // requires Java 7 for switch on string.
         switch (simState) {
             case IccCardConstants.INTENT_VALUE_ICC_ABSENT:
             case IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR:
-            case IccCardConstants.INTENT_VALUE_ICC_UNKNOWN:
                 mHandler.sendMessage(mHandler.obtainMessage(EVENT_UNBIND, mBindings[phoneId]));
                 break;
             case IccCardConstants.INTENT_VALUE_ICC_LOADED:
