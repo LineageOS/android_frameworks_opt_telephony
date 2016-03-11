@@ -76,6 +76,11 @@ public class CommandException extends RuntimeException {
         NO_SMS_TO_ACK,
         NETWORK_ERR,
         REQUEST_RATE_LIMITED,
+        SIM_BUSY,
+        SIM_FULL,
+        NETWORK_REJECT,
+        OPERATION_NOT_ALLOWED,
+        EMPTY_RECORD,
         OEM_ERROR_1,
         OEM_ERROR_2,
         OEM_ERROR_3,
@@ -215,6 +220,16 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.NETWORK_ERR);
             case RILConstants.REQUEST_RATE_LIMITED:
                 return new CommandException(Error.REQUEST_RATE_LIMITED);
+            case RILConstants.SIM_BUSY:
+                return new CommandException(Error.SIM_BUSY);
+            case RILConstants.SIM_FULL:
+                return new CommandException(Error.SIM_FULL);
+            case RILConstants.NETWORK_REJECT:
+                return new CommandException(Error.NETWORK_REJECT);
+            case RILConstants.OPERATION_NOT_ALLOWED:
+                return new CommandException(Error.OPERATION_NOT_ALLOWED);
+            case RILConstants.EMPTY_RECORD:
+                return new CommandException(Error.EMPTY_RECORD);
             case RILConstants.OEM_ERROR_1:
                 return new CommandException(Error.OEM_ERROR_1);
             case RILConstants.OEM_ERROR_2:
