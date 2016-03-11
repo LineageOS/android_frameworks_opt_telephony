@@ -53,6 +53,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -93,6 +94,8 @@ public class DctController extends Handler {
     protected SubscriptionController mSubController = SubscriptionController.getInstance();
 
     private SubscriptionManager mSubMgr;
+
+    protected AtomicBoolean[] mIsDataAllowed;
 
     private OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
@@ -234,9 +237,16 @@ public class DctController extends Handler {
         mNetworkFactoryMessenger = new Messenger[mPhoneNum];
         mNetworkFactory = new NetworkFactory[mPhoneNum];
         mNetworkFilter = new NetworkCapabilities[mPhoneNum];
+        mIsDataAllowed = new AtomicBoolean[mPhoneNum];
 
         for (int i = 0; i < mPhoneNum; ++i) {
             int phoneId = i;
+            if (mPhoneNum == 1) {
+                // For single SIM mode allow data by default
+                mIsDataAllowed[i] = new AtomicBoolean(true);
+            } else {
+                mIsDataAllowed[i] = new AtomicBoolean(false);
+            }
             mDcSwitchStateMachine[i] = new DcSwitchStateMachine(mPhones[i],
                     "DcSwitchStateMachine-" + phoneId, phoneId);
             mDcSwitchStateMachine[i].start();
@@ -847,6 +857,17 @@ public class DctController extends Handler {
             pw.decreaseIndent();
             pw.decreaseIndent();
         }
+    }
+
+    protected void setDataAllowedOnPhoneId(int phoneId, boolean dataAllowed) {
+        if (SubscriptionManager.isValidPhoneId(phoneId)) {
+            mIsDataAllowed[phoneId].set(dataAllowed);
+        }
+    }
+
+    public boolean isDataAllowedOnPhoneId(int phoneId) {
+        return SubscriptionManager.isValidPhoneId(phoneId) &&
+                mIsDataAllowed[phoneId].get();
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
