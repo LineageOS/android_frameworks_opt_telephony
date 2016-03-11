@@ -32,6 +32,8 @@ import android.content.Context;
 import android.content.IIntentSender;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -157,6 +159,12 @@ public abstract class TelephonyTest {
     protected IIntentSender mIIntentSender;
     @Mock
     protected IBinder mIBinder;
+    @Mock
+    protected SmsStorageMonitor mSmsStorageMonitor;
+    @Mock
+    protected SmsUsageMonitor mSmsUsageMonitor;
+    @Mock
+    protected PackageInfo mPackageInfo;
 
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
@@ -364,6 +372,14 @@ public abstract class TelephonyTest {
             }
         }).when(mIccCardProxy).getIccRecords();
 
+        //SMS
+        doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
+        doReturn(true).when(mSmsUsageMonitor).check(anyString(), anyInt());
+        TelephonyManager mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
+        doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
+        doReturn(true).when(mTelephonyManager).getSmsSendCapableForPhone(
+                anyInt(), anyBoolean());
+
         //Misc
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS).when(mServiceState).
                 getRilDataRadioTechnology();
@@ -414,5 +430,11 @@ public abstract class TelephonyTest {
             }
             return null;
         }
+    }
+
+    protected void setupMockPackagePermissionChecks() throws Exception {
+        PackageManager mockPackageManager = mContext.getPackageManager();
+        doReturn(new String[]{TAG}).when(mockPackageManager).getPackagesForUid(anyInt());
+        doReturn(mPackageInfo).when(mockPackageManager).getPackageInfo(eq(TAG), anyInt());
     }
 }
