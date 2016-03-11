@@ -156,7 +156,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendData(String destAddr, String scAddr, int destPort,
+    public void sendData(String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (isCdmaMo()) {
             mCdmaDispatcher.sendData(destAddr, scAddr, destPort,
@@ -168,7 +168,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendMultipartText(String destAddr, String scAddr,
+    public void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             boolean persistMessage) {
@@ -195,7 +195,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
+    public void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
             boolean persistMessage) {
         Rlog.d(TAG, "sendText");
