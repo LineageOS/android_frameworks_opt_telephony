@@ -2082,15 +2082,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void setVoiceMessageCount(int countWaiting) {
         mVmCount = countWaiting;
         int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
 
-        Rlog.d(LOG_TAG, "setVoiceMessageCount: Storing Voice Mail Count = " + countWaiting +
-                " for mVmCountKey = " + VM_COUNT + subId + " in preferences.");
+            Rlog.d(LOG_TAG, "setVoiceMessageCount: Storing Voice Mail Count = " + countWaiting +
+                    " for mVmCountKey = " + VM_COUNT + subId + " in preferences.");
 
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(VM_COUNT + subId, countWaiting);
-        editor.apply();
-
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putInt(VM_COUNT + subId, countWaiting);
+            editor.apply();
+        } else {
+            Rlog.e(LOG_TAG, "setVoiceMessageCount in sharedPreference: invalid subId " + subId);
+        }
         // notify listeners of voice mail
         notifyMessageWaitingIndicator();
     }

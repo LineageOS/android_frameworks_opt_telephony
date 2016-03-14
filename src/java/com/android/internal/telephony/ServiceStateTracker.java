@@ -287,9 +287,6 @@ public class ServiceStateTracker extends Handler {
 
                     mPhone.notifyCallForwardingIndicator();
 
-                    // update voicemail count and notify message waiting changed
-                    mPhone.updateVoiceMail();
-
                     boolean restoreSelection = !context.getResources().getBoolean(
                             com.android.internal.R.bool.skip_restoring_network_selection);
                     mPhone.sendSubscriptionSettings(restoreSelection);
@@ -336,6 +333,8 @@ public class ServiceStateTracker extends Handler {
                     // MobileSignalController earlier were actually ignored due to invalid sub id.
                     updateSpnDisplay();
                 }
+                // update voicemail count and notify message waiting changed
+                mPhone.updateVoiceMail();
             }
         }
     };
