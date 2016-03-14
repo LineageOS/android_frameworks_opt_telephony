@@ -202,7 +202,7 @@ public class ImsPhoneCallTracker extends CallTracker {
     private boolean mOnHoldToneStarted = false;
     private int mOnHoldToneId = -1;
 
-    PhoneConstants.State mState = PhoneConstants.State.IDLE;
+    public PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
     private ImsManager mImsManager;
     private int mServiceId = -1;
@@ -629,7 +629,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    void
+    public void
     conference() {
         if (DBG) log("conference");
 
@@ -674,12 +674,12 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    void
+    public void
     explicitCallTransfer() {
         //TODO : implement
     }
 
-    void
+    public void
     clearDisconnected() {
         if (DBG) log("clearDisconnected");
 
@@ -689,7 +689,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         mPhone.notifyPreciseCallStateChanged();
     }
 
-    boolean
+    public boolean
     canConference() {
         return mForegroundCall.getState() == ImsPhoneCall.State.ACTIVE
             && mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING
@@ -697,7 +697,7 @@ public class ImsPhoneCallTracker extends CallTracker {
             && !mForegroundCall.isFull();
     }
 
-    boolean
+    public boolean
     canDial() {
         boolean ret;
         int serviceState = mPhone.getServiceState().getState();
@@ -714,7 +714,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         return ret;
     }
 
-    boolean
+    public boolean
     canTransfer() {
         return mForegroundCall.getState() == ImsPhoneCall.State.ACTIVE
             && mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING;
@@ -825,7 +825,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    /*package*/ void
+    public void
     startDtmf(char c) {
         if (DBG) log("startDtmf");
 
@@ -837,7 +837,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    /*package*/ void
+    public void
     stopDtmf() {
         if (DBG) log("stopDtmf");
 
@@ -970,8 +970,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    /* package */
-    void sendUSSD (String ussdString, Message response) {
+    public void sendUSSD (String ussdString, Message response) {
         if (DBG) log("sendUSSD");
 
         try {

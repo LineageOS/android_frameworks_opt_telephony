@@ -362,8 +362,6 @@ public class ImsPhone extends ImsPhoneBase {
             return false;
         }
 
-        ImsPhoneCall call = getForegroundCall();
-
         if (len > 1) {
             if (DBG) Rlog.d(LOG_TAG, "separate not supported");
             notifySuppServiceFailed(Phone.SuppService.SEPARATE);
