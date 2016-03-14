@@ -47,8 +47,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     protected ITelephonyRegistry mRegistry;
 
-    /*package*/
-    protected DefaultPhoneNotifier() {
+    public DefaultPhoneNotifier() {
         mRegistry = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
                     "telephony.registry"));
     }
