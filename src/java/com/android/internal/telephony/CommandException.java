@@ -81,6 +81,12 @@ public class CommandException extends RuntimeException {
         NETWORK_REJECT,
         OPERATION_NOT_ALLOWED,
         EMPTY_RECORD,
+        INVALID_SMS_FORMAT,
+        ENCODING_ERR,
+        INVALID_SMSC_ADDRESS,
+        NO_SUCH_ENTRY,
+        NETWORK_NOT_READY,
+        NOT_PROVISIONED,
         OEM_ERROR_1,
         OEM_ERROR_2,
         OEM_ERROR_3,
@@ -230,6 +236,18 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.OPERATION_NOT_ALLOWED);
             case RILConstants.EMPTY_RECORD:
                 return new CommandException(Error.EMPTY_RECORD);
+            case RILConstants.INVALID_SMS_FORMAT:
+                return new CommandException(Error.INVALID_SMS_FORMAT);
+            case RILConstants.ENCODING_ERR:
+                return new CommandException(Error.ENCODING_ERR);
+            case RILConstants.INVALID_SMSC_ADDRESS:
+                return new CommandException(Error.INVALID_SMSC_ADDRESS);
+            case RILConstants.NO_SUCH_ENTRY:
+                return new CommandException(Error.NO_SUCH_ENTRY);
+            case RILConstants.NETWORK_NOT_READY:
+                return new CommandException(Error.NETWORK_NOT_READY);
+            case RILConstants.NOT_PROVISIONED:
+                return new CommandException(Error.NOT_PROVISIONED);
             case RILConstants.OEM_ERROR_1:
                 return new CommandException(Error.OEM_ERROR_1);
             case RILConstants.OEM_ERROR_2:
