@@ -18,30 +18,20 @@ package com.android.internal.telephony.cdma;
 
 import android.os.HandlerThread;
 import android.os.Message;
-import android.telephony.*;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.SmsStorageMonitor;
-import com.android.internal.telephony.SmsUsageMonitor;
 import com.android.internal.telephony.TelephonyTest;
 
-import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Spy;
 
 public class CdmaSmsDispatcherTest extends TelephonyTest {
-    @Mock
-    private SmsStorageMonitor mSmsStorageMonitor;
-    @Mock
-    private SmsUsageMonitor mSmsUsageMonitor;
     @Mock
     private android.telephony.SmsMessage mSmsMessage;
     @Mock
@@ -52,7 +42,6 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
     private SMSDispatcher.SmsTracker mSmsTracker;
 
     private CdmaSMSDispatcher mCdmaSmsDispatcher;
-    private TelephonyManager mTelephonyManager;
 
     private class CdmaSmsDispatcherTestHandler extends HandlerThread {
 
@@ -70,11 +59,9 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("CdmaSmsDispatcherTest");
+        super.setUp(this.getClass().getSimpleName());
 
-        mTelephonyManager = TelephonyManager.from(mContext);
-        doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
-        doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
+        setupMockPackagePermissionChecks();
 
         new CdmaSmsDispatcherTestHandler(TAG).start();
         waitUntilReady();
@@ -91,5 +78,20 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
         doReturn(mServiceState).when(mPhone).getServiceState();
         mCdmaSmsDispatcher.sendSms(mSmsTracker);
         verify(mSimulatedCommandsVerifier).sendCdmaSms(any(byte[].class), any(Message.class));
+    }
+
+    @Test @SmallTest
+    public void testSendText() {
+        mCdmaSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
+                null, null, null, null, false);
+        verify(mSimulatedCommandsVerifier).sendCdmaSms(any(byte[].class), any(Message.class));
+    }
+
+    @Test @SmallTest
+    public void testSendTextWithOutDesAddr() {
+        mCdmaSmsDispatcher.sendText(null, "222" /*scAddr*/, TAG,
+                null, null, null, null, false);
+        verify(mSimulatedCommandsVerifier, times(0)).sendImsGsmSms(anyString(), anyString(),
+                anyInt(), anyInt(), any(Message.class));
     }
 }
