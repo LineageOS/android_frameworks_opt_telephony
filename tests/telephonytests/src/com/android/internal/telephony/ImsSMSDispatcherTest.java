@@ -22,18 +22,14 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.isNull;
-import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
@@ -46,16 +42,9 @@ import org.mockito.Mock;
 
 public class ImsSMSDispatcherTest extends TelephonyTest {
     @Mock
-    private SmsStorageMonitor mSmsStorageMonitor;
-    @Mock
-    private SmsUsageMonitor mSmsUsageMonitor;
-    @Mock
-    private PackageInfo mPackageInfo;
-    @Mock
     private SMSDispatcher.SmsTracker mTracker;
 
     private ImsSMSDispatcher mImsSmsDispatcher;
-    private TelephonyManager mTelephonyManager;
 
     private class ImsSmsDispatcherTestHandler extends HandlerThread {
 
@@ -76,12 +65,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
-        doReturn(true).when(mTelephonyManager).getSmsSendCapableForPhone(anyInt(), anyBoolean());
-        PackageManager mockPackageManager = mContextFixture.getTestDouble().getPackageManager();
-        doReturn(new String[]{TAG}).when(mockPackageManager).getPackagesForUid(anyInt());
-        doReturn(mPackageInfo).when(mockPackageManager).getPackageInfo(eq(TAG), anyInt());
-        doReturn(true).when(mSmsUsageMonitor).check(anyString(), anyInt());
+        setupMockPackagePermissionChecks();
 
         new ImsSmsDispatcherTestHandler(getClass().getSimpleName()).start();
         waitUntilReady();
@@ -128,7 +112,6 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testSendImsCdmaTest() throws Exception {
-        ArgumentCaptor<byte[]> captor = ArgumentCaptor.forClass(byte[].class);
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
         mImsSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
                 null, null, null, null, false);
@@ -139,7 +122,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     @Test @SmallTest
     public void testSendRetrySmsCdmaTest() throws Exception {
         // newFormat will be based on voice technology
-        ArgumentCaptor<byte[]> captor = ArgumentCaptor.forClass(byte[].class);;
+        ArgumentCaptor<byte[]> captor = ArgumentCaptor.forClass(byte[].class);
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
         replaceInstance(SMSDispatcher.SmsTracker.class, "mFormat", mTracker,
                 SmsConstants.FORMAT_3GPP2);
