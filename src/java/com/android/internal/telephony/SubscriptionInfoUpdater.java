@@ -16,14 +16,12 @@
 
 package com.android.internal.telephony;
 
-import static android.Manifest.permission.READ_PHONE_STATE;
-
 import android.app.ActivityManagerNative;
 import android.app.IUserSwitchObserver;
 import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -37,22 +35,24 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.telephony.Rlog;
 import android.telephony.CarrierConfigManager;
-import android.telephony.SubscriptionManager;
+import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
+
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 
-import android.text.TextUtils;
-
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
+
+import static android.Manifest.permission.READ_PHONE_STATE;
 
 /**
  *@hide
@@ -381,16 +381,19 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            String operator = records.getOperatorNumeric();
+            TelephonyManager tm = TelephonyManager.getDefault();
+
+            String operator = tm.getSimOperatorNumericForPhone(slotId);
+
             if (operator != null) {
                 if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
                     MccTable.updateMccMncConfiguration(mContext, operator, false);
                 }
-                SubscriptionController.getInstance().setMccMnc(operator,subId);
+                SubscriptionController.getInstance().setMccMnc(operator, subId);
             } else {
                 logd("EVENT_RECORDS_LOADED Operator name is null");
             }
-            TelephonyManager tm = TelephonyManager.getDefault();
+
             String msisdn = tm.getLine1Number(subId);
             ContentResolver contentResolver = mContext.getContentResolver();
 
