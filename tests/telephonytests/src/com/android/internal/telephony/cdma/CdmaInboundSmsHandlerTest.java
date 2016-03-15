@@ -137,8 +137,11 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        if (mCdmaInboundSmsHandler.getWakeLock().isHeld()) {
-            waitForMs(mCdmaInboundSmsHandler.getWakeLockTimeout() + 200);
+        // wait for wakelock to be released; timeout at 10s
+        int i = 0;
+        while (mCdmaInboundSmsHandler.getWakeLock().isHeld() && i < 100) {
+            waitForMs(100);
+            i++;
         }
         assertFalse(mCdmaInboundSmsHandler.getWakeLock().isHeld());
         mCdmaInboundSmsHandler = null;
@@ -157,7 +160,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testNewSms() {
         transitionFromStartupToIdle();
 

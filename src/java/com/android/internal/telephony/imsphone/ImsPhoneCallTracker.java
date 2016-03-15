@@ -798,7 +798,7 @@ public class ImsPhoneCallTracker extends CallTracker {
 
     //***** Called from ImsPhone
 
-    void setUiTTYMode(int uiTtyMode, Message onComplete) {
+    public void setUiTTYMode(int uiTtyMode, Message onComplete) {
         try {
             mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, uiTtyMode, onComplete);
         } catch (ImsException e) {
@@ -807,12 +807,12 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    /*package*/ void setMute(boolean mute) {
+    public void setMute(boolean mute) {
         mDesiredMute = mute;
         mForegroundCall.setMute(mute);
     }
 
-    /*package*/ boolean getMute() {
+    public boolean getMute() {
         return mDesiredMute;
     }
 
@@ -1822,8 +1822,7 @@ public class ImsPhoneCallTracker extends CallTracker {
 
     };
 
-    /* package */
-    ImsUtInterface getUtInterface() throws ImsException {
+    public ImsUtInterface getUtInterface() throws ImsException {
         if (mImsManager == null) {
             throw new ImsException("no ims manager", ImsReasonInfo.CODE_UNSPECIFIED);
         }

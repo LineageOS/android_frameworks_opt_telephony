@@ -158,8 +158,6 @@ public class GsmCdmaPhone extends Phone {
 
     private int mPrecisePhoneType;
 
-    public Registrant mPostDialHandler;
-
     // mEcmTimerResetRegistrants are informed after Ecm timer is canceled or re-started
     private final RegistrantList mEcmTimerResetRegistrants = new RegistrantList();
 
@@ -1734,11 +1732,6 @@ public class GsmCdmaPhone extends Phone {
                 response.sendToTarget();
             }
         }
-    }
-
-    @Override
-    public void setOnPostDialCharacter(Handler h, int what, Object obj) {
-        mPostDialHandler = new Registrant(h, what, obj);
     }
 
     @Override
