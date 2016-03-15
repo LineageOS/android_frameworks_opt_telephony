@@ -258,8 +258,11 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        if (mGsmInboundSmsHandler.getWakeLock().isHeld()) {
-            waitForMs(mGsmInboundSmsHandler.getWakeLockTimeout() + 200);
+        // wait for wakelock to be released; timeout at 10s
+        int i = 0;
+        while (mGsmInboundSmsHandler.getWakeLock().isHeld() && i < 100) {
+            waitForMs(100);
+            i++;
         }
         assertFalse(mGsmInboundSmsHandler.getWakeLock().isHeld());
         mGsmInboundSmsHandler = null;
