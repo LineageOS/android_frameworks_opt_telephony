@@ -855,7 +855,7 @@ public class GsmCdmaConnection extends Connection {
         notifyPostDialListenersNextChar(c);
 
         // TODO: remove the following code since the handler no longer executes anything.
-        postDialHandler = mOwner.getPhone().mPostDialHandler;
+        postDialHandler = mOwner.getPhone().getPostDialHandler();
 
         Message notifyMessage;
 

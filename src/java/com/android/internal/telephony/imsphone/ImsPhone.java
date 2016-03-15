@@ -123,7 +123,6 @@ public class ImsPhone extends ImsPhoneBase {
     ImsPhoneCallTracker mCT;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
-    Registrant mPostDialHandler;
     private ServiceState mSS = new ServiceState();
 
     // To redial silently through GSM or CDMA when dialing through IMS fails
@@ -571,11 +570,6 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.stopDtmf();
     }
 
-    @Override
-    public void setOnPostDialCharacter(Handler h, int what, Object obj) {
-        mPostDialHandler = new Registrant(h, what, obj);
-    }
-
     public void notifyIncomingRing() {
         if (DBG) Rlog.d(LOG_TAG, "notifyIncomingRing");
         AsyncResult ar = new AsyncResult(null, null, null);
@@ -760,9 +754,9 @@ public class ImsPhone extends ImsPhoneBase {
                         serviceClass,
                         timerSeconds,
                         onComplete);
-             } catch (ImsException e) {
+            } catch (ImsException e) {
                 sendErrorResponse(onComplete, e);
-             }
+            }
         } else if (onComplete != null) {
             sendErrorResponse(onComplete);
         }
