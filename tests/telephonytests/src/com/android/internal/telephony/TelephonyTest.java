@@ -39,6 +39,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
+import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -56,6 +57,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
+import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
@@ -172,6 +174,8 @@ public abstract class TelephonyTest {
     protected FakeBlockedNumberContentProvider mFakeBlockedNumberContentProvider;
     private Object mLock = new Object();
     private boolean mReady;
+    protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
+
 
     protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
     private HashMap<InstanceKey, Object> mOldInstances = new HashMap<InstanceKey, Object>();
@@ -282,6 +286,7 @@ public abstract class TelephonyTest {
                 mSimulatedCommandsVerifier);
         replaceInstance(Singleton.class, "mInstance", mIActivityManagerSingleton,
                 mIActivityManager);
+        replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
 
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();

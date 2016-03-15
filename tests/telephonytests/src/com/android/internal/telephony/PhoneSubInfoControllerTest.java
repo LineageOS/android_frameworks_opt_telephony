@@ -34,17 +34,12 @@ import static org.mockito.Mockito.eq;
 import org.junit.Test;
 import org.mockito.Mock;
 
-import android.os.IBinder;
-import android.os.ServiceManager;
 import android.telephony.TelephonyManager;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
-import java.util.HashMap;
-
 public class PhoneSubInfoControllerTest extends TelephonyTest {
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
-    private HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
     private AppOpsManager mAppOsMgr;
 
     @Mock
@@ -61,7 +56,6 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
                 Context.TELEPHONY_SERVICE);
         doReturn(2).when(mTelephonyManager).getPhoneCount();
 
-        replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
         mServiceManagerMockedServices.put("isub", mSubscriptionController);
         doReturn(mSubscriptionController).when(mSubscriptionController)
                 .queryLocalInterface(anyString());
