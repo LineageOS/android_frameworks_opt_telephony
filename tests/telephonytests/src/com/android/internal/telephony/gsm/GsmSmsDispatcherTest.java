@@ -26,9 +26,7 @@ import android.content.Context;
 import android.location.Country;
 import android.location.CountryDetector;
 import android.os.HandlerThread;
-import android.os.IBinder;
 import android.os.Message;
-import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.provider.Telephony;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -43,8 +41,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-
-import java.util.HashMap;
 
 public class GsmSmsDispatcherTest extends TelephonyTest {
     @Mock
@@ -61,8 +57,6 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     private ISub.Stub mISubStub;
 
     private GsmSMSDispatcher mGsmSmsDispatcher;
-
-    private HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
 
     private class GsmSmsDispatcherTestHandler extends HandlerThread {
 
@@ -85,7 +79,6 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
         // Note that this replaces only cached services in ServiceManager. If a service is not found
         // in the cache, a real instance is used.
-        replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
         mServiceManagerMockedServices.put("isub", mISubStub);
 
         new GsmSmsDispatcherTestHandler(getClass().getSimpleName()).start();

@@ -31,8 +31,6 @@ import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.Telephony;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -43,12 +41,10 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import java.util.HashMap;
 
 public class WapPushOverSmsTest extends TelephonyTest {
     @Mock
     protected IMms.Stub mIMmsStub;
-    protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
 
     private WapPushOverSms mWapPushOverSmsUT;
 
@@ -58,7 +54,6 @@ public class WapPushOverSmsTest extends TelephonyTest {
 
         // Note that this replaces only cached services in ServiceManager. If a service is not found
         // in the cache, a real instance is used.
-        replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
         mServiceManagerMockedServices.put("imms", mIMmsStub);
         doReturn(mIMmsStub).when(mIMmsStub).queryLocalInterface(anyString());
 

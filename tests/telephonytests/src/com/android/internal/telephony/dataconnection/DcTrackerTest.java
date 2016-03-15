@@ -27,7 +27,6 @@ import android.net.Uri;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
-import android.os.ServiceManager;
 import android.provider.Telephony;
 import android.telephony.ServiceState;
 import android.test.mock.MockContentProvider;
@@ -48,7 +47,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -89,8 +87,6 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Mock
     ISub mIsub;
-    @Mock
-    HashMap<String, IBinder> mServiceCache;
     @Mock
     IBinder mBinder;
 
@@ -287,8 +283,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         doReturn(1).when(mIsub).getDefaultDataSubId();
         doReturn(mIsub).when(mBinder).queryLocalInterface(anyString());
-        doReturn(mBinder).when(mServiceCache).get(anyString());
-        replaceInstance(ServiceManager.class, "sCache", null, mServiceCache);
+        mServiceManagerMockedServices.put("phone", mBinder);
 
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_cell_retries_per_error_code,
