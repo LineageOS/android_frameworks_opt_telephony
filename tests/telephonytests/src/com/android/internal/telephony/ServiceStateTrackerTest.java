@@ -21,9 +21,7 @@ import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.HandlerThread;
-import android.os.IBinder;
 import android.os.Parcel;
-import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
@@ -37,9 +35,6 @@ import android.test.suitebuilder.annotation.MediumTest;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.SIMRecords;
-import com.android.internal.telephony.uicc.UiccCardApplication;
-import com.android.internal.telephony.uicc.UiccController;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.*;
@@ -58,7 +53,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class ServiceStateTrackerTest extends TelephonyTest {
 
@@ -66,10 +60,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private DcTracker mDct;
     @Mock
     private ProxyController mProxyController;
-    @Mock
-    HashMap<String, IBinder> mServiceCache;
-    @Mock
-    IBinder mBinder;
 
     private ServiceStateTracker sst;
     private TelephonyManager mTelephonyManager;
@@ -98,9 +88,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mTelephonyManager = (TelephonyManager) mContextFixture.getTestDouble().
                 getSystemService(Context.TELEPHONY_SERVICE);
 
-        doReturn(mBinder).when(mServiceCache).get(anyString());
-
-        replaceInstance(ServiceManager.class, "sCache", null, mServiceCache);
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
 
         mContextFixture.putStringArrayResource(
