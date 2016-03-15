@@ -515,7 +515,7 @@ public class ImsPhoneConnection extends Connection {
         notifyPostDialListenersNextChar(c);
 
         // TODO: remove the following code since the handler no longer executes anything.
-        postDialHandler = mOwner.mPhone.mPostDialHandler;
+        postDialHandler = mOwner.mPhone.getPostDialHandler();
 
         Message notifyMessage;
 
