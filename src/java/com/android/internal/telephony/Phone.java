@@ -302,6 +302,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected final RegistrantList mEmergencyCallToggledRegistrants
             = new RegistrantList();
 
+    protected Registrant mPostDialHandler;
+
     private Looper mLooper; /* to insure registrants are in correct thread*/
 
     protected final Context mContext;
@@ -2202,6 +2204,48 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      */
     public void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete) {
+    }
+
+    /**
+     * Sets an event to be fired when the telephony system processes
+     * a post-dial character on an outgoing call.<p>
+     *
+     * Messages of type <code>what</code> will be sent to <code>h</code>.
+     * The <code>obj</code> field of these Message's will be instances of
+     * <code>AsyncResult</code>. <code>Message.obj.result</code> will be
+     * a Connection object.<p>
+     *
+     * Message.arg1 will be the post dial character being processed,
+     * or 0 ('\0') if end of string.<p>
+     *
+     * If Connection.getPostDialState() == WAIT,
+     * the application must call
+     * {@link com.android.internal.telephony.Connection#proceedAfterWaitChar()
+     * Connection.proceedAfterWaitChar()} or
+     * {@link com.android.internal.telephony.Connection#cancelPostDial()
+     * Connection.cancelPostDial()}
+     * for the telephony system to continue playing the post-dial
+     * DTMF sequence.<p>
+     *
+     * If Connection.getPostDialState() == WILD,
+     * the application must call
+     * {@link com.android.internal.telephony.Connection#proceedAfterWildChar
+     * Connection.proceedAfterWildChar()}
+     * or
+     * {@link com.android.internal.telephony.Connection#cancelPostDial()
+     * Connection.cancelPostDial()}
+     * for the telephony system to continue playing the
+     * post-dial DTMF sequence.<p>
+     *
+     * Only one post dial character handler may be set. <p>
+     * Calling this method with "h" equal to null unsets this handler.<p>
+     */
+    public void setOnPostDialCharacter(Handler h, int what, Object obj) {
+        mPostDialHandler = new Registrant(h, what, obj);
+    }
+
+    public Registrant getPostDialHandler() {
+        return mPostDialHandler;
     }
 
     /**

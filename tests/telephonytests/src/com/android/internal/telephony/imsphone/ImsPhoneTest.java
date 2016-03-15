@@ -20,15 +20,19 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.SystemProperties;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsStreamMediaProfile;
+import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneInternalInterface;
+import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 
@@ -40,12 +44,16 @@ import org.mockito.Mock;
 
 import java.util.List;
 
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyChar;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -64,11 +72,16 @@ public class ImsPhoneTest extends TelephonyTest {
     private Handler mTestHandler;
     @Mock
     Connection mConnection;
+    @Mock
+    ImsUtInterface mImsUtInterface;
 
     private ImsPhone mImsPhoneUT;
-
+    private boolean mDoesRilSendMultipleCallRing;
     private static final int EVENT_SUPP_SERVICE_NOTIFICATION = 1;
     private static final int EVENT_SUPP_SERVICE_FAILED = 2;
+    private static final int EVENT_INCOMING_RING = 3;
+    private static final int EVENT_OUTGOING_CALLER_ID_DISPLAY_RESP = 4;
+    private static final int EVENT_CALL_FORWARDING_OPTION_RESP = 5;
 
     private class ImsPhoneTestHandler extends HandlerThread {
 
@@ -94,16 +107,24 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(Call.State.IDLE).when(mBackgroundCall).getState();
         doReturn(Call.State.IDLE).when(mRingingCall).getState();
 
+        mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
+
         new ImsPhoneTestHandler(TAG).start();
         waitUntilReady();
 
+        mDoesRilSendMultipleCallRing = SystemProperties.getBoolean(
+                TelephonyProperties.PROPERTY_RIL_SENDS_MULTIPLE_CALL_RING, true);
         replaceInstance(Handler.class, "mLooper", mTestHandler, mImsPhoneUT.getLooper());
         replaceInstance(Phone.class, "mLooper", mPhone, mImsPhoneUT.getLooper());
         mImsPhoneUT.registerForSuppServiceNotification(mTestHandler,
                 EVENT_SUPP_SERVICE_NOTIFICATION, null);
         mImsPhoneUT.registerForSuppServiceFailed(mTestHandler,
                 EVENT_SUPP_SERVICE_FAILED, null);
+        mImsPhoneUT.registerForIncomingRing(mTestHandler,
+                EVENT_INCOMING_RING, null);
+        doReturn(mImsUtInterface).when(mImsCT).getUtInterface();
     }
+
 
     @After
     public void tearDown() throws Exception {
@@ -294,6 +315,24 @@ public class ImsPhoneTest extends TelephonyTest {
 
         mImsPhoneUT.notifyForVideoCapabilityChanged(true);
         verify(mPhone).notifyForVideoCapabilityChanged(true);
+
+        mImsPhoneUT.setMute(true);
+        verify(mImsCT).setMute(true);
+
+        mImsPhoneUT.setUiTTYMode(1234, null);
+        verify(mImsCT).setUiTTYMode(1234, null);
+
+        doReturn(false).when(mImsCT).getMute();
+        assertEquals(false, mImsPhoneUT.getMute());
+        doReturn(true).when(mImsCT).getMute();
+        assertEquals(true, mImsPhoneUT.getMute());
+        verify(mImsCT, times(2)).getMute();
+
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        assertEquals(PhoneConstants.State.IDLE, mImsPhoneUT.getState());
+        doReturn(PhoneConstants.State.RINGING).when(mImsCT).getState();
+        assertEquals(PhoneConstants.State.RINGING, mImsPhoneUT.getState());
+        verify(mImsCT, times(2)).getState();
     }
 
     @Test
@@ -358,5 +397,51 @@ public class ImsPhoneTest extends TelephonyTest {
 
         mImsPhoneUT.stopDtmf();
         verify(mImsCT).stopDtmf();
+    }
+
+    @Test
+    @SmallTest
+    public void testIncomingRing() {
+        mImsCT.mState = PhoneConstants.State.IDLE;
+        mImsPhoneUT.notifyIncomingRing();
+        waitForMs(100);
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+        Message message = messageArgumentCaptor.getValue();
+        assertEquals(EVENT_INCOMING_RING, message.what);
+    }
+
+    @Test
+    @SmallTest
+    public void testOutgoingCallerIdDisplay() throws Exception {
+        Message msg = mTestHandler.obtainMessage();
+        mImsPhoneUT.getOutgoingCallerIdDisplay(msg);
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mImsUtInterface).queryCLIR(messageArgumentCaptor.capture());
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+
+        mImsPhoneUT.setOutgoingCallerIdDisplay(1234, msg);
+        verify(mImsUtInterface).updateCLIR(eq(1234), messageArgumentCaptor.capture());
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+    }
+
+    @Test
+    @SmallTest
+    public void testCallForwardingOption() throws Exception {
+        Message msg = mTestHandler.obtainMessage();
+        mImsPhoneUT.getCallForwardingOption(CF_REASON_UNCONDITIONAL, msg);
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mImsUtInterface).queryCallForward(eq(ImsUtInterface.CDIV_CF_UNCONDITIONAL),
+                (String)eq(null), messageArgumentCaptor.capture());
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+
+        mImsPhoneUT.setCallForwardingOption(CF_ACTION_ENABLE, CF_REASON_UNCONDITIONAL, "1234", 0,
+                msg);
+        verify(mImsUtInterface).updateCallForward(eq(ImsUtInterface.ACTION_ACTIVATION),
+                eq(ImsUtInterface.CDIV_CF_UNCONDITIONAL), eq("1234"),
+                eq(CommandsInterface.SERVICE_CLASS_VOICE), eq(0), eq(msg));
     }
 }
