@@ -2331,7 +2331,9 @@ public class GsmCdmaPhone extends Phone {
                 mUiccApplication.set(null);
             }
             if (newUiccApplication != null) {
-                if (DBG) logd("New Uicc application found");
+                if (DBG) {
+                    logd("New Uicc application found. type = " + newUiccApplication.getType());
+                }
                 mUiccApplication.set(newUiccApplication);
                 mIccRecords.set(newUiccApplication.getIccRecords());
                 registerForIccRecordEvents();
