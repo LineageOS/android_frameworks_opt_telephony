@@ -128,6 +128,8 @@ public class PhoneFactory {
                 }
 
                 sPhoneNotifier = new DefaultPhoneNotifier();
+                TelephonyComponentFactory telephonyComponentFactory
+                    = TelephonyComponentFactory.getInstance();
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
@@ -151,8 +153,8 @@ public class PhoneFactory {
                             cdmaSubscription, i);
                 }
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
-                SubscriptionController.init(context, sCommandsInterfaces);
-
+                telephonyComponentFactory.initSubscriptionController(
+                        context, sCommandsInterfaces);
                 // Instantiate UiccController so that all other classes can just
                 // call getInstance()
                 sUiccController = UiccController.make(context, sCommandsInterfaces);
@@ -161,15 +163,15 @@ public class PhoneFactory {
                     Phone phone = null;
                     int phoneType = TelephonyManager.getPhoneType(networkModes[i]);
                     if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
-                        phone = new GsmCdmaPhone(context,
+                        phone = telephonyComponentFactory.makePhone(context,
                                 sCommandsInterfaces[i], sPhoneNotifier, i,
                                 PhoneConstants.PHONE_TYPE_GSM,
-                                TelephonyComponentFactory.getInstance());
+                                telephonyComponentFactory);
                     } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
-                        phone = new GsmCdmaPhone(context,
+                        phone = telephonyComponentFactory.makePhone(context,
                                 sCommandsInterfaces[i], sPhoneNotifier, i,
                                 PhoneConstants.PHONE_TYPE_CDMA_LTE,
-                                TelephonyComponentFactory.getInstance());
+                                telephonyComponentFactory);
                     }
                     Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
 
@@ -198,8 +200,8 @@ public class PhoneFactory {
                 sMadeDefaults = true;
 
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
-                sSubInfoRecordUpdater = new SubscriptionInfoUpdater(context,
-                        sPhones, sCommandsInterfaces);
+                sSubInfoRecordUpdater = telephonyComponentFactory.makeSubscriptionInfoUpdater(
+                        context, sPhones, sCommandsInterfaces);
                 SubscriptionController.getInstance().updatePhonesAvailability(sPhones);
 
                 // Start monitoring after defaults have been made.
