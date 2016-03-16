@@ -547,7 +547,7 @@ public class ImsPhone extends ImsPhoneBase {
             Rlog.e(LOG_TAG,
                     "sendDtmf called with invalid character '" + c + "'");
         } else {
-            if (mCT.mState ==  PhoneConstants.State.OFFHOOK) {
+            if (mCT.getState() ==  PhoneConstants.State.OFFHOOK) {
                 mCT.sendDtmf(c, null);
             }
         }
@@ -593,7 +593,7 @@ public class ImsPhone extends ImsPhoneBase {
 
     @Override
     public PhoneConstants.State getState() {
-        return mCT.mState;
+        return mCT.getState();
     }
 
     private boolean isValidCommandInterfaceCFReason (int commandInterfaceCFReason) {

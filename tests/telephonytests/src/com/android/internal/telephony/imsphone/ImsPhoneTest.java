@@ -332,7 +332,6 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.IDLE, mImsPhoneUT.getState());
         doReturn(PhoneConstants.State.RINGING).when(mImsCT).getState();
         assertEquals(PhoneConstants.State.RINGING, mImsPhoneUT.getState());
-        verify(mImsCT, times(2)).getState();
     }
 
     @Test
@@ -372,7 +371,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @SmallTest
     public void testDtmf() {
         // case 1
-        mImsCT.mState = PhoneConstants.State.IDLE;
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         mImsPhoneUT.sendDtmf('-');
         verify(mImsCT, times(0)).sendDtmf(anyChar(), any(Message.class));
 
@@ -381,7 +380,7 @@ public class ImsPhoneTest extends TelephonyTest {
         verify(mImsCT, times(0)).sendDtmf(eq('0'), any(Message.class));
 
         // case 3
-        mImsCT.mState = PhoneConstants.State.OFFHOOK;
+        doReturn(PhoneConstants.State.OFFHOOK).when(mImsCT).getState();
         mImsPhoneUT.sendDtmf('-');
         verify(mImsCT, times(0)).sendDtmf(eq('0'), any(Message.class));
 
@@ -402,7 +401,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testIncomingRing() {
-        mImsCT.mState = PhoneConstants.State.IDLE;
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         mImsPhoneUT.notifyIncomingRing();
         waitForMs(100);
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
