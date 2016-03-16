@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -28,7 +27,6 @@ import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
 
@@ -62,7 +60,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private ProxyController mProxyController;
 
     private ServiceStateTracker sst;
-    private TelephonyManager mTelephonyManager;
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
 
@@ -85,8 +82,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         doReturn(true).when(mDct).isDisconnected();
         mPhone.mDcTracker = mDct;
-        mTelephonyManager = (TelephonyManager) mContextFixture.getTestDouble().
-                getSystemService(Context.TELEPHONY_SERVICE);
 
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
 

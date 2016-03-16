@@ -27,7 +27,6 @@ import android.os.Message;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -64,7 +63,6 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private static final int FAKE_SUB_ID = 1;
     private static final String FAKE_PLMN = "123456";
 
-    private TelephonyManager mTelephonyManager;
 
     private IccRecords mIccRecord;
     @Mock
@@ -115,8 +113,6 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null,
                 SubscriptionInfoUpdater.STATUS_SIM1_INSERTED);
 
-        mTelephonyManager = (TelephonyManager) mContext
-                .getSystemService(Context.TELEPHONY_SERVICE);
         doReturn(SubscriptionInfoUpdater.STATUS_SIM1_INSERTED)
                 .when(mTelephonyManager).getSimCount();
         doReturn(SubscriptionInfoUpdater.STATUS_SIM1_INSERTED)

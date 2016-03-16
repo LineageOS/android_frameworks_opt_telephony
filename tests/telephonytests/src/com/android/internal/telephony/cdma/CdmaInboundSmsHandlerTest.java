@@ -25,10 +25,8 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
-import android.telephony.TelephonyManager;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.SmsStorageMonitor;
@@ -68,7 +66,6 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     private SmsMessage mCdmaSmsMessage;
 
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
-    private TelephonyManager mTelephonyManager;
     private SmsEnvelope mSmsEnvelope = new SmsEnvelope();
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
 
@@ -119,7 +116,6 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         mSmsMessage.mWrappedSmsMessage = mCdmaSmsMessage;
         doReturn(smsPdu).when(mCdmaSmsMessage).getPdu();
 
-        mTelephonyManager = TelephonyManager.from(mContext);
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
         doReturn(1).when(mInboundSmsTracker).getMessageCount();

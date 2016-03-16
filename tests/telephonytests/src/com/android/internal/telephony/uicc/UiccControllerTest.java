@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 package com.android.internal.telephony.uicc;
-import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import org.junit.After;
 import org.junit.Before;
@@ -41,7 +39,6 @@ public class UiccControllerTest extends TelephonyTest {
     private UiccController mUiccControllerUT;
     private static final int PHONE_COUNT = 1;
     private static int ICC_CHANGED_EVENT = 0;
-    private TelephonyManager mTelephonyManager;
     @Mock
     private Handler mMockedHandler;
     @Mock
@@ -77,7 +74,6 @@ public class UiccControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
 
-        mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
         doReturn(PHONE_COUNT).when(mTelephonyManager).getSimCount();
 

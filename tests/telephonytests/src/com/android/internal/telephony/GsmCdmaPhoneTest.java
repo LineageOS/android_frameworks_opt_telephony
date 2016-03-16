@@ -32,7 +32,6 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -74,7 +73,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
-    private TelephonyManager mTelephonyManager;
 
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 1;
     private static final int EVENT_EMERGENCY_CALL_TOGGLE = 2;
@@ -116,7 +114,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
-        mTelephonyManager = TelephonyManager.from(mContext);
 
         new GsmCdmaPhoneTestHandler(TAG).start();
         waitUntilReady();
