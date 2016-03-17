@@ -816,8 +816,7 @@ public class ImsPhone extends ImsPhoneBase {
         return 0;
     }
 
-    /* package */
-    void getCallBarring(String facility, Message onComplete) {
+    public void getCallBarring(String facility, Message onComplete) {
         if (DBG) Rlog.d(LOG_TAG, "getCallBarring facility=" + facility);
         Message resp;
         resp = obtainMessage(EVENT_GET_CALL_BARRING_DONE, onComplete);
@@ -830,8 +829,8 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
-    /* package */
-    void setCallBarring(String facility, boolean lockState, String password, Message onComplete) {
+    public void setCallBarring(String facility, boolean lockState, String password, Message
+            onComplete) {
         if (DBG) Rlog.d(LOG_TAG, "setCallBarring facility=" + facility
                 + ", lockState=" + lockState);
         Message resp;
@@ -863,8 +862,7 @@ public class ImsPhone extends ImsPhoneBase {
         mmi.sendUssd(ussdMessge);
     }
 
-    /* package */
-    void sendUSSD(String ussdString, Message response) {
+    public void sendUSSD(String ussdString, Message response) {
         mCT.sendUSSD(ussdString, response);
     }
 
