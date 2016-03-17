@@ -17,13 +17,11 @@ package com.android.internal.telephony;
 
 import android.app.AppOpsManager;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -47,7 +45,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private static final int SINGLE_SIM = 1;
     private String mCallingPackage;
     private SubscriptionController mSubscriptionControllerUT;
-    private TelephonyManager mTelephonyManager;
     private MockContentResolver mMockContentResolver;
 
     @Mock private List<SubscriptionInfo> mSubList;
@@ -143,7 +140,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp("SubscriptionControllerTest");
 
-        mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         doReturn(SINGLE_SIM).when(mTelephonyManager).getSimCount();
         doReturn(SINGLE_SIM).when(mTelephonyManager).getPhoneCount();
 

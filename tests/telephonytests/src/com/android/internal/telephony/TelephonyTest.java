@@ -168,6 +168,7 @@ public abstract class TelephonyTest {
     @Mock
     protected PackageInfo mPackageInfo;
 
+    protected TelephonyManager mTelephonyManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
@@ -296,6 +297,7 @@ public abstract class TelephonyTest {
                 BlockedNumberContract.AUTHORITY, mFakeBlockedNumberContentProvider);
         mPhone.mCi = mSimulatedCommands;
         mCT.mCi = mSimulatedCommands;
+        mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
 
         replaceInstance(TelephonyManager.class, "sInstance", null,
                 mContext.getSystemService(Context.TELEPHONY_SERVICE));
@@ -380,7 +382,6 @@ public abstract class TelephonyTest {
         //SMS
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
         doReturn(true).when(mSmsUsageMonitor).check(anyString(), anyInt());
-        TelephonyManager mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mTelephonyManager).getSmsSendCapableForPhone(
                 anyInt(), anyBoolean());

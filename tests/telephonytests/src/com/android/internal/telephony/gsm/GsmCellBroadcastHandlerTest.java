@@ -19,7 +19,6 @@ package com.android.internal.telephony.gsm;
 import android.content.Intent;
 import android.os.HandlerThread;
 import android.provider.Telephony;
-import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.SmsStorageMonitor;
@@ -48,7 +47,6 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
 
     private GsmCellBroadcastHandler mGsmCellBroadcastHandler;
 
-    private TelephonyManager mTelephonyManager;
 
     private class GsmCellBroadcastHandlerTestHandler extends HandlerThread {
 
@@ -69,7 +67,6 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
 
         super.setUp(getClass().getSimpleName());
 
-        mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
 
