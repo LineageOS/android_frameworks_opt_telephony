@@ -159,7 +159,13 @@ public class DataCallResponse {
                                 addrPrefixLen = (ia instanceof Inet4Address) ? 32 : 128;
                             }
                             if (DBG) Rlog.d(LOG_TAG, "addr/pl=" + addr + "/" + addrPrefixLen);
-                            la = new LinkAddress(ia, addrPrefixLen);
+                            try {
+                                la = new LinkAddress(ia, addrPrefixLen);
+                            } catch (IllegalArgumentException e) {
+                                throw new UnknownHostException("Bad parameter for LinkAddress, ia="
+                                        + ia.getHostAddress() + "/" + addrPrefixLen);
+                            }
+
                             linkProperties.addLinkAddress(la);
                         }
                     }

@@ -83,4 +83,15 @@ public class DataCallResponseTest extends TelephonyTest {
 
         assertEquals(mDcResponse.mtu, linkProperties.getMtu());
     }
+
+    @Test
+    @SmallTest
+    public void testSetLinkPropertiesInvalidAddress() throws Exception {
+
+        mDcResponse.addresses = new String[]{"224.224.224.224"};
+
+        LinkProperties linkProperties = new LinkProperties();
+        assertEquals(SetupResult.ERR_UnacceptableParameter,
+                mDcResponse.setLinkProperties(linkProperties, true));
+    }
 }
