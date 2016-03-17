@@ -29,11 +29,9 @@ import android.os.UserManager;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.Telephony;
-import android.telephony.*;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
@@ -72,7 +70,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private InboundSmsTracker mInboundSmsTrackerPart2;
 
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
-    private TelephonyManager mTelephonyManager;
 
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
     // For multi-part SMS
@@ -228,7 +225,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp("GsmInboundSmsHandlerTest");
 
-        mTelephonyManager = TelephonyManager.from(mContext);
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
 

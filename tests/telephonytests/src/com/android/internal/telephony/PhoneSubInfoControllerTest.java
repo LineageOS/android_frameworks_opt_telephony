@@ -34,7 +34,6 @@ import static org.mockito.Mockito.eq;
 import org.junit.Test;
 import org.mockito.Mock;
 
-import android.telephony.TelephonyManager;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -52,8 +51,6 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
            mSecondPhone -> PhoneId:1 -> SubId: 1*/
         doReturn(0).when(mSubscriptionController).getPhoneId(eq(0));
         doReturn(1).when(mSubscriptionController).getPhoneId(eq(1));
-        TelephonyManager mTelephonyManager = (TelephonyManager) mContext.getSystemService(
-                Context.TELEPHONY_SERVICE);
         doReturn(2).when(mTelephonyManager).getPhoneCount();
 
         mServiceManagerMockedServices.put("isub", mSubscriptionController);

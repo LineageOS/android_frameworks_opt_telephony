@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import android.os.IBinder;
-import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.After;
@@ -85,9 +84,7 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
     @SmallTest
     public void testCdmaTranslate() {
 
-        TelephonyManager telephonyManager = TelephonyManager.from(mContext);
-
-        doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(telephonyManager).getCurrentPhoneType();
+        doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mTelephonyManager).getCurrentPhoneType();
 
         String s = null;
         try {

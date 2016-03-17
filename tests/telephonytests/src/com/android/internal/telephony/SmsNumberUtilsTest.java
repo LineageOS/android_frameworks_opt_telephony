@@ -41,7 +41,6 @@ public class SmsNumberUtilsTest extends TelephonyTest {
     private static final String INDIA_AIRTEL_MCC_MNC = "40553";
     private static final String JAPAN_NTTDOCOMO_MCC_MNC = "44020";
 
-    private TelephonyManager mTelephonyManager;
 
     // Simulate partial packages/providers/TelephonyProvider/res/xml/hbpcd_lookup_tables.xml
     private class HbpcdContentProvider extends MockContentProvider {
@@ -119,7 +118,6 @@ public class SmsNumberUtilsTest extends TelephonyTest {
 
         mHbpcdContentProvider = new HbpcdContentProvider();
 
-        mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
         doReturn(TMO_MCC_MNC).when(mTelephonyManager).getNetworkOperator(anyInt());
 
         ((MockContentResolver) mContextFixture.getTestDouble().getContentResolver())
