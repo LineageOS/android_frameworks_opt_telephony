@@ -995,8 +995,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    /* package */
-    void cancelUSSD() {
+    public void cancelUSSD() {
         if (mUssdSession == null) return;
 
         try {

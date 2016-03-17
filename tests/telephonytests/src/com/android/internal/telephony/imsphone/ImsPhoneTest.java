@@ -270,6 +270,8 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGettersAndPassThroughs() throws Exception {
+        Message msg = mTestHandler.obtainMessage();
+
         assertNotNull(mImsPhoneUT.getServiceState());
         assertEquals(mImsCT, mImsPhoneUT.getCallTracker());
 
@@ -332,6 +334,13 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.IDLE, mImsPhoneUT.getState());
         doReturn(PhoneConstants.State.RINGING).when(mImsCT).getState();
         assertEquals(PhoneConstants.State.RINGING, mImsPhoneUT.getState());
+
+        mImsPhoneUT.sendUSSD("1234", msg);
+        verify(mImsCT).sendUSSD("1234", msg);
+
+        mImsPhoneUT.cancelUSSD();
+        verify(mImsCT).cancelUSSD();
+
     }
 
     @Test
@@ -434,7 +443,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mImsUtInterface).queryCallForward(eq(ImsUtInterface.CDIV_CF_UNCONDITIONAL),
-                (String)eq(null), messageArgumentCaptor.capture());
+                (String) eq(null), messageArgumentCaptor.capture());
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
 
         mImsPhoneUT.setCallForwardingOption(CF_ACTION_ENABLE, CF_REASON_UNCONDITIONAL, "1234", 0,
@@ -442,5 +451,45 @@ public class ImsPhoneTest extends TelephonyTest {
         verify(mImsUtInterface).updateCallForward(eq(ImsUtInterface.ACTION_ACTIVATION),
                 eq(ImsUtInterface.CDIV_CF_UNCONDITIONAL), eq("1234"),
                 eq(CommandsInterface.SERVICE_CLASS_VOICE), eq(0), eq(msg));
+    }
+
+    @Test
+    @SmallTest
+    public void testCallWaiting() throws Exception {
+        Message msg = mTestHandler.obtainMessage();
+        mImsPhoneUT.getCallWaiting(msg);
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mImsUtInterface).queryCallWaiting(messageArgumentCaptor.capture());
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+
+        mImsPhoneUT.setCallWaiting(true, msg);
+        verify(mImsUtInterface).updateCallWaiting(eq(true),
+                eq(CommandsInterface.SERVICE_CLASS_VOICE), messageArgumentCaptor.capture());
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+    }
+
+    @Test
+    @SmallTest
+    public void testCellBarring() throws Exception {
+        Message msg = mTestHandler.obtainMessage();
+        mImsPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BAOC, msg);
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mImsUtInterface).queryCallBarring(eq(ImsUtInterface.CB_BAOC),
+                messageArgumentCaptor.capture());
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+
+        mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOIC, true, "abc", msg);
+        verify(mImsUtInterface).updateCallBarring(eq(ImsUtInterface.CB_BOIC),
+                eq(CommandsInterface.CF_ACTION_ENABLE), messageArgumentCaptor.capture(),
+                (String[]) eq(null));
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+
+        mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOICxH, false, "abc", msg);
+        verify(mImsUtInterface).updateCallBarring(eq(ImsUtInterface.CB_BOIC_EXHC),
+                eq(CommandsInterface.CF_ACTION_DISABLE), messageArgumentCaptor.capture(),
+                (String[])eq(null));
+        assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 }
