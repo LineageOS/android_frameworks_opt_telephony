@@ -202,7 +202,7 @@ public class ImsPhoneCallTracker extends CallTracker {
     private boolean mOnHoldToneStarted = false;
     private int mOnHoldToneId = -1;
 
-    public PhoneConstants.State mState = PhoneConstants.State.IDLE;
+    private PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
     private ImsManager mImsManager;
     private int mServiceId = -1;
