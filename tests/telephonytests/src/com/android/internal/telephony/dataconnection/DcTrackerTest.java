@@ -46,6 +46,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -54,7 +55,9 @@ import java.util.regex.Pattern;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
@@ -73,7 +76,7 @@ public class DcTrackerTest extends TelephonyTest {
             "mobile_ims,11,0,2,60000,true", "mobile_cbs,12,0,2,60000,true",
             "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true"};
 
-    private final List<String> sApnTypes = Arrays.asList(
+    private final static List<String> sApnTypes = Arrays.asList(
             "default", "mms", "cbs", "fota", "supl", "ia", "emergency", "dun", "hipri", "ims");
 
     private static final String FAKE_APN1 = "FAKE APN 1";
@@ -89,7 +92,6 @@ public class DcTrackerTest extends TelephonyTest {
     ISub mIsub;
     @Mock
     IBinder mBinder;
-
 
     private DcTracker mDct;
 
@@ -283,7 +285,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         doReturn(1).when(mIsub).getDefaultDataSubId();
         doReturn(mIsub).when(mBinder).queryLocalInterface(anyString());
-        mServiceManagerMockedServices.put("phone", mBinder);
+        mServiceManagerMockedServices.put("isub", mBinder);
 
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_cell_retries_per_error_code,
@@ -349,12 +351,27 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(FAKE_GATEWAY, linkProperties.getRoutes().get(0).getGateway().getHostAddress());
     }
 
+    private boolean isDataAllowed(StringBuilder sb) {
+        try {
+            Method method = DcTracker.class.getDeclaredMethod("isDataAllowed", StringBuilder.class);
+            method.setAccessible(true);
+            return (boolean) method.invoke(mDct, sb);
+        } catch (Exception e) {
+            fail(e.toString());
+            return false;
+        }
+    }
+
     // Test the normal data call setup scenario.
     @Test
     @MediumTest
     public void testDataSetup() {
 
         mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
+
+        StringBuilder sb = new StringBuilder();
+        boolean allowed = isDataAllowed(sb);
+        assertFalse(sb.toString(), allowed);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -389,6 +406,10 @@ public class DcTrackerTest extends TelephonyTest {
         // APN id 0 is APN_TYPE_DEFAULT
         mDct.setEnabled(0, true);
         waitForMs(200);
+
+        sb.setLength(0);
+        allowed = isDataAllowed(sb);
+        assertTrue(sb.toString(), allowed);
 
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
@@ -408,6 +429,10 @@ public class DcTrackerTest extends TelephonyTest {
         // Simulate RIL fails the data call setup
         mSimulatedCommands.setDataCallResponse(false, dcResponse);
 
+        StringBuilder sb = new StringBuilder();
+        boolean allowed = isDataAllowed(sb);
+        assertFalse(sb.toString(), allowed);
+
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
         waitForMs(200);
@@ -441,6 +466,10 @@ public class DcTrackerTest extends TelephonyTest {
         // APN id 0 is APN_TYPE_DEFAULT
         mDct.setEnabled(0, true);
         waitForMs(200);
+
+        sb.setLength(0);
+        allowed = isDataAllowed(sb);
+        assertTrue(sb.toString(), allowed);
 
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
