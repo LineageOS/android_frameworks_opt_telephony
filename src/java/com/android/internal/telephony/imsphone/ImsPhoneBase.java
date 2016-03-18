@@ -30,6 +30,7 @@ import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.Rlog;
+import android.util.Pair;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -102,14 +103,24 @@ abstract class ImsPhoneBase extends PhoneBase {
         mOnHoldRegistrants.remove(h);
     }
 
-    protected void startOnHoldTone() {
-        AsyncResult result = new AsyncResult(null, Boolean.TRUE, null);
-        mOnHoldRegistrants.notifyRegistrants(result);
+    /**
+     * Signals all registrants that the remote hold tone should be started for a connection.
+     *
+     * @param cn The connection.
+     */
+    protected void startOnHoldTone(Connection cn) {
+        Pair<Connection, Boolean> result = new Pair<Connection, Boolean>(cn, Boolean.TRUE);
+        mOnHoldRegistrants.notifyRegistrants(new AsyncResult(null, result, null));
     }
 
-    protected void stopOnHoldTone() {
-        AsyncResult result = new AsyncResult(null, Boolean.FALSE, null);
-        mOnHoldRegistrants.notifyRegistrants(result);
+    /**
+     * Signals all registrants that the remote hold tone should be stopped for a connection.
+     *
+     * @param cn The connection.
+     */
+    protected void stopOnHoldTone(Connection cn) {
+        Pair<Connection, Boolean> result = new Pair<Connection, Boolean>(cn, Boolean.FALSE);
+        mOnHoldRegistrants.notifyRegistrants(new AsyncResult(null, result, null));
     }
 
     @Override
