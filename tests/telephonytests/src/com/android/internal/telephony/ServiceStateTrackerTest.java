@@ -146,6 +146,19 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 mSimulatedCommands.getGetVoiceRegistrationStateCallCount());
         assertEquals(getNetworkSelectionModeCallCount,
                 mSimulatedCommands.getGetNetworkSelectionModeCallCount());
+
+        // Note that if the poll is triggered by a network change notification
+        // and the modem is supposed to be off, we should still do the poll
+        mSimulatedCommands.notifyVoiceNetworkStateChanged();
+        waitForMs(250);
+
+        assertEquals(getOperatorCallCount + 1 , mSimulatedCommands.getGetOperatorCallCount());
+        assertEquals(getDataRegistrationStateCallCount + 1,
+                mSimulatedCommands.getGetDataRegistrationStateCallCount());
+        assertEquals(getVoiceRegistrationStateCallCount + 1,
+                mSimulatedCommands.getGetVoiceRegistrationStateCallCount());
+        assertEquals(getNetworkSelectionModeCallCount + 1,
+                mSimulatedCommands.getGetNetworkSelectionModeCallCount());
     }
 
     @Test
