@@ -35,9 +35,11 @@ import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
+import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
@@ -68,9 +70,13 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private InboundSmsTracker mInboundSmsTrackerPart1;
     @Mock
     private InboundSmsTracker mInboundSmsTrackerPart2;
+    @Mock
+    private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
 
+    private FakeSmsContentProvider mContentProvider;
+    private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
     // For multi-part SMS
     private ContentValues mInboundSmsTrackerCVPart1;
@@ -99,7 +105,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         @Override
         public Uri insert(Uri uri, ContentValues values) {
             Uri newUri = null;
-            if (uri.compareTo(Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw")) == 0) {
+            if (uri.compareTo(sRawUri) == 0) {
                 if (values != null) {
                     mRawCursor.addRow(convertRawCVtoArrayList(values));
                     mNumRows++;
@@ -244,9 +250,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(mSmsPdu).when(mInboundSmsTracker).getPdu();
         doReturn(mInboundSmsTrackerCV).when(mInboundSmsTracker).getContentValues();
 
-        FakeSmsContentProvider contentProvider = new FakeSmsContentProvider();
+        mContentProvider = new FakeSmsContentProvider();
         ((MockContentResolver)mContext.getContentResolver()).addProvider(
-                Telephony.Sms.CONTENT_URI.getAuthority(), contentProvider);
+                Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
 
         new GsmInboundSmsHandlerTestHandler(TAG).start();
         waitUntilReady();
@@ -276,6 +282,29 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
+    private void verifySmsIntentBroadcasts(int numPastBroadcasts) {
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(1 + numPastBroadcasts)).sendBroadcast(
+                intentArgumentCaptor.capture());
+        assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
+                intentArgumentCaptor.getAllValues().get(numPastBroadcasts).getAction());
+        assertEquals("WaitingState", getCurrentState().getName());
+
+        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
+
+        intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(2 + numPastBroadcasts)).sendBroadcast(
+                intentArgumentCaptor.capture());
+        assertEquals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION,
+                intentArgumentCaptor.getAllValues().get(numPastBroadcasts + 1).getAction());
+        assertEquals("WaitingState", getCurrentState().getName());
+
+        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
+        waitForMs(50);
+
+        assertEquals("IdleState", getCurrentState().getName());
+    }
+
     @Test
     @MediumTest
     public void testNewSms() {
@@ -286,24 +315,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 new AsyncResult(null, mSmsMessage, null));
         waitForMs(100);
 
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext).sendBroadcast(intentArgumentCaptor.capture());
-        assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
-                intentArgumentCaptor.getValue().getAction());
-        assertEquals("WaitingState", getCurrentState().getName());
-
-        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-
-        intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture());
-        assertEquals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION,
-                intentArgumentCaptor.getAllValues().get(1).getAction());
-        assertEquals("WaitingState", getCurrentState().getName());
-
-        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-        waitForMs(50);
-
-        assertEquals("IdleState", getCurrentState().getName());
+        verifySmsIntentBroadcasts(0);
     }
 
     @Test
@@ -323,6 +335,20 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
+    private void verifyDataSmsIntentBroadcasts(int numPastBroadcasts) {
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(1 + numPastBroadcasts)).sendBroadcast(
+                intentArgumentCaptor.capture());
+        assertEquals(Telephony.Sms.Intents.DATA_SMS_RECEIVED_ACTION,
+                intentArgumentCaptor.getAllValues().get(numPastBroadcasts).getAction());
+        assertEquals("WaitingState", getCurrentState().getName());
+
+        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
+        waitForMs(50);
+
+        assertEquals("IdleState", getCurrentState().getName());
+    }
+
     @Test
     @MediumTest
     public void testBroadcastSms() {
@@ -333,16 +359,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 mInboundSmsTracker);
         waitForMs(100);
 
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext).sendBroadcast(intentArgumentCaptor.capture());
-        assertEquals(Telephony.Sms.Intents.DATA_SMS_RECEIVED_ACTION,
-                intentArgumentCaptor.getValue().getAction());
-        assertEquals("WaitingState", getCurrentState().getName());
-
-        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-        waitForMs(50);
-
-        assertEquals("IdleState", getCurrentState().getName());
+        verifyDataSmsIntentBroadcasts(0);
     }
 
     @Test
@@ -354,24 +371,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 mSmsMessage, null));
         waitForMs(100);
 
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext).sendBroadcast(intentArgumentCaptor.capture());
-        assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
-                intentArgumentCaptor.getValue().getAction());
-        assertEquals("WaitingState", getCurrentState().getName());
-
-        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-
-        intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture());
-        assertEquals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION,
-                intentArgumentCaptor.getAllValues().get(1).getAction());
-        assertEquals("WaitingState", getCurrentState().getName());
-
-        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-        waitForMs(50);
-
-        assertEquals("IdleState", getCurrentState().getName());
+        verifySmsIntentBroadcasts(0);
     }
 
     private void prepareMultiPartSms() {
@@ -440,24 +440,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 mSmsMessage, null));
         waitForMs(100);
 
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext).sendBroadcast(intentArgumentCaptor.capture());
-        assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
-                intentArgumentCaptor.getValue().getAction());
-        assertEquals("WaitingState", getCurrentState().getName());
-
-        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-
-        intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture());
-        assertEquals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION,
-                intentArgumentCaptor.getAllValues().get(1).getAction());
-        assertEquals("WaitingState", getCurrentState().getName());
-
-        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-        waitForMs(50);
-
-        assertEquals("IdleState", getCurrentState().getName());
+        verifySmsIntentBroadcasts(0);
     }
 
     @Test
@@ -492,5 +475,51 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    @MediumTest
+    public void testBroadcastUndelivered() throws Exception {
+        replaceInstance(SmsBroadcastUndelivered.class, "instance", null, null);
+        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+        doReturn(0).when(mInboundSmsTracker).getDestPort();
+
+        //add a fake entry to db
+        ContentValues rawSms = new ContentValues();
+        mContentProvider.insert(sRawUri, rawSms);
+
+        //make it a single-part message
+        doReturn(1).when(mInboundSmsTracker).getMessageCount();
+
+        //when user unlocks the device, the message in db should be broadcast
+        mContext.sendBroadcast(new Intent(Intent.ACTION_USER_UNLOCKED));
+        waitForMs(100);
+
+        verifyDataSmsIntentBroadcasts(1);
+    }
+
+    @Test
+    @MediumTest
+    public void testBroadcastUndeliveredMultiPart() throws Exception {
+        replaceInstance(SmsBroadcastUndelivered.class, "instance", null, null);
+        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+
+        // prepare SMS part 1 and part 2
+        prepareMultiPartSms();
+
+        //add the 2 SMS parts to db
+        mContentProvider.insert(sRawUri, mInboundSmsTrackerCVPart1);
+        mContentProvider.insert(sRawUri, mInboundSmsTrackerCVPart2);
+
+        //return InboundSmsTracker objects corresponding to the 2 parts
+        doReturn(mInboundSmsTrackerPart1).doReturn(mInboundSmsTrackerPart2).
+                when(mTelephonyComponentFactory).makeInboundSmsTracker(any(Cursor.class),
+                anyBoolean());
+
+        //when user unlocks the device, the message in db should be broadcast
+        mContext.sendBroadcast(new Intent(Intent.ACTION_USER_UNLOCKED));
+        waitForMs(100);
+
+        verifySmsIntentBroadcasts(1);
     }
 }

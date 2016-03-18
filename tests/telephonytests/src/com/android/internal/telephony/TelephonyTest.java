@@ -34,6 +34,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -321,6 +322,8 @@ public abstract class TelephonyTest {
         doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
                         anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
+        doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(Cursor.class), anyBoolean());
         doReturn(mImsCT).when(mTelephonyComponentFactory)
                 .makeImsPhoneCallTracker(any(ImsPhone.class));
         doReturn(mCdmaSSM).when(mTelephonyComponentFactory)

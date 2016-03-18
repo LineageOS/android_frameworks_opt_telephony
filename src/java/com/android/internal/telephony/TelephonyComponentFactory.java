@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
 import android.os.PowerManager;
@@ -101,6 +102,13 @@ public class TelephonyComponentFactory {
             int messageCount, boolean is3gpp2WapPdu) {
         return new InboundSmsTracker(pdu, timestamp, destPort, is3gpp2, address, referenceNumber,
                 sequenceNumber, messageCount, is3gpp2WapPdu);
+    }
+
+    /**
+     * Create a tracker from a row of raw table
+     */
+    public InboundSmsTracker makeInboundSmsTracker(Cursor cursor, boolean isCurrentFormat3gpp2) {
+        return new InboundSmsTracker(cursor, isCurrentFormat3gpp2);
     }
 
     public ImsPhoneCallTracker makeImsPhoneCallTracker(ImsPhone imsPhone) {
