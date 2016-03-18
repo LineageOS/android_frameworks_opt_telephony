@@ -240,6 +240,10 @@ public class AdnRecordLoader extends Handler {
                                 ar.exception);
                     }
 
+                    if (mEf == IccConstants.EF_ADN) {
+                        mPath = getEFPath(mEf);
+                    }
+
                     mFh.updateEFLinearFixed(mEf, mPath, mRecordNumber,
                             data, mPin2, obtainMessage(EVENT_UPDATE_RECORD_DONE));
 
