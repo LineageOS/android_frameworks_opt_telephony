@@ -145,7 +145,8 @@ public class SmsBroadcastUndelivered {
             while (cursor.moveToNext()) {
                 InboundSmsTracker tracker;
                 try {
-                    tracker = new InboundSmsTracker(cursor, isCurrentFormat3gpp2);
+                    tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(cursor,
+                            isCurrentFormat3gpp2);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(TAG, "error loading SmsTracker: " + e);
                     continue;
