@@ -261,7 +261,7 @@ public class ImsPhoneCallTracker extends CallTracker {
             mImsManager.setImsConfigListener(mImsConfigListener);
 
             // Get the ECBM interface and set IMSPhone's listener object for notifications
-            getEcbmInterface().setEcbmStateListener(mPhone.mImsEcbmStateListener);
+            getEcbmInterface().setEcbmStateListener(mPhone.getImsEcbmStateListener());
             if (mPhone.isInEcm()) {
                 // Call exit ECBM which will invoke onECBMExited
                 mPhone.exitEmergencyCallbackMode();
