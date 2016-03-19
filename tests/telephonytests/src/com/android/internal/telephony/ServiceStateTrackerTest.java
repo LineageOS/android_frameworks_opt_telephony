@@ -19,7 +19,9 @@ package com.android.internal.telephony;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Message;
 import android.os.Parcel;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
@@ -30,6 +32,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
 
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -37,11 +40,13 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.*;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import org.junit.After;
@@ -60,6 +65,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private ProxyController mProxyController;
 
     private ServiceStateTracker sst;
+    private ServiceStateTrackerTestHandler mSSTTestHandler;
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
 
@@ -101,7 +107,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
 
-        new ServiceStateTrackerTestHandler(getClass().getSimpleName()).start();
+        mSSTTestHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
+        mSSTTestHandler.start();
         waitUntilReady();
         waitForMs(600);
         logd("ServiceStateTrackerTest -Setup!");
@@ -272,5 +279,51 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation();
         assertEquals(2, cl.getLac());
         assertEquals(3, cl.getCid());
+    }
+
+    @Test
+    @MediumTest
+    public void testUpdatePhoneType() {
+        doReturn(false).when(mPhone).isPhoneTypeGsm();
+        doReturn(true).when(mPhone).isPhoneTypeCdmaLte();
+        doReturn(CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM).when(mCdmaSSM).
+                getCdmaSubscriptionSource();
+
+        logd("Calling updatePhoneType");
+        // switch to CDMA
+        sst.updatePhoneType();
+
+        ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(mRuimRecords).registerForRecordsLoaded(eq(sst), integerArgumentCaptor.capture(),
+                any(Object.class));
+
+        // response for mRuimRecords.registerForRecordsLoaded()
+        Message msg = Message.obtain();
+        msg.what = integerArgumentCaptor.getValue();
+        msg.obj = new AsyncResult(null, null, null);
+        sst.sendMessage(msg);
+        waitForMs(100);
+
+        // on RUIM_RECORDS_LOADED, sst is expected to call following apis
+        verify(mRuimRecords, times(1)).isProvisioned();
+        verify(mPhone, times(1)).prepareEri();
+
+        // switch back to GSM
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        doReturn(false).when(mPhone).isPhoneTypeCdmaLte();
+
+        // response for mRuimRecords.registerForRecordsLoaded() can be sent after switching to GSM
+        msg = Message.obtain();
+        msg.what = integerArgumentCaptor.getValue();
+        msg.obj = new AsyncResult(null, null, null);
+        sst.sendMessage(msg);
+
+        // There's no easy way to check if the msg was handled or discarded. Wait to make sure sst
+        // did not crash, and then verify that the functions called records loaded are not called
+        // again
+        waitForMs(200);
+
+        verify(mRuimRecords, times(1)).isProvisioned();
+        verify(mPhone, times(1)).prepareEri();
     }
 }

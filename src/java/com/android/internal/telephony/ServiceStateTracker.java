@@ -537,7 +537,7 @@ public class ServiceStateTracker extends Handler {
         mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
     }
 
-    protected void updatePhoneType() {
+    public void updatePhoneType() {
         mSS = new ServiceState();
         mNewSS = new ServiceState();
         mLastCellInfoListTime = 0;
@@ -551,8 +551,6 @@ public class ServiceStateTracker extends Handler {
         mPrlVersion = null;
         mIsMinInfoReady = false;
         mNitzUpdatedTime = false;
-
-        onUpdateIccAvailability();
 
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
@@ -603,6 +601,10 @@ public class ServiceStateTracker extends Handler {
             // Reset OTASP state in case previously set by another service
             mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
         }
+
+        // This should be done after the technology specific initializations above since it relies
+        // on fields like mIsSubscriptionFromRuim (which is updated above)
+        onUpdateIccAvailability();
 
         mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                 ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
@@ -1144,14 +1146,16 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_RESTRICTED_STATE_CHANGED:
-                // This is a notification from
-                // CommandsInterface.setOnRestrictedStateChanged
+                if (mPhone.isPhoneTypeGsm()) {
+                    // This is a notification from
+                    // CommandsInterface.setOnRestrictedStateChanged
 
-                if (DBG) log("EVENT_RESTRICTED_STATE_CHANGED");
+                    if (DBG) log("EVENT_RESTRICTED_STATE_CHANGED");
 
-                ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
 
-                onRestrictedStateChanged(ar);
+                    onRestrictedStateChanged(ar);
+                }
                 break;
 
             case EVENT_ALL_DATA_DISCONNECTED:
@@ -1213,65 +1217,69 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_POLL_STATE_CDMA_SUBSCRIPTION: // Handle RIL_CDMA_SUBSCRIPTION
-                ar = (AsyncResult) msg.obj;
+                if (!mPhone.isPhoneTypeGsm()) {
+                    ar = (AsyncResult) msg.obj;
 
-                if (ar.exception == null) {
-                    String cdmaSubscription[] = (String[])ar.result;
-                    if (cdmaSubscription != null && cdmaSubscription.length >= 5) {
-                        mMdn = cdmaSubscription[0];
-                        parseSidNid(cdmaSubscription[1], cdmaSubscription[2]);
+                    if (ar.exception == null) {
+                        String cdmaSubscription[] = (String[]) ar.result;
+                        if (cdmaSubscription != null && cdmaSubscription.length >= 5) {
+                            mMdn = cdmaSubscription[0];
+                            parseSidNid(cdmaSubscription[1], cdmaSubscription[2]);
 
-                        mMin = cdmaSubscription[3];
-                        mPrlVersion = cdmaSubscription[4];
-                        if (DBG) log("GET_CDMA_SUBSCRIPTION: MDN=" + mMdn);
+                            mMin = cdmaSubscription[3];
+                            mPrlVersion = cdmaSubscription[4];
+                            if (DBG) log("GET_CDMA_SUBSCRIPTION: MDN=" + mMdn);
 
-                        mIsMinInfoReady = true;
+                            mIsMinInfoReady = true;
 
-                        updateOtaspState();
-                        if (!mIsSubscriptionFromRuim && mIccRecords != null) {
-                            if (DBG) {
-                                log("GET_CDMA_SUBSCRIPTION set imsi in mIccRecords");
+                            updateOtaspState();
+                            if (!mIsSubscriptionFromRuim && mIccRecords != null) {
+                                if (DBG) {
+                                    log("GET_CDMA_SUBSCRIPTION set imsi in mIccRecords");
+                                }
+                                mIccRecords.setImsi(getImsi());
+                            } else {
+                                if (DBG) {
+                                    log("GET_CDMA_SUBSCRIPTION either mIccRecords is null or NV " +
+                                            "type device - not setting Imsi in mIccRecords");
+                                }
                             }
-                            mIccRecords.setImsi(getImsi());
                         } else {
                             if (DBG) {
-                                log("GET_CDMA_SUBSCRIPTION either mIccRecords is null  or NV type device" +
-                                        " - not setting Imsi in mIccRecords");
+                                log("GET_CDMA_SUBSCRIPTION: error parsing cdmaSubscription " +
+                                        "params num=" + cdmaSubscription.length);
                             }
-                        }
-                    } else {
-                        if (DBG) {
-                            log("GET_CDMA_SUBSCRIPTION: error parsing cdmaSubscription params num="
-                                    + cdmaSubscription.length);
                         }
                     }
                 }
                 break;
 
             case EVENT_RUIM_RECORDS_LOADED:
-                log("EVENT_RUIM_RECORDS_LOADED: what=" + msg.what);
-                updatePhoneObject();
-                if (mPhone.isPhoneTypeCdma()) {
-                    updateSpnDisplay();
-                } else {
-                    RuimRecords ruim = (RuimRecords)mIccRecords;
-                    if (ruim != null) {
-                        if (ruim.isProvisioned()) {
-                            mMdn = ruim.getMdn();
-                            mMin = ruim.getMin();
-                            parseSidNid(ruim.getSid(), ruim.getNid());
-                            mPrlVersion = ruim.getPrlVersion();
-                            mIsMinInfoReady = true;
+                if (!mPhone.isPhoneTypeGsm()) {
+                    log("EVENT_RUIM_RECORDS_LOADED: what=" + msg.what);
+                    updatePhoneObject();
+                    if (mPhone.isPhoneTypeCdma()) {
+                        updateSpnDisplay();
+                    } else {
+                        RuimRecords ruim = (RuimRecords) mIccRecords;
+                        if (ruim != null) {
+                            if (ruim.isProvisioned()) {
+                                mMdn = ruim.getMdn();
+                                mMin = ruim.getMin();
+                                parseSidNid(ruim.getSid(), ruim.getNid());
+                                mPrlVersion = ruim.getPrlVersion();
+                                mIsMinInfoReady = true;
+                            }
+                            updateOtaspState();
                         }
-                        updateOtaspState();
+                        // reload eri in case of IMSI changed
+                        // eri.xml can be defined by mcc mnc
+                        mPhone.prepareEri();
+                        // SID/NID/PRL is loaded. Poll service state
+                        // again to update to the roaming state with
+                        // the latest variables.
+                        pollState();
                     }
-                    // reload eri in case of IMSI changed
-                    // eri.xml can be defined by mcc mnc
-                    mPhone.prepareEri();
-                    // SID/NID/PRL is loaded. Poll service state
-                    // again to update to the roaming state with
-                    // the latest variables.
-                    pollState();
                 }
                 break;
 
