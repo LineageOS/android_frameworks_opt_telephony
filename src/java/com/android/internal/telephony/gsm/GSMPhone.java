@@ -1329,8 +1329,7 @@ public class GSMPhone extends PhoneBase {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
                 && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            imsPhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode,
-            obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
+            imsPhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode, onComplete);
             return;
         }
         // Packing CLIR value in the message. This will be required for
