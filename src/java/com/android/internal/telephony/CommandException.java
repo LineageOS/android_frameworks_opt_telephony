@@ -87,6 +87,10 @@ public class CommandException extends RuntimeException {
         NO_SUCH_ENTRY,
         NETWORK_NOT_READY,
         NOT_PROVISIONED,
+        NO_SUBSCRIPTION,
+        NO_NETWORK_FOUND,
+        DEVICE_IN_USE,
+        ABORTED,
         OEM_ERROR_1,
         OEM_ERROR_2,
         OEM_ERROR_3,
@@ -248,6 +252,14 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.NETWORK_NOT_READY);
             case RILConstants.NOT_PROVISIONED:
                 return new CommandException(Error.NOT_PROVISIONED);
+            case RILConstants.NO_SUBSCRIPTION:
+                return new CommandException(Error.NO_SUBSCRIPTION);
+            case RILConstants.NO_NETWORK_FOUND:
+                return new CommandException(Error.NO_NETWORK_FOUND);
+            case RILConstants.DEVICE_IN_USE:
+                return new CommandException(Error.DEVICE_IN_USE);
+            case RILConstants.ABORTED:
+                return new CommandException(Error.ABORTED);
             case RILConstants.OEM_ERROR_1:
                 return new CommandException(Error.OEM_ERROR_1);
             case RILConstants.OEM_ERROR_2:
