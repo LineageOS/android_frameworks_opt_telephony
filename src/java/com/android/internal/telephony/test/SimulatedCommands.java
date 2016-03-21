@@ -1996,6 +1996,11 @@ public class SimulatedCommands extends BaseCommands
         mOnRegistrants.notifyRegistrants();
     }
 
+    @VisibleForTesting
+    public void notifyVoiceNetworkStateChanged() {
+        mVoiceNetworkStateRegistrants.notifyRegistrants();
+    }
+
     public void setIccCardStatus(IccCardStatus iccCardStatus){
         mIccCardStatus = iccCardStatus;
     }

@@ -945,7 +945,7 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_NETWORK_STATE_CHANGED:
-                pollState();
+                modemTriggeredPollState();
                 break;
 
             case EVENT_GET_SIGNAL_STRENGTH:
@@ -2457,6 +2457,18 @@ public class ServiceStateTracker extends Handler {
      * event has changed
      */
     public void pollState() {
+        pollState(false);
+    }
+    /**
+     * We insist on polling even if the radio says its off.
+     * Used when we get a network changed notification
+     * but the radio is off - part of iwlan hack
+     */
+    private void modemTriggeredPollState() {
+        pollState(true);
+    }
+
+    public void pollState(boolean modemTriggered) {
         mPollingContext = new int[1];
         mPollingContext[0] = 0;
 
@@ -2476,12 +2488,14 @@ public class ServiceStateTracker extends Handler {
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
                 mNitzUpdatedTime = false;
-                if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                // don't poll for state when the radio is off
+                // EXCEPT, if the poll was modemTrigged (they sent us new radio data)
+                // or we're on IWLAN
+                if (!modemTriggered && ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                         != mSS.getRilDataRadioTechnology()) {
                     pollStateDone();
                     break;
                 }
-                // else fall through to query for the IWLAN info
 
             default:
                 // Issue all poll-related commands at once then count down the responses, which
