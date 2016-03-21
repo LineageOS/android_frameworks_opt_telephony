@@ -451,7 +451,7 @@ public class ImsPhoneCallTracker extends CallTracker {
             return false;
         }
 
-        return carrierConfig.getBoolean(CarrierConfigManager.BOOL_ALLOW_EMERGENCY_VIDEO_CALLS);
+        return carrierConfig.getBoolean(CarrierConfigManager.KEY_ALLOW_EMERGENCY_VIDEO_CALLS_BOOL);
     }
 
     private void handleEcmTimer(int action) {
