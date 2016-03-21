@@ -221,6 +221,8 @@ public class UiccPkcs15 extends Handler {
                   if (!mFh.loadFile(idAccf, obtainMessage(EVENT_LOAD_ACCF_DONE))) {
                       cleanUp();
                   }
+              } else {
+                  cleanUp();
               }
               break;
 
