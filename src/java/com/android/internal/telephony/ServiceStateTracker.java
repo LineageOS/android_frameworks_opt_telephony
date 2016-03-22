@@ -79,6 +79,7 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -537,6 +538,7 @@ public class ServiceStateTracker extends Handler {
         mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
     }
 
+    @VisibleForTesting
     public void updatePhoneType() {
         mSS = new ServiceState();
         mNewSS = new ServiceState();
