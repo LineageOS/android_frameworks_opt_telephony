@@ -38,7 +38,7 @@ import java.util.HashMap;
  * EriManager loads the ERI file definitions and manages the CDMA roaming information.
  *
  */
-public final class EriManager {
+public class EriManager {
 
     class EriFile {
 
