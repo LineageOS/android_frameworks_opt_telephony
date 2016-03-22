@@ -55,6 +55,7 @@ import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
@@ -168,6 +169,8 @@ public abstract class TelephonyTest {
     protected SmsUsageMonitor mSmsUsageMonitor;
     @Mock
     protected PackageInfo mPackageInfo;
+    @Mock
+    protected EriManager mEriManager;
 
     protected TelephonyManager mTelephonyManager;
     protected SimulatedCommands mSimulatedCommands;
@@ -344,6 +347,7 @@ public abstract class TelephonyTest {
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
+        mPhone.mEriManager = mEriManager;
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
