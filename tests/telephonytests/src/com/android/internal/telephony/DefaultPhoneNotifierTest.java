@@ -41,13 +41,12 @@ import android.telephony.VoLteServiceState;
 import android.telephony.gsm.GsmCellLocation;
 import android.os.Bundle;
 import android.test.suitebuilder.annotation.SmallTest;
-import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 
 public class DefaultPhoneNotifierTest extends TelephonyTest {
 
     private DefaultPhoneNotifier mDefaultPhoneNotifierUT;
     @Mock
-    TelephonyRegistryMock mTelephonyRegisteryMock;
+    ITelephonyRegistry.Stub mTelephonyRegisteryMock;
     @Mock
     SignalStrength mSignalStrength;
     @Mock
@@ -135,7 +134,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testNotifyMessageWaiting() {
+    public void testNotifyMessageWaiting() throws Exception {
         doReturn(1).when(mPhone).getPhoneId();
         mDefaultPhoneNotifierUT.notifyMessageWaitingChanged(mPhone);
         verify(mTelephonyRegisteryMock).notifyMessageWaitingChangedForPhoneId(1, 0, false);
@@ -154,7 +153,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testNotifyDisconnectCause() {
+    public void testNotifyDisconnectCause() throws Exception {
         mDefaultPhoneNotifierUT.notifyDisconnectCause(DisconnectCause.NOT_VALID,
                 PreciseDisconnectCause.FDN_BLOCKED);
         verify(mTelephonyRegisteryMock).notifyDisconnectCause(DisconnectCause.NOT_VALID,
@@ -167,7 +166,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testNotifyDataConnectionFailed() {
+    public void testNotifyDataConnectionFailed() throws Exception {
         mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "BUSY", "APN_0");
         verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(0, "BUSY", "APN_0");
 
@@ -186,7 +185,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testNotifyPreciseCallState() {
+    public void testNotifyPreciseCallState() throws Exception {
 
         //mock forground/background/ringing call and call state
         doReturn(Call.State.IDLE).when(mForeGroundCall).getState();
@@ -237,7 +236,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testNotifyCellLocation() {
+    public void testNotifyCellLocation() throws Exception {
         // mock gsm cell location
         GsmCellLocation mGsmCellLocation = new GsmCellLocation();
         mGsmCellLocation.setLacAndCid(2, 3);
@@ -263,7 +262,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testNotifyOtaspChanged() {
+    public void testNotifyOtaspChanged() throws Exception {
         mDefaultPhoneNotifierUT.notifyOtaspChanged(mPhone, ServiceStateTracker.OTASP_NEEDED);
         verify(mTelephonyRegisteryMock).notifyOtaspChanged(ServiceStateTracker.OTASP_NEEDED);
 
@@ -272,7 +271,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testNotifyVoLteServiceStateChanged() {
+    public void testNotifyVoLteServiceStateChanged() throws Exception {
         VoLteServiceState state = new VoLteServiceState(VoLteServiceState.NOT_SUPPORTED);
         mDefaultPhoneNotifierUT.notifyVoLteServiceStateChanged(mPhone, state);
         verify(mTelephonyRegisteryMock).notifyVoLteServiceStateChanged(state);
