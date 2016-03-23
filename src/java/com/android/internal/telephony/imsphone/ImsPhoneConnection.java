@@ -226,10 +226,6 @@ public class ImsPhoneConnection extends Connection {
                 | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
 
         switch (localProfile.mCallType) {
-            case ImsCallProfile.CALL_TYPE_VOICE:
-                capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
-                break;
             case ImsCallProfile.CALL_TYPE_VT:
                 capabilities = addCapability(capabilities,
                         Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
@@ -249,10 +245,6 @@ public class ImsPhoneConnection extends Connection {
                 | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
 
         switch (remoteProfile.mCallType) {
-            case ImsCallProfile.CALL_TYPE_VOICE:
-                capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
-                break;
             case ImsCallProfile.CALL_TYPE_VT:
                 capabilities = addCapability(capabilities,
                         Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
