@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony.mocks;
 
-import android.content.Context;
-import android.content.Intent;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.Bundle;
@@ -25,7 +23,6 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
-import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
@@ -182,7 +179,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
 
     @Override
     public void listenForSubscriber(int subId, String pkg, IPhoneStateListener callback, int events,
-            boolean notifyNow) {
+                                    boolean notifyNow) {
         throw new RuntimeException("Not implemented");
     }
 
