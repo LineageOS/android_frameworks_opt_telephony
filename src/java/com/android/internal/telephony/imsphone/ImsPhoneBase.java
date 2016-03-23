@@ -54,8 +54,9 @@ abstract class ImsPhoneBase extends Phone {
     private RegistrantList mTtyModeReceivedRegistrants = new RegistrantList();
     private PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
-    public ImsPhoneBase(String name, Context context, PhoneNotifier notifier) {
-        super(name, notifier, context, new ImsPhoneCommandInterface(context), false);
+    public ImsPhoneBase(String name, Context context, PhoneNotifier notifier,
+                        boolean unitTestMode) {
+        super(name, notifier, context, new ImsPhoneCommandInterface(context), unitTestMode);
     }
 
     @Override
