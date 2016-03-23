@@ -570,6 +570,7 @@ public class DctController extends Handler {
             if (requestInfo.priority > priority) {
                 priority = requestInfo.priority;
                 topSubId = requestInfo.request.networkCapabilities.getNetworkSpecifier();
+                retRequestInfo = requestInfo;
             } else if (priority == requestInfo.priority) {
                 if (requestInfo.executedPhoneId == activePhoneId) {
                     topSubId = requestInfo.request.networkCapabilities.getNetworkSpecifier();
@@ -580,6 +581,11 @@ public class DctController extends Handler {
             subId = mSubController.getDefaultDataSubId();
         } else {
             subId = Integer.parseInt(topSubId);
+            if (apnForNetworkRequest(retRequestInfo.request).equals(
+                    PhoneConstants.APN_TYPE_IMS) && mNeedsDdsSwitch.get()) {
+                logd("getTopPriorityRequestPhoneId: ims request, use dds phone id");
+                subId = mSubController.getDefaultDataSubId();
+            }
         }
         final int phoneId = mSubController.getPhoneId(subId);
         if (phoneId == DEFAULT_PHONE_INDEX) {
