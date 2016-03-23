@@ -73,6 +73,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
@@ -167,9 +168,14 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     // Constructors
-
     public ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone) {
-        super("ImsPhone", context, notifier);
+        this(context, notifier, defaultPhone, false);
+    }
+
+    @VisibleForTesting
+    public ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone,
+                    boolean unitTestMode) {
+        super("ImsPhone", context, notifier, unitTestMode);
 
         mDefaultPhone = defaultPhone;
         mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
@@ -1204,7 +1210,7 @@ public class ImsPhone extends ImsPhoneBase {
     /**
      * Listen to the IMS ECBM state change
      */
-    ImsEcbmStateListener mImsEcbmStateListener =
+    private ImsEcbmStateListener mImsEcbmStateListener =
             new ImsEcbmStateListener() {
                 @Override
                 public void onECBMEntered() {
@@ -1218,6 +1224,11 @@ public class ImsPhone extends ImsPhoneBase {
                     handleExitEmergencyCallbackMode();
                 }
             };
+
+    @VisibleForTesting
+    public ImsEcbmStateListener getImsEcbmStateListener() {
+        return mImsEcbmStateListener;
+    }
 
     @Override
     public boolean isInEmergencyCall() {
@@ -1288,12 +1299,18 @@ public class ImsPhone extends ImsPhoneBase {
         if (mEcmExitRespRegistrant != null) {
             mEcmExitRespRegistrant.notifyResult(Boolean.TRUE);
         }
-            if (mIsPhoneInEcmState) {
-                mIsPhoneInEcmState = false;
-                setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-            }
-            // send an Intent
-            sendEmergencyCallbackModeChange();
+
+        // release wakeLock
+        if (mWakeLock.isHeld()) {
+            mWakeLock.release();
+        }
+
+        if (mIsPhoneInEcmState) {
+            mIsPhoneInEcmState = false;
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+        }
+        // send an Intent
+        sendEmergencyCallbackModeChange();
     }
 
     /**
@@ -1495,6 +1512,11 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public void setBroadcastEmergencyCallStateChanges(boolean broadcast) {
         mDefaultPhone.setBroadcastEmergencyCallStateChanges(broadcast);
+    }
+
+    @VisibleForTesting
+    public PowerManager.WakeLock getWakeLock() {
+        return mWakeLock;
     }
 
     @Override
