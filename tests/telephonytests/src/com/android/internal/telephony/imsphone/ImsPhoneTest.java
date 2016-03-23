@@ -16,7 +16,12 @@
 
 package com.android.internal.telephony.imsphone;
 
+import android.app.Activity;
+import android.app.IApplicationThread;
+import android.content.IIntentReceiver;
+import android.content.Intent;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -24,6 +29,7 @@ import android.os.SystemProperties;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCallProfile;
+import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsStreamMediaProfile;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
@@ -32,6 +38,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneInternalInterface;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -56,6 +63,7 @@ import static org.mockito.Matchers.anyChar;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
@@ -80,8 +88,7 @@ public class ImsPhoneTest extends TelephonyTest {
     private static final int EVENT_SUPP_SERVICE_NOTIFICATION = 1;
     private static final int EVENT_SUPP_SERVICE_FAILED = 2;
     private static final int EVENT_INCOMING_RING = 3;
-    private static final int EVENT_OUTGOING_CALLER_ID_DISPLAY_RESP = 4;
-    private static final int EVENT_CALL_FORWARDING_OPTION_RESP = 5;
+    private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 4;
 
     private class ImsPhoneTestHandler extends HandlerThread {
 
@@ -91,7 +98,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone);
+            mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, true);
             setReady(true);
         }
     }
@@ -355,8 +362,8 @@ public class ImsPhoneTest extends TelephonyTest {
                 anyLong());
         Message message = messageArgumentCaptor.getValue();
         assertEquals(EVENT_SUPP_SERVICE_NOTIFICATION, message.what);
-        assertEquals(ssn, ((AsyncResult)message.obj).result);
-        assertEquals(null, ((AsyncResult)message.obj).userObj);
+        assertEquals(ssn, ((AsyncResult) message.obj).result);
+        assertEquals(null, ((AsyncResult) message.obj).userObj);
         assertEquals(null, ((AsyncResult) message.obj).exception);
 
         // verify no notification is received after unregister (verify() still sees only 1
@@ -491,5 +498,72 @@ public class ImsPhoneTest extends TelephonyTest {
                 eq(CommandsInterface.CF_ACTION_DISABLE), messageArgumentCaptor.capture(),
                 (String[])eq(null));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
+    }
+
+    @Test
+    @SmallTest
+    public void testEcbm() throws Exception {
+        ImsEcbmStateListener imsEcbmStateListener = mImsPhoneUT.getImsEcbmStateListener();
+
+        // verify handling of emergency callback mode
+        imsEcbmStateListener.onECBMEntered();
+
+        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mIActivityManager, atLeast(1)).broadcastIntent(eq((IApplicationThread)null),
+                intentArgumentCaptor.capture(),
+                eq((String)null),
+                eq((IIntentReceiver)null),
+                eq(Activity.RESULT_OK),
+                eq((String)null),
+                eq((Bundle)null),
+                eq((String[])null),
+                anyInt(),
+                eq((Bundle)null),
+                eq(false),
+                eq(true),
+                anyInt());
+
+        Intent intent = intentArgumentCaptor.getValue();
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
+        assertEquals(true, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, false));
+
+        // verify that wakeLock is acquired in ECM
+        assertEquals(true, mImsPhoneUT.getWakeLock().isHeld());
+
+        mImsPhoneUT.setOnEcbModeExitResponse(mTestHandler, EVENT_EMERGENCY_CALLBACK_MODE_EXIT,
+                null);
+
+        // verify handling of emergency callback mode exit
+        imsEcbmStateListener.onECBMExited();
+
+        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
+        verify(mIActivityManager, atLeast(2)).broadcastIntent(eq((IApplicationThread)null),
+                intentArgumentCaptor.capture(),
+                eq((String)null),
+                eq((IIntentReceiver)null),
+                eq(Activity.RESULT_OK),
+                eq((String)null),
+                eq((Bundle)null),
+                eq((String[])null),
+                anyInt(),
+                eq((Bundle)null),
+                eq(false),
+                eq(true),
+                anyInt());
+
+        intent = intentArgumentCaptor.getValue();
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
+        assertEquals(false, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, true));
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+
+        // verify EcmExitRespRegistrant is notified
+        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+        assertEquals(EVENT_EMERGENCY_CALLBACK_MODE_EXIT, messageArgumentCaptor.getValue().what);
+
+        // verify wakeLock released
+        assertEquals(false, mImsPhoneUT.getWakeLock().isHeld());
     }
 }
