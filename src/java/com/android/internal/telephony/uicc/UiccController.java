@@ -123,7 +123,7 @@ public class UiccController extends Handler {
         for (int i = 0; i < mCis.length; i++) {
             Integer index = new Integer(i);
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
-            if (radioApmSimNotPwdn) {
+            if (mCis[i].getRilVersion() >= 9 || radioApmSimNotPwdn) {
                 // Reading ICC status in airplane mode is only supported in QCOM
                 // RILs when persist.radio.apm_sim_not_pwdn is set to true
                 mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
