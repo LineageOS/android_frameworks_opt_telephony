@@ -702,14 +702,8 @@ public class GsmCdmaConnection extends Connection {
             // outgoing calls only
             processNextPostDialChar();
         } else {
-            if (!isPhoneTypeGsm()) {
-                // Only release wake lock for incoming calls, for outgoing calls the wake lock
-                // will be released after any pause-dial is completed
-                releaseWakeLock();
-            }
-        }
-
-        if (isPhoneTypeGsm()) {
+            // Only release wake lock for incoming calls, for outgoing calls the wake lock
+            // will be released after any pause-dial is completed
             releaseWakeLock();
         }
     }
@@ -816,10 +810,7 @@ public class GsmCdmaConnection extends Connection {
         Registrant postDialHandler;
 
         if (mPostDialState == PostDialState.CANCELLED) {
-            if (!isPhoneTypeGsm()) {
-                releaseWakeLock();
-            }
-            //Rlog.v("GsmCdma", "##### processNextPostDialChar: postDialState == CANCELLED, bail");
+            releaseWakeLock();
             return;
         }
 
@@ -827,10 +818,8 @@ public class GsmCdmaConnection extends Connection {
                 mPostDialString.length() <= mNextPostDialChar) {
             setPostDialState(PostDialState.COMPLETE);
 
-            if (!isPhoneTypeGsm()) {
-                // We were holding a wake lock until pause-dial was complete, so give it up now
-                releaseWakeLock();
-            }
+            // We were holding a wake lock until pause-dial was complete, so give it up now
+            releaseWakeLock();
 
             // notifyMessage.arg1 is 0 on complete
             c = 0;
@@ -909,39 +898,26 @@ public class GsmCdmaConnection extends Connection {
     }
 
     /**
-     * Set post dial state and acquire wake lock while switching to "started"
-     * state, the wake lock will be released if state switches out of "started"
+     * Set post dial state and acquire wake lock while switching to "started" or "pause"
+     * state, the wake lock will be released if state switches out of "started" or "pause"
      * state or after WAKE_LOCK_TIMEOUT_MILLIS.
      * @param s new PostDialState
      */
     private void setPostDialState(PostDialState s) {
-        if (isPhoneTypeGsm()) {
-            if (mPostDialState != PostDialState.STARTED
-                    && s == PostDialState.STARTED) {
-                acquireWakeLock();
+        if (s == PostDialState.STARTED ||
+                s == PostDialState.PAUSE) {
+            synchronized (mPartialWakeLock) {
+                if (mPartialWakeLock.isHeld()) {
+                    mHandler.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
+                } else {
+                    acquireWakeLock();
+                }
                 Message msg = mHandler.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
                 mHandler.sendMessageDelayed(msg, WAKE_LOCK_TIMEOUT_MILLIS);
-            } else if (mPostDialState == PostDialState.STARTED
-                    && s != PostDialState.STARTED) {
-                mHandler.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
-                releaseWakeLock();
             }
         } else {
-            if (s == PostDialState.STARTED ||
-                    s == PostDialState.PAUSE) {
-                synchronized (mPartialWakeLock) {
-                    if (mPartialWakeLock.isHeld()) {
-                        mHandler.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
-                    } else {
-                        acquireWakeLock();
-                    }
-                    Message msg = mHandler.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
-                    mHandler.sendMessageDelayed(msg, WAKE_LOCK_TIMEOUT_MILLIS);
-                }
-            } else {
-                mHandler.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
-                releaseWakeLock();
-            }
+            mHandler.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
+            releaseWakeLock();
         }
         mPostDialState = s;
         notifyPostDialListeners();
