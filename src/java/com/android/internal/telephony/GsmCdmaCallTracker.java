@@ -151,12 +151,19 @@ public class GsmCdmaCallTracker extends CallTracker {
         filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         mPhone.getContext().registerReceiver(mEcmExitReceiver, filter);
 
-        updatePhoneType();
+        updatePhoneType(true);
 
         mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
     }
 
     public void updatePhoneType() {
+        updatePhoneType(false);
+    }
+
+    private void updatePhoneType(boolean init) {
+        if (!init) {
+            reset();
+        }
         if (mPhone.isPhoneTypeGsm()) {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_GSM];
             mCi.unregisterForCallWaitingInfo(this);
@@ -171,16 +178,8 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
     }
 
-    public void dispose() {
-        Rlog.d(LOG_TAG, "GsmCdmaCallTracker dispose");
-        //Unregister for all events
-        mCi.unregisterForCallStateChanged(this);
-        mCi.unregisterForOn(this);
-        mCi.unregisterForNotAvailable(this);
-
-        //CDMA
-        mCi.unregisterForLineControlInfo(this);
-        mCi.unregisterForCallWaitingInfo(this);
+    private void reset() {
+        Rlog.d(LOG_TAG, "reset");
 
         clearDisconnected();
 
