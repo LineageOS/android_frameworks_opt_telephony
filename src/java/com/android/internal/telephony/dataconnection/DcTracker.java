@@ -309,14 +309,7 @@ public class DcTracker extends Handler {
                     // Set the network type, in case the radio does not restore it.
                     int subId = mPhone.getSubId();
                     if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                        if (mDataRoamingSettingObserver != null) {
-                            mDataRoamingSettingObserver.unregister();
-                        }
-                        // Watch for changes to Settings.Global.DATA_ROAMING
-                        mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone,
-                                mPhone.getContext());
-                        mDataRoamingSettingObserver.register();
-
+                        registerSettingsObserver();
                     }
                     if (mPreviousSubId.getAndSet(subId) != subId &&
                             SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -325,36 +318,65 @@ public class DcTracker extends Handler {
                 }
             };
 
-    private class DataRoamingSettingObserver extends ContentObserver {
+    private static class SettingsObserver extends ContentObserver {
+        final private HashMap<Uri, Integer> mUriEventMap;
+        final private Context mContext;
+        final private Handler mHandler;
+        final private static String TAG = "DcTracker.SettingsObserver";
 
-        public DataRoamingSettingObserver(Handler handler, Context context) {
-            super(handler);
+        SettingsObserver(Context context, Handler handler) {
+            super(null);
+            mUriEventMap = new HashMap<Uri, Integer>();
+            mContext = context;
+            mHandler = handler;
         }
 
-        public void register() {
-            String contentUri;
-            if (TelephonyManager.getDefault().getSimCount() == 1) {
-                contentUri = Settings.Global.DATA_ROAMING;
-            } else {
-                contentUri = Settings.Global.DATA_ROAMING + mPhone.getSubId();
-            }
-
-            mResolver.registerContentObserver(Settings.Global.getUriFor(contentUri), false, this);
+        void observe(Uri uri, int what) {
+            mUriEventMap.put(uri, what);
+            final ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(uri, false, this);
         }
 
-        public void unregister() {
-            mResolver.unregisterContentObserver(this);
+        void unobserve() {
+            final ContentResolver resolver = mContext.getContentResolver();
+            resolver.unregisterContentObserver(this);
         }
 
         @Override
         public void onChange(boolean selfChange) {
-            // already running on mPhone handler thread
-            if (mPhone.getServiceState().getDataRoaming()) {
-                sendMessage(obtainMessage(DctConstants.EVENT_ROAMING_ON));
+            Rlog.e(TAG, "Should never be reached.");
+        }
+
+        @Override
+        public void onChange(boolean selfChange, Uri uri) {
+            final Integer what = mUriEventMap.get(uri);
+            if (what != null) {
+                mHandler.obtainMessage(what.intValue()).sendToTarget();
+            } else {
+                Rlog.e(TAG, "No matching event to send for URI=" + uri);
             }
         }
     }
-    private DataRoamingSettingObserver mDataRoamingSettingObserver;
+
+    private final SettingsObserver mSettingsObserver;
+
+    private void registerSettingsObserver() {
+        mSettingsObserver.unobserve();
+        String simSuffix = "";
+        if (TelephonyManager.getDefault().getSimCount() == 1) {
+            simSuffix = Integer.toString(mPhone.getSubId());
+        }
+        mSettingsObserver.observe(
+                Settings.Global.getUriFor(Settings.Global.DATA_ROAMING + simSuffix),
+                DctConstants.EVENT_ROAMING_ON);
+
+        mSettingsObserver.observe(
+                Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
+                DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE);
+        mSettingsObserver.observe(
+                Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED),
+                DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE);
+    }
 
     /**
      * Maintain the sum of transmit and receive packets.
@@ -647,6 +669,9 @@ public class DcTracker extends Handler {
         addEmergencyApnSetting();
 
         mProvisionActionName = "com.android.internal.telephony.PROVISION" + phone.getPhoneId();
+
+        mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
+        registerSettingsObserver();
     }
 
     @VisibleForTesting
@@ -657,6 +682,7 @@ public class DcTracker extends Handler {
         mUiccController = null;
         mDataConnectionTracker = null;
         mProvisionActionName = null;
+        mSettingsObserver = new SettingsObserver(null, this);
     }
 
     public void registerServiceStateTrackerEvents() {
@@ -727,9 +753,8 @@ public class DcTracker extends Handler {
         mIsDisposed = true;
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
         mUiccController.unregisterForIccChanged(this);
-        if (mDataRoamingSettingObserver != null) {
-            mDataRoamingSettingObserver.unregister();
-        }
+        mSettingsObserver.unobserve();
+
         mSubscriptionManager
                 .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mDcc.dispose();
@@ -816,6 +841,13 @@ public class DcTracker extends Handler {
         }
     }
 
+    private void onDeviceProvisionedChange() {
+        if (getDataEnabled()) {
+            onTrySetupData(Phone.REASON_DATA_ENABLED);
+        } else {
+            onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
+        }
+    }
 
 
     public long getSubId() {
@@ -2460,25 +2492,42 @@ public class DcTracker extends Handler {
      * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
      */
     public boolean getDataEnabled() {
+        final int device_provisioned =
+                Settings.Global.getInt(mResolver, Settings.Global.DEVICE_PROVISIONED, 0);
+
         boolean retVal = "true".equalsIgnoreCase(SystemProperties.get(
                 "ro.com.android.mobiledata", "true"));
-        try {
-            if (TelephonyManager.getDefault().getSimCount() == 1) {
-                retVal = Settings.Global.getInt(mResolver, Settings.Global.MOBILE_DATA,
-                        retVal ? 1 : 0) != 0;
-            } else {
-                int phoneSubId = mPhone.getSubId();
-                retVal = TelephonyManager.getIntWithSubId(mResolver, Settings.Global.MOBILE_DATA,
-                        phoneSubId) != 0;
-            }
-            if (VDBG) log("getDataEnabled: getIntWithSubId retVal=" + retVal);
-        } catch (SettingNotFoundException snfe) {
-            retVal = "true".equalsIgnoreCase(
-                    SystemProperties.get("ro.com.android.mobiledata", "true"));
-            if (DBG) {
-                log("getDataEnabled: system property ro.com.android.mobiledata retVal=" + retVal);
+        if (TelephonyManager.getDefault().getSimCount() == 1) {
+            retVal = Settings.Global.getInt(mResolver, Settings.Global.MOBILE_DATA,
+                    retVal ? 1 : 0) != 0;
+        } else {
+            int phoneSubId = mPhone.getSubId();
+            try {
+                retVal = TelephonyManager.getIntWithSubId(mResolver,
+                        Settings.Global.MOBILE_DATA, phoneSubId) != 0;
+            } catch (SettingNotFoundException e) {
+                // use existing retVal
             }
         }
+        if (VDBG) log("getDataEnabled: retVal=" + retVal);
+        if (device_provisioned == 0) {
+            // device is still getting provisioned - use whatever setting they
+            // want during this process
+            //
+            // use the normal data_enabled setting (retVal, determined above)
+            // as the default if nothing else is set
+            final String prov_property = SystemProperties.get("ro.com.android.prov_mobiledata",
+                  retVal ? "true" : "false");
+            retVal = "true".equalsIgnoreCase(prov_property);
+
+            final int prov_mobile_data = Settings.Global.getInt(mResolver,
+                    Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED,
+                    retVal ? 1 : 0);
+            retVal = prov_mobile_data != 0;
+            log("getDataEnabled during provisioning retVal=" + retVal + " - (" + prov_property +
+                    ", " + prov_mobile_data + ")");
+        }
+
         return retVal;
     }
 
@@ -3552,6 +3601,10 @@ public class DcTracker extends Handler {
                 onRoamingOn();
                 break;
 
+            case DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE:
+                onDeviceProvisionedChange();
+                break;
+
             case DctConstants.EVENT_RADIO_AVAILABLE:
                 onRadioAvailable();
                 break;
@@ -4013,7 +4066,6 @@ public class DcTracker extends Handler {
         pw.println(" mIsPsRestricted=" + mIsPsRestricted);
         pw.println(" mIsDisposed=" + mIsDisposed);
         pw.println(" mIntentReceiver=" + mIntentReceiver);
-        pw.println(" mDataRoamingSettingObserver=" + mDataRoamingSettingObserver);
         pw.println(" mReregisterOnReconnectFailure=" + mReregisterOnReconnectFailure);
         pw.println(" canSetPreferApn=" + mCanSetPreferApn);
         pw.println(" mApnObserver=" + mApnObserver);
