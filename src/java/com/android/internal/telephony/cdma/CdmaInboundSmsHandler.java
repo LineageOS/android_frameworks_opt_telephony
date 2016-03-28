@@ -36,6 +36,7 @@ import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.WspTypeDecoder;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
+import com.android.internal.util.HexDump;
 
 import java.util.Arrays;
 
@@ -302,9 +303,10 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
         InboundSmsTracker tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(
                 userData, timestamp, destinationPort, true, address, referenceNumber, segment,
-                totalSegments, true);
+                totalSegments, true, HexDump.toHexString(userData));
 
-        return addTrackerToRawTableAndSendMessage(tracker);
+        // de-duping is done only for text messages
+        return addTrackerToRawTableAndSendMessage(tracker, false /* don't de-dup */);
     }
 
     /**
