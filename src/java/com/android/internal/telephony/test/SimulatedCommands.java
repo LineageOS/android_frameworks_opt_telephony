@@ -1120,6 +1120,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getPreferredNetworkType(Message result) {
+        SimulatedCommandsVerifier.getInstance().getPreferredNetworkType(result);
         int ret[] = new int[1];
 
         ret[0] = mNetworkType;
@@ -1139,7 +1140,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setLocationUpdates(boolean enable, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().setLocationUpdates(enable, response);
+        resultSuccess(response, null);
     }
 
     @Override
@@ -1597,8 +1599,14 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void
-    getCDMASubscription(Message response) {
-        unimplemented(response);
+    getCDMASubscription(Message result) {
+        String ret[] = new String[5];
+        ret[0] = "123";
+        ret[1] = "456";
+        ret[2] = "789";
+        ret[3] = "234";
+        ret[4] = "345";
+        resultSuccess(result, ret);
     }
 
     @Override
@@ -1999,6 +2007,15 @@ public class SimulatedCommands extends BaseCommands
     @VisibleForTesting
     public void notifyVoiceNetworkStateChanged() {
         mVoiceNetworkStateRegistrants.notifyRegistrants();
+    }
+
+    @VisibleForTesting
+    public void notifyOtaProvisionStatusChanged() {
+        if (mOtaProvisionRegistrants != null) {
+            int ret[] = new int[1];
+            ret[0] = Phone.CDMA_OTA_PROVISION_STATUS_COMMITTED;
+            mOtaProvisionRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
+        }
     }
 
     public void setIccCardStatus(IccCardStatus iccCardStatus){
