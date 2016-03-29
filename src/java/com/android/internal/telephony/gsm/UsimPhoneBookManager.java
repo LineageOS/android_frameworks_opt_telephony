@@ -527,9 +527,9 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     Rlog.e(LOG_TAG, "Error: Improper ICC card: No IAP record for ADN, continuing");
                     break;
                 }
-                int recNum = record[mEmailTagNumberInIap];
+                int recNum = record[mEmailTagNumberInIap] & 0xFF;
 
-                if (recNum > 0) {
+                if (recNum != 0xFF && recNum > 0) {
                     String[] emails = new String[1];
                     // SIM record numbers are 1 based
                     emails[0] = readEmailRecord(recNum - 1, pbrIndex, 0);
@@ -578,8 +578,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     Rlog.e(LOG_TAG, "Error: Improper ICC card: No IAP record for ADN, continuing");
                     break;
                 }
-                int recNum = record[mAnrTagNumberInIap];
-                if (recNum > 0) {
+                int recNum = record[mAnrTagNumberInIap] & 0xFF;
+                if (recNum != 0xFF && recNum > 0) {
                     String[] anrs = new String[1];
                     // SIM record numbers are 1 based
                     anrs[0] = readAnrRecord(recNum - 1, pbrIndex, 0);
@@ -771,8 +771,9 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             } catch (IndexOutOfBoundsException e) {
                 Rlog.e(LOG_TAG, "IndexOutOfBoundsException in getEmailRecNumber");
             }
-            if (record != null && record[mEmailTagNumberInIap] > 0) {
-                recordNumber = record[mEmailTagNumberInIap];
+            if (record != null && (record[mEmailTagNumberInIap] & 0xFF) != 0xFF
+                && (record[mEmailTagNumberInIap] & 0xFF) > 0) {
+                recordNumber = record[mEmailTagNumberInIap] & 0xFF;
                 log(" getEmailRecNumber: record is " + IccUtils.bytesToHexString(record)
                         + ", the email recordNumber is :" + recordNumber);
                 return recordNumber;
@@ -812,8 +813,9 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             } catch (IndexOutOfBoundsException e) {
                 Rlog.e(LOG_TAG, "IndexOutOfBoundsException in getAnrRecNumber");
             }
-            if (record != null && record[mAnrTagNumberInIap] > 0) {
-                recordNumber = record[mAnrTagNumberInIap];
+            if (record != null && (record[mAnrTagNumberInIap] & 0xFF) != 0xFF
+                && (record[mAnrTagNumberInIap] & 0xFF) > 0) {
+                recordNumber = record[mAnrTagNumberInIap] & 0xFF;
                 log("getAnrRecNumber: recnum from iap is :" + recordNumber);
                 return recordNumber;
             } else {
