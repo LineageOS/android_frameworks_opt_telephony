@@ -618,7 +618,8 @@ public class ServiceStateTracker extends Handler {
         sendMessage(obtainMessage(EVENT_PHONE_TYPE_SWITCHED));
     }
 
-    void requestShutdown() {
+    @VisibleForTesting
+    public void requestShutdown() {
         if (mDeviceShuttingDown == true) return;
         mDeviceShuttingDown = true;
         mDesiredPowerState = false;
