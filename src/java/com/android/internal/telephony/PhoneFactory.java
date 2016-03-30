@@ -485,7 +485,28 @@ public class PhoneFactory {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim SMS Values");
         }
 
+        // FIXME can this be removed? We should not set defaults
+        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+        if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
+            Rlog.i(LOG_TAG, "Subscription is invalid..." + subId + " Set to 0");
+            subId = 0;
+            setSMSSubscription(subId);
+        }
+
         return subId;
+    }
+
+    //FIXME can this be removed, it is only called in getSMSSubscription
+    static public void setSMSSubscription(int subId) {
+        Settings.Global.putInt(sContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION, subId);
+
+        Intent intent = new Intent("com.android.mms.transaction.SEND_MESSAGE");
+        sContext.sendBroadcast(intent);
+
+        // Change occured in SMS preferred sub, update the default
+        // SMS interface Manager object with the new SMS preferred subscription.
+        Rlog.d(LOG_TAG, "setSMSSubscription : " + subId);
     }
 
     /**
