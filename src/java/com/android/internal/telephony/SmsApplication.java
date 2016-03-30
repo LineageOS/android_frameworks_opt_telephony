@@ -32,6 +32,7 @@ import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Debug;
+import android.os.Process;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -469,6 +470,11 @@ public final class SmsApplication {
                         MMS_SERVICE_PACKAGE_NAME);
                 assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
                         TELEPHONY_PROVIDER_PACKAGE_NAME);
+                // Give WRITE_SMS AppOps permission to UID 1001 which contains multiple
+                // apps, all of them should be able to write to telephony provider.
+                // This is to allow the proxy package permission check in telephony provider
+                // to pass.
+                assignWriteSmsPermissionToSystemUid(appOps, Process.PHONE_UID);
             }
         }
         if (DEBUG_MULTIUSER) {
@@ -555,6 +561,11 @@ public final class SmsApplication {
                     MMS_SERVICE_PACKAGE_NAME);
             assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
                     TELEPHONY_PROVIDER_PACKAGE_NAME);
+            // Give WRITE_SMS AppOps permission to UID 1001 which contains multiple
+            // apps, all of them should be able to write to telephony provider.
+            // This is to allow the proxy package permission check in telephony provider
+            // to pass.
+            assignWriteSmsPermissionToSystemUid(appOps, Process.PHONE_UID);
 
             if (DEBUG_MULTIUSER) {
                 Log.i(LOG_TAG, "setDefaultApplicationInternal oldAppData=" + oldAppData);
@@ -627,6 +638,10 @@ public final class SmsApplication {
             Rlog.e(LOG_TAG, "Package not found: " + packageName);
         }
 
+    }
+
+    private static void assignWriteSmsPermissionToSystemUid(AppOpsManager appOps, int uid) {
+        appOps.setUidMode(AppOpsManager.OP_WRITE_SMS, uid, AppOpsManager.MODE_ALLOWED);
     }
 
     /**
