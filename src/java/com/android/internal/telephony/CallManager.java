@@ -677,7 +677,7 @@ public final class CallManager {
     private void unregisterForPhoneStates(Phone phone) {
         // Make sure that we clean up our map of handlers to Phones.
         CallManagerHandler handler = mHandlerMap.get(phone);
-        if (handler != null) {
+        if (handler == null) {
             Rlog.e(LOG_TAG, "Could not find Phone handler for unregistration");
             return;
         }
