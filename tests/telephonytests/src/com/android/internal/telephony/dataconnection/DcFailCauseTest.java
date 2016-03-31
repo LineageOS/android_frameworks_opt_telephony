@@ -47,6 +47,7 @@ public class DcFailCauseTest extends TelephonyTest {
     }
 
     private ArrayList<DcFailCauseData> mFailCauseDataList;
+    private int mSubId = 0;
 
     @Before
     public void setUp() throws Exception {
@@ -147,9 +148,9 @@ public class DcFailCauseTest extends TelephonyTest {
     public void testPermanentFail() throws Exception {
         for (DcFailCauseData data : mFailCauseDataList) {
             assertEquals("cause = " + data.mCause, data.mPermanentFailure,
-                    DcFailCause.fromInt(data.mCause).isPermanentFail());
+                    DcFailCause.fromInt(data.mCause).isPermanentFail(mContext, mSubId));
         }
-        assertFalse(DcFailCause.fromInt(123456).isPermanentFail());
+        assertFalse(DcFailCause.fromInt(123456).isPermanentFail(mContext, mSubId));
     }
 
     @Test
