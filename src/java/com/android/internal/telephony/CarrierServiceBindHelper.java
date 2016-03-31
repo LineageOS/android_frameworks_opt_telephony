@@ -207,7 +207,8 @@ public class CarrierServiceBindHelper {
 
             String error;
             try {
-                if (mContext.bindService(carrierService, connection, Context.BIND_AUTO_CREATE)) {
+                if (mContext.bindService(carrierService, connection, Context.BIND_AUTO_CREATE |
+                            Context.BIND_FOREGROUND_SERVICE)) {
                     return true;
                 }
 
