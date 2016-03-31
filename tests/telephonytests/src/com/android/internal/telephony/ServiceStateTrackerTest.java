@@ -292,10 +292,29 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 true                        // gsmFlag
         );
 
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_SIGNAL_STRENGTH_UPDATE,
-                new AsyncResult(null, ss, null)));
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
         waitForMs(200);
         assertEquals(sst.getSignalStrength(), ss);
+        assertEquals(sst.getSignalStrength().isGsm(), true);
+
+        // switch to CDMA
+        doReturn(false).when(mPhone).isPhoneTypeGsm();
+        doReturn(true).when(mPhone).isPhoneTypeCdmaLte();
+        sst.updatePhoneType();
+        sst.mSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+
+        mSimulatedCommands.notifySignalStrength();
+        waitForMs(200);
+        assertEquals(sst.getSignalStrength(), ss);
+        assertEquals(sst.getSignalStrength().isGsm(), true);
+
+        // notify signal strength again, but this time data RAT is not LTE
+        sst.mSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD);
+        mSimulatedCommands.notifySignalStrength();
+        waitForMs(200);
+        assertEquals(sst.getSignalStrength(), ss);
+        assertEquals(sst.getSignalStrength().isGsm(), false);
     }
 
     @Test
