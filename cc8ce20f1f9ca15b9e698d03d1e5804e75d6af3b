@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7faddb67_84dadee6",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2016-03-31T17:24:00Z",
+      "side": 1,
+      "message": "100 chars",
+      "revId": "cc8ce20f1f9ca15b9e698d03d1e5804e75d6af3b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
