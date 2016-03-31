@@ -177,12 +177,14 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         cdmaCellLocation.setCellLocationData(0, 0, 0, 0, 0);
         mSST.mCellLoc = cdmaCellLocation;
 
-        int origValue = Settings.Secure.getInt(TestApplication.getAppContext().getContentResolver(),
-                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
-
+        /*
+        LOCATION_MODE is a special case in SettingsProvider. Adding the special handling in mock
+        content provider is probably not worth the effort; it will also tightly couple tests with
+        SettingsProvider implementation.
         // LOCATION_MODE_ON
-        Settings.Secure.putInt(TestApplication.getAppContext().getContentResolver(),
+        Settings.Secure.putInt(mContext.getContentResolver(),
                 Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_HIGH_ACCURACY);
+        waitForMs(50);
         CdmaCellLocation actualCellLocation = (CdmaCellLocation) mPhoneUT.getCellLocation();
         assertEquals(0, actualCellLocation.getBaseStationLatitude());
         assertEquals(0, actualCellLocation.getBaseStationLongitude());
@@ -190,15 +192,14 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // LOCATION_MODE_OFF
         Settings.Secure.putInt(TestApplication.getAppContext().getContentResolver(),
                 Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
-        actualCellLocation = (CdmaCellLocation) mPhoneUT.getCellLocation();
+        waitForMs(50);
+        */
+
+        CdmaCellLocation actualCellLocation = (CdmaCellLocation) mPhoneUT.getCellLocation();
         assertEquals(CdmaCellLocation.INVALID_LAT_LONG,
                 actualCellLocation.getBaseStationLatitude());
         assertEquals(CdmaCellLocation.INVALID_LAT_LONG,
                 actualCellLocation.getBaseStationLongitude());
-
-        // reset to origValue
-        Settings.Secure.putInt(TestApplication.getAppContext().getContentResolver(),
-                Settings.Secure.LOCATION_MODE, origValue);
     }
 
     @Test
