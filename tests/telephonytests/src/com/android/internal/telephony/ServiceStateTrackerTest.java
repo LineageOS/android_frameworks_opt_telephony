@@ -539,6 +539,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_UNKNOWN);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
+        waitForMs(100);
+
         sst.registerForDataConnectionAttached(mTestHandler, EVENT_DATA_CONNECTION_ATTACHED, null);
 
         // set service state in service and trigger events to post message on handler
@@ -646,6 +648,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_UNKNOWN);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
+        waitForMs(100);
+
         sst.registerForNetworkAttached(mTestHandler, EVENT_REGISTERED_TO_NETWORK, null);
 
         // set service state in service and trigger events to post message on handler
@@ -743,7 +747,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testEnableLocationUpdates() throws Exception {
         sst.enableLocationUpdates();
         verify(mSimulatedCommandsVerifier, times(1)).setLocationUpdates(eq(true),
-                eq(any(Message.class)));
+                any(Message.class));
     }
 
     @Test
@@ -751,7 +755,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testDisableLocationUpdates() throws Exception {
         sst.disableLocationUpdates();
         verify(mSimulatedCommandsVerifier, times(1)).setLocationUpdates(eq(false),
-                eq(any(Message.class)));
+                any(Message.class));
     }
 
     @Test
