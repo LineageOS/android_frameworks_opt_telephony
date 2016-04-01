@@ -2018,6 +2018,32 @@ public class SimulatedCommands extends BaseCommands
         }
     }
 
+    public void notifySignalStrength() {
+        if (mSignalStrength == null) {
+            mSignalStrength = new SignalStrength(
+                    20, // gsmSignalStrength
+                    0,  // gsmBitErrorRate
+                    -1, // cdmaDbm
+                    -1, // cdmaEcio
+                    -1, // evdoDbm
+                    -1, // evdoEcio
+                    -1, // evdoSnr
+                    99, // lteSignalStrength
+                    SignalStrength.INVALID,     // lteRsrp
+                    SignalStrength.INVALID,     // lteRsrq
+                    SignalStrength.INVALID,     // lteRssnr
+                    SignalStrength.INVALID,     // lteCqi
+                    SignalStrength.INVALID,     // tdScdmaRscp
+                    true                        // gsmFlag
+            );
+        }
+
+        if (mSignalStrengthRegistrant != null) {
+            mSignalStrengthRegistrant.notifyRegistrant(
+                    new AsyncResult (null, mSignalStrength, null));
+        }
+    }
+
     public void setIccCardStatus(IccCardStatus iccCardStatus){
         mIccCardStatus = iccCardStatus;
     }
