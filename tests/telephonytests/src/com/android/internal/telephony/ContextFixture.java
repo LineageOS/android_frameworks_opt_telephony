@@ -43,6 +43,7 @@ import android.content.pm.ServiceInfo;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.database.MatrixCursor;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
@@ -93,6 +94,10 @@ public class ContextFixture implements TestFixture<Context> {
     public static final String PERMISSION_ENABLE_ALL = "android.permission.STUB_PERMISSION";
 
     public class FakeContentProvider extends MockContentProvider {
+        private String[] mColumns = {"name", "value"};
+        private HashMap<String, String> mKeyValuePairs = new HashMap<String, String>();
+        private int mNumKeyValuePairs = 0;
+
         @Override
         public int delete(Uri uri, String selection, String[] selectionArgs) {
             return 0;
@@ -100,17 +105,54 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public Uri insert(Uri uri, ContentValues values) {
-            return null;
+            Uri newUri = null;
+            if (values != null) {
+                mKeyValuePairs.put(values.getAsString("name"), values.getAsString("value"));
+                mNumKeyValuePairs++;
+                newUri = Uri.withAppendedPath(uri, "" + mNumKeyValuePairs);
+            }
+            logd("insert called, new mNumKeyValuePairs: " + mNumKeyValuePairs + " uri: " + uri +
+                    " newUri: " + newUri);
+            return newUri;
         }
 
         @Override
         public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
                             String sortOrder) {
+            //assuming query will always be of the form 'name = ?'
+            logd("query called, mNumKeyValuePairs: " + mNumKeyValuePairs + " uri: " + uri);
+            if (mKeyValuePairs.containsKey(selectionArgs[0])) {
+                MatrixCursor cursor = new MatrixCursor(projection);
+                cursor.addRow(new String[]{mKeyValuePairs.get(selectionArgs[0])});
+                return cursor;
+            }
             return null;
         }
 
         @Override
         public Bundle call(String method, String request, Bundle args) {
+            logd("call called, mNumKeyValuePairs: " + mNumKeyValuePairs + " method: " + method +
+                    " request: " + request);
+            switch(method) {
+                case Settings.CALL_METHOD_GET_GLOBAL:
+                case Settings.CALL_METHOD_GET_SECURE:
+                case Settings.CALL_METHOD_GET_SYSTEM:
+                    if (mKeyValuePairs.containsKey(request)) {
+                        Bundle b = new Bundle(1);
+                        b.putCharSequence("value", mKeyValuePairs.get(request));
+                        logd("returning value pair: " + mKeyValuePairs.get(request) + " for " +
+                                request);
+                        return b;
+                    }
+                    break;
+                case Settings.CALL_METHOD_PUT_GLOBAL:
+                case Settings.CALL_METHOD_PUT_SECURE:
+                case Settings.CALL_METHOD_PUT_SYSTEM:
+                    logd("adding key-value pair: " + request + "-" + (String)args.get("value"));
+                    mKeyValuePairs.put(request, (String)args.get("value"));
+                    mNumKeyValuePairs++;
+                    break;
+            }
             return null;
         }
     }
@@ -429,7 +471,7 @@ public class ContextFixture implements TestFixture<Context> {
         mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
-        mContentResolver.addProvider(Settings.System.CONTENT_URI.getAuthority(), mContentProvider);
+        mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
         mPermissionTable.add(PERMISSION_ENABLE_ALL);
     }
 
