@@ -35,6 +35,7 @@ import android.os.PowerManager.WakeLock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 
+import android.provider.Telephony;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
@@ -122,6 +123,7 @@ public class ImsPhone extends ImsPhoneBase {
     // Instance Variables
     Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
+    ImsExternalCallTracker mExternalCallTracker;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
     private ServiceState mSS = new ServiceState();
@@ -179,6 +181,8 @@ public class ImsPhone extends ImsPhoneBase {
 
         mDefaultPhone = defaultPhone;
         mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+        mExternalCallTracker =
+                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this);
         mSS.setStateOff();
 
         mPhoneId = mDefaultPhone.getPhoneId();
@@ -230,6 +234,10 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public CallTracker getCallTracker() {
         return mCT;
+    }
+
+    public ImsExternalCallTracker getExternalCallTracker() {
+        return mExternalCallTracker;
     }
 
     @Override
