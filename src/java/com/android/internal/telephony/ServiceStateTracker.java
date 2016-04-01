@@ -962,7 +962,7 @@ public class ServiceStateTracker extends Handler {
                     return;
                 }
                 ar = (AsyncResult) msg.obj;
-                onSignalStrengthResult(ar, true);
+                onSignalStrengthResult(ar);
                 queueNextSignalStrengthPoll();
 
                 break;
@@ -1081,7 +1081,7 @@ public class ServiceStateTracker extends Handler {
                 // we don't have to ask it
                 mDontPollSignalStrength = true;
 
-                onSignalStrengthResult(ar, true);
+                onSignalStrengthResult(ar);
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:
@@ -4361,10 +4361,12 @@ public class ServiceStateTracker extends Handler {
      *
      * @return true if the signal strength changed and a notification was sent.
      */
-    protected boolean onSignalStrengthResult(AsyncResult ar, boolean isGsm) {
+    protected boolean onSignalStrengthResult(AsyncResult ar) {
+        boolean isGsm = false;
         //override isGsm for CDMA LTE
-        if (mPhone.isPhoneTypeCdmaLte() &&
-                mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+        if (mPhone.isPhoneTypeGsm() ||
+                (mPhone.isPhoneTypeCdmaLte() &&
+                        mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)) {
             isGsm = true;
         }
 
