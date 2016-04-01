@@ -1461,8 +1461,10 @@ public class DcTracker extends Handler {
         boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
         final ServiceStateTracker sst = mPhone.getServiceStateTracker();
 
+        // set to false if apn type is non-metered.
         boolean checkUserDataEnabled =
-                    !(apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS));
+                !(ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
+                        mPhone.getSubId()));
 
         StringBuilder failureReason = new StringBuilder();
         if (apnContext.isConnectable() && (isEmergencyApn ||
@@ -1588,8 +1590,12 @@ public class DcTracker extends Handler {
         for (ApnContext apnContext : mApnContexts.values()) {
             if (apnContext.isDisconnected() == false) didDisconnect = true;
             if (specificdisable) {
-                if (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS)) {
-                    if (DBG) log("ApnConextType: " + apnContext.getApnType());
+                // Use ApnSetting to decide metered or non-metered.
+                // Tear down all metered data connections.
+                ApnSetting apnSetting = apnContext.getApnSetting();
+                if (apnSetting != null && apnSetting.isMetered(mPhone.getContext(),
+                        mPhone.getSubId())) {
+                    if (DBG) log("clean up metered ApnContext Type: " + apnContext.getApnType());
                     apnContext.setReason(reason);
                     cleanUpConnection(tearDown, apnContext);
                 }

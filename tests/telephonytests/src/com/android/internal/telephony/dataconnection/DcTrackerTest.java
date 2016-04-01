@@ -27,7 +27,9 @@ import android.net.Uri;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
@@ -59,6 +61,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
@@ -96,6 +99,8 @@ public class DcTrackerTest extends TelephonyTest {
     private DcTracker mDct;
 
     private AlarmManager mAlarmManager;
+
+    private PersistableBundle mBundle;
 
     private final ApnSettingContentProvider mApnSettingContentProvider =
             new ApnSettingContentProvider();
@@ -228,7 +233,7 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // user
                             "",                     // password
                             3,                      // authtype
-                            "default,supl",         // types
+                            "ims",                  // types
                             "IP",                   // protocol
                             "IP",                   // roaming_protocol
                             1,                      // carrier_enabled
@@ -292,6 +297,7 @@ public class DcTrackerTest extends TelephonyTest {
                 new String[]{"36,2"});
 
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+        mBundle = mContextFixture.getCarrierConfigBundle();
 
         new DcTrackerTestHandler(getClass().getSimpleName()).start();
         waitUntilReady();
@@ -502,5 +508,98 @@ public class DcTrackerTest extends TelephonyTest {
 
         // Verify connected with APN2 setting.
         verifyDataConnected(FAKE_APN2);
+    }
+
+    @Test
+    @MediumTest
+    public void testUserDisableData() throws Exception {
+        //step 1: setup two DataCalls one for Metered: default, another one for Non-metered: IMS
+        //set Default and MMS to be metered in the CarrierConfigManager
+        boolean dataEnabled = mDct.getDataEnabled();
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
+        mDct.setEnabled(5, true);
+        mDct.setEnabled(0, true);
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        logd("Sending DATA_ENABLED_CMD");
+        mDct.setDataEnabled(true);
+
+        waitForMs(200);
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN1),
+                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(2), eq(FAKE_APN3),
+                eq(""), eq(""), eq(3), eq("IP"), any(Message.class));
+
+        logd("Sending DATA_DISABLED_CMD");
+        mDct.setDataEnabled(false);
+        waitForMs(200);
+
+        // expected tear down all metered DataConnections
+        verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(anyInt(), anyInt(),
+                any(Message.class));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+        assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
+
+        // reset the setting at the end of this test
+        mDct.setDataEnabled(dataEnabled);
+        waitForMs(200);
+    }
+
+    @Test
+    @MediumTest
+    public void testUserDisableRoaming() throws Exception {
+        //step 1: setup two DataCalls one for Metered: default, another one for Non-metered: IMS
+        //set Default and MMS to be metered in the CarrierConfigManager
+        boolean roamingEnabled = mDct.getDataOnRoamingEnabled();
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
+        mDct.setEnabled(5, true);
+        mDct.setEnabled(0, true);
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        logd("Sending DATA_ENABLED_CMD");
+        mDct.setDataEnabled(true);
+
+        waitForMs(200);
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN1),
+                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(2), eq(FAKE_APN3),
+                eq(""), eq(""), eq(3), eq("IP"), any(Message.class));
+
+        logd("Sending DISABLE_ROAMING_CMD");
+        mDct.setDataOnRoamingEnabled(false);
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_ROAMING_ON));
+        waitForMs(200);
+
+        // expected tear down all metered DataConnections
+        verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(anyInt(), anyInt(),
+                any(Message.class));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+        assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
+
+        // reset roaming settings at end of this test
+        mDct.setDataOnRoamingEnabled(roamingEnabled);
+        waitForMs(200);
     }
 }
