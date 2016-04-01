@@ -66,6 +66,18 @@ public abstract class Connection {
          * For an IMS call, indicates that the peer supports video.
          */
         public static final int SUPPORTS_VT_REMOTE_BIDIRECTIONAL = 0x00000008;
+
+        /**
+         * Indicates that the connection is an external connection (e.g. an instance of the class
+         * {@link com.android.internal.telephony.imsphone.ImsExternalConnection}.
+         */
+        public static final int IS_EXTERNAL_CONNECTION = 0x00000010;
+
+        /**
+         * Indicates that this external connection can be pulled from the remote device to the
+         * local device.
+         */
+        public static final int IS_PULLABLE = 0x00000020;
     }
 
     /**
@@ -705,7 +717,7 @@ public abstract class Connection {
      * @param capabilities The Capabilities bitmask.
      */
     public void setConnectionCapabilities(int capabilities) {
-        if(mConnectionCapabilities != capabilities) {
+        if (mConnectionCapabilities != capabilities) {
             mConnectionCapabilities = capabilities;
             for (Listener l : mListeners) {
                 l.onConnectionCapabilitiesChanged(mConnectionCapabilities);
