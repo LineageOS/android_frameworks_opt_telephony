@@ -305,7 +305,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 final int oldState = mDefaultDisplayState;
                 mDefaultDisplayState = mDefaultDisplay.getState();
                 if (mDefaultDisplayState != oldState) {
-                    updateScreenState();
+                    updateScreenState(false);
                 }
             }
         }
@@ -318,7 +318,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             // 0 means it's on battery
             mIsDevicePlugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
             if (mIsDevicePlugged != oldState) {
-                updateScreenState();
+                updateScreenState(false);
             }
         }
     };
@@ -2254,12 +2254,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     /**
      * Update the screen state. Send screen state ON if the default display is ON or the device
      * is plugged.
+     * @param forceUpdate. If it is true, update screen state without compare to oldState.
      */
-    private void updateScreenState() {
+    private void updateScreenState(boolean forceUpdate) {
         final int oldState = mRadioScreenState;
         mRadioScreenState = (mDefaultDisplayState == Display.STATE_ON || mIsDevicePlugged)
                 ? RADIO_SCREEN_ON : RADIO_SCREEN_OFF;
-        if (mRadioScreenState != oldState) {
+        if (mRadioScreenState != oldState || forceUpdate) {
             if (RILJ_LOGV) {
                 riljLog("defaultDisplayState: " + mDefaultDisplayState
                         + ", isDevicePlugged: " + mIsDevicePlugged);
@@ -2284,7 +2285,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     onRadioAvailable() {
         // In case screen state was lost (due to process crash),
         // this ensures that the RIL knows the correct screen state.
-        updateScreenState();
+        updateScreenState(false);
    }
 
     private RadioState getRadioStateFromInt(int stateInt) {
@@ -3210,6 +3211,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 setCdmaSubscriptionSource(mCdmaSubscription, null);
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                // When modem crashes, if user turns the screen off before RIL reconnects, screen
+                // state cannot be sent to modem. Resend the display state here so that modem
+                // has the correct state (to stop signal strength reporting, etc).
+                updateScreenState(true);
                 break;
             }
             case RIL_UNSOL_CELL_INFO_LIST: {
