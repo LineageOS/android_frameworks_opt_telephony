@@ -72,6 +72,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_SIM_LOCKED = 5;
     private static final int EVENT_SIM_IO_ERROR = 6;
     private static final int EVENT_SIM_UNKNOWN = 7;
+    private static final int EVENT_SET_PREFERRED_NW_MODE = 8;
 
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     private static final String ICCID_STRING_FOR_NV = "DUMMY_NV_ID";
@@ -258,6 +259,18 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
+    static class SetPreferredNwModeMessage {
+        public int slotId;
+        public int subId;
+        public int networkType;
+
+        SetPreferredNwModeMessage(int slotId, int subId, int networkType) {
+            this.slotId = slotId;
+            this.subId = subId;
+            this.networkType = networkType;
+        }
+    }
+
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
@@ -322,6 +335,12 @@ public class SubscriptionInfoUpdater extends Handler {
 
             case EVENT_SIM_IO_ERROR:
                 updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+                break;
+
+            case EVENT_SET_PREFERRED_NW_MODE:
+                AsyncResult ar = (AsyncResult)msg.obj;
+                SetPreferredNwModeMessage mode = (SetPreferredNwModeMessage) ar.userObj;
+                setPreferredNwModeForSlot(mode.slotId, mode.subId, mode.networkType, null);
                 break;
 
             default:
@@ -459,7 +478,7 @@ public class SubscriptionInfoUpdater extends Handler {
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
-    private void setDefaultDataSubNetworkType(int slotId, int subId) {
+    public void setDefaultDataSubNetworkType(int slotId, int subId) {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             Rlog.e(LOG_TAG, "setDefaultDataSubNetworkType called with DEFAULT_SUB_ID");
             return;
@@ -520,11 +539,12 @@ public class SubscriptionInfoUpdater extends Handler {
                             + networkType2 + ", slotId2: " + slotId2);
                 }
             }
-            setPreferredNwModeForSlot(slotId1, subId1, networkType);
-            setPreferredNwModeForSlot(slotId2, subId2, networkType2);
+            Message continuation = obtainMessage(EVENT_SET_PREFERRED_NW_MODE,
+                    new SetPreferredNwModeMessage(slotId1, subId1, networkType));
+            setPreferredNwModeForSlot(slotId2, subId2, networkType2, continuation);
         } else {
             // Set the modem network mode
-            setPreferredNwModeForSlot(slotId, subId, networkType);
+            setPreferredNwModeForSlot(slotId, subId, networkType, null);
         }
 
         // Only support automatic selection mode on SIM change.
@@ -532,8 +552,9 @@ public class SubscriptionInfoUpdater extends Handler {
                 obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE, new Integer(slotId)));
     }
 
-    private void setPreferredNwModeForSlot(int slotId, int subId, int networkType) {
-        mPhone[slotId].setPreferredNetworkType(networkType, null);
+    private void setPreferredNwModeForSlot(int slotId, int subId, int networkType,
+            Message message) {
+        mPhone[slotId].setPreferredNetworkType(networkType, message);
         Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
                 Settings.Global.PREFERRED_NETWORK_MODE + subId,
                 networkType);
