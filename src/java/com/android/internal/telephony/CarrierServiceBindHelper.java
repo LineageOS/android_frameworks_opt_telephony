@@ -89,6 +89,7 @@ public class CarrierServiceBindHelper {
                     for (AppBinding appBinding : mBindings) {
                         if (carrierPackageName.equals(appBinding.getPackage())) {
                           log(carrierPackageName + " changed and corresponds to a phone. Rebinding.");
+                          appBinding.unbind();
                           appBinding.bind();
                         }
                     }
@@ -169,9 +170,6 @@ public class CarrierServiceBindHelper {
         }
 
         public boolean bind() {
-            // Make sure there is no existing binding for this phone
-            unbind();
-
             // Get the package name for the carrier app
             List<String> carrierPackageNames =
                 TelephonyManager.from(mContext).getCarrierPackageNamesForIntentAndPhone(
@@ -184,6 +182,16 @@ public class CarrierServiceBindHelper {
             }
 
             log("Found carrier app: " + carrierPackageNames);
+            // If we are binding to a different package, unbind from the current one.
+            if (connection != null) {
+                if (!carrierPackage.equals(carrierPackageNames.get(0))) {
+                    // Make sure there is no existing binding for this phone
+                    unbind();
+                } else {
+                    return true;
+                }
+            }
+
             carrierPackage = carrierPackageNames.get(0);
 
             // Log debug information
@@ -285,6 +293,15 @@ public class CarrierServiceBindHelper {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            boolean replace = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+            // If replace is true, only care ACTION_PACKAGE_REPLACED.
+            // Reason is update app or uninstall app update will have all 3 intents,
+            // in the order or removed, added, replaced, all with extra_replace set to true.
+            // In this case processing added and removed isn't needed.
+
+            if (replace && !Intent.ACTION_PACKAGE_REPLACED.equals(action))
+                return;
+
             log("Receive action: " + action);
             switch (action) {
                 case Intent.ACTION_PACKAGE_ADDED:
