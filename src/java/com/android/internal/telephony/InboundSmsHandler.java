@@ -125,8 +125,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     public static final int ID_COLUMN = 7;
 
     public static final String SELECT_BY_ID = "_id=?";
-    public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND " +
-            "count=? AND deleted=0";
+    public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND count=?";
 
     /** New SMS received as an AsyncResult. */
     public static final int EVENT_NEW_SMS = 1;
@@ -162,8 +161,6 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     /** URI for raw table of SMS provider. */
     private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
-    private static final Uri sRawUriPermanentDelete =
-            Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw/permanentDelete");
 
     protected final Context mContext;
     private final ContentResolver mResolver;
@@ -793,13 +790,13 @@ public abstract class InboundSmsHandler extends StateMachine {
             if (result == Activity.RESULT_OK) {
                 return true;
             } else {
-                deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(), false);
+                deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
                 return false;
             }
         }
 
         if (BlockChecker.isBlocked(mContext, tracker.getAddress())) {
-            deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(), true);
+            deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
             return false;
         }
 
@@ -986,10 +983,8 @@ public abstract class InboundSmsHandler extends StateMachine {
     /**
      * Helper for {@link SmsBroadcastUndelivered} to delete an old message in the raw table.
      */
-    private void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs,
-                                    boolean permanentDelete) {
-        Uri uri = permanentDelete ? sRawUriPermanentDelete : sRawUri;
-        int rows = mResolver.delete(uri, deleteWhere, deleteWhereArgs);
+    private void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs) {
+        int rows = mResolver.delete(sRawUri, deleteWhere, deleteWhereArgs);
         if (rows == 0) {
             loge("No rows were deleted from raw table!");
         } else if (DBG) {
@@ -1079,47 +1074,50 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return true on success; false on failure to write to database
      */
     private int addTrackerToRawTable(InboundSmsTracker tracker) {
-        // check for duplicate message segments
-        Cursor cursor = null;
-        try {
-            // sequence numbers are 1-based except for CDMA WAP, which is 0-based
-            int sequence = tracker.getSequenceNumber();
+        if (tracker.getMessageCount() != 1) {
+            // check for duplicate message segments
+            Cursor cursor = null;
+            try {
+                // sequence numbers are 1-based except for CDMA WAP, which is 0-based
+                int sequence = tracker.getSequenceNumber();
 
-            // convert to strings for query
-            String address = tracker.getAddress();
-            String refNumber = Integer.toString(tracker.getReferenceNumber());
-            String count = Integer.toString(tracker.getMessageCount());
-            String seqNumber = Integer.toString(sequence);
-            String date = Long.toString(tracker.getTimestamp());
+                // convert to strings for query
+                String address = tracker.getAddress();
+                String refNumber = Integer.toString(tracker.getReferenceNumber());
+                String count = Integer.toString(tracker.getMessageCount());
 
-            // set the delete selection args for multi-part message
-            String[] deleteWhereArgs = {address, refNumber, count};
-            tracker.setDeleteWhere(SELECT_BY_REFERENCE, deleteWhereArgs);
+                String seqNumber = Integer.toString(sequence);
 
-            // Check for duplicate message segments
-            cursor = mResolver.query(sRawUri, PDU_PROJECTION,
-                    "address=? AND reference_number=? AND count=? AND sequence=? AND date=?",
-                    new String[] {address, refNumber, count, seqNumber, date}, null);
+                // set the delete selection args for multi-part message
+                String[] deleteWhereArgs = {address, refNumber, count};
+                tracker.setDeleteWhere(SELECT_BY_REFERENCE, deleteWhereArgs);
 
-            // moveToNext() returns false if no duplicates were found
-            if (cursor.moveToNext()) {
-                loge("Discarding duplicate message segment, refNumber=" + refNumber
-                        + " seqNumber=" + seqNumber);
-                String oldPduString = cursor.getString(PDU_COLUMN);
-                byte[] pdu = tracker.getPdu();
-                byte[] oldPdu = HexDump.hexStringToByteArray(oldPduString);
-                if (!Arrays.equals(oldPdu, tracker.getPdu())) {
-                    loge("Warning: dup message segment PDU of length " + pdu.length
-                            + " is different from existing PDU of length " + oldPdu.length);
+                // Check for duplicate message segments
+                cursor = mResolver.query(sRawUri, PDU_PROJECTION,
+                        "address=? AND reference_number=? AND count=? AND sequence=?",
+                        new String[] {address, refNumber, count, seqNumber}, null);
+
+                // moveToNext() returns false if no duplicates were found
+                if (cursor.moveToNext()) {
+                    loge("Discarding duplicate message segment, refNumber=" + refNumber
+                            + " seqNumber=" + seqNumber);
+                    String oldPduString = cursor.getString(PDU_COLUMN);
+                    byte[] pdu = tracker.getPdu();
+                    byte[] oldPdu = HexDump.hexStringToByteArray(oldPduString);
+                    if (!Arrays.equals(oldPdu, tracker.getPdu())) {
+                        loge("Warning: dup message segment PDU of length " + pdu.length
+                                + " is different from existing PDU of length " + oldPdu.length);
+                    }
+                    return Intents.RESULT_SMS_DUPLICATED;   // reject message
                 }
-                return Intents.RESULT_SMS_DUPLICATED;   // reject message
-            }
-        } catch (SQLException e) {
-            loge("Can't access multipart SMS database", e);
-            return Intents.RESULT_SMS_GENERIC_ERROR;    // reject message
-        } finally {
-            if (cursor != null) {
                 cursor.close();
+            } catch (SQLException e) {
+                loge("Can't access multipart SMS database", e);
+                return Intents.RESULT_SMS_GENERIC_ERROR;    // reject message
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
             }
         }
 
@@ -1214,7 +1212,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                     log("successful broadcast, deleting from raw table.");
                 }
 
-                deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs, false);
+                deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs);
                 sendMessage(EVENT_BROADCAST_COMPLETE);
 
                 int durationMillis = (int) ((System.nanoTime() - mBroadcastTimeNano) / 1000000);
@@ -1320,7 +1318,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 try {
                     // Needs phone package permissions.
                     deleteFromRawTable(mSmsFilter.mSmsBroadcastReceiver.mDeleteWhere,
-                            mSmsFilter.mSmsBroadcastReceiver.mDeleteWhereArgs, false);
+                            mSmsFilter.mSmsBroadcastReceiver.mDeleteWhereArgs);
                 } finally {
                     Binder.restoreCallingIdentity(token);
                 }
