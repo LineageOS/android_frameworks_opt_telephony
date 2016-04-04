@@ -94,6 +94,7 @@ import java.util.Random;
 /**
  * {@hide}
  */
+
 class RILRequest {
     static final String LOG_TAG = "RilRequest";
 
@@ -112,6 +113,7 @@ class RILRequest {
     Message mResult;
     Parcel mParcel;
     RILRequest mNext;
+    int mWakeLockType;
 
     /**
      * Retrieves a new RILRequest instance from the pool.
@@ -142,6 +144,7 @@ class RILRequest {
         rr.mResult = result;
         rr.mParcel = Parcel.obtain();
 
+        rr.mWakeLockType = RIL.INVALID_WAKELOCK;
         if (result != null && result.getTarget() == null) {
             throw new NullPointerException("Message target must not be null");
         }
@@ -165,6 +168,13 @@ class RILRequest {
                 sPool = this;
                 sPoolSize++;
                 mResult = null;
+                if(mWakeLockType != RIL.INVALID_WAKELOCK) {
+                    //This is OK for some wakelock types and not others
+                    if(mWakeLockType == RIL.FOR_WAKELOCK) {
+                        Rlog.e(LOG_TAG, "RILRequest releasing with held wake lock: "
+                                + serialString());
+                    }
+                }
             }
         }
     }
@@ -248,9 +258,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     // Wake lock default timeout associated with ack
     private static final int DEFAULT_ACK_WAKE_LOCK_TIMEOUT_MS = 200;
 
+    private static final int DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS = 2000;
+
     // Variables used to differentiate ack messages from request while calling clearWakeLock()
-    private static final boolean FOR_ACK_WAKELOCK = true;
-    private static final boolean FOR_WAKELOCK = false;
+    public static final int INVALID_WAKELOCK = -1;
+    public static final int FOR_WAKELOCK = 0;
+    public static final int FOR_ACK_WAKELOCK = 1;
 
     //***** Instance Variables
 
@@ -292,6 +305,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
     static final int EVENT_SEND_ACK             = 3;
     static final int EVENT_ACK_WAKE_LOCK_TIMEOUT    = 4;
+    static final int EVENT_BLOCKING_RESPONSE_TIMEOUT = 5;
 
     //***** Constants
 
@@ -377,8 +391,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                         if (s == null) {
                             rr.onError(RADIO_NOT_AVAILABLE, null);
+                            decrementWakeLock(rr);
                             rr.release();
-                            decrementWakeLock();
                             return;
                         }
 
@@ -417,8 +431,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         // eg, if RILReceiver cleared the list.
                         if (req != null) {
                             rr.onError(RADIO_NOT_AVAILABLE, null);
+                            decrementWakeLock(rr);
                             rr.release();
-                            decrementWakeLock();
                         }
                     } catch (RuntimeException exc) {
                         Rlog.e(RILJ_LOG_TAG, "Uncaught exception ", exc);
@@ -427,8 +441,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         // eg, if RILReceiver cleared the list.
                         if (req != null) {
                             rr.onError(GENERIC_FAILURE, null);
+                            decrementWakeLock(rr);
                             rr.release();
-                            decrementWakeLock();
                         }
                     }
 
@@ -469,8 +483,51 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         }
                     }
                     break;
+
+                case EVENT_BLOCKING_RESPONSE_TIMEOUT:
+                    int serial = msg.arg1;
+                    rr = findAndRemoveRequestFromList(serial);
+                    // If the request has already been processed, do nothing
+                    if(rr == null) {
+                        break;
+                    }
+
+                    //build a response if expected
+                    if (rr.mResult != null) {
+                        Object timeoutResponse = getResponseForTimedOutRILRequest(rr);
+                        AsyncResult.forMessage( rr.mResult, timeoutResponse, null);
+                        rr.mResult.sendToTarget();
+                        mEventLog.writeOnRilTimeoutResponse(rr.mSerial, rr.mRequest);
+                    }
+
+                    decrementWakeLock(rr);
+                    rr.release();
+                    break;
             }
         }
+    }
+
+    /**
+     * In order to prevent calls to Telephony from waiting indefinitely
+     * low-latency blocking calls will eventually time out. In the event of
+     * a timeout, this function generates a response that is returned to the
+     * higher layers to unblock the call. This is in lieu of a meaningful
+     * response.
+     * @param rr The RIL Request that has timed out.
+     * @return A default object, such as the one generated by a normal response
+     * that is returned to the higher layers.
+     **/
+    private static Object getResponseForTimedOutRILRequest(RILRequest rr) {
+        if (rr == null ) return null;
+
+        Object timeoutResponse = null;
+        switch(rr.mRequest) {
+            case RIL_REQUEST_GET_ACTIVITY_INFO:
+                timeoutResponse = new ModemActivityInfo(
+                        0, 0, 0, new int [ModemActivityInfo.TX_POWER_LEVELS], 0, 0);
+                break;
+        };
+        return timeoutResponse;
     }
 
     /**
@@ -2384,44 +2441,72 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      */
 
     private void
-    acquireWakeLock(boolean whichWakeLock) {
-        if (whichWakeLock == FOR_WAKELOCK) {
-            synchronized (mWakeLock) {
-                mWakeLock.acquire();
-                mWakeLockCount++;
-                mWlSequenceNum++;
-
-                Message msg = mSender.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
-                msg.arg1 = mWlSequenceNum;
-                mSender.sendMessageDelayed(msg, mWakeLockTimeout);
+    acquireWakeLock(RILRequest rr, int wakeLockType) {
+        synchronized(rr) {
+            if(rr.mWakeLockType != INVALID_WAKELOCK) {
+                Rlog.d(RILJ_LOG_TAG, "Failed to aquire wakelock for " + rr.serialString());
+                return;
             }
-        } else {
-            synchronized (mAckWakeLock) {
-                mAckWakeLock.acquire();
-                mAckWlSequenceNum++;
 
-                Message msg = mSender.obtainMessage(EVENT_ACK_WAKE_LOCK_TIMEOUT);
-                msg.arg1 = mAckWlSequenceNum;
-                mSender.sendMessageDelayed(msg, mAckWakeLockTimeout);
+            switch(wakeLockType) {
+                case FOR_WAKELOCK:
+                    synchronized (mWakeLock) {
+                        mWakeLock.acquire();
+                        mWakeLockCount++;
+                        mWlSequenceNum++;
+
+                        Message msg = mSender.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
+                        msg.arg1 = mWlSequenceNum;
+                        mSender.sendMessageDelayed(msg, mWakeLockTimeout);
+                    }
+                    break;
+                case FOR_ACK_WAKELOCK:
+                    synchronized (mAckWakeLock) {
+                        mAckWakeLock.acquire();
+                        mAckWlSequenceNum++;
+
+                        Message msg = mSender.obtainMessage(EVENT_ACK_WAKE_LOCK_TIMEOUT);
+                        msg.arg1 = mAckWlSequenceNum;
+                        mSender.sendMessageDelayed(msg, mAckWakeLockTimeout);
+                    }
+                    break;
+                default: //WTF
+                    Rlog.w(RILJ_LOG_TAG, "Acquiring Invalid Wakelock type " + wakeLockType);
+                    return;
             }
+            rr.mWakeLockType = wakeLockType;
         }
     }
 
     private void
-    decrementWakeLock() {
-        synchronized (mWakeLock) {
-            if (mWakeLockCount > 1) {
-                mWakeLockCount--;
-            } else {
-                mWakeLockCount = 0;
-                mWakeLock.release();
+    decrementWakeLock(RILRequest rr) {
+        synchronized(rr) {
+            switch(rr.mWakeLockType) {
+                case FOR_WAKELOCK:
+                    synchronized (mWakeLock) {
+                        if (mWakeLockCount > 1) {
+                            mWakeLockCount--;
+                        } else {
+                            mWakeLockCount = 0;
+                            mWakeLock.release();
+                        }
+                    }
+                    break;
+                case FOR_ACK_WAKELOCK:
+                    //We do not decrement the ACK wakelock
+                    break;
+                case INVALID_WAKELOCK:
+                    break;
+                default:
+                    Rlog.w(RILJ_LOG_TAG, "Decrementing Invalid Wakelock type " + rr.mWakeLockType);
             }
+            rr.mWakeLockType = INVALID_WAKELOCK;
         }
     }
 
     private boolean
-    clearWakeLock(boolean whichWakeLock) {
-        if (whichWakeLock == FOR_WAKELOCK) {
+    clearWakeLock(int wakeLockType) {
+        if (wakeLockType == FOR_WAKELOCK) {
             synchronized (mWakeLock) {
                 if (mWakeLockCount == 0 && mWakeLock.isHeld() == false) return false;
                 Rlog.d(RILJ_LOG_TAG, "NOTE: mWakeLockCount is " + mWakeLockCount
@@ -2450,9 +2535,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
 
         msg = mSender.obtainMessage(EVENT_SEND, rr);
-
-        acquireWakeLock(FOR_WAKELOCK);
-
+        acquireWakeLock(rr, FOR_WAKELOCK);
         msg.sendToTarget();
     }
 
@@ -2467,10 +2550,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         } else if (type == RESPONSE_SOLICITED || type == RESPONSE_SOLICITED_ACK_EXP) {
             RILRequest rr = processSolicited (p, type);
             if (rr != null) {
-                rr.release();
                 if (type == RESPONSE_SOLICITED) {
-                    decrementWakeLock();
+                    decrementWakeLock(rr);
                 }
+                rr.release();
             }
         } else if (type == RESPONSE_SOLICITED_ACK) {
             int serial;
@@ -2483,7 +2566,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             if (rr == null) {
                 Rlog.w(RILJ_LOG_TAG, "Unexpected solicited ack response! sn: " + serial);
             } else {
-                decrementWakeLock();
+                decrementWakeLock(rr);
                 if (RILJ_LOGD) {
                     riljLog(rr.serialString() + " Ack < " + requestToString(rr.mRequest));
                 }
@@ -2513,8 +2596,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             requestToString(rr.mRequest));
                 }
                 rr.onError(error, null);
+                decrementWakeLock(rr);
                 rr.release();
-                decrementWakeLock();
             }
             mRequestList.clear();
         }
@@ -2554,7 +2637,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             Message msg;
             RILRequest response = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
             msg = mSender.obtainMessage(EVENT_SEND_ACK, response);
-            acquireWakeLock(FOR_ACK_WAKELOCK);
+            acquireWakeLock(rr, FOR_ACK_WAKELOCK);
             msg.sendToTarget();
             if (RILJ_LOGD) {
                 riljLog("Response received for " + rr.serialString() + " " +
@@ -2922,7 +3005,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             Message msg;
             RILRequest rr = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
             msg = mSender.obtainMessage(EVENT_SEND_ACK, rr);
-            acquireWakeLock(FOR_ACK_WAKELOCK);
+            acquireWakeLock(rr, FOR_ACK_WAKELOCK);
             msg.sendToTarget();
             if (RILJ_LOGD) {
                 riljLog("Unsol response received for " + responseToString(response) +
@@ -4984,5 +5067,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
         }
         send(rr);
+
+        Message msg = mSender.obtainMessage(EVENT_BLOCKING_RESPONSE_TIMEOUT);
+        msg.obj = null;
+        msg.arg1 = rr.mSerial;
+        mSender.sendMessageDelayed(msg, DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS);
     }
 }

@@ -45,6 +45,7 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
     public static final int TAG_RIL_REQUEST = 1001;
     public static final int TAG_RIL_RESPONSE = 1002;
     public static final int TAG_RIL_UNSOL_RESPONSE = 1003;
+    public static final int TAG_RIL_TIMEOUT_RESPONSE = 1004;
 
     // IImsCallSession
     public static final int TAG_IMS_CALL_START = 2001;
@@ -349,6 +350,10 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
                 writeEvent(TAG_RIL_RESPONSE, rilRequest, rilSerial, b);
                 break;
         }
+    }
+
+    public void writeOnRilTimeoutResponse(int rilSerial, int rilRequest) {
+        writeEvent(TAG_RIL_TIMEOUT_RESPONSE, rilRequest, rilSerial, null);
     }
 
     public void writePhoneState(PhoneConstants.State phoneState) {
