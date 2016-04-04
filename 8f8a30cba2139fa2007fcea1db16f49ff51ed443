@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7faddb67_d63645b5",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1478,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2016-04-04T04:42:51Z",
+      "side": 1,
+      "message": "Nit: indention is off here",
+      "revId": "8f8a30cba2139fa2007fcea1db16f49ff51ed443",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
