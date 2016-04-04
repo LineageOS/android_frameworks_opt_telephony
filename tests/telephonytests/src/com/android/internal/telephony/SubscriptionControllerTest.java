@@ -22,6 +22,7 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -162,6 +163,18 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         /* should clear fake content provider and resolver here */
         mContext.getContentResolver().delete(SubscriptionManager.CONTENT_URI, null, null);
+
+        /* clear settings for default voice/data/sms sub ID */
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
         mSubscriptionControllerUT = null;
         super.tearDown();
     }
@@ -249,7 +262,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertNotSame(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                 mSubscriptionControllerUT.getDefaultSubId());
         assertEquals(mSubscriptionControllerUT.getDefaultDataSubId(),
-                mSubscriptionControllerUT.getDefaultSmsSubId(),
+                mSubscriptionControllerUT.getDefaultSmsSubId());
+        assertEquals(mSubscriptionControllerUT.getDefaultDataSubId(),
                 mSubscriptionControllerUT.getDefaultVoiceSubId());
     }
 
