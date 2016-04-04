@@ -52,7 +52,7 @@ public abstract class SmsMessageBase {
     /** {@hide} */
     protected boolean mIsEmail;
 
-    /** {@hide} Time when SC (service centre) received the message */
+    /** {@hide} */
     protected long mScTimeMillis;
 
     /** {@hide} The raw PDU of the message */
