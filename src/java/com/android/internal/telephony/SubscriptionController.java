@@ -785,7 +785,7 @@ public class SubscriptionController extends ISub.Stub {
                                     .getPhoneCount()) {
                                 Rlog.i(LOG_TAG, "Subscription is invalid. Set default to " + subId);
                                 setDefaultSmsSubId(subId);
-                                PhoneFactory.setSMSPromptEnabled(true);
+                                PhoneFactory.setSMSPromptEnabled(subIdCountMax > 1);
                             }
 
                         } else {
