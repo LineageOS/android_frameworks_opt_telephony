@@ -103,6 +103,7 @@ public class SubscriptionInfoUpdater extends Handler {
     public static final String CURR_SUBID = "curr_subid";
 
     private static Phone[] mPhone;
+    private CommandsInterface[] mCommandsInterfaces;
     private static Context mContext = null;
     protected static String mIccId[] = new String[PROJECT_SIM_NUM];
     private static int[] mInsertSimState = new int[PROJECT_SIM_NUM];
@@ -118,6 +119,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
         mContext = context;
         mPhone = phoneProxy;
+        mCommandsInterfaces = ci;
         mSubscriptionManager = SubscriptionManager.from(mContext);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
         mIsShutdown = false;
@@ -510,13 +512,8 @@ public class SubscriptionInfoUpdater extends Handler {
         if (userNwType != SubscriptionManager.DEFAULT_NW_MODE && userNwType != networkType) {
             networkType = userNwType;
         }
-        boolean isDsds = TelephonyManager.getDefault().getMultiSimConfiguration()
-                == TelephonyManager.MultiSimVariants.DSDS;
-        if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] subId=" + subId);
-        if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] isDSDS=" + isDsds);
-        boolean isMultiRat = SystemProperties.getBoolean("ro.ril.multi_rat_capable", true);
 
-        if (isDsds && !isMultiRat) {
+        if (mCommandsInterfaces[0].needsOldRilFeature("sim2gsmonly")) {
             int networkType2 = Phone.NT_MODE_GSM_ONLY; // Hardcoded due to modem limitation
             int slotId1 = SubscriptionManager.DEFAULT_SIM_SLOT_INDEX;
             int slotId2 = SubscriptionManager.DEFAULT_SIM_SLOT_INDEX;

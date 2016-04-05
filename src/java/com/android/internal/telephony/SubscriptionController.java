@@ -126,6 +126,7 @@ public class SubscriptionController extends ISub.Stub {
     /** The singleton instance. */
     protected static SubscriptionController sInstance = null;
     protected static PhoneProxy[] sProxyPhones;
+    private static CommandsInterface[] sCommandsInterfaces;
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
     protected CallManager mCM;
@@ -155,6 +156,7 @@ public class SubscriptionController extends ISub.Stub {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
                 sInstance = new SubscriptionController(c);
+                sCommandsInterfaces = ci;
             } else {
                 Log.wtf(LOG_TAG, "init() called multiple times!  sInstance = " + sInstance);
             }
@@ -1462,7 +1464,8 @@ public class SubscriptionController extends ISub.Stub {
             }
             if (atLeastOneMatch) {
                 proxyController.setRadioCapability(rafs);
-                if (!SystemProperties.getBoolean("ro.ril.multi_rat_capable", true)) {
+                if (sCommandsInterfaces != null
+                        && sCommandsInterfaces[0].needsOldRilFeature("sim2gsmonly")) {
                      updateDataSubNetworkType(slotId, subId);
                 }
             } else {
