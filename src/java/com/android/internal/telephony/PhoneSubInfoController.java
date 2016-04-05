@@ -376,7 +376,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         }
     }
 
-    public String getIccSimChallengeResponse(int subId, int appType, String data)
+    public String getIccSimChallengeResponse(int subId, int appType, int authType, String data)
             throws RemoteException {
         Phone phone = getPhone(subId);
         enforcePrivilegedPermissionOrCarrierPrivilege(phone);
@@ -393,24 +393,16 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             return null;
         } else {
             loge("getIccSimChallengeResponse() found app " + uiccApp.getAid()
-                    + "specified type -- " + appType);
+                    + " specified type -- " + appType);
         }
 
-        int authContext = uiccApp.getAuthContext();
-
-        if (data.length() < 32) {
-            /* must use EAP_SIM context */
-            loge("data is too small to use EAP_AKA, using EAP_SIM instead");
-            authContext = UiccCardApplication.AUTH_CONTEXT_EAP_SIM;
-        }
-
-        if(authContext == UiccCardApplication.AUTH_CONTEXT_UNDEFINED) {
-            loge("getIccSimChallengeResponse() authContext undefined for app type " +
-                    appType);
+        if(authType != UiccCardApplication.AUTH_CONTEXT_EAP_SIM &&
+                authType != UiccCardApplication.AUTH_CONTEXT_EAP_AKA) {
+            loge("getIccSimChallengeResponse() unsupported authType: " + authType);
             return null;
         }
 
-        return uiccApp.getIccRecords().getIccSimChallengeResponse(authContext, data);
+        return uiccApp.getIccRecords().getIccSimChallengeResponse(authType, data);
     }
 
     public String getGroupIdLevel1(String callingPackage) {
