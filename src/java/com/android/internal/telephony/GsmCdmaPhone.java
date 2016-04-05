@@ -745,6 +745,16 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public String getFullIccSerialNumber() {
+        IccRecords r = mIccRecords.get();
+        if (!isPhoneTypeGsm() && r == null) {
+            // to get ICCID form SIMRecords because it is on MF.
+            r = mUiccController.getIccRecords(mPhoneId, UiccController.APP_FAM_3GPP);
+        }
+        return (r != null) ? r.getFullIccId() : null;
+    }
+
+    @Override
     public boolean canConference() {
         if (mImsPhone != null && mImsPhone.canConference()) {
             return true;

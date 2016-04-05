@@ -23,7 +23,6 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 
-import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.telephony.SubscriptionInfo;
@@ -66,7 +65,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
 
-    protected String mIccId;
+    protected String mIccId;  // Includes only decimals (no hex)
+    protected String mFullIccId;  // Includes hex characters in ICCID
     protected String mMsisdn = null;  // My mobile number
     protected String mMsisdnTag = null;
     protected String mNewMsisdn = null;
@@ -116,7 +116,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     @Override
     public String toString() {
-        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mIccId);
+        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
         return "mDestroyed=" + mDestroyed
                 + " mContext=" + mContext
                 + " mCi=" + mCi
@@ -189,8 +189,22 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return mAdnCache;
     }
 
+    /**
+     * Returns the ICC ID stripped at the first hex character. Some SIMs have ICC IDs
+     * containing hex digits; {@link #getFullIccId()} should be used to get the full ID including
+     * hex digits.
+     * @return ICC ID without hex digits
+     */
     public String getIccId() {
         return mIccId;
+    }
+
+    /**
+     * Returns the full ICC ID including hex digits.
+     * @return full ICC ID including hex digits
+     */
+    public String getFullIccId() {
+        return mFullIccId;
     }
 
     public void registerForRecordsLoaded(Handler h, int what, Object obj) {
@@ -719,9 +733,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsRequested=" + mRecordsRequested);
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
-        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mIccId);
 
+        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
         pw.println(" iccid=" + iccIdToPrint);
+
         if (TextUtils.isEmpty(mMsisdn)) {
             pw.println(" mMsisdn=null");
         } else {
