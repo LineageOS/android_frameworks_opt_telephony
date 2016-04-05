@@ -1077,6 +1077,8 @@ public class ImsPhoneCallTracker extends CallTracker {
         if (ignoreState) {
             conn.updateAddressDisplay(imsCall);
             conn.updateExtras(imsCall);
+
+            maybeSetVideoCallProvider(conn, imsCall);
             return;
         }
 
@@ -1092,6 +1094,19 @@ public class ImsPhoneCallTracker extends CallTracker {
             if (conn.getCall() == mHandoverCall) return;
             updatePhoneState();
             mPhone.notifyPreciseCallStateChanged();
+        }
+    }
+
+    private void maybeSetVideoCallProvider(ImsPhoneConnection conn, ImsCall imsCall) {
+        android.telecom.Connection.VideoProvider connVideoProvider = conn.getVideoProvider();
+        if (connVideoProvider != null || imsCall.getCallSession().getVideoCallProvider() == null) {
+            return;
+        }
+
+        try {
+            setVideoCallProvider(conn, imsCall);
+        } catch (RemoteException e) {
+            loge("maybeSetVideoCallProvider: exception " + e);
         }
     }
 
