@@ -44,7 +44,6 @@ public class IccUtils {
         StringBuilder ret = new StringBuilder(length*2);
 
         for (int i = offset ; i < offset + length ; i++) {
-            byte b;
             int v;
 
             v = data[i] & 0xf;
@@ -56,6 +55,26 @@ public class IccUtils {
             if (v == 0xf) continue;
             if (v > 9)  break;
             ret.append((char)('0' + v));
+        }
+
+        return ret.toString();
+    }
+
+    /**
+     * Some fields (like ICC ID) in GSM SIMs are stored as nibble-swizzled BCH
+     */
+    public static String
+    bchToString(byte[] data, int offset, int length) {
+        StringBuilder ret = new StringBuilder(length*2);
+
+        for (int i = offset ; i < offset + length ; i++) {
+            int v;
+
+            v = data[i] & 0xf;
+            ret.append("0123456789abcdef".charAt(v));
+
+            v = (data[i] >> 4) & 0xf;
+            ret.append("0123456789abcdef".charAt(v));
         }
 
         return ret.toString();

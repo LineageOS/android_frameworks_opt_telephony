@@ -1535,11 +1535,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Retrieves the serial number of the ICC, if applicable.
+     * Retrieves the serial number of the ICC, if applicable. Returns only the decimal digits before
+     * the first hex digit in the ICC ID.
      */
     public String getIccSerialNumber() {
         IccRecords r = mIccRecords.get();
         return (r != null) ? r.getIccId() : null;
+    }
+
+    /**
+     * Retrieves the full serial number of the ICC (including hex digits), if applicable.
+     */
+    public String getFullIccSerialNumber() {
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getFullIccId() : null;
     }
 
     /**
