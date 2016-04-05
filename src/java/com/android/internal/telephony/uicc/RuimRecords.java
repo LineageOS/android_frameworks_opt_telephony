@@ -137,6 +137,7 @@ public class RuimRecords extends IccRecords {
         mMncLength = UNINITIALIZED;
         log("setting0 mMncLength" + mMncLength);
         mIccId = null;
+        mFullIccId = null;
 
         mAdnCache.reset();
 
@@ -670,8 +671,9 @@ public class RuimRecords extends IccRecords {
                 }
 
                 mIccId = IccUtils.bcdToString(data, 0, data.length);
+                mFullIccId = IccUtils.bchToString(data, 0, data.length);
 
-                log("iccid: " + SubscriptionInfo.givePrintableIccid(mIccId));
+                log("iccid: " + SubscriptionInfo.givePrintableIccid(mFullIccId));
 
             break;
 
