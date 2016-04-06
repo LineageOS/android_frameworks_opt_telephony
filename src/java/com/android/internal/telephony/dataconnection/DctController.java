@@ -588,7 +588,7 @@ public class DctController extends Handler {
         return phoneId;
     }
 
-    private void onSubInfoReady() {
+    protected void onSubInfoReady() {
         logd("onSubInfoReady mPhoneNum=" + mPhoneNum);
         UiccController uiccController = UiccController.getInstance();
         for (int i = 0; i < mPhoneNum; ++i) {
