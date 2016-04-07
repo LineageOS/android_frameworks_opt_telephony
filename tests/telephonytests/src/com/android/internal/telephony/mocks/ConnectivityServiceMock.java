@@ -492,6 +492,11 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
         throw new RuntimeException("not implemented");
     }
 
+    @Override
+    public Network getActiveNetworkForUid(int uid) {
+        throw new RuntimeException("not implemented");
+    }
+
     public NetworkInfo getActiveNetworkInfoUnfiltered() {
         throw new RuntimeException("not implemented");
     }
