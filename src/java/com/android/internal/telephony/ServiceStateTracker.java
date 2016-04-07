@@ -537,6 +537,7 @@ public class ServiceStateTracker extends Handler {
         context.registerReceiver(mIntentReceiver, filter);
 
         mEventLog = new TelephonyEventLog(mPhone.getPhoneId());
+        mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
     }
 
     @VisibleForTesting
@@ -600,9 +601,8 @@ public class ServiceStateTracker extends Handler {
             mCi.registerForCdmaOtaProvision(this, EVENT_OTA_PROVISION_STATUS_CHANGE, null);
 
             mHbpcdUtils = new HbpcdUtils(mPhone.getContext());
-
-            // Reset OTASP state in case previously set by another service
-            mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
+            // update OTASP state in case previously set by another service
+            updateOtaspState();
         }
 
         // This should be done after the technology specific initializations above since it relies
@@ -1088,9 +1088,8 @@ public class ServiceStateTracker extends Handler {
             case EVENT_SIM_RECORDS_LOADED:
                 log("EVENT_SIM_RECORDS_LOADED: what=" + msg.what);
                 updatePhoneObject();
+                updateOtaspState();
                 if (mPhone.isPhoneTypeGsm()) {
-                    // Gsm doesn't support OTASP so its not needed
-                    mPhone.notifyOtaspChanged(OTASP_NOT_NEEDED);
                     updateSpnDisplay();
                 }
                 break;
@@ -1236,6 +1235,9 @@ public class ServiceStateTracker extends Handler {
                             mIsMinInfoReady = true;
 
                             updateOtaspState();
+                            // Notify apps subscription info is ready
+                            notifyCdmaSubscriptionInfoReady();
+
                             if (!mIsSubscriptionFromRuim && mIccRecords != null) {
                                 if (DBG) {
                                     log("GET_CDMA_SUBSCRIPTION set imsi in mIccRecords");
@@ -1274,6 +1276,8 @@ public class ServiceStateTracker extends Handler {
                                 mIsMinInfoReady = true;
                             }
                             updateOtaspState();
+                            // Notify apps subscription info is ready
+                            notifyCdmaSubscriptionInfoReady();
                         }
                         // SID/NID/PRL is loaded. Poll service state
                         // again to update to the roaming state with
@@ -1380,10 +1384,20 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Returns OTASP_UNKNOWN, OTASP_NEEDED or OTASP_NOT_NEEDED
+     * Returns OTASP_UNKNOWN, OTASP_UNINITIALIZED, OTASP_NEEDED or OTASP_NOT_NEEDED
      */
     public int getOtasp() {
         int provisioningState;
+        // if sim is not loaded, return otasp uninitialized
+        if(!mPhone.getIccRecordsLoaded()) {
+            if(DBG) log("getOtasp: otasp uninitialized due to sim not loaded");
+            return OTASP_UNINITIALIZED;
+        }
+        // if voice tech is Gsm, return otasp not needed
+        if(mPhone.isPhoneTypeGsm()) {
+            if(DBG) log("getOtasp: otasp not needed for GSM");
+            return OTASP_NOT_NEEDED;
+        }
         // for ruim, min is null means require otasp.
         if (mIsSubscriptionFromRuim && mMin == null) {
             return OTASP_NEEDED;
@@ -1437,14 +1451,9 @@ public class ServiceStateTracker extends Handler {
         int oldOtaspMode = mCurrentOtaspMode;
         mCurrentOtaspMode = otaspMode;
 
-        // Notify apps subscription info is ready
-        if (mCdmaForSubscriptionInfoReadyRegistrants != null) {
-            if (DBG) log("CDMA_SUBSCRIPTION: call notifyRegistrants()");
-            mCdmaForSubscriptionInfoReadyRegistrants.notifyRegistrants();
-        }
         if (oldOtaspMode != mCurrentOtaspMode) {
             if (DBG) {
-                log("CDMA_SUBSCRIPTION: call notifyOtaspChanged old otaspMode=" +
+                log("updateOtaspState: call notifyOtaspChanged old otaspMode=" +
                         oldOtaspMode + " new otaspMode=" + mCurrentOtaspMode);
             }
             mPhone.notifyOtaspChanged(mCurrentOtaspMode);
@@ -4128,6 +4137,13 @@ public class ServiceStateTracker extends Handler {
 
         // TODO Don't poll signal strength if screen is off
         sendMessageDelayed(msg, POLL_PERIOD_MILLIS);
+    }
+
+    private void notifyCdmaSubscriptionInfoReady() {
+        if (mCdmaForSubscriptionInfoReadyRegistrants != null) {
+            if (DBG) log("CDMA_SUBSCRIPTION: call notifyRegistrants()");
+            mCdmaForSubscriptionInfoReadyRegistrants.notifyRegistrants();
+        }
     }
 
     /**
