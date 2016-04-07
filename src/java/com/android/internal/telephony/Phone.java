@@ -287,7 +287,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private boolean mImsServiceReady = false;
     protected Phone mImsPhone = null;
 
-    private final AtomicReference<RadioCapability> mRadioCapability =
+    protected final AtomicReference<RadioCapability> mRadioCapability =
             new AtomicReference<RadioCapability>();
 
     private static final int DEFAULT_REPORT_INTERVAL_MS = 200;
