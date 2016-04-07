@@ -1453,10 +1453,8 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getMsisdnNumber() : null;
-        } else if (isPhoneTypeCdma()) {
+        } else {
             return mSST.getMdnNumber();
-        } else { //isPhoneTypeCdmaLte()
-            return (mSimRecords != null) ? mSimRecords.getMsisdnNumber() : null;
         }
     }
 
