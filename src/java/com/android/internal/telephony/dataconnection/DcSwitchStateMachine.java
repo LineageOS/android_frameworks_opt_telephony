@@ -145,8 +145,12 @@ public class DcSwitchStateMachine extends StateMachine {
                         /* Move to AttachingState and handle this ATTACH msg over there.
                          * This would ensure that Modem gets a ALLOW_DATA(true)
                          */
-                        deferMessage(msg);
-                        transitionTo(mAttachingState);
+                        if (ServiceState.isCdma(dataRat)) {
+                            deferMessage(msg);
+                            transitionTo(mAttachingState);
+                        } else {
+                            transitionTo(mAttachedState);
+                        }
                     } else {
                         if (DBG) log("IdleState: ignore ATATCHed event as data is not allowed");
                     }
@@ -251,6 +255,7 @@ public class DcSwitchStateMachine extends StateMachine {
             final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
             pb.mCi.setDataAllowed(true, obtainMessage(EVENT_DATA_ALLOWED,
                     ++mCurrentAllowedSequence, 0));
+            DctController.getInstance().resetDdsSwitchNeededFlag();
             // if we're on a carrier that unattaches us if we're idle for too long
             // (on wifi) and they won't re-attach until we poke them.  Poke them!
             // essentially react as Attached does here in Attaching.
