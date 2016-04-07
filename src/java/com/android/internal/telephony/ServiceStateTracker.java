@@ -535,7 +535,7 @@ public class ServiceStateTracker extends Handler {
         filter.addAction(ACTION_RADIO_OFF);
         context.registerReceiver(mIntentReceiver, filter);
 
-        mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
+        mEventLog = new TelephonyEventLog(mPhone.getPhoneId());
     }
 
     @VisibleForTesting
