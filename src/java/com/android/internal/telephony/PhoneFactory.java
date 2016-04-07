@@ -230,6 +230,9 @@ public class PhoneFactory {
                             sPhoneSwitcher, sc, sSubscriptionMonitor, Looper.myLooper(),
                             sContext, i, sPhones[i].mDcTracker);
                 }
+
+                telephonyComponentFactory.makeExtTelephonyClasses(
+                        context, sPhones, sCommandsInterfaces);
             }
         }
     }
