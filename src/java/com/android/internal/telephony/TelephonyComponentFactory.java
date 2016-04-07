@@ -70,6 +70,10 @@ public class TelephonyComponentFactory {
                 Constructor custMethod = cls.getConstructor();
                 Rlog.d(LOG_TAG, "constructor method = " + custMethod);
                 sInstance = (TelephonyComponentFactory) custMethod.newInstance();
+            } catch (NoClassDefFoundError e) {
+                e.printStackTrace();
+                Rlog.e(LOG_TAG, "error loading TelephonyComponentFactory");
+                sInstance = new TelephonyComponentFactory();
             } catch (Exception  e) {
                 e.printStackTrace();
                 Rlog.e(LOG_TAG, "Error loading TelephonyComponentFactory");
@@ -232,5 +236,10 @@ public class TelephonyComponentFactory {
             CommandsInterface[] ci) {
         Rlog.d(LOG_TAG, "makeSubscriptionInfoUpdater");
         return new SubscriptionInfoUpdater(BackgroundThread.get().getLooper(), context, phones, ci);
+    }
+
+    public void makeExtTelephonyClasses(Context context,
+            Phone[] phones, CommandsInterface[] commandsInterfaces) {
+        Rlog.d(LOG_TAG, "makeExtTelephonyClasses");
     }
 }
