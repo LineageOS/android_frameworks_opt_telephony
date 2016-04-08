@@ -1823,6 +1823,20 @@ public final class Telephony {
          * <P>Type: INTEGER (boolean)</P>
          */
         public static final String ARCHIVED = "archived";
+
+        /**
+         * Indicates the last mms type in the thread.
+         * <P>Type: TEXT</P>
+         * @hide
+         */
+        public static final String ATTACHMENT_INFO = "attachment_info";
+
+        /**
+         * Indicates whether this thread is a notification thread.
+         * <P>Type: INTEGER</P>
+         * @hide
+         */
+        public static final String NOTIFICATION = "notification";
     }
 
     /**
