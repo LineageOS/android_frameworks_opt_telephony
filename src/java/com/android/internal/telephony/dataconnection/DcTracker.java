@@ -27,10 +27,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
+import android.net.ConnectivityManager.NetworkCallback;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
@@ -48,6 +50,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.SystemClock;
@@ -56,8 +59,10 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
@@ -80,6 +85,8 @@ import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
@@ -165,6 +172,10 @@ public class DcTracker extends Handler {
 
     private static final String INTENT_DATA_STALL_ALARM =
             "com.android.internal.telephony.data-stall";
+
+    private static final String REDIRECTION_URL_KEY = "redirectionUrl";
+    private static final String ERROR_CODE_KEY = "errorCode";
+    private static final String APN_TYPE_KEY = "apnType";
 
     private DcTesterFailBringUpAll mDcTesterFailBringUpAll;
     private DcController mDcc;
@@ -310,6 +321,8 @@ public class DcTracker extends Handler {
                     int subId = mPhone.getSubId();
                     if (SubscriptionManager.isValidSubscriptionId(subId)) {
                         registerSettingsObserver();
+                         /* check if sim is un-provisioned due to cold sim detection */
+                        applyColdSimDetected(subId);
                     }
                     if (mPreviousSubId.getAndSet(subId) != subId &&
                             SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -562,6 +575,14 @@ public class DcTracker extends Handler {
     private final SparseArray<ApnContext> mApnContextsById = new SparseArray<ApnContext>();
 
     private int mDisconnectPendingCount = 0;
+
+    /** mRedirected is set to true when we first got the validation failure with the redirection URL
+     * based on this value we start the Carrier App to check the sim state */
+    private boolean mRedirected = false;
+
+    /** mColdSimDetected is set to true when we received SubInfoChanged &&
+     * SubscriptionInfo.simProvisioningStatus equals to SIM_UNPROVISIONED_COLD */
+    private boolean mColdSimDetected = false;
 
     /**
      * Handles changes to the APN db.
@@ -895,6 +916,22 @@ public class DcTracker extends Handler {
         return true;
     }
 
+    /**
+     * Called when there is any change to any SubscriptionInfo Typically
+     * this method invokes {@link SubscriptionManager#getActiveSubscriptionInfoList}
+     */
+    private boolean isColdSimDetected(int subId) {
+        final SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
+        if (subInfo != null) {
+            final int simProvisioningStatus = subInfo.getSimProvisioningStatus();
+            if(simProvisioningStatus == SubscriptionManager.SIM_UNPROVISIONED_COLD) {
+                log("Cold Sim Detected on SubId: " + subId);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public int getApnPriority(String name) {
         ApnContext apnContext = mApnContexts.get(name);
         if (apnContext == null) {
@@ -996,7 +1033,7 @@ public class DcTracker extends Handler {
 
         if (VDBG) {
             log(String.format("isDataPossible(%s): possible=%b isDataAllowed=%b " +
-                    "apnTypePossible=%b apnContextisEnabled=%b apnContextState()=%s",
+                            "apnTypePossible=%b apnContextisEnabled=%b apnContextState()=%s",
                     apnType, possible, dataAllowed, apnTypePossible,
                     apnContextIsEnabled, apnContextState));
         }
@@ -1471,7 +1508,7 @@ public class DcTracker extends Handler {
         StringBuilder failureReason = new StringBuilder();
         if (apnContext.isConnectable() && (isEmergencyApn ||
                 (isDataAllowed(failureReason) && isDataAllowedForApn(apnContext) &&
-                getAnyDataEnabled(checkUserDataEnabled) && !isEmergency()))) {
+                getAnyDataEnabled(checkUserDataEnabled) && !isEmergency())) && !mColdSimDetected) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 String str ="trySetupData: make a FAILED ApnContext IDLE so its reusable";
                 if (DBG) log(str);
@@ -1536,6 +1573,9 @@ public class DcTracker extends Handler {
             }
             if (isEmergency()) {
                 str.append("emergency = true");
+            }
+            if(mColdSimDetected) {
+                str.append("coldSimDetected = true");
             }
 
             if (DBG) log(str.toString());
@@ -2280,6 +2320,24 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
     }
 
+    private void applyColdSimDetected(int subId) {
+        if(isColdSimDetected(subId)) {
+            if(!mColdSimDetected) {
+                if(DBG) {
+                    log("onColdSimDetected on subId " + subId +": cleanUpAllDataConnections");
+                }
+                cleanUpAllConnections(null);
+                //send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
+                mPhone.notifyOtaspChanged(ServiceStateTracker.OTASP_SIM_UNPROVISIONED);
+                mColdSimDetected = true;
+            }
+        } else {
+            if (DBG) log("onColdSimDetected on subId: " + + subId + " reset coldSimDetected");
+            mColdSimDetected = false;
+            mRedirected = false;
+        }
+    }
+
     private void onSimNotReady() {
         if (DBG) log("onSimNotReady");
 
@@ -2841,6 +2899,12 @@ public class DcTracker extends Handler {
             mPhone.notifyPreciseDataConnectionFailed(apnContext.getReason(),
                     apnContext.getApnType(), apn != null ? apn.apn : "unknown", cause.toString());
 
+            //compose broadcast intent send to the specific carrier apps
+            Intent intent = new Intent(TelephonyIntents.ACTION_REQUEST_NETWORK_FAILED);
+            intent.putExtra(ERROR_CODE_KEY, cause.getErrorCode());
+            intent.putExtra(APN_TYPE_KEY, apnContext.getApnType());
+            notifyCarrierAppWithIntent(intent);
+
             if (cause.isRestartRadioFail() || apnContext.restartOnError(cause.getErrorCode())) {
                 if (DBG) log("Modem restarted.");
                 sendRestartRadio();
@@ -2925,6 +2989,45 @@ public class DcTracker extends Handler {
     }
 
     /**
+     * Read Carrier App name from CarrierConfig
+     * @return String[0] Package name, String[1] Activity name
+     */
+    private String[] getActivationAppName() {
+        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = null;
+        String[] activationApp;
+
+       if (configManager != null) {
+            b = configManager.getConfig();
+        }
+        if (b != null) {
+            activationApp = b.getStringArray(CarrierConfigManager
+                    .KEY_SIM_PROVISIONING_STATUS_DETECTION_CARRIER_APP_STRING_ARRAY);
+        } else {
+            // Return static default defined in CarrierConfigManager.
+            activationApp = CarrierConfigManager.getDefaultConfig().getStringArray
+                    (CarrierConfigManager
+                            .KEY_SIM_PROVISIONING_STATUS_DETECTION_CARRIER_APP_STRING_ARRAY);
+        }
+        return activationApp;
+    }
+
+    /**
+     * Called when EVENT_REDIRECTION_DETECTED is received.
+     */
+    private void onDataConnectionRedirected(String redirectUrl) {
+        if (!TextUtils.isEmpty(redirectUrl)) {
+            mRedirected = true;
+            Intent intent = new Intent(TelephonyIntents.ACTION_DATA_CONNECTION_REDIRECTED);
+            intent.putExtra(REDIRECTION_URL_KEY, redirectUrl);
+            if(notifyCarrierAppWithIntent(intent)) {
+                log("Starting Activation Carrier app with redirectUrl : " + redirectUrl);
+            }
+        }
+    }
+
+    /**
      * Called when EVENT_DISCONNECT_DONE is received.
      */
     private void onDisconnectDone(AsyncResult ar) {
@@ -2940,7 +3043,7 @@ public class DcTracker extends Handler {
         // pending.
         if (isDisconnected()) {
             if (mPhone.getServiceStateTracker().processPendingRadioPowerOffAfterDataOff()) {
-                if(DBG) log("onDisconnectDone: radio will be turned off, no retries");
+                if (DBG) log("onDisconnectDone: radio will be turned off, no retries");
                 // Radio will be turned off. No need to retry data setup
                 apnContext.setApnSetting(null);
                 apnContext.setDataConnectionAc(null);
@@ -2958,7 +3061,6 @@ public class DcTracker extends Handler {
                 return;
             }
         }
-
         // If APN is still enabled, try to bring it back up automatically
         if (mAttached.get() && apnContext.isReady() && retryAfterDisconnected(apnContext)) {
             try {
@@ -3617,6 +3719,10 @@ public class DcTracker extends Handler {
                 onDeviceProvisionedChange();
                 break;
 
+            case DctConstants.EVENT_REDIRECTION_DETECTED:
+                log("dataConnectionTracker.handleMessage: EVENT_REDIRECTION_DETECTED=" + msg);
+                onDataConnectionRedirected((String) msg.obj);
+
             case DctConstants.EVENT_RADIO_AVAILABLE:
                 onRadioAvailable();
                 break;
@@ -3632,6 +3738,7 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_DATA_SETUP_COMPLETE_ERROR:
                 onDataSetupCompleteError((AsyncResult) msg.obj);
                 break;
+
             case DctConstants.EVENT_DISCONNECT_DONE:
                 log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DONE msg=" + msg);
                 onDisconnectDone((AsyncResult) msg.obj);
@@ -3866,6 +3973,8 @@ public class DcTracker extends Handler {
                     mIccRecords.set(newIccRecords);
                     newIccRecords.registerForRecordsLoaded(
                             this, DctConstants.EVENT_RECORDS_LOADED, null);
+                    SubscriptionController.getInstance().setSimProvisioningStatus(
+                            SubscriptionManager.SIM_PROVISIONED, mPhone.getSubId());
                 }
             } else {
                 onSimNotReady();
@@ -3900,6 +4009,36 @@ public class DcTracker extends Handler {
         Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS);
         msg.obj = cause;
         sendMessage(msg);
+    }
+
+    private boolean notifyCarrierAppWithIntent(Intent intent) {
+        //read from carrier config manager
+        String[] activationApp = getActivationAppName();
+        if(activationApp == null || activationApp.length != 2) {
+            return false;
+        }
+
+        intent.setClassName(activationApp[0], activationApp[1]);
+        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
+        //check if Activation App is available */
+        final PackageManager packageManager = mPhone.getContext().getPackageManager();
+        if (packageManager.queryBroadcastReceivers(intent,
+                PackageManager.MATCH_DEFAULT_ONLY).isEmpty()) {
+            loge("Activation Carrier app is configured, but not available: "
+                    + activationApp[0] + "." + activationApp[1]);
+            return false;
+        }
+
+        try {
+            mPhone.getContext().sendBroadcast(intent);
+        } catch (ActivityNotFoundException e) {
+            loge("sendBroadcast failed: " + e);
+            return false;
+        }
+
+        if (DBG) log("send Intent to : " + activationApp[0] + "." + activationApp[1]
+                + " with action: " + intent.getAction());
+        return true;
     }
 
     private void notifyDataDisconnectComplete() {
