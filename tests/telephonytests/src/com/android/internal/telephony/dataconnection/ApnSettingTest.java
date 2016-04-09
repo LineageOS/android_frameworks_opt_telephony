@@ -16,37 +16,89 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.internal.telephony.dataconnection.ApnSetting;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyTest;
 
-import junit.framework.TestCase;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ApnSettingTest extends TestCase {
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
-    public static void assertApnSettingsEqual(List<ApnSetting> a1, List<ApnSetting> a2) {
+public class ApnSettingTest extends TelephonyTest {
+
+    private PersistableBundle mBundle;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp(getClass().getSimpleName());
+        mBundle = mContextFixture.getCarrierConfigBundle();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
+    }
+
+    private ApnSetting createApnSetting(String[] apnTypes) {
+        return new ApnSetting(
+                2163,                   // id
+                "44010",                // numeric
+                "sp-mode",              // name
+                "spmode.ne.jp",         // apn
+                "",                     // proxy
+                "",                     // port
+                "",                     // mmsc
+                "",                     // mmsproxy
+                "",                     // mmsport
+                "",                     // user
+                "",                     // password
+                -1,                     // authtype
+                apnTypes,               // types
+                "IP",                   // protocol
+                "IP",                   // roaming_protocol
+                true,                   // carrier_enabled
+                0,                      // bearer
+                0,                      // bearer_bitmask
+                0,                      // profile_id
+                false,                  // modem_cognitive
+                0,                      // max_conns
+                0,                      // wait_time
+                0,                      // max_conns_time
+                0,                      // mtu
+                "",                     // mvno_type
+                "");                    // mnvo_match_data
+    }
+
+    private static void assertApnSettingsEqual(List<ApnSetting> a1, List<ApnSetting> a2) {
         assertEquals(a1.size(), a2.size());
         for (int i = 0; i < a1.size(); ++i) {
             assertApnSettingEqual(a1.get(i), a2.get(i));
         }
     }
 
-    public static void assertApnSettingEqual(ApnSetting a1, ApnSetting a2) {
-        assertEquals(a1.carrier,  a2.carrier);
-        assertEquals(a1.apn,      a2.apn);
-        assertEquals(a1.proxy,    a2.proxy);
-        assertEquals(a1.port,     a2.port);
-        assertEquals(a1.mmsc,     a2.mmsc);
+    private static void assertApnSettingEqual(ApnSetting a1, ApnSetting a2) {
+        assertEquals(a1.carrier, a2.carrier);
+        assertEquals(a1.apn, a2.apn);
+        assertEquals(a1.proxy, a2.proxy);
+        assertEquals(a1.port, a2.port);
+        assertEquals(a1.mmsc, a2.mmsc);
         assertEquals(a1.mmsProxy, a2.mmsProxy);
-        assertEquals(a1.mmsPort,  a2.mmsPort);
-        assertEquals(a1.user,     a2.user);
+        assertEquals(a1.mmsPort, a2.mmsPort);
+        assertEquals(a1.user, a2.user);
         assertEquals(a1.password, a2.password);
         assertEquals(a1.authType, a2.authType);
-        assertEquals(a1.id,       a2.id);
-        assertEquals(a1.numeric,  a2.numeric);
+        assertEquals(a1.id, a2.id);
+        assertEquals(a1.numeric, a2.numeric);
         assertEquals(a1.protocol, a2.protocol);
         assertEquals(a1.roamingProtocol, a2.roamingProtocol);
         assertEquals(a1.types.length, a2.types.length);
@@ -66,6 +118,7 @@ public class ApnSettingTest extends TestCase {
         assertEquals(a1.mvnoMatchData, a2.mvnoMatchData);
     }
 
+    @Test
     @SmallTest
     public void testFromString() throws Exception {
         String[] dunTypes = {"DUN"};
@@ -78,7 +131,7 @@ public class ApnSettingTest extends TestCase {
         testString = "Vodafone IT,web.omnitel.it,,,,,,,,,222,10,,DUN";
         expectedApn = new ApnSetting(
                 -1, "22210", "Vodafone IT", "web.omnitel.it", "", "",
-                "", "", "", "", "", 0, dunTypes, "IP", "IP",true, 0, 0,
+                "", "", "", "", "", 0, dunTypes, "IP", "IP", true, 0, 0,
                 0, false, 0, 0, 0, 0, "", "");
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
@@ -102,7 +155,7 @@ public class ApnSettingTest extends TestCase {
         testString = "[ApnSettingV3] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14,,,,,,,spn,testspn";
         expectedApn = new ApnSetting(
                 -1, "12345", "Name", "apn", "", "", "", "", "", "", "", 0, mmsTypes, "IPV6",
-                "IP",true, 14, 0, 0, false, 0, 0, 0, 0, "spn", "testspn");
+                "IP", true, 14, 0, 0, false, 0, 0, 0, 0, "spn", "testspn");
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
         // Return no apn if insufficient fields given.
@@ -113,6 +166,7 @@ public class ApnSettingTest extends TestCase {
         assertEquals(null, ApnSetting.fromString(testString));
     }
 
+    @Test
     @SmallTest
     public void testArrayFromString() throws Exception {
         // Test a multiple v3 string.
@@ -135,10 +189,11 @@ public class ApnSettingTest extends TestCase {
         assertApnSettingsEqual(expectedApns, ApnSetting.arrayFromString(testString));
     }
 
+    @Test
     @SmallTest
     public void testToString() throws Exception {
         String[] types = {"default", "*"};
-        ApnSetting apn =  new ApnSetting(
+        ApnSetting apn = new ApnSetting(
                 99, "12345", "Name", "apn", "proxy", "port",
                 "mmsc", "mmsproxy", "mmsport", "user", "password", 0,
                 types, "IPV6", "IP", true, 14, 0, 0, false, 0, 0, 0, 0, "", "");
@@ -146,5 +201,131 @@ public class ApnSettingTest extends TestCase {
                 "mmsc, mmsproxy, mmsport, port, 0, default | *, " +
                 "IPV6, IP, true, 14, 8192, 0, false, 0, 0, 0, 0, , , false";
         assertEquals(expected, apn.toString());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsMetered() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT}).
+                isMetered(mContext, 1));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 1));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 1));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_MMS, PhoneConstants.APN_TYPE_SUPL}).
+                isMetered(mContext, 1));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_DUN}).
+                isMetered(mContext, 1));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 1));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_SUPL}).
+                isMetered(mContext, 1));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 1));
+    }
+
+    @Test
+    @SmallTest
+    public void testIsMeteredAnother() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_CBS});
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 2));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_SUPL}).
+                isMetered(mContext, 2));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 2));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 2));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_IA}).
+                isMetered(mContext, 2));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 2));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_IMS}).
+                isMetered(mContext, 2));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IMS}).
+                isMetered(mContext, 2));
+
+    }
+
+    @Test
+    @SmallTest
+    public void testIsMeteredNothingCharged() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{});
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IMS}).
+                isMetered(mContext, 3));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IMS, PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 3));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_FOTA}).
+                isMetered(mContext, 3));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 3));
+    }
+
+    @Test
+    @SmallTest
+    public void testIsMeteredNothingFree() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_ALL});
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 4));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 4));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 4));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_DUN}).
+                isMetered(mContext, 4));
+
     }
 }

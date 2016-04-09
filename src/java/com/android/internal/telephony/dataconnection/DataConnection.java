@@ -884,6 +884,13 @@ public class DataConnection extends StateMachine {
                     default:
                 }
             }
+
+            // If none of the APN types associated with this APN setting is metered,
+            // then we apply NOT_METERED capability to the network.
+            if (!mApnSetting.isMetered(mPhone.getContext(), mPhone.getSubId())) {
+                result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+            }
+
             result.maybeMarkCapabilitiesRestricted();
         }
         int up = 14;
