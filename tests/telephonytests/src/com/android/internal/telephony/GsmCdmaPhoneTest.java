@@ -27,7 +27,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
@@ -692,5 +691,15 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         editor.remove(Phone.CF_STATUS + subId1);
         editor.remove(Phone.CF_STATUS + subId2);
         editor.apply();
+    }
+
+    @Test
+    @SmallTest
+    public void testEriLoading() {
+        mPhoneUT.mEriManager = mEriManager;
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_CARRIER_CONFIG_CHANGED,
+                null));
+        waitForMs(100);
+        verify(mEriManager, times(1)).loadEriFile();
     }
 }

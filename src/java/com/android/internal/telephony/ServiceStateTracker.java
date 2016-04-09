@@ -1205,7 +1205,6 @@ public class ServiceStateTracker extends Handler {
                 // Only support automatic selection mode in CDMA.
                 mCi.getNetworkSelectionMode(obtainMessage(EVENT_POLL_STATE_NETWORK_SELECTION_MODE));
 
-                mPhone.prepareEri();
                 break;
 
             case EVENT_NV_READY:
@@ -1276,9 +1275,6 @@ public class ServiceStateTracker extends Handler {
                             }
                             updateOtaspState();
                         }
-                        // reload eri in case of IMSI changed
-                        // eri.xml can be defined by mcc mnc
-                        mPhone.prepareEri();
                         // SID/NID/PRL is loaded. Poll service state
                         // again to update to the roaming state with
                         // the latest variables.
