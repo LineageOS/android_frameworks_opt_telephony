@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.content.Context;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
@@ -26,6 +29,8 @@ import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -33,6 +38,10 @@ import java.util.Locale;
  * This class represents a apn setting for create PDP link
  */
 public class ApnSetting {
+
+    static final String LOG_TAG = "ApnSetting";
+
+    private static final boolean DBG = false;
 
     static final String V2_FORMAT_REGEX = "^\\[ApnSettingV2\\]\\s*";
     static final String V3_FORMAT_REGEX = "^\\[ApnSettingV3\\]\\s*";
@@ -102,6 +111,12 @@ public class ApnSetting {
      * retried by the retry manager anymore.
      * */
     public boolean permanentFailed = false;
+
+    /**
+     * Metered APN types which would be accounted for in data usage. This is a map of subId ->
+     * set of metered apn strings for the carrier.
+     */
+    private static HashMap<Integer, HashSet<String>> sMeteredApnTypes = new HashMap<>();
 
     public ApnSetting(int id, String numeric, String carrier, String apn,
             String proxy, String port,
@@ -386,6 +401,70 @@ public class ApnSetting {
                 return true;
             }
         }
+        return false;
+    }
+
+    public boolean isMetered(Context context, int subId) {
+
+        synchronized (sMeteredApnTypes) {
+            HashSet<String> meteredApnSet = sMeteredApnTypes.get(subId);
+
+            // In case of cache miss, we need to look up the settings from carrier config.
+            if (meteredApnSet == null) {
+                // Retrieve the metered APN types from carrier config
+                CarrierConfigManager configManager = (CarrierConfigManager)
+                        context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                if (configManager == null) {
+                    Rlog.e(LOG_TAG, "Carrier config service is not available");
+                    return true;
+                }
+
+                PersistableBundle b = configManager.getConfig(subId);
+                if (b == null) {
+                    Rlog.e(LOG_TAG, "Can't get the config. subId = " + subId);
+                    return true;
+                }
+
+                String[] meteredApnTypes = b.getStringArray(
+                        CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS);
+                if (meteredApnTypes == null) {
+                    Rlog.e(LOG_TAG, "KEY_CARRIER_METERED_APN_TYPES_STRINGS is not available. " +
+                            "subId = " + subId);
+                    return true;
+                }
+
+                meteredApnSet = new HashSet<String>(Arrays.asList(meteredApnTypes));
+                sMeteredApnTypes.put(subId, meteredApnSet);
+            }
+
+            if (DBG) {
+                Rlog.d(LOG_TAG, "For subId = " + subId + ", metered APN types are " +
+                        Arrays.toString(meteredApnSet.toArray()));
+            }
+
+            // If all types of APN are metered, then this APN setting must be metered.
+            if (meteredApnSet.contains(PhoneConstants.APN_TYPE_ALL)) {
+                if (DBG) Rlog.d(LOG_TAG, "All APN types are metered.");
+                return true;
+            }
+
+            for (String type : types) {
+                // If one of the APN type is metered, then this APN setting is metered.
+                if (meteredApnSet.contains(type)) {
+                    if (DBG) Rlog.d(LOG_TAG, type + " is metered.");
+                    return true;
+                } else if (type.equals(PhoneConstants.APN_TYPE_ALL)) {
+                    // Assuming no configuration error, if at least one APN type is
+                    // metered, then this APN setting is metered.
+                    if (meteredApnSet.size() > 0) {
+                        if (DBG) Rlog.d(LOG_TAG, "APN_TYPE_ALL APN is metered.");
+                        return true;
+                    }
+                }
+            }
+        }
+
+        if (DBG) Rlog.d(LOG_TAG, "Not metered. APN = " + toString());
         return false;
     }
 
