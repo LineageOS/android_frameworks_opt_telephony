@@ -628,6 +628,7 @@ public class DcTracker extends Handler {
         mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
 
         mDataConnectionTracker = this;
+        registerForAllEvents();
         update();
         mApnObserver = new ApnChangeObserver();
         phone.getContext().getContentResolver().registerContentObserver(
@@ -739,6 +740,7 @@ public class DcTracker extends Handler {
         mApnContexts.clear();
         mApnContextsById.clear();
         mPrioritySortedApnContexts.clear();
+        unregisterForAllEvents();
 
         destroyDataConnections();
     }
@@ -3811,7 +3813,6 @@ public class DcTracker extends Handler {
     public void update() {
         log("update sub = " + mPhone.getSubId());
         log("update(): Active DDS, register for all events now!");
-        registerForAllEvents();
         onUpdateIcc();
 
         mUserDataEnabled = getDataEnabled();
