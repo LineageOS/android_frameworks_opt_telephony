@@ -54,6 +54,10 @@ public class BlacklistUtils {
             Settings.System.BLACKLIST_BLOCK << Settings.System.BLACKLIST_MESSAGE_SHIFT;
 
     public static boolean addOrUpdate(Context context, String number, int flags, int valid) {
+        if (!isBlacklistEnabled(context)) {
+            return false;
+        }
+
         ContentValues cv = new ContentValues();
 
         if ((valid & BLOCK_CALLS) != 0) {
