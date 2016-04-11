@@ -468,18 +468,6 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
         assertEquals("18475797000",
                 PhoneNumberUtils.cdmaCheckAndProcessPlusCodeByNumberFormat("+18475797000",
                 PhoneNumberUtils.FORMAT_NANP,PhoneNumberUtils.FORMAT_NANP));
-        assertEquals("+18475797000",
-                PhoneNumberUtils.cdmaCheckAndProcessPlusCodeByNumberFormat("+18475797000",
-                PhoneNumberUtils.FORMAT_NANP,PhoneNumberUtils.FORMAT_JAPAN));
-        assertEquals("+18475797000",
-                PhoneNumberUtils.cdmaCheckAndProcessPlusCodeByNumberFormat("+18475797000",
-                PhoneNumberUtils.FORMAT_NANP,PhoneNumberUtils.FORMAT_UNKNOWN));
-        assertEquals("+18475797000",
-                PhoneNumberUtils.cdmaCheckAndProcessPlusCodeByNumberFormat("+18475797000",
-                PhoneNumberUtils.FORMAT_JAPAN,PhoneNumberUtils.FORMAT_JAPAN));
-        assertEquals("+18475797000",
-                PhoneNumberUtils.cdmaCheckAndProcessPlusCodeByNumberFormat("+18475797000",
-                PhoneNumberUtils.FORMAT_UNKNOWN,PhoneNumberUtils.FORMAT_UNKNOWN));
     }
 
     /**
