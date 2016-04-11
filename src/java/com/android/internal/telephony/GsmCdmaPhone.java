@@ -1085,8 +1085,10 @@ public class GsmCdmaPhone extends Phone {
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
                 && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
 
-        boolean isUt = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
-                stripSeparators(dialString)).endsWith("#");
+        String dialPart = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
+                stripSeparators(dialString));
+        boolean isUt = (dialPart.startsWith("*") || dialPart.startsWith("#"))
+                && dialPart.endsWith("#");
 
         boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled();
 
