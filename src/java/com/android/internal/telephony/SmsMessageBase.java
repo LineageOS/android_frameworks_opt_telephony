@@ -352,6 +352,10 @@ public abstract class SmsMessageBase {
          mIsEmail = Telephony.Mms.isEmailAddress(mEmailFrom);
     }
 
+    //Returns true if the given code point is regional indicator symbol
+    private static boolean isRegionalIndicatorSymbol(int codepoint) {
+        return (0x1F1E6 <= codepoint && codepoint <= 0x1F1FF);
+    }
     /**
      * Find the next position to start a new fragment of a multipart SMS.
      *
@@ -370,7 +374,22 @@ public abstract class SmsMessageBase {
             BreakIterator breakIterator = BreakIterator.getCharacterInstance();
             breakIterator.setText(msgBody.toString());
             if (!breakIterator.isBoundary(nextPos)) {
-                nextPos = breakIterator.preceding(nextPos);
+                int breakPos = breakIterator.preceding(nextPos);
+                while (breakPos + 4 <= nextPos
+                    && isRegionalIndicatorSymbol(
+                     Character.codePointAt(msgBody, breakPos))
+                    && isRegionalIndicatorSymbol(
+                     Character.codePointAt(msgBody, breakPos + 2))) {
+                   // skip forward over flags (pairs of Regional Indicator Symbol)
+                   breakPos += 4;
+                }
+                if (breakPos > currentPosition) {
+                    nextPos = breakPos;
+                } else if (Character.isHighSurrogate(msgBody.charAt(nextPos - 1))) {
+                  // no character boundary in this fragment, try to at least land on a code point
+                    nextPos -= 1;
+                }
+
             }
         }
         return nextPos;
