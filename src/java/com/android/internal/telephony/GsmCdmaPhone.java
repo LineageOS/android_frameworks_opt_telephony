@@ -2077,6 +2077,12 @@ public class GsmCdmaPhone extends Phone {
                     loge("didn't get broadcastEmergencyCallStateChanges from carrier config");
                 }
 
+                // Load the ERI based on carrier config. Carrier might have their specific ERI.
+                prepareEri();
+                if (!isPhoneTypeGsm()) {
+                    mSST.pollState();
+                }
+
                 break;
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
@@ -2089,12 +2095,6 @@ public class GsmCdmaPhone extends Phone {
                 if (isPhoneTypeGsm()) {
                     syncClirSetting();
                 }
-                break;
-
-            //CDMA
-            case EVENT_NV_READY:
-                logd("Event EVENT_NV_READY Received");
-                prepareEri();
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:

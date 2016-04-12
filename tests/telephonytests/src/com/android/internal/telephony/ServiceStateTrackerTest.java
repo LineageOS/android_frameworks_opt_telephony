@@ -356,7 +356,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // on RUIM_RECORDS_LOADED, sst is expected to call following apis
         verify(mRuimRecords, times(1)).isProvisioned();
-        verify(mPhone, times(1)).prepareEri();
 
         // switch back to GSM
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -374,7 +373,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(200);
 
         verify(mRuimRecords, times(1)).isProvisioned();
-        verify(mPhone, times(1)).prepareEri();
     }
 
     @Test
@@ -567,7 +565,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
-        waitForMs(100);
+        waitForMs(200);
 
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);

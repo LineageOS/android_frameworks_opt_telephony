@@ -19,6 +19,8 @@ package com.android.internal.telephony.cdma;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.util.Xml;
 
@@ -83,7 +85,7 @@ public class EriManager {
         }
     }
 
-    private static final String LOG_TAG = "CDMA";
+    private static final String LOG_TAG = "EriManager";
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
@@ -95,8 +97,10 @@ public class EriManager {
     private int mEriFileSource = ERI_FROM_XML;
     private boolean mIsEriFileLoaded;
     private EriFile mEriFile;
+    private final Phone mPhone;
 
     public EriManager(Phone phone, Context context, int eriFileSource) {
+        mPhone = phone;
         mContext = context;
         mEriFileSource = eriFileSource;
         mEriFile = new EriFile();
@@ -170,8 +174,31 @@ public class EriManager {
         }
 
         if (parser == null) {
-            if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: open normal file");
-            parser = r.getXml(com.android.internal.R.xml.eri);
+            String eriFile = null;
+
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager != null) {
+                PersistableBundle b = configManager.getConfig(mPhone.getSubId());
+                if (b != null) {
+                    eriFile = b.getString(CarrierConfigManager.KEY_CARRIER_ERI_FILE_NAME_STRING);
+                }
+            }
+
+            Rlog.d(LOG_TAG, "eriFile = " + eriFile);
+
+            if (eriFile == null) {
+                if (DBG) Rlog.e(LOG_TAG, "loadEriFileFromXml: Can't find ERI file to load");
+                return;
+            }
+
+            try {
+                parser = Xml.newPullParser();
+                parser.setInput(mContext.getAssets().open(eriFile), null);
+            } catch (IOException | XmlPullParserException e) {
+                if (DBG) Rlog.e(LOG_TAG, "loadEriFileFromXml: no parser for " + eriFile +
+                        ". Exception = " + e.toString());
+            }
         }
 
         try {
@@ -216,7 +243,9 @@ public class EriManager {
                 }
             }
 
-            if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: eri parsing successful, file loaded");
+            Rlog.d(LOG_TAG, "loadEriFileFromXml: eri parsing successful, file loaded. ver = " +
+                    mEriFile.mVersionNumber + ", # of entries = " + mEriFile.mNumberOfEriEntries);
+
             mIsEriFileLoaded = true;
 
         } catch (Exception e) {
@@ -282,7 +311,7 @@ public class EriManager {
     private EriDisplayInformation getEriDisplayInformation(int roamInd, int defRoamInd){
         EriDisplayInformation ret;
 
-        // Carrier can use eri.xml to customize any built-in roaming display indications
+        // Carrier can use carrier config to customize any built-in roaming display indications
         if (mIsEriFileLoaded) {
             EriInfo eriInfo = getEriInfo(roamInd);
             if (eriInfo != null) {
