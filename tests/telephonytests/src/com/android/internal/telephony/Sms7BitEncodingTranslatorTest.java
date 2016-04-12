@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.os.IBinder;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.After;
@@ -28,18 +27,20 @@ import java.io.UnsupportedEncodingException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 
 public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
 
     @Mock
-    IBinder mBinder;
+    UiccSmsController mUiccSmsController;
 
     @Before
     public void setUp() throws Exception {
         logd("+Setup!");
         super.setUp(getClass().getSimpleName());
-
+        mServiceManagerMockedServices.put("isms", mUiccSmsController);
+        doReturn(false).when(mUiccSmsController).isImsSmsSupportedForSubscriber(anyInt());
         logd("-Setup!");
     }
 
