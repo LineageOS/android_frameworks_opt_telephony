@@ -752,4 +752,90 @@ public class SubscriptionMonitorTest extends AndroidTestCase {
         testHandler.die();
     }
 
+    /**
+     * It turns out when we swap sims on a single sim we do something like:
+     *   Phone[0] subId  1 -> -2
+     *   Phone[0] subId -2 ->  2
+     *   Default change  1 ->  2
+     * Try that and verify we get all the subId and default changes we expect.
+     */
+    @SmallTest
+    public void testSimSwapNotifications() throws Exception {
+        final int numPhones = 1;
+        final ContextFixture contextFixture = new ContextFixture();
+        final Context context = contextFixture.getTestDouble();
+        ITelephonyRegistry.Stub telRegistry = new TelephonyRegistryMock();
+        SubscriptionControllerMock subController =
+                new SubscriptionControllerMock(context, telRegistry, numPhones);
+
+        SubscriptionMonitor testedSubMonitor =
+                new SubscriptionMonitor(telRegistry, context, subController, numPhones);
+
+        TestHandler testHandler = TestHandler.makeHandler();
+        Object subChangedObject = new Object();
+        testHandler.setSubscriptionChangedObject(subChangedObject);
+
+        Object defaultSubChangedObject = new Object();
+        testHandler.setDefaultSubscriptionChangedObject(defaultSubChangedObject);
+
+        final int PHONE_ID = 0;
+        final int FIRST_SUB_ID = 0;
+        final int SECOND_SUB_ID = 1;
+        testedSubMonitor.registerForSubscriptionChanged(PHONE_ID, testHandler,
+                TestHandler.SUBSCRIPTION_CHANGED, subChangedObject);
+        testedSubMonitor.registerForDefaultDataSubscriptionChanged(PHONE_ID, testHandler,
+                TestHandler.DEFAULT_SUBSCRIPTION_CHANGED, defaultSubChangedObject);
+        subController.setSlotSubId(PHONE_ID, -2);
+        testHandler.blockTilIdle();
+        // should get one for registration and 1 for the change
+        if (testHandler.getSubscriptionChangedCount() != 2) {
+            fail("test1 " + testHandler.getSubscriptionChangedCount() + " != 2");
+        }
+        // should get one for registration
+        if (testHandler.getDefaultSubscriptionChangedCount() != 1) {
+            fail("test2 " + testHandler.getDefaultSubscriptionChangedCount() + " != 1");
+        }
+
+        subController.setSlotSubId(PHONE_ID, FIRST_SUB_ID);
+        testHandler.blockTilIdle();
+        if (testHandler.getSubscriptionChangedCount() != 3) {
+            fail("test3 " + testHandler.getSubscriptionChangedCount() + " != 3");
+        }
+
+        subController.setDefaultDataSubId(FIRST_SUB_ID);
+        testHandler.blockTilIdle();
+        if (testHandler.getDefaultSubscriptionChangedCount() != 2) {
+            fail("test4 " + testHandler.getDefaultSubscriptionChangedCount() + " != 2");
+        }
+
+        // ok - now for the sim swap
+        subController.setSlotSubId(PHONE_ID, -2);
+        testHandler.blockTilIdle();
+        if (testHandler.getDefaultSubscriptionChangedCount() != 3) {
+            fail("test5 " + testHandler.getDefaultSubscriptionChangedCount() + " != 3");
+        }
+        if (testHandler.getSubscriptionChangedCount() != 4) {
+            fail("test6 " + testHandler.getSubscriptionChangedCount() + " != 4");
+        }
+
+        subController.setSlotSubId(PHONE_ID, SECOND_SUB_ID);
+        testHandler.blockTilIdle();
+
+        if (testHandler.getSubscriptionChangedCount() != 5) {
+            fail("test7 " + testHandler.getSubscriptionChangedCount() + " != 5");
+        }
+
+        subController.setDefaultDataSubId(SECOND_SUB_ID);
+        testHandler.blockTilIdle();
+
+        if (testHandler.getDefaultSubscriptionChangedCount() != 4) {
+            fail("test8 " + testHandler.getDefaultSubscriptionChangedCount() + " != 4");
+        }
+        // no change
+        if (testHandler.getSubscriptionChangedCount() != 5) {
+            fail("test9 " + testHandler.getSubscriptionChangedCount() + " != 5");
+        }
+
+        testHandler.die();
+    }
 }
