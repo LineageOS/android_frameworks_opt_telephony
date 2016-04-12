@@ -372,7 +372,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // config_telephony_use_own_number_for_voicemail
         mContextFixture.putBooleanResource(
                 com.android.internal.R.bool.config_telephony_use_own_number_for_voicemail, true);
-        doReturn(voiceMailNumber).when(mSimRecords).getMsisdnNumber();
+        doReturn(voiceMailNumber).when(mSST).getMdnNumber();
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
 
         // voicemail number from config
