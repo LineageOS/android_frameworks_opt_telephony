@@ -109,6 +109,7 @@ public class SubscriptionMonitor {
         @Override
         public void onSubscriptionsChanged() {
             synchronized (mLock) {
+                int newDefaultDataPhoneId = INVALID_PHONE_INDEX;
                 for (int phoneId = 0; phoneId < mPhoneSubId.length; phoneId++) {
                     final int newSubId = mSubscriptionController.getSubIdUsingPhoneId(phoneId);
                     final int oldSubId = mPhoneSubId[phoneId];
@@ -128,12 +129,13 @@ public class SubscriptionMonitor {
                                     mDefaultDataSubChangedRegistrants[phoneId].size() +
                                     " registrants");
                             mDefaultDataSubChangedRegistrants[phoneId].notifyRegistrants();
-                            if (newSubId == mDefaultDataSubId) {
-                                mDefaultDataPhoneId = phoneId;
-                            }
                         }
                     }
+                    if (newSubId == mDefaultDataSubId) {
+                        newDefaultDataPhoneId = phoneId;
+                    }
                 }
+                mDefaultDataPhoneId = newDefaultDataPhoneId;
             }
         }
     };
@@ -161,7 +163,6 @@ public class SubscriptionMonitor {
                             }
                         }
                     }
-
                     if (newDefaultDataPhoneId != oldDefaultDataPhoneId) {
                         log("Default phoneId changed " + oldDefaultDataPhoneId + "->" +
                                 newDefaultDataPhoneId + ", " +
