@@ -48,13 +48,13 @@ public class InboundSmsTrackerTest {
 
     public static MatrixCursor createFakeCursor() {
         MatrixCursor mc = new MatrixCursor(
-                new String[]{"pdu", "seq", "dest", "date", "ref", "cnt", "addr", "id"});
+                new String[]{"pdu", "seq", "dest", "date", "ref", "cnt", "addr", "id", "msg_body"});
         mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
                 FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
-                FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 1});
+                FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 1, FAKE_MESSAGE_BODY});
         mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
                 FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
-                FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 2});
+                FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 2, FAKE_MESSAGE_BODY});
         mc.moveToFirst();
         return mc;
     }
