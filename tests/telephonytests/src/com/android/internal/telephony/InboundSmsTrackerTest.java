@@ -37,12 +37,13 @@ public class InboundSmsTrackerTest {
     private static final int FAKE_REFERENCE_NUMBER = 345;
     private static final int FAKE_SEQUENCE_NUMBER = 3;
     private static final int FAKE_MESSAGE_COUNT = 5;
+    private static final String FAKE_MESSAGE_BODY = "message body";
 
     @Before
     public void setUp() throws Exception {
         mInboundSmsTracker = new InboundSmsTracker(FAKE_PDU, FAKE_TIMESTAMP, FAKE_DEST_PORT, false,
                 FAKE_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER, FAKE_MESSAGE_COUNT,
-                false);
+                false, FAKE_MESSAGE_BODY);
     }
 
     public static MatrixCursor createFakeCursor() {
@@ -71,6 +72,7 @@ public class InboundSmsTrackerTest {
         assertEquals(FAKE_MESSAGE_COUNT, mInboundSmsTracker.getMessageCount());
         assertEquals(1, mInboundSmsTracker.getIndexOffset());
         assertEquals(SmsConstants.FORMAT_3GPP, mInboundSmsTracker.getFormat());
+        assertEquals(FAKE_MESSAGE_BODY, mInboundSmsTracker.getMessageBody());
 
         String[] args = new String[]{"123"};
         mInboundSmsTracker.setDeleteWhere(InboundSmsHandler.SELECT_BY_ID, args);

@@ -123,9 +123,11 @@ public abstract class InboundSmsHandler extends StateMachine {
     public static final int COUNT_COLUMN = 5;
     public static final int ADDRESS_COLUMN = 6;
     public static final int ID_COLUMN = 7;
+    public static final int MESSAGE_BODY_COLUMN = 8;
 
     public static final String SELECT_BY_ID = "_id=?";
-    public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND count=?";
+    public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND " +
+            "count=? AND deleted=0";
 
     /** New SMS received as an AsyncResult. */
     public static final int EVENT_NEW_SMS = 1;
@@ -160,7 +162,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     private static final int NOTIFICATION_ID_NEW_MESSAGE = 1;
 
     /** URI for raw table of SMS provider. */
-    private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
+    protected static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
+    protected static final Uri sRawUriPermanentDelete =
+            Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw/permanentDelete");
 
     protected final Context mContext;
     private final ContentResolver mResolver;
@@ -198,6 +202,11 @@ public abstract class InboundSmsHandler extends StateMachine {
     private UserManager mUserManager;
 
     IDeviceIdleController mDeviceIdleController;
+
+    // Delete permanently from raw table
+    private final int DELETE_PERMANENTLY = 1;
+    // Only mark deleted, but keep in db for message de-duping
+    private final int MARK_DELETED = 2;
 
     /**
      * Create a new SMS broadcast helper.
@@ -660,7 +669,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
             tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
                     sms.getTimestampMillis(), destPort, is3gpp2(), false,
-                    sms.getDisplayOriginatingAddress());
+                    sms.getDisplayOriginatingAddress(), sms.getMessageBody());
         } else {
             // Create a tracker for this message segment.
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
@@ -670,11 +679,15 @@ public abstract class InboundSmsHandler extends StateMachine {
             tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
                     sms.getTimestampMillis(), destPort, is3gpp2(),
                     sms.getDisplayOriginatingAddress(), concatRef.refNumber, concatRef.seqNumber,
-                    concatRef.msgCount, false);
+                    concatRef.msgCount, false, sms.getMessageBody());
         }
 
         if (VDBG) log("created tracker: " + tracker);
-        return addTrackerToRawTableAndSendMessage(tracker);
+
+        // de-duping is done only for text messages
+        // destPort = -1 indicates text messages, otherwise it's a data sms
+        return addTrackerToRawTableAndSendMessage(tracker,
+                tracker.getDestPort() == -1 /* de-dup if text message */);
     }
 
     /**
@@ -684,8 +697,8 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return {@link Intents#RESULT_SMS_HANDLED} or {@link Intents#RESULT_SMS_GENERIC_ERROR}
      * or {@link Intents#RESULT_SMS_DUPLICATED}
      */
-    protected int addTrackerToRawTableAndSendMessage(InboundSmsTracker tracker) {
-        switch(addTrackerToRawTable(tracker)) {
+    protected int addTrackerToRawTableAndSendMessage(InboundSmsTracker tracker, boolean deDup) {
+        switch(addTrackerToRawTable(tracker, deDup)) {
         case Intents.RESULT_SMS_HANDLED:
             sendMessage(EVENT_BROADCAST_SMS, tracker);
             return Intents.RESULT_SMS_HANDLED;
@@ -790,13 +803,15 @@ public abstract class InboundSmsHandler extends StateMachine {
             if (result == Activity.RESULT_OK) {
                 return true;
             } else {
-                deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
+                deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
+                        MARK_DELETED);
                 return false;
             }
         }
 
         if (BlockChecker.isBlocked(mContext, tracker.getAddress())) {
-            deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
+            deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
+                    DELETE_PERMANENTLY);
             return false;
         }
 
@@ -856,7 +871,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         NotificationManager mNotificationManager =
             (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(
-            NOTIFICATION_TAG, NOTIFICATION_ID_NEW_MESSAGE, mBuilder.build());
+                NOTIFICATION_TAG, NOTIFICATION_ID_NEW_MESSAGE, mBuilder.build());
     }
 
     /**
@@ -983,8 +998,10 @@ public abstract class InboundSmsHandler extends StateMachine {
     /**
      * Helper for {@link SmsBroadcastUndelivered} to delete an old message in the raw table.
      */
-    private void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs) {
-        int rows = mResolver.delete(sRawUri, deleteWhere, deleteWhereArgs);
+    private void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs,
+                                    int deleteType) {
+        Uri uri = deleteType == DELETE_PERMANENTLY ? sRawUriPermanentDelete : sRawUri;
+        int rows = mResolver.delete(uri, deleteWhere, deleteWhereArgs);
         if (rows == 0) {
             loge("No rows were deleted from raw table!");
         } else if (DBG) {
@@ -1073,8 +1090,11 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param tracker the tracker to add to the raw table
      * @return true on success; false on failure to write to database
      */
-    private int addTrackerToRawTable(InboundSmsTracker tracker) {
-        if (tracker.getMessageCount() != 1) {
+    private int addTrackerToRawTable(InboundSmsTracker tracker, boolean deDup) {
+        String address = tracker.getAddress();
+        String refNumber = Integer.toString(tracker.getReferenceNumber());
+        String count = Integer.toString(tracker.getMessageCount());
+        if (deDup) {
             // check for duplicate message segments
             Cursor cursor = null;
             try {
@@ -1082,25 +1102,25 @@ public abstract class InboundSmsHandler extends StateMachine {
                 int sequence = tracker.getSequenceNumber();
 
                 // convert to strings for query
-                String address = tracker.getAddress();
-                String refNumber = Integer.toString(tracker.getReferenceNumber());
-                String count = Integer.toString(tracker.getMessageCount());
-
                 String seqNumber = Integer.toString(sequence);
-
-                // set the delete selection args for multi-part message
-                String[] deleteWhereArgs = {address, refNumber, count};
-                tracker.setDeleteWhere(SELECT_BY_REFERENCE, deleteWhereArgs);
+                String date = Long.toString(tracker.getTimestamp());
+                String messageBody = tracker.getMessageBody();
 
                 // Check for duplicate message segments
                 cursor = mResolver.query(sRawUri, PDU_PROJECTION,
-                        "address=? AND reference_number=? AND count=? AND sequence=?",
-                        new String[] {address, refNumber, count, seqNumber}, null);
+                        "address=? AND reference_number=? AND count=? AND sequence=? AND date=? " +
+                                "AND message_body=?",
+                        new String[]{address, refNumber, count, seqNumber, date, messageBody},
+                        null);
 
                 // moveToNext() returns false if no duplicates were found
                 if (cursor.moveToNext()) {
                     loge("Discarding duplicate message segment, refNumber=" + refNumber
-                            + " seqNumber=" + seqNumber);
+                            + " seqNumber=" + seqNumber + " count=" + count);
+                    if (VDBG) {
+                        loge("address=" + address + " date=" + date + " messageBody=" +
+                                messageBody);
+                    }
                     String oldPduString = cursor.getString(PDU_COLUMN);
                     byte[] pdu = tracker.getPdu();
                     byte[] oldPdu = HexDump.hexStringToByteArray(oldPduString);
@@ -1110,15 +1130,16 @@ public abstract class InboundSmsHandler extends StateMachine {
                     }
                     return Intents.RESULT_SMS_DUPLICATED;   // reject message
                 }
-                cursor.close();
             } catch (SQLException e) {
-                loge("Can't access multipart SMS database", e);
+                loge("Can't access SMS database", e);
                 return Intents.RESULT_SMS_GENERIC_ERROR;    // reject message
             } finally {
                 if (cursor != null) {
                     cursor.close();
                 }
             }
+        } else {
+            logd("Skipped message de-duping logic");
         }
 
         ContentValues values = tracker.getContentValues();
@@ -1132,6 +1153,10 @@ public abstract class InboundSmsHandler extends StateMachine {
             if (tracker.getMessageCount() == 1) {
                 // set the delete selection args for single-part message
                 tracker.setDeleteWhere(SELECT_BY_ID, new String[]{Long.toString(rowId)});
+            } else {
+                // set the delete selection args for multi-part message
+                String[] deleteWhereArgs = {address, refNumber, count};
+                tracker.setDeleteWhere(SELECT_BY_REFERENCE, deleteWhereArgs);
             }
             return Intents.RESULT_SMS_HANDLED;
         } catch (Exception e) {
@@ -1212,7 +1237,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                     log("successful broadcast, deleting from raw table.");
                 }
 
-                deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs);
+                deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs, MARK_DELETED);
                 sendMessage(EVENT_BROADCAST_COMPLETE);
 
                 int durationMillis = (int) ((System.nanoTime() - mBroadcastTimeNano) / 1000000);
@@ -1318,7 +1343,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 try {
                     // Needs phone package permissions.
                     deleteFromRawTable(mSmsFilter.mSmsBroadcastReceiver.mDeleteWhere,
-                            mSmsFilter.mSmsBroadcastReceiver.mDeleteWhereArgs);
+                            mSmsFilter.mSmsBroadcastReceiver.mDeleteWhereArgs, MARK_DELETED);
                 } finally {
                     Binder.restoreCallingIdentity(token);
                 }
