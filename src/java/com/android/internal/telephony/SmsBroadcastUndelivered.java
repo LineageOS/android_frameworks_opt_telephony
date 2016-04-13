@@ -60,11 +60,10 @@ public class SmsBroadcastUndelivered {
             "reference_number",
             "count",
             "address",
-            "_id"
+            "_id",
+            "message_body"
     };
 
-    /** URI for raw table from SmsProvider. */
-    private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
     private static SmsBroadcastUndelivered instance;
 
     /** Content resolver to use to access raw table from SmsProvider. */
@@ -135,7 +134,10 @@ public class SmsBroadcastUndelivered {
         HashSet<SmsReferenceKey> oldMultiPartMessages = new HashSet<SmsReferenceKey>(4);
         Cursor cursor = null;
         try {
-            cursor = mResolver.query(sRawUri, PDU_PENDING_MESSAGE_PROJECTION, null, null, null);
+            // query only non-deleted ones
+            cursor = mResolver.query(InboundSmsHandler.sRawUri, PDU_PENDING_MESSAGE_PROJECTION,
+                    "deleted = 0", null,
+                    null);
             if (cursor == null) {
                 Rlog.e(TAG, "error getting pending message cursor");
                 return;
@@ -182,8 +184,9 @@ public class SmsBroadcastUndelivered {
             }
             // Delete old incomplete message segments
             for (SmsReferenceKey message : oldMultiPartMessages) {
-                int rows = mResolver.delete(sRawUri, InboundSmsHandler.SELECT_BY_REFERENCE,
-                        message.getDeleteWhereArgs());
+                // delete permanently
+                int rows = mResolver.delete(InboundSmsHandler.sRawUriPermanentDelete,
+                        InboundSmsHandler.SELECT_BY_REFERENCE, message.getDeleteWhereArgs());
                 if (rows == 0) {
                     Rlog.e(TAG, "No rows were deleted from raw table!");
                 } else if (DBG) {

@@ -56,6 +56,7 @@ import org.mockito.Mock;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.List;
 
 public class GsmInboundSmsHandlerTest extends TelephonyTest {
     @Mock
@@ -77,10 +78,16 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
     private FakeSmsContentProvider mContentProvider;
     private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
+    private static final Uri sRawUriPermanentDelete =
+            Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw/permanentDelete");
+
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
     // For multi-part SMS
     private ContentValues mInboundSmsTrackerCVPart1;
     private ContentValues mInboundSmsTrackerCVPart2;
+    private String mMessageBody = "This is the message body of a single-part message";
+    private String mMessageBodyPart1 = "This is the first part of a multi-part message";
+    private String mMessageBodyPart2 = "This is the second part of a multi-part message";
 
     byte[] mSmsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
 
@@ -93,13 +100,57 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 "destination_port",
                 "address",
                 "sub_id",
-                "pdu"};
-        private MatrixCursor mRawCursor = new MatrixCursor(mRawColumns);
+                "pdu",
+                "deleted",
+                "message_body"};
+        private List<ArrayList<Object>> mListOfRows = new ArrayList<ArrayList<Object>>();
         private int mNumRows = 0;
+
+        private int getColumnIndex(String columnName) {
+            int i = 0;
+            for (String s : mRawColumns) {
+                if (s.equals(columnName)) {
+                    break;
+                }
+                i++;
+            }
+            return i;
+        }
 
         @Override
         public int delete(Uri uri, String selection, String[] selectionArgs) {
-            return 0;
+            int count = 0;
+            if (mNumRows > 0) {
+                // parse selection and selectionArgs
+                SelectionParams selectionParams = new SelectionParams();
+                selectionParams.parseSelectionParams(selection, selectionArgs);
+
+                List<Integer> deleteRows = new ArrayList<Integer>();
+                int i = -1;
+                for (ArrayList<Object> row : mListOfRows) {
+                    i++;
+                    // filter based on selection parameters if needed
+                    if (selection != null) {
+                        if (!selectionParams.isMatch(row)) {
+                            continue;
+                        }
+                    }
+                    if (uri.compareTo(sRawUri) == 0) {
+                        row.set(getColumnIndex("deleted"), "1");
+                    } else {
+                        // save index for removal
+                        deleteRows.add(i);
+                    }
+                    count++;
+                }
+
+                if (uri.compareTo(sRawUriPermanentDelete) == 0) {
+                    for (i = deleteRows.size() - 1; i >= 0; i--) {
+                        mListOfRows.remove(i);
+                    }
+                }
+            }
+            return count;
         }
 
         @Override
@@ -107,7 +158,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
             Uri newUri = null;
             if (uri.compareTo(sRawUri) == 0) {
                 if (values != null) {
-                    mRawCursor.addRow(convertRawCVtoArrayList(values));
+                    mListOfRows.add(convertRawCVtoArrayList(values));
                     mNumRows++;
                     newUri = Uri.withAppendedPath(uri, "" + mNumRows);
                 }
@@ -120,9 +171,11 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
             ArrayList<Object> newRow = new ArrayList<>();
             for (String key : mRawColumns) {
                 if (values.containsKey(key)) {
-                    newRow.add(values.get(key));
+                    newRow.add(values.getAsString(key));
                 } else if (key.equals("_id")) {
                     newRow.add(mNumRows + 1);
+                } else if (key.equals("deleted")) {
+                    newRow.add("0");
                 } else {
                     newRow.add(null);
                 }
@@ -130,15 +183,11 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
             return newRow;
         }
 
-        @Override
-        public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
-                            String sortOrder) {
-            logd("query called for: " + selection);
-            MatrixCursor cursor = new MatrixCursor(projection);
-            if (mNumRows > 0) {
-                // parse selection and selectionArgs
-                String[] paramName = null;
-                String[] paramValue = null;
+        private class SelectionParams {
+            String[] paramName = null;
+            String[] paramValue = null;
+
+            private void parseSelectionParams(String selection, String[] selectionArgs) {
                 if (selection != null) {
                     selection = selection.toLowerCase();
                     String[] selectionParams = selection.toLowerCase().split("and");
@@ -155,40 +204,60 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         } else {
                             paramValue[i] = paramWithArg[1].trim();
                         }
+                        //logd(paramName[i] + " = " + paramValue[i]);
+                        i++;
                     }
                 }
+            }
 
-                mRawCursor.moveToFirst();
-                do {
-                    ArrayList<Object> row = new ArrayList<>();
-                    // filter based on selection parameters if needed
-                    if (selection != null) {
-                        boolean match = true;
-                        for (int i = 0; i < paramName.length; i++) {
-                            for (String columnName : mRawColumns) {
-                                int columnIndex = mRawCursor.getColumnIndex(columnName);
-                                if (columnName.equals(paramName[i]) &&
-                                        !mRawCursor.getString(columnIndex).equals(paramValue[i])) {
-                                    match = false;
-                                    break;
-                                }
-                            }
-                            if (!match) {
+            private boolean isMatch(ArrayList<Object> row) {
+                for (int i = 0; i < paramName.length; i++) {
+                    int columnIndex = 0;
+                    for (String columnName : mRawColumns) {
+                        if (columnName.equals(paramName[i])) {
+                            if ((paramValue[i] == null && row.get(columnIndex) != null) ||
+                                    (paramValue[i] != null &&
+                                            !paramValue[i].equals(row.get(columnIndex)))) {
+                                logd("Not a match due to " + columnName + ": " + paramValue[i] +
+                                        ", " + row.get(columnIndex));
+                                return false;
+                            } else {
+                                // move on to next param
                                 break;
                             }
                         }
-                        // move on to next row if current one does not satisfy selection criteria
-                        if (!match) {
+                        columnIndex++;
+                    }
+                }
+                return true;
+            }
+        }
+
+        @Override
+        public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
+                            String sortOrder) {
+            logd("query called for: " + selection);
+            MatrixCursor cursor = new MatrixCursor(projection);
+            if (mNumRows > 0) {
+                // parse selection and selectionArgs
+                SelectionParams selectionParams = new SelectionParams();
+                selectionParams.parseSelectionParams(selection, selectionArgs);
+
+                for (ArrayList<Object> row : mListOfRows) {
+                    ArrayList<Object> retRow = new ArrayList<>();
+                    // filter based on selection parameters if needed
+                    if (selection != null) {
+                        if (!selectionParams.isMatch(row)) {
                             continue;
                         }
                     }
 
                     for (String columnName : projection) {
-                        int columnIndex = mRawCursor.getColumnIndex(columnName);
-                        row.add(mRawCursor.getString(columnIndex));
+                        int columnIndex = getColumnIndex(columnName);
+                        retRow.add(row.get(columnIndex));
                     }
-                    cursor.addRow(row);
-                } while(mRawCursor.moveToNext());
+                    cursor.addRow(retRow);
+                }
             }
             if (cursor != null) {
                 logd("returning rows: " + cursor.getCount());
@@ -244,10 +313,24 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         }
 
         mSmsMessage.mWrappedSmsMessage = mGsmSmsMessage;
-        doReturn(mSmsPdu).when(mGsmSmsMessage).getPdu();
+        mInboundSmsTrackerCV.put("destination_port", 1 << 16);
+        mInboundSmsTrackerCV.put("pdu", HexDump.toHexString(mSmsPdu));
+        mInboundSmsTrackerCV.put("address", "1234567890");
+        mInboundSmsTrackerCV.put("reference_number", 1);
+        mInboundSmsTrackerCV.put("sequence", 1);
+        mInboundSmsTrackerCV.put("count", 1);
+        mInboundSmsTrackerCV.put("date", System.currentTimeMillis());
+        mInboundSmsTrackerCV.put("message_body", mMessageBody);
+
         doReturn(1).when(mInboundSmsTracker).getMessageCount();
+        doReturn(1).when(mInboundSmsTracker).getReferenceNumber();
+        doReturn("1234567890").when(mInboundSmsTracker).getAddress();
+        doReturn(1).when(mInboundSmsTracker).getSequenceNumber();
+        doReturn(1).when(mInboundSmsTracker).getIndexOffset();
         doReturn(-1).when(mInboundSmsTracker).getDestPort();
+        doReturn(mMessageBody).when(mInboundSmsTracker).getMessageBody();
         doReturn(mSmsPdu).when(mInboundSmsTracker).getPdu();
+        doReturn(mInboundSmsTrackerCV.get("date")).when(mInboundSmsTracker).getTimestamp();
         doReturn(mInboundSmsTrackerCV).when(mInboundSmsTracker).getContentValues();
 
         mContentProvider = new FakeSmsContentProvider();
@@ -316,6 +399,14 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         waitForMs(100);
 
         verifySmsIntentBroadcasts(0);
+
+        // send same SMS again, verify no broadcasts are sent
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
+                new AsyncResult(null, mSmsMessage, null));
+        waitForMs(100);
+
+        verify(mContext, times(2)).sendBroadcast(any(Intent.class));
+        assertEquals("IdleState", getCurrentState().getName());
     }
 
     @Test
@@ -360,6 +451,13 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         waitForMs(100);
 
         verifyDataSmsIntentBroadcasts(0);
+
+        // send same data sms again, and since it's not text sms it should be broadcast again
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_SMS,
+                mInboundSmsTracker);
+        waitForMs(100);
+
+        verifyDataSmsIntentBroadcasts(1);
     }
 
     @Test
@@ -372,6 +470,14 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         waitForMs(100);
 
         verifySmsIntentBroadcasts(0);
+
+        // inject same SMS again, verify no broadcasts are sent
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, new AsyncResult(null,
+                mSmsMessage, null));
+        waitForMs(100);
+
+        verify(mContext, times(2)).sendBroadcast(any(Intent.class));
+        assertEquals("IdleState", getCurrentState().getName());
     }
 
     private void prepareMultiPartSms() {
@@ -383,6 +489,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         mInboundSmsTrackerCVPart1.put("reference_number", 1);
         mInboundSmsTrackerCVPart1.put("sequence", 1);
         mInboundSmsTrackerCVPart1.put("count", 2);
+        mInboundSmsTrackerCVPart1.put("date", System.currentTimeMillis());
+        mInboundSmsTrackerCVPart1.put("message_body", mMessageBodyPart1);
 
         doReturn(2).when(mInboundSmsTrackerPart1).getMessageCount();
         doReturn(1).when(mInboundSmsTrackerPart1).getReferenceNumber();
@@ -390,7 +498,10 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(1).when(mInboundSmsTrackerPart1).getSequenceNumber();
         doReturn(1).when(mInboundSmsTrackerPart1).getIndexOffset();
         doReturn(-1).when(mInboundSmsTrackerPart1).getDestPort();
+        doReturn(mMessageBodyPart1).when(mInboundSmsTrackerPart1).getMessageBody();
         doReturn(mSmsPdu).when(mInboundSmsTrackerPart1).getPdu();
+        doReturn(mInboundSmsTrackerCVPart1.get("date")).when(mInboundSmsTrackerPart1).
+                getTimestamp();
         doReturn(mInboundSmsTrackerCVPart1).when(mInboundSmsTrackerPart1).getContentValues();
 
         // Part 2
@@ -401,6 +512,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         mInboundSmsTrackerCVPart2.put("reference_number", 1);
         mInboundSmsTrackerCVPart2.put("sequence", 2);
         mInboundSmsTrackerCVPart2.put("count", 2);
+        mInboundSmsTrackerCVPart2.put("date", System.currentTimeMillis());
+        mInboundSmsTrackerCVPart2.put("message_body", mMessageBodyPart2);
 
         doReturn(2).when(mInboundSmsTrackerPart2).getMessageCount();
         doReturn(1).when(mInboundSmsTrackerPart2).getReferenceNumber();
@@ -408,7 +521,10 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(2).when(mInboundSmsTrackerPart2).getSequenceNumber();
         doReturn(1).when(mInboundSmsTrackerPart2).getIndexOffset();
         doReturn(-1).when(mInboundSmsTrackerPart2).getDestPort();
+        doReturn(mMessageBodyPart2).when(mInboundSmsTrackerPart2).getMessageBody();
         doReturn(mSmsPdu).when(mInboundSmsTrackerPart2).getPdu();
+        doReturn(mInboundSmsTrackerCVPart2.get("date")).when(mInboundSmsTrackerPart2).
+                getTimestamp();
         doReturn(mInboundSmsTrackerCVPart2).when(mInboundSmsTrackerPart2).getContentValues();
     }
 
@@ -422,10 +538,10 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         mSmsHeader.concatRef = new SmsHeader.ConcatRef();
         doReturn(mSmsHeader).when(mGsmSmsMessage).getUserDataHeader();
+
         doReturn(mInboundSmsTrackerPart1).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
-                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
-
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
         waitForMs(100);
@@ -435,12 +551,47 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         doReturn(mInboundSmsTrackerPart2).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
-                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
         waitForMs(100);
 
+        // verify broadcast intents
         verifySmsIntentBroadcasts(0);
+
+        // if an additional copy of one of the segments above is received, it should not be kept in
+        // the db and should not be combined with any subsequent messages received from the same
+        // sender
+
+        // additional copy of part 2 of message
+        doReturn(mInboundSmsTrackerPart2).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
+                mSmsMessage, null));
+        waitForMs(100);
+
+        // verify no additional broadcasts sent
+        verify(mContext, times(2)).sendBroadcast(any(Intent.class));
+
+        // part 1 of new sms recieved from same sender with same parameters, just different
+        // timestamps, should not be combined with the additional part 2 received above
+
+        // call prepareMultiPartSms() to update timestamps
+        prepareMultiPartSms();
+
+        // part 1 of new sms
+        doReturn(mInboundSmsTrackerPart1).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
+                mSmsMessage, null));
+        waitForMs(100);
+
+        // verify no additional broadcasts sent
+        verify(mContext, times(2)).sendBroadcast(any(Intent.class));
+
+        assertEquals("IdleState", getCurrentState().getName());
     }
 
     @Test
@@ -457,7 +608,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(mSmsHeader).when(mGsmSmsMessage).getUserDataHeader();
         doReturn(mInboundSmsTrackerPart1).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
-                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
 
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
@@ -468,7 +619,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         doReturn(mInboundSmsTrackerPart2).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
-                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
         waitForMs(100);
@@ -496,6 +647,30 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         waitForMs(100);
 
         verifyDataSmsIntentBroadcasts(1);
+    }
+
+    @Test
+    @MediumTest
+    public void testBroadcastUndeliveredDeleted() throws Exception {
+        replaceInstance(SmsBroadcastUndelivered.class, "instance", null, null);
+        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+        doReturn(0).when(mInboundSmsTracker).getDestPort();
+
+        //add a fake entry to db
+        ContentValues rawSms = new ContentValues();
+        rawSms.put("deleted", 1);
+        mContentProvider.insert(sRawUri, rawSms);
+
+        //make it a single-part message
+        doReturn(1).when(mInboundSmsTracker).getMessageCount();
+
+        //when user unlocks the device, broadcast should not be sent for new message
+        mContext.sendBroadcast(new Intent(Intent.ACTION_USER_UNLOCKED));
+        waitForMs(100);
+
+        verify(mContext, times(1)).sendBroadcast(any(Intent.class));
+        assertEquals("IdleState", getCurrentState().getName());
+
     }
 
     @Test
