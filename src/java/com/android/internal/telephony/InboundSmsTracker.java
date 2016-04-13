@@ -37,6 +37,7 @@ public class InboundSmsTracker {
     private final int mDestPort;
     private final boolean mIs3gpp2;
     private final boolean mIs3gpp2WapPdu;
+    private final String mMessageBody;
     // Copied from SmsMessageBase#getDisplayOriginatingAddress used for blocking messages.
     private final String mAddress;
 
@@ -75,12 +76,13 @@ public class InboundSmsTracker {
      * @param address originating address, or email if this message was from an email gateway
      */
     public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
-            boolean is3gpp2WapPdu, String address) {
+            boolean is3gpp2WapPdu, String address, String messageBody) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
         mIs3gpp2 = is3gpp2;
         mIs3gpp2WapPdu = is3gpp2WapPdu;
+        mMessageBody = messageBody;
         mAddress = address;
         // fields for multi-part SMS
         mReferenceNumber = -1;
@@ -107,14 +109,15 @@ public class InboundSmsTracker {
      */
     public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
             String address, int referenceNumber, int sequenceNumber, int messageCount,
-            boolean is3gpp2WapPdu) {
+            boolean is3gpp2WapPdu, String messageBody) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
         mIs3gpp2 = is3gpp2;
         mIs3gpp2WapPdu = is3gpp2WapPdu;
-        // fields for multi-part SMS
+        mMessageBody = messageBody;
         mAddress = address;
+        // fields for multi-part SMS
         mReferenceNumber = referenceNumber;
         mSequenceNumber = sequenceNumber;
         mMessageCount = messageCount;
@@ -175,6 +178,7 @@ public class InboundSmsTracker {
             mDeleteWhereArgs = new String[]{mAddress,
                     Integer.toString(mReferenceNumber), Integer.toString(mMessageCount)};
         }
+        mMessageBody = cursor.getString(InboundSmsHandler.MESSAGE_BODY_COLUMN);
     }
 
     public ContentValues getContentValues() {
@@ -204,6 +208,7 @@ public class InboundSmsTracker {
             values.put("sequence", mSequenceNumber);
             values.put("count", mMessageCount);
         }
+        values.put("message_body", mMessageBody);
         return values;
     }
 
@@ -281,6 +286,10 @@ public class InboundSmsTracker {
 
     public String getAddress() {
         return mAddress;
+    }
+
+    public String getMessageBody() {
+        return mMessageBody;
     }
 
     public int getReferenceNumber() {
