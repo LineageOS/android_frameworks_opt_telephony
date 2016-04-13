@@ -1823,9 +1823,21 @@ public class DataConnection extends StateMachine {
 
         DataCallResponse response = (DataCallResponse) ar.result;
 
-        if (response.suggestedRetryTime == RILConstants.MAX_INT) {
+        /** According to ril.h
+         * The value < 0 means no value is suggested
+         * The value 0 means retry should be done ASAP.
+         * The value of Integer.MAX_VALUE(0x7fffffff) means no retry.
+         */
+
+        // The value < 0 means no value is suggested
+        if (response.suggestedRetryTime < 0) {
             if (DBG) log("No suggested retry delay.");
             return RetryManager.NO_SUGGESTED_RETRY_DELAY;
+        }
+        // The value of Integer.MAX_VALUE(0x7fffffff) means no retry.
+        else if (response.suggestedRetryTime == Integer.MAX_VALUE) {
+            if (DBG) log("Modem suggested not retrying.");
+            return RetryManager.NO_RETRY;
         }
 
         // We need to cast it to long because the value returned from RIL is a 32-bit integer,

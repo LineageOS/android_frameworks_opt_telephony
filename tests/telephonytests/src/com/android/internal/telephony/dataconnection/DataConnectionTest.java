@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -24,6 +25,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
@@ -152,10 +154,18 @@ public class DataConnectionTest extends TelephonyTest {
         super.tearDown();
     }
 
-    private IState getCurrentState() throws Exception{
+    private IState getCurrentState() throws Exception {
         Method method = StateMachine.class.getDeclaredMethod("getCurrentState");
         method.setAccessible(true);
         return (IState) method.invoke(mDc);
+    }
+
+    private long getSuggestedRetryDelay(AsyncResult ar) throws Exception {
+        Class[] cArgs = new Class[1];
+        cArgs[0] = AsyncResult.class;
+        Method method = DataConnection.class.getDeclaredMethod("getSuggestedRetryDelay", cArgs);
+        method.setAccessible(true);
+        return (long) method.invoke(mDc, ar);
     }
 
     @Test
@@ -196,5 +206,44 @@ public class DataConnectionTest extends TelephonyTest {
                 eq(RILConstants.DEACTIVATE_REASON_NONE), any(Message.class));
 
         assertEquals("DcInactiveState", getCurrentState().getName());
+    }
+
+    @Test
+    @SmallTest
+    public void testModemSuggestRetry() throws Exception {
+        DataCallResponse response = new DataCallResponse();
+        response.suggestedRetryTime = 0;
+        AsyncResult ar = new AsyncResult(null, response, null);
+        assertEquals(response.suggestedRetryTime, getSuggestedRetryDelay(ar));
+
+        response.suggestedRetryTime = 1000;
+        assertEquals(response.suggestedRetryTime, getSuggestedRetryDelay(ar));
+
+        response.suggestedRetryTime = 9999;
+        assertEquals(response.suggestedRetryTime, getSuggestedRetryDelay(ar));
+    }
+
+    @Test
+    @SmallTest
+    public void testModemNotSuggestRetry() throws Exception {
+        DataCallResponse response = new DataCallResponse();
+        response.suggestedRetryTime = -1;
+        AsyncResult ar = new AsyncResult(null, response, null);
+        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(ar));
+
+        response.suggestedRetryTime = -5;
+        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(ar));
+
+        response.suggestedRetryTime = Integer.MIN_VALUE;
+        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(ar));
+    }
+
+    @Test
+    @SmallTest
+    public void testModemSuggestNoRetry() throws Exception {
+        DataCallResponse response = new DataCallResponse();
+        response.suggestedRetryTime = Integer.MAX_VALUE;
+        AsyncResult ar = new AsyncResult(null, response, null);
+        assertEquals(RetryManager.NO_RETRY, getSuggestedRetryDelay(ar));
     }
 }
