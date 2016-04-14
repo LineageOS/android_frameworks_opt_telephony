@@ -2210,10 +2210,29 @@ public class ServiceStateTracker extends Handler {
                     && mPhone.getImsPhone() != null
                     && mPhone.getImsPhone().isWifiCallingEnabled()) {
                 // In Wi-Fi Calling mode show SPN+WiFi
-                String formatVoice = mPhone.getContext().getText(
-                        com.android.internal.R.string.wfcSpnFormat).toString();
-                String formatData = mPhone.getContext().getText(
-                        com.android.internal.R.string.wfcDataSpnFormat).toString();
+
+                final String[] wfcSpnFormats =
+                        mPhone.getContext().getResources().getStringArray(
+                                com.android.internal.R.array.wfcSpnFormats);
+                int voiceIdx = 0;
+                int dataIdx = 0;
+                CarrierConfigManager configLoader = (CarrierConfigManager)
+                        mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                if (configLoader != null) {
+                    try {
+                        PersistableBundle b = configLoader.getConfig(mPhone.getSubId());
+                        if (b != null) {
+                            voiceIdx = b.getInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT);
+                            dataIdx = b.getInt(
+                                    CarrierConfigManager.KEY_WFC_DATA_SPN_FORMAT_IDX_INT);
+                        }
+                    } catch (Exception e) {
+                        loge("updateSpnDisplay: carrier config error: " + e);
+                    }
+                }
+
+                String formatVoice = wfcSpnFormats[voiceIdx];
+                String formatData = wfcSpnFormats[dataIdx];
                 String originalSpn = spn.trim();
                 spn = String.format(formatVoice, originalSpn);
                 dataSpn = String.format(formatData, originalSpn);
