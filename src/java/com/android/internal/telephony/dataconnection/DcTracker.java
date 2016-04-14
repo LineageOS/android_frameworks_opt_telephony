@@ -845,8 +845,10 @@ public class DcTracker extends Handler {
 
     private void onDeviceProvisionedChange() {
         if (getDataEnabled()) {
+            mUserDataEnabled = true;
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
+            mUserDataEnabled = false;
             onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
         }
     }
