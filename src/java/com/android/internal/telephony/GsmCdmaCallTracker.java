@@ -1113,11 +1113,14 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
 
         if (conn == mPendingMO) {
-            // We're hanging up an outgoing call that doesn't have it's
-            // GsmCdma index assigned yet
+            // Re-start Ecm timer when an uncompleted emergency call ends
+            if (mIsEcmTimerCanceled) {
+                handleEcmTimer(GsmCdmaPhone.RESTART_ECM_TIMER);
+            }
 
-            if (Phone.DEBUG_PHONE) log("hangup: set hangupPendingMO to true");
-            mHangupPendingMO = true;
+            // Allow HANGUP to RIL during pending MO is present
+            log("hangup conn with callId '-1' as there is no DIAL response yet ");
+            mCi.hangupConnection(-1, obtainCompleteMessage());
         } else if (!isPhoneTypeGsm()
                 && conn.getCall() == mRingingCall
                 && mRingingCall.getState() == GsmCdmaCall.State.WAITING) {
