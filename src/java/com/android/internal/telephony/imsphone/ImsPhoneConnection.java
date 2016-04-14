@@ -952,8 +952,9 @@ public class ImsPhoneConnection extends Connection {
 
     /**
      * Determines the {@link ImsPhoneConnection} audio quality based on the local and remote
-     * {@link ImsCallProfile}. If indicate a HQ audio call if the local stream profile
-     * indicates AMR_WB or EVRC_WB and there is no remote restrict cause.
+     * {@link ImsCallProfile}. Indicate a HD audio call if the local stream profile
+     * is AMR_WB, EVRC_WB, EVS_WB, EVS_SWB, EVS_FB and
+     * there is no remote restrict cause.
      *
      * @param localCallProfile The local call profile.
      * @param remoteCallProfile The remote call profile.
@@ -966,10 +967,18 @@ public class ImsPhoneConnection extends Connection {
             return AUDIO_QUALITY_STANDARD;
         }
 
-        boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
+        final boolean isEvsCodecHighDef = (localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_WB
+                || localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB
+                || localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_FB);
+
+        final boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
                         == ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB
                 || localCallProfile.mMediaProfile.mAudioQuality
-                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB)
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB
+                || isEvsCodecHighDef)
                 && remoteCallProfile.mRestrictCause == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
         return isHighDef ? AUDIO_QUALITY_HIGH_DEFINITION : AUDIO_QUALITY_STANDARD;
     }
@@ -1007,4 +1016,3 @@ public class ImsPhoneConnection extends Connection {
         return mIsEmergency;
     }
 }
-
