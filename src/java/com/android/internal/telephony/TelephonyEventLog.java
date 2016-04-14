@@ -224,15 +224,27 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
         writeEvent(TAG_IMS_CONNECTION_STATE, state, -1, imsReasonInfoToBundle(reasonInfo));
     }
 
+    private final boolean[] mImsCapabilities = {false, false, false, false, false, false};
+
     public void writeOnImsCapabilities(boolean[] capabilities) {
-        Bundle b = new Bundle();
-        b.putBoolean(DATA_KEY_VOLTE, capabilities[0]);
-        b.putBoolean(DATA_KEY_VILTE, capabilities[1]);
-        b.putBoolean(DATA_KEY_VOWIFI, capabilities[2]);
-        b.putBoolean(DATA_KEY_VIWIFI, capabilities[3]);
-        b.putBoolean(DATA_KEY_UTLTE, capabilities[4]);
-        b.putBoolean(DATA_KEY_UTWIFI, capabilities[5]);
-        writeEvent(TAG_IMS_CAPABILITIES, b);
+        boolean changed = false;
+        for (int i = 0; i < capabilities.length; i++) {
+            if (mImsCapabilities[i] != capabilities[i]) {
+                mImsCapabilities[i] = capabilities[i];
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            Bundle b = new Bundle();
+            b.putBoolean(DATA_KEY_VOLTE, capabilities[0]);
+            b.putBoolean(DATA_KEY_VILTE, capabilities[1]);
+            b.putBoolean(DATA_KEY_VOWIFI, capabilities[2]);
+            b.putBoolean(DATA_KEY_VIWIFI, capabilities[3]);
+            b.putBoolean(DATA_KEY_UTLTE, capabilities[4]);
+            b.putBoolean(DATA_KEY_UTWIFI, capabilities[5]);
+            writeEvent(TAG_IMS_CAPABILITIES, b);
+        }
     }
 
     public void writeRilSetupDataCall(int rilSerial,
