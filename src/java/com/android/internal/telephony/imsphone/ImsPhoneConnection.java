@@ -986,8 +986,10 @@ public class ImsPhoneConnection extends Connection {
 
     /**
      * Determines the {@link ImsPhoneConnection} audio quality based on the local and remote
-     * {@link ImsCallProfile}. If indicate a HQ audio call if the local stream profile
-     * indicates AMR_WB or EVRC_WB and there is no remote restrict cause.
+     * {@link ImsCallProfile}. Indicate a HD audio call if the local stream profile
+     * is AMR_WB, EVRC_WB, EVS_WB, EVS_SWB, EVS_FB (EVS codec is considered only if the
+     * operator supports HD on EVS) and
+     * there is no remote restrict cause.
      *
      * @param localCallProfile The local call profile.
      * @param remoteCallProfile The remote call profile.
@@ -1000,12 +1002,44 @@ public class ImsPhoneConnection extends Connection {
             return AUDIO_QUALITY_STANDARD;
         }
 
-        boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
+        final boolean isEvsCodecHighDef = getBooleanCarrierConfig(mOwner.mPhone.getContext(),
+                CarrierConfigManager.KEY_IMS_SUPPORT_EVS_HD_ICON_BOOL) &&
+                (localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_WB
+                || localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB
+                || localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_FB);
+
+        final boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
                         == ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB
                 || localCallProfile.mMediaProfile.mAudioQuality
-                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB)
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB
+                || isEvsCodecHighDef)
                 && remoteCallProfile.mRestrictCause == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
         return isHighDef ? AUDIO_QUALITY_HIGH_DEFINITION : AUDIO_QUALITY_STANDARD;
+    }
+
+    /**
+     * Get the boolean config from carrier config manager.
+     *
+     * @param context the context to get carrier service
+     * @param key config key defined in CarrierConfigManager
+     * @return boolean value of corresponding key.
+     */
+    private boolean getBooleanCarrierConfig(Context context, String key) {
+        CarrierConfigManager configManager = (CarrierConfigManager) context.getSystemService(
+                Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = null;
+        if (configManager != null) {
+            b = configManager.getConfig();
+        }
+        if (b != null) {
+            return b.getBoolean(key);
+        } else {
+            // Return static default defined in CarrierConfigManager.
+            return CarrierConfigManager.getDefaultConfig().getBoolean(key);
+        }
     }
 
     /**
@@ -1039,4 +1073,3 @@ public class ImsPhoneConnection extends Connection {
         return mIsEmergency;
     }
 }
-
