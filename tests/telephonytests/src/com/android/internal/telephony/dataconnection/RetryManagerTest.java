@@ -926,6 +926,49 @@ public class RetryManagerTest extends TelephonyTest {
     }
 
     /**
+     * Test the scenario where modem suggests not retrying
+     */
+    @Test
+    @SmallTest
+    public void testRetryManagerModemSuggestedNoRetry() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000,7000,9000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = new ApnSetting(mApn1);
+        ApnSetting myApn2 = new ApnSetting(mApn2);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        // Modem suggests retrying the current APN
+        rm.setModemSuggestedDelay(2500);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2500, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        rm.setModemSuggestedDelay(RetryManager.NO_RETRY);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+    }
+
+    /**
      * Test the scenario where modem suggests the same retry for too many times
      */
     @Test
