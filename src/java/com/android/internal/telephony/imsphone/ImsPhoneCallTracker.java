@@ -227,7 +227,7 @@ public class ImsPhoneCallTracker extends CallTracker {
     public ImsPhoneCallTracker(ImsPhone phone) {
         this.mPhone = phone;
 
-        mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
+        mEventLog = new TelephonyEventLog(mPhone.getPhoneId());
 
         IntentFilter intentfilter = new IntentFilter();
         intentfilter.addAction(ImsManager.ACTION_IMS_INCOMING_CALL);
