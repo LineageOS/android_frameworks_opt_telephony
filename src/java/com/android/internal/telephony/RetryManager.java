@@ -491,6 +491,11 @@ public class RetryManager {
             return NO_RETRY;
         }
 
+        if (mModemSuggestedDelay == NO_RETRY) {
+            log("Modem suggested not retrying.");
+            return NO_RETRY;
+        }
+
         if (mModemSuggestedDelay != NO_SUGGESTED_RETRY_DELAY &&
                 mSameApnRetryCount < MAX_SAME_APN_RETRY) {
             // If the modem explicitly suggests a retry delay, we should use it, even in fail fast

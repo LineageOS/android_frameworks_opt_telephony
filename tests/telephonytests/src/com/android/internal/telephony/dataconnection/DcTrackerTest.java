@@ -37,7 +37,6 @@ import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -314,7 +313,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         dcResponse.version = 11;
         dcResponse.status = 0;
-        dcResponse.suggestedRetryTime = RILConstants.MAX_INT; // No retry suggested by the modem
+        dcResponse.suggestedRetryTime = Integer.MAX_VALUE; // No retry suggested by the modem
         dcResponse.cid = 1;
         dcResponse.active = 2;
         dcResponse.type = "IP";

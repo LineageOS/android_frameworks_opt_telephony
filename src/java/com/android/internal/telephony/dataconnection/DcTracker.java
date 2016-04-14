@@ -2241,6 +2241,8 @@ public class DcTracker extends Handler {
 
         // Use the exact timer instead of the inexact one to provide better user experience.
         // In some extreme cases, we saw the retry was delayed for few minutes.
+        // Note that if the stated trigger time is in the past, the alarm will be triggered
+        // immediately.
         mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
     }
@@ -2900,7 +2902,7 @@ public class DcTracker extends Handler {
         long delay = apnContext.getDelayForNextApn(mFailFast);
 
         // Check if we need to retry or not.
-        if (delay > 0) {
+        if (delay >= 0) {
             if (DBG) log("onDataSetupCompleteError: Try next APN. delay = " + delay);
             apnContext.setState(DctConstants.State.SCANNING);
             // Wait a bit before trying the next APN, so that
