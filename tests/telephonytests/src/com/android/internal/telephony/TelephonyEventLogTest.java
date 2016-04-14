@@ -19,18 +19,15 @@ package com.android.internal.telephony;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsReasonInfo;
 
-import android.content.ComponentName;
-import android.content.Intent;
-import android.content.ServiceConnection;
+import android.net.ConnectivityMetricsEvent;
+import android.net.ConnectivityMetricsLogger;
+import android.net.IConnectivityMetricsLogger;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.test.mock.MockContext;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArrayMap;
-import android.util.Log;
-import android.util.SparseArray;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -41,49 +38,39 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
-import java.lang.reflect.Field;
-
-public class TelephonyEventLogTest {
+public class TelephonyEventLogTest extends TelephonyTest {
     private static final String TAG = "TelephonyEventLogTest";
 
     @Mock
-    ITelephonyDebug.Stub mBinder;
+    private IConnectivityMetricsLogger.Stub mConnectivityMetricsLogger;
 
-    private EventLogContext mContext;
     private TelephonyEventLog mEventLog;
 
-    private class EventLogContext extends MockContext {
-
-        ITelephonyDebug.Stub mBinder;
-
-        private EventLogContext(ITelephonyDebug.Stub binder) {
-            mBinder = binder;
-        }
-
-        @Override
-        public boolean bindService(Intent serviceIntent, ServiceConnection connection, int flags) {
-            connection.onServiceConnected(new ComponentName("test", "test"), mBinder);
-            return true;
-        }
-
-        @Override
-        public String getPackageName() {
-            return "com.android.internal.telephony";
-        }
-    }
-
-    private static final class BundleMatcher extends BaseMatcher<Bundle> {
+    private static final class TelephonyEventMatcher extends BaseMatcher<ConnectivityMetricsEvent> {
+        int mEventTag;
         ArrayMap<String, Object> mMap = null;
 
-        public BundleMatcher(ArrayMap<String, Object> m) {
+        public TelephonyEventMatcher(int eventTag, ArrayMap<String, Object> m) {
+            mEventTag = eventTag;
             mMap = m;
         }
 
         @Override
         public boolean matches(Object item) {
-            Bundle b = (Bundle) item;
+            ConnectivityMetricsEvent e = (ConnectivityMetricsEvent) item;
+
+            if (e.componentTag != ConnectivityMetricsLogger.COMPONENT_TAG_TELEPHONY) {
+                logd("Component Tag, actual: " + e.componentTag);
+                return false;
+            }
+
+            if (e.eventTag != mEventTag) {
+                logd("Component Tag, expected: " + mEventTag + ", actual: " + e.eventTag);
+                return false;
+            }
+
+            Bundle b = (Bundle) e.data;
 
             // compare only values stored in the map
             for (int i=0; i < mMap.size(); i++) {
@@ -100,31 +87,27 @@ public class TelephonyEventLogTest {
 
         @Override
         public void describeTo(Description description) {
-            description.appendText(mMap.toString());
+            description.appendText(" tag: " + mEventTag);
+            description.appendText(", data: " + mMap.toString());
         }
     }
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        logd("setUp start");
+        super.setUp(TAG);
 
-        mContext = new EventLogContext(mBinder);
+        doReturn(mConnectivityMetricsLogger)
+                .when(mConnMetLoggerBinder)
+                .queryLocalInterface(anyString());
 
-        doReturn(mBinder).when(mBinder).
-                queryLocalInterface(eq("com.android.internal.telephony.ITelephonyDebug"));
-
-        //Use reflection to modify singleton
-        Field field = TelephonyEventLog.class.getDeclaredField("sInstances");
-        field.setAccessible(true);
-        SparseArray<TelephonyEventLog> instances = (SparseArray<TelephonyEventLog>)field.get(null);
-        instances.clear();
-
-        mEventLog = TelephonyEventLog.getInstance(mContext, 0);
+        mEventLog = new TelephonyEventLog(0);
     }
 
     @After
     public void tearDown() throws Exception {
         mEventLog = null;
+        super.tearDown();
     }
 
     @Test @SmallTest
@@ -155,10 +138,13 @@ public class TelephonyEventLogTest {
         m.put("radioTechnology", ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         m.put("dataRadioTechnology", ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
 
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, -1);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, -1);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SERVICE_STATE), eq(-1), eq(-1),
-                    argThat(new BundleMatcher(m)));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SERVICE_STATE, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -168,22 +154,25 @@ public class TelephonyEventLogTest {
     public void testWriteSetAirplaneMode() {
         mEventLog.writeSetAirplaneMode(true);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_AIRPLANE_MODE);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 1);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_AIRPLANE_MODE), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
 
         mEventLog.writeSetAirplaneMode(false);
 
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 0);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_AIRPLANE_MODE), eq(0),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -193,22 +182,25 @@ public class TelephonyEventLogTest {
     public void testWriteSetCellDataEnabled() {
         mEventLog.writeSetCellDataEnabled(true);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_CELL_DATA_ENABLED);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 1);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_CELL_DATA_ENABLED), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
 
         mEventLog.writeSetCellDataEnabled(false);
 
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 0);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_CELL_DATA_ENABLED), eq(0),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -218,22 +210,25 @@ public class TelephonyEventLogTest {
     public void testWriteSetDataRoamingEnabled() {
         mEventLog.writeSetDataRoamingEnabled(true);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_DATA_ROAMING_ENABLED);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 1);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_DATA_ROAMING_ENABLED), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
 
         mEventLog.writeSetDataRoamingEnabled(false);
 
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 0);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_DATA_ROAMING_ENABLED), eq(0),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -243,12 +238,14 @@ public class TelephonyEventLogTest {
     public void testWriteSetPreferredNetworkType() {
         mEventLog.writeSetPreferredNetworkType(RILConstants.NETWORK_MODE_GLOBAL);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_PREFERRED_NETWORK_MODE);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, RILConstants.NETWORK_MODE_GLOBAL);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_PREFERRED_NETWORK_MODE),
-                    eq(RILConstants.NETWORK_MODE_GLOBAL),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -258,22 +255,25 @@ public class TelephonyEventLogTest {
     public void testWriteSetWifiEnabled() {
         mEventLog.writeSetWifiEnabled(true);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_WIFI_ENABLED);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 1);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_WIFI_ENABLED), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
 
         mEventLog.writeSetWifiEnabled(false);
 
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 0);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_WIFI_ENABLED), eq(0),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -283,12 +283,14 @@ public class TelephonyEventLogTest {
     public void testWriteSetWfcMode() {
         mEventLog.writeSetWfcMode(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_WFC_MODE);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_WFC_MODE),
-                    eq(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -299,11 +301,14 @@ public class TelephonyEventLogTest {
         mEventLog.writeImsSetFeatureValue(ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE,
                 TelephonyManager.NETWORK_TYPE_LTE, 1, ImsConfig.OperationStatusConstants.SUCCESS);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_VO_LTE_ENABLED);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, 1);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_VO_LTE_ENABLED), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -311,11 +316,11 @@ public class TelephonyEventLogTest {
         mEventLog.writeImsSetFeatureValue(ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI,
                 TelephonyManager.NETWORK_TYPE_IWLAN, 1, ImsConfig.OperationStatusConstants.SUCCESS);
 
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_VO_WIFI_ENABLED);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_VO_WIFI_ENABLED), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -323,11 +328,11 @@ public class TelephonyEventLogTest {
         mEventLog.writeImsSetFeatureValue(ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE,
                 TelephonyManager.NETWORK_TYPE_LTE, 1, ImsConfig.OperationStatusConstants.SUCCESS);
 
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_VI_LTE_ENABLED);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_VI_LTE_ENABLED), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -335,11 +340,11 @@ public class TelephonyEventLogTest {
         mEventLog.writeImsSetFeatureValue(ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI,
                 TelephonyManager.NETWORK_TYPE_IWLAN, 1, ImsConfig.OperationStatusConstants.SUCCESS);
 
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.SETTING_VI_WIFI_ENABLED);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_SETTINGS),
-                    eq(TelephonyEventLog.SETTING_VI_WIFI_ENABLED), eq(1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(TelephonyEventLog.TAG_SETTINGS, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -350,12 +355,15 @@ public class TelephonyEventLogTest {
         mEventLog.writeOnImsConnectionState(
                 TelephonyEventLog.IMS_CONNECTION_STATE_CONNECTED, null);
 
+        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1, TelephonyEventLog.IMS_CONNECTION_STATE_CONNECTED);
+        m.put(TelephonyEventLog.DATA_KEY_PARAM2, -1);
+
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_IMS_CONNECTION_STATE),
-                    eq(TelephonyEventLog.IMS_CONNECTION_STATE_CONNECTED),
-                    eq(-1),
-                    isNull(Bundle.class));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(
+                            TelephonyEventLog.TAG_IMS_CONNECTION_STATE, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
@@ -364,23 +372,18 @@ public class TelephonyEventLogTest {
                 TelephonyEventLog.IMS_CONNECTION_STATE_DISCONNECTED,
                 new ImsReasonInfo(1, 2, "test"));
 
-        ArrayMap<String, Object> m = new ArrayMap<>();
+        m.put(TelephonyEventLog.DATA_KEY_PARAM1,
+                TelephonyEventLog.IMS_CONNECTION_STATE_DISCONNECTED);
         m.put(TelephonyEventLog.DATA_KEY_REASONINFO_CODE, 1);
         m.put(TelephonyEventLog.DATA_KEY_REASONINFO_EXTRA_CODE, 2);
         m.put(TelephonyEventLog.DATA_KEY_REASONINFO_EXTRA_MESSAGE, "test");
 
         try {
-            verify(mContext.mBinder).writeEvent(anyLong(), eq(0),
-                    eq(TelephonyEventLog.TAG_IMS_CONNECTION_STATE),
-                    eq(TelephonyEventLog.IMS_CONNECTION_STATE_DISCONNECTED),
-                    eq(-1),
-                    argThat(new BundleMatcher(m)));
+            verify(mConnectivityMetricsLogger).logEvent(
+                    argThat(new TelephonyEventMatcher(
+                            TelephonyEventLog.TAG_IMS_CONNECTION_STATE, m)));
         } catch (RemoteException e) {
             fail(e.toString());
         }
-    }
-
-    private static void logd(String s) {
-        Log.d(TAG, s);
     }
 }

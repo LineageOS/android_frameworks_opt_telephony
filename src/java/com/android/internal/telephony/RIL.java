@@ -719,7 +719,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         TelephonyDevController tdc = TelephonyDevController.getInstance();
         tdc.registerRIL(this);
 
-        mEventLog = TelephonyEventLog.getInstance(mContext, mInstanceId);
+        mEventLog = new TelephonyEventLog(mInstanceId);
     }
 
     //***** CommandsInterface implementation

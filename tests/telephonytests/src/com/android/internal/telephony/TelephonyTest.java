@@ -136,10 +136,6 @@ public abstract class TelephonyTest {
     @Mock
     protected WspTypeDecoder mWspTypeDecoder;
     @Mock
-    protected SparseArray<TelephonyEventLog> mTelephonyEventLogInstances;
-    @Mock
-    protected TelephonyEventLog mTelephonyEventLog;
-    @Mock
     protected UiccCardApplication mUiccCardApplication3gpp;
     @Mock
     protected UiccCardApplication mUiccCardApplication3gpp2;
@@ -171,6 +167,8 @@ public abstract class TelephonyTest {
     protected PackageInfo mPackageInfo;
     @Mock
     protected EriManager mEriManager;
+    @Mock
+    protected IBinder mConnMetLoggerBinder;
 
     protected TelephonyManager mTelephonyManager;
     protected SimulatedCommands mSimulatedCommands;
@@ -284,7 +282,6 @@ public abstract class TelephonyTest {
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
         replaceInstance(ActivityManagerNative.class, "gDefault", null, mIActivityManagerSingleton);
-        replaceInstance(TelephonyEventLog.class, "sInstances", null, mTelephonyEventLogInstances);
         replaceInstance(CdmaSubscriptionSourceManager.class,
                 "mCdmaSubscriptionSourceChangedRegistrants", mCdmaSSM, mRegistrantList);
         replaceInstance(SimulatedCommandsVerifier.class, "sInstance", null,
@@ -400,13 +397,13 @@ public abstract class TelephonyTest {
         mImsManagerInstances.put(mPhone.getPhoneId(), null);
         doReturn(mImsEcbm).when(mImsManager).getEcbmInterface(anyInt());
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
-        doReturn(mTelephonyEventLog).when(mTelephonyEventLogInstances).get(anyInt());
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
         doReturn(mIBinder).when(mIIntentSender).asBinder();
         doReturn(mIIntentSender).when(mIActivityManager).getIntentSender(anyInt(),
                 anyString(), any(IBinder.class), anyString(), anyInt(), any(Intent[].class),
                 any(String[].class), anyInt(), any(Bundle.class), anyInt());
         mSST.mSS = mServiceState;
+        mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
 
         setReady(false);
     }
