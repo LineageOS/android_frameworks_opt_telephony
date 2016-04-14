@@ -28,6 +28,7 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -36,6 +37,7 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 
 import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
@@ -1445,9 +1447,25 @@ public class ImsPhone extends ImsPhoneBase {
         if (imsReasonInfo.mCode == imsReasonInfo.CODE_REGISTRATION_ERROR
                 && imsReasonInfo.mExtraMessage != null) {
 
+            CarrierConfigManager configManager =
+                    (CarrierConfigManager)mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager == null) {
+                Rlog.e(LOG_TAG, "processDisconnectReason: CarrierConfigManager is not ready");
+                return;
+            }
+            PersistableBundle pb = configManager.getConfig(getSubId());
+            if (pb == null) {
+                Rlog.e(LOG_TAG, "processDisconnectReason: no config for subId " + getSubId());
+                return;
+            }
             final String[] wfcOperatorErrorCodes =
-                    mContext.getResources().getStringArray(
-                            com.android.internal.R.array.wfcOperatorErrorCodes);
+                    pb.getStringArray(
+                            CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY);
+            if (wfcOperatorErrorCodes == null) {
+                // no operator-specific error codes
+                return;
+            }
+
             final String[] wfcOperatorErrorAlertMessages =
                     mContext.getResources().getStringArray(
                             com.android.internal.R.array.wfcOperatorErrorAlertMessages);
@@ -1456,17 +1474,23 @@ public class ImsPhone extends ImsPhoneBase {
                             com.android.internal.R.array.wfcOperatorErrorNotificationMessages);
 
             for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
+                String[] codes = wfcOperatorErrorCodes[i].split("|");
+                if (codes.length != 2) {
+                    Rlog.e(LOG_TAG, "Invalid carrier config: " + wfcOperatorErrorCodes[i]);
+                    continue;
+                }
+
                 // Match error code.
                 if (!imsReasonInfo.mExtraMessage.startsWith(
-                        wfcOperatorErrorCodes[i])) {
+                        codes[0])) {
                     continue;
                 }
                 // If there is no delimiter at the end of error code string
                 // then we need to verify that we are not matching partial code.
                 // EXAMPLE: "REG9" must not match "REG99".
                 // NOTE: Error code must not be empty.
-                int codeStringLength = wfcOperatorErrorCodes[i].length();
-                char lastChar = wfcOperatorErrorCodes[i].charAt(codeStringLength-1);
+                int codeStringLength = codes[0].length();
+                char lastChar = codes[0].charAt(codeStringLength - 1);
                 if (Character.isLetterOrDigit(lastChar)) {
                     if (imsReasonInfo.mExtraMessage.length() > codeStringLength) {
                         char nextChar = imsReasonInfo.mExtraMessage.charAt(codeStringLength);
@@ -1479,13 +1503,20 @@ public class ImsPhone extends ImsPhoneBase {
                 final CharSequence title = mContext.getText(
                         com.android.internal.R.string.wfcRegErrorTitle);
 
+                int idx = Integer.parseInt(codes[1]);
+                if (idx < 0 ||
+                        idx >= wfcOperatorErrorAlertMessages.length ||
+                        idx >= wfcOperatorErrorNotificationMessages.length) {
+                    Rlog.e(LOG_TAG, "Invalid index: " + wfcOperatorErrorCodes[i]);
+                    continue;
+                }
                 CharSequence messageAlert = imsReasonInfo.mExtraMessage;
                 CharSequence messageNotification = imsReasonInfo.mExtraMessage;
-                if (!wfcOperatorErrorAlertMessages[i].isEmpty()) {
-                    messageAlert = wfcOperatorErrorAlertMessages[i];
+                if (!wfcOperatorErrorAlertMessages[idx].isEmpty()) {
+                    messageAlert = wfcOperatorErrorAlertMessages[idx];
                 }
-                if (!wfcOperatorErrorNotificationMessages[i].isEmpty()) {
-                    messageNotification = wfcOperatorErrorNotificationMessages[i];
+                if (!wfcOperatorErrorNotificationMessages[idx].isEmpty()) {
+                    messageNotification = wfcOperatorErrorNotificationMessages[idx];
                 }
 
                 // UX requirement is to disable WFC in case of "permanent" registration failures.
