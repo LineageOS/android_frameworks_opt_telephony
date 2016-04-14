@@ -153,7 +153,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
         updatePhoneType(true);
 
-        mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
+        mEventLog = new TelephonyEventLog(mPhone.getPhoneId());
     }
 
     public void updatePhoneType() {

@@ -5,14 +5,15 @@ import com.android.ims.ImsReasonInfo;
 import com.android.ims.internal.ImsCallSession;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
-import com.android.internal.telephony.ITelephonyDebug;
 
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.ConnectivityMetricsLogger;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Parcel;
 import android.os.RemoteException;
 import android.telephony.ServiceState;
 import android.util.Log;
@@ -27,7 +28,7 @@ import static com.android.internal.telephony.RILConstants.*;
  *
  * @hide
  */
-public class TelephonyEventLog {
+public class TelephonyEventLog extends ConnectivityMetricsLogger {
     private static String TAG = "TelephonyEventLog";
     private static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true
@@ -99,6 +100,10 @@ public class TelephonyEventLog {
     public static final int IMS_CONNECTION_STATE_RESUMED = 4;
     public static final int IMS_CONNECTION_STATE_SUSPENDED = 5;
 
+    public static final String DATA_KEY_PHONE_ID = "phoneId";
+    public static final String DATA_KEY_PARAM1 = "param1";
+    public static final String DATA_KEY_PARAM2 = "param2";
+
     public static final String DATA_KEY_REASONINFO_CODE = "code";
     public static final String DATA_KEY_REASONINFO_EXTRA_CODE = "extra-code";
     public static final String DATA_KEY_REASONINFO_EXTRA_MESSAGE = "extra-message";
@@ -137,41 +142,11 @@ public class TelephonyEventLog {
     public static final String DATA_KEY_TARGET_TECH = "target-tech";
 
     int mPhoneId;
-    private ITelephonyDebug mService;
 
-    private static final SparseArray<TelephonyEventLog> sInstances =
-            new SparseArray<TelephonyEventLog>();
+    public TelephonyEventLog(int phoneId) {
+        super();
 
-    public static TelephonyEventLog getInstance(Context context, int phoneId) {
-        synchronized (sInstances) {
-            if (sInstances.get(phoneId) == null) {
-                TelephonyEventLog mgr = new TelephonyEventLog(context, phoneId);
-                sInstances.put(phoneId, mgr);
-            }
-
-            return sInstances.get(phoneId);
-        }
-    }
-
-    private TelephonyEventLog(Context context, int phoneId) {
         mPhoneId = phoneId;
-
-        final Intent intent = new Intent();
-        intent.setClassName(context, "com.android.phone.TelephonyDebugService");
-
-        ServiceConnection connection = new ServiceConnection() {
-            public void onServiceConnected(ComponentName className, IBinder service) {
-                if (DBG) Log.d(TAG, "onServiceConnected()");
-                mService = ITelephonyDebug.Stub.asInterface(service);
-            }
-
-            public void onServiceDisconnected(ComponentName className) {
-                if (DBG) Log.d(TAG, "onServiceDisconnected()");
-                mService = null;
-            }
-        };
-
-        context.bindService(intent, connection, Context.BIND_AUTO_CREATE);
     }
 
     private void writeEvent(int tag, Bundle data) {
@@ -187,19 +162,15 @@ public class TelephonyEventLog {
     }
 
     private void writeEvent(long timestamp, int tag, int param1, int param2, Bundle data) {
-        if (mService == null) {
-            if (VDBG) {
-                Log.d(TAG, "writeEvent("+tag+","+param1+","+param2+","+data+")"
-                        + " Service not ready");
-            }
-            return;
+        Bundle b = data;
+        if (b == null) {
+            b = new Bundle();
         }
+        b.putInt(DATA_KEY_PHONE_ID, mPhoneId);
+        b.putInt(DATA_KEY_PARAM1, param1);
+        b.putInt(DATA_KEY_PARAM2, param2);
 
-        try {
-            mService.writeEvent(timestamp, mPhoneId, tag, param1, param2, data);
-        } catch (RemoteException e) {
-            Log.e(TAG, e.toString());
-        }
+        logEvent(timestamp, ConnectivityMetricsLogger.COMPONENT_TAG_TELEPHONY, tag, b);
     }
 
     public void writeServiceStateChanged(ServiceState serviceState) {
