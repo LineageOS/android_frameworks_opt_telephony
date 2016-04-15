@@ -404,8 +404,7 @@ public class ApnSetting {
         return false;
     }
 
-    public boolean isMetered(Context context, int subId) {
-
+    public static boolean isMeteredApnType(String type, Context context, int subId) {
         synchronized (sMeteredApnTypes) {
             HashSet<String> meteredApnSet = sMeteredApnTypes.get(subId);
 
@@ -435,35 +434,41 @@ public class ApnSetting {
 
                 meteredApnSet = new HashSet<String>(Arrays.asList(meteredApnTypes));
                 sMeteredApnTypes.put(subId, meteredApnSet);
+                if (DBG) {
+                    Rlog.d(LOG_TAG, "For subId = " + subId + ", metered APN types are " +
+                            Arrays.toString(meteredApnSet.toArray()));
+                }
             }
-
-            if (DBG) {
-                Rlog.d(LOG_TAG, "For subId = " + subId + ", metered APN types are " +
-                        Arrays.toString(meteredApnSet.toArray()));
-            }
-
             // If all types of APN are metered, then this APN setting must be metered.
             if (meteredApnSet.contains(PhoneConstants.APN_TYPE_ALL)) {
                 if (DBG) Rlog.d(LOG_TAG, "All APN types are metered.");
                 return true;
             }
 
-            for (String type : types) {
-                // If one of the APN type is metered, then this APN setting is metered.
-                if (meteredApnSet.contains(type)) {
-                    if (DBG) Rlog.d(LOG_TAG, type + " is metered.");
+            if (meteredApnSet.contains(type)) {
+                if (DBG) Rlog.d(LOG_TAG, type + " is metered.");
+                return true;
+            } else if (type.equals(PhoneConstants.APN_TYPE_ALL)) {
+                // Assuming no configuration error, if at least one APN type is
+                // metered, then this APN setting is metered.
+                if (meteredApnSet.size() > 0) {
+                    if (DBG) Rlog.d(LOG_TAG, "APN_TYPE_ALL APN is metered.");
                     return true;
-                } else if (type.equals(PhoneConstants.APN_TYPE_ALL)) {
-                    // Assuming no configuration error, if at least one APN type is
-                    // metered, then this APN setting is metered.
-                    if (meteredApnSet.size() > 0) {
-                        if (DBG) Rlog.d(LOG_TAG, "APN_TYPE_ALL APN is metered.");
-                        return true;
-                    }
                 }
             }
         }
+        if (DBG) Rlog.d(LOG_TAG, type + " is not metered.");
+        return false;
+    }
 
+    public boolean isMetered(Context context, int subId) {
+        for (String type : types) {
+            // If one of the APN type is metered, then this APN setting is metered.
+            if (isMeteredApnType(type, context, subId)) {
+                if (DBG) Rlog.d(LOG_TAG, "Metered. APN = " + toString());
+                return true;
+            }
+        }
         if (DBG) Rlog.d(LOG_TAG, "Not metered. APN = " + toString());
         return false;
     }
