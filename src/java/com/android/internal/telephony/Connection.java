@@ -850,6 +850,13 @@ public abstract class Connection {
     }
 
     /**
+     * Called by a {@link android.telecom.Connection} to indicate that this call should be pulled
+     * to the local device.
+     */
+    public void pullExternalCall() {
+    }
+
+    /**
      *
      */
     public int getPhoneType() {

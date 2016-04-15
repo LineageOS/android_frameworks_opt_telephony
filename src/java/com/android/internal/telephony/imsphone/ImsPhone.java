@@ -50,6 +50,7 @@ import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
+import com.android.ims.ImsMultiEndpoint;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
@@ -125,6 +126,7 @@ public class ImsPhone extends ImsPhoneBase {
     // Instance Variables
     Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
+    ImsMultiEndpoint mImsMultiEndpoint;
     ImsExternalCallTracker mExternalCallTracker;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
@@ -184,7 +186,15 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone = defaultPhone;
         mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
         mExternalCallTracker =
-                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this);
+                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this, mCT);
+        try {
+            mImsMultiEndpoint = mCT.getMultiEndpointInterface();
+            mImsMultiEndpoint.setExternalCallStateListener(
+                    mExternalCallTracker.getExternalCallStateListener());
+        } catch (ImsException e) {
+            Rlog.i(LOG_TAG, "ImsMultiEndpointInterface is not available.");
+        }
+
         mSS.setStateOff();
 
         mPhoneId = mDefaultPhone.getPhoneId();

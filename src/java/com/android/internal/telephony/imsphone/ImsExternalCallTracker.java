@@ -16,7 +16,9 @@
 
 package com.android.internal.telephony.imsphone;
 
+import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsExternalCallState;
+import com.android.ims.ImsExternalCallStateListener;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -36,6 +38,28 @@ import java.util.Map;
  */
 public class ImsExternalCallTracker {
 
+    /**
+     * Implements the {@link ImsExternalCallStateListener}, which is responsible for receiving
+     * external call state updates from the IMS framework.
+     */
+    public class ExternalCallStateListener extends ImsExternalCallStateListener {
+        @Override
+        public void onImsExternalCallStateUpdate(List<ImsExternalCallState> externalCallState) {
+            refreshExternalCallState(externalCallState);
+        }
+    }
+
+    /**
+     * Receives callbacks from {@link ImsExternalConnection}s when a call pull has been initiated.
+     */
+    public class ExternalConnectionListener implements ImsExternalConnection.Listener {
+        @Override
+        public void onPullExternalCall(ImsExternalConnection connection) {
+            Log.d(TAG, "onPullExternalCall: connection = " + connection);
+            mCallPuller.pullExternalCall(connection.getAddress(), connection.getVideoState());
+        }
+    }
+
     public final static String TAG = "ImsExternalCallTracker";
 
     /**
@@ -54,12 +78,21 @@ public class ImsExternalCallTracker {
      * Used in multi-endpoint (VoLTE for internet connected endpoints) scenarios.
      */
     private Map<Integer, ImsExternalConnection> mExternalConnections =
-            new ArrayMap<Integer, ImsExternalConnection>();
+            new ArrayMap<>();
+    private final ImsPhone mPhone;
+    private final ExternalCallStateListener mExternalCallStateListener;
+    private final ExternalConnectionListener mExternalConnectionListener =
+            new ExternalConnectionListener();
+    private final ImsPullCall mCallPuller;
 
-    private ImsPhone mPhone;
-
-    public ImsExternalCallTracker(ImsPhone phone) {
+    public ImsExternalCallTracker(ImsPhone phone, ImsPullCall callPuller) {
         mPhone = phone;
+        mExternalCallStateListener = new ExternalCallStateListener();
+        mCallPuller = callPuller;
+    }
+
+    public ExternalCallStateListener getExternalCallStateListener() {
+        return mExternalCallStateListener;
     }
 
     /**
@@ -85,6 +118,7 @@ public class ImsExternalCallTracker {
             if (!containsCallId(externalCallStates, callId)) {
                 ImsExternalConnection externalConnection = entry.getValue();
                 externalConnection.setTerminated();
+                externalConnection.removeListener(mExternalConnectionListener);
                 connectionIterator.remove();
                 wasCallRemoved = true;
             }
@@ -136,6 +170,8 @@ public class ImsExternalCallTracker {
                 state.getCallId(), /* Dialog event package call id */
                 state.getAddress().getSchemeSpecificPart() /* phone number */,
                 state.isCallPullable());
+        connection.setVideoState(ImsCallProfile.getVideoStateFromCallType(state.getCallType()));
+        connection.addListener(mExternalConnectionListener);
 
         // Add to list of tracked connections.
         mExternalConnections.put(connection.getCallId(), connection);
@@ -165,12 +201,18 @@ public class ImsExternalCallTracker {
                 connection.setActive();
             } else {
                 connection.setTerminated();
+                connection.removeListener(mExternalConnectionListener);
                 mExternalConnections.remove(connection);
                 mPhone.notifyPreciseCallStateChanged();
             }
         }
 
         connection.setIsPullable(state.isCallPullable());
+
+        int newVideoState = ImsCallProfile.getVideoStateFromCallType(state.getCallType());
+        if (newVideoState != connection.getVideoState()) {
+            connection.setVideoState(newVideoState);
+        }
     }
 
     /**

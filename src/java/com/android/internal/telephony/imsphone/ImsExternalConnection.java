@@ -26,6 +26,11 @@ import com.android.internal.telephony.UUSInfo;
 import android.telephony.Rlog;
 import android.util.Log;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Represents an IMS call external to the device.  This class is used to represent a call which
  * takes places on a secondary device associated with this one.  Originates from a Dialog Event
@@ -33,8 +38,22 @@ import android.util.Log;
  *
  * Dialog event package information is received from the IMS framework via
  * {@link com.android.ims.ImsExternalCallState} instances.
+ *
+ * @hide
  */
 public class ImsExternalConnection extends Connection {
+
+    public interface Listener {
+        void onPullExternalCall(ImsExternalConnection connection);
+    }
+
+    /**
+     * ConcurrentHashMap constructor params: 8 is initial table size, 0.9f is
+     * load factor before resizing, 1 means we only expect a single thread to
+     * access the map so make only a single shard
+     */
+    private final Set<Listener> mListeners = Collections.newSetFromMap(
+            new ConcurrentHashMap<Listener, Boolean>(8, 0.9f, 1));
 
     /**
      * The unqiue dialog event package specified ID associated with this external connection.
@@ -136,6 +155,20 @@ public class ImsExternalConnection extends Connection {
     }
 
     /**
+     * Called by a {@link android.telecom.Connection} to indicate that this call should be pulled
+     * to the local device.
+     *
+     * Informs all listeners, in this case {@link ImsExternalCallTracker}, of the request to pull
+     * the call.
+     */
+    @Override
+    public void pullExternalCall() {
+        for (Listener listener : mListeners) {
+            listener.onPullExternalCall(this);
+        }
+    }
+
+    /**
      * Sets this external call as active.
      */
     public void setActive() {
@@ -164,6 +197,14 @@ public class ImsExternalConnection extends Connection {
     public void setIsPullable(boolean isPullable) {
         mIsPullable = isPullable;
         rebuildCapabilities();
+    }
+
+    public void addListener(Listener listener) {
+        mListeners.add(listener);
+    }
+
+    public void removeListener(Listener listener) {
+        mListeners.remove(listener);
     }
 
     /**
