@@ -56,6 +56,7 @@ import com.android.ims.ImsConnectionStateListener;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
+import com.android.ims.ImsMultiEndpoint;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsSuppServiceNotification;
@@ -77,7 +78,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 /**
  * {@hide}
  */
-public class ImsPhoneCallTracker extends CallTracker {
+public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     static final String LOG_TAG = "ImsPhoneCallTracker";
 
     private static final boolean DBG = true;
@@ -2045,6 +2046,16 @@ public class ImsPhoneCallTracker extends CallTracker {
         return ecbm;
     }
 
+    /* package */
+    ImsMultiEndpoint getMultiEndpointInterface() throws ImsException {
+        if (mImsManager == null) {
+            throw new ImsException("no ims manager", ImsReasonInfo.CODE_UNSPECIFIED);
+        }
+
+        ImsMultiEndpoint multiendpoint = mImsManager.getMultiEndpointInterface(mServiceId);
+        return multiendpoint;
+    }
+
     public boolean isInEmergencyCall() {
         return mIsInEmergencyCall;
     }
@@ -2144,5 +2155,31 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
 
         return escaped.toString();
+    }
+
+    /**
+     * Initiates a pull of an external call.
+     *
+     * Initiates a pull by making a dial request with the {@link ImsCallProfile#EXTRA_IS_CALL_PULL}
+     * extra specified.  We call {@link ImsPhone#notifyUnknownConnection(Connection)} which notifies
+     * Telecom of the new dialed connection.  The
+     * {@code PstnIncomingCallNotifier#maybeSwapWithUnknownConnection} logic ensures that the new
+     * {@link ImsPhoneConnection} resulting from the dial gets swapped with the
+     * {@link ImsExternalConnection}, which effectively makes the external call become a regular
+     * call.  Magic!
+     *
+     * @param number The phone number of the call to be pulled.
+     * @param videoState The desired video state of the pulled call.
+     */
+    @Override
+    public void pullExternalCall(String number, int videoState) {
+        Bundle extras = new Bundle();
+        extras.putBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL, true);
+        try {
+            Connection connection = dial(number, videoState, extras);
+            mPhone.notifyUnknownConnection(connection);
+        } catch (CallStateException e) {
+            loge("pullExternalCall failed - " + e);
+        }
     }
 }
