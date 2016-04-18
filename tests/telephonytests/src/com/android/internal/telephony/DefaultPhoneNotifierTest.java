@@ -108,13 +108,14 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
                 ArgumentCaptor.forClass(SignalStrength.class);
 
         mDefaultPhoneNotifierUT.notifySignalStrength(mPhone);
-        verify(mTelephonyRegisteryMock).notifySignalStrengthForSubscriber(eq(0),
+        verify(mTelephonyRegisteryMock).notifySignalStrengthForPhoneId(eq(0), eq(0),
                 signalStrengthArgumentCaptor.capture());
         assertEquals(99, signalStrengthArgumentCaptor.getValue().getGsmSignalStrength());
 
         doReturn(1).when(mPhone).getSubId();
+        doReturn(2).when(mPhone).getPhoneId();
         mDefaultPhoneNotifierUT.notifySignalStrength(mPhone);
-        verify(mTelephonyRegisteryMock).notifySignalStrengthForSubscriber(eq(1),
+        verify(mTelephonyRegisteryMock).notifySignalStrengthForPhoneId(eq(2), eq(1),
                 signalStrengthArgumentCaptor.capture());
         assertEquals(99, signalStrengthArgumentCaptor.getValue().getGsmSignalStrength());
     }
