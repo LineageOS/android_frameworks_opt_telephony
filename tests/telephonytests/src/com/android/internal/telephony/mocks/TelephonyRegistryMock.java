@@ -189,7 +189,8 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyCallStateForSubscriber(int subId, int state, String incomingNumber) {
+    public void notifyCallStateForPhoneId(int phoneId, int subId, int state,
+                String incomingNumber) {
         throw new RuntimeException("Not implemented");
     }
 
@@ -199,12 +200,8 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifySignalStrength(SignalStrength signalStrength) {
-        throw new RuntimeException("Not implemented");
-    }
-
-    @Override
-    public void notifySignalStrengthForSubscriber(int subId, SignalStrength signalStrength) {
+    public void notifySignalStrengthForPhoneId(int phoneId, int subId,
+                SignalStrength signalStrength) {
         throw new RuntimeException("Not implemented");
     }
 
