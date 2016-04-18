@@ -1465,7 +1465,7 @@ public class DcTracker extends Handler {
 
         // set to false if apn type is non-metered.
         boolean checkUserDataEnabled =
-                !(ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
+                (ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
                         mPhone.getSubId()));
 
         StringBuilder failureReason = new StringBuilder();
