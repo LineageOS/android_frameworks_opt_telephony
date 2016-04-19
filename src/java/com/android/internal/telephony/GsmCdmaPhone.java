@@ -1065,7 +1065,7 @@ public class GsmCdmaPhone extends Phone {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
         }
 
-        boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(dialString);
+        boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(getSubId(), dialString);
         Phone imsPhone = mImsPhone;
 
         CarrierConfigManager configManager =
