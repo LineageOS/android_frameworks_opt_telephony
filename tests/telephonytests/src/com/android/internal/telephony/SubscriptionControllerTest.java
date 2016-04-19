@@ -69,7 +69,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 SubscriptionManager.CB_ALERT_REMINDER_INTERVAL,
                 SubscriptionManager.CB_ALERT_VIBRATE, SubscriptionManager.CB_ALERT_SPEECH,
                 SubscriptionManager.CB_ETWS_TEST_ALERT, SubscriptionManager.CB_CHANNEL_50_ALERT,
-                SubscriptionManager.CB_CMAS_TEST_ALERT, SubscriptionManager.CB_OPT_OUT_DIALOG};
+                SubscriptionManager.CB_CMAS_TEST_ALERT, SubscriptionManager.CB_OPT_OUT_DIALOG,
+                SubscriptionManager.SIM_PROVISIONING_STATUS};
 
         /* internal util function */
         private MatrixCursor convertFromContentToCursor(ContentValues initialValues) {
