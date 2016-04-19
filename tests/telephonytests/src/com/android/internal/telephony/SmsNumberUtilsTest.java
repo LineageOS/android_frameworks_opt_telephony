@@ -63,7 +63,7 @@ public class SmsNumberUtilsTest extends TelephonyTest {
                     MatrixCursor mc = new MatrixCursor(
                             new String[]{HbpcdLookup.MccIdd.IDD});
 
-                    switch (Integer.valueOf(selectionArgs[0])) {
+                    switch (Integer.parseInt(selectionArgs[0])) {
                         case 310:
                             mc.addRow(new Object[]{"011"}); // US IDD code
                             break;
@@ -77,7 +77,7 @@ public class SmsNumberUtilsTest extends TelephonyTest {
                             mc.addRow(new Object[]{"010"}); // India IDD code
                             break;
                         default:
-                            logd("Unhandled MCC" + Integer.valueOf(selectionArgs[0]));
+                            logd("Unhandled MCC" + Integer.parseInt(selectionArgs[0]));
                     }
 
                     return mc;
