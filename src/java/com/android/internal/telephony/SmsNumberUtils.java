@@ -432,7 +432,7 @@ public class SmsNumberUtils {
 
             int[] ccArray = new int[MAX_COUNTRY_CODES_LENGTH];
             for (int i = 0; i < MAX_COUNTRY_CODES_LENGTH; i ++) {
-                ccArray[i] = Integer.valueOf(number.substring(0, i+1));
+                ccArray[i] = Integer.parseInt(number.substring(0, i+1));
             }
 
             for (int i = 0; i < allCCs.length; i ++) {
