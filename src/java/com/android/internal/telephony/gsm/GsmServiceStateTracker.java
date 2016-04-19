@@ -1663,8 +1663,17 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
      */
     private boolean isOperatorConsideredNonRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray = mPhone.getContext().getResources().getStringArray(
+        String[] numericArray;
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
+        if (subIds != null && subIds.length > 0) {
+            subId = subIds[0];
+            numericArray = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),subId).getStringArray(
                     com.android.internal.R.array.config_operatorConsideredNonRoaming);
+        } else {
+            numericArray = mPhone.getContext().getResources().getStringArray(
+                    com.android.internal.R.array.config_operatorConsideredNonRoaming);
+        }
 
         if (numericArray.length == 0 || operatorNumeric == null) {
             return false;
@@ -1680,8 +1689,17 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
 
     private boolean isOperatorConsideredRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray = mPhone.getContext().getResources().getStringArray(
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
+        String[] numericArray;;
+        if (subIds != null && subIds.length > 0) {
+            subId = subIds[0];
+            numericArray = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),subId).getStringArray(
                     com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
+        } else {
+            numericArray = mPhone.getContext().getResources().getStringArray(
+                    com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
+        }
 
         if (numericArray.length == 0 || operatorNumeric == null) {
             return false;
