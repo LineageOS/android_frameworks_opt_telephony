@@ -25,6 +25,8 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.AssetManager;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.os.AsyncResult;
@@ -53,6 +55,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.gsm.GsmCellLocation;
 import android.telephony.TelephonyManager;
+import android.util.DisplayMetrics;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.TimeUtils;
@@ -108,6 +111,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     private static final String ACTION_MANAGED_ROAMING_IND =
             "codeaurora.intent.action.ACTION_MANAGED_ROAMING_IND";
+
+    private Resources mCustomResourcesForPhone;
 
     /**
      * GSM roaming status solely based on TS 27.007 7.2 CREG. Only used by
@@ -278,6 +283,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mCr.unregisterContentObserver(mAutoTimeObserver);
         mCr.unregisterContentObserver(mAutoTimeZoneObserver);
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
+
+        if (mCustomResourcesForPhone != null) { mCustomResourcesForPhone = null; }
+
         super.dispose();
     }
 
@@ -1652,7 +1660,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      */
     private boolean isOperatorConsideredNonRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray = mPhone.getContext().getResources().getStringArray(
+        Resources customRes = createPhoneResources();
+        String[] numericArray = customRes.getStringArray(
                     com.android.internal.R.array.config_operatorConsideredNonRoaming);
 
         if (numericArray.length == 0 || operatorNumeric == null) {
@@ -1669,7 +1678,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     private boolean isOperatorConsideredRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray = mPhone.getContext().getResources().getStringArray(
+        Resources customRes = createPhoneResources();
+        String[] numericArray = customRes.getStringArray(
                     com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
 
         if (numericArray.length == 0 || operatorNumeric == null) {
@@ -1682,6 +1692,33 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             }
         }
         return false;
+    }
+
+    private Resources createPhoneResources() {
+        TelephonyManager tm =
+            (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+
+        String operatorNumeric = tm.getSimOperatorNumericForPhone(getPhoneId());
+
+        if (tm.getPhoneCount() > 1 && !TextUtils.isEmpty(operatorNumeric) &&
+               mCustomResourcesForPhone == null) {
+
+            Configuration tempConfiguration = new Configuration();
+            String mcc = "";
+            String mnc = "";
+            mcc = operatorNumeric.substring(0, 3);
+            mnc = operatorNumeric.substring(3);
+            if (!TextUtils.isEmpty(mcc) && !TextUtils.isEmpty(mnc)) {
+                tempConfiguration.mcc = Integer.parseInt(mcc);
+                tempConfiguration.mnc = Integer.parseInt(mnc);
+                mCustomResourcesForPhone = new Resources(new AssetManager(), new DisplayMetrics(),
+                        tempConfiguration);
+            }
+        }
+
+        return ( mCustomResourcesForPhone == null ?
+                     mPhone.getContext().getResources() :
+                     mCustomResourcesForPhone);
     }
 
     /**
