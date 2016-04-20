@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -28,6 +29,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
@@ -40,6 +42,7 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.TestApplication;
 
 import org.junit.After;
 import org.junit.Before;
@@ -258,6 +261,10 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
+        // set the lazy cp to the real content provider in order to use the real settings
+        ContentResolver realContentResolver = TestApplication.getAppContext().getContentResolver();
+        Settings.Global.getInt(realContentResolver, Settings.Global.MOBILE_DATA, 1);
+
         logd("DcTrackerTest +Setup!");
         super.setUp(getClass().getSimpleName());
 
@@ -319,7 +326,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         dcResponse.version = 11;
         dcResponse.status = 0;
-        dcResponse.suggestedRetryTime = Integer.MAX_VALUE; // No retry suggested by the modem
+        dcResponse.suggestedRetryTime = -1; // No retry suggested by the modem
         dcResponse.cid = 1;
         dcResponse.active = 2;
         dcResponse.type = "IP";
@@ -591,11 +598,11 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
 
         // expected tear down all metered DataConnections
-        verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(anyInt(), anyInt(),
+        verify(mSimulatedCommandsVerifier, times(2)).deactivateDataCall(anyInt(), anyInt(),
                 any(Message.class));
-        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+        assertEquals(DctConstants.State.IDLE, mDct.getOverallState());
         assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
-        assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
+        assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_IMS));
 
         // reset roaming settings at end of this test
         mDct.setDataOnRoamingEnabled(roamingEnabled);
