@@ -290,7 +290,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     SparseArray<RILRequest> mRequestList = new SparseArray<RILRequest>();
 
-    Object     mLastNITZTimeInfo;
+    Object[]     mLastNITZTimeInfo;
 
     // When we are testing emergency calls
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
@@ -4867,7 +4867,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 pw.println("  [" + rr.mSerial + "] " + requestToString(rr.mRequest));
             }
         }
-        pw.println(" mLastNITZTimeInfo=" + mLastNITZTimeInfo);
+        pw.println(" mLastNITZTimeInfo=" + Arrays.toString(mLastNITZTimeInfo));
         pw.println(" mTestingEmergencyCall=" + mTestingEmergencyCall.get());
     }
 
