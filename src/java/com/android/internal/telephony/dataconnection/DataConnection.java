@@ -1800,6 +1800,19 @@ public class DataConnection extends StateMachine {
                 mPhone.mCi.pullLceData(DataConnection.this.obtainMessage(EVENT_BW_REFRESH_RESPONSE));
             }
         }
+
+        @Override
+        protected void networkStatus(int status, String redirectUrl) {
+            if(!TextUtils.isEmpty(redirectUrl)) {
+                log("validation status: " + status + " with redirection URL: " + redirectUrl);
+                /* its possible that we have multiple DataConnection with INTERNET_CAPABILITY
+                   all fail the validation with the same redirection url, send CMD back to DCTracker
+                   and let DcTracker to make the decision */
+                Message msg = mDct.obtainMessage(DctConstants.EVENT_REDIRECTION_DETECTED,
+                        redirectUrl);
+                msg.sendToTarget();
+            }
+        }
     }
 
     // ******* "public" interface

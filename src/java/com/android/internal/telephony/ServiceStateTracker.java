@@ -127,6 +127,10 @@ public class ServiceStateTracker extends Handler {
     static public final int OTASP_UNKNOWN = 1;
     static public final int OTASP_NEEDED = 2;
     static public final int OTASP_NOT_NEEDED = 3;
+    /**
+     * OtaUtil has conflict enum 4: OtaUtils.OTASP_FAILURE_SPC_RETRIES
+     */
+    static public final int OTASP_SIM_UNPROVISIONED = 5;
 
     /**
      * A unique identifier to track requests associated with a poll
