@@ -15,6 +15,7 @@
  */
 package com.android.internal.telephony;
 
+import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import static org.junit.Assert.*;
 import org.junit.After;
@@ -34,7 +35,8 @@ public class SubscriptionInfoTest {
     @Before
     public void setUp() throws Exception {
         mSubscriptionInfoUT = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0, "T-mobile",
-                "T-mobile", 0, 255, "12345", 0, null, 310, 260, "156");
+                "T-mobile", 0, 255, "12345", 0, null, 310, 260, "156",
+                SubscriptionManager.SIM_PROVISIONED);
     }
 
     @Test
