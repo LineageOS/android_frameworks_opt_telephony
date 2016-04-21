@@ -24,6 +24,8 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -36,6 +38,7 @@ import android.telephony.ServiceState;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
+import android.util.LocalLog;
 
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.ISub;
@@ -97,6 +100,8 @@ public class DcTrackerTest extends TelephonyTest {
     ISub mIsub;
     @Mock
     IBinder mBinder;
+    @Mock
+    NetworkRequest mNetworkRequest;
 
     private DcTracker mDct;
 
@@ -349,7 +354,6 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(apnSetting, mDct.getActiveApnString(PhoneConstants.APN_TYPE_DEFAULT));
         assertArrayEquals(new String[]{PhoneConstants.APN_TYPE_DEFAULT}, mDct.getActiveApnTypes());
         assertTrue(mDct.getAnyDataEnabled());
-        assertTrue(mDct.getDataEnabled());
 
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
@@ -378,6 +382,8 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testDataSetup() {
+
+        mDct.setDataEnabled(true);
 
         mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
 
@@ -435,6 +441,9 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testDataRetry() {
+
+        mDct.setDataEnabled(true);
+
         DataCallResponse dcResponse = createDataCallResponse();
         // LOST_CONNECTION(0x10004) is a non-permanent failure, so we'll retry data setup later.
         dcResponse.status = 0x10004;
@@ -607,5 +616,65 @@ public class DcTrackerTest extends TelephonyTest {
         // reset roaming settings at end of this test
         mDct.setDataOnRoamingEnabled(roamingEnabled);
         waitForMs(200);
+    }
+
+    // Test the default data switch scenario.
+    @Test
+    @MediumTest
+    public void testDDSResetAutoAttach() throws Exception {
+
+        mDct.setDataEnabled(true);
+
+        mContextFixture.putBooleanResource(
+                com.android.internal.R.bool.config_auto_attach_data_on_creation, true);
+
+        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
+
+        StringBuilder sb = new StringBuilder();
+        boolean allowed = isDataAllowed(sb);
+        assertFalse(sb.toString(), allowed);
+
+        ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(mUiccController, times(1)).registerForIccChanged(eq(mDct),
+                intArgumentCaptor.capture(), eq(null));
+        // Ideally this should send EVENT_ICC_CHANGED.
+        mDct.sendMessage(mDct.obtainMessage(intArgumentCaptor.getValue(), null));
+        waitForMs(100);
+
+        verify(mSimRecords, times(1)).registerForRecordsLoaded(eq(mDct),
+                intArgumentCaptor.capture(), eq(null));
+        // Ideally this should send EVENT_RECORDS_LOADED.
+        mDct.sendMessage(mDct.obtainMessage(intArgumentCaptor.getValue(), null));
+        waitForMs(100);
+
+        verify(mSST, times(1)).registerForDataConnectionAttached(eq(mDct),
+                intArgumentCaptor.capture(), eq(null));
+        // Ideally this should send EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(intArgumentCaptor.getValue(), null));
+        waitForMs(200);
+
+        NetworkCapabilities nc = new NetworkCapabilities();
+        nc.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        NetworkRequest nr = new NetworkRequest(nc, 0, 0);
+        LocalLog l = new LocalLog(100);
+        mDct.requestNetwork(nr, l);
+        waitForMs(200);
+
+        verifyDataConnected(FAKE_APN1);
+
+        assertTrue(mDct.getAutoAttachOnCreation());
+        mDct.update();
+        // The auto attach flag should be reset after update
+        assertFalse(mDct.getAutoAttachOnCreation());
+
+        verify(mSST, times(1)).registerForDataConnectionDetached(eq(mDct),
+                intArgumentCaptor.capture(), eq(null));
+        // Ideally this should send EVENT_DATA_CONNECTION_DETACHED
+        mDct.sendMessage(mDct.obtainMessage(intArgumentCaptor.getValue(), null));
+        waitForMs(200);
+
+        // Data should not be allowed since auto attach flag has been reset.
+        allowed = isDataAllowed(sb);
+        assertFalse(sb.toString(), allowed);
     }
 }
