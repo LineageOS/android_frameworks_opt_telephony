@@ -823,7 +823,7 @@ public class SubscriptionController extends ISub.Stub {
             }
 
             // Once the records are loaded, notify DcTracker
-            updateAllDataConnectionTrackers();
+            sPhones[slotId].updateDataConnectionTracker();
 
             if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIdxToSubId.size());
 

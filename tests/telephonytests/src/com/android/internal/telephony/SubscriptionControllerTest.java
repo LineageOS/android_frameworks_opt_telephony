@@ -22,6 +22,7 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
@@ -233,10 +234,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertEquals(disNum, subInfo.getNumber());
 
         /* verify broadcast intent */
-        ArgumentCaptor<Intent> mCaptorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, atLeast(1)).sendBroadcast(mCaptorIntent.capture());
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
         assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
-                mCaptorIntent.getValue().getAction());
+                captorIntent.getValue().getAction());
     }
 
     @Test @SmallTest
@@ -281,9 +282,30 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertEquals(Integer.parseInt(mCcMncVERIZON.substring(3)), subInfo.getMnc());
 
          /* verify broadcast intent */
-        ArgumentCaptor<Intent> mCaptorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, atLeast(1)).sendBroadcast(mCaptorIntent.capture());
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
         assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
-                mCaptorIntent.getValue().getAction());
+                captorIntent.getValue().getAction());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetDefaultDataSubId() throws Exception {
+        doReturn(1).when(mPhone).getSubId();
+
+        mSubscriptionControllerUT.setDefaultDataSubId(1);
+
+        verify(mPhone, times(1)).updateDataConnectionTracker();
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(1)).sendStickyBroadcastAsUser(
+                captorIntent.capture(), eq(UserHandle.ALL));
+
+        Intent intent = captorIntent.getValue();
+        assertEquals(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED, intent.getAction());
+
+        Bundle b = intent.getExtras();
+
+        assertTrue(b.containsKey(PhoneConstants.SUBSCRIPTION_KEY));
+        assertEquals(1, b.getInt(PhoneConstants.SUBSCRIPTION_KEY));
     }
 }
