@@ -3988,6 +3988,7 @@ public class DcTracker extends Handler {
         onUpdateIcc();
 
         mUserDataEnabled = getDataEnabled();
+        mAutoAttachOnCreation.set(false);
 
         ((GsmCdmaPhone)mPhone).updateCurrentCarrierInProvider();
     }
