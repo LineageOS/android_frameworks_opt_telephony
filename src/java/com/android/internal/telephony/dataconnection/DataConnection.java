@@ -1810,6 +1810,7 @@ public class DataConnection extends StateMachine {
                    and let DcTracker to make the decision */
                 Message msg = mDct.obtainMessage(DctConstants.EVENT_REDIRECTION_DETECTED,
                         redirectUrl);
+                AsyncResult.forMessage(msg, mApnContexts, null);
                 msg.sendToTarget();
             }
         }
