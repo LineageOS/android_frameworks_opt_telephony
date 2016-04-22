@@ -115,8 +115,6 @@ public class ServiceStateTracker extends Handler {
     private long mLastCellInfoListTime;
     private List<CellInfo> mLastCellInfoList = null;
 
-    private CellInfo mCellInfo;
-
     private SignalStrength mSignalStrength;
 
     // TODO - this should not be public, right now used externally GsmConnetion.
@@ -200,6 +198,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_SET_RADIO_POWER_OFF               = 38;
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED  = 39;
     protected static final int EVENT_CDMA_PRL_VERSION_CHANGED          = 40;
+
     protected static final int EVENT_RADIO_ON                          = 41;
     public    static final int EVENT_ICC_CHANGED                       = 42;
     protected static final int EVENT_GET_CELL_INFO_LIST                = 43;
@@ -480,11 +479,6 @@ public class ServiceStateTracker extends Handler {
     private String mRegistrationDeniedReason;
     private String mCurrentCarrier = null;
 
-    //CDMALTE
-    private CellInfoLte mCellInfoLte;
-    private CellIdentityLte mNewCellIdentityLte = new CellIdentityLte();
-    private CellIdentityLte mLasteCellIdentityLte = new CellIdentityLte();
-
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         initOnce(phone, ci);
         updatePhoneType();
@@ -574,7 +568,6 @@ public class ServiceStateTracker extends Handler {
             mCi.unregisterForCdmaOtaProvision(this);
             mPhone.unregisterForSimRecordsLoaded(this);
 
-            mCellInfo = new CellInfoGsm();
             mCellLoc = new GsmCellLocation();
             mNewCellLoc = new GsmCellLocation();
             mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
@@ -584,14 +577,8 @@ public class ServiceStateTracker extends Handler {
             mCi.unregisterForAvailable(this);
             mCi.unSetOnRestrictedStateChanged(this);
 
-            if (mPhone.isPhoneTypeCdma()) {
-                mCellInfo = new CellInfoCdma();
-            } else {
-                mCellInfo = new CellInfoLte();
+            if (mPhone.isPhoneTypeCdmaLte()) {
                 mPhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
-                mCellInfoLte = (CellInfoLte) mCellInfo;
-                ((CellInfoLte)mCellInfo).setCellSignalStrength(new CellSignalStrengthLte());
-                ((CellInfoLte)mCellInfo).setCellIdentity(new CellIdentityLte());
             }
             mCellLoc = new CdmaCellLocation();
             mNewCellLoc = new CdmaCellLocation();
@@ -647,15 +634,13 @@ public class ServiceStateTracker extends Handler {
     private SignalStrength mLastSignalStrength = null;
     protected boolean notifySignalStrength() {
         boolean notified = false;
-        synchronized(mCellInfo) {
-            if (!mSignalStrength.equals(mLastSignalStrength)) {
-                try {
-                    mPhone.notifySignalStrength();
-                    notified = true;
-                } catch (NullPointerException ex) {
-                    loge("updateSignalStrength() Phone already destroyed: " + ex
-                            + "SignalStrength not notified");
-                }
+        if (!mSignalStrength.equals(mLastSignalStrength)) {
+            try {
+                mPhone.notifySignalStrength();
+                notified = true;
+            } catch (NullPointerException ex) {
+                loge("updateSignalStrength() Phone already destroyed: " + ex
+                        + "SignalStrength not notified");
             }
         }
         return notified;
@@ -902,9 +887,8 @@ public class ServiceStateTracker extends Handler {
                     log("EVENT_UNSOL_CELL_INFO_LIST: error ignoring, e=" + ar.exception);
                 } else {
                     List<CellInfo> list = (List<CellInfo>) ar.result;
-                    if (DBG) {
-                        log("EVENT_UNSOL_CELL_INFO_LIST: size=" + list.size()
-                                + " list=" + list);
+                    if (VDBG) {
+                        log("EVENT_UNSOL_CELL_INFO_LIST: size=" + list.size() + " list=" + list);
                     }
                     mLastCellInfoListTime = SystemClock.elapsedRealtime();
                     mLastCellInfoList = list;
@@ -1846,74 +1830,6 @@ public class ServiceStateTracker extends Handler {
                             loge("handlePollStateResultMessage: error parsing GprsRegistrationState: "
                                     + ex);
                         }
-                        if (states.length >= 10) {
-                            int mcc;
-                            int mnc;
-                            int tac;
-                            int pci;
-                            int eci;
-                            int csgid;
-                            String operatorNumeric = null;
-
-                            try {
-                                operatorNumeric = mNewSS.getOperatorNumeric();
-                                mcc = Integer.parseInt(operatorNumeric.substring(0,3));
-                            } catch (Exception e) {
-                                try {
-                                    operatorNumeric = mSS.getOperatorNumeric();
-                                    mcc = Integer.parseInt(operatorNumeric.substring(0,3));
-                                } catch (Exception ex) {
-                                    loge("handlePollStateResultMessage: bad mcc operatorNumeric=" +
-                                            operatorNumeric + " ex=" + ex);
-                                    operatorNumeric = "";
-                                    mcc = Integer.MAX_VALUE;
-                                }
-                            }
-                            try {
-                                mnc = Integer.parseInt(operatorNumeric.substring(3));
-                            } catch (Exception e) {
-                                loge("handlePollStateResultMessage: bad mnc operatorNumeric=" +
-                                        operatorNumeric + " e=" + e);
-                                mnc = Integer.MAX_VALUE;
-                            }
-
-                            // Use Integer#decode to be generous in what we receive and allow
-                            // decimal, hex or octal values.
-                            try {
-                                tac = Integer.decode(states[6]);
-                            } catch (Exception e) {
-                                loge("handlePollStateResultMessage: bad tac states[6]=" +
-                                        states[6] + " e=" + e);
-                                tac = Integer.MAX_VALUE;
-                            }
-                            try {
-                                pci = Integer.decode(states[7]);
-                            } catch (Exception e) {
-                                loge("handlePollStateResultMessage: bad pci states[7]=" +
-                                        states[7] + " e=" + e);
-                                pci = Integer.MAX_VALUE;
-                            }
-                            try {
-                                eci = Integer.decode(states[8]);
-                            } catch (Exception e) {
-                                loge("handlePollStateResultMessage: bad eci states[8]=" +
-                                        states[8] + " e=" + e);
-                                eci = Integer.MAX_VALUE;
-                            }
-                            try {
-                                csgid = Integer.decode(states[9]);
-                            } catch (Exception e) {
-                                // FIX: Always bad so don't pollute the logs
-                                // loge("handlePollStateResultMessage: bad csgid states[9]=" +
-                                //        states[9] + " e=" + e);
-                                csgid = Integer.MAX_VALUE;
-                            }
-                            mNewCellIdentityLte = new CellIdentityLte(mcc, mnc, eci, pci, tac);
-                            if (DBG) {
-                                log("handlePollStateResultMessage: mNewLteCellIdentity=" +
-                                        mNewCellIdentityLte);
-                            }
-                        }
                     }
 
                     // If the unsolicited signal strength comes just before data RAT family changes (i.e.
@@ -2826,7 +2742,6 @@ public class ServiceStateTracker extends Handler {
         } else {
             mReportedGprsNoReg = false;
         }
-        // TODO: Add GsmCellIdenity updating, see pollStateDoneCdmaLte().
     }
 
     protected void pollStateDoneCdma() {
@@ -3272,30 +3187,6 @@ public class ServiceStateTracker extends Handler {
 
         if (hasLocationChanged) {
             mPhone.notifyLocationChanged();
-        }
-
-        ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
-        synchronized(mCellInfo) {
-            CellInfoLte cil = (CellInfoLte)mCellInfo;
-
-            boolean cidChanged = ! mNewCellIdentityLte.equals(mLasteCellIdentityLte);
-            if (hasRegistered || hasDeregistered || cidChanged) {
-                // TODO: Handle the absence of LteCellIdentity
-                long timeStamp = SystemClock.elapsedRealtime() * 1000;
-                boolean registered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
-                mLasteCellIdentityLte = mNewCellIdentityLte;
-
-                cil.setRegistered(registered);
-                cil.setCellIdentity(mLasteCellIdentityLte);
-                if (DBG) {
-                    log("pollStateDone: hasRegistered=" + hasRegistered +
-                            " hasDeregistered=" + hasDeregistered +
-                            " cidChanged=" + cidChanged +
-                            " mCellInfo=" + mCellInfo);
-                }
-                arrayCi.add(mCellInfo);
-            }
-            mPhone.notifyCellInfo(arrayCi);
         }
     }
 
@@ -4420,22 +4311,6 @@ public class ServiceStateTracker extends Handler {
 
         boolean ssChanged = notifySignalStrength();
 
-        if (mPhone.isPhoneTypeCdmaLte()) {
-            synchronized (mCellInfo) {
-                if (mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
-                    mCellInfoLte.setTimeStamp(SystemClock.elapsedRealtime() * 1000);
-                    mCellInfoLte.setTimeStampType(CellInfo.TIMESTAMP_TYPE_JAVA_RIL);
-                    mCellInfoLte.getCellSignalStrength()
-                            .initialize(mSignalStrength,SignalStrength.INVALID);
-                }
-                if (mCellInfoLte.getCellIdentity() != null) {
-                    ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
-                    arrayCi.add(mCellInfoLte);
-                    mPhone.notifyCellInfo(arrayCi);
-                }
-            }
-        }
-
         return ssChanged;
     }
 
@@ -4551,15 +4426,6 @@ public class ServiceStateTracker extends Handler {
                 result.list = mLastCellInfoList;
             }
         } else {
-            //TODO: Remove when we get new ril/modem for Galaxy Nexus.
-            if (mPhone.isPhoneTypeCdmaLte()) {
-                ArrayList<CellInfo> arrayList = new ArrayList<CellInfo>();
-                synchronized(mCellInfo) {
-                    arrayList.add(mCellInfoLte);
-                }
-                if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
-                return arrayList;
-            }
             if (DBG) log("SST.getAllCellInfo(): not implemented");
             result.list = null;
         }
@@ -4579,9 +4445,7 @@ public class ServiceStateTracker extends Handler {
      * @return signal strength
      */
     public SignalStrength getSignalStrength() {
-        synchronized(mCellInfo) {
-            return mSignalStrength;
-        }
+        return mSignalStrength;
     }
 
     /**
@@ -4641,8 +4505,6 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mSS=" + mSS);
         pw.println(" mNewSS=" + mNewSS);
         pw.println(" mVoiceCapable=" + mVoiceCapable);
-        pw.println(" mCellInfo=" + mCellInfo);
-        pw.println(" mCellInfoLte=" + mCellInfoLte);
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" mPollingContext=" + mPollingContext + " - " +
                 (mPollingContext != null ? mPollingContext[0] : ""));
