@@ -242,6 +242,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int RADIO_SCREEN_OFF = 0;
     static final int RADIO_SCREEN_ON = 1;
 
+    public static final int UNLOCK_OPT = 0;
+    public static final int BLOCK_OPT = 1;/* UNUSED! */
+    public static final int QUERY_SIMLOCK_OPT = 2;
 
     /**
      * Wake lock timeout should be longer than the longest timeout in
@@ -970,6 +973,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     supplyNetworkDepersonalization(String netpin, String type, Message response) {
         Rlog.d(RILJ_LOG_TAG, "supplyDepersonalization: netpin = " + netpin + " type = " + type);
 
+        /** IF TCL RIL **/
+        //supplyNetworkDepersonalization(Integer.toString(UNLOCK_OPT), netpin, type, response);
+
         byte[] payload = null;
         // type + null character +
         // netpin + null character
@@ -979,6 +985,34 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         payload = new byte[payloadLength];
         ByteBuffer buf = createBufferWithNativeByteOrder(payload);
+        // type
+        buf.put(type.getBytes());
+        buf.put((byte)NULL_TERMINATOR); // null character
+        // pin
+        if (netpin != null) buf.put(netpin.getBytes());
+        buf.put((byte)NULL_TERMINATOR); // null character
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_ENTER_DEPERSONALIZATION_CODE,
+                payload.length, payload, response);
+    }
+
+    @Override
+    public void
+    supplyNetworkDepersonalization(String opt, String netpin, String type, Message response) {
+        Rlog.d(RILJ_LOG_TAG, "supplyNetworkDepersonalization: opt = " + opt + ", netpin = " + netpin + ", type = " + type);
+
+        byte[] payload = null;
+        // type + null character +
+        // netpin + null character
+        int payloadLength  = opt.length() + NULL_TERMINATOR_LENGTH +
+                                type.length() + NULL_TERMINATOR_LENGTH +
+                                 (netpin == null ? NULL_TERMINATOR_LENGTH
+                                         : netpin.length() + NULL_TERMINATOR_LENGTH);
+
+         payload = new byte[payloadLength];
+         ByteBuffer buf = createBufferWithNativeByteOrder(payload);
+        // opt
+        buf.put(opt.getBytes());
+        buf.put((byte)NULL_TERMINATOR); // null character
         // type
         buf.put(type.getBytes());
         buf.put((byte)NULL_TERMINATOR); // null character

@@ -78,6 +78,10 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
+    public void supplyNetworkDepersonalization(String opt, String netpin, String type, Message result) {
+    }
+
+    @Override
     public void getCurrentCalls(Message result) {
     }
 

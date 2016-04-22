@@ -444,6 +444,11 @@ public final class SimulatedCommands extends BaseCommands
         unimplemented(result);
     }
 
+    @Override
+    public void supplyNetworkDepersonalization(String opt, String netpin, String type, Message result)  {
+        unimplemented(result);
+    }
+
     /**
      *  returned message
      *  retMsg.obj = AsyncResult ar
