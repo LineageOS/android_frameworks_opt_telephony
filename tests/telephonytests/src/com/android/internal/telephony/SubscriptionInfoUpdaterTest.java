@@ -219,7 +219,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         /* mock new sim got loaded and there is no sim loaded before */
         doReturn(null).when(mSubscriptionController)
                 .getSubInfoUsingSlotIdWithCheck(eq(0), anyBoolean(), anyString());
-        doReturn("89012604200000000000").when(mIccRecord).getIccId();
+        doReturn("89012604200000000000").when(mIccRecord).getFullIccId();
         doReturn(FAKE_PLMN).when(mTelephonyManager).getSimOperatorNumericForPhone(0);
         Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
