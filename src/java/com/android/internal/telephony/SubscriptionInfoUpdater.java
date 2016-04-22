@@ -364,11 +364,11 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("onRecieve: IccRecords null");
             return;
         }
-        if (records.getIccId() == null) {
+        if (records.getFullIccId() == null) {
             logd("onRecieve: IccID null");
             return;
         }
-        mIccId[slotId] = records.getIccId();
+        mIccId[slotId] = records.getFullIccId();
 
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
