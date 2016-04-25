@@ -264,6 +264,44 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    public void testUserData7BitAsciiFeedback() throws Exception {
+        BearerData bearerData = new BearerData();
+        bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
+        bearerData.messageId = 0;
+        bearerData.hasUserDataHeader = false;
+        UserData userData = new UserData();
+        userData.payloadStr = "Test standard SMS";
+        userData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
+        userData.msgEncodingSet = true;
+        bearerData.userData = userData;
+        byte[] encodedSms = BearerData.encode(bearerData);
+
+        BearerData revBearerData = BearerData.decode(encodedSms);
+        assertEquals(userData.msgEncoding, revBearerData.userData.msgEncoding);
+        assertEquals(userData.payloadStr.length(), revBearerData.userData.numFields);
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+
+        userData.payloadStr = "1234567";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+        userData.payloadStr = "";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+        userData.payloadStr = "12345678901234567890123456789012345678901234567890" +
+                "12345678901234567890123456789012345678901234567890" +
+                "12345678901234567890123456789012345678901234567890" +
+                "1234567890";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+        userData.payloadStr = "Test \u007f illegal \u0000 SMS chars";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals("Test   illegal   SMS chars", revBearerData.userData.payloadStr);
+        userData.payloadStr = "More @ testing\nis great^|^~woohoo";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+    }
+
+    @SmallTest
     public void testMonolithicOne() throws Exception {
         String pdu = "0003200010010410168d2002010503060812011101590501c706069706180000000701c108" +
                 "01c00901800a01e00b01030c01c00d01070e05039acc13880f018011020566";

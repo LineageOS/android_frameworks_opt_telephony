@@ -16,8 +16,11 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Context;
 import android.os.Parcel;
+import android.os.PersistableBundle;
 import android.os.SystemProperties;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
@@ -38,6 +41,7 @@ import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.CdmaSmsSubaddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.BitwiseInputStream;
 import com.android.internal.util.HexDump;
@@ -902,6 +906,11 @@ public class SmsMessage extends SmsMessageBase {
         int teleservice = bearerData.hasUserDataHeader ?
                 SmsEnvelope.TELESERVICE_WEMT : SmsEnvelope.TELESERVICE_WMT;
 
+        boolean ascii7bitForLongMsg = isAscii7bitSupportedForLongMessage();
+        if (ascii7bitForLongMsg) {
+            Rlog.d(LOG_TAG, "ascii7bitForLongMsg = " + ascii7bitForLongMsg);
+            teleservice = SmsEnvelope.TELESERVICE_WMT;
+        }
         SmsEnvelope envelope = new SmsEnvelope();
         envelope.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
         envelope.teleService = teleservice;
@@ -946,6 +955,20 @@ public class SmsMessage extends SmsMessageBase {
             Rlog.e(LOG_TAG, "creating SubmitPdu failed: " + ex);
         }
         return null;
+    }
+
+    /**
+     * Visible for package
+     */
+    static boolean isAscii7bitSupportedForLongMessage() {
+        Context context = PhoneFactory.getDefaultPhone().getContext();
+        CarrierConfigManager configManager = (CarrierConfigManager)context.getSystemService(
+                Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle pb = configManager.getConfig();
+        if (pb != null) {
+            return pb.getBoolean("ascii_7_bit_support_for_long_message");
+        }
+        return false;
     }
 
     /**

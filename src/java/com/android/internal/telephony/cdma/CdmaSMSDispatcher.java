@@ -192,7 +192,9 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         uData.payloadStr = message;
         uData.userDataHeader = smsHeader;
         if (encoding == SmsConstants.ENCODING_7BIT) {
-            uData.msgEncoding = UserData.ENCODING_GSM_7BIT_ALPHABET;
+            uData.msgEncoding = SmsMessage.isAscii7bitSupportedForLongMessage() ?
+                    UserData.ENCODING_7BIT_ASCII : UserData.ENCODING_GSM_7BIT_ALPHABET;
+            Rlog.d(TAG, "Message ecoding for proper 7 bit: " + uData.msgEncoding);
         } else { // assume UTF-16
             uData.msgEncoding = UserData.ENCODING_UNICODE_16;
         }
