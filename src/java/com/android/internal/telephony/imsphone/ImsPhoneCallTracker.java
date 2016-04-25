@@ -271,8 +271,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mPhone.getContext().getContentResolver(),
                 Settings.Secure.PREFERRED_TTY_MODE,
                 Phone.TTY_MODE_OFF);
-           mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
+            mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
 
+            ImsMultiEndpoint multiEndpoint = getMultiEndpointInterface();
+            if (multiEndpoint != null) {
+                multiEndpoint.setExternalCallStateListener(
+                        mPhone.getExternalCallTracker().getExternalCallStateListener());
+            }
         } catch (ImsException e) {
             loge("getImsService: " + e);
             //Leave mImsManager as null, then CallStateException will be thrown when dialing
@@ -2052,8 +2057,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             throw new ImsException("no ims manager", ImsReasonInfo.CODE_UNSPECIFIED);
         }
 
-        ImsMultiEndpoint multiendpoint = mImsManager.getMultiEndpointInterface(mServiceId);
-        return multiendpoint;
+        try {
+            return mImsManager.getMultiEndpointInterface(mServiceId);
+        } catch (ImsException e) {
+            if (e.getCode() == ImsReasonInfo.CODE_MULTIENDPOINT_NOT_SUPPORTED) {
+                return null;
+            } else {
+                throw e;
+            }
+
+        }
     }
 
     public boolean isInEmergencyCall() {
