@@ -126,7 +126,6 @@ public class ImsPhone extends ImsPhoneBase {
     // Instance Variables
     Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
-    ImsMultiEndpoint mImsMultiEndpoint;
     ImsExternalCallTracker mExternalCallTracker;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
@@ -187,13 +186,6 @@ public class ImsPhone extends ImsPhoneBase {
         mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
         mExternalCallTracker =
                 TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this, mCT);
-        try {
-            mImsMultiEndpoint = mCT.getMultiEndpointInterface();
-            mImsMultiEndpoint.setExternalCallStateListener(
-                    mExternalCallTracker.getExternalCallStateListener());
-        } catch (ImsException e) {
-            Rlog.i(LOG_TAG, "ImsMultiEndpointInterface is not available.");
-        }
 
         mSS.setStateOff();
 
