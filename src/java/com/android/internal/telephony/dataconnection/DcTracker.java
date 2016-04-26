@@ -106,6 +106,8 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.HashSet;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -179,6 +181,56 @@ public class DcTracker extends Handler {
     private static final String REDIRECTION_URL_KEY = "redirectionUrl";
     private static final String ERROR_CODE_KEY = "errorCode";
     private static final String APN_TYPE_KEY = "apnType";
+
+    @VisibleForTesting
+    public static class DataAllowFailReason {
+        private HashSet<DataAllowFailReasonType> mDataAllowFailReasonSet = new HashSet<>();
+
+        public void addDataAllowFailReason(DataAllowFailReasonType type) {
+            mDataAllowFailReasonSet.add(type);
+        }
+
+        public String getDataAllowFailReason() {
+            StringBuilder failureReason = new StringBuilder();
+            failureReason.append("isDataAllowed: No");
+            for(DataAllowFailReasonType reason : mDataAllowFailReasonSet) {
+                failureReason.append(reason.mFailReasonStr);
+            }
+            return failureReason.toString();
+        }
+
+        public boolean isFailForSingleReason(DataAllowFailReasonType failReasonType) {
+            return (mDataAllowFailReasonSet.size() == 1) &&
+                    (mDataAllowFailReasonSet.contains(failReasonType));
+        }
+
+        public void clearAllReasons() {
+            mDataAllowFailReasonSet.clear();
+        }
+
+        public boolean isFailed() {
+            return mDataAllowFailReasonSet.size() > 0;
+        }
+    }
+
+    @VisibleForTesting
+    public enum DataAllowFailReasonType {
+        NOT_ATTACHED(" - Not attached"),
+        RECORD_NOT_LOADED(" - SIM not loaded"),
+        ROAMING_DISABLED(" - Roaming and data roaming not enabled"),
+        INVALID_PHONE_STATE(" - PhoneState is not idle"),
+        CONCURRENT_VOICE_DATA_NOT_ALLOWED(" - Concurrent voice and data not allowed"),
+        PS_RESTRICTED(" - mIsPsRestricted= true"),
+        UNDESIRED_POWER_STATE(" - desiredPowerState= false"),
+        INTERNAL_DATA_DISABLED(" - mInternalDataEnabled= false"),
+        DEFAULT_DATA_UNSELECTED(" - defaultDataSelected= false");
+
+        public String mFailReasonStr;
+
+        DataAllowFailReasonType(String reason) {
+            mFailReasonStr = reason;
+        }
+    }
 
     private DcTesterFailBringUpAll mDcTesterFailBringUpAll;
     private DcController mDcc;
@@ -1274,44 +1326,47 @@ public class DcTracker extends Handler {
      * {@code true} otherwise.
      */
     public boolean getAnyDataEnabled() {
-        synchronized (mDataEnabledLock) {
-            if (!(mInternalDataEnabled && mUserDataEnabled && sPolicyDataEnabled)) return false;
-            StringBuilder failureReason = new StringBuilder();
-            if (!isDataAllowed(failureReason)) {
-                if (DBG) log(failureReason.toString());
-                return false;
-            }
-            for (ApnContext apnContext : mApnContexts.values()) {
-                // Make sure we don't have a context that is going down
-                // and is explicitly disabled.
-                if (isDataAllowedForApn(apnContext)) {
-                    return true;
-                }
-            }
+        if (!isDataEnabled(true)) return false;
+        DataAllowFailReason failureReason = new DataAllowFailReason();
+        if (!isDataAllowed(failureReason)) {
+            if (DBG) log(failureReason.getDataAllowFailReason());
             return false;
         }
+        for (ApnContext apnContext : mApnContexts.values()) {
+            // Make sure we don't have a context that is going down
+            // and is explicitly disabled.
+            if (isDataAllowedForApn(apnContext)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean getAnyDataEnabled(boolean checkUserDataEnabled) {
-        synchronized (mDataEnabledLock) {
-            if (!(mInternalDataEnabled && (!checkUserDataEnabled || mUserDataEnabled)
-                        && (!checkUserDataEnabled || sPolicyDataEnabled)))
-                return false;
+        if (!isDataEnabled(checkUserDataEnabled)) return false;
 
-            StringBuilder failureReason = new StringBuilder();
-            if (!isDataAllowed(failureReason)) {
-                if (DBG) log(failureReason.toString());
-                return false;
-            }
-            for (ApnContext apnContext : mApnContexts.values()) {
-                // Make sure we dont have a context that going down
-                // and is explicitly disabled.
-                if (isDataAllowedForApn(apnContext)) {
-                    return true;
-                }
-            }
+        DataAllowFailReason failureReason = new DataAllowFailReason();
+        if (!isDataAllowed(failureReason)) {
+            if (DBG) log(failureReason.getDataAllowFailReason());
             return false;
         }
+        for (ApnContext apnContext : mApnContexts.values()) {
+            // Make sure we dont have a context that going down
+            // and is explicitly disabled.
+            if (isDataAllowedForApn(apnContext)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isDataEnabled(boolean checkUserDataEnabled) {
+        synchronized (mDataEnabledLock) {
+            if (!(mInternalDataEnabled && (!checkUserDataEnabled || mUserDataEnabled)
+                    && (!checkUserDataEnabled || sPolicyDataEnabled)))
+                return false;
+        }
+        return true;
     }
 
     private boolean isDataAllowedForApn(ApnContext apnContext) {
@@ -1363,7 +1418,7 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED);
     }
 
-    private boolean isDataAllowed(StringBuilder failureReason) {
+    private boolean isDataAllowed(DataAllowFailReason failureReason) {
         final boolean internalDataEnabled;
         synchronized (mDataEnabledLock) {
             internalDataEnabled = mInternalDataEnabled;
@@ -1385,6 +1440,7 @@ public class DcTracker extends Handler {
 
         int dataSub = SubscriptionManager.getDefaultDataSubscriptionId();
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
+
         PhoneConstants.State state = PhoneConstants.State.IDLE;
         // Note this is explicitly not using mPhone.getState.  See b/19090488.
         // mPhone.getState reports the merge of CS and PS (volte) voice call state
@@ -1397,37 +1453,45 @@ public class DcTracker extends Handler {
             state = mPhone.getCallTracker().getState();
         }
 
-        boolean allowed =
-                    (attachedState || mAutoAttachOnCreation.get()) &&
-                    recordsLoaded &&
-                    (state == PhoneConstants.State.IDLE ||
-                     mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
-                    internalDataEnabled &&
-                    defaultDataSelected &&
-                    (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
-                    !mIsPsRestricted &&
-                    desiredPowerState;
-        if (!allowed && failureReason != null) {
-            failureReason.setLength(0);
-            failureReason.append("isDataAllowed: No");
-            if (!(attachedState || mAutoAttachOnCreation.get())) {
-                failureReason.append(" - Attached= " + attachedState);
-            }
-            if (!recordsLoaded) failureReason.append(" - SIM not loaded");
-            if (state != PhoneConstants.State.IDLE &&
-                    !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
-                failureReason.append(" - PhoneState= " + state);
-                failureReason.append(" - Concurrent voice and data not allowed");
-            }
-            if (!internalDataEnabled) failureReason.append(" - mInternalDataEnabled= false");
-            if (!defaultDataSelected) failureReason.append(" - defaultDataSelected= false");
-            if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
-                failureReason.append(" - Roaming and data roaming not enabled");
-            }
-            if (mIsPsRestricted) failureReason.append(" - mIsPsRestricted= true");
-            if (!desiredPowerState) failureReason.append(" - desiredPowerState= false");
+        if (failureReason != null) failureReason.clearAllReasons();
+        if (!(attachedState || mAutoAttachOnCreation.get())) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.NOT_ATTACHED);
         }
-        return allowed;
+        if (!recordsLoaded) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.RECORD_NOT_LOADED);
+        }
+        if (state != PhoneConstants.State.IDLE &&
+                !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.INVALID_PHONE_STATE);
+            failureReason.addDataAllowFailReason(
+                    DataAllowFailReasonType.CONCURRENT_VOICE_DATA_NOT_ALLOWED);
+        }
+        if (!internalDataEnabled) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.INTERNAL_DATA_DISABLED);
+        }
+        if (!defaultDataSelected) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(
+                    DataAllowFailReasonType.DEFAULT_DATA_UNSELECTED);
+        }
+        if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.ROAMING_DISABLED);
+        }
+        if (mIsPsRestricted) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.PS_RESTRICTED);
+        }
+        if (!desiredPowerState) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.UNDESIRED_POWER_STATE);
+        }
+
+        return failureReason == null || !failureReason.isFailed();
     }
 
     // arg for setupDataOnConnectableApns
@@ -1536,14 +1600,22 @@ public class DcTracker extends Handler {
         // set to false if apn type is non-metered.
         boolean checkUserDataEnabled =
                 (ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
-                        mPhone.getSubId()));
+                        mPhone.getSubId(), mPhone.getServiceState().getDataRoaming()));
 
-        StringBuilder failureReason = new StringBuilder();
+        DataAllowFailReason failureReason = new DataAllowFailReason();
+
+        // allow data if currently in roaming service, roaming setting disabled
+        // and requested apn type is non-metered for roaming.
+        boolean isDataAllowed = isDataAllowed(failureReason) ||
+                (failureReason.isFailForSingleReason(DataAllowFailReasonType.ROAMING_DISABLED) &&
+                !(ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
+                mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())));
+
         if (apnContext.isConnectable() && (isEmergencyApn ||
-                (isDataAllowed(failureReason) && isDataAllowedForApn(apnContext) &&
-                getAnyDataEnabled(checkUserDataEnabled) && !isEmergency())) && !mColdSimDetected) {
+                (isDataAllowed && isDataAllowedForApn(apnContext) &&
+                isDataEnabled(checkUserDataEnabled) && !isEmergency())) && !mColdSimDetected ) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
-                String str ="trySetupData: make a FAILED ApnContext IDLE so its reusable";
+                String str = "trySetupData: make a FAILED ApnContext IDLE so its reusable";
                 if (DBG) log(str);
                 apnContext.requestLog(str);
                 apnContext.setState(DctConstants.State.IDLE);
@@ -1592,15 +1664,15 @@ public class DcTracker extends Handler {
             if (!apnContext.isConnectable()) {
                 str.append("isConnectable = false. ");
             }
-            if (!isDataAllowed(failureReason)) {
-                str.append("data not allowed: " + failureReason.toString() + ". ");
+            if (!isDataAllowed) {
+                str.append("data not allowed: " + failureReason.getDataAllowFailReason() + ". ");
             }
             if (!isDataAllowedForApn(apnContext)) {
                 str.append("isDataAllowedForApn = false. RAT = " +
                         mPhone.getServiceState().getRilDataRadioTechnology());
             }
-            if (!getAnyDataEnabled(checkUserDataEnabled)) {
-                str.append("getAnyDataEnabled(" + checkUserDataEnabled + ") = false. " +
+            if (!isDataEnabled(checkUserDataEnabled)) {
+                str.append("isDataEnabled(" + checkUserDataEnabled + ") = false. " +
                         "mInternalDataEnabled = " + mInternalDataEnabled + " , mUserDataEnabled = "
                         + mUserDataEnabled + ", sPolicyDataEnabled = " + sPolicyDataEnabled + " ");
             }
@@ -1621,10 +1693,9 @@ public class DcTracker extends Handler {
     // Disabled apn's still need avail/unavail notifications - send them out
     private void notifyOffApnsOfAvailability(String reason) {
         if (DBG) {
-            StringBuilder failureReason = new StringBuilder();
-            isDataAllowed(failureReason);
-            if (!failureReason.toString().isEmpty()) {
-                log(failureReason.toString());
+            DataAllowFailReason failureReason = new DataAllowFailReason();
+            if (!isDataAllowed(failureReason)) {
+                log(failureReason.getDataAllowFailReason());
             }
         }
         for (ApnContext apnContext : mApnContexts.values()) {
@@ -1656,20 +1727,22 @@ public class DcTracker extends Handler {
     private boolean cleanUpAllConnections(boolean tearDown, String reason) {
         if (DBG) log("cleanUpAllConnections: tearDown=" + tearDown + " reason=" + reason);
         boolean didDisconnect = false;
-        boolean specificdisable = false;
+        boolean specificDisable = false;
 
+        // Either user disable mobile data or under roaming service and user disabled roaming
         if (!TextUtils.isEmpty(reason)) {
-            specificdisable = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED);
+            specificDisable = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED) ||
+                    reason.equals(Phone.REASON_ROAMING_ON);
         }
 
         for (ApnContext apnContext : mApnContexts.values()) {
             if (apnContext.isDisconnected() == false) didDisconnect = true;
-            if (specificdisable) {
+            if (specificDisable) {
                 // Use ApnSetting to decide metered or non-metered.
                 // Tear down all metered data connections.
                 ApnSetting apnSetting = apnContext.getApnSetting();
                 if (apnSetting != null && apnSetting.isMetered(mPhone.getContext(),
-                        mPhone.getSubId())) {
+                        mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())) {
                     if (DBG) log("clean up metered ApnContext Type: " + apnContext.getApnType());
                     apnContext.setReason(reason);
                     cleanUpConnection(tearDown, apnContext);
