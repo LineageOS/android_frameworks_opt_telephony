@@ -46,6 +46,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TestApplication;
+import com.android.internal.telephony.dataconnection.DcTracker.DataAllowFailReason;
 
 import org.junit.After;
 import org.junit.Before;
@@ -367,11 +368,12 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(FAKE_GATEWAY, linkProperties.getRoutes().get(0).getGateway().getHostAddress());
     }
 
-    private boolean isDataAllowed(StringBuilder sb) {
+    private boolean isDataAllowed(DataAllowFailReason dataAllowFailReasons) {
         try {
-            Method method = DcTracker.class.getDeclaredMethod("isDataAllowed", StringBuilder.class);
+            Method method = DcTracker.class.getDeclaredMethod("isDataAllowed",
+                    DataAllowFailReason.class);
             method.setAccessible(true);
-            return (boolean) method.invoke(mDct, sb);
+            return (boolean) method.invoke(mDct, dataAllowFailReasons);
         } catch (Exception e) {
             fail(e.toString());
             return false;
@@ -387,9 +389,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
 
-        StringBuilder sb = new StringBuilder();
-        boolean allowed = isDataAllowed(sb);
-        assertFalse(sb.toString(), allowed);
+        DataAllowFailReason failureReason = new DataAllowFailReason();
+        boolean allowed = isDataAllowed(failureReason);
+        assertFalse(failureReason.getDataAllowFailReason(), allowed);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -425,9 +427,9 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setEnabled(0, true);
         waitForMs(200);
 
-        sb.setLength(0);
-        allowed = isDataAllowed(sb);
-        assertTrue(sb.toString(), allowed);
+        failureReason.clearAllReasons();
+        allowed = isDataAllowed(failureReason);
+        assertTrue(failureReason.getDataAllowFailReason(), allowed);
 
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
@@ -450,9 +452,9 @@ public class DcTrackerTest extends TelephonyTest {
         // Simulate RIL fails the data call setup
         mSimulatedCommands.setDataCallResponse(false, dcResponse);
 
-        StringBuilder sb = new StringBuilder();
-        boolean allowed = isDataAllowed(sb);
-        assertFalse(sb.toString(), allowed);
+        DataAllowFailReason failureReason = new DataAllowFailReason();
+        boolean allowed = isDataAllowed(failureReason);
+        assertFalse(failureReason.getDataAllowFailReason(), allowed);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -488,9 +490,10 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setEnabled(0, true);
         waitForMs(200);
 
-        sb.setLength(0);
-        allowed = isDataAllowed(sb);
-        assertTrue(sb.toString(), allowed);
+
+        failureReason.clearAllReasons();
+        allowed = isDataAllowed(failureReason);
+        assertTrue(failureReason.getDataAllowFailReason(), allowed);
 
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
@@ -575,9 +578,15 @@ public class DcTrackerTest extends TelephonyTest {
     @MediumTest
     public void testUserDisableRoaming() throws Exception {
         //step 1: setup two DataCalls one for Metered: default, another one for Non-metered: IMS
+        //step 2: set roaming disabled, data is enabled
+        //step 3: under roaming service
+        //step 4: only tear down metered data connections.
+
         //set Default and MMS to be metered in the CarrierConfigManager
         boolean roamingEnabled = mDct.getDataOnRoamingEnabled();
-        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+        boolean dataEnabled = mDct.getDataEnabled();
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
         mDct.setEnabled(5, true);
         mDct.setEnabled(0, true);
@@ -601,20 +610,72 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(2), eq(FAKE_APN3),
                 eq(""), eq(""), eq(3), eq("IP"), any(Message.class));
 
+        //user is in roaming
+        doReturn(true).when(mServiceState).getDataRoaming();
         logd("Sending DISABLE_ROAMING_CMD");
         mDct.setDataOnRoamingEnabled(false);
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_ROAMING_ON));
         waitForMs(200);
 
         // expected tear down all metered DataConnections
-        verify(mSimulatedCommandsVerifier, times(2)).deactivateDataCall(anyInt(), anyInt(),
+        verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(anyInt(), anyInt(),
                 any(Message.class));
-        assertEquals(DctConstants.State.IDLE, mDct.getOverallState());
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
         assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
-        assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_IMS));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
 
-        // reset roaming settings at end of this test
+        // reset roaming settings / data enabled settings at end of this test
         mDct.setDataOnRoamingEnabled(roamingEnabled);
+        mDct.setDataEnabled(dataEnabled);
+        waitForMs(200);
+    }
+
+    @Test
+    @MediumTest
+    public void testDataCallOnUserDisableRoaming() throws Exception {
+        //step 1: mock under roaming service and user disabled roaming from settings.
+        //step 2: user toggled data settings on
+        //step 3: only non-metered data call is established
+
+        boolean roamingEnabled = mDct.getDataOnRoamingEnabled();
+        boolean dataEnabled = mDct.getDataEnabled();
+
+        //set Default and MMS to be metered in the CarrierConfigManager
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
+        mDct.setEnabled(5, true);
+        mDct.setEnabled(0, true);
+        doReturn(true).when(mServiceState).getDataRoaming();
+
+        logd("Sending DISABLE_ROAMING_CMD");
+        mDct.setDataOnRoamingEnabled(false);
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        logd("Sending DATA_ENABLED_CMD");
+        mDct.setDataEnabled(true);
+
+        waitForMs(200);
+        verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN1),
+                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(2), eq(FAKE_APN3),
+                eq(""), eq(""), eq(3), eq("IP"), any(Message.class));
+
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+        assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
+
+        // reset roaming settings / data enabled settings at end of this test
+        mDct.setDataOnRoamingEnabled(roamingEnabled);
+        mDct.setDataEnabled(dataEnabled);
         waitForMs(200);
     }
 
@@ -630,9 +691,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
 
-        StringBuilder sb = new StringBuilder();
-        boolean allowed = isDataAllowed(sb);
-        assertFalse(sb.toString(), allowed);
+        DataAllowFailReason failureReason = new DataAllowFailReason();
+        boolean allowed = isDataAllowed(failureReason);
+        assertFalse(failureReason.getDataAllowFailReason(), allowed);
 
         ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController, times(1)).registerForIccChanged(eq(mDct),
@@ -674,7 +735,8 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
 
         // Data should not be allowed since auto attach flag has been reset.
-        allowed = isDataAllowed(sb);
-        assertFalse(sb.toString(), allowed);
+        failureReason.clearAllReasons();
+        allowed = isDataAllowed(failureReason);
+        assertFalse(failureReason.getDataAllowFailReason(), allowed);
     }
 }
