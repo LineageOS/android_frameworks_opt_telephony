@@ -1732,9 +1732,10 @@ public class DcTracker extends Handler {
 
         // Either user disable mobile data or under roaming service and user disabled roaming
         if (!TextUtils.isEmpty(reason)) {
-            specificDisable = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED) ||
-                    reason.equals(Phone.REASON_ROAMING_ON) ||
-                    reason.equals(Phone.REASON_SINGLE_PDN_ARBITRATION);
+            specificDisable = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED)
+                    || reason.equals(Phone.REASON_ROAMING_ON)
+                    || reason.equals(Phone.REASON_SINGLE_PDN_ARBITRATION)
+                    || reason.equals(Phone.REASON_PDP_RESET);
         }
 
         for (ApnContext apnContext : mApnContexts.values()) {
