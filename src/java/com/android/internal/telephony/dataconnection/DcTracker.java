@@ -89,6 +89,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.ArrayUtils;
 
@@ -98,6 +99,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -321,8 +324,8 @@ public class DcTracker extends Handler {
                     int subId = mPhone.getSubId();
                     if (SubscriptionManager.isValidSubscriptionId(subId)) {
                         registerSettingsObserver();
-                         /* check if sim is un-provisioned due to cold sim detection */
-                        applyColdSimDetected(subId);
+                        /* check if sim is un-provisioned */
+                        applyUnProvisionedSimDetected();
                     }
                     if (mPreviousSubId.getAndSet(subId) != subId &&
                             SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -583,6 +586,14 @@ public class DcTracker extends Handler {
     /** mColdSimDetected is set to true when we received SubInfoChanged &&
      * SubscriptionInfo.simProvisioningStatus equals to SIM_UNPROVISIONED_COLD */
     private boolean mColdSimDetected = false;
+
+    /** mmOutOfCreditSimDetected is set to true when we received SubInfoChanged &&
+     * SubscriptionInfo.simProvisioningStatus equals to SIM_UNPROVISIONED_OUT_OF_CREDIT */
+    private boolean mOutOfCreditSimDetected = false;
+
+    /** HashSet of ApnContext associated with redirected data-connection.
+     * those apn contexts tear down upon redirection and re-establish upon non-cold sim detection */
+    private HashSet<ApnContext> redirectApnContextSet = new HashSet<>();
 
     /**
      * Handles changes to the APN db.
@@ -920,13 +931,35 @@ public class DcTracker extends Handler {
      * Called when there is any change to any SubscriptionInfo Typically
      * this method invokes {@link SubscriptionManager#getActiveSubscriptionInfoList}
      */
-    private boolean isColdSimDetected(int subId) {
-        final SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
-        if (subInfo != null) {
-            final int simProvisioningStatus = subInfo.getSimProvisioningStatus();
-            if(simProvisioningStatus == SubscriptionManager.SIM_UNPROVISIONED_COLD) {
-                log("Cold Sim Detected on SubId: " + subId);
-                return true;
+    private boolean isColdSimDetected() {
+        int subId = mPhone.getSubId();
+        if(SubscriptionManager.isValidSubscriptionId(subId)) {
+            final SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
+            if (subInfo != null) {
+                final int simProvisioningStatus = subInfo.getSimProvisioningStatus();
+                if (simProvisioningStatus == SubscriptionManager.SIM_UNPROVISIONED_COLD) {
+                    log("Cold Sim Detected on SubId: " + subId);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Called when there is any change to any SubscriptionInfo Typically
+     * this method invokes {@link SubscriptionManager#getActiveSubscriptionInfoList}
+     */
+    private boolean isOutOfCreditSimDetected() {
+        int subId = mPhone.getSubId();
+        if(SubscriptionManager.isValidSubscriptionId(subId)) {
+            final SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
+            if (subInfo != null) {
+                final int simProvisioningStatus = subInfo.getSimProvisioningStatus();
+                if (simProvisioningStatus == SubscriptionManager.SIM_UNPROVISIONED_OUT_OF_CREDIT) {
+                    log("Out Of Credit Sim Detected on SubId: " + subId);
+                    return true;
+                }
             }
         }
         return false;
@@ -2320,21 +2353,32 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
     }
 
-    private void applyColdSimDetected(int subId) {
-        if(isColdSimDetected(subId)) {
+    private void applyUnProvisionedSimDetected() {
+        if(isColdSimDetected()) {
             if(!mColdSimDetected) {
                 if(DBG) {
-                    log("onColdSimDetected on subId " + subId +": cleanUpAllDataConnections");
+                    log("onColdSimDetected: cleanUpAllDataConnections");
                 }
                 cleanUpAllConnections(null);
                 //send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
                 mPhone.notifyOtaspChanged(ServiceStateTracker.OTASP_SIM_UNPROVISIONED);
                 mColdSimDetected = true;
             }
+        } else if (isOutOfCreditSimDetected()) {
+            if(!mOutOfCreditSimDetected) {
+                if(DBG) {
+                    log("onOutOfCreditSimDetected on subId: re-establish data connection");
+                }
+                for (ApnContext context : redirectApnContextSet) {
+                    onTrySetupData(context);
+                    redirectApnContextSet.remove(context);
+                }
+                mOutOfCreditSimDetected = true;
+            }
         } else {
-            if (DBG) log("onColdSimDetected on subId: " + + subId + " reset coldSimDetected");
+            if (DBG) log("Provisioned Sim Detected on subId: " + mPhone.getSubId() );
             mColdSimDetected = false;
-            mRedirected = false;
+            mOutOfCreditSimDetected = false;
         }
     }
 
@@ -3016,13 +3060,21 @@ public class DcTracker extends Handler {
     /**
      * Called when EVENT_REDIRECTION_DETECTED is received.
      */
-    private void onDataConnectionRedirected(String redirectUrl) {
+    private void onDataConnectionRedirected(String redirectUrl,
+                                            HashMap<ApnContext, ConnectionParams> apnContextMap) {
         if (!TextUtils.isEmpty(redirectUrl)) {
             mRedirected = true;
             Intent intent = new Intent(TelephonyIntents.ACTION_DATA_CONNECTION_REDIRECTED);
             intent.putExtra(REDIRECTION_URL_KEY, redirectUrl);
-            if(notifyCarrierAppWithIntent(intent)) {
+            if(!isColdSimDetected() && !isOutOfCreditSimDetected()
+                    && notifyCarrierAppWithIntent(intent)) {
                 log("Starting Activation Carrier app with redirectUrl : " + redirectUrl);
+
+                /* tear down the data connection for all apn types */
+                for(ApnContext context : apnContextMap.keySet()) {
+                    cleanUpConnection(true, context);
+                    redirectApnContextSet.add(context);
+                }
             }
         }
     }
@@ -3720,8 +3772,10 @@ public class DcTracker extends Handler {
                 break;
 
             case DctConstants.EVENT_REDIRECTION_DETECTED:
-                log("dataConnectionTracker.handleMessage: EVENT_REDIRECTION_DETECTED=" + msg);
-                onDataConnectionRedirected((String) msg.obj);
+                AsyncResult ar = (AsyncResult) msg.obj;
+                String url = (String) ar.userObj;
+                log("dataConnectionTracker.handleMessage: EVENT_REDIRECTION_DETECTED=" + url);
+                onDataConnectionRedirected(url, (HashMap<ApnContext, ConnectionParams>) ar.result);
 
             case DctConstants.EVENT_RADIO_AVAILABLE:
                 onRadioAvailable();
@@ -4021,6 +4075,8 @@ public class DcTracker extends Handler {
 
         intent.setClassName(activationApp[0], activationApp[1]);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+
         //check if Activation App is available */
         final PackageManager packageManager = mPhone.getContext().getPackageManager();
         if (packageManager.queryBroadcastReceivers(intent,
