@@ -24,6 +24,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -37,6 +38,7 @@ import static org.junit.Assert.assertEquals;
 public class ApnSettingTest extends TelephonyTest {
 
     private PersistableBundle mBundle;
+    private boolean isRoaming = false;
 
     @Before
     public void setUp() throws Exception {
@@ -211,35 +213,93 @@ public class ApnSettingTest extends TelephonyTest {
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_MMS}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_MMS, PhoneConstants.APN_TYPE_SUPL}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_DUN}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_ALL}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_SUPL}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_CBS}).
-                isMetered(mContext, 1));
+                isMetered(mContext, 1, isRoaming));
+
+        //reuse the cached result for subId 1
+        assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_DEFAULT,
+                mContext, 1, isRoaming));
+        assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_MMS,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_SUPL,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_CBS,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_DUN,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_FOTA,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_IA,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_HIPRI,
+                mContext, 1, isRoaming));
+    }
+
+    @Test
+    @SmallTest
+    public void testIsRoamingMetered() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
+        isRoaming = true;
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT}).
+                isMetered(mContext, 1, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 1, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 1, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_MMS, PhoneConstants.APN_TYPE_SUPL}).
+                isMetered(mContext, 1, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_DUN}).
+                isMetered(mContext, 1, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 1, isRoaming));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_SUPL}).
+                isMetered(mContext, 1, isRoaming));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 1, isRoaming));
     }
 
     @Test
@@ -250,35 +310,93 @@ public class ApnSettingTest extends TelephonyTest {
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_CBS}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_SUPL}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_CBS}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_CBS}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_IA}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_ALL}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_IMS}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_IMS}).
-                isMetered(mContext, 2));
+                isMetered(mContext, 2, isRoaming));
+
+    }
+
+    @Test
+    @SmallTest
+    public void testIsRoamingMeteredAnother() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_CBS});
+        isRoaming = true;
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 2, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_SUPL}).
+                isMetered(mContext, 2, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 2, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 2, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_SUPL, PhoneConstants.APN_TYPE_IA}).
+                isMetered(mContext, 2, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 2, isRoaming));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_IMS}).
+                isMetered(mContext, 2, isRoaming));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IMS}).
+                isMetered(mContext, 2, isRoaming));
+
+        //reuse the cached result for subId 2
+        assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_SUPL,
+                mContext, 2, isRoaming));
+        assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_CBS,
+                mContext, 2, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_DEFAULT,
+                mContext, 2, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_MMS,
+                mContext, 2, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_DUN,
+                mContext, 2, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_FOTA,
+                mContext, 2, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_IA,
+                mContext, 2, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_HIPRI,
+                mContext, 2, isRoaming));
 
     }
 
@@ -290,19 +408,43 @@ public class ApnSettingTest extends TelephonyTest {
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_IMS}).
-                isMetered(mContext, 3));
+                isMetered(mContext, 3, isRoaming));
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_IMS, PhoneConstants.APN_TYPE_MMS}).
-                isMetered(mContext, 3));
+                isMetered(mContext, 3, isRoaming));
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_FOTA}).
-                isMetered(mContext, 3));
+                isMetered(mContext, 3, isRoaming));
 
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_ALL}).
-                isMetered(mContext, 3));
+                isMetered(mContext, 3, isRoaming));
+    }
+
+    @Test
+    @SmallTest
+    public void testIsRoamingMeteredNothingCharged() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{});
+        isRoaming = true;
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IMS}).
+                isMetered(mContext, 3, isRoaming));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IMS, PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 3, isRoaming));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_FOTA}).
+                isMetered(mContext, 3, isRoaming));
+
+        assertFalse(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 3, isRoaming));
     }
 
     @Test
@@ -313,19 +455,44 @@ public class ApnSettingTest extends TelephonyTest {
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_ALL}).
-                isMetered(mContext, 4));
+                isMetered(mContext, 4, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS}).
-                isMetered(mContext, 4));
+                isMetered(mContext, 4, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_CBS}).
-                isMetered(mContext, 4));
+                isMetered(mContext, 4, isRoaming));
 
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_DUN}).
-                isMetered(mContext, 4));
+                isMetered(mContext, 4, isRoaming));
+
+    }
+
+    @Test
+    @SmallTest
+    public void testIsRoamingMeteredNothingFree() throws Exception {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_ALL});
+        isRoaming = true;
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_ALL}).
+                isMetered(mContext, 4, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS}).
+                isMetered(mContext, 4, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_FOTA, PhoneConstants.APN_TYPE_CBS}).
+                isMetered(mContext, 4, isRoaming));
+
+        assertTrue(createApnSetting(
+                new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_DUN}).
+                isMetered(mContext, 4, isRoaming));
 
     }
 }
