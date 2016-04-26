@@ -125,18 +125,20 @@ public class TelephonyEventLogTest extends TelephonyTest {
         mEventLog.writeServiceStateChanged(serviceState);
 
         ArrayMap<String, Object> m = new ArrayMap<>();
-        m.put("voiceRegState", ServiceState.STATE_IN_SERVICE);
-        m.put("dataRegState", ServiceState.STATE_IN_SERVICE);
-        m.put("voiceRoamingType", ServiceState.ROAMING_TYPE_NOT_ROAMING);
-        m.put("dataRoamingType", ServiceState.ROAMING_TYPE_NOT_ROAMING);
-        m.put("operator-alpha-long", "Test Voice Long");
-        m.put("operator-alpha-short", "TestVoice");
-        m.put("operator-numeric", "12345");
-        m.put("data-operator-alpha-long", "Test Date Long");
-        m.put("data-operator-alpha-short", "TestData");
-        m.put("data-operator-numeric", "67890");
-        m.put("radioTechnology", ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
-        m.put("dataRadioTechnology", ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        m.put(TelephonyEventLog.SERVICE_STATE_VOICE_REG_STATE, ServiceState.STATE_IN_SERVICE);
+        m.put(TelephonyEventLog.SERVICE_STATE_DATA_REG_STATE, ServiceState.STATE_IN_SERVICE);
+        m.put(TelephonyEventLog.SERVICE_STATE_VOICE_ROAMING_TYPE,
+                ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        m.put(TelephonyEventLog.SERVICE_STATE_DATA_ROAMING_TYPE,
+                ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        //m.put(TelephonyEventLog.SERVICE_STATE_VOICE_ALPHA_LONG, "Test Voice Long");
+        m.put(TelephonyEventLog.SERVICE_STATE_VOICE_ALPNA_SHORT, "TestVoice");
+        m.put(TelephonyEventLog.SERVICE_STATE_VOICE_NUMERIC, "12345");
+        //m.put(TelephonyEventLog.SERVICE_STATE_DATA_ALPHA_LONG, "Test Date Long");
+        m.put(TelephonyEventLog.SERVICE_STATE_DATA_ALPNA_SHORT, "TestData");
+        m.put(TelephonyEventLog.SERVICE_STATE_DATA_NUMERIC, "67890");
+        m.put(TelephonyEventLog.SERVICE_STATE_VOICE_RAT, ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        m.put(TelephonyEventLog.SERVICE_STATE_DATA_RAT, ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
 
         m.put(TelephonyEventLog.DATA_KEY_PHONE_ID, 0);
         m.put(TelephonyEventLog.DATA_KEY_PARAM1, -1);
