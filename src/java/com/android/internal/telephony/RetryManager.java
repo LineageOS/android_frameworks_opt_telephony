@@ -101,7 +101,7 @@ public class RetryManager {
      * The default value (in milliseconds) for delay between APN trying (mInterApnDelay)
      * within the same round
      */
-    private static final long DEFAULT_INTER_APN_DELAY = 20000;
+    private static final long DEFAULT_INTER_APN_DELAY = 3000;
 
     /**
      * The default value (in milliseconds) for delay between APN trying (mFailFastInterApnDelay)
