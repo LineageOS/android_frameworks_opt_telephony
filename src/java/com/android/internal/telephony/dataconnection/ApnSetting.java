@@ -118,6 +118,12 @@ public class ApnSetting {
      */
     private static HashMap<Integer, HashSet<String>> sMeteredApnTypes = new HashMap<>();
 
+    /**
+     * Metered Roaming APN types which would be accounted for in data usage. This is a map of
+     * subId -> set of metered roaming apn strings for the carrier.
+     */
+    private static HashMap<Integer, HashSet<String>> sMeteredRoamingApnTypes = new HashMap<>();
+
     public ApnSetting(int id, String numeric, String carrier, String apn,
             String proxy, String port,
             String mmsc, String mmsProxy, String mmsPort,
@@ -404,9 +410,17 @@ public class ApnSetting {
         return false;
     }
 
-    public static boolean isMeteredApnType(String type, Context context, int subId) {
-        synchronized (sMeteredApnTypes) {
-            HashSet<String> meteredApnSet = sMeteredApnTypes.get(subId);
+    public static boolean isMeteredApnType(String type, Context context, int subId,
+                                           boolean isRoaming) {
+
+        HashMap<Integer, HashSet<String>> meteredApnTypesCache = (isRoaming) ?
+                sMeteredApnTypes : sMeteredRoamingApnTypes;
+        String carrierConfig = (isRoaming) ?
+                CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS :
+                CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS;
+
+        synchronized (meteredApnTypesCache) {
+            HashSet<String> meteredApnSet = meteredApnTypesCache.get(subId);
 
             // In case of cache miss, we need to look up the settings from carrier config.
             if (meteredApnSet == null) {
@@ -424,52 +438,53 @@ public class ApnSetting {
                     return true;
                 }
 
-                String[] meteredApnTypes = b.getStringArray(
-                        CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS);
+                String[] meteredApnTypes = b.getStringArray(carrierConfig);
                 if (meteredApnTypes == null) {
-                    Rlog.e(LOG_TAG, "KEY_CARRIER_METERED_APN_TYPES_STRINGS is not available. " +
-                            "subId = " + subId);
+                    Rlog.e(LOG_TAG, carrierConfig +  " is not available. " + "subId = " + subId);
                     return true;
                 }
 
                 meteredApnSet = new HashSet<String>(Arrays.asList(meteredApnTypes));
-                sMeteredApnTypes.put(subId, meteredApnSet);
+                meteredApnTypesCache.put(subId, meteredApnSet);
                 if (DBG) {
                     Rlog.d(LOG_TAG, "For subId = " + subId + ", metered APN types are " +
-                            Arrays.toString(meteredApnSet.toArray()));
+                            Arrays.toString(meteredApnSet.toArray()) +
+                            " isRoaming: " + isRoaming);
                 }
             }
             // If all types of APN are metered, then this APN setting must be metered.
             if (meteredApnSet.contains(PhoneConstants.APN_TYPE_ALL)) {
-                if (DBG) Rlog.d(LOG_TAG, "All APN types are metered.");
+                if (DBG) Rlog.d(LOG_TAG, "All APN types are metered. isRoaming: " + isRoaming);
                 return true;
             }
 
             if (meteredApnSet.contains(type)) {
-                if (DBG) Rlog.d(LOG_TAG, type + " is metered.");
+                if (DBG) Rlog.d(LOG_TAG, type + " is metered. isRoaming: " + isRoaming);
                 return true;
             } else if (type.equals(PhoneConstants.APN_TYPE_ALL)) {
                 // Assuming no configuration error, if at least one APN type is
                 // metered, then this APN setting is metered.
                 if (meteredApnSet.size() > 0) {
-                    if (DBG) Rlog.d(LOG_TAG, "APN_TYPE_ALL APN is metered.");
+                    if (DBG) Rlog.d(LOG_TAG, "APN_TYPE_ALL APN is metered. isRoaming: " +
+                            isRoaming);
                     return true;
                 }
             }
         }
-        if (DBG) Rlog.d(LOG_TAG, type + " is not metered.");
+        if (DBG) Rlog.d(LOG_TAG, type + " is not metered. isRoaming: " + isRoaming);
         return false;
     }
 
-    public boolean isMetered(Context context, int subId) {
+    public boolean isMetered(Context context, int subId, boolean isRoaming ) {
         for (String type : types) {
             // If one of the APN type is metered, then this APN setting is metered.
-            if (isMeteredApnType(type, context, subId)) {
-                if (DBG) Rlog.d(LOG_TAG, "Metered. APN = " + toString());
+            if (isMeteredApnType(type, context, subId, isRoaming)) {
+                if (DBG) Rlog.d(LOG_TAG, "Metered. APN = " + toString() +
+                        "isRoaming: " + isRoaming);
                 return true;
             }
         }
-        if (DBG) Rlog.d(LOG_TAG, "Not metered. APN = " + toString());
+        if (DBG) Rlog.d(LOG_TAG, "Not metered. APN = " + toString() + "isRoaming: " + isRoaming);
         return false;
     }
 
