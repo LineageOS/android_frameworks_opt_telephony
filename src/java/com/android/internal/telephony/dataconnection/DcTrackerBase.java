@@ -97,7 +97,7 @@ public abstract class DcTrackerBase extends Handler {
 
     /** Delay between APN attempts.
         Note the property override mechanism is there just for testing purpose only. */
-    protected static final int APN_DELAY_DEFAULT_MILLIS = 20000;
+    protected static final int APN_DELAY_DEFAULT_MILLIS = 3000;
 
     /** Delay between APN attempts when in fail fast mode */
     protected static final int APN_FAIL_FAST_DELAY_DEFAULT_MILLIS = 3000;
