@@ -497,6 +497,17 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mSimRecords).setVoiceCallForwardingFlag(anyInt(), anyBoolean(), eq(cfNumber));
     }
 
+    @Test
+    public void testSetVideoCallForwardingPreference() {
+        mPhoneUT.setVideoCallForwardingPreference(false);
+        boolean cfPref = mPhoneUT.getVideoCallForwardingPreference();
+        assertFalse(cfPref);
+
+        mPhoneUT.setVideoCallForwardingPreference(true);
+        cfPref = mPhoneUT.getVideoCallForwardingPreference();
+        assertTrue(cfPref);
+    }
+
     /**
      * GsmCdmaPhone handles a lot of messages. This function verifies behavior for messages that are
      * received when obj is created and that are received on phone type switch
