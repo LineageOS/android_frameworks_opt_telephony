@@ -493,7 +493,7 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
-    public Network getActiveNetworkForUid(int uid) {
+    public Network getActiveNetworkForUid(int uid, boolean ignoreBlocked) {
         throw new RuntimeException("not implemented");
     }
 
@@ -502,7 +502,7 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
-    public NetworkInfo getActiveNetworkInfoForUid(int uid) {
+    public NetworkInfo getActiveNetworkInfoForUid(int uid, boolean ignoreBlocked) {
         throw new RuntimeException("not implemented");
     }
 
@@ -512,7 +512,7 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
-    public NetworkInfo getNetworkInfoForNetwork(Network network) {
+    public NetworkInfo getNetworkInfoForUid(Network network, int uid, boolean ignoreBlocked) {
         throw new RuntimeException("not implemented");
     }
 
