@@ -631,9 +631,9 @@ public class DcTracker extends Handler {
 
     private int mDisconnectPendingCount = 0;
 
-    /** mRedirected is set to true when we first got the validation failure with the redirection URL
-     * based on this value we start the Carrier App to check the sim state */
-    private boolean mRedirected = false;
+    /** mRedirectUrl is set when we got the validation failure with the redirection URL
+     * based on which we start the Carrier App to check the sim state */
+    private String mRedirectUrl = null;
 
     /** mColdSimDetected is set to true when we received SubInfoChanged &&
      * SubscriptionInfo.simProvisioningStatus equals to SIM_UNPROVISIONED_COLD */
@@ -3136,14 +3136,14 @@ public class DcTracker extends Handler {
     private void onDataConnectionRedirected(String redirectUrl,
                                             HashMap<ApnContext, ConnectionParams> apnContextMap) {
         if (!TextUtils.isEmpty(redirectUrl)) {
-            mRedirected = true;
+            mRedirectUrl = redirectUrl;
             Intent intent = new Intent(TelephonyIntents.ACTION_DATA_CONNECTION_REDIRECTED);
             intent.putExtra(REDIRECTION_URL_KEY, redirectUrl);
             if(!isColdSimDetected() && !isOutOfCreditSimDetected()
-                    && notifyCarrierAppWithIntent(intent)) {
+                    && checkCarrierAppAvailable(intent)) {
                 log("Starting Activation Carrier app with redirectUrl : " + redirectUrl);
 
-                /* tear down the data connection for all apn types */
+                // Tear down data connections for all apn types
                 for(ApnContext context : apnContextMap.keySet()) {
                     cleanUpConnection(true, context);
                     redirectApnContextSet.add(context);
@@ -3182,6 +3182,8 @@ public class DcTracker extends Handler {
                 if (mDisconnectPendingCount == 0) {
                     notifyDataDisconnectComplete();
                     notifyAllDataDisconnected();
+                    // Notify carrier app with redirection when there is no pending disconnect req
+                    notifyCarrierAppForRedirection();
                 }
                 return;
             }
@@ -3229,6 +3231,8 @@ public class DcTracker extends Handler {
                     mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed());
             notifyDataDisconnectComplete();
             notifyAllDataDisconnected();
+            // Notify carrier app with redirection when there is no pending disconnect req
+            notifyCarrierAppForRedirection();
         }
 
     }
@@ -4139,18 +4143,15 @@ public class DcTracker extends Handler {
         sendMessage(msg);
     }
 
-    private boolean notifyCarrierAppWithIntent(Intent intent) {
-        //read from carrier config manager
+    private boolean checkCarrierAppAvailable(Intent intent) {
+        // Read from carrier config manager
         String[] activationApp = getActivationAppName();
         if(activationApp == null || activationApp.length != 2) {
             return false;
         }
 
         intent.setClassName(activationApp[0], activationApp[1]);
-        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
-        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-
-        //check if Activation App is available */
+        // Check if activation app is available
         final PackageManager packageManager = mPhone.getContext().getPackageManager();
         if (packageManager.queryBroadcastReceivers(intent,
                 PackageManager.MATCH_DEFAULT_ONLY).isEmpty()) {
@@ -4158,6 +4159,23 @@ public class DcTracker extends Handler {
                     + activationApp[0] + "." + activationApp[1]);
             return false;
         }
+        return true;
+    }
+
+    private boolean notifyCarrierAppWithIntent(Intent intent) {
+        // RIL has limitation to process new request while there is pending deactivation requests
+        // Make sure there is no pending disconnect before launching carrier app
+        if (mDisconnectPendingCount != 0) {
+            loge("Wait for pending disconnect requests done");
+            return false;
+        }
+        if (!checkCarrierAppAvailable(intent)) {
+            loge("Carrier app is unavailable");
+            return false;
+        }
+
+        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
 
         try {
             mPhone.getContext().sendBroadcast(intent);
@@ -4166,9 +4184,17 @@ public class DcTracker extends Handler {
             return false;
         }
 
-        if (DBG) log("send Intent to : " + activationApp[0] + "." + activationApp[1]
-                + " with action: " + intent.getAction());
+        if (DBG) log("send Intent to Carrier app with action: " + intent.getAction());
         return true;
+    }
+
+    private void notifyCarrierAppForRedirection() {
+        // Notify carrier app with redirectionUrl
+        if (!isColdSimDetected() && !isOutOfCreditSimDetected() && mRedirectUrl != null) {
+            Intent intent = new Intent(TelephonyIntents.ACTION_DATA_CONNECTION_REDIRECTED);
+            intent.putExtra(REDIRECTION_URL_KEY, mRedirectUrl);
+            if (notifyCarrierAppWithIntent(intent)) mRedirectUrl = null;
+        }
     }
 
     private void notifyDataDisconnectComplete() {
