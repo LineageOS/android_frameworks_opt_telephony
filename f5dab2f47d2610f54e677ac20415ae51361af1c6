@@ -22,6 +22,30 @@
       "revId": "f5dab2f47d2610f54e677ac20415ae51361af1c6",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5faad753_20f8aae3",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 841,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2016-05-03T18:30:54Z",
+      "side": 1,
+      "message": "That uses mTelephonyManager.getSimCount(), which would _always_ return 2 for MSIM devices",
+      "parentUuid": "5faad753_007ece6a",
+      "range": {
+        "startLine": 841,
+        "startChar": 12,
+        "endLine": 841,
+        "endChar": 73
+      },
+      "revId": "f5dab2f47d2610f54e677ac20415ae51361af1c6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
