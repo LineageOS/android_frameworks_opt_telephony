@@ -41,6 +41,9 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -238,7 +241,8 @@ public class IccCardProxy extends Handler implements IccCard {
             case EVENT_RECORDS_LOADED:
                 // Update the MCC/MNC.
                 if (mIccRecords != null) {
-                    String operator = mIccRecords.getOperatorNumeric();
+                    Phone currentPhone = PhoneFactory.getPhone(mPhoneId);
+                    String operator = currentPhone.getOperatorNumeric();
                     log("operator=" + operator + " mPhoneId=" + mPhoneId);
 
                     if (!TextUtils.isEmpty(operator)) {
