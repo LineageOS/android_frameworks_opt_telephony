@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_007ece6a",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 841,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2016-05-03T18:19:36Z",
+      "side": 1,
+      "message": "Should we be using \n\n  int subIdCountMax \u003d getActiveSubInfoCountMax();\n\nlike above?",
+      "range": {
+        "startLine": 841,
+        "startChar": 12,
+        "endLine": 841,
+        "endChar": 73
+      },
+      "revId": "f5dab2f47d2610f54e677ac20415ae51361af1c6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
