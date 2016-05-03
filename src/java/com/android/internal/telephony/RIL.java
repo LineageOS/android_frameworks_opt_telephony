@@ -732,6 +732,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         mPhoneType = RILConstants.NO_PHONE;
         mInstanceId = instanceId;
 
+        mEventLog = new TelephonyEventLog(mInstanceId);
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_LOG_TAG);
         mWakeLock.setReferenceCounted(false);
@@ -775,8 +776,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
         tdc.registerRIL(this);
-
-        mEventLog = new TelephonyEventLog(mInstanceId);
     }
 
     //***** CommandsInterface implementation
