@@ -838,9 +838,7 @@ public class SubscriptionController extends ISub.Stub {
 
             if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIdxToSubId.size());
 
-            if (sSlotIdxToSubId.size() <= 1) {
-                PhoneFactory.setSMSPromptEnabled(false);
-            }
+            PhoneFactory.setSMSPromptEnabled(sSlotIdxToSubId.size() > 1);
 
         } finally {
             Binder.restoreCallingIdentity(identity);
