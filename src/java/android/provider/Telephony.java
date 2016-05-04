@@ -1029,9 +1029,10 @@ public final class Telephony {
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
-
+             *
              * <p>Requires {@link android.Manifest.permission#RECEIVE_EMERGENCY_BROADCAST} to
              * receive.</p>
+             * @removed
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_EMERGENCY_CB_RECEIVED_ACTION =
