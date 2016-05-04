@@ -142,6 +142,20 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
     public static final String DATA_KEY_SRC_TECH = "src-tech";
     public static final String DATA_KEY_TARGET_TECH = "target-tech";
 
+    public static final String SERVICE_STATE_VOICE_REG_STATE = "regSt";
+    public static final String SERVICE_STATE_DATA_REG_STATE = "dataRegSt";
+    public static final String SERVICE_STATE_VOICE_ROAMING_TYPE = "roamingType";
+    public static final String SERVICE_STATE_DATA_ROAMING_TYPE = "dataRoamingType";
+    public static final String SERVICE_STATE_VOICE_ALPHA_LONG = "alphaLong";
+    public static final String SERVICE_STATE_VOICE_ALPNA_SHORT = "alphaShort";
+    public static final String SERVICE_STATE_VOICE_NUMERIC = "operator";
+    public static final String SERVICE_STATE_DATA_ALPHA_LONG = "dataAlphaLong";
+    public static final String SERVICE_STATE_DATA_ALPNA_SHORT = "dataAlphaShort";
+    public static final String SERVICE_STATE_DATA_NUMERIC = "dataOperator";
+    public static final String SERVICE_STATE_VOICE_RAT = "rat";
+    public static final String SERVICE_STATE_DATA_RAT = "dataRat";
+    public static final String SERVICE_STATE_EMERGENCY_ONLY = "emergencyOnly";
+
     int mPhoneId;
 
     public TelephonyEventLog(int phoneId) {
@@ -174,10 +188,84 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
         logEvent(timestamp, ConnectivityMetricsLogger.COMPONENT_TAG_TELEPHONY, tag, b);
     }
 
+    private int mVoiceRegState = -1;
+    private int mDataRegState = -1;
+    private int mVoiceRoamingType = -1;
+    private int mDataRoamingType = -1;
+    private String mVoiceOperatorAlphaShort;
+    private String mVoiceOperatorNumeric;
+    private String mDataOperatorAlphaShort;
+    private String mDataOperatorNumeric;
+    private int mRilVoiceRadioTechnology = -1;
+    private int mRilDataRadioTechnology = -1;
+    private boolean mEmergencyOnly = false;
+
+    public static boolean equals(Object a, Object b) {
+        return (a == null ? b == null : a.equals(b));
+    }
+
     public void writeServiceStateChanged(ServiceState serviceState) {
         Bundle b = new Bundle();
-        serviceState.fillInNotifierBundle(b);
-        writeEvent(TAG_SERVICE_STATE, b);
+        boolean changed = false;
+        if (mVoiceRegState != serviceState.getVoiceRegState()) {
+            mVoiceRegState = serviceState.getVoiceRegState();
+            b.putInt(SERVICE_STATE_VOICE_REG_STATE, mVoiceRegState);
+            changed = true;
+        }
+        if (mDataRegState != serviceState.getDataRegState()) {
+            mDataRegState = serviceState.getDataRegState();
+            b.putInt(SERVICE_STATE_DATA_REG_STATE, mDataRegState);
+            changed = true;
+        }
+        if (mVoiceRoamingType != serviceState.getVoiceRoamingType()) {
+            mVoiceRoamingType = serviceState.getVoiceRoamingType();
+            b.putInt(SERVICE_STATE_VOICE_ROAMING_TYPE, mVoiceRoamingType);
+            changed = true;
+        }
+        if (mDataRoamingType != serviceState.getDataRoamingType()) {
+            mDataRoamingType = serviceState.getDataRoamingType();
+            b.putInt(SERVICE_STATE_DATA_ROAMING_TYPE, mDataRoamingType);
+            changed = true;
+        }
+        if (!equals(mVoiceOperatorAlphaShort, serviceState.getVoiceOperatorAlphaShort())
+                || !equals(mVoiceOperatorNumeric, serviceState.getVoiceOperatorNumeric())) {
+            // TODO: Evaluate if we need to send AlphaLong. AlphaShort+Numeric might be enough.
+            //b.putString(SERVICE_STATE_VOICE_ALPHA_LONG, serviceState.getVoiceOperatorAlphaLong());
+            mVoiceOperatorAlphaShort = serviceState.getVoiceOperatorAlphaShort();
+            mVoiceOperatorNumeric = serviceState.getVoiceOperatorNumeric();
+            b.putString(SERVICE_STATE_VOICE_ALPNA_SHORT, mVoiceOperatorAlphaShort);
+            b.putString(SERVICE_STATE_VOICE_NUMERIC, mVoiceOperatorNumeric);
+            changed = true;
+        }
+        if (!equals(mDataOperatorAlphaShort, serviceState.getDataOperatorAlphaShort())
+                || !equals(mDataOperatorNumeric, serviceState.getDataOperatorNumeric())) {
+            // TODO: Evaluate if we need to send AlphaLong. AlphaShort+Numeric might be enough.
+            //b.putString(SERVICE_STATE_DATA_ALPHA_LONG, serviceState.getDataOperatorAlphaLong());
+            mDataOperatorAlphaShort = serviceState.getDataOperatorAlphaShort();
+            mDataOperatorNumeric = serviceState.getDataOperatorNumeric();
+            b.putString(SERVICE_STATE_DATA_ALPNA_SHORT, mDataOperatorAlphaShort);
+            b.putString(SERVICE_STATE_DATA_NUMERIC, mDataOperatorNumeric);
+            changed = true;
+        }
+        if (mRilVoiceRadioTechnology != serviceState.getRilVoiceRadioTechnology()) {
+            mRilVoiceRadioTechnology = serviceState.getRilVoiceRadioTechnology();
+            b.putInt(SERVICE_STATE_VOICE_RAT, mRilVoiceRadioTechnology);
+            changed = true;
+        }
+        if (mRilDataRadioTechnology != serviceState.getRilDataRadioTechnology()) {
+            mRilDataRadioTechnology = serviceState.getRilDataRadioTechnology();
+            b.putInt(SERVICE_STATE_DATA_RAT, mRilDataRadioTechnology);
+            changed = true;
+        }
+        if (mEmergencyOnly != serviceState.isEmergencyOnly()) {
+            mEmergencyOnly = serviceState.isEmergencyOnly();
+            b.putBoolean(SERVICE_STATE_EMERGENCY_ONLY, mEmergencyOnly);
+            changed = true;
+        }
+
+        if (changed) {
+            writeEvent(TAG_SERVICE_STATE, b);
+        }
     }
 
     public void writeSetAirplaneMode(boolean enabled) {
