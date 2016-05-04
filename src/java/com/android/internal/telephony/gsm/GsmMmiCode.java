@@ -31,6 +31,7 @@ import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.util.Log;
+import android.widget.Toast;
 
 import static com.android.internal.telephony.CommandsInterface.*;
 import com.android.internal.telephony.gsm.SsData;
@@ -1128,6 +1129,10 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                             LOG_TAG,
                             mContext.getText(com.android.internal.R.string.mmiError).toString()
                             );
+                            Toast.makeText(
+                                mContext,
+                                mContext.getText(com.android.internal.R.string.mmiError).toString(),
+                                Toast.LENGTH_SHORT).show();
                     } else {
                         mMessage = getErrorMessage(ar);
                     }
