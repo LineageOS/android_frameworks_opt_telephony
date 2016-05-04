@@ -715,7 +715,7 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
-    public boolean setAlwaysOnVpnPackage(int userId, String packageName) {
+    public boolean setAlwaysOnVpnPackage(int userId, String packageName, boolean lockdownEnabled) {
         throw new RuntimeException("not implemented");
     }
 
