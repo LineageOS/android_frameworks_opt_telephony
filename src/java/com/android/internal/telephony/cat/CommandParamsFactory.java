@@ -609,10 +609,20 @@ class CommandParamsFactory extends Handler {
         ItemsIconId itemsIconId = null;
         Iterator<ComprehensionTlv> iter = ctlvs.iterator();
 
+        AppInterface.CommandType cmdType = AppInterface.CommandType
+                .fromInt(cmdDet.typeOfCommand);
+
         ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID,
                 ctlvs);
         if (ctlv != null) {
             menu.title = ValueParser.retrieveAlphaId(ctlv);
+        } else if (cmdType == AppInterface.CommandType.SET_UP_MENU) {
+            // According to spec ETSI TS 102 223 section 6.10.3, the
+            // Alpha ID is mandatory (and also part of minimum set of
+            // elements required) for SET_UP_MENU. If it is not received
+            // by ME, then ME should respond with "error: missing minimum
+            // information" and not "command performed successfully".
+            throw new ResultException(ResultCode.REQUIRED_VALUES_MISSING);
         }
 
         while (true) {
