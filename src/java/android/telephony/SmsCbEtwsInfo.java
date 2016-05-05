@@ -194,9 +194,9 @@ public class SmsCbEtwsInfo implements Parcelable {
 
     @Override
     public int hashCode() {
-        int hash = mWarningType;
-        hash += mEmergencyUserAlert ? 1 : 0;
-        hash += mActivatePopup ? 1 : 0;
+        int hash = mWarningType * 4;
+        hash += mEmergencyUserAlert ? ((hash * 8) + 7) : ((hash * 6) + 5) ;
+        hash += mActivatePopup ? ((hash * 12) + 15) : ((hash * 10) + 13);
         return hash;
     }
 
