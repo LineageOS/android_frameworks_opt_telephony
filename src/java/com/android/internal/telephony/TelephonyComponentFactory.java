@@ -32,6 +32,7 @@ import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.imsphone.ImsPullCall;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardProxy;
 
@@ -190,8 +191,19 @@ public class TelephonyComponentFactory {
             int phoneId, int precisePhoneType,
             TelephonyComponentFactory telephonyComponentFactory) {
         Rlog.d(LOG_TAG, "makePhone");
-        return new PhoneProxy(context, ci, notifier, phoneId, precisePhoneType,
+        Phone phone = null;
+        if (precisePhoneType == PhoneConstants.PHONE_TYPE_GSM) {
+            phone = new GsmCdmaPhone(context,
+                ci, notifier, phoneId,
+                PhoneConstants.PHONE_TYPE_GSM,
                 telephonyComponentFactory);
+        } else if (precisePhoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+                phone = new GsmCdmaPhone(context,
+                ci, notifier, phoneId,
+                PhoneConstants.PHONE_TYPE_CDMA_LTE,
+                telephonyComponentFactory);
+        }
+        return phone;
     }
 
     public SubscriptionController initSubscriptionController(Context c, CommandsInterface[] ci) {
