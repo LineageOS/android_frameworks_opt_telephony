@@ -222,14 +222,14 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 PhoneConstants.APN_TYPE_ALL));
 
         // 2. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn = APN_TYPE_EMERGENCY, apn
-        // not enabled and not active
+        // not connected
+        doReturn(DctConstants.State.IDLE).when(mDcTracker).getState(
+                PhoneConstants.APN_TYPE_EMERGENCY);
         assertEquals(PhoneConstants.DataState.DISCONNECTED, mPhoneUT.getDataConnectionState(
                 PhoneConstants.APN_TYPE_EMERGENCY));
 
         // 3. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn = APN_TYPE_EMERGENCY,
-        // APN enabled, active and CONNECTED, callTracker state = idle
-        doReturn(true).when(mDcTracker).isApnTypeEnabled(PhoneConstants.APN_TYPE_EMERGENCY);
-        doReturn(true).when(mDcTracker).isApnTypeActive(PhoneConstants.APN_TYPE_EMERGENCY);
+        // APN is connected, callTracker state = idle
         doReturn(DctConstants.State.CONNECTED).when(mDcTracker).getState(
                 PhoneConstants.APN_TYPE_EMERGENCY);
         mCT.mState = PhoneConstants.State.IDLE;
