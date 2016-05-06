@@ -54,7 +54,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
 
     private static final int EVENT_APP_READY = 1;
     private static final int EVENT_ISIM_REFRESH = 31;
-    private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
+    private static final int EVENT_ISIM_AUTHENTICATE_DONE          = 91;
 
     // ISIM EF records (see 3GPP TS 31.103)
     private String mIsimImpi;               // IMS private user identity
@@ -131,9 +131,9 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
                     }
                     break;
 
-                case EVENT_AKA_AUTHENTICATE_DONE:
+                case EVENT_ISIM_AUTHENTICATE_DONE:
                     ar = (AsyncResult)msg.obj;
-                    log("EVENT_AKA_AUTHENTICATE_DONE");
+                    log("EVENT_ISIM_AUTHENTICATE_DONE");
                     if (ar.exception != null) {
                         log("Exception ISIM AKA: " + ar.exception);
                     } else {
@@ -440,7 +440,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         if (DBG) log("getIsimChallengeResponse-nonce:"+nonce);
         try {
             synchronized(mLock) {
-                mCi.requestIsimAuthentication(nonce,obtainMessage(EVENT_AKA_AUTHENTICATE_DONE));
+                mCi.requestIsimAuthentication(nonce,obtainMessage(EVENT_ISIM_AUTHENTICATE_DONE));
                 try {
                     mLock.wait();
                 } catch (InterruptedException e) {
