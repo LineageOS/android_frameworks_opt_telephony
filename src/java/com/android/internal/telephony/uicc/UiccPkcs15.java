@@ -36,6 +36,7 @@ import java.lang.IndexOutOfBoundsException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Class that reads PKCS15-based rules for carrier privileges.
@@ -122,7 +123,8 @@ public class UiccPkcs15 extends Handler {
 
                 case EVENT_READ_BINARY_DONE:
                     IccIoResult response = (IccIoResult) ar.result;
-                    String result = IccUtils.bytesToHexString(response.payload);
+                    String result = IccUtils.bytesToHexString(response.payload)
+                            .toUpperCase(Locale.US);
                     log("IccIoResult: " + response + " payload: " + result);
                     AsyncResult.forMessage(mCallback, result, (result == null) ?
                             new IccException("Error: null response for " + mFileId) : null);
