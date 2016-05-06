@@ -1086,13 +1086,6 @@ public class DcTracker extends Handler {
         }
     }
 
-    public boolean isApnTypeActive(String type) {
-        ApnContext apnContext = mApnContexts.get(type);
-        if (apnContext == null) return false;
-
-        return (apnContext.getDcAc() != null);
-    }
-
     public boolean isDataPossible(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
         if (apnContext == null) {
@@ -1241,18 +1234,6 @@ public class DcTracker extends Handler {
             }
         }
         return null;
-    }
-
-    public boolean isApnTypeEnabled(String apnType) {
-        ApnContext apnContext = mApnContexts.get(apnType);
-        if (apnContext == null) {
-            return false;
-        }
-        return apnContext.isEnabled();
-    }
-
-    private void setState(DctConstants.State s) {
-        if (DBG) log("setState should not be used in GSM" + s);
     }
 
     // Return state of specific apn type
