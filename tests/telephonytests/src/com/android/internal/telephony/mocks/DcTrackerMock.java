@@ -62,10 +62,6 @@ public class DcTrackerMock extends DcTracker {
         throw new RuntimeException("Not Implemented");
     }
     @Override
-    public boolean isApnTypeActive(String type) {
-        throw new RuntimeException("Not Implemented");
-    }
-    @Override
     public boolean isDataPossible(String apnType) {
         throw new RuntimeException("Not Implemented");
     }
@@ -83,10 +79,6 @@ public class DcTrackerMock extends DcTracker {
     }
     @Override
     public String getActiveApnString(String apnType) {
-        throw new RuntimeException("Not Implemented");
-    }
-    @Override
-    public boolean isApnTypeEnabled(String apnType) {
         throw new RuntimeException("Not Implemented");
     }
     @Override
