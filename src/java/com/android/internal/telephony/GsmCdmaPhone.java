@@ -509,12 +509,6 @@ public class GsmCdmaPhone extends Phone {
             // Pass the actual State of EPDN
 
             ret = PhoneConstants.DataState.DISCONNECTED;
-        } else if (mDcTracker.isApnTypeEnabled(apnType) == false ||
-                (!isPhoneTypeCdmaLte() && mDcTracker.isApnTypeActive(apnType) == false)) {
-            //TODO: isApnTypeActive() is just checking whether ApnContext holds
-            //      Dataconnection or not. Checking each ApnState below should
-            //      provide the same state. Calling isApnTypeActive() can be removed.
-            ret = PhoneConstants.DataState.DISCONNECTED;
         } else { /* mSST.gprsState == ServiceState.STATE_IN_SERVICE */
             switch (mDcTracker.getState(apnType)) {
                 case RETRYING:
