@@ -1671,6 +1671,11 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.getModemActivityInfo(response);
     }
 
+    @Override
+    public void setMaxTransmitPower(int state, Message response) {
+        mActivePhone.setMaxTransmitPower(state, response);
+    }
+
     /**
      * @return true if we are in the emergency call back mode. This is a period where
      * the phone should be using as little power as possible and be ready to receive an

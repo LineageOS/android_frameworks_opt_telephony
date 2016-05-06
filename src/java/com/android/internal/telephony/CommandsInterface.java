@@ -2028,6 +2028,14 @@ public interface CommandsInterface {
     public void getModemActivityInfo(Message result);
 
     /**
+     *
+     * Set MAX transmit power state
+     *
+     * @param response Callback message contains the status from modem
+     */
+     public void setMaxTransmitPower(int state, Message response);
+
+    /**
      * Request to update the current local call hold state.
      * @param lchStatus, true if call is in lch state
      */
