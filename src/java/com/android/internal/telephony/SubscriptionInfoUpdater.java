@@ -385,7 +385,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
             String operator = tm.getSimOperatorNumericForPhone(slotId);
 
-            if (operator != null) {
+            if (!TextUtils.isEmpty(operator)) {
                 if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
                     MccTable.updateMccMncConfiguration(mContext, operator, false);
                 }

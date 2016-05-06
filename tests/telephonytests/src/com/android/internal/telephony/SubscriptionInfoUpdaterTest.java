@@ -242,6 +242,34 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testSimLoadedEmptyOperatorNumeric() {
+        /* mock new sim got loaded and there is no sim loaded before */
+        doReturn(null).when(mSubscriptionController)
+                .getSubInfoUsingSlotIdWithCheck(eq(0), anyBoolean(), anyString());
+        doReturn("89012604200000000000").when(mIccRecord).getFullIccId();
+        // operator numeric is empty
+        doReturn("").when(mTelephonyManager).getSimOperatorNumericForPhone(0);
+        Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
+        mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
+                IccCardConstants.INTENT_VALUE_ICC_LOADED);
+        mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
+
+        mContext.sendBroadcast(mIntent);
+        waitForMs(100);
+        SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
+        verify(mTelephonyManager).getSimOperatorNumericForPhone(0);
+        verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(
+                eq("89012604200000000000"), eq(0));
+        verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
+        verify(mSubscriptionController, times(0)).setMccMnc(anyString(), anyInt());
+        CarrierConfigManager mConfigManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        verify(mConfigManager, times(1)).updateConfigForPhoneId(eq(0),
+                eq(IccCardConstants.INTENT_VALUE_ICC_LOADED));
+    }
+
+    @Test
+    @SmallTest
     public void testSimLockedWithOutIccId() {
         /* mock no IccId Info present and try to query IccId
          after IccId query, update subscriptionDB */
