@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_e2c92478",
+        "filename": "src/java/com/android/internal/telephony/Phone.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2155,
+      "author": {
+        "id": 10621
+      },
+      "writtenOn": "2016-05-09T20:12:09Z",
+      "side": 1,
+      "message": "fix indent.",
+      "revId": "bdbf3750a21c5bcf82443b0f7a2deaae4d586774",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5faad753_02c5605b",
+        "filename": "src/java/com/android/internal/telephony/PhoneBase.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2732,
+      "author": {
+        "id": 10621
+      },
+      "writtenOn": "2016-05-09T20:12:09Z",
+      "side": 1,
+      "message": "Fix indent.",
+      "revId": "bdbf3750a21c5bcf82443b0f7a2deaae4d586774",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5faad753_a2a1ecab",
+        "filename": "src/java/com/android/internal/telephony/PhoneProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1675,
+      "author": {
+        "id": 10621
+      },
+      "writtenOn": "2016-05-09T20:12:09Z",
+      "side": 1,
+      "message": "Fix indent.",
+      "revId": "bdbf3750a21c5bcf82443b0f7a2deaae4d586774",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5faad753_c2a428bc",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 5161,
+      "author": {
+        "id": 10621
+      },
+      "writtenOn": "2016-05-09T20:12:09Z",
+      "side": 1,
+      "message": "Fix indents.",
+      "revId": "bdbf3750a21c5bcf82443b0f7a2deaae4d586774",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
