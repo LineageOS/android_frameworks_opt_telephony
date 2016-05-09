@@ -113,7 +113,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
     private boolean mIsShutdown;
-    private int mCurrentSimCount;
+    private int mCurrentSimCount = 0;
 
     public SubscriptionInfoUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
         logd("Constructor invoked");
@@ -568,7 +568,8 @@ public class SubscriptionInfoUpdater extends Handler {
 
     protected void handleSimAbsent(int slotId) {
         if (mIccId[slotId] != null && !mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
-            logd("SIM" + (slotId + 1) + " hot plug out");
+            mCurrentSimCount -= 1;
+            logd("SIM" + (slotId + 1) + " hot plug out, now mCurrentSimCount: " + mCurrentSimCount);
         }
         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
         if (isAllIccIdQueryDone()) {
@@ -606,6 +607,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 mInsertSimState[i] = SIM_NOT_INSERT;
             }
         }
+        mCurrentSimCount = insertedSimCount;
         logd("insertedSimCount = " + insertedSimCount);
 
         int index = 0;
@@ -724,8 +726,6 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        mCurrentSimCount = insertedSimCount;
-
         if (!mIsShutdown && insertedSimCount == 1) {
             SubscriptionInfo sir = subInfos.get(0);
             int subId = sir.getSubscriptionId();
@@ -742,6 +742,9 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     protected int getInsertedSimCount() {
+        if (!isAllIccIdQueryDone()) {
+            return 0;
+        }
         return mCurrentSimCount;
     }
 
