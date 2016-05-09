@@ -43,6 +43,7 @@ import android.provider.Telephony.Threads;
 import android.provider.Telephony.Mms.Addr;
 import android.provider.Telephony.Mms.Part;
 import android.provider.Telephony.MmsSms.PendingMessages;
+import android.telephony.SubscriptionManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -1478,13 +1479,31 @@ public class PduPersister {
         if (excludeMyNumber && array.length == 1) {
             return;
         }
-        String myNumber = excludeMyNumber ? mTelephonyManager.getLine1Number() : null;
+        final SubscriptionManager subscriptionManager = SubscriptionManager.from(mContext);
+        final Set<String> myPhoneNumbers = new HashSet<String>();
+        if (excludeMyNumber) {
+            // Build a list of my phone numbers from the various sims.
+            for (int subid : subscriptionManager.getActiveSubscriptionIdList()) {
+                final String myNumber = mTelephonyManager.getLine1Number(subid);
+                if (myNumber != null) {
+                    myPhoneNumbers.add(myNumber);
+                }
+            }
+        }
+
         for (EncodedStringValue v : array) {
             if (v != null) {
-                String number = v.getString();
-                if ((myNumber == null || !PhoneNumberUtils.compare(number, myNumber)) &&
-                        !recipients.contains(number)) {
-                    // Only add numbers which aren't my own number.
+                final String number = v.getString();
+                if (excludeMyNumber) {
+                    for (final String myNumber : myPhoneNumbers) {
+                        if (!PhoneNumberUtils.compare(number, myNumber)
+                                && !recipients.contains(number)) {
+                            // Only add numbers which aren't my own number.
+                            recipients.add(number);
+                            break;
+                        }
+                    }
+                } else if (!recipients.contains(number)){
                     recipients.add(number);
                 }
             }
