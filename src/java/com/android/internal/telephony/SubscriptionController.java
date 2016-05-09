@@ -663,7 +663,11 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getActiveSubInfoCountMax() {
         // FIXME: This valid now but change to use TelephonyDevController in the future
-        return mTelephonyManager.getSimCount();
+        if (PhoneFactory.getSubscriptionInfoUpdater() != null) {
+            return PhoneFactory.getSubscriptionInfoUpdater().getInsertedSimCount();
+        } else {
+            return 0;
+        }
     }
 
     /**
@@ -838,7 +842,7 @@ public class SubscriptionController extends ISub.Stub {
 
             if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIdxToSubId.size());
 
-            if (PhoneFactory.getSubscriptionInfoUpdater().getInsertedSimCount() <= 1) {
+            if (getActiveSubInfoCountMax() <= 1) {
                 PhoneFactory.setSMSPromptEnabled(false);
             }
 
