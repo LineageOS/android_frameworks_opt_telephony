@@ -606,6 +606,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 mInsertSimState[i] = SIM_NOT_INSERT;
             }
         }
+        mCurrentSimCount = insertedSimCount;
         logd("insertedSimCount = " + insertedSimCount);
 
         int index = 0;
@@ -723,8 +724,6 @@ public class SubscriptionInfoUpdater extends Handler {
                         + Integer.toString(temp.getSubscriptionId()), null);
             }
         }
-
-        mCurrentSimCount = insertedSimCount;
 
         if (!mIsShutdown && insertedSimCount == 1) {
             SubscriptionInfo sir = subInfos.get(0);
