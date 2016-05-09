@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_82171052",
+        "filename": "src/java/com/android/internal/telephony/PhoneProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 1675,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-05-09T22:02:28Z",
+      "side": 1,
+      "message": "What\u0027s state here? Is this supposed to be a boolean?",
+      "range": {
+        "startLine": 1675,
+        "startChar": 36,
+        "endLine": 1675,
+        "endChar": 45
+      },
+      "revId": "d1cf007e52eae5cea1e52dfe8bca049422eb6611",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
