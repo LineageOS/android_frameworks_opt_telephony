@@ -1943,7 +1943,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.getVoiceRadioTechnology(obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
 
         if (!isPhoneTypeGsm()) {
-            handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
+            mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
         }
 
         // If this is on APM off, SIM may already be loaded. Send setPreferredNetworkType
@@ -2081,7 +2081,7 @@ public class GsmCdmaPhone extends Phone {
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
                 logd("EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED");
-                handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
+                mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
                 break;
 
             case EVENT_REGISTERED_TO_NETWORK:
@@ -2382,22 +2382,6 @@ public class GsmCdmaPhone extends Phone {
             return false;
         } else {
             return true;
-        }
-    }
-
-    //CDMA
-    /**
-     * Handles the call to get the subscription source
-     *
-     * @param newSubscriptionSource holds the new CDMA subscription source value
-     */
-    private void handleCdmaSubscriptionSource(int newSubscriptionSource) {
-        if (newSubscriptionSource != mCdmaSubscriptionSource) {
-            mCdmaSubscriptionSource = newSubscriptionSource;
-            if (newSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
-                // NV is ready when subscription source is NV
-                sendMessage(obtainMessage(EVENT_NV_READY));
-            }
         }
     }
 
