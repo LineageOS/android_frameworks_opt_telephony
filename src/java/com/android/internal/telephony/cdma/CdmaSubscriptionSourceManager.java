@@ -44,7 +44,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
     public static final int SUBSCRIPTION_SOURCE_UNKNOWN = -1;
     public static final int SUBSCRIPTION_FROM_RUIM      = 0; /* CDMA subscription from RUIM */
     public static final int SUBSCRIPTION_FROM_NV        = 1; /* CDMA subscription from NV */
-    public static final int PREFERRED_CDMA_SUBSCRIPTION = SUBSCRIPTION_FROM_NV;
+    public static final int PREFERRED_CDMA_SUBSCRIPTION = SUBSCRIPTION_FROM_RUIM;
 
     private static CdmaSubscriptionSourceManager sInstance;
     private static final Object sReferenceCountMonitor = new Object();
@@ -52,7 +52,6 @@ public class CdmaSubscriptionSourceManager extends Handler {
 
     // ***** Instance Variables
     private CommandsInterface mCi;
-    private Context mContext;
     private RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
 
     // Type of CDMA subscription source
@@ -60,7 +59,6 @@ public class CdmaSubscriptionSourceManager extends Handler {
 
     // Constructor
     private CdmaSubscriptionSourceManager(Context context, CommandsInterface ci) {
-        mContext = context;
         mCi = ci;
         mCi.registerForCdmaSubscriptionChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
