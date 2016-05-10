@@ -48,6 +48,7 @@ public class IccProvider extends ContentProvider {
         "name",
         "number",
         "emails",
+        "anrs",
         "_id"
     };
 
@@ -59,10 +60,15 @@ public class IccProvider extends ContentProvider {
     protected static final int SDN_SUB = 6;
     protected static final int ADN_ALL = 7;
 
-    protected static final String STR_TAG = "tag";
-    protected static final String STR_NUMBER = "number";
-    protected static final String STR_EMAILS = "emails";
-    protected static final String STR_PIN2 = "pin2";
+    public static final String STR_TAG = "tag";
+    public static final String STR_NUMBER = "number";
+    public static final String STR_EMAILS = "emails";
+    public static final String STR_ANRS = "anrs";
+    public static final String STR_NEW_TAG = "newTag";
+    public static final String STR_NEW_NUMBER = "newNumber";
+    public static final String STR_NEW_EMAILS = "newEmails";
+    public static final String STR_NEW_ANRS = "newAnrs";
+    public static final String STR_PIN2 = "pin2";
 
     private static final UriMatcher URL_MATCHER =
                             new UriMatcher(UriMatcher.NO_MATCH);
@@ -197,8 +203,19 @@ public class IccProvider extends ContentProvider {
 
         String tag = initialValues.getAsString("tag");
         String number = initialValues.getAsString("number");
-        // TODO(): Read email instead of sending null.
-        boolean success = addIccRecordToEf(efType, tag, number, null, pin2, subId);
+        String emails = initialValues.getAsString("emails");
+        String anrs = initialValues.getAsString("anrs");
+
+        ContentValues values = new ContentValues();
+        values.put(STR_TAG,"");
+        values.put(STR_NUMBER,"");
+        values.put(STR_EMAILS,"");
+        values.put(STR_ANRS,"");
+        values.put(STR_NEW_TAG,tag);
+        values.put(STR_NEW_NUMBER,number);
+        values.put(STR_NEW_EMAILS,emails);
+        values.put(STR_NEW_ANRS,anrs);
+        boolean success = updateIccRecordInEf(efType, values, pin2, subId);
 
         if (!success) {
             return null;
@@ -291,10 +308,11 @@ public class IccProvider extends ContentProvider {
         // parse where clause
         String tag = null;
         String number = null;
-        String[] emails = null;
+        String emails = null;
+        String anrs = null;
         String pin2 = null;
 
-        String[] tokens = where.split("AND");
+        String[] tokens = where.split(" AND ");
         int n = tokens.length;
 
         while (--n >= 0) {
@@ -315,18 +333,29 @@ public class IccProvider extends ContentProvider {
             } else if (STR_NUMBER.equals(key)) {
                 number = normalizeValue(val);
             } else if (STR_EMAILS.equals(key)) {
-                //TODO(): Email is null.
-                emails = null;
+                emails = normalizeValue(val);
+            } else if (STR_ANRS.equals(key)) {
+                anrs = normalizeValue(val);
             } else if (STR_PIN2.equals(key)) {
                 pin2 = normalizeValue(val);
             }
         }
 
+        ContentValues values = new ContentValues();
+        values.put(STR_TAG,tag);
+        values.put(STR_NUMBER,number);
+        values.put(STR_EMAILS,emails);
+        values.put(STR_ANRS,anrs);
+        values.put(STR_NEW_TAG,"");
+        values.put(STR_NEW_NUMBER,"");
+        values.put(STR_NEW_EMAILS,"");
+        values.put(STR_NEW_ANRS,"");
         if (efType == FDN && TextUtils.isEmpty(pin2)) {
             return 0;
         }
 
-        boolean success = deleteIccRecordFromEf(efType, tag, number, emails, pin2, subId);
+        if (DBG) log("delete mvalues= " + values);
+        boolean success = updateIccRecordInEf(efType, values, pin2, subId);
         if (!success) {
             return 0;
         }
@@ -379,8 +408,7 @@ public class IccProvider extends ContentProvider {
         String newNumber = values.getAsString("newNumber");
         String[] newEmails = null;
         // TODO(): Update for email.
-        boolean success = updateIccRecordInEf(efType, tag, number,
-                newTag, newNumber, pin2, subId);
+        boolean success = updateIccRecordInEf(efType, values, pin2, subId);
 
         if (!success) {
             return 0;
@@ -454,21 +482,17 @@ public class IccProvider extends ContentProvider {
     }
 
     private boolean
-    updateIccRecordInEf(int efType, String oldName, String oldNumber,
-            String newName, String newNumber, String pin2, int subId) {
-        if (DBG) log("updateIccRecordInEf: efType=0x" + Integer.toHexString(efType).toUpperCase() +
-                ", oldname=" + Rlog.pii(TAG, oldName) + ", oldnumber=" + Rlog.pii(TAG, oldNumber) +
-                ", newname=" + Rlog.pii(TAG, newName) + ", newnumber=" + Rlog.pii(TAG, newName) +
-                ", subscription=" + subId);
-
+    updateIccRecordInEf(int efType, ContentValues values, String pin2, int subId) {
         boolean success = false;
 
+        if (DBG) log("updateIccRecordInEf: efType=" + efType +
+                    ", values: [ "+ values + " ], subId:" + subId);
         try {
             IIccPhoneBook iccIpb = IIccPhoneBook.Stub.asInterface(
                     ServiceManager.getService("simphonebook"));
             if (iccIpb != null) {
-                success = iccIpb.updateAdnRecordsInEfBySearchForSubscriber(subId, efType, oldName,
-                        oldNumber, newName, newNumber, pin2);
+                success = iccIpb.updateAdnRecordsWithContentValuesInEfBySearchUsingSubId(subId,
+                        efType, values, pin2);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -478,7 +502,6 @@ public class IccProvider extends ContentProvider {
         if (DBG) log("updateIccRecordInEf: " + success);
         return success;
     }
-
 
     private boolean deleteIccRecordFromEf(int efType, String name, String number, String[] emails,
             String pin2, int subId) {
@@ -513,9 +536,10 @@ public class IccProvider extends ContentProvider {
      */
     private void loadRecord(AdnRecord record, MatrixCursor cursor, int id) {
         if (!record.isEmpty()) {
-            Object[] contact = new Object[4];
+            Object[] contact = new Object[5];
             String alphaTag = record.getAlphaTag();
             String number = record.getNumber();
+            String[] anrs = record.getAdditionalNumbers();
 
             if (DBG) log("loadRecord: " + alphaTag + ", " + Rlog.pii(TAG, number));
             contact[0] = alphaTag;
@@ -531,7 +555,18 @@ public class IccProvider extends ContentProvider {
                 }
                 contact[2] = emailString.toString();
             }
-            contact[3] = id;
+
+            if (anrs != null) {
+                StringBuilder anrString = new StringBuilder();
+                for (String anr : anrs) {
+                    if (DBG) log("Adding anr:" + anr);
+                    anrString.append(anr);
+                    anrString.append(":");
+                }
+                contact[3] = anrString.toString();
+            }
+
+            contact[4] = id;
             cursor.addRow(contact);
         }
     }
