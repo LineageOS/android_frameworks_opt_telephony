@@ -15,6 +15,7 @@
  */
 package com.android.internal.telephony.uicc;
 
+import android.content.ContentValues;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.AsyncResult;
@@ -36,7 +37,9 @@ import org.mockito.stubbing.Answer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
 
 import java.util.Arrays;
 import java.util.List;
@@ -114,5 +117,37 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
         assertNull(adnListResultNew);
         //verify the previous read is not got affected
         assertEquals(mAdnList, adnListResult);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateAdnRecord() {
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message response = (Message) invocation.getArguments()[4];
+                //set result for update ADN EF
+                AsyncResult.forMessage(response).exception = null;
+                response.sendToTarget();
+                return null;
+            }
+        }).when(mAdnRecordCache).updateAdnBySearch(
+            anyInt(), (AdnRecord) anyObject(), (AdnRecord) anyObject(),
+            anyString(), (Message) anyObject());
+
+        ContentValues values = new ContentValues();
+        values.put("tag", "");
+        values.put("number", "");
+        values.put("emails", "");
+        values.put("anrs", "");
+        values.put("newTag", "test");
+        values.put("newNumber", "123456");
+        values.put("newEmails", "");
+        values.put("newAnrs", "");
+
+        boolean result = mIccPhoneBookInterfaceMgr.updateAdnRecordsWithContentValuesInEfBySearch(
+                IccConstants.EF_ADN, values , null);
+
+        assertTrue(result);
     }
 }

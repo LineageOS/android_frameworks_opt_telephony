@@ -16,12 +16,15 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
+import android.os.HandlerThread;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
@@ -58,7 +61,18 @@ public class IccPhoneBookInterfaceManager {
     protected static final int EVENT_LOAD_DONE = 2;
     protected static final int EVENT_UPDATE_DONE = 3;
 
-    protected Handler mBaseHandler = new Handler() {
+    protected final IccPbHandler mBaseHandler;
+
+    private static final HandlerThread  mHandlerThread  = new HandlerThread("IccPbHandlerLoader");
+    static {
+        mHandlerThread.start();
+    }
+
+    protected class IccPbHandler extends Handler {
+        public IccPbHandler(Looper looper) {
+            super(looper);
+        }
+
         @Override
         public void handleMessage(Message msg) {
             AsyncResult ar;
@@ -81,6 +95,9 @@ public class IccPhoneBookInterfaceManager {
                     break;
                 case EVENT_UPDATE_DONE:
                     ar = (AsyncResult) msg.obj;
+                    if (ar.exception != null) {
+                        if(DBG) logd("exception of EVENT_UPDATE_DONE is" + ar.exception );
+                    }
                     synchronized (mLock) {
                         mSuccess = (ar.exception == null);
                         notifyPending(ar);
@@ -90,6 +107,7 @@ public class IccPhoneBookInterfaceManager {
                     ar = (AsyncResult)msg.obj;
                     synchronized (mLock) {
                         if (ar.exception == null) {
+                            if(DBG) logd("Load ADN records done");
                             mRecords = (List<AdnRecord>) ar.result;
                         } else {
                             if(DBG) logd("Cannot load ADN records");
@@ -116,6 +134,7 @@ public class IccPhoneBookInterfaceManager {
         if (r != null) {
             mAdnCache = r.getAdnCache();
         }
+        mBaseHandler = new IccPbHandler(mHandlerThread.getLooper());
     }
 
     public void dispose() {
@@ -185,6 +204,67 @@ public class IccPhoneBookInterfaceManager {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
+            if (mAdnCache != null) {
+                mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                waitForResult(status);
+            } else {
+                loge("Failure while trying to update by search due to uninitialised adncache");
+            }
+        }
+        return mSuccess;
+    }
+
+    /**
+     * Replace oldAdn with newAdn in ADN-like record in EF
+     *
+     * getAdnRecordsInEf must be called at least once before this function,
+     * otherwise an error will be returned.
+     * throws SecurityException if no WRITE_CONTACTS permission
+     *
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param values old adn tag,  phone number, email and anr to be replaced
+     *        new adn tag,  phone number, email and anr to be stored
+     * @param newPhoneNumber adn number ot be stored
+     * @param oldPhoneNumber adn number to be replaced
+     *        Set both oldTag, oldPhoneNubmer, oldEmail and oldAnr to ""
+     *        means to replace an empty record, aka, insert new record
+     *        Set both newTag, newPhoneNubmer, newEmail and newAnr ""
+     *        means to replace the old record with empty one, aka, delete old record
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @return true for success
+     */
+    public boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid, ContentValues values,
+            String pin2) {
+
+        if (mPhone.getContext().checkCallingOrSelfPermission(
+                android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException("Requires android.permission.WRITE_CONTACTS permission");
+        }
+
+        String oldTag = values.getAsString(IccProvider.STR_TAG);
+        String newTag = values.getAsString(IccProvider.STR_NEW_TAG);
+        String oldPhoneNumber = values.getAsString(IccProvider.STR_NUMBER);
+        String newPhoneNumber = values.getAsString(IccProvider.STR_NEW_NUMBER);
+        String oldEmail = values.getAsString(IccProvider.STR_EMAILS);
+        String newEmail = values.getAsString(IccProvider.STR_NEW_EMAILS);
+        String oldAnr = values.getAsString(IccProvider.STR_ANRS);
+        String newAnr = values.getAsString(IccProvider.STR_NEW_ANRS);
+        String[] oldEmailArray = TextUtils.isEmpty(oldEmail) ? null : getStringArray(oldEmail);
+        String[] newEmailArray = TextUtils.isEmpty(newEmail) ? null : getStringArray(newEmail);
+        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getAnrStringArray(oldAnr);
+        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getAnrStringArray(newAnr);
+        efid = updateEfForIccType(efid);
+
+        if (DBG)
+            logd("updateAdnRecordsWithContentValuesInEfBySearch: efid=" + efid + ", values = " +
+                values + ", pin2=" + pin2);
+        synchronized (mLock) {
+            checkThread();
+            mSuccess = false;
+            AtomicBoolean status = new AtomicBoolean(false);
+            Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
+            AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber, oldEmailArray, oldAnrArray);
+            AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
             if (mAdnCache != null) {
                 mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
                 waitForResult(status);
@@ -311,7 +391,7 @@ public class IccPhoneBookInterfaceManager {
     protected void checkThread() {
         if (!ALLOW_SIM_OP_IN_UI_THREAD) {
             // Make sure this isn't the UI thread, since it will block
-            if (mBaseHandler.getLooper().equals(Looper.myLooper())) {
+            if (Looper.getMainLooper().equals(Looper.myLooper())) {
                 loge("query() called on the main UI thread!");
                 throw new IllegalStateException(
                         "You cannot call query on this provder from the main UI thread.");
@@ -329,7 +409,7 @@ public class IccPhoneBookInterfaceManager {
         }
     }
 
-    private int updateEfForIccType(int efid) {
+    protected int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
         if (efid == IccConstants.EF_ADN) {
             if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM) {
@@ -337,6 +417,42 @@ public class IccPhoneBookInterfaceManager {
             }
         }
         return efid;
+    }
+
+    protected String[] getStringArray(String str) {
+        if (str != null) {
+            return str.split(",");
+        }
+        return null;
+    }
+
+    protected String[] getAnrStringArray(String str) {
+        if (str != null) {
+            return str.split(":");
+        }
+        return null;
+    }
+
+    /**
+     * Get the capacity of ADN records
+     *
+     * @return  int[6] array
+     *            capacity[0]  is the max count of ADN
+     *            capacity[1]  is the used count of ADN
+     *            capacity[2]  is the max count of EMAIL
+     *            capacity[3]  is the used count of EMAIL
+     *            capacity[4]  is the max count of ANR
+     *            capacity[5]  is the used count of ANR
+     *            capacity[6]  is the max length of name
+     *            capacity[7]  is the max length of number
+     *            capacity[8]  is the max length of email
+     *            capacity[9]  is the max length of anr
+     */
+    public int[] getAdnRecordsCapacity() {
+        if (DBG) logd("getAdnRecordsCapacity" );
+        int capacity[] = new int[10];
+
+        return capacity;
     }
 }
 
