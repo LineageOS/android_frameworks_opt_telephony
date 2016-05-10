@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+
 import com.android.internal.telephony.uicc.AdnRecord;
 
 
@@ -103,6 +105,22 @@ interface IIccPhoneBook {
             String oldTag, String oldPhoneNumber,
             String newTag, String newPhoneNumber,
             String pin2);
+
+    /**
+     * Replace oldAdn with newAdn in ADN-like record in EF
+     *
+     * getAdnRecordsInEf must be called at least once before this function,
+     * otherwise an error will be returned
+     *
+     * @param subId user preferred subId
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param values including ADN,EMAIL,ANR to be updated
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @return true for success
+     */
+    boolean updateAdnRecordsWithContentValuesInEfBySearchUsingSubId(int subId,
+            int efid, in ContentValues values, String pin2);
+
     /**
      * Update an ADN-like EF record by record index
      *
@@ -164,5 +182,40 @@ interface IIccPhoneBook {
      *            recordSizes[2]  is the number of records in the EF file
      */
     int[] getAdnRecordsSizeForSubscriber(int subId, int efid);
+
+    /**
+     * Get the capacity of ADN records
+     *
+     * @return  int[10] array
+     *            capacity[0]  is the max count of ADN
+     *            capacity[1]  is the used count of ADN
+     *            capacity[2]  is the max count of EMAIL
+     *            capacity[3]  is the used count of EMAIL
+     *            capacity[4]  is the max count of ANR
+     *            capacity[5]  is the used count of ANR
+     *            capacity[6]  is the max length of name
+     *            capacity[7]  is the max length of number
+     *            capacity[8]  is the max length of email
+     *            capacity[9]  is the max length of anr
+     */
+    int[] getAdnRecordsCapacity();
+
+    /**
+     * Get the capacity of ADN records
+     *
+     * @param subId user preferred subId
+     * @return  int[10] array
+     *            capacity[0]  is the max count of ADN
+     *            capacity[1]  is the used count of ADN
+     *            capacity[2]  is the max count of EMAIL
+     *            capacity[3]  is the used count of EMAIL
+     *            capacity[4]  is the max count of ANR
+     *            capacity[5]  is the used count of ANR
+     *            capacity[6]  is the max length of name
+     *            capacity[7]  is the max length of number
+     *            capacity[8]  is the max length of email
+     *            capacity[9]  is the max length of anr
+     */
+    int[] getAdnRecordsCapacityForSubscriber(int subId);
 
 }
