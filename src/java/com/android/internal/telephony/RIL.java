@@ -68,6 +68,7 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.SimPhoneBookAdnRecord;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -2806,6 +2807,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_STOP_LCE: ret = responseLceStatus(p); break;
             case RIL_REQUEST_PULL_LCEDATA: ret = responseLceData(p); break;
             case RIL_REQUEST_GET_ACTIVITY_INFO: ret = responseActivityData(p); break;
+            case RIL_REQUEST_GET_ADN_RECORD: ret =  responseInts(p); break;
+            case RIL_REQUEST_UPDATE_ADN_RECORD: ret =  responseInts(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -3073,6 +3076,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_ON_SS: ret =  responseSsData(p); break;
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret =  responseString(p); break;
             case RIL_UNSOL_LCEDATA_RECV: ret = responseLceData(p); break;
+            case RIL_UNSOL_RESPONSE_ADN_RECORDS: ret = responseAdnRecords(p); break;
+            case RIL_UNSOL_RESPONSE_ADN_INIT_DONE: ret = responseVoid(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -3506,6 +3511,22 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                 if (mLceInfoRegistrant != null) {
                     mLceInfoRegistrant.notifyRegistrant(new AsyncResult(null, ret, null));
+                }
+                break;
+          case RIL_UNSOL_RESPONSE_ADN_INIT_DONE:
+                if (RILJ_LOGD) unsljLog(response);
+
+                if (mAdnInitDoneRegistrants != null) {
+                    mAdnInitDoneRegistrants.notifyRegistrants(
+                                            new AsyncResult(null, ret, null));
+                }
+                break;
+          case RIL_UNSOL_RESPONSE_ADN_RECORDS:
+                if (RILJ_LOGD) unsljLog(response);
+
+                if (mAdnRecordsInfoRegistrants != null) {
+                    mAdnRecordsInfoRegistrants.notifyRegistrants(
+                                            new AsyncResult(null, ret, null));
                 }
                 break;
         }
@@ -4281,6 +4302,42 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         idleModeTimeMs, txModeTimeMs, rxModeTimeMs, 0);
     }
 
+    private Object responseAdnRecords(Parcel p) {
+        int numRecords = p.readInt();
+        SimPhoneBookAdnRecord[] AdnRecordsInfoGroup = new SimPhoneBookAdnRecord[numRecords];
+
+        for (int i = 0 ; i < numRecords ; i++) {
+            AdnRecordsInfoGroup[i]= new SimPhoneBookAdnRecord();
+
+            AdnRecordsInfoGroup[i].mRecordIndex = p.readInt();
+            AdnRecordsInfoGroup[i].mAlphaTag = p.readString();
+            AdnRecordsInfoGroup[i].mNumber =
+                    SimPhoneBookAdnRecord.ConvertToPhoneNumber(p.readString());
+
+            int numEmails = p.readInt();
+            if(numEmails > 0) {
+                AdnRecordsInfoGroup[i].mEmailCount = numEmails;
+                AdnRecordsInfoGroup[i].mEmails = new String[numEmails];
+                for (int j = 0 ; j < numEmails; j++) {
+                    AdnRecordsInfoGroup[i].mEmails[j] = p.readString();
+                }
+            }
+
+            int numAnrs = p.readInt();
+            if(numAnrs > 0) {
+                AdnRecordsInfoGroup[i].mAdNumCount = numAnrs;
+                AdnRecordsInfoGroup[i].mAdNumbers = new String[numAnrs];
+                for (int k = 0 ; k < numAnrs; k++) {
+                    AdnRecordsInfoGroup[i].mAdNumbers[k] =
+                        SimPhoneBookAdnRecord.ConvertToPhoneNumber(p.readString());
+                }
+            }
+        }
+        riljLog(Arrays.toString(AdnRecordsInfoGroup));
+
+        return AdnRecordsInfoGroup;
+    }
+
     static String
     requestToString(int request) {
 /*
@@ -4427,6 +4484,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_PULL_LCEDATA: return "RIL_REQUEST_PULL_LCEDATA";
             case RIL_REQUEST_GET_ACTIVITY_INFO: return "RIL_REQUEST_GET_ACTIVITY_INFO";
             case RIL_RESPONSE_ACKNOWLEDGEMENT: return "RIL_RESPONSE_ACKNOWLEDGEMENT";
+            case RIL_REQUEST_GET_ADN_RECORD: return "RIL_REQUEST_GET_ADN_RECORD";
+            case RIL_REQUEST_UPDATE_ADN_RECORD: return "RIL_REQUEST_UPDATE_ADN_RECORD";
             default: return "<unknown request>";
         }
     }
@@ -4489,6 +4548,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_ON_SS: return "UNSOL_ON_SS";
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: return "UNSOL_STK_CC_ALPHA_NOTIFY";
             case RIL_UNSOL_LCEDATA_RECV: return "UNSOL_LCE_INFO_RECV";
+            case RIL_UNSOL_RESPONSE_ADN_INIT_DONE: return "RIL_UNSOL_RESPONSE_ADN_INIT_DONE";
+            case RIL_UNSOL_RESPONSE_ADN_RECORDS: return "RIL_UNSOL_RESPONSE_ADN_RECORDS";
             default: return "<unknown response>";
         }
     }
@@ -5108,5 +5169,43 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         msg.obj = null;
         msg.arg1 = rr.mSerial;
         mSender.sendMessageDelayed(msg, DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS);
+    }
+
+    @Override
+    public void
+    getAdnRecord(Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_ADN_RECORD, result);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    @Override
+    public void
+    updateAdnRecord(SimPhoneBookAdnRecord adnRecordInfo, Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_UPDATE_ADN_RECORD, result);
+        rr.mParcel.writeInt(adnRecordInfo.getRecordIndex());
+        rr.mParcel.writeString(adnRecordInfo.getAlphaTag());
+        rr.mParcel.writeString(
+                SimPhoneBookAdnRecord.ConvertToRecordNumber(adnRecordInfo.getNumber()));
+
+        int numEmails = adnRecordInfo.getNumEmails();
+        rr.mParcel.writeInt(numEmails);
+        for (int i = 0 ; i < numEmails; i++) {
+            rr.mParcel.writeString(adnRecordInfo.getEmails()[i]);
+        }
+
+        int numAdNumbers = adnRecordInfo.getNumAdNumbers();
+        rr.mParcel.writeInt(numAdNumbers);
+        for (int j = 0 ; j < numAdNumbers; j++) {
+            rr.mParcel.writeString(
+                SimPhoneBookAdnRecord.ConvertToRecordNumber(adnRecordInfo.getAdNumbers()[j]));
+        }
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+            + " with " + adnRecordInfo.toString());
+
+        send(rr);
     }
 }

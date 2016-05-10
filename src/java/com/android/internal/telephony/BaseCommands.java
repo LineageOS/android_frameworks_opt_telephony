@@ -27,6 +27,7 @@ import android.telephony.RadioAccessFamily;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.RadioCapability;
+import com.android.internal.telephony.uicc.SimPhoneBookAdnRecord;
 
 /**
  * {@hide}
@@ -73,6 +74,8 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mHardwareConfigChangeRegistrants = new RegistrantList();
     protected RegistrantList mPhoneRadioCapabilityChangedRegistrants =
             new RegistrantList();
+    protected RegistrantList mAdnInitDoneRegistrants = new RegistrantList();
+    protected RegistrantList mAdnRecordsInfoRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -902,6 +905,28 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void registerForAdnInitDone(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mAdnInitDoneRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForAdnInitDone(Handler h) {
+        mAdnInitDoneRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForAdnRecordsInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mAdnRecordsInfoRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForAdnRecordsInfo(Handler h) {
+        mAdnRecordsInfoRegistrants.remove(h);
+    }
+
+    @Override
     public void iccOpenLogicalChannel(String AID, Message response) {}
 
     @Override
@@ -920,4 +945,13 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void getAtr(Message response) {}
+
+    @Override
+    public void getAdnRecord(Message result) {
+    }
+
+    @Override
+    public void updateAdnRecord(SimPhoneBookAdnRecord adnRecordInfo, Message result) {
+    }
+
 }

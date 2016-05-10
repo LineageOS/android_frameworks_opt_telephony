@@ -21,6 +21,7 @@ import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.SimPhoneBookAdnRecord;
 
 import android.os.Message;
 import android.os.Handler;
@@ -2034,4 +2035,51 @@ public interface CommandsInterface {
      * @param result Callback message contains the modem activity information
      */
     public void getModemActivityInfo(Message result);
+
+    /**
+     * Request the ADN record of all activated UICC applications
+     *
+     * @param result Callback message containing the count of ADN valid record.
+     */
+    public void getAdnRecord(Message result);
+
+    /**
+     * Request to add/delete/update the ADN record
+     *
+     * @param adnRecordInfo adn record information to be updated
+     * @param result Callback message containing the ADN record index.
+     */
+    public void updateAdnRecord(SimPhoneBookAdnRecord adnRecordInfo, Message result);
+
+    /**
+     * Registers the handler when ADN has already init done.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForAdnInitDone(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications when ADN has already init done.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForAdnInitDone(Handler h);
+
+    /**
+     * Registers the handler when a group of ADN record is notified.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForAdnRecordsInfo(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications when a group of ADN record is notified.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForAdnRecordsInfo(Handler h);
 }
