@@ -149,11 +149,11 @@ public class InboundSmsTracker {
         }
 
         mTimestamp = cursor.getLong(InboundSmsHandler.DATE_COLUMN);
+        mAddress = cursor.getString(InboundSmsHandler.ADDRESS_COLUMN);
 
         if (cursor.isNull(InboundSmsHandler.COUNT_COLUMN)) {
             // single-part message
             long rowId = cursor.getLong(InboundSmsHandler.ID_COLUMN);
-            mAddress = null;
             mReferenceNumber = -1;
             mSequenceNumber = getIndexOffset();     // 0 or 1, depending on type
             mMessageCount = 1;
@@ -161,7 +161,6 @@ public class InboundSmsTracker {
             mDeleteWhereArgs = new String[]{Long.toString(rowId)};
         } else {
             // multi-part message
-            mAddress = cursor.getString(InboundSmsHandler.ADDRESS_COLUMN);
             mReferenceNumber = cursor.getInt(InboundSmsHandler.REFERENCE_NUMBER_COLUMN);
             mMessageCount = cursor.getInt(InboundSmsHandler.COUNT_COLUMN);
 
