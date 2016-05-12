@@ -1173,6 +1173,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             case ImsReasonInfo.CODE_FDN_BLOCKED:
                 return DisconnectCause.FDN_BLOCKED;
+
+            case ImsReasonInfo.CODE_ANSWERED_ELSEWHERE:
+            case ImsReasonInfo.CODE_CALL_END_CAUSE_CALL_PULL:
+                return DisconnectCause.CALL_PULLED;
             default:
         }
 
