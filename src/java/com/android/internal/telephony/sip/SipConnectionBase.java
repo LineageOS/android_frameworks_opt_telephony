@@ -52,7 +52,7 @@ abstract class SipConnectionBase extends Connection {
 
     SipConnectionBase(String dialString) {
         super(PhoneConstants.PHONE_TYPE_SIP);
-        if (DBG) log("SipConnectionBase: ctor dialString=" + dialString);
+        if (DBG) log("SipConnectionBase: ctor dialString=" + SipPhone.hidePii(dialString));
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
         mCreateTime = System.currentTimeMillis();
