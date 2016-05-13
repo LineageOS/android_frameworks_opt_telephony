@@ -53,6 +53,7 @@ import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.os.PersistableBundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -73,6 +74,7 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.view.WindowManager;
 import android.telephony.Rlog;
+import android.telephony.CarrierConfigManager;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
@@ -1587,6 +1589,16 @@ public class DcTracker extends Handler {
                 (failureReason.isFailForSingleReason(DataAllowFailReasonType.ROAMING_DISABLED) &&
                 !(ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
                 mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())));
+
+        if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS)) {
+            CarrierConfigManager configManager = (CarrierConfigManager)mPhone.getContext().
+                    getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle pb = configManager.getConfig(mPhone.getSubId());
+            if (pb != null) {
+                checkUserDataEnabled = checkUserDataEnabled &&
+                        !(pb.getBoolean("config_enable_mms_with_mobile_data_off"));
+            }
+        }
 
         if (apnContext.isConnectable() && (isEmergencyApn ||
                 (isDataAllowed && isDataAllowedForApn(apnContext) &&
