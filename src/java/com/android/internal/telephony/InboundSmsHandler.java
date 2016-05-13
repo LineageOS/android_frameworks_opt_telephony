@@ -880,6 +880,15 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     private boolean filterSmsWithCarrierOrSystemApp(byte[][] pdus, int destPort,
         InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked) {
+        // Do not send null pdu(s) to CarrierSmsFilter. Check for that and return false in that case
+        List<byte[]> pduList = Arrays.asList(pdus);
+        if (pduList == null || pduList.size() == 0 || pduList.contains(null)) {
+            loge("filterSmsWithCarrierOrSystemApp: Bypassing carrier/system sms filter due to " +
+                    (pduList == null ? "pduList == null" : (pduList.size() == 0 ?
+                            "pduList.size() == 0" : "pduList.contains(null)")));
+            return false;
+        }
+
         List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
         if (card != null) {
@@ -908,7 +917,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             return true;
         }
         logv("Unable to find carrier package: " + carrierPackages
-                  + ", nor systemPackages: " + systemPackages);
+                + ", nor systemPackages: " + systemPackages);
         return false;
     }
 
