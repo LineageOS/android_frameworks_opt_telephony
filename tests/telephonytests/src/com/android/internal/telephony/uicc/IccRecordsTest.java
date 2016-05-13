@@ -37,8 +37,13 @@ import android.os.HandlerThread;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
+
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import android.os.AsyncResult;
+import android.os.Message;
 
 public class IccRecordsTest extends TelephonyTest {
 
@@ -92,4 +97,20 @@ public class IccRecordsTest extends TelephonyTest {
         mIccRecords.setImsi("123456ABCDEF");
         assertEquals(mIccRecords.getIMSI(), null);
     }
+
+    @Test
+    public void testGetSmsCapacityOnIcc() {
+        // set the number of records to 500
+        int[] records = new int[3];
+        records[2] = 500;
+        Message fetchCapacityDone = mIccRecords.obtainMessage(
+                IccRecords.EVENT_GET_SMS_RECORD_SIZE_DONE);
+        AsyncResult.forMessage(fetchCapacityDone, records, null);
+        fetchCapacityDone.sendToTarget();
+
+        // verify whether the count is 500
+        waitForMs(200);
+        assertEquals(mIccRecords.getSmsCapacityOnIcc(), 500);
+    }
+
 }
