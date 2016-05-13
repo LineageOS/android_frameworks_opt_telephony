@@ -39,8 +39,11 @@ import org.junit.Test;
 import com.android.internal.telephony.TelephonyTest;
 
 import com.android.internal.telephony.CommandsInterface;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import android.content.Context;
+import android.os.AsyncResult;
 import android.os.HandlerThread;
+import android.os.Message;
 
 public class IccRecordsTest extends TelephonyTest {
 
@@ -94,6 +97,20 @@ public class IccRecordsTest extends TelephonyTest {
         String filePath = mSIMFileHandler.getEFPath(IccConstants.EF_PLMNWACT);
         String expectedfilePath = IccConstants.MF_SIM + IccConstants.DF_GSM;
         assertEquals(expectedfilePath, filePath);
+    }
+
+    @Test
+    public void testGetSmsCapacityOnIcc() {
+        // set the number of records to 500
+        int[] records = new int[3];
+        records[2] = 500;
+        Message fetchCapacityDone = mIccRecords.obtainMessage(IccRecords.EVENT_GET_SMS_RECORD_SIZE_DONE);
+        AsyncResult.forMessage(fetchCapacityDone, records, null);
+        fetchCapacityDone.sendToTarget();
+
+        // verify whether the count is 500
+        waitForMs(200);
+        assertEquals(mIccRecords.getSmsCapacityOnIcc(), 500);
     }
 
 }
