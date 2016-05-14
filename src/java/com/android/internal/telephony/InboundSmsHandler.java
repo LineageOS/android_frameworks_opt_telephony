@@ -815,10 +815,10 @@ public abstract class InboundSmsHandler extends StateMachine {
             return false;
         }
 
-        boolean carrierAppInvoked = filterSmsWithCarrierOrSystemApp(
+        boolean filterInvoked = filterSms(
             pdus, destPort, tracker, resultReceiver, true /* userUnlocked */);
 
-        if (!carrierAppInvoked) {
+        if (!filterInvoked) {
             dispatchSmsDeliveryIntent(pdus, tracker.getFormat(), destPort, resultReceiver);
         }
 
@@ -843,13 +843,13 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
         if (destPort == -1) {
             // This is a regular SMS - hand it to the carrier or system app for filtering.
-            boolean carrierAppInvoked = filterSmsWithCarrierOrSystemApp(
+            boolean filterInvoked = filterSms(
                 pdus, destPort, tracker, null, false /* userUnlocked */);
-            if (carrierAppInvoked) {
-                // Carrier app invoked, wait for it to return the result.
+            if (filterInvoked) {
+                // filter invoked, wait for it to return the result.
                 return true;
             } else {
-                // Carrier app not invoked, show the notification and do nothing further.
+                // filter not invoked, show the notification and do nothing further.
                 showNewMessageNotification();
                 return false;
             }
@@ -875,10 +875,24 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
-     * Filters the SMS with carrier or system app.
-     * @return true if the carrier or system app is invoked, false otherwise.
+     * Filters the SMS.
+     *
+     * <p>currently 3 filters exists: the carrier package, the system package, and the
+     * VisualVoicemailSmsFilter.
+     *
+     * <p>The filtering process is:
+     *
+     * <p>If the carrier package exists, the SMS will be filtered with it first. If the carrier
+     * package did not drop the SMS, then the VisualVoicemailSmsFilter will filter it in the
+     * callback.
+     *
+     * <p>If the carrier package does not exists, we will let the VisualVoicemailSmsFilter filter
+     * it. If the SMS passed the filter, then we will try to find the system package to do the
+     * filtering.
+     *
+     * @return true if a filter is invoked and the SMS processing flow is diverted, false otherwise.
      */
-    private boolean filterSmsWithCarrierOrSystemApp(byte[][] pdus, int destPort,
+    private boolean filterSms(byte[][] pdus, int destPort,
         InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked) {
         List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
@@ -896,14 +910,25 @@ public abstract class InboundSmsHandler extends StateMachine {
             log("Found carrier package.");
             CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
                     tracker.getFormat(), resultReceiver);
-            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter, userUnlocked);
+            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter,
+                    userUnlocked, true /* filterWithVvm */);
             smsFilter.filterSms(carrierPackages.get(0), smsFilterCallback);
             return true;
-        } else if (systemPackages != null && systemPackages.size() == 1) {
+        }
+
+        if (VisualVoicemailSmsFilter.filter(
+                mContext, pdus, tracker.getFormat(), destPort, mPhone.getSubId())) {
+            log("Visual voicemail SMS dropped");
+            dropSms(resultReceiver);
+            return true;
+        }
+
+        if (systemPackages != null && systemPackages.size() == 1) {
             log("Found system package.");
             CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
                     tracker.getFormat(), resultReceiver);
-            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter, userUnlocked);
+            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter,
+                    userUnlocked, false);
             smsFilter.filterSms(systemPackages.get(0), smsFilterCallback);
             return true;
         }
@@ -1310,10 +1335,13 @@ public abstract class InboundSmsHandler extends StateMachine {
     private final class CarrierSmsFilterCallback extends ICarrierMessagingCallback.Stub {
         private final CarrierSmsFilter mSmsFilter;
         private final boolean mUserUnlocked;
+        private final boolean mFilterWithVvm;
 
-        CarrierSmsFilterCallback(CarrierSmsFilter smsFilter, boolean userUnlocked) {
+        CarrierSmsFilterCallback(CarrierSmsFilter smsFilter, boolean userUnlocked,
+                boolean filterWithVvm) {
             mSmsFilter = smsFilter;
             mUserUnlocked = userUnlocked;
+            mFilterWithVvm = filterWithVvm;
         }
 
         /**
@@ -1323,8 +1351,17 @@ public abstract class InboundSmsHandler extends StateMachine {
         public void onFilterComplete(int result) {
             mSmsFilter.disposeConnection(mContext);
 
-            logv("onFilterComplete: result is "+ result);
+            logv("onFilterComplete: result is " + result);
             if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
+                if (mFilterWithVvm) {
+                    if (VisualVoicemailSmsFilter.filter(mContext, mSmsFilter.mPdus,
+                            mSmsFilter.mSmsFormat, mSmsFilter.mDestPort, mPhone.getSubId())) {
+                        log("Visual voicemail SMS dropped");
+                        dropSms(mSmsFilter.mSmsBroadcastReceiver);
+                        return;
+                    }
+                }
+
                 if (mUserUnlocked) {
                     dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
                             mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
@@ -1339,15 +1376,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 }
             } else {
                 // Drop this SMS.
-                final long token = Binder.clearCallingIdentity();
-                try {
-                    // Needs phone package permissions.
-                    deleteFromRawTable(mSmsFilter.mSmsBroadcastReceiver.mDeleteWhere,
-                            mSmsFilter.mSmsBroadcastReceiver.mDeleteWhereArgs, MARK_DELETED);
-                } finally {
-                    Binder.restoreCallingIdentity(token);
-                }
-                sendMessage(EVENT_BROADCAST_COMPLETE);
+                dropSms(mSmsFilter.mSmsBroadcastReceiver);
             }
         }
 
@@ -1370,6 +1399,17 @@ public abstract class InboundSmsHandler extends StateMachine {
         public void onDownloadMmsComplete(int result) {
             loge("Unexpected onDownloadMmsComplete call with result: " + result);
         }
+    }
+
+    private void dropSms(SmsBroadcastReceiver receiver) {
+        final long token = Binder.clearCallingIdentity();
+        try {
+            // Needs phone package permissions.
+            deleteFromRawTable(receiver.mDeleteWhere, receiver.mDeleteWhereArgs, MARK_DELETED);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+        sendMessage(EVENT_BROADCAST_COMPLETE);
     }
 
     /** Checks whether the flag to skip new message notification is set in the bitmask returned
