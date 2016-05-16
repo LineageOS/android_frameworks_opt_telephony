@@ -256,7 +256,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 if (ar.exception == null) {
                     if (ar.result != null) {
                         byte[] data = (byte[])ar.result;
-                        mIccId[slotId] = IccUtils.bchToString(data, 0, data.length);
+                        mIccId[slotId] = IccUtils.bcdToString(data, 0, data.length);
                     } else {
                         logd("Null ar");
                         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
@@ -364,11 +364,11 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("onRecieve: IccRecords null");
             return;
         }
-        if (records.getFullIccId() == null) {
+        if (records.getIccId() == null) {
             logd("onRecieve: IccID null");
             return;
         }
-        mIccId[slotId] = records.getFullIccId();
+        mIccId[slotId] = records.getIccId();
 
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
