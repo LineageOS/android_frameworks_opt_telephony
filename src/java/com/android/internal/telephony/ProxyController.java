@@ -571,7 +571,7 @@ public class ProxyController {
         }
 
         // Broadcast that we're done
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, android.Manifest.permission.READ_PHONE_STATE);
     }
 
     // Clear this transaction
