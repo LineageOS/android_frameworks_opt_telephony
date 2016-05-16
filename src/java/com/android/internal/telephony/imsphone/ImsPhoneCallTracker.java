@@ -698,8 +698,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     boolean
     canTransfer() {
+        /** TODO: use checks when impl exists, see {@link #explicitCallTransfer()}
         return mForegroundCall.getState() == ImsPhoneCall.State.ACTIVE
-            && mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING;
+            && mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING; **/
+        return false;
     }
 
     //***** Private Instance Methods
