@@ -206,9 +206,6 @@ public class SubscriptionInfoUpdater extends Handler {
             String simStatus = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
             logd("simStatus: " + simStatus);
 
-            removeMessages(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId);
-            sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId), DELAY_MILLIS);
-
             if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
                 if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotId, -1));
@@ -301,6 +298,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     logd("Query IccId fail: " + ar.exception);
                 }
                 logd("sIccId[" + slotId + "] = " + mIccId[slotId]);
+                removeMessages(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId);
+                sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId),
+                        DELAY_MILLIS);
                 broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED,
                                          uObj.reason);
                 if (!ICCID_STRING_FOR_NO_SIM.equals(mIccId[slotId])) {
@@ -377,7 +377,6 @@ public class SubscriptionInfoUpdater extends Handler {
             mIccId[slotId] = null;
         }
 
-
         IccFileHandler fileHandler = mPhone[slotId].getIccCard() == null ? null :
                 mPhone[slotId].getIccCard().getIccFileHandler();
 
@@ -390,6 +389,9 @@ public class SubscriptionInfoUpdater extends Handler {
                                 new QueryIccIdUserObj(reason, slotId)));
             } else {
                 logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
+                removeMessages(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId);
+                sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId),
+                        DELAY_MILLIS);
                 updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
                 broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
             }
@@ -414,6 +416,8 @@ public class SubscriptionInfoUpdater extends Handler {
             return;
         }
         mIccId[slotId] = records.getIccId();
+        removeMessages(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId);
+        sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId), DELAY_MILLIS);
 
         int subId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
         int[] subIds = SubscriptionController.getInstance().getSubId(slotId);
@@ -577,6 +581,8 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("SIM" + (slotId + 1) + " hot plug out");
         }
         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+        removeMessages(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId);
+        sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId), DELAY_MILLIS);
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
     }
 
@@ -584,8 +590,7 @@ public class SubscriptionInfoUpdater extends Handler {
         mIccId[slotId] = ICCID_STRING_FOR_NV;
         logd("[updateSubIdForNV]+ scheduled");
         removeMessages(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId);
-        sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId),
-                DELAY_MILLIS);
+        sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId), DELAY_MILLIS);
     }
 
     /**
