@@ -303,6 +303,23 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendBroadcastAsUser(Intent intent, UserHandle user) {
+            sendBroadcast(intent);
+        }
+
+        @Override
+        public void sendBroadcastAsUser(Intent intent, UserHandle user,
+                                        String receiverPermission) {
+            sendBroadcast(intent);
+        }
+
+        @Override
+        public void sendBroadcastAsUser(Intent intent, UserHandle user,
+                                        String receiverPermission, int appOp) {
+            sendBroadcast(intent);
+        }
+
+        @Override
         public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
                 String receiverPermission, BroadcastReceiver resultReceiver, Handler scheduler,
                 int initialCode, String initialData, Bundle initialExtras) {
@@ -393,6 +410,10 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         public boolean testMethod1() {
+            return true;
+        }
+
+        public boolean testMethod2() {
             return true;
         }
     }

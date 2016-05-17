@@ -33,6 +33,7 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
@@ -50,9 +51,13 @@ import com.android.internal.telephony.uicc.IccUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
+import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 
 /**
  *@hide
@@ -102,6 +107,9 @@ public class SubscriptionInfoUpdater extends Handler {
     private static int[] mInsertSimState = new int[PROJECT_SIM_NUM];
     private SubscriptionManager mSubscriptionManager = null;
     private IPackageManager mPackageManager;
+    private UserManager mUserManager;
+    private Map<Integer, Intent> rebroadcastIntentsOnUnlock = new HashMap<>();
+
     // The current foreground user ID.
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
@@ -113,9 +121,11 @@ public class SubscriptionInfoUpdater extends Handler {
         mPhone = phone;
         mSubscriptionManager = SubscriptionManager.from(mContext);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+        mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
 
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
+        intentFilter.addAction(Intent.ACTION_USER_UNLOCKED);
         mContext.registerReceiver(sReceiver, intentFilter);
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
@@ -171,8 +181,27 @@ public class SubscriptionInfoUpdater extends Handler {
             String action = intent.getAction();
             logd("Action: " + action);
 
+            if (action.equals(Intent.ACTION_USER_UNLOCKED)) {
+                // broadcast pending intents
+                Iterator iterator = rebroadcastIntentsOnUnlock.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry pair = (Map.Entry) iterator.next();
+                    Intent i = (Intent)pair.getValue();
+                    iterator.remove();
+                    logd("Broadcasting intent ACTION_SIM_STATE_CHANGED for mCardIndex: " +
+                            pair.getKey());
+                    // Send broadcast twice, once for apps that have PRIVILEGED permission and once
+                    // for those that have the runtime one
+                    mContext.sendBroadcast(i, READ_PHONE_STATE);
+                    mContext.sendBroadcast(i, READ_PRIVILEGED_PHONE_STATE);
+                }
+                rebroadcastIntentsOnUnlock = null;
+                logd("[Receiver]-");
+                return;
+            }
+
             if (!action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED) &&
-                !action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
+                    !action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
                 return;
             }
 
@@ -649,11 +678,15 @@ public class SubscriptionInfoUpdater extends Handler {
         i.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, state);
         i.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
         SubscriptionManager.putPhoneIdAndSubIdExtra(i, slotId);
-        logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " +
-             IccCardConstants.INTENT_VALUE_ICC_LOADED + " reason " + null +
-             " for mCardIndex : " + slotId);
-        ActivityManagerNative.broadcastStickyIntent(i, READ_PHONE_STATE,
-                UserHandle.USER_ALL);
+        logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
+             " for mCardIndex: " + slotId);
+        // Send broadcast twice, once for apps that have PRIVILEGED permission and once for those
+        // that have the runtime one
+        mContext.sendBroadcast(i, READ_PHONE_STATE);
+        mContext.sendBroadcast(i, READ_PRIVILEGED_PHONE_STATE);
+        if (!mUserManager.isUserUnlocked()) {
+            rebroadcastIntentsOnUnlock.put(slotId, i);
+        }
     }
 
     public void dispose() {
