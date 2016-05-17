@@ -132,7 +132,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
         boolean matches(byte[] certHash, String packageName) {
           return certHash != null && Arrays.equals(this.certificateHash, certHash) &&
-                (this.packageName == null || this.packageName.equals(packageName));
+                (TextUtils.isEmpty(this.packageName) || this.packageName.equals(packageName));
         }
 
         @Override
