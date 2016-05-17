@@ -66,6 +66,7 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         case EF_INFO_CPHS:
         case EF_CSP_CPHS:
         case EF_PLMNWACT:
+        case EF_HPLMNWACT:
             return MF_SIM + DF_GSM;
         }
         String path = getCommonIccEFPath(efid);
