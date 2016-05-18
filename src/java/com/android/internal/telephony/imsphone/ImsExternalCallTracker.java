@@ -170,7 +170,7 @@ public class ImsExternalCallTracker {
 
         ImsExternalConnection connection = new ImsExternalConnection(mPhone,
                 state.getCallId(), /* Dialog event package call id */
-                state.getAddress().getSchemeSpecificPart() /* phone number */,
+                state.getAddress() /* phone number */,
                 state.isCallPullable());
         connection.setVideoState(ImsCallProfile.getVideoStateFromCallType(state.getCallType()));
         connection.addListener(mExternalConnectionListener);
