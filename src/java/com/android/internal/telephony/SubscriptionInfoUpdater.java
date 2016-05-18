@@ -736,9 +736,23 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        if (!mIsShutdown && insertedSimCount > 1 && update) {
-            // Ensure the modems are mapped correctly
-            mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+        if (update && !mIsShutdown) {
+            if (insertedSimCount == 1 && PROJECT_SIM_NUM > 1) {
+                // only 1 sim on msim
+                mSubscriptionManager.clearDefaultsForInactiveSubIds();
+                if (!mSubscriptionManager.isActiveSubId(SubscriptionManager.getDefaultSmsSubId())) {
+                    // default sms sub isn't active, and there's 1 sim, prompt is now useless
+                    // but be careful not to trample defaults set by the user
+                    PhoneFactory.setSMSPromptEnabled(false);
+                }
+            } else if (insertedSimCount > 1) {
+                if (!SubscriptionManager.isValidSubscriptionId(SubscriptionManager.getDefaultSmsSubId())) {
+                    // only set to enabled if we need to reset it and it's not valid
+                    PhoneFactory.setSMSPromptEnabled(true);
+                }
+                // Ensure the modems are mapped correctly
+                mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+            }
         }
 
         if (update) {
