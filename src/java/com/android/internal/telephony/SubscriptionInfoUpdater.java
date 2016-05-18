@@ -51,6 +51,8 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import android.text.TextUtils;
+import com.android.phone.PhoneInterfaceManager;
+import com.android.phone.PhoneUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -736,9 +738,19 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        if (!mIsShutdown && insertedSimCount > 1 && update) {
-            // Ensure the modems are mapped correctly
-            mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+        if (update && !mIsShutdown) {
+            if (insertedSimCount == 1 && PROJECT_SIM_NUM > 1) {
+                // only 1 sim on msim
+                mSubscriptionManager.clearDefaultsForInactiveSubIds();
+                if (!mSubscriptionManager.isActiveSubId(SubscriptionManager.getDefaultSmsSubId())) {
+                    // default sms sub isn't active, and there's 1 sim, prompt is now useless
+                    // but be careful not to trample defaults set by the user
+                    PhoneFactory.setSMSPromptEnabled(false);
+                }
+            } else if (insertedSimCount > 1) {
+                // Ensure the modems are mapped correctly
+                mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+            }
         }
 
         if (update) {
