@@ -630,23 +630,53 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
     @Test
     @MediumTest
-    public void testBroadcastUndelivered() throws Exception {
+    public void testBroadcastUndeliveredUserLocked() throws Exception {
         replaceInstance(SmsBroadcastUndelivered.class, "instance", null, null);
-        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
         doReturn(0).when(mInboundSmsTracker).getDestPort();
 
-        //add a fake entry to db
+        // add a fake entry to db
         ContentValues rawSms = new ContentValues();
         mContentProvider.insert(sRawUri, rawSms);
 
-        //make it a single-part message
+        // make it a single-part message
         doReturn(1).when(mInboundSmsTracker).getMessageCount();
 
-        //when user unlocks the device, the message in db should be broadcast
+        // user locked
+        UserManager userManager = (UserManager)mContext.getSystemService(Context.USER_SERVICE);
+        doReturn(false).when(userManager).isUserUnlocked();
+
+        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+        waitForMs(100);
+
+        // verify no broadcasts sent because due to !isUserUnlocked
+        verify(mContext, never()).sendBroadcast(any(Intent.class));
+
+        // when user unlocks the device, the message in db should be broadcast
+        doReturn(true).when(userManager).isUserUnlocked();
         mContext.sendBroadcast(new Intent(Intent.ACTION_USER_UNLOCKED));
         waitForMs(100);
 
         verifyDataSmsIntentBroadcasts(1);
+    }
+
+    @Test
+    @MediumTest
+    public void testBroadcastUndeliveredUserUnlocked() throws Exception {
+        replaceInstance(SmsBroadcastUndelivered.class, "instance", null, null);
+        doReturn(0).when(mInboundSmsTracker).getDestPort();
+
+        // add a fake entry to db
+        ContentValues rawSms = new ContentValues();
+        mContentProvider.insert(sRawUri, rawSms);
+
+        // make it a single-part message
+        doReturn(1).when(mInboundSmsTracker).getMessageCount();
+
+        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+        waitForMs(100);
+
+        // user is unlocked; intent should be broadcast right away
+        verifyDataSmsIntentBroadcasts(0);
     }
 
     @Test
