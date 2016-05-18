@@ -736,9 +736,16 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        if (!mIsShutdown && insertedSimCount > 1 && update) {
-            // Ensure the modems are mapped correctly
-            mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+        if (update && !mIsShutdown) {
+            if (insertedSimCount == 1 && PROJECT_SIM_NUM > 1) {
+                PhoneFactory.setSMSPromptEnabled(false); // can't prompt for 1 sim
+                mSubscriptionManager.clearDefaultsForInactiveSubIds();
+            } else if (insertedSimCount > 1) {
+                PhoneFactory.setSMSPromptEnabled(!SubscriptionManager.isValidSubscriptionId(
+                        SubscriptionManager.getDefaultSmsSubId()));
+                // Ensure the modems are mapped correctly
+                mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+            }
         }
 
         if (update) {

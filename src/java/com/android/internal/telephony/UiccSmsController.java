@@ -302,11 +302,6 @@ public class UiccSmsController extends ISms.Stub {
             Binder.restoreCallingIdentity(identity);
         }
 
-        if (isSMSPromptEnabled()) {
-            // we will make the user pick
-            return false;
-        }
-
         if (subInfoList != null) {
             final int subInfoLength = subInfoList.size();
 
@@ -320,6 +315,12 @@ public class UiccSmsController extends ISms.Stub {
 
             // If reached here and multiple SIMs and subs present, sms sim pick activity is needed
             if (subInfoLength > 0 && telephonyManager.getSimCount() > 1) {
+                final SubscriptionInfoUpdater subscriptionInfoUpdater
+                        = PhoneFactory.getSubscriptionInfoUpdater();
+                if (subscriptionInfoUpdater != null) {
+                    // use the *real* inserted sim count if we can
+                    return subscriptionInfoUpdater.getInsertedSimCount() > 1;
+                }
                 return true;
             }
         }
