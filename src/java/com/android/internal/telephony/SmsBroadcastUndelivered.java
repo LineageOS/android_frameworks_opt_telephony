@@ -25,6 +25,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.Rlog;
 
@@ -83,16 +84,17 @@ public class SmsBroadcastUndelivered {
         public void onReceive(Context context, Intent intent) {
             Rlog.d(TAG, "Received broadcast " + intent.getAction());
             if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
-                Thread t = new Thread() {
-                    @Override
-                    public void run() {
-                        scanRawTable();
-                    }
-                };
-                t.start();
+                new ScanRawTableThread().start();
             }
         }
     };
+
+    private class ScanRawTableThread extends Thread {
+        @Override
+        public void run() {
+            scanRawTable();
+        }
+    }
 
     public static void initialize(Context context, GsmInboundSmsHandler gsmInboundSmsHandler,
         CdmaInboundSmsHandler cdmaInboundSmsHandler) {
@@ -118,9 +120,16 @@ public class SmsBroadcastUndelivered {
         mGsmInboundSmsHandler = gsmInboundSmsHandler;
         mCdmaInboundSmsHandler = cdmaInboundSmsHandler;
 
-        IntentFilter userFilter = new IntentFilter();
-        userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
-        context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, userFilter, null, null);
+        UserManager userManager = (UserManager) context.getSystemService(Context.USER_SERVICE);
+
+        if (userManager.isUserUnlocked()) {
+            new ScanRawTableThread().start();
+        } else {
+            IntentFilter userFilter = new IntentFilter();
+            userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
+            context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, userFilter, null,
+                    null);
+        }
     }
 
     /**
