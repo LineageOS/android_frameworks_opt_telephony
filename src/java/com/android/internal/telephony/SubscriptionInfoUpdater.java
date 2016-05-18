@@ -34,7 +34,6 @@ import android.os.IRemoteCallback;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -104,6 +103,9 @@ public class SubscriptionInfoUpdater extends Handler {
 
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
     public static final String CURR_SUBID = "curr_subid";
+
+    private static final String PREFS_FILE = "subscription_info_updater";
+    private static final String PREF_LAST_SEEN_SIM_COUNT = "previous_update_sim_count";
 
     private static Phone[] mPhone;
     private CommandsInterface[] mCommandsInterfaces;
@@ -736,15 +738,38 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        if (!mIsShutdown && insertedSimCount > 1 && update) {
-            // Ensure the modems are mapped correctly
-            mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+        final int previousUpdateSimCount = previousUpdateSimCount();
+        if (update && !mIsShutdown && previousUpdateSimCount != insertedSimCount) {
+            logd("number of sims changed, resetting sms prompt, old sim count: "
+                    + previousUpdateSimCount);
+            if (insertedSimCount == 1 && PROJECT_SIM_NUM > 1) {
+                mSubscriptionManager.clearDefaultsForInactiveSubIds();
+                PhoneFactory.setSMSPromptEnabled(false); // can't prompt for 1 sim
+            } else if (insertedSimCount > 1) {
+                PhoneFactory.setSMSPromptEnabled(!SubscriptionManager.isValidSubscriptionId(
+                        SubscriptionManager.getDefaultSmsSubId()));
+                // Ensure the modems are mapped correctly
+                mSubscriptionManager.setDefaultDataSubId(SubscriptionManager.getDefaultDataSubId());
+            }
+            setPreviousUpdateSimCount(insertedSimCount);
         }
 
         if (update) {
             SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         }
         logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
+    }
+
+    private int previousUpdateSimCount() {
+        return mContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+                .getInt(PREF_LAST_SEEN_SIM_COUNT, 0);
+    }
+
+    private void setPreviousUpdateSimCount(int simCount) {
+        mContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+                .edit()
+                .putInt(PREF_LAST_SEEN_SIM_COUNT, simCount)
+                .commit();
     }
 
     protected int getInsertedSimCount() {

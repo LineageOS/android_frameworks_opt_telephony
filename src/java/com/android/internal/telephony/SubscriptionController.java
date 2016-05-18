@@ -1371,6 +1371,11 @@ public class SubscriptionController extends ISub.Stub {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        final SubscriptionInfoUpdater subUpdater = PhoneFactory.getSubscriptionInfoUpdater();
+        if (subUpdater != null && subUpdater.getInsertedSimCount() == 1
+                && getActiveSubInfoCountMax() > 1) {
+            return getDefaultSubId();
+        }
         if (VDBG) logd("[getDefaultSmsSubId] subId=" + subId);
         return subId;
     }
