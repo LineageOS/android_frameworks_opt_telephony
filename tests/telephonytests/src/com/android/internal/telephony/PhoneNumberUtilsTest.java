@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.net.Uri;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.SpannableStringBuilder;
@@ -641,5 +642,27 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
         // Test real cases.
         assertEquals("18004664411", PhoneNumberUtils.convertAndStrip("1-800-GOOG-411"));
         assertEquals("8002223334", PhoneNumberUtils.convertAndStrip("(800) ABC-DEFG"));
+    }
+
+    @SmallTest
+    public void testConvertSipUriToTelUri1() {
+        // Nominal case, a tel Uri came in, so we expect one out.
+        Uri source = Uri.fromParts("tel", "+16505551212", null);
+        Uri expected = Uri.fromParts("tel", "+16505551212", null);
+        Uri converted = PhoneNumberUtils.convertSipUriToTelUri(source);
+        assertEquals(expected, converted);
+
+        // Valid cases
+        source = Uri.fromParts("sip", "+16505551212@sipinator.com", null);
+        converted = PhoneNumberUtils.convertSipUriToTelUri(source);
+        assertEquals(expected, converted);
+
+        source = Uri.fromParts("sip", "+16505551212;phone-context=blah.com@host.com", null);
+        converted = PhoneNumberUtils.convertSipUriToTelUri(source);
+        assertEquals(expected, converted);
+
+        source = Uri.fromParts("sip", "+16505551212@something.com;user=phone", null);
+        converted = PhoneNumberUtils.convertSipUriToTelUri(source);
+        assertEquals(expected, converted);
     }
 }

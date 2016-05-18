@@ -23,6 +23,8 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
 
+import android.net.Uri;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -66,15 +68,20 @@ public class ImsExternalConnection extends Connection {
     private ImsExternalCall mCall;
 
     /**
+     * The original address as contained in the dialog event package.
+     */
+    private Uri mOriginalAddress;
+
+    /**
      * Determines if the call is pullable.
      */
     private boolean mIsPullable;
 
-    protected ImsExternalConnection(Phone phone, int callId, String address, boolean isPullable) {
+    protected ImsExternalConnection(Phone phone, int callId, Uri address, boolean isPullable) {
         super(phone.getPhoneType());
         mCall = new ImsExternalCall(phone, this);
         mCallId = callId;
-        mAddress = address;
+        setExternalConnectionAddress(address);
         mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
         mIsPullable = isPullable;
 
@@ -197,6 +204,19 @@ public class ImsExternalConnection extends Connection {
     public void setIsPullable(boolean isPullable) {
         mIsPullable = isPullable;
         rebuildCapabilities();
+    }
+
+    /**
+     * Sets the address of this external connection.  Ensures that dialog event package SIP
+     * {@link Uri}s are converted to a regular telephone number.
+     *
+     * @param address The address from the dialog event package.
+     */
+    public void setExternalConnectionAddress(Uri address) {
+        mOriginalAddress = address;
+
+        Uri telUri = PhoneNumberUtils.convertSipUriToTelUri(address);
+        mAddress = telUri.getSchemeSpecificPart();
     }
 
     public void addListener(Listener listener) {
