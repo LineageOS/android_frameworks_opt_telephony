@@ -291,6 +291,12 @@ public class UiccSmsController extends ISms.Stub {
 
     @Override
     public boolean isSmsSimPickActivityNeeded(int subId) {
+        if (!isSMSPromptEnabled()) {
+            Rlog.d(LOG_TAG, "isSmsSimPickActivityNeeded: false, sms prompt disabled.");
+            // user knows best
+            return false;
+        }
+
         final Context context = ActivityThread.currentApplication().getApplicationContext();
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
@@ -300,11 +306,6 @@ public class UiccSmsController extends ISms.Stub {
             subInfoList = SubscriptionManager.from(context).getActiveSubscriptionInfoList();
         } finally {
             Binder.restoreCallingIdentity(identity);
-        }
-
-        if (isSMSPromptEnabled()) {
-            // we will make the user pick
-            return false;
         }
 
         if (subInfoList != null) {
@@ -320,6 +321,12 @@ public class UiccSmsController extends ISms.Stub {
 
             // If reached here and multiple SIMs and subs present, sms sim pick activity is needed
             if (subInfoLength > 0 && telephonyManager.getSimCount() > 1) {
+                final SubscriptionInfoUpdater subscriptionInfoUpdater
+                        = PhoneFactory.getSubscriptionInfoUpdater();
+                if (subscriptionInfoUpdater != null) {
+                    // use the *real* inserted sim count if we can
+                    return subscriptionInfoUpdater.getInsertedSimCount() > 1;
+                }
                 return true;
             }
         }
