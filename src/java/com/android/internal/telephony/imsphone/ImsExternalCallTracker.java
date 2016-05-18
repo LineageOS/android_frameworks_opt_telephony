@@ -104,7 +104,7 @@ public class ImsExternalCallTracker {
      *                           package.
      */
     public void refreshExternalCallState(List<ImsExternalCallState> externalCallStates) {
-        Log.d(TAG, "refreshExternalCallState: depSize = " + externalCallStates.size());
+        Log.d(TAG, "refreshExternalCallState");
 
         // Check to see if any call Ids are no longer present in the external call state.  If they
         // are, the calls are terminated and should be removed.
@@ -130,18 +130,20 @@ public class ImsExternalCallTracker {
         }
 
         // Check for new calls, and updates to existing ones.
-        for (ImsExternalCallState callState : externalCallStates) {
-            if (!mExternalConnections.containsKey(callState.getCallId())) {
-                Log.d(TAG, "refreshExternalCallState: got = " + callState);
-                // If there is a new entry and it is already terminated, don't bother adding it to
-                // telecom.
-                if (callState.getCallState() != ImsExternalCallState.CALL_STATE_CONFIRMED) {
-                    continue;
+        if (externalCallStates != null && !externalCallStates.isEmpty()) {
+            for (ImsExternalCallState callState : externalCallStates) {
+                if (!mExternalConnections.containsKey(callState.getCallId())) {
+                    Log.d(TAG, "refreshExternalCallState: got = " + callState);
+                    // If there is a new entry and it is already terminated, don't bother adding it to
+                    // telecom.
+                    if (callState.getCallState() != ImsExternalCallState.CALL_STATE_CONFIRMED) {
+                        continue;
+                    }
+                    createExternalConnection(callState);
+                } else {
+                    updateExistingConnection(mExternalConnections.get(callState.getCallId()),
+                            callState);
                 }
-                createExternalConnection(callState);
-            } else{
-                updateExistingConnection(mExternalConnections.get(callState.getCallId()),
-                        callState);
             }
         }
     }
@@ -224,6 +226,10 @@ public class ImsExternalCallTracker {
      * @return {@code true} if the state information contains the call Id, {@code false} otherwise.
      */
     private boolean containsCallId(List<ImsExternalCallState> externalCallStates, int callId) {
+        if (externalCallStates == null) {
+            return false;
+        }
+
         for (ImsExternalCallState state : externalCallStates) {
             if (state.getCallId() == callId) {
                 return true;
