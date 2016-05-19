@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "5faad753_1dbfe261",
+        "filename": "src/java/com/android/internal/telephony/SmsUsageMonitor.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2016-05-19T20:45:05Z",
+      "side": 1,
+      "message": "atomic integer might be overkill",
+      "range": {
+        "startLine": 259,
+        "startChar": 22,
+        "endLine": 259,
+        "endChar": 35
+      },
+      "revId": "e7719c66d8317c68f17bcd0c149a92e8c54a4a48",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5faad753_5dfeba37",
         "filename": "src/java/com/android/internal/telephony/SmsUsageMonitor.java",
         "patchSetId": 1
