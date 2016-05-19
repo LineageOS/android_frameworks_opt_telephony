@@ -58,6 +58,7 @@ import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.ICarrierMessagingCallback;
 import android.service.carrier.ICarrierMessagingService;
 import android.service.carrier.MessagePdu;
+import android.service.notification.StatusBarNotification;
 import android.telephony.CarrierMessagingServiceManager;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
@@ -864,6 +865,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         Notification.Builder mBuilder = new Notification.Builder(mContext)
                 .setSmallIcon(com.android.internal.R.drawable.sym_action_chat)
                 .setAutoCancel(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setContentTitle(mContext.getString(R.string.new_sms_notification_title))
                 .setContentText(mContext.getString(R.string.new_sms_notification_content))
@@ -872,6 +874,13 @@ public abstract class InboundSmsHandler extends StateMachine {
             (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(
                 NOTIFICATION_TAG, NOTIFICATION_ID_NEW_MESSAGE, mBuilder.build());
+    }
+
+    static void cancelNewMessageNotification(Context context) {
+        NotificationManager mNotificationManager =
+            (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.cancel(InboundSmsHandler.NOTIFICATION_TAG,
+            InboundSmsHandler.NOTIFICATION_ID_NEW_MESSAGE);
     }
 
     /**
