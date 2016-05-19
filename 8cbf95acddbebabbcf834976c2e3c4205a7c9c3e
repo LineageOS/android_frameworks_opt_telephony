@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_b06fd590",
+        "filename": "src/java/com/android/internal/telephony/SmsUsageMonitor.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 13513
+      },
+      "writtenOn": "2016-05-19T22:36:54Z",
+      "side": 1,
+      "message": "We can delete this?",
+      "revId": "8cbf95acddbebabbcf834976c2e3c4205a7c9c3e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
