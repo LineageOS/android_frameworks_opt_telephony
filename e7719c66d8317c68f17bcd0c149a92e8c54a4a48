@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_5dfeba37",
+        "filename": "src/java/com/android/internal/telephony/SmsUsageMonitor.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2016-05-19T20:42:51Z",
+      "side": 1,
+      "message": "any reason not to hook into this construct?",
+      "range": {
+        "startLine": 292,
+        "startChar": 7,
+        "endLine": 292,
+        "endChar": 88
+      },
+      "revId": "e7719c66d8317c68f17bcd0c149a92e8c54a4a48",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
