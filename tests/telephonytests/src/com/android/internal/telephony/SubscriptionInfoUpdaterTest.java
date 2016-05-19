@@ -15,6 +15,7 @@
  */
 package com.android.internal.telephony;
 
+import android.Manifest;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
@@ -24,6 +25,7 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -40,6 +42,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -48,6 +51,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -221,13 +225,30 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 .getSubInfoUsingSlotIdWithCheck(eq(0), anyBoolean(), anyString());
         doReturn("89012604200000000000").when(mIccRecord).getFullIccId();
         doReturn(FAKE_PLMN).when(mTelephonyManager).getSimOperatorNumericForPhone(0);
-        Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
-        mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
+        Intent intentInternalSimStateChanged =
+                new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
+        intentInternalSimStateChanged.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_LOADED);
-        mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
+        intentInternalSimStateChanged.putExtra(PhoneConstants.PHONE_KEY, 0);
 
-        mContext.sendBroadcast(mIntent);
+        mContext.sendBroadcast(intentInternalSimStateChanged);
         waitForMs(100);
+
+        // verify SIM_STATE_CHANGED broadcast. It should be broadcast twice, once for
+        // READ_PHONE_STATE and once for READ_PRIVILEGED_PHONE_STATE
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture(),
+                stringArgumentCaptor.capture());
+        assertEquals(TelephonyIntents.ACTION_SIM_STATE_CHANGED,
+                intentArgumentCaptor.getAllValues().get(0).getAction());
+        assertEquals(Manifest.permission.READ_PHONE_STATE,
+                stringArgumentCaptor.getAllValues().get(0));
+        assertEquals(TelephonyIntents.ACTION_SIM_STATE_CHANGED,
+                intentArgumentCaptor.getAllValues().get(1).getAction());
+        assertEquals(Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+                stringArgumentCaptor.getAllValues().get(1));
+
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
         verify(mTelephonyManager).getSimOperatorNumericForPhone(0);
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(
@@ -238,6 +259,23 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         verify(mConfigManager, times(1)).updateConfigForPhoneId(eq(0),
                 eq(IccCardConstants.INTENT_VALUE_ICC_LOADED));
+
+        // ACTION_USER_UNLOCKED should trigger another SIM_STATE_CHANGED
+        Intent intentSimStateChanged = new Intent(Intent.ACTION_USER_UNLOCKED);
+        mContext.sendBroadcast(intentSimStateChanged);
+        waitForMs(100);
+
+        // verify SIM_STATE_CHANGED broadcast
+        verify(mContext, times(4)).sendBroadcast(intentArgumentCaptor.capture(),
+                stringArgumentCaptor.capture());
+        assertEquals(TelephonyIntents.ACTION_SIM_STATE_CHANGED,
+                intentArgumentCaptor.getAllValues().get(2).getAction());
+        assertEquals(Manifest.permission.READ_PHONE_STATE,
+                stringArgumentCaptor.getAllValues().get(2));
+        assertEquals(TelephonyIntents.ACTION_SIM_STATE_CHANGED,
+                intentArgumentCaptor.getAllValues().get(3).getAction());
+        assertEquals(Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+                stringArgumentCaptor.getAllValues().get(3));
     }
 
     @Test
