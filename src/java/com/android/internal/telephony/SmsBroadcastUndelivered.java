@@ -23,8 +23,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.SQLException;
+import android.net.Uri;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.provider.Telephony;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
@@ -79,25 +81,18 @@ public class SmsBroadcastUndelivered {
      */
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
-        public void onReceive(final Context context, Intent intent) {
+        public void onReceive(Context context, Intent intent) {
             Rlog.d(TAG, "Received broadcast " + intent.getAction());
             if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
-                new ScanRawTableThread(context).start();
+                new ScanRawTableThread().start();
             }
         }
     };
 
     private class ScanRawTableThread extends Thread {
-        private final Context context;
-
-        private ScanRawTableThread(Context context) {
-            this.context = context;
-        }
-
         @Override
         public void run() {
             scanRawTable();
-            InboundSmsHandler.cancelNewMessageNotification(context);
         }
     }
 
@@ -128,7 +123,7 @@ public class SmsBroadcastUndelivered {
         UserManager userManager = (UserManager) context.getSystemService(Context.USER_SERVICE);
 
         if (userManager.isUserUnlocked()) {
-            new ScanRawTableThread(context).start();
+            new ScanRawTableThread().start();
         } else {
             IntentFilter userFilter = new IntentFilter();
             userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
