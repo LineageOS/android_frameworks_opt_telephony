@@ -55,6 +55,7 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyHistogram;
 import android.telephony.ModemActivityInfo;
 import android.text.TextUtils;
 import android.util.SparseArray;
@@ -87,6 +88,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Random;
@@ -114,6 +116,8 @@ class RILRequest {
     Parcel mParcel;
     RILRequest mNext;
     int mWakeLockType;
+    // time in ms when RIL request was made
+    long mStartTimeMs;
 
     /**
      * Retrieves a new RILRequest instance from the pool.
@@ -145,6 +149,7 @@ class RILRequest {
         rr.mParcel = Parcel.obtain();
 
         rr.mWakeLockType = RIL.INVALID_WAKELOCK;
+        rr.mStartTimeMs = SystemClock.elapsedRealtime();
         if (result != null && result.getTarget() == null) {
             throw new NullPointerException("Message target must not be null");
         }
@@ -247,7 +252,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int RADIO_SCREEN_UNSET = -1;
     static final int RADIO_SCREEN_OFF = 0;
     static final int RADIO_SCREEN_ON = 1;
-
+    static final int RIL_HISTOGRAM_BUCKET_COUNT = 5;
 
     /**
      * Wake lock timeout should be longer than the longest timeout in
@@ -289,6 +294,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     volatile int mAckWlSequenceNum = 0;
 
     SparseArray<RILRequest> mRequestList = new SparseArray<RILRequest>();
+    static SparseArray<TelephonyHistogram> mRilTimeHistograms = new
+            SparseArray<TelephonyHistogram>();
 
     Object[]     mLastNITZTimeInfo;
 
@@ -359,6 +366,18 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
     };
 
+    public static List<TelephonyHistogram> getTelephonyRILTimingHistograms() {
+        List<TelephonyHistogram> list;
+        synchronized (mRilTimeHistograms) {
+            list = new ArrayList<>(mRilTimeHistograms.size());
+            for (int i = 0; i < mRilTimeHistograms.size(); i++) {
+                TelephonyHistogram entry = new TelephonyHistogram(mRilTimeHistograms.valueAt(i));
+                list.add(entry);
+            }
+        }
+        return list;
+    }
+
     class RILSender extends Handler implements Runnable {
         public RILSender(Looper looper) {
             super(looper);
@@ -399,6 +418,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         // Acks should not be stored in list before sending
                         if (msg.what != EVENT_SEND_ACK) {
                             synchronized (mRequestList) {
+                                rr.mStartTimeMs = SystemClock.elapsedRealtime();
                                 mRequestList.append(rr.mSerial, rr);
                             }
                         }
@@ -2615,6 +2635,22 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
+    private void addToRilHistogram(RILRequest rr) {
+        long endTime = SystemClock.elapsedRealtime();
+        int totalTime = (int)(endTime - rr.mStartTimeMs);
+
+        synchronized(mRilTimeHistograms) {
+            TelephonyHistogram entry = mRilTimeHistograms.get(rr.mRequest);
+            if (entry == null) {
+                // We would have total #RIL_HISTOGRAM_BUCKET_COUNT range buckets for RIL commands
+                entry = new TelephonyHistogram(TelephonyHistogram.TELEPHONY_CATEGORY_RIL,
+                        rr.mRequest, RIL_HISTOGRAM_BUCKET_COUNT);
+                mRilTimeHistograms.put(rr.mRequest, entry);
+            }
+            entry.addTimeTaken(totalTime);
+        }
+    }
+
     private RILRequest
     processSolicited (Parcel p, int type) {
         int serial, error;
@@ -2632,6 +2668,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             + serial + " error: " + error);
             return null;
         }
+
+        // Time logging for RIL command and storing it in TelephonyHistogram.
+        addToRilHistogram(rr);
 
         if (getRilVersion() >= 13 && type == RESPONSE_SOLICITED_ACK_EXP) {
             Message msg;
