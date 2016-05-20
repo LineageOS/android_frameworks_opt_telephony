@@ -16,6 +16,24 @@
       "revId": "8cbf95acddbebabbcf834976c2e3c4205a7c9c3e",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5faad753_3351af0f",
+        "filename": "src/java/com/android/internal/telephony/SmsUsageMonitor.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 13956
+      },
+      "writtenOn": "2016-05-20T12:58:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5faad753_b06fd590",
+      "revId": "8cbf95acddbebabbcf834976c2e3c4205a7c9c3e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
