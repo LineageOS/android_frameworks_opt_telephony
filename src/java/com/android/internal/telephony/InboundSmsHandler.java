@@ -780,6 +780,14 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
+        // Do not process null pdu(s). Check for that and return false in that case.
+        List<byte[]> pduList = Arrays.asList(pdus);
+        if (pduList.size() == 0 || pduList.contains(null)) {
+            loge("processMessagePart: returning false due to " +
+                    (pduList.size() == 0 ? "pduList.size() == 0" : "pduList.contains(null)"));
+            return false;
+        }
+
         if (!mUserManager.isUserUnlocked()) {
             return processMessagePartWithUserLocked(tracker, pdus, destPort);
         }
@@ -793,7 +801,12 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // 3GPP needs to extract the User Data from the PDU; 3GPP2 has already done this
                 if (!tracker.is3gpp2()) {
                     SmsMessage msg = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
-                    pdu = msg.getUserData();
+                    if (msg != null) {
+                        pdu = msg.getUserData();
+                    } else {
+                        loge("processMessagePart: SmsMessage.createFromPdu returned null");
+                        return false;
+                    }
                 }
                 output.write(pdu, 0, pdu.length);
             }
@@ -880,15 +893,6 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     private boolean filterSmsWithCarrierOrSystemApp(byte[][] pdus, int destPort,
         InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked) {
-        // Do not send null pdu(s) to CarrierSmsFilter. Check for that and return false in that case
-        List<byte[]> pduList = Arrays.asList(pdus);
-        if (pduList == null || pduList.size() == 0 || pduList.contains(null)) {
-            loge("filterSmsWithCarrierOrSystemApp: Bypassing carrier/system sms filter due to " +
-                    (pduList == null ? "pduList == null" : (pduList.size() == 0 ?
-                            "pduList.size() == 0" : "pduList.contains(null)")));
-            return false;
-        }
-
         List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
         if (card != null) {
