@@ -35,6 +35,7 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.service.carrier.CarrierIdentifier;
 import android.telecom.VideoProfile;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
@@ -3159,6 +3160,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void startLceAfterRadioIsAvailable() {
         mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
                 obtainMessage(EVENT_CONFIG_LCE));
+    }
+
+    /**
+     * Set allowed carriers
+     */
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response) {
+        mCi.setAllowedCarriers(carriers, response);
+    }
+
+    /**
+     * Get allowed carriers
+     */
+    public void getAllowedCarriers(Message response) {
+        mCi.getAllowedCarriers(response);
     }
 
     /**
