@@ -23,6 +23,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.Registrant;
+import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.Rlog;
@@ -1943,6 +1944,16 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getModemActivityInfo(Message result) {
+        unimplemented(result);
+    }
+
+    @Override
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result) {
+        unimplemented(result);
+    }
+
+    @Override
+    public void getAllowedCarriers(Message result) {
         unimplemented(result);
     }
 
