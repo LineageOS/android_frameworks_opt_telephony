@@ -24,6 +24,9 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 
 import android.os.Message;
 import android.os.Handler;
+import android.service.carrier.CarrierIdentifier;
+
+import java.util.List;
 
 
 /**
@@ -2017,4 +2020,19 @@ public interface CommandsInterface {
      * @param result Callback message contains the modem activity information
      */
     public void getModemActivityInfo(Message result);
+
+    /**
+     * Set allowed carriers
+     *
+     * @param carriers Allowed carriers
+     * @param result Callback message contains the number of carriers set successfully
+     */
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result);
+
+    /**
+     * Get allowed carriers
+     *
+     * @param result Callback message contains the allowed carriers
+     */
+    public void getAllowedCarriers(Message result);
 }

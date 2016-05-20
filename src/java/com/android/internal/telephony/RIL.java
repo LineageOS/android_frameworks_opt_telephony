@@ -45,6 +45,7 @@ import android.os.SystemProperties;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
 import android.provider.Settings.SettingNotFoundException;
+import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.PhoneNumberUtils;
@@ -91,6 +92,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -2837,6 +2839,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_STOP_LCE: ret = responseLceStatus(p); break;
             case RIL_REQUEST_PULL_LCEDATA: ret = responseLceData(p); break;
             case RIL_REQUEST_GET_ACTIVITY_INFO: ret = responseActivityData(p); break;
+            case RIL_REQUEST_SET_ALLOWED_CARRIERS: ret = responseInts(p); break;
+            case RIL_REQUEST_GET_ALLOWED_CARRIERS: ret = responseCarrierIdentifiers(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -4312,6 +4316,31 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         idleModeTimeMs, txModeTimeMs, rxModeTimeMs, 0);
     }
 
+    private Object responseCarrierIdentifiers(Parcel p) {
+        List<CarrierIdentifier> retVal = new ArrayList<CarrierIdentifier>();
+        int len_allowed_carriers = p.readInt();
+        int len_excluded_carriers = p.readInt();
+        for (int i = 0; i < len_allowed_carriers; i++) {
+            String mcc = p.readString();
+            String mnc = p.readString();
+            String spn = null, imsi = null, gid1 = null, gid2 = null;
+            int matchType = p.readInt();
+            String matchData = p.readString();
+            if (matchType == CarrierIdentifier.MatchType.SPN) {
+                spn = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.IMSI_PREFIX) {
+                imsi = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.GID1) {
+                gid1 = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.GID2) {
+                gid2 = matchData;
+            }
+            retVal.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
+        }
+        /* TODO: Handle excluded carriers */
+        return retVal;
+    }
+
     static String
     requestToString(int request) {
 /*
@@ -4455,6 +4484,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_STOP_LCE: return "RIL_REQUEST_STOP_LCE";
             case RIL_REQUEST_PULL_LCEDATA: return "RIL_REQUEST_PULL_LCEDATA";
             case RIL_REQUEST_GET_ACTIVITY_INFO: return "RIL_REQUEST_GET_ACTIVITY_INFO";
+            case RIL_REQUEST_SET_ALLOWED_CARRIERS: return "RIL_REQUEST_SET_ALLOWED_CARRIERS";
+            case RIL_REQUEST_GET_ALLOWED_CARRIERS: return "RIL_REQUEST_GET_ALLOWED_CARRIERS";
             case RIL_RESPONSE_ACKNOWLEDGEMENT: return "RIL_RESPONSE_ACKNOWLEDGEMENT";
             default: return "<unknown request>";
         }
@@ -5110,5 +5141,48 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         msg.obj = null;
         msg.arg1 = rr.mSerial;
         mSender.sendMessageDelayed(msg, DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS);
+    }
+
+    @Override
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_ALLOWED_CARRIERS, response);
+        rr.mParcel.writeInt(carriers.size()); /* len_allowed_carriers */
+        rr.mParcel.writeInt(0); /* len_excluded_carriers */ /* TODO: add excluded carriers */
+        for (CarrierIdentifier ci : carriers) { /* allowed carriers */
+            rr.mParcel.writeString(ci.getMcc());
+            rr.mParcel.writeString(ci.getMnc());
+            int matchType = CarrierIdentifier.MatchType.ALL;
+            String matchData = null;
+            if (!TextUtils.isEmpty(ci.getSpn())) {
+                matchType = CarrierIdentifier.MatchType.SPN;
+                matchData = ci.getSpn();
+            } else if (!TextUtils.isEmpty(ci.getImsi())) {
+                matchType = CarrierIdentifier.MatchType.IMSI_PREFIX;
+                matchData = ci.getImsi();
+            } else if (!TextUtils.isEmpty(ci.getGid1())) {
+                matchType = CarrierIdentifier.MatchType.GID1;
+                matchData = ci.getGid1();
+            } else if (!TextUtils.isEmpty(ci.getGid2())) {
+                matchType = CarrierIdentifier.MatchType.GID2;
+                matchData = ci.getGid2();
+            }
+            rr.mParcel.writeInt(matchType);
+            rr.mParcel.writeString(matchData);
+        }
+        /* TODO: add excluded carriers */
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+        send(rr);
+    }
+
+    @Override
+    public void getAllowedCarriers(Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_ALLOWED_CARRIERS, response);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+        send(rr);
     }
 }
