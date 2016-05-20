@@ -707,7 +707,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {
         replaceInstance(SmsBroadcastUndelivered.class, "instance", null, null);
-        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
 
         // prepare SMS part 1 and part 2
         prepareMultiPartSms();
@@ -721,10 +720,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 when(mTelephonyComponentFactory).makeInboundSmsTracker(any(Cursor.class),
                 anyBoolean());
 
-        //when user unlocks the device, the message in db should be broadcast
-        mContext.sendBroadcast(new Intent(Intent.ACTION_USER_UNLOCKED));
+        SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
         waitForMs(100);
 
-        verifySmsIntentBroadcasts(1);
+        verifySmsIntentBroadcasts(0);
     }
 }
