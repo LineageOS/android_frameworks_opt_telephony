@@ -48,6 +48,8 @@ import com.android.ims.ImsCallProfile;
 
 import java.util.Objects;
 
+import org.codeaurora.ims.qtiims.QtiImsInterfaceUtils;
+
 /**
  * {@hide}
  */
@@ -908,13 +910,15 @@ public class ImsPhoneConnection extends Connection {
      * @param extras The ImsCallProfile extras.
      */
     private void updateWifiStateFromExtras(Bundle extras) {
-        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE)) {
+        // Google and Qualcomm have competing implementations
+        final String extraCompatType = extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE) ?
+            ImsCallProfile.EXTRA_CALL_RAT_TYPE : QtiImsInterfaceUtils.QTI_IMS_CALL_RAT_EXTRA_KEY;
+        if (extras.containsKey(extraCompatType)) {
             // The RIL (sadly) sends us the EXTRA_CALL_RAT_TYPE as a string extra, rather than an
             // integer extra, so we need to parse it.
             int radioTechnology;
             try {
-                radioTechnology = Integer.parseInt(extras.getString(
-                        ImsCallProfile.EXTRA_CALL_RAT_TYPE));
+                radioTechnology = Integer.parseInt(extras.getString(extraCompatType));
             } catch (NumberFormatException nfe) {
                 radioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
             }
