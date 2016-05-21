@@ -250,7 +250,7 @@ public class ImsExternalCallTracker {
             } else {
                 connection.setTerminated();
                 connection.removeListener(mExternalConnectionListener);
-                mExternalConnections.remove(connection);
+                mExternalConnections.remove(connection.getCallId());
                 mCallStateNotifier.notifyPreciseCallStateChanged();
             }
         }
