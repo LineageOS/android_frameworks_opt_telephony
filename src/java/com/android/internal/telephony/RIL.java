@@ -303,7 +303,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int RESPONSE_SOLICITED = 0;
     static final int RESPONSE_UNSOLICITED = 1;
 
-    static final String[] SOCKET_NAME_RIL = {"rild", "rild2", "rild3"};
+    static final String[] SOCKET_NAME_RIL;
+    static {
+        String rilSocketName = SystemProperties.get("ro.telephony.ril.socket_name");
+        SOCKET_NAME_RIL = rilSocketName.isEmpty()
+                ? new String[] { "rild", "rild2", "rild3" };
+                : rilSocketName.split(",");
+    }
 
     static final int SOCKET_OPEN_RETRY_MILLIS = 4 * 1000;
 
