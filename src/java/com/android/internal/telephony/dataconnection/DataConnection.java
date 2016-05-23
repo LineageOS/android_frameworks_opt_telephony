@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import com.android.internal.telephony.CallTracker;
+import com.android.internal.telephony.CarrierSignalAgent;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
@@ -1513,6 +1514,11 @@ public class DataConnection extends StateMachine {
             updateTcpBufferSizes(mRilRat);
 
             final NetworkMisc misc = new NetworkMisc();
+            final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
+            if(carrierSignalAgent.hasRegisteredCarrierSignalReceivers()) {
+                // carrierSignal Receivers will place the carrier-specific provisioning notification
+                misc.provisioningNotificationDisabled = true;
+            }
             misc.subscriberId = mPhone.getSubscriberId();
 
             if (createNetworkAgent) {
@@ -1811,7 +1817,6 @@ public class DataConnection extends StateMachine {
                    and let DcTracker to make the decision */
                 Message msg = mDct.obtainMessage(DctConstants.EVENT_REDIRECTION_DETECTED,
                         redirectUrl);
-                AsyncResult.forMessage(msg, mApnContexts, null);
                 msg.sendToTarget();
             }
         }

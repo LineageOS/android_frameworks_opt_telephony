@@ -114,6 +114,8 @@ public interface PhoneInternalInterface {
     static final String REASON_SIM_NOT_READY = "simNotReady";
     static final String REASON_IWLAN_AVAILABLE = "iwlanAvailable";
     static final String REASON_CARRIER_CHANGE = "carrierChange";
+    static final String REASON_CARRIER_ACTION_DISABLE_METERED_APN =
+            "carrierActionDisableMeteredApn";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = RILConstants.BAND_MODE_UNSPECIFIED; // automatic

@@ -252,6 +252,8 @@ public class ServiceStateTracker extends Handler {
 
     private boolean mImsRegistrationOnOff = false;
     private boolean mAlarmSwitch = false;
+    /** Radio is disabled by carrier. Radio power will not be override if this field is set */
+    private boolean mRadioDisabledByCarrier = false;
     private PendingIntent mRadioOffIntent = null;
     private static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     private boolean mPowerOffDelayNeed = true;
@@ -793,6 +795,16 @@ public class ServiceStateTracker extends Handler {
         mDesiredPowerState = power;
 
         setPowerStateToDesired();
+    }
+
+    /**
+     * Radio power set from carrier action. if set to false means carrier desire to turn radio off
+     * and radio wont be re-enabled unless carrier explicitly turn it back on.
+     * @param enable indicate if radio power is enabled or disabled from carrier action.
+     */
+    public void setRadioPowerFromCarrier(boolean enable) {
+        mRadioDisabledByCarrier = !enable;
+        setRadioPower(enable);
     }
 
     /**
@@ -2266,7 +2278,8 @@ public class ServiceStateTracker extends Handler {
                     ", mDesiredPowerState=" + mDesiredPowerState +
                     ", getRadioState=" + mCi.getRadioState() +
                     ", mPowerOffDelayNeed=" + mPowerOffDelayNeed +
-                    ", mAlarmSwitch=" + mAlarmSwitch);
+                    ", mAlarmSwitch=" + mAlarmSwitch +
+                    ", mRadioDisabledByCarrier=" + mRadioDisabledByCarrier);
         }
 
         if (mPhone.isPhoneTypeGsm() && mAlarmSwitch) {
@@ -2279,7 +2292,8 @@ public class ServiceStateTracker extends Handler {
 
         // If we want it on and it's off, turn it on
         if (mDesiredPowerState
-                && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
+                && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF &&
+                !mRadioDisabledByCarrier) {
             mCi.setRadioPower(true, null);
         } else if (!mDesiredPowerState && mCi.getRadioState().isOn()) {
             // If it's on and available and we want it off gracefully
@@ -4566,6 +4580,7 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mImsRegistered=" + mImsRegistered);
         pw.println(" mImsRegistrationOnOff=" + mImsRegistrationOnOff);
         pw.println(" mAlarmSwitch=" + mAlarmSwitch);
+        pw.println(" mRadioDisabledByCarrier" + mRadioDisabledByCarrier);
         pw.println(" mPowerOffDelayNeed=" + mPowerOffDelayNeed);
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
         pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);

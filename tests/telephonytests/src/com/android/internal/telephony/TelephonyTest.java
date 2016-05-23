@@ -44,6 +44,7 @@ import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.util.Log;
@@ -169,8 +170,12 @@ public abstract class TelephonyTest {
     protected EriManager mEriManager;
     @Mock
     protected IBinder mConnMetLoggerBinder;
+    @Mock
+    protected CarrierSignalAgent mCarrierSignalAgent;
 
     protected TelephonyManager mTelephonyManager;
+    protected SubscriptionManager mSubscriptionManager;
+    protected PackageManager mPackageManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
@@ -299,6 +304,9 @@ public abstract class TelephonyTest {
         mPhone.mCi = mSimulatedCommands;
         mCT.mCi = mSimulatedCommands;
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        mSubscriptionManager = (SubscriptionManager) mContext.getSystemService(
+                Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        mPackageManager = mContext.getPackageManager();
 
         replaceInstance(TelephonyManager.class, "sInstance", null,
                 mContext.getSystemService(Context.TELEPHONY_SERVICE));
@@ -344,6 +352,7 @@ public abstract class TelephonyTest {
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
+        doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
         mPhone.mEriManager = mEriManager;
 
         //mUiccController
@@ -443,8 +452,7 @@ public abstract class TelephonyTest {
     }
 
     protected void setupMockPackagePermissionChecks() throws Exception {
-        PackageManager mockPackageManager = mContext.getPackageManager();
-        doReturn(new String[]{TAG}).when(mockPackageManager).getPackagesForUid(anyInt());
-        doReturn(mPackageInfo).when(mockPackageManager).getPackageInfo(eq(TAG), anyInt());
+        doReturn(new String[]{TAG}).when(mPackageManager).getPackagesForUid(anyInt());
+        doReturn(mPackageInfo).when(mPackageManager).getPackageInfo(eq(TAG), anyInt());
     }
 }

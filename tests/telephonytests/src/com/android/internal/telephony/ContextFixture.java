@@ -488,6 +488,8 @@ public class ContextFixture implements TestFixture<Context> {
         }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), anyInt());
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
+        //doReturn(mBundle).when(mCarrierConfigManager).getConfig(anyInt());
+        doReturn(mBundle).when(mCarrierConfigManager).getConfig();
 
         mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();

@@ -35,8 +35,7 @@ public class SubscriptionInfoTest {
     @Before
     public void setUp() throws Exception {
         mSubscriptionInfoUT = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0, "T-mobile",
-                "T-mobile", 0, 255, "12345", 0, null, 310, 260, "156",
-                SubscriptionManager.SIM_PROVISIONED);
+                "T-mobile", 0, 255, "12345", 0, null, 310, 260, "156");
     }
 
     @Test
