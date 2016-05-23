@@ -70,7 +70,7 @@ public class SipPhone extends SipPhoneBase {
     SipPhone (Context context, PhoneNotifier notifier, SipProfile profile) {
         super("SIP:" + profile.getUriString(), context, notifier);
 
-        if (DBG) log("new SipPhone: " + profile.getUriString());
+        if (DBG) log("new SipPhone: " + hidePii(profile.getUriString()));
         mRingingCall = new SipCall();
         mForegroundCall = new SipCall();
         mBackgroundCall = new SipCall();
@@ -191,7 +191,7 @@ public class SipPhone extends SipPhoneBase {
 
     private Connection dialInternal(String dialString, int videoState)
             throws CallStateException {
-        if (DBG) log("dialInternal: dialString=" + (VDBG ? dialString : "xxxxxx"));
+        if (DBG) log("dialInternal: dialString=" + hidePii(dialString));
         clearDisconnected();
 
         if (!canDial()) {
@@ -765,7 +765,7 @@ public class SipPhone extends SipPhoneBase {
                             ? ""
                             : (sipAudioCall.getState() + ", ");
                     if (SCN_DBG) log("[SipAudioCallAdapter] onCallEnded: "
-                            + mPeer.getUriString() + ": " + sessionState
+                            + hidePii(mPeer.getUriString()) + ": " + sessionState
                             + "cause: " + getDisconnectCause() + ", on phone "
                             + getPhone());
                     if (sipAudioCall != null) {
@@ -1073,5 +1073,9 @@ public class SipPhone extends SipPhoneBase {
         private void log(String s) {
             Rlog.d(SACA_TAG, s);
         }
+    }
+
+    public static String hidePii(String s) {
+        return VDBG ? s : "xxxxx";
     }
 }
