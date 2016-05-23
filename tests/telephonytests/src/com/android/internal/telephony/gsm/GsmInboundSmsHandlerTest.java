@@ -596,6 +596,46 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
     @Test
     @MediumTest
+    public void testMultiPartIncompleteSms() {
+        /**
+         * Test scenario: 2 messages are received with same address, ref number, count, and
+         * seqNumber, with count = 2 and seqNumber = 1. We should not try to merge these.
+         */
+        transitionFromStartupToIdle();
+
+        // prepare SMS part 1 and part 2
+        prepareMultiPartSms();
+        // change seqNumber in part 2 to 1
+        mInboundSmsTrackerCVPart2.put("sequence", 1);
+
+        mSmsHeader.concatRef = new SmsHeader.ConcatRef();
+        doReturn(mSmsHeader).when(mGsmSmsMessage).getUserDataHeader();
+
+        doReturn(mInboundSmsTrackerPart1).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
+                mSmsMessage, null));
+        waitForMs(100);
+
+        // State machine should go back to idle and wait for second part
+        assertEquals("IdleState", getCurrentState().getName());
+
+        doReturn(mInboundSmsTrackerPart2).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean(), anyString());
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
+                mSmsMessage, null));
+        waitForMs(100);
+
+        // verify no broadcasts sent
+        verify(mContext, never()).sendBroadcast(any(Intent.class));
+        // State machine should go back to idle
+        assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    @MediumTest
     public void testMultipartSmsFromBlockedNumber_noBroadcastsSent() {
         mFakeBlockedNumberContentProvider.mBlockedNumbers.add("1234567890");
 
