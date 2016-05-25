@@ -2149,7 +2149,7 @@ public class ServiceStateTracker extends Handler {
                         mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
                 if (configLoader != null) {
                     try {
-                        PersistableBundle b = configLoader.getConfig(mPhone.getSubId());
+                        PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
                         if (b != null) {
                             voiceIdx = b.getInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT);
                             dataIdx = b.getInt(
