@@ -135,6 +135,7 @@ public class CarrierServiceBindHelper {
         switch (simState) {
             case IccCardConstants.INTENT_VALUE_ICC_ABSENT:
             case IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR:
+            case IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED:
                 mHandler.sendMessage(mHandler.obtainMessage(EVENT_UNBIND, mBindings[phoneId]));
                 break;
             case IccCardConstants.INTENT_VALUE_ICC_LOADED:
