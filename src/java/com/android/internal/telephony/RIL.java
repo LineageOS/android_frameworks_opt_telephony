@@ -444,6 +444,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                         s.getOutputStream().write(dataLength);
                         s.getOutputStream().write(data);
+                        if (msg.what == EVENT_SEND_ACK) {
+                            rr.release();
+                            return;
+                        }
                     } catch (IOException ex) {
                         Rlog.e(RILJ_LOG_TAG, "IOException", ex);
                         req = findAndRemoveRequestFromList(rr.mSerial);
@@ -453,6 +457,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             rr.onError(RADIO_NOT_AVAILABLE, null);
                             decrementWakeLock(rr);
                             rr.release();
+                            return;
                         }
                     } catch (RuntimeException exc) {
                         Rlog.e(RILJ_LOG_TAG, "Uncaught exception ", exc);
@@ -463,6 +468,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             rr.onError(GENERIC_FAILURE, null);
                             decrementWakeLock(rr);
                             rr.release();
+                            return;
                         }
                     }
 
@@ -2573,6 +2579,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     decrementWakeLock(rr);
                 }
                 rr.release();
+                return;
             }
         } else if (type == RESPONSE_SOLICITED_ACK) {
             int serial;
@@ -2681,7 +2688,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 riljLog("Response received for " + rr.serialString() + " " +
                         requestToString(rr.mRequest) + " Sending ack to ril.cpp");
             }
-            response.release();
         }
 
 
@@ -3049,7 +3055,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 riljLog("Unsol response received for " + responseToString(response) +
                         " Sending ack to ril.cpp");
             }
-            rr.release();
         }
 
         try {switch(response) {
