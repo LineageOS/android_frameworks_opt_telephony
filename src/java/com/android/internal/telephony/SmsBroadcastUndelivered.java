@@ -132,8 +132,7 @@ public class SmsBroadcastUndelivered {
         } else {
             IntentFilter userFilter = new IntentFilter();
             userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
-            context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, userFilter, null,
-                    null);
+            context.registerReceiver(mBroadcastReceiver, userFilter);
         }
     }
 

@@ -16,14 +16,17 @@
 
 package com.android.internal.telephony.gsm;
 
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.UserManager;
 import android.os.RemoteException;
@@ -686,6 +689,12 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(false).when(userManager).isUserUnlocked();
 
         SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+
+        // verify that a broadcast receiver is registered for current user (user == null) based on
+        // implementation in ContextFixture
+        verify(mContext).registerReceiverAsUser(any(BroadcastReceiver.class), eq((UserHandle)null),
+                any(IntentFilter.class), eq((String)null), eq((Handler)null));
+
         waitForMs(100);
 
         // verify no broadcasts sent because due to !isUserUnlocked
