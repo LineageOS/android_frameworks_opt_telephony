@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.provider.VoicemailContract;
 import android.telephony.TelephonyManager;
+import android.telephony.VisualVoicemailSmsFilterSettings;
 import android.util.Log;
 
 import android.telephony.SmsMessage;
@@ -32,6 +33,7 @@ public class VisualVoicemailSmsFilter {
     private static final String TAG = "VvmSmsFilter";
 
     private static final String SYSTEM_VVM_CLIENT_PACKAGE = "com.android.phone";
+
     /**
      * Attempt to parse the incoming SMS as a visual voicemail SMS. If the parsing succeeded, A
      * {@link VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED} intent will be sent to the visual
@@ -50,15 +52,16 @@ public class VisualVoicemailSmsFilter {
         // TODO: select client package.
         String vvmClientPackage = SYSTEM_VVM_CLIENT_PACKAGE;
 
-        if (telephonyManager.isVisualVoicemailSmsFilterEnabled(vvmClientPackage, subId) == false) {
+        VisualVoicemailSmsFilterSettings settings =
+                telephonyManager.getVisualVoicemailSmsFilterSettings(vvmClientPackage, subId);
+        if (settings == null) {
             return false;
         }
-
         // TODO: filter base on originating number and destination port.
 
         String messageBody = getFullMessage(pdus, format);
-        String clientPrefix = telephonyManager
-                .getVisualVoicemailSmsFilterClientPrefix(vvmClientPackage, subId);
+
+        String clientPrefix = settings.clientPrefix;
 
         WrappedMessageData messageData = VisualVoicemailSmsParser.parse(clientPrefix, messageBody);
         if (messageData != null) {
