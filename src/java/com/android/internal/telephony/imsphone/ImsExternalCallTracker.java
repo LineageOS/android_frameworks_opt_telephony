@@ -19,6 +19,7 @@ package com.android.internal.telephony.imsphone;
 import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsExternalCallState;
 import com.android.ims.ImsExternalCallStateListener;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -37,6 +38,29 @@ import java.util.Map;
  * Responsible for tracking external calls known to the system.
  */
 public class ImsExternalCallTracker {
+
+    /**
+     * Interface implemented by modules which are capable of notifying interested parties of new
+     * unknown connections, and changes to call state.
+     * This is used to break the dependency between {@link ImsExternalCallTracker} and
+     * {@link ImsPhone}.
+     *
+     * @hide
+     */
+
+    public static interface ImsCallNotify {
+        /**
+         * Notifies that an unknown connection has been added.
+         * @param c The new unknown connection.
+         */
+        void notifyUnknownConnection(Connection c);
+
+        /**
+         * Notifies of a change to call state.
+         */
+        void notifyPreciseCallStateChanged();
+    }
+
 
     /**
      * Implements the {@link ImsExternalCallStateListener}, which is responsible for receiving
@@ -80,13 +104,35 @@ public class ImsExternalCallTracker {
     private Map<Integer, ImsExternalConnection> mExternalConnections =
             new ArrayMap<>();
     private final ImsPhone mPhone;
+    private final ImsCallNotify mCallStateNotifier;
     private final ExternalCallStateListener mExternalCallStateListener;
     private final ExternalConnectionListener mExternalConnectionListener =
             new ExternalConnectionListener();
     private final ImsPullCall mCallPuller;
 
+    @VisibleForTesting
+    public ImsExternalCallTracker(ImsPhone phone, ImsPullCall callPuller,
+            ImsCallNotify callNotifier) {
+
+        mPhone = phone;
+        mCallStateNotifier = callNotifier;
+        mExternalCallStateListener = new ExternalCallStateListener();
+        mCallPuller = callPuller;
+
+    }
     public ImsExternalCallTracker(ImsPhone phone, ImsPullCall callPuller) {
         mPhone = phone;
+        mCallStateNotifier = new ImsCallNotify() {
+            @Override
+            public void notifyUnknownConnection(Connection c) {
+                mPhone.notifyUnknownConnection(c);
+            }
+
+            @Override
+            public void notifyPreciseCallStateChanged() {
+                mPhone.notifyPreciseCallStateChanged();
+            }
+        };
         mExternalCallStateListener = new ExternalCallStateListener();
         mCallPuller = callPuller;
     }
@@ -126,7 +172,7 @@ public class ImsExternalCallTracker {
         // If one or more calls were removed, trigger a notification that will cause the
         // TelephonyConnection instancse to refresh their state with Telecom.
         if (wasCallRemoved) {
-            mPhone.notifyPreciseCallStateChanged();
+            mCallStateNotifier.notifyPreciseCallStateChanged();
         }
 
         // Check for new calls, and updates to existing ones.
@@ -182,7 +228,7 @@ public class ImsExternalCallTracker {
         // PstnIncomingCallNotifier#addNewUnknownCall.  That method will ensure that an extra is set
         // containing the ImsExternalConnection#mCallId so that we have a means of reconciling which
         // unknown call was added.
-        mPhone.notifyUnknownConnection(connection);
+        mCallStateNotifier.notifyUnknownConnection(connection);
     }
 
     /**
@@ -205,7 +251,7 @@ public class ImsExternalCallTracker {
                 connection.setTerminated();
                 connection.removeListener(mExternalConnectionListener);
                 mExternalConnections.remove(connection);
-                mPhone.notifyPreciseCallStateChanged();
+                mCallStateNotifier.notifyPreciseCallStateChanged();
             }
         }
 
