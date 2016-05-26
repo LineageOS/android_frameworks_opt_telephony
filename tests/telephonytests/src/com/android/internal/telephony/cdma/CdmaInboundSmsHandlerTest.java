@@ -121,6 +121,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         doReturn(1).when(mInboundSmsTracker).getMessageCount();
         doReturn(-1).when(mInboundSmsTracker).getDestPort();
         doReturn(mInboundSmsTrackerCV).when(mInboundSmsTracker).getContentValues();
+        doReturn(smsPdu).when(mInboundSmsTracker).getPdu();
 
         GsmInboundSmsHandlerTest.FakeSmsContentProvider contentProvider =
                 new GsmInboundSmsHandlerTest.FakeSmsContentProvider();
