@@ -511,6 +511,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     );
                 }
 
+                if (intentExtras.containsKey(ImsCallProfile.EXTRA_IS_CALL_PULL)) {
+                    profile.mCallExtras.putBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL,
+                            intentExtras.getBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL));
+                }
+
                 // Pack the OEM-specific call extras.
                 profile.mCallExtras.putBundle(ImsCallProfile.EXTRA_OEM_EXTRAS, intentExtras);
 
