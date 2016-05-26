@@ -751,12 +751,14 @@ public abstract class Connection {
 
     /**
      * Notifies listeners that connection extras has changed.
-     * @param extras New connection extras.
+     * @param extras New connection extras. This Bundle will be cloned to ensure that any concurrent
+     * modifications to the extras Bundle do not affect Bundle operations in the onExtrasChanged
+     * listeners.
      */
     public void setConnectionExtras(Bundle extras) {
         mExtras = extras;
         for (Listener l : mListeners) {
-            l.onExtrasChanged(extras);
+            l.onExtrasChanged(new Bundle(extras));
         }
     }
 
