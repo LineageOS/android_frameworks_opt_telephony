@@ -47,7 +47,8 @@ public class VisualVoicemailSmsFilter {
      */
     public static boolean filter(Context context, byte[][] pdus, String format, int destPort,
             int subId) {
-        TelephonyManager telephonyManager = context.getSystemService(TelephonyManager.class);
+        TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 
         // TODO: select client package.
         String vvmClientPackage = SYSTEM_VVM_CLIENT_PACKAGE;
