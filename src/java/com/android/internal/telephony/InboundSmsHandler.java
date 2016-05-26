@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
-import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_ENCRYPTED_STORAGE_UNAVAILABLE;
+import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE;
 
 import android.app.Activity;
 import android.app.ActivityManagerNative;
@@ -1399,7 +1399,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     private boolean isSkipNotifyFlagSet(int callbackResult) {
         return (callbackResult
-            & RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_ENCRYPTED_STORAGE_UNAVAILABLE) > 0;
+            & RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE) > 0;
     }
 
     /**
