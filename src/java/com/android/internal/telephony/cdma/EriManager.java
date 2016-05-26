@@ -179,7 +179,7 @@ public class EriManager {
             CarrierConfigManager configManager = (CarrierConfigManager)
                     mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configManager != null) {
-                PersistableBundle b = configManager.getConfig(mPhone.getSubId());
+                PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
                 if (b != null) {
                     eriFile = b.getString(CarrierConfigManager.KEY_CARRIER_ERI_FILE_NAME_STRING);
                 }

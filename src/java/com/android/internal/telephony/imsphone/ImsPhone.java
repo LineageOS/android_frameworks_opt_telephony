@@ -1455,7 +1455,7 @@ public class ImsPhone extends ImsPhoneBase {
                 Rlog.e(LOG_TAG, "processDisconnectReason: CarrierConfigManager is not ready");
                 return;
             }
-            PersistableBundle pb = configManager.getConfig(getSubId());
+            PersistableBundle pb = configManager.getConfigForSubId(getSubId());
             if (pb == null) {
                 Rlog.e(LOG_TAG, "processDisconnectReason: no config for subId " + getSubId());
                 return;

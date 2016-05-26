@@ -432,7 +432,7 @@ public class ApnSetting {
                     return true;
                 }
 
-                PersistableBundle b = configManager.getConfig(subId);
+                PersistableBundle b = configManager.getConfigForSubId(subId);
                 if (b == null) {
                     Rlog.e(LOG_TAG, "Can't get the config. subId = " + subId);
                     return true;
