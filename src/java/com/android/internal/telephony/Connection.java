@@ -756,9 +756,13 @@ public abstract class Connection {
      * listeners.
      */
     public void setConnectionExtras(Bundle extras) {
-        mExtras = extras;
+        if(extras != null) {
+            mExtras = new Bundle(extras);
+        } else {
+            mExtras = null;
+        }
         for (Listener l : mListeners) {
-            l.onExtrasChanged(new Bundle(extras));
+            l.onExtrasChanged(mExtras);
         }
     }
 
