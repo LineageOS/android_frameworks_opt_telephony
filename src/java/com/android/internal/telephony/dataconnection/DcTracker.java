@@ -135,6 +135,8 @@ public class DcTracker extends DcTrackerBase {
 
     static final Uri PREFERAPN_NO_UPDATE_URI_USING_SUBID =
                         Uri.parse("content://telephony/carriers/preferapn_no_update/subId/");
+    static final Uri PREFERAPN_NO_UPDATE_URI_USING_SUBID_IMSI =
+            Uri.parse("content://telephony/carriers/preferapn_no_update/subIdImsi/");
     static final String APN_ID = "apn_id";
 
     /**
@@ -2762,7 +2764,9 @@ public class DcTracker extends DcTrackerBase {
         }
 
         String subId = Long.toString(mPhone.getSubId());
-        Uri uri = Uri.withAppendedPath(PREFERAPN_NO_UPDATE_URI_USING_SUBID, subId);
+        String imsi = mPhone.getSubscriberId();
+        Uri uri = Uri.withAppendedPath(PREFERAPN_NO_UPDATE_URI_USING_SUBID_IMSI, subId);
+        uri = Uri.withAppendedPath(uri, imsi);
         log("setPreferredApn: delete");
         ContentResolver resolver = mPhone.getContext().getContentResolver();
         resolver.delete(uri, null, null);
@@ -2782,7 +2786,9 @@ public class DcTracker extends DcTrackerBase {
         }
 
         String subId = Long.toString(mPhone.getSubId());
-        Uri uri = Uri.withAppendedPath(PREFERAPN_NO_UPDATE_URI_USING_SUBID, subId);
+        String imsi = mPhone.getSubscriberId();
+        Uri uri = Uri.withAppendedPath(PREFERAPN_NO_UPDATE_URI_USING_SUBID_IMSI, subId);
+        uri = Uri.withAppendedPath(uri, imsi);
         Cursor cursor = mPhone.getContext().getContentResolver().query(
                 uri, new String[] { "_id", "name", "apn" },
                 null, null, Telephony.Carriers.DEFAULT_SORT_ORDER);
@@ -2811,6 +2817,34 @@ public class DcTracker extends DcTrackerBase {
 
         if (cursor != null) {
             cursor.close();
+        }
+
+        // fall back without imsi
+        uri = Uri.withAppendedPath(PREFERAPN_NO_UPDATE_URI_USING_SUBID, subId);
+        try (Cursor fallback = mPhone.getContext().getContentResolver().query(
+                uri, new String[] { "_id", "name", "apn" },
+                null, null, Telephony.Carriers.DEFAULT_SORT_ORDER)) {
+            if (fallback != null) {
+                mCanSetPreferApn = true;
+            } else {
+                mCanSetPreferApn = false;
+            }
+            log("getPreferredApn: mRequestedApnType=" + mRequestedApnType + " cursor(fallback)="
+                    + fallback + " cursor(fallback).count="
+                    + ((fallback != null) ? fallback.getCount() : 0));
+
+            if (mCanSetPreferApn && fallback.getCount() > 0) {
+                int pos;
+                fallback.moveToFirst();
+                pos = fallback.getInt(fallback.getColumnIndexOrThrow(Telephony.Carriers._ID));
+                for(ApnSetting p : apnList) {
+                    log("getPreferredApn: apnSetting=" + p);
+                    if (p.id == pos && p.canHandleType(mRequestedApnType)) {
+                        log("getPreferredApn: X found apnSetting" + p);
+                        return p;
+                    }
+                }
+            }
         }
 
         log("getPreferredApn: X not found");
