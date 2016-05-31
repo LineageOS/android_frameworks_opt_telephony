@@ -1737,7 +1737,7 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
-        if (DBG) {
+        if (VDBG) {
             logd("getSimStateForSlotIdx: " + err + " simState=" + simState
                     + " ordinal=" + simState.ordinal() + " slotIdx=" + slotIdx);
         }
