@@ -16,26 +16,24 @@
 
 package com.android.internal.telephony;
 
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.UserHandle;
+import android.service.carrier.CarrierService;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
-import android.service.carrier.CarrierService;
 
-import com.android.internal.telephony.IccCardConstants;
+import com.android.internal.content.PackageMonitor;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -46,53 +44,26 @@ import java.util.List;
  * @hide
  */
 public class CarrierServiceBindHelper {
-    private static final String LOG_TAG = CarrierServiceBindHelper.class.getSimpleName();
+    private static final String LOG_TAG = "CarrierSvcBindHelper";
 
     private Context mContext;
     private AppBinding[] mBindings;
     private String[] mLastSimState;
-    private final BroadcastReceiver mReceiver = new PackageChangedBroadcastReceiver();
+    private final PackageMonitor mPackageMonitor = new CarrierServicePackageMonitor();
 
-    private static final int EVENT_BIND = 0;
-    private static final int EVENT_UNBIND = 1;
-    private static final int EVENT_BIND_TIMEOUT = 2;
-    private static final int EVENT_PACKAGE_CHANGED = 3;
-
-    private static final int BIND_TIMEOUT_MILLIS = 10000;
+    private static final int EVENT_REBIND = 0;
 
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            String carrierPackageName;
             AppBinding binding;
             log("mHandler: " + msg.what);
 
-            CarrierServiceConnection connection;
             switch (msg.what) {
-                case EVENT_BIND:
+                case EVENT_REBIND:
                     binding = (AppBinding) msg.obj;
-                    log("Binding to phoneId: " + binding.getPhoneId());
-                    binding.bind();
-                    break;
-                case EVENT_BIND_TIMEOUT:
-                    binding = (AppBinding) msg.obj;
-                    log("Bind timeout for phoneId: " + binding.getPhoneId());
-                    binding.unbind();
-                    break;
-                case EVENT_UNBIND:
-                    binding = (AppBinding) msg.obj;
-                    log("Unbinding for phoneId: " + binding.getPhoneId());
-                    binding.unbind();
-                    break;
-                case EVENT_PACKAGE_CHANGED:
-                    carrierPackageName = (String) msg.obj;
-                    for (AppBinding appBinding : mBindings) {
-                        if (carrierPackageName.equals(appBinding.getPackage())) {
-                          log(carrierPackageName + " changed and corresponds to a phone. Rebinding.");
-                          appBinding.unbind();
-                          appBinding.bind();
-                        }
-                    }
+                    log("Rebinding if necessary for phoneId: " + binding.getPhoneId());
+                    binding.rebind();
                     break;
             }
         }
@@ -109,17 +80,11 @@ public class CarrierServiceBindHelper {
             mBindings[phoneId] = new AppBinding(phoneId);
         }
 
-        // Register for package updates. Update app or uninstall app update will have all 3 intents,
-        // in the order or removed, added, replaced, all with extra_replace set to true.
-        IntentFilter pkgFilter = new IntentFilter();
-        pkgFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
-        pkgFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
-        pkgFilter.addAction(Intent.ACTION_PACKAGE_REPLACED);
-        pkgFilter.addDataScheme("package");
-        context.registerReceiverAsUser(mReceiver, UserHandle.ALL, pkgFilter, null, null);
+        mPackageMonitor.register(
+                context, mHandler.getLooper(), UserHandle.ALL, false /* externalStorage */);
     }
 
-    public void updateForPhoneId(int phoneId, String simState) {
+    void updateForPhoneId(int phoneId, String simState) {
         log("update binding for phoneId: " + phoneId + " simState: " + simState);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             return;
@@ -131,17 +96,7 @@ public class CarrierServiceBindHelper {
         } else {
             mLastSimState[phoneId] = simState;
         }
-        // requires Java 7 for switch on string.
-        switch (simState) {
-            case IccCardConstants.INTENT_VALUE_ICC_ABSENT:
-            case IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR:
-                mHandler.sendMessage(mHandler.obtainMessage(EVENT_UNBIND, mBindings[phoneId]));
-                break;
-            case IccCardConstants.INTENT_VALUE_ICC_LOADED:
-            case IccCardConstants.INTENT_VALUE_ICC_LOCKED:
-                mHandler.sendMessage(mHandler.obtainMessage(EVENT_BIND, mBindings[phoneId]));
-                break;
-        }
+        mHandler.sendMessage(mHandler.obtainMessage(EVENT_REBIND, mBindings[phoneId]));
     }
 
     private class AppBinding {
@@ -152,6 +107,7 @@ public class CarrierServiceBindHelper {
         private int unbindCount;
         private long lastUnbindMillis;
         private String carrierPackage;
+        private String carrierServiceClass;
 
         public AppBinding(int phoneId) {
             this.phoneId = phoneId;
@@ -165,11 +121,13 @@ public class CarrierServiceBindHelper {
             return carrierPackage;
         }
 
-        public void handleConnectionDown() {
-            connection = null;
-        }
-
-        public boolean bind() {
+        /**
+         * Update the bindings for the current carrier app for this phone.
+         *
+         * <p>Safe to call even if a binding already exists. If the current binding is invalid, it
+         * will be dropped. If it is valid, it will be left untouched.
+         */
+        void rebind() {
             // Get the package name for the carrier app
             List<String> carrierPackageNames =
                 TelephonyManager.from(mContext).getCarrierPackageNamesForIntentAndPhone(
@@ -178,25 +136,17 @@ public class CarrierServiceBindHelper {
 
             if (carrierPackageNames == null || carrierPackageNames.size() <= 0) {
                 log("No carrier app for: " + phoneId);
-                return false;
+                unbind();
+                return;
             }
 
             log("Found carrier app: " + carrierPackageNames);
             // If we are binding to a different package, unbind from the current one.
-            if (connection != null) {
-                if (!carrierPackage.equals(carrierPackageNames.get(0))) {
-                    // Make sure there is no existing binding for this phone
-                    unbind();
-                } else {
-                    return true;
-                }
+            if (!TextUtils.equals(carrierPackage, carrierPackageNames.get(0))) {
+                unbind();
             }
 
             carrierPackage = carrierPackageNames.get(0);
-
-            // Log debug information
-            bindCount++;
-            lastBindStartMillis = System.currentTimeMillis();
 
             // Look up the carrier service
             Intent carrierService = new Intent(CarrierService.CARRIER_SERVICE_INTERFACE);
@@ -205,28 +155,43 @@ public class CarrierServiceBindHelper {
             ResolveInfo carrierResolveInfo = mContext.getPackageManager().resolveService(
                 carrierService, PackageManager.GET_META_DATA);
             Bundle metadata = null;
+            String serviceClass = null;
             if (carrierResolveInfo != null) {
-              metadata = carrierResolveInfo.serviceInfo.metaData;
+                metadata = carrierResolveInfo.serviceInfo.metaData;
+                serviceClass =
+                        carrierResolveInfo.getComponentInfo().getComponentName().getClassName();
             }
 
             // Only bind if the service wants it
             if (metadata == null ||
                 !metadata.getBoolean("android.service.carrier.LONG_LIVED_BINDING", false)) {
                 log("Carrier app does not want a long lived binding");
-                return false;
+                unbind();
+                return;
+            }
+
+            if (!TextUtils.equals(carrierServiceClass, serviceClass)) {
+                // Unbind if the carrier service component has changed.
+                unbind();
+            } else if (connection != null) {
+                // Component is unchanged and connection is up - do nothing.
+                return;
             }
 
             log("Binding to " + carrierPackage + " for phone " + phoneId);
-            connection = new CarrierServiceConnection(this);
-            mHandler.sendMessageDelayed(
-                mHandler.obtainMessage(EVENT_BIND_TIMEOUT, this),
-                BIND_TIMEOUT_MILLIS);
+
+            // Log debug information
+            bindCount++;
+            lastBindStartMillis = System.currentTimeMillis();
+
+            carrierServiceClass = serviceClass;
+            connection = new CarrierServiceConnection();
 
             String error;
             try {
                 if (mContext.bindService(carrierService, connection, Context.BIND_AUTO_CREATE |
                             Context.BIND_FOREGROUND_SERVICE)) {
-                    return true;
+                    return;
                 }
 
                 error = "bindService returned false";
@@ -236,11 +201,10 @@ public class CarrierServiceBindHelper {
 
             log("Unable to bind to " + carrierPackage + " for phone " + phoneId +
                 ". Error: " + error);
-            return false;
+            unbind();
         }
 
-        public void unbind() {
-            mHandler.removeMessages(EVENT_BIND_TIMEOUT, this);
+        void unbind() {
             if (connection == null) {
                 return;
             }
@@ -267,55 +231,57 @@ public class CarrierServiceBindHelper {
     }
 
     private class CarrierServiceConnection implements ServiceConnection {
-        private IBinder service;
-        private AppBinding binding;
-
-        public CarrierServiceConnection(AppBinding binding) {
-            this.binding = binding;
-        }
-
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             log("Connected to carrier app: " + name.flattenToString());
-            mHandler.removeMessages(EVENT_BIND_TIMEOUT, binding);
-            this.service = service;
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             log("Disconnected from carrier app: " + name.flattenToString());
-            this.service = null;
-            this.binding.handleConnectionDown();
         }
     }
 
-    private class PackageChangedBroadcastReceiver extends BroadcastReceiver {
+    private class CarrierServicePackageMonitor extends PackageMonitor {
         @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            boolean replace = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
-            // If replace is true, only care ACTION_PACKAGE_REPLACED.
-            // Reason is update app or uninstall app update will have all 3 intents,
-            // in the order or removed, added, replaced, all with extra_replace set to true.
-            // In this case processing added and removed isn't needed.
+        public void onPackageAdded(String packageName, int reason) {
+            evaluateBinding(packageName, true /* forceUnbind */);
+        }
 
-            if (replace && !Intent.ACTION_PACKAGE_REPLACED.equals(action))
-                return;
+        @Override
+        public void onPackageRemoved(String packageName, int reason) {
+            evaluateBinding(packageName, true /* forceUnbind */);
+        }
 
-            log("Receive action: " + action);
-            switch (action) {
-                case Intent.ACTION_PACKAGE_ADDED:
-                case Intent.ACTION_PACKAGE_REMOVED:
-                case Intent.ACTION_PACKAGE_REPLACED:
-                    int uid = intent.getIntExtra(Intent.EXTRA_UID, -1);
-                    String packageName = mContext.getPackageManager().getNameForUid(uid);
-                    if (packageName != null) {
-                      // We don't have a phoneId for arg1.
-                      mHandler.sendMessage(
-                              mHandler.obtainMessage(EVENT_PACKAGE_CHANGED, packageName));
+        @Override
+        public void onPackageUpdateFinished(String packageName, int uid) {
+            evaluateBinding(packageName, true /* forceUnbind */);
+        }
+
+        @Override
+        public void onPackageModified(String packageName) {
+            evaluateBinding(packageName, false /* forceUnbind */);
+        }
+
+        @Override
+        public boolean onHandleForceStop(Intent intent, String[] packages, int uid, boolean doit) {
+            if (doit) {
+                for (String packageName : packages) {
+                    evaluateBinding(packageName, true /* forceUnbind */);
+                }
+            }
+            return super.onHandleForceStop(intent, packages, uid, doit);
+        }
+
+        private void evaluateBinding(String carrierPackageName, boolean forceUnbind) {
+            for (AppBinding appBinding : mBindings) {
+                if (carrierPackageName.equals(appBinding.getPackage())) {
+                    log(carrierPackageName + " changed and corresponds to a phone. Rebinding.");
+                    if (forceUnbind) {
+                        appBinding.unbind();
                     }
-                    break;
-
+                    appBinding.rebind();
+                }
             }
         }
     }
