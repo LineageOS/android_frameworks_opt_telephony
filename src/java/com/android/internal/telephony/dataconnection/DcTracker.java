@@ -1593,7 +1593,7 @@ public class DcTracker extends Handler {
         if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS)) {
             CarrierConfigManager configManager = (CarrierConfigManager)mPhone.getContext().
                     getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            PersistableBundle pb = configManager.getConfig(mPhone.getSubId());
+            PersistableBundle pb = configManager.getConfigForSubId(mPhone.getSubId());
             if (pb != null) {
                 checkUserDataEnabled = checkUserDataEnabled &&
                         !(pb.getBoolean("config_enable_mms_with_mobile_data_off"));
