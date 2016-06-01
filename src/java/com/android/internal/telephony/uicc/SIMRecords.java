@@ -16,9 +16,13 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
@@ -163,6 +167,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_GID1_DONE = 34;
     private static final int EVENT_APP_LOCKED = 35;
     private static final int EVENT_GET_GID2_DONE = 36;
+    private static final int EVENT_CARRIER_CONFIG_CHANGED = 37;
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
 
@@ -209,7 +214,20 @@ public class SIMRecords extends IccRecords {
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
         mParentApp.registerForLocked(this, EVENT_APP_LOCKED, null);
         if (DBG) log("SIMRecords X ctor this=" + this);
+
+        IntentFilter intentfilter = new IntentFilter();
+        intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        c.registerReceiver(mReceiver, intentfilter);
     }
+
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
+            }
+        }
+    };
 
     @Override
     public void dispose() {
@@ -1221,6 +1239,10 @@ public class SIMRecords extends IccRecords {
 
                 break;
 
+            case EVENT_CARRIER_CONFIG_CHANGED:
+                handleCarrierNameOverride();
+                break;
+
             default:
                 super.handleMessage(msg);   // IccRecords handles generic record load responses
 
@@ -1475,13 +1497,27 @@ public class SIMRecords extends IccRecords {
         }
 
         setVoiceMailByCountry(operator);
-        setSpnFromConfig(operator);
 
         mRecordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
     }
 
     //***** Private methods
+
+    private void handleCarrierNameOverride() {
+        CarrierConfigManager configLoader = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configLoader != null && configLoader.getConfig().getBoolean(
+                CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL)) {
+            String carrierName = configLoader.getConfig().getString(
+                    CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+            setServiceProviderName(carrierName);
+            mTelephonyManager.setSimOperatorNameForPhone(mParentApp.getPhoneId(),
+                    carrierName);
+        } else {
+            setSpnFromConfig(getOperatorNumeric());
+        }
+    }
 
     private void setSpnFromConfig(String carrier) {
         if (mSpnOverride.containsCarrier(carrier)) {
