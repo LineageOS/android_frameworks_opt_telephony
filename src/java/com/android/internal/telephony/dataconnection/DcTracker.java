@@ -32,7 +32,6 @@ import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
-import android.net.ConnectivityManager.NetworkCallback;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
@@ -48,7 +47,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
@@ -100,13 +98,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.HashSet;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -431,13 +427,13 @@ public class DcTracker extends Handler {
     private void registerSettingsObserver() {
         mSettingsObserver.unobserve();
         String simSuffix = "";
-        if (TelephonyManager.getDefault().getSimCount() == 1) {
+        if (TelephonyManager.getDefault().getSimCount() > 1) {
             simSuffix = Integer.toString(mPhone.getSubId());
         }
+
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DATA_ROAMING + simSuffix),
                 DctConstants.EVENT_ROAMING_ON);
-
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
                 DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE);
@@ -2772,7 +2768,16 @@ public class DcTracker extends Handler {
     private void onRoamingOn() {
         if (DBG) log("onRoamingOn");
 
-        if (!mUserDataEnabled) return;
+        if (!mUserDataEnabled) {
+            if (DBG) log("data not enabled by user");
+            return;
+        }
+
+        // Check if the device is actually data roaming
+        if (!mPhone.getServiceState().getDataRoaming()) {
+            if (DBG) log("device is not roaming. ignored the request.");
+            return;
+        }
 
         if (getDataOnRoamingEnabled()) {
             if (DBG) log("onRoamingOn: setup data on roaming");
