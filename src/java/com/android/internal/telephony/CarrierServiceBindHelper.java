@@ -16,9 +16,11 @@
 
 package com.android.internal.telephony;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -51,6 +53,22 @@ public class CarrierServiceBindHelper {
     private String[] mLastSimState;
     private final PackageMonitor mPackageMonitor = new CarrierServicePackageMonitor();
 
+    private BroadcastReceiver mUserUnlockedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            log("Received " + action);
+
+            if (Intent.ACTION_USER_UNLOCKED.equals(action)) {
+                // On user unlock, new components might become available, so reevaluate all
+                // bindings.
+                for (int phoneId = 0; phoneId < mBindings.length; phoneId++) {
+                    mBindings[phoneId].rebind();
+                }
+            }
+        }
+    };
+
     private static final int EVENT_REBIND = 0;
 
     private Handler mHandler = new Handler() {
@@ -82,6 +100,9 @@ public class CarrierServiceBindHelper {
 
         mPackageMonitor.register(
                 context, mHandler.getLooper(), UserHandle.ALL, false /* externalStorage */);
+        mContext.registerReceiverAsUser(mUserUnlockedReceiver, UserHandle.SYSTEM,
+                new IntentFilter(Intent.ACTION_USER_UNLOCKED), null /* broadcastPermission */,
+                mHandler);
     }
 
     void updateForPhoneId(int phoneId, String simState) {
@@ -117,6 +138,7 @@ public class CarrierServiceBindHelper {
             return phoneId;
         }
 
+        /** Return the package that is currently being bound to, or null if there is no binding. */
         public String getPackage() {
             return carrierPackage;
         }
@@ -141,24 +163,23 @@ public class CarrierServiceBindHelper {
             }
 
             log("Found carrier app: " + carrierPackageNames);
+            String candidateCarrierPackage = carrierPackageNames.get(0);
             // If we are binding to a different package, unbind from the current one.
-            if (!TextUtils.equals(carrierPackage, carrierPackageNames.get(0))) {
+            if (!TextUtils.equals(carrierPackage, candidateCarrierPackage)) {
                 unbind();
             }
 
-            carrierPackage = carrierPackageNames.get(0);
-
             // Look up the carrier service
             Intent carrierService = new Intent(CarrierService.CARRIER_SERVICE_INTERFACE);
-            carrierService.setPackage(carrierPackage);
+            carrierService.setPackage(candidateCarrierPackage);
 
             ResolveInfo carrierResolveInfo = mContext.getPackageManager().resolveService(
                 carrierService, PackageManager.GET_META_DATA);
             Bundle metadata = null;
-            String serviceClass = null;
+            String candidateServiceClass = null;
             if (carrierResolveInfo != null) {
                 metadata = carrierResolveInfo.serviceInfo.metaData;
-                serviceClass =
+                candidateServiceClass =
                         carrierResolveInfo.getComponentInfo().getComponentName().getClassName();
             }
 
@@ -170,7 +191,7 @@ public class CarrierServiceBindHelper {
                 return;
             }
 
-            if (!TextUtils.equals(carrierServiceClass, serviceClass)) {
+            if (!TextUtils.equals(carrierServiceClass, candidateServiceClass)) {
                 // Unbind if the carrier service component has changed.
                 unbind();
             } else if (connection != null) {
@@ -178,13 +199,15 @@ public class CarrierServiceBindHelper {
                 return;
             }
 
+            carrierPackage = candidateCarrierPackage;
+            carrierServiceClass = candidateServiceClass;
+
             log("Binding to " + carrierPackage + " for phone " + phoneId);
 
             // Log debug information
             bindCount++;
             lastBindStartMillis = System.currentTimeMillis();
 
-            carrierServiceClass = serviceClass;
             connection = new CarrierServiceConnection();
 
             String error;
@@ -213,6 +236,10 @@ public class CarrierServiceBindHelper {
             unbindCount++;
             lastUnbindMillis = System.currentTimeMillis();
 
+            // Clear package state now that no binding is present.
+            carrierPackage = null;
+            carrierServiceClass = null;
+
             // Actually unbind
             log("Unbinding from carrier app");
             mContext.unbindService(connection);
@@ -231,14 +258,23 @@ public class CarrierServiceBindHelper {
     }
 
     private class CarrierServiceConnection implements ServiceConnection {
+        private boolean connected;
+
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             log("Connected to carrier app: " + name.flattenToString());
+            connected = true;
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             log("Disconnected from carrier app: " + name.flattenToString());
+            connected = false;
+        }
+
+        @Override
+        public String toString() {
+            return "CarrierServiceConnection[connected=" + connected + "]";
         }
     }
 
@@ -275,8 +311,16 @@ public class CarrierServiceBindHelper {
 
         private void evaluateBinding(String carrierPackageName, boolean forceUnbind) {
             for (AppBinding appBinding : mBindings) {
-                if (carrierPackageName.equals(appBinding.getPackage())) {
+                String appBindingPackage = appBinding.getPackage();
+                boolean isBindingForPackage = carrierPackageName.equals(appBindingPackage);
+                // Only log if this package was a carrier package to avoid log spam in the common
+                // case that there are no carrier packages, but evaluate the binding if the package
+                // is unset, in case this package change resulted in a new carrier package becoming
+                // available for binding.
+                if (isBindingForPackage) {
                     log(carrierPackageName + " changed and corresponds to a phone. Rebinding.");
+                }
+                if (appBindingPackage == null || isBindingForPackage) {
                     if (forceUnbind) {
                         appBinding.unbind();
                     }
