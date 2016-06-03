@@ -236,7 +236,10 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
         // verify SIM_STATE_CHANGED broadcast. It should be broadcast twice, once for
         // READ_PHONE_STATE and once for READ_PRIVILEGED_PHONE_STATE
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        /* todo: cannot verify as intent is sent using ActivityManagerNative.broadcastStickyIntent()
+         * uncomment code below when that is fixed
+         */
+        /* ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
         verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture(),
                 stringArgumentCaptor.capture());
@@ -247,7 +250,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         assertEquals(TelephonyIntents.ACTION_SIM_STATE_CHANGED,
                 intentArgumentCaptor.getAllValues().get(1).getAction());
         assertEquals(Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
-                stringArgumentCaptor.getAllValues().get(1));
+                stringArgumentCaptor.getAllValues().get(1)); */
 
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
         verify(mTelephonyManager).getSimOperatorNumericForPhone(0);
@@ -266,7 +269,10 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         waitForMs(100);
 
         // verify SIM_STATE_CHANGED broadcast
-        verify(mContext, times(4)).sendBroadcast(intentArgumentCaptor.capture(),
+        /* todo: cannot verify as intent is sent using ActivityManagerNative.broadcastStickyIntent()
+         * uncomment code below when that is fixed
+         */
+        /* verify(mContext, times(4)).sendBroadcast(intentArgumentCaptor.capture(),
                 stringArgumentCaptor.capture());
         assertEquals(TelephonyIntents.ACTION_SIM_STATE_CHANGED,
                 intentArgumentCaptor.getAllValues().get(2).getAction());
@@ -275,7 +281,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         assertEquals(TelephonyIntents.ACTION_SIM_STATE_CHANGED,
                 intentArgumentCaptor.getAllValues().get(3).getAction());
         assertEquals(Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
-                stringArgumentCaptor.getAllValues().get(3));
+                stringArgumentCaptor.getAllValues().get(3)); */
     }
 
     @Test
