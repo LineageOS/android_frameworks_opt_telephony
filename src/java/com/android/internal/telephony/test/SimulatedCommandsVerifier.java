@@ -1363,4 +1363,12 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     public void getAllowedCarriers(Message result) {
 
     }
+
+    @Override
+    public void registerForPcoData(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForPcoData(Handler h) {
+    }
 }
