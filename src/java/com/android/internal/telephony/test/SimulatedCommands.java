@@ -2084,4 +2084,12 @@ public class SimulatedCommands extends BaseCommands
     public boolean isDataAllowed() {
         return mAllowed.get();
     }
+
+    @Override
+    public void registerForPcoData(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForPcoData(Handler h) {
+    }
 }
