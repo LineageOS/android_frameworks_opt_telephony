@@ -177,6 +177,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_RIL_CONNECTED                  = 41;
     protected static final int EVENT_UPDATE_PHONE_OBJECT            = 42;
     protected static final int EVENT_CARRIER_CONFIG_CHANGED         = 43;
+    // Carrier's CDMA prefer mode setting
+    protected static final int EVENT_SET_ROAMING_PREFERENCE_DONE    = 44;
 
     protected static final int EVENT_LAST                           = EVENT_CARRIER_CONFIG_CHANGED;
 
