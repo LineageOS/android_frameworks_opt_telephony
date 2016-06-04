@@ -225,6 +225,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private int mCallRingContinueToken;
     private int mCallRingDelay;
     private boolean mIsVoiceCapable = true;
+    /* Used for communicate between configured CarrierSignalling receivers */
+    private CarrierSignalAgent mCarrierSignalAgent;
 
     // Variable to cache the video capability. When RAT changes, we lose this info and are unable
     // to recover from the state. We cache it and notify listeners when they register.
@@ -424,6 +426,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mContext = context;
         mLooper = Looper.myLooper();
         mCi = ci;
+        mCarrierSignalAgent = new CarrierSignalAgent(this);
         mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
         mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
 
@@ -1718,6 +1721,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_ENABLED);
     }
 
+    public CarrierSignalAgent getCarrierSignalAgent() {
+        return mCarrierSignalAgent;
+    }
+
     /**
      *  Query the CDMA roaming preference setting
      *
@@ -2614,6 +2621,25 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public boolean isDataConnectivityPossible(String apnType) {
         return ((mDcTracker != null) &&
                 (mDcTracker.isDataPossible(apnType)));
+    }
+
+
+    /**
+     * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
+     */
+    public void carrierActionSetMeteredApnsEnabled(boolean enabled) {
+        if(mDcTracker != null) {
+            mDcTracker.carrierActionSetMeteredApnsEnabled(enabled);
+        }
+    }
+
+    /**
+     * Action set from carrier signalling broadcast receivers to enable/disable radio
+     */
+    public void carrierActionSetRadioEnabled(boolean enabled) {
+        if(mDcTracker != null) {
+            mDcTracker.carrierActionSetRadioEnabled(enabled);
+        }
     }
 
     /**
