@@ -191,10 +191,8 @@ public class SubscriptionInfoUpdater extends Handler {
                     iterator.remove();
                     logd("Broadcasting intent ACTION_SIM_STATE_CHANGED for mCardIndex: " +
                             pair.getKey());
-                    // Send broadcast twice, once for apps that have PRIVILEGED permission and once
-                    // for those that have the runtime one
-                    mContext.sendBroadcast(i, READ_PHONE_STATE);
-                    mContext.sendBroadcast(i, READ_PRIVILEGED_PHONE_STATE);
+                    ActivityManagerNative.broadcastStickyIntent(i, READ_PHONE_STATE,
+                            UserHandle.USER_ALL);
                 }
                 rebroadcastIntentsOnUnlock = null;
                 logd("[Receiver]-");
@@ -687,10 +685,7 @@ public class SubscriptionInfoUpdater extends Handler {
         SubscriptionManager.putPhoneIdAndSubIdExtra(i, slotId);
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
              " for mCardIndex: " + slotId);
-        // Send broadcast twice, once for apps that have PRIVILEGED permission and once for those
-        // that have the runtime one
-        mContext.sendBroadcast(i, READ_PHONE_STATE);
-        mContext.sendBroadcast(i, READ_PRIVILEGED_PHONE_STATE);
+        ActivityManagerNative.broadcastStickyIntent(i, READ_PHONE_STATE, UserHandle.USER_ALL);
         if (!mUserManager.isUserUnlocked()) {
             rebroadcastIntentsOnUnlock.put(slotId, i);
         }
