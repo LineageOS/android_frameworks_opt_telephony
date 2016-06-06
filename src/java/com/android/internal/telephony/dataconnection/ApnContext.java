@@ -228,7 +228,7 @@ public class ApnContext {
      * @return The delay in milliseconds
      */
     public long getDelayForNextApn(boolean failFastEnabled) {
-        return mRetryManager.getDelayForNextApn(failFastEnabled);
+        return mRetryManager.getDelayForNextApn(failFastEnabled || isFastRetryReason());
     }
 
     /**
@@ -335,6 +335,15 @@ public class ApnContext {
                                 || (mState == DctConstants.State.SCANNING)
                                 || (mState == DctConstants.State.RETRYING)
                                 || (mState == DctConstants.State.FAILED));
+    }
+
+    /**
+     * Check if apn reason is fast retry reason which should apply shorter delay between apn re-try.
+     * @return True if it is fast retry reason, otherwise false.
+     */
+    private boolean isFastRetryReason() {
+        return mReason.equals(Phone.REASON_NW_TYPE_CHANGED) ||
+                mReason.equals(Phone.REASON_APN_CHANGED);
     }
 
     /** Check if the data call is in connected or connecting state.
@@ -505,7 +514,7 @@ public class ApnContext {
     }
 
     public long getInterApnDelay(boolean failFastEnabled) {
-        return mRetryManager.getInterApnDelay(failFastEnabled);
+        return mRetryManager.getInterApnDelay(failFastEnabled || isFastRetryReason());
     }
 
     public static int apnIdForType(int networkType) {
