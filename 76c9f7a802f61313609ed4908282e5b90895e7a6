@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_2335b98f",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 2845,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2016-06-06T16:45:22Z",
+      "side": 1,
+      "message": "might be unnecessary since your default case for the provider lookup already handles returning the preferred apn when the shared preferences are empty in upgrade scenario)",
+      "range": {
+        "startLine": 2822,
+        "startChar": 8,
+        "endLine": 2845,
+        "endChar": 13
+      },
+      "revId": "76c9f7a802f61313609ed4908282e5b90895e7a6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
