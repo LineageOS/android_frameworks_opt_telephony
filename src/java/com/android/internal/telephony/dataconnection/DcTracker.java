@@ -927,14 +927,14 @@ public class DcTracker extends Handler {
         final int apnId = ApnContext.apnIdForNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsById.get(apnId);
         log.log("DcTracker.requestNetwork for " + networkRequest + " found " + apnContext);
-        if (apnContext != null) apnContext.incRefCount(log);
+        if (apnContext != null) apnContext.requestNetwork(networkRequest, log);
     }
 
     public void releaseNetwork(NetworkRequest networkRequest, LocalLog log) {
         final int apnId = ApnContext.apnIdForNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsById.get(apnId);
         log.log("DcTracker.releaseNetwork for " + networkRequest + " found " + apnContext);
-        if (apnContext != null) apnContext.decRefCount(log);
+        if (apnContext != null) apnContext.releaseNetwork(networkRequest, log);
     }
 
     public boolean isApnSupported(String name) {
@@ -1274,7 +1274,7 @@ public class DcTracker extends Handler {
         return false;
     }
 
-    private boolean isDataEnabled(boolean checkUserDataEnabled) {
+    boolean isDataEnabled(boolean checkUserDataEnabled) {
         synchronized (mDataEnabledLock) {
             if (!(mInternalDataEnabled && (!checkUserDataEnabled || mUserDataEnabled)
                     && (!checkUserDataEnabled || sPolicyDataEnabled)
@@ -1512,10 +1512,14 @@ public class DcTracker extends Handler {
         boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
         final ServiceStateTracker sst = mPhone.getServiceStateTracker();
 
-        // set to false if apn type is non-metered.
+        // set to false if apn type is non-metered or if we have a restricted (priveleged)
+        // request for the network.
+        // TODO - may want restricted requests to only apply to carrier-limited data access
+        //        rather than applying to user limited as well.
         boolean checkUserDataEnabled =
-                (ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
-                        mPhone.getSubId(), mPhone.getServiceState().getDataRoaming()));
+                ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
+                        mPhone.getSubId(), mPhone.getServiceState().getDataRoaming()) &&
+                apnContext.hasNoRestrictedRequests();
 
         DataAllowFailReason failureReason = new DataAllowFailReason();
 
