@@ -226,6 +226,8 @@ public final class MccTable {
     private static final Map<Locale, Locale> FALLBACKS = new HashMap<Locale, Locale>();
 
     static {
+        // If we have English (without a country) explicitly prioritize en_US. http://b/28998094
+        FALLBACKS.put(Locale.ENGLISH, Locale.US);
         FALLBACKS.put(Locale.CANADA, Locale.US);
     }
 
