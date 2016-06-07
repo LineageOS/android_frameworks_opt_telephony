@@ -60,7 +60,9 @@ public class VisualVoicemailSmsFilter {
         // TODO: filter base on originating number and destination port.
 
         String messageBody = getFullMessage(pdus, format);
-
+        if(messageBody == null){
+            return false;
+        }
         String clientPrefix = settings.clientPrefix;
 
         WrappedMessageData messageData = VisualVoicemailSmsParser.parse(clientPrefix, messageBody);
@@ -81,7 +83,15 @@ public class VisualVoicemailSmsFilter {
     private static String getFullMessage(byte[][] pdus, String format) {
         StringBuilder builder = new StringBuilder();
         for (byte pdu[] : pdus) {
-            String body = SmsMessage.createFromPdu(pdu, format).getMessageBody();
+            SmsMessage message =SmsMessage.createFromPdu(pdu, format);
+
+            if(message == null || message.mWrappedSmsMessage == null) {
+                // b/29123941 Certain PDU will cause createFromPdu() to return a SmsMessage with
+                // null mWrappedSmsMessage, throwing NPE on any method called. In this case, just
+                // ignore the message.
+                return null;
+            }
+            String body = message.getMessageBody();
             if (body != null) {
                 builder.append(body);
             }
