@@ -26,6 +26,12 @@ import org.mockito.Mockito;
 
 public class VisualVoicemailSmsFilterTest extends TestCase {
 
+    /**
+     * b/29123941 iPhone style notification SMS is neither 3GPP nor 3GPP2, but some plain text
+     * message. {@link android.telephony.SmsMessage.createFromPdu()} will fail to parse it and
+     * return an invalid object, causing {@link NullPointerException} on any operation if not
+     * handled.
+     */
     public void testUnsupportedPdu() {
         Context context = Mockito.mock(Context.class);
         TelephonyManager telephonyManager = Mockito.mock(TelephonyManager.class);
