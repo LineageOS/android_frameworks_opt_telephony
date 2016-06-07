@@ -890,6 +890,7 @@ public class DcTracker extends Handler {
                 }
 
                 if (enabled) {
+                    teardownRestrictedMeteredConnections();
                     onTrySetupData(Phone.REASON_DATA_ENABLED);
                 } else {
                     onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
@@ -898,9 +899,32 @@ public class DcTracker extends Handler {
         }
     }
 
+    /**
+     * Handle reverting restricted networks back to unrestricted.
+     * If we're changing user data to enabled and this makes data
+     * truely enabled (not disabled by other factors) we need to
+     * tear down any metered apn type that was enabled anyway by
+     * a privileged request.  This allows us to reconnect
+     * to it in an unrestricted way.
+     */
+    private void teardownRestrictedMeteredConnections() {
+        if (isDataEnabled(true)) {
+            for (ApnContext apnContext : mApnContexts.values()) {
+                if (apnContext.isConnectedOrConnecting() &&
+                        apnContext.getApnSetting().isMetered(mPhone.getContext(),
+                        mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())) {
+                    if (DBG) log("tearing down restricted metered net: " + apnContext);
+                    apnContext.setReason(Phone.REASON_DATA_ENABLED);
+                    cleanUpConnection(true, apnContext);
+                }
+            }
+        }
+    }
+
     private void onDeviceProvisionedChange() {
         if (getDataEnabled()) {
             mUserDataEnabled = true;
+            teardownRestrictedMeteredConnections();
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
             mUserDataEnabled = false;
@@ -2360,6 +2384,7 @@ public class DcTracker extends Handler {
                 // Tear down all metered apns
                 cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
             } else {
+                teardownRestrictedMeteredConnections();
                 setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
             }
         }
@@ -2409,6 +2434,7 @@ public class DcTracker extends Handler {
                 sPolicyDataEnabled = enabled;
                 if (prevEnabled != getAnyDataEnabled()) {
                     if (!prevEnabled) {
+                        teardownRestrictedMeteredConnections();
                         onTrySetupData(Phone.REASON_DATA_ENABLED);
                     } else {
                         onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
