@@ -330,9 +330,22 @@ public class PhoneFactory {
     public static int calculatePreferredNetworkType(Context context, int phoneSubId) {
         int networkType = android.provider.Settings.Global.getInt(context.getContentResolver(),
                 android.provider.Settings.Global.PREFERRED_NETWORK_MODE + phoneSubId,
-                RILConstants.PREFERRED_NETWORK_MODE);
+                -1 /* invalid network mode */);
         Rlog.d(LOG_TAG, "calculatePreferredNetworkType: phoneSubId = " + phoneSubId +
                 " networkType = " + networkType);
+
+        if (networkType == -1) {
+            networkType = RILConstants.PREFERRED_NETWORK_MODE;
+            try {
+                networkType = TelephonyManager.getIntAtIndex(context.getContentResolver(),
+                        android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
+                        SubscriptionController.getInstance().getPhoneId(phoneSubId));
+            } catch (SettingNotFoundException retrySnfe) {
+                Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for "
+                        + "Settings.Global.PREFERRED_NETWORK_MODE");
+            }
+        }
+
         return networkType;
     }
 
