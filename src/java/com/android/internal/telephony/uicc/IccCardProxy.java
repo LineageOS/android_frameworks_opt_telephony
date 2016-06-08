@@ -32,6 +32,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
@@ -246,7 +247,7 @@ public class IccCardProxy extends Handler implements IccCard {
                     String operator = currentPhone.getOperatorNumeric();
                     log("operator=" + operator + " mPhoneId=" + mPhoneId);
 
-                    if (operator != null) {
+                    if (!TextUtils.isEmpty(operator)) {
                         mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, operator);
                         String countryCode = operator.substring(0,3);
                         if (countryCode != null) {
