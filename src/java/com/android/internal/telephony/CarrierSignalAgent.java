@@ -46,13 +46,13 @@ public class CarrierSignalAgent {
      * This is a map of intent action -> string array of carrier signal receiver names which are
      * interested in this intent action
      */
-    private static final HashMap<String, String[]> mCachedCarrierSignalReceiverNames =
+    private final HashMap<String, String[]> mCachedCarrierSignalReceiverNames =
             new HashMap<>();
     /**
      * This is a map of intent action -> carrier config key of signal receiver names which are
      * interested in this intent action
      */
-    private static final Map<String, String> mIntentToCarrierConfigKeyMap =
+    private final Map<String, String> mIntentToCarrierConfigKeyMap =
             new HashMap<String, String>() {{
                 put(TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED,
                         CarrierConfigManager.KEY_SIGNAL_REDIRECTION_RECEIVER_STRING_ARRAY);
@@ -92,9 +92,6 @@ public class CarrierSignalAgent {
                         Rlog.d("loadCarrierSignalReceiverNames: ", name);
                     }
                 }
-            } else {
-                // Return static default defined in CarrierConfigManager.
-                receiverNames = CarrierConfigManager.getDefaultConfig().getStringArray(receiverType);
             }
             mCachedCarrierSignalReceiverNames.put(intentAction, receiverNames);
         }
