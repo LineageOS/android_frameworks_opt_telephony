@@ -139,6 +139,10 @@ public class DcController extends StateMachine {
         mDcListActiveByCid.put(dc.mCid, dc);
     }
 
+    public DataConnection getActiveDcByCid(int cid) {
+        return mDcListActiveByCid.get(cid);
+    }
+
     void removeActiveDcByCid(DataConnection dc) {
         DataConnection removedDc = mDcListActiveByCid.remove(dc.mCid);
         if (DBG && removedDc == null) {

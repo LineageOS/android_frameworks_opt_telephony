@@ -56,6 +56,7 @@ import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
+import android.telephony.PcoData;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -786,6 +787,7 @@ public class DcTracker extends Handler {
         registerServiceStateTrackerEvents();
      //   SubscriptionManager.registerForDdsSwitch(this,
      //          DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS, null);
+        mPhone.mCi.registerForPcoData(this, DctConstants.EVENT_PCO_DATA_RECEIVED, null);
     }
 
     public void dispose() {
@@ -839,6 +841,7 @@ public class DcTracker extends Handler {
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         unregisterServiceStateTrackerEvents();
         //SubscriptionManager.unregisterForDdsSwitch(this);
+        mPhone.mCi.unregisterForPcoData(this);
     }
 
     /**
@@ -2933,9 +2936,14 @@ public class DcTracker extends Handler {
                     String radioTestProperty = "persist.radio.test.pco";
                     int pcoVal = SystemProperties.getInt(radioTestProperty, 0);
                     log("PCO testing: read pco value from persist.radio.test.pco " + pcoVal);
-                    Intent intent = new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
-                    intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, apnContext.getApnType());
-                    intent.putExtra(TelephonyIntents.EXTRA_PCO_KEY, pcoVal);
+                    final byte[] value = new byte[1];
+                    value[0] = (byte)pcoVal;
+                    final Intent intent =
+                            new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
+                    intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, "default");
+                    intent.putExtra(TelephonyIntents.EXTRA_APN_PROTO_KEY, "IPV4V6");
+                    intent.putExtra(TelephonyIntents.EXTRA_PCO_ID_KEY, 0xFF00);
+                    intent.putExtra(TelephonyIntents.EXTRA_PCO_VALUE_KEY, value);
                     mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
                 }
             }
@@ -3944,6 +3952,10 @@ public class DcTracker extends Handler {
                 // TODO - why are we still registering?
                 break;
             }
+            case DctConstants.EVENT_PCO_DATA_RECEIVED: {
+                handlePcoData((AsyncResult)msg.obj);
+                break;
+            }
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
                 break;
@@ -4469,6 +4481,30 @@ public class DcTracker extends Handler {
                 mActivity = newActivity;
                 mPhone.notifyDataActivity();
             }
+        }
+    }
+
+    private void handlePcoData(AsyncResult ar) {
+        if (ar.exception != null) {
+            Rlog.e(LOG_TAG, "PCO_DATA exception: " + ar.exception);
+            return;
+        }
+        PcoData pcoData = (PcoData)(ar.result);
+        DataConnection dc = mDcc.getActiveDcByCid(pcoData.cid);
+        if (dc == null || dc.mApnContexts.size() == 0) {
+            Rlog.e(LOG_TAG, "PCO_DATA for unknown cid: " + pcoData.cid);
+            return;
+        }
+        // send one out for each apn type in play
+        for (ApnContext apnContext : dc.mApnContexts.keySet()) {
+            String apnType = apnContext.getApnType();
+
+            final Intent intent = new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
+            intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, apnType);
+            intent.putExtra(TelephonyIntents.EXTRA_APN_PROTO_KEY, pcoData.bearerProto);
+            intent.putExtra(TelephonyIntents.EXTRA_PCO_ID_KEY, pcoData.pcoId);
+            intent.putExtra(TelephonyIntents.EXTRA_PCO_VALUE_KEY, pcoData.contents);
+            mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
         }
     }
 
