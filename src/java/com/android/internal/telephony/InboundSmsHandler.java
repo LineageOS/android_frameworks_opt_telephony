@@ -16,8 +16,8 @@
 
 package com.android.internal.telephony;
 
-import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE;
+import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
 import android.app.Activity;
 import android.app.ActivityManagerNative;
@@ -58,7 +58,6 @@ import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.ICarrierMessagingCallback;
 import android.service.carrier.ICarrierMessagingService;
 import android.service.carrier.MessagePdu;
-import android.service.notification.StatusBarNotification;
 import android.telephony.CarrierMessagingServiceManager;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
@@ -1372,33 +1371,40 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public void onFilterComplete(int result) {
             mSmsFilter.disposeConnection(mContext);
-
-            logv("onFilterComplete: result is " + result);
-            if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
-                if (mFilterWithVvm) {
-                    if (VisualVoicemailSmsFilter.filter(mContext, mSmsFilter.mPdus,
-                            mSmsFilter.mSmsFormat, mSmsFilter.mDestPort, mPhone.getSubId())) {
-                        log("Visual voicemail SMS dropped");
-                        dropSms(mSmsFilter.mSmsBroadcastReceiver);
-                        return;
+            // Calling identity was the CarrierMessagingService in this callback, change it back to
+            // ours. This is required for dropSms() and VisualVoicemailSmsFilter.filter().
+            long token = Binder.clearCallingIdentity();
+            try {
+                logv("onFilterComplete: result is " + result);
+                if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
+                    if (mFilterWithVvm) {
+                        if (VisualVoicemailSmsFilter.filter(mContext, mSmsFilter.mPdus,
+                                mSmsFilter.mSmsFormat, mSmsFilter.mDestPort, mPhone.getSubId())) {
+                            log("Visual voicemail SMS dropped");
+                            dropSms(mSmsFilter.mSmsBroadcastReceiver);
+                            return;
+                        }
                     }
-                }
 
-                if (mUserUnlocked) {
-                    dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
-                            mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
+                    if (mUserUnlocked) {
+                        dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
+                                mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
+                    } else {
+                        // Don't do anything further, leave the message in the raw table if the
+                        // credential-encrypted storage is still locked and show the new message
+                        // notification if the message is visible to the user.
+                        if (!isSkipNotifyFlagSet(result)) {
+                            showNewMessageNotification();
+                        }
+                        sendMessage(EVENT_BROADCAST_COMPLETE);
+                    }
                 } else {
-                    // Don't do anything further, leave the message in the raw table if the
-                    // credential-encrypted storage is still locked and show the new message
-                    // notification if the message is visible to the user.
-                    if (!isSkipNotifyFlagSet(result)) {
-                        showNewMessageNotification();
-                    }
-                    sendMessage(EVENT_BROADCAST_COMPLETE);
+                    // Drop this SMS.
+                    dropSms(mSmsFilter.mSmsBroadcastReceiver);
                 }
-            } else {
-                // Drop this SMS.
-                dropSms(mSmsFilter.mSmsBroadcastReceiver);
+            } finally {
+                // return back to the CarrierMessagingService, restore the calling identity.
+                Binder.restoreCallingIdentity(token);
             }
         }
 
@@ -1424,13 +1430,8 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     private void dropSms(SmsBroadcastReceiver receiver) {
-        final long token = Binder.clearCallingIdentity();
-        try {
-            // Needs phone package permissions.
-            deleteFromRawTable(receiver.mDeleteWhere, receiver.mDeleteWhereArgs, MARK_DELETED);
-        } finally {
-            Binder.restoreCallingIdentity(token);
-        }
+        // Needs phone package permissions.
+        deleteFromRawTable(receiver.mDeleteWhere, receiver.mDeleteWhereArgs, MARK_DELETED);
         sendMessage(EVENT_BROADCAST_COMPLETE);
     }
 
