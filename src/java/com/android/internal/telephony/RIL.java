@@ -507,7 +507,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                 case EVENT_ACK_WAKE_LOCK_TIMEOUT:
                     if (msg.arg1 == mAckWlSequenceNum && clearWakeLock(FOR_ACK_WAKELOCK)) {
-                        if (RILJ_LOGD) {
+                        if (RILJ_LOGV) {
                             Rlog.d(RILJ_LOG_TAG, "ACK_WAKE_LOCK_TIMEOUT");
                         }
                     }
