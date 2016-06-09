@@ -1180,6 +1180,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.FDN_BLOCKED;
 
             case ImsReasonInfo.CODE_ANSWERED_ELSEWHERE:
+                return DisconnectCause.ANSWERED_ELSEWHERE;
+
             case ImsReasonInfo.CODE_CALL_END_CAUSE_CALL_PULL:
                 return DisconnectCause.CALL_PULLED;
             default:
@@ -1292,7 +1294,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mOnHoldToneStarted = false;
                 mOnHoldToneId = -1;
             }
-            if (conn != null && conn.isIncoming() && conn.getConnectTime() == 0) {
+            if (conn != null && conn.isIncoming() && conn.getConnectTime() == 0
+                    && cause != DisconnectCause.ANSWERED_ELSEWHERE) {
                 // Missed
                 if (cause == DisconnectCause.NORMAL) {
                     cause = DisconnectCause.INCOMING_MISSED;
