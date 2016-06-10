@@ -70,9 +70,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         }
         final Phone phone = mPhone[phoneId];
         if (phone != null) {
-            phone.getContext().enforceCallingOrSelfPermission(
-                    android.Manifest.permission.READ_PHONE_STATE,
-                    "Requires READ_PHONE_STATE");
             return phone.getDeviceId();
         } else {
             loge("getDeviceIdForPhone phone " + phoneId + " is null");
