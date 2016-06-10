@@ -404,18 +404,6 @@ public class ContextFixture implements TestFixture<Context> {
         public String getPackageName() {
             return "com.android.internal.telephony";
         }
-
-        public boolean testMethod() {
-            return true;
-        }
-
-        public boolean testMethod1() {
-            return true;
-        }
-
-        public boolean testMethod2() {
-            return true;
-        }
     }
 
     private final Multimap<String, ComponentName> mComponentNamesByAction =

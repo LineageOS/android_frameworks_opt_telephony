@@ -1127,6 +1127,67 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
+     * Function to check if message should be dropped because same message has already been
+     * received. In certain cases it checks for similar messages instead of exact same (cases where
+     * keeping both messages in db can cause ambiguity)
+     * @return true if duplicate exists, false otherwise
+     */
+    private boolean duplicateExists(InboundSmsTracker tracker) throws SQLException {
+        String address = tracker.getAddress();
+        // convert to strings for query
+        String refNumber = Integer.toString(tracker.getReferenceNumber());
+        String count = Integer.toString(tracker.getMessageCount());
+        // sequence numbers are 1-based except for CDMA WAP, which is 0-based
+        int sequence = tracker.getSequenceNumber();
+        String seqNumber = Integer.toString(sequence);
+        String date = Long.toString(tracker.getTimestamp());
+        String messageBody = tracker.getMessageBody();
+        String where;
+        if (tracker.getMessageCount() == 1) {
+            where = "address=? AND reference_number=? AND count=? AND sequence=? AND " +
+                    "date=? AND message_body=?";
+        } else {
+            // for multi-part messages, deduping should also be done against undeleted
+            // segments that can cause ambiguity when contacenating the segments, that is,
+            // segments with same address, reference_number, count and sequence
+            where = "address=? AND reference_number=? AND count=? AND sequence=? AND " +
+                    "((date=? AND message_body=?) OR deleted=0)";
+        }
+
+        Cursor cursor = null;
+        try {
+            // Check for duplicate message segments
+            cursor = mResolver.query(sRawUri, PDU_PROJECTION, where,
+                    new String[]{address, refNumber, count, seqNumber, date, messageBody},
+                    null);
+
+            // moveToNext() returns false if no duplicates were found
+            if (cursor != null && cursor.moveToNext()) {
+                loge("Discarding duplicate message segment, refNumber=" + refNumber
+                        + " seqNumber=" + seqNumber + " count=" + count);
+                if (VDBG) {
+                    loge("address=" + address + " date=" + date + " messageBody=" +
+                            messageBody);
+                }
+                String oldPduString = cursor.getString(PDU_COLUMN);
+                byte[] pdu = tracker.getPdu();
+                byte[] oldPdu = HexDump.hexStringToByteArray(oldPduString);
+                if (!Arrays.equals(oldPdu, tracker.getPdu())) {
+                    loge("Warning: dup message segment PDU of length " + pdu.length
+                            + " is different from existing PDU of length " + oldPdu.length);
+                }
+                return true;   // reject message
+            }
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Insert a message PDU into the raw table so we can acknowledge it immediately.
      * If the device crashes before the broadcast to listeners completes, it will be delivered
      * from the raw table on the next device boot. For single-part messages, the deleteWhere
@@ -1137,57 +1198,22 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return true on success; false on failure to write to database
      */
     private int addTrackerToRawTable(InboundSmsTracker tracker, boolean deDup) {
-        String address = tracker.getAddress();
-        String refNumber = Integer.toString(tracker.getReferenceNumber());
-        String count = Integer.toString(tracker.getMessageCount());
         if (deDup) {
-            // check for duplicate message segments
-            Cursor cursor = null;
             try {
-                // sequence numbers are 1-based except for CDMA WAP, which is 0-based
-                int sequence = tracker.getSequenceNumber();
-
-                // convert to strings for query
-                String seqNumber = Integer.toString(sequence);
-                String date = Long.toString(tracker.getTimestamp());
-                String messageBody = tracker.getMessageBody();
-
-                // Check for duplicate message segments
-                cursor = mResolver.query(sRawUri, PDU_PROJECTION,
-                        "address=? AND reference_number=? AND count=? AND sequence=? AND date=? " +
-                                "AND message_body=?",
-                        new String[]{address, refNumber, count, seqNumber, date, messageBody},
-                        null);
-
-                // moveToNext() returns false if no duplicates were found
-                if (cursor.moveToNext()) {
-                    loge("Discarding duplicate message segment, refNumber=" + refNumber
-                            + " seqNumber=" + seqNumber + " count=" + count);
-                    if (VDBG) {
-                        loge("address=" + address + " date=" + date + " messageBody=" +
-                                messageBody);
-                    }
-                    String oldPduString = cursor.getString(PDU_COLUMN);
-                    byte[] pdu = tracker.getPdu();
-                    byte[] oldPdu = HexDump.hexStringToByteArray(oldPduString);
-                    if (!Arrays.equals(oldPdu, tracker.getPdu())) {
-                        loge("Warning: dup message segment PDU of length " + pdu.length
-                                + " is different from existing PDU of length " + oldPdu.length);
-                    }
+                if (duplicateExists(tracker)) {
                     return Intents.RESULT_SMS_DUPLICATED;   // reject message
                 }
             } catch (SQLException e) {
                 loge("Can't access SMS database", e);
                 return Intents.RESULT_SMS_GENERIC_ERROR;    // reject message
-            } finally {
-                if (cursor != null) {
-                    cursor.close();
-                }
             }
         } else {
             logd("Skipped message de-duping logic");
         }
 
+        String address = tracker.getAddress();
+        String refNumber = Integer.toString(tracker.getReferenceNumber());
+        String count = Integer.toString(tracker.getMessageCount());
         ContentValues values = tracker.getContentValues();
 
         if (VDBG) log("adding content values to raw table: " + values.toString());
