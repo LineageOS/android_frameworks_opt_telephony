@@ -41,6 +41,7 @@ import android.content.pm.UserInfo;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
+import android.os.storage.StorageManager;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Build;
@@ -871,6 +872,10 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     private void showNewMessageNotification() {
+        // Do not show the notification on non-FBE devices.
+        if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
+            return;
+        }
         log("Show new message notification.");
         Intent intent = Intent.makeMainSelectorActivity(
             Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING);
