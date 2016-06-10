@@ -28,11 +28,11 @@ import android.provider.Telephony;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 
+import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
-import com.android.internal.telephony.gsm.GsmInboundSmsHandlerTest;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
@@ -68,6 +68,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
     private SmsEnvelope mSmsEnvelope = new SmsEnvelope();
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
+    private FakeSmsContentProvider mContentProvider;
 
     private class CdmaInboundSmsHandlerTestHandler extends HandlerThread {
 
@@ -122,11 +123,12 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         doReturn(-1).when(mInboundSmsTracker).getDestPort();
         doReturn(mInboundSmsTrackerCV).when(mInboundSmsTracker).getContentValues();
         doReturn(smsPdu).when(mInboundSmsTracker).getPdu();
+        doReturn("This is the message body").when(mInboundSmsTracker).getMessageBody();
+        doReturn("1234567890").when(mInboundSmsTracker).getAddress();
 
-        GsmInboundSmsHandlerTest.FakeSmsContentProvider contentProvider =
-                new GsmInboundSmsHandlerTest.FakeSmsContentProvider();
+        mContentProvider = new FakeSmsContentProvider();
         ((MockContentResolver)mContext.getContentResolver()).addProvider(
-                Telephony.Sms.CONTENT_URI.getAuthority(), contentProvider);
+                Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
 
         new CdmaInboundSmsHandlerTestHandler(TAG).start();
         waitUntilReady();
@@ -142,6 +144,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         }
         assertFalse(mCdmaInboundSmsHandler.getWakeLock().isHeld());
         mCdmaInboundSmsHandler = null;
+        mContentProvider.shutdown();
         super.tearDown();
     }
 

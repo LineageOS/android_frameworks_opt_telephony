@@ -22,20 +22,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
-import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.UserManager;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Telephony;
-import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 
+import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
@@ -47,10 +45,6 @@ import com.android.internal.util.HexDump;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,8 +52,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
+
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 public class GsmInboundSmsHandlerTest extends TelephonyTest {
     @Mock
@@ -80,9 +76,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
 
     private FakeSmsContentProvider mContentProvider;
-    private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
-    private static final Uri sRawUriPermanentDelete =
-            Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw/permanentDelete");
+    private static final String RAW_TABLE_NAME = "raw";
+    private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI,
+            RAW_TABLE_NAME);
 
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
     // For multi-part SMS
@@ -93,186 +89,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private String mMessageBodyPart2 = "This is the second part of a multi-part message";
 
     byte[] mSmsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
-
-    public static class FakeSmsContentProvider extends MockContentProvider {
-        private String[] mRawColumns = {"_id",
-                "date",
-                "reference_number",
-                "count",
-                "sequence",
-                "destination_port",
-                "address",
-                "sub_id",
-                "pdu",
-                "deleted",
-                "message_body"};
-        private List<ArrayList<Object>> mListOfRows = new ArrayList<ArrayList<Object>>();
-        private int mNumRows = 0;
-
-        private int getColumnIndex(String columnName) {
-            int i = 0;
-            for (String s : mRawColumns) {
-                if (s.equals(columnName)) {
-                    break;
-                }
-                i++;
-            }
-            return i;
-        }
-
-        @Override
-        public int delete(Uri uri, String selection, String[] selectionArgs) {
-            int count = 0;
-            if (mNumRows > 0) {
-                // parse selection and selectionArgs
-                SelectionParams selectionParams = new SelectionParams();
-                selectionParams.parseSelectionParams(selection, selectionArgs);
-
-                List<Integer> deleteRows = new ArrayList<Integer>();
-                int i = -1;
-                for (ArrayList<Object> row : mListOfRows) {
-                    i++;
-                    // filter based on selection parameters if needed
-                    if (selection != null) {
-                        if (!selectionParams.isMatch(row)) {
-                            continue;
-                        }
-                    }
-                    if (uri.compareTo(sRawUri) == 0) {
-                        row.set(getColumnIndex("deleted"), "1");
-                    } else {
-                        // save index for removal
-                        deleteRows.add(i);
-                    }
-                    count++;
-                }
-
-                if (uri.compareTo(sRawUriPermanentDelete) == 0) {
-                    for (i = deleteRows.size() - 1; i >= 0; i--) {
-                        mListOfRows.remove(i);
-                    }
-                }
-            }
-            return count;
-        }
-
-        @Override
-        public Uri insert(Uri uri, ContentValues values) {
-            Uri newUri = null;
-            if (uri.compareTo(sRawUri) == 0) {
-                if (values != null) {
-                    mListOfRows.add(convertRawCVtoArrayList(values));
-                    mNumRows++;
-                    newUri = Uri.withAppendedPath(uri, "" + mNumRows);
-                }
-            }
-            logd("insert called, new numRows: " + mNumRows);
-            return newUri;
-        }
-
-        private ArrayList<Object> convertRawCVtoArrayList(ContentValues values) {
-            ArrayList<Object> newRow = new ArrayList<>();
-            for (String key : mRawColumns) {
-                if (values.containsKey(key)) {
-                    newRow.add(values.getAsString(key));
-                } else if (key.equals("_id")) {
-                    newRow.add(mNumRows + 1);
-                } else if (key.equals("deleted")) {
-                    newRow.add("0");
-                } else {
-                    newRow.add(null);
-                }
-            }
-            return newRow;
-        }
-
-        private class SelectionParams {
-            String[] paramName = null;
-            String[] paramValue = null;
-
-            private void parseSelectionParams(String selection, String[] selectionArgs) {
-                if (selection != null) {
-                    selection = selection.toLowerCase();
-                    String[] selectionParams = selection.toLowerCase().split("and");
-                    int i = 0;
-                    int j = 0;
-                    paramName = new String[selectionParams.length];
-                    paramValue = new String[selectionParams.length];
-                    for (String param : selectionParams) {
-                        String[] paramWithArg = param.split("=");
-                        paramName[i] = paramWithArg[0].trim();
-                        if (param.contains("?")) {
-                            paramValue[i] = selectionArgs[j];
-                            j++;
-                        } else {
-                            paramValue[i] = paramWithArg[1].trim();
-                        }
-                        //logd(paramName[i] + " = " + paramValue[i]);
-                        i++;
-                    }
-                }
-            }
-
-            private boolean isMatch(ArrayList<Object> row) {
-                for (int i = 0; i < paramName.length; i++) {
-                    int columnIndex = 0;
-                    for (String columnName : mRawColumns) {
-                        if (columnName.equals(paramName[i])) {
-                            if ((paramValue[i] == null && row.get(columnIndex) != null) ||
-                                    (paramValue[i] != null &&
-                                            !paramValue[i].equals(row.get(columnIndex)))) {
-                                logd("Not a match due to " + columnName + ": " + paramValue[i] +
-                                        ", " + row.get(columnIndex));
-                                return false;
-                            } else {
-                                // move on to next param
-                                break;
-                            }
-                        }
-                        columnIndex++;
-                    }
-                }
-                return true;
-            }
-        }
-
-        @Override
-        public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
-                            String sortOrder) {
-            logd("query called for: " + selection);
-            MatrixCursor cursor = new MatrixCursor(projection);
-            if (mNumRows > 0) {
-                // parse selection and selectionArgs
-                SelectionParams selectionParams = new SelectionParams();
-                selectionParams.parseSelectionParams(selection, selectionArgs);
-
-                for (ArrayList<Object> row : mListOfRows) {
-                    ArrayList<Object> retRow = new ArrayList<>();
-                    // filter based on selection parameters if needed
-                    if (selection != null) {
-                        if (!selectionParams.isMatch(row)) {
-                            continue;
-                        }
-                    }
-
-                    for (String columnName : projection) {
-                        int columnIndex = getColumnIndex(columnName);
-                        retRow.add(row.get(columnIndex));
-                    }
-                    cursor.addRow(retRow);
-                }
-            }
-            if (cursor != null) {
-                logd("returning rows: " + cursor.getCount());
-            }
-            return cursor;
-        }
-
-        @Override
-        public Bundle call(String method, String request, Bundle args) {
-            return null;
-        }
-    }
 
     private class GsmInboundSmsHandlerTestHandler extends HandlerThread {
 
@@ -354,6 +170,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         }
         assertFalse(mGsmInboundSmsHandler.getWakeLock().isHeld());
         mGsmInboundSmsHandler = null;
+        mContentProvider.shutdown();
         super.tearDown();
     }
 
@@ -610,6 +427,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         prepareMultiPartSms();
         // change seqNumber in part 2 to 1
         mInboundSmsTrackerCVPart2.put("sequence", 1);
+        doReturn(1).when(mInboundSmsTrackerPart2).getSequenceNumber();
 
         mSmsHeader.concatRef = new SmsHeader.ConcatRef();
         doReturn(mSmsHeader).when(mGsmSmsMessage).getUserDataHeader();
@@ -633,6 +451,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         // verify no broadcasts sent
         verify(mContext, never()).sendBroadcast(any(Intent.class));
+        // verify there's only 1 of the segments in the db (other should be discarded as dup)
+        assertEquals(1, mContentProvider.getNumRows());
         // State machine should go back to idle
         assertEquals("IdleState", getCurrentState().getName());
     }
@@ -678,8 +498,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(0).when(mInboundSmsTracker).getDestPort();
 
         // add a fake entry to db
-        ContentValues rawSms = new ContentValues();
-        mContentProvider.insert(sRawUri, rawSms);
+        mContentProvider.insert(sRawUri, mInboundSmsTrackerCV);
 
         // make it a single-part message
         doReturn(1).when(mInboundSmsTracker).getMessageCount();
@@ -715,8 +534,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(0).when(mInboundSmsTracker).getDestPort();
 
         // add a fake entry to db
-        ContentValues rawSms = new ContentValues();
-        mContentProvider.insert(sRawUri, rawSms);
+        mContentProvider.insert(sRawUri, mInboundSmsTrackerCV);
 
         // make it a single-part message
         doReturn(1).when(mInboundSmsTracker).getMessageCount();
