@@ -2962,8 +2962,8 @@ public class DcTracker extends Handler {
                     String radioTestProperty = "persist.radio.test.pco";
                     int pcoVal = SystemProperties.getInt(radioTestProperty, 0);
                     log("PCO testing: read pco value from persist.radio.test.pco " + pcoVal);
-                    final byte[] value = new byte[1];
-                    value[0] = (byte)pcoVal;
+                    final byte[] value = new byte[4];
+                    java.nio.ByteBuffer.wrap(value).putInt(pcoVal);
                     final Intent intent =
                             new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
                     intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, "default");
