@@ -74,6 +74,7 @@ import android.util.SparseArray;
 import android.view.WindowManager;
 
 import com.android.internal.R;
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CarrierActionAgent;
 import com.android.internal.telephony.DctConstants;
@@ -1229,6 +1230,15 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED);
     }
 
+    private boolean isNvSubscription() {
+        int cdmaSubscriptionSource = CdmaSubscriptionSourceManager.getDefault(mPhone.getContext());
+        if (cdmaSubscriptionSource ==
+                CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Check if it is allowed to make a data connection (without checking APN context specific
      * conditions).
@@ -1273,6 +1283,7 @@ public class DcTracker extends Handler {
         }
 
         boolean recordsLoaded = mIccRecords.get() != null && mIccRecords.get().getRecordsLoaded();
+        boolean subscriptionFromNv = isNvSubscription();
 
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(
                 SubscriptionManager.getDefaultDataSubscriptionId());
@@ -1325,7 +1336,7 @@ public class DcTracker extends Handler {
         if (!(attachedState || mAutoAttachOnCreation.get())) {
             reasons.add(DataDisallowedReasonType.NOT_ATTACHED);
         }
-        if (!recordsLoaded) {
+        if (!(recordsLoaded || subscriptionFromNv)) {
             reasons.add(DataDisallowedReasonType.RECORD_NOT_LOADED);
         }
         if (phoneState != PhoneConstants.State.IDLE
