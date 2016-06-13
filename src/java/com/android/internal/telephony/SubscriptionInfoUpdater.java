@@ -324,7 +324,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_ABSENT:
-                handleSimAbsent(msg.arg1);
+                handleSimAbsentOrError(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
                 break;
 
             case EVENT_SIM_LOCKED:
@@ -336,7 +336,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_IO_ERROR:
-                updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+                handleSimAbsentOrError(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
                 break;
 
             default:
@@ -515,15 +515,15 @@ public class SubscriptionInfoUpdater extends Handler {
         mCarrierServiceBindHelper.updateForPhoneId(slotId, simState);
     }
 
-    protected void handleSimAbsent(int slotId) {
+    protected void handleSimAbsentOrError(int slotId, String simState) {
         if (mIccId[slotId] != null && !mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
-            logd("SIM" + (slotId + 1) + " hot plug out");
+            logd("SIM" + (slotId + 1) + " hot plug out or error");
         }
         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
         }
-        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
+        updateCarrierServices(slotId, simState);
     }
 
     /**
