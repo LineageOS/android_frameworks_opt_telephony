@@ -2071,12 +2071,55 @@ public class GsmCdmaPhone extends Phone {
                     loge("didn't get broadcastEmergencyCallStateChanges from carrier config");
                 }
 
+                // Changing the cdma roaming settings based carrier config.
+                if (b != null) {
+                    int config_cdma_roaming_mode = b.getInt(
+                            CarrierConfigManager.KEY_CDMA_ROAMING_MODE_INT);
+                    int current_cdma_roaming_mode =
+                            Settings.Global.getInt(getContext().getContentResolver(),
+                            Settings.Global.CDMA_ROAMING_MODE,
+                            CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT);
+                    switch (config_cdma_roaming_mode) {
+                        // Carrier's cdma_roaming_mode will overwrite the user's previous settings
+                        // Keep the user's previous setting in global variable which will be used
+                        // when carrier's setting is turn off.
+                        case CarrierConfigManager.CDMA_ROAMING_MODE_HOME:
+                        case CarrierConfigManager.CDMA_ROAMING_MODE_AFFILIATED:
+                        case CarrierConfigManager.CDMA_ROAMING_MODE_ANY:
+                            logd("cdma_roaming_mode is going to changed to "
+                                    + config_cdma_roaming_mode);
+                            setCdmaRoamingPreference(config_cdma_roaming_mode,
+                                    obtainMessage(EVENT_SET_ROAMING_PREFERENCE_DONE));
+                            break;
+
+                        // When carrier's setting is turn off, change the cdma_roaming_mode to the
+                        // previous user's setting
+                        case CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT:
+                            if (current_cdma_roaming_mode != config_cdma_roaming_mode) {
+                                logd("cdma_roaming_mode is going to changed to "
+                                        + current_cdma_roaming_mode);
+                                setCdmaRoamingPreference(current_cdma_roaming_mode,
+                                        obtainMessage(EVENT_SET_ROAMING_PREFERENCE_DONE));
+                            }
+
+                        default:
+                            loge("Invalid cdma_roaming_mode settings: "
+                                    + config_cdma_roaming_mode);
+                    }
+                } else {
+                    loge("didn't get the cdma_roaming_mode changes from the carrier config.");
+                }
+
                 // Load the ERI based on carrier config. Carrier might have their specific ERI.
                 prepareEri();
                 if (!isPhoneTypeGsm()) {
                     mSST.pollState();
                 }
 
+                break;
+
+            case EVENT_SET_ROAMING_PREFERENCE_DONE:
+                logd("cdma_roaming_mode change is done");
                 break;
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
