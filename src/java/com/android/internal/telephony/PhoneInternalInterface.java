@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -170,9 +171,12 @@ public interface PhoneInternalInterface {
     int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
 
     // Used for CDMA roaming mode
-    static final int CDMA_RM_HOME        = 0;  // Home Networks only, as defined in PRL
-    static final int CDMA_RM_AFFILIATED  = 1;  // Roaming an Affiliated networks, as defined in PRL
-    static final int CDMA_RM_ANY         = 2;  // Roaming on Any Network, as defined in PRL
+    // Home Networks only, as defined in PRL
+    static final int CDMA_RM_HOME        = CarrierConfigManager.CDMA_ROAMING_MODE_HOME;
+    // Roaming an Affiliated networks, as defined in PRL
+    static final int CDMA_RM_AFFILIATED  = CarrierConfigManager.CDMA_ROAMING_MODE_AFFILIATED;
+    // Roaming on Any Network, as defined in PRL
+    static final int CDMA_RM_ANY         = CarrierConfigManager.CDMA_ROAMING_MODE_ANY;
 
     // Used for CDMA subscription mode
     static final int CDMA_SUBSCRIPTION_UNKNOWN  =-1; // Unknown
