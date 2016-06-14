@@ -589,7 +589,7 @@ public class ApnContext {
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
             if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_MMS_ID;
+            apnId = DctConstants.APN_EMERGENCY_ID;
         }
         if (error) {
             // TODO: If this error condition is removed, the framework's handling of
