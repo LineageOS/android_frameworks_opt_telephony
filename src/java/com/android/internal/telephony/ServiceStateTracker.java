@@ -4431,7 +4431,7 @@ public class ServiceStateTracker extends Handler {
         }
         synchronized(result.lockObj) {
             if (result.list != null) {
-                if (DBG) log("SST.getAllCellInfo(): X size=" + result.list.size()
+                if (VDBG) log("SST.getAllCellInfo(): X size=" + result.list.size()
                         + " list=" + result.list);
                 return result.list;
             } else {
