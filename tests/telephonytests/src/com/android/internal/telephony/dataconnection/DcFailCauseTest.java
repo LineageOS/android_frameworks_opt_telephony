@@ -16,22 +16,22 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.dataconnection.ApnSetting;
-
-import junit.framework.TestCase;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
+import static org.mockito.Mockito.doReturn;
 
 public class DcFailCauseTest extends TelephonyTest {
 
@@ -144,12 +144,38 @@ public class DcFailCauseTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testPermanentFail() throws Exception {
+    public void testPermanentFailDefault() throws Exception {
         for (DcFailCauseData data : mFailCauseDataList) {
-            assertEquals("cause = " + data.mCause, data.mPermanentFailure,
-                    DcFailCause.fromInt(data.mCause).isPermanentFail());
+            assertEquals("cause = " + data.mCause, data.mPermanentFailure, DcFailCause.fromInt(
+                    data.mCause).isPermanentFailure(mContext, mPhone.getSubId()));
         }
-        assertFalse(DcFailCause.fromInt(123456).isPermanentFail());
+        assertFalse(DcFailCause.fromInt(123456).isPermanentFailure(mContext, mPhone.getSubId()));
+    }
+
+    @Test
+    @SmallTest
+    public void testPermanentFailConfigured() throws Exception {
+
+        doReturn(2).when(mPhone).getSubId();
+        PersistableBundle mBundle = mContextFixture.getCarrierConfigBundle();
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_DATA_CALL_PERMANENT_FAILURE_STRINGS,
+                new String[]{"SERVICE_OPTION_NOT_SUBSCRIBED", "TETHERED_CALL_ACTIVE"});
+
+        // Run it twice to make sure the cached carrier config is working as expected.
+        for (int i = 0; i < 2; i++) {
+            for (DcFailCauseData data : mFailCauseDataList) {
+                if (DcFailCause.fromInt(data.mCause).equals(
+                        DcFailCause.SERVICE_OPTION_NOT_SUBSCRIBED) ||
+                        DcFailCause.fromInt(data.mCause).equals(DcFailCause.TETHERED_CALL_ACTIVE)) {
+                    assertTrue("cause = " + data.mCause, DcFailCause.fromInt(data.mCause).
+                            isPermanentFailure(mContext, mPhone.getSubId()));
+                } else {
+                    assertFalse("cause = " + data.mCause, DcFailCause.fromInt(data.mCause).
+                            isPermanentFailure(mContext, mPhone.getSubId()));
+                }
+            }
+        }
     }
 
     @Test

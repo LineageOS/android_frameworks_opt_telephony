@@ -1928,8 +1928,8 @@ public class DcTracker extends Handler {
         return result;
     }
 
-    boolean isPermanentFail(DcFailCause dcFailCause) {
-        return (dcFailCause.isPermanentFail() &&
+    boolean isPermanentFailure(DcFailCause dcFailCause) {
+        return (dcFailCause.isPermanentFailure(mPhone.getContext(), mPhone.getSubId()) &&
                 (mAttached.get() == false || dcFailCause != DcFailCause.SIGNAL_LOST));
     }
 
@@ -2347,7 +2347,7 @@ public class DcTracker extends Handler {
     private void notifyNoData(DcFailCause lastFailCauseCode,
                               ApnContext apnContext) {
         if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
-        if (isPermanentFail(lastFailCauseCode)
+        if (isPermanentFailure(lastFailCauseCode)
             && (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT))) {
             mPhone.notifyDataConnectionFailed(apnContext.getReason(), apnContext.getApnType());
         }
@@ -3004,7 +3004,7 @@ public class DcTracker extends Handler {
 
             // If the data call failure cause is a permanent failure, we mark the APN as permanent
             // failed.
-            if (isPermanentFail(cause)) {
+            if (isPermanentFailure(cause)) {
                 log("cause = " + cause + ", mark apn as permanent failed. apn = " + apn);
                 apnContext.markApnPermanentFailed(apn);
             }

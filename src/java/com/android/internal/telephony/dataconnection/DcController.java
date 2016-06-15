@@ -274,7 +274,7 @@ public class DcController extends StateMachine {
                                             + failCause);
                                 }
                                 mDct.sendRestartRadio();
-                            } else if (mDct.isPermanentFail(failCause)) {
+                            } else if (mDct.isPermanentFailure(failCause)) {
                                 if (DBG) {
                                     log("onDataStateChanged: inactive, add to cleanup list. "
                                             + "failCause=" + failCause);
