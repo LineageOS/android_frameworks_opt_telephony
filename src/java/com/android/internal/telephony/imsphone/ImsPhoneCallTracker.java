@@ -137,6 +137,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                 shouldDisconnectActiveCallOnAnswer(activeCall, imsCall);
                         conn.setActiveCallDisconnectedOnAnswer(answeringWillDisconnect);
                     }
+                    conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
                     addConnection(conn);
 
                     setVideoCallProvider(conn, imsCall);
@@ -239,6 +240,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * dropped when an audio call is answered.
      */
     private boolean mDropVideoCallWhenAnsweringAudioCall = false;
+
+    /**
+     * Carrier configuration option which determines whether adding a call during a video call
+     * should be allowed.
+     */
+    private boolean mAllowAddCallDuringVideoCall = true;
 
     //***** Events
 
@@ -483,6 +490,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mDropVideoCallWhenAnsweringAudioCall =
                 carrierConfig.getBoolean(
                         CarrierConfigManager.KEY_DROP_VIDEO_CALL_WHEN_ANSWERING_AUDIO_CALL_BOOL);
+        mAllowAddCallDuringVideoCall =
+                carrierConfig.getBoolean(
+                        CarrierConfigManager.KEY_ALLOW_ADD_CALL_DURING_VIDEO_CALL_BOOL);
     }
 
     private void handleEcmTimer(int action) {
@@ -557,6 +567,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mEventLog.writeOnImsCallStart(imsCall.getSession(), callees[0]);
 
             setVideoCallProvider(conn, imsCall);
+            conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
         } catch (ImsException e) {
             loge("dialInternal : " + e);
             conn.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
