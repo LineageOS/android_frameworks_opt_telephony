@@ -31,9 +31,9 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
 
+import com.android.internal.telephony.IMms;
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.SmsRawData;
-import com.android.internal.telephony.IMms;
 import com.android.internal.telephony.uicc.IccConstants;
 
 import java.util.ArrayList;
@@ -335,11 +335,14 @@ public final class SmsManager {
      * A variant of {@link SmsManager#sendTextMessage} that allows self to be the caller. This is
      * for internal use only.
      *
+     * @param persistMessage whether to persist the sent message in the SMS app. the caller must be
+     * the Phone process if set to false.
+     *
      * @hide
      */
     public void sendTextMessageWithSelfPermissions(
             String destinationAddress, String scAddress, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, boolean persistMessage) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -353,7 +356,7 @@ public final class SmsManager {
             iccISms.sendTextForSubscriberWithSelfPermissions(getSubscriptionId(),
                     ActivityThread.currentPackageName(),
                     destinationAddress,
-                    scAddress, text, sentIntent, deliveryIntent);
+                    scAddress, text, sentIntent, deliveryIntent, persistMessage);
         } catch (RemoteException ex) {
             // ignore it
         }
