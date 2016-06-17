@@ -28,9 +28,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 
+import android.app.ActivityManagerNative;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.util.Singleton;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
@@ -45,6 +52,18 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     private SMSDispatcher.SmsTracker mTracker;
 
     private ImsSMSDispatcher mImsSmsDispatcher;
+    private boolean mReceivedTestIntent = false;
+    private Object mLock = new Object();
+    private static final String TEST_INTENT = "com.android.internal.telephony.TEST_INTENT";
+    private BroadcastReceiver mTestReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            logd("onReceive");
+            synchronized (mLock) {
+                mReceivedTestIntent = true;
+            }
+        }
+    };
 
     private class ImsSmsDispatcherTestHandler extends HandlerThread {
 
@@ -145,6 +164,27 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
                 eq(0), any(Message.class));
     }
 
+    @Test @SmallTest
+    public void testInjectNullSmsPdu() throws Exception {
+        // unmock ActivityManager to be able to register receiver, create real PendingIntent and
+        // receive TEST_INTENT
+        restoreInstance(Singleton.class, "mInstance", mIActivityManagerSingleton);
+        restoreInstance(ActivityManagerNative.class, "gDefault", null);
+
+        Context realContext = TestApplication.getAppContext();
+        realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT));
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(realContext, 0,
+                new Intent(TEST_INTENT), 0);
+
+        // inject null sms pdu. This should cause intent to be received since pdu is null.
+        mImsSmsDispatcher.injectSmsPdu(null, SmsConstants.FORMAT_3GPP, pendingIntent);
+        waitForMs(100);
+        synchronized (mLock) {
+            assertEquals(true, mReceivedTestIntent);
+        }
+    }
+
     private void switchImsSmsFormat(int phoneType) {
         mSimulatedCommands.setImsRegistrationState(new int[]{1, phoneType});
         mSimulatedCommands.notifyImsNetworkStateChanged();
@@ -152,4 +192,3 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
         waitForMs(200);
     }
 }
-
