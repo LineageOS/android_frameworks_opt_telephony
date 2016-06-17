@@ -1131,7 +1131,7 @@ public final class Telephony {
             public static final String ACTION_EXTERNAL_PROVIDER_CHANGE =
                           "android.provider.action.EXTERNAL_PROVIDER_CHANGE";
 
-           /**
+            /**
              * Read the PDUs out of an {@link #SMS_RECEIVED_ACTION} or a
              * {@link #DATA_SMS_RECEIVED_ACTION} intent.
              *
@@ -1165,7 +1165,7 @@ public final class Telephony {
                 for (int i = 0; i < pduCount; i++) {
                     byte[] pdu = (byte[]) messages[i];
                     msgs[i] = SmsMessage.createFromPdu(pdu, format);
-                    msgs[i].setSubId(subId);
+                    if (msgs[i] != null) msgs[i].setSubId(subId);
                 }
                 return msgs;
             }
