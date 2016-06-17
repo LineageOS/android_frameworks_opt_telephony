@@ -1460,8 +1460,8 @@ public class DataConnection extends StateMachine {
                                     + " result=" + result
                                     + " result.isRestartRadioFail=" +
                                     result.mFailCause.isRestartRadioFail()
-                                    + " result.isPermanentFail=" +
-                                    mDct.isPermanentFail(result.mFailCause);
+                                    + " isPermanentFailure=" +
+                                    mDct.isPermanentFailure(result.mFailCause);
                             if (DBG) log(str);
                             if (cp.mApnContext != null) cp.mApnContext.requestLog(str);
 
