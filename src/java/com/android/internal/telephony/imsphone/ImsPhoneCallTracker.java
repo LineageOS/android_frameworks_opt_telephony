@@ -810,6 +810,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     //***** Called from ImsPhone
 
     public void setUiTTYMode(int uiTtyMode, Message onComplete) {
+        if (mImsManager == null) {
+            mPhone.sendErrorResponse(onComplete, getImsManagerIsNullException());
+            return;
+        }
+
         try {
             mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, uiTtyMode, onComplete);
         } catch (ImsException e) {
@@ -989,6 +994,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mUssdSession.sendUssd(ussdString);
                 AsyncResult.forMessage(response, null, null);
                 response.sendToTarget();
+                return;
+            }
+
+            if (mImsManager == null) {
+                mPhone.sendErrorResponse(response, getImsManagerIsNullException());
                 return;
             }
 
@@ -1861,7 +1871,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     public ImsUtInterface getUtInterface() throws ImsException {
         if (mImsManager == null) {
-            throw new ImsException("no ims manager", ImsReasonInfo.CODE_UNSPECIFIED);
+            throw getImsManagerIsNullException();
         }
 
         ImsUtInterface ut = mImsManager.getSupplementaryServiceConfiguration(mServiceId);
@@ -2053,7 +2063,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     /* package */
     ImsEcbm getEcbmInterface() throws ImsException {
         if (mImsManager == null) {
-            throw new ImsException("no ims manager", ImsReasonInfo.CODE_UNSPECIFIED);
+            throw getImsManagerIsNullException();
         }
 
         ImsEcbm ecbm = mImsManager.getEcbmInterface(mServiceId);
@@ -2063,7 +2073,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     /* package */
     ImsMultiEndpoint getMultiEndpointInterface() throws ImsException {
         if (mImsManager == null) {
-            throw new ImsException("no ims manager", ImsReasonInfo.CODE_UNSPECIFIED);
+            throw getImsManagerIsNullException();
         }
 
         try {
@@ -2203,5 +2213,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         } catch (CallStateException e) {
             loge("pullExternalCall failed - " + e);
         }
+    }
+
+    private ImsException getImsManagerIsNullException() {
+        return new ImsException("no ims manager", ImsReasonInfo.CODE_LOCAL_ILLEGAL_STATE);
     }
 }
