@@ -292,6 +292,14 @@ public class UiccSmsController extends ISms.Stub {
     @Override
     public boolean isSmsSimPickActivityNeeded(int subId) {
         final Context context = ActivityThread.currentApplication().getApplicationContext();
+
+        boolean canCurrentAppHandleAlwaysAsk = SmsApplication.canSmsAppHandleAlwaysAsk(context);
+        if (!isSMSPromptEnabled() && canCurrentAppHandleAlwaysAsk) {
+            Rlog.d(LOG_TAG, "isSmsSimPickActivityNeeded: false, sms prompt disabled.");
+            // user knows best
+            return false;
+        }
+
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         List<SubscriptionInfo> subInfoList;
@@ -319,7 +327,7 @@ public class UiccSmsController extends ISms.Stub {
             }
         }
 
-        return false;
+        return !canCurrentAppHandleAlwaysAsk;
     }
 
     @Override
