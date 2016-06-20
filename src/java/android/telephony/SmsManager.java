@@ -32,6 +32,7 @@ import android.util.ArrayMap;
 import android.util.Log;
 
 import com.android.internal.telephony.ISms;
+import com.android.internal.telephony.SmsApplication;
 import com.android.internal.telephony.SmsRawData;
 import com.android.internal.telephony.IMms;
 import com.android.internal.telephony.uicc.IccConstants;
@@ -249,6 +250,7 @@ public final class SmsManager {
      * Forwarded constants from SimDialogActivity.
      */
     private static String DIALOG_TYPE_KEY = "dialog_type";
+    private static String HIDE_ALWAYS_ASK_KEY = "hide_always_ask";
     private static final int SMS_PICK = 2;
 
     /**
@@ -828,6 +830,7 @@ public final class SmsManager {
                     "com.android.settings.sim.SimDialogActivity");
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra(DIALOG_TYPE_KEY, SMS_PICK);
+            intent.putExtra(HIDE_ALWAYS_ASK_KEY, !SmsApplication.canSmsAppHandleAlwaysAsk(context));
             try {
                 context.startActivity(intent);
             } catch (ActivityNotFoundException anfe) {
