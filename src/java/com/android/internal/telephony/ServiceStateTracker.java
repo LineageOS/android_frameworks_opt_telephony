@@ -351,6 +351,8 @@ public class ServiceStateTracker extends Handler {
     public CellLocation mCellLoc;
     private CellLocation mNewCellLoc;
     public static final int MS_PER_HOUR = 60 * 60 * 1000;
+    /* Time stamp after 19 January 2038 is not supported under 32 bit */
+    private static final int MAX_NITZ_YEAR = 2037;
     /**
      * Sometimes we get the NITZ time before we know what country we
      * are in. Keep the time zone information from the NITZ string so
@@ -3700,6 +3702,10 @@ public class ServiceStateTracker extends Handler {
             String[] nitzSubs = nitz.split("[/:,+-]");
 
             int year = 2000 + Integer.parseInt(nitzSubs[0]);
+            if (year > MAX_NITZ_YEAR) {
+                if (DBG) loge("NITZ year: " + year + " exceeds limit, skip NITZ time update");
+                return;
+            }
             c.set(Calendar.YEAR, year);
 
             // month is 0 based!

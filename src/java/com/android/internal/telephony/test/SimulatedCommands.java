@@ -23,6 +23,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.Registrant;
+import android.os.SystemClock;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
@@ -1074,6 +1075,13 @@ public class SimulatedCommands extends BaseCommands
     public void setDataCallResponse(final boolean success, final DataCallResponse dcResponse) {
         mDcResponse = dcResponse;
         mDcSuccess = success;
+    }
+
+    public void triggerNITZupdate(String NITZStr) {
+        if (NITZStr != null) {
+            mNITZTimeRegistrant.notifyRegistrant(new AsyncResult (null, new Object[]{NITZStr,
+                    SystemClock.elapsedRealtime()}, null));
+        }
     }
 
     @Override
