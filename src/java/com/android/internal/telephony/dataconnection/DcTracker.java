@@ -3020,7 +3020,7 @@ public class DcTracker extends Handler {
          * to clean data connections.
          */
         if (!mInternalDataEnabled) {
-            cleanUpAllConnections(null);
+            cleanUpAllConnections(Phone.REASON_DATA_DISABLED);
         }
 
     }
@@ -4127,7 +4127,7 @@ public class DcTracker extends Handler {
             } else {
                 sendOnComplete = false;
                 log("onSetInternalDataEnabled: changed to disabled, cleanUpAllConnections");
-                cleanUpAllConnections(null, onCompleteMsg);
+                cleanUpAllConnections(Phone.REASON_DATA_DISABLED, onCompleteMsg);
             }
         }
 

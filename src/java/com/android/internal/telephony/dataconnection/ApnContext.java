@@ -343,8 +343,8 @@ public class ApnContext {
      * @return True if it is fast retry reason, otherwise false.
      */
     private boolean isFastRetryReason() {
-        return mReason.equals(Phone.REASON_NW_TYPE_CHANGED) ||
-                mReason.equals(Phone.REASON_APN_CHANGED);
+        return Phone.REASON_NW_TYPE_CHANGED.equals(mReason) ||
+                Phone.REASON_APN_CHANGED.equals(mReason);
     }
 
     /** Check if the data call is in connected or connecting state.
