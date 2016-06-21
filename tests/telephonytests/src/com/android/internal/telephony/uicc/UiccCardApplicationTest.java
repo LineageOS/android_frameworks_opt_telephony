@@ -164,6 +164,28 @@ public class UiccCardApplicationTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testCheckIsPersoLocked() {
+        mUiccCardAppStatus.app_state = IccCardApplicationStatus.AppState
+               .APPSTATE_SUBSCRIPTION_PERSO;
+        mUiccCardAppStatus.perso_substate = IccCardApplicationStatus.PersoSubState
+                .PERSOSUBSTATE_SIM_NETWORK;
+        Message mCardAppUpdate = mHandler.obtainMessage(UICCCARDAPP_UPDATE_EVENT);
+        setReady(false);
+        mCardAppUpdate.sendToTarget();
+        waitUntilReady();
+        assertTrue(mUiccCardApplication.isPersoLocked());
+
+        mUiccCardAppStatus.perso_substate = IccCardApplicationStatus.PersoSubState
+                .PERSOSUBSTATE_READY;
+        setReady(false);
+        mCardAppUpdate = mHandler.obtainMessage(UICCCARDAPP_UPDATE_EVENT);
+        mCardAppUpdate.sendToTarget();
+        waitUntilReady();
+        assertFalse(mUiccCardApplication.isPersoLocked());
+    }
+
+    @Test
+    @SmallTest
     public void testGetSetIccLockedEnabled() {
         assertFalse(mUiccCardApplication.getIccLockEnabled());
         Message mLockEnabled = mHandler.obtainMessage(UICCCARDAPP_ENABLE_LOCK_EVENT);
