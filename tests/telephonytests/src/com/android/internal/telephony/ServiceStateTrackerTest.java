@@ -16,14 +16,17 @@
 
 package com.android.internal.telephony;
 
+import android.app.IAlarmManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.IBinder;
 import android.os.Message;
 import android.os.Parcel;
-import android.os.RegistrantList;
+import android.os.SystemClock;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
@@ -40,21 +43,6 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.*;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,6 +50,20 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
+
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class ServiceStateTrackerTest extends TelephonyTest {
 
@@ -71,6 +73,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private ProxyController mProxyController;
     @Mock
     private Handler mTestHandler;
+    @Mock
+    protected IAlarmManager mAlarmManager;
 
     private ServiceStateTracker sst;
     private ServiceStateTrackerTestHandler mSSTTestHandler;
@@ -816,5 +820,24 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testIsDeviceShuttingDown() throws Exception {
         sst.requestShutdown();
         assertEquals(true, sst.isDeviceShuttingDown());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetTimeFromNITZStr() throws Exception {
+        doReturn(mAlarmManager).when(mIBinder).queryLocalInterface(anyString());
+        mServiceManagerMockedServices.put(Context.ALARM_SERVICE, mIBinder);
+
+        // Mock sending incorrect nitz str from RIL
+        mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0");
+        waitForMs(100);
+        // AlarmManger.setTime is triggered by SystemClock.setCurrentTimeMillis().
+        // Verify system time is not set to incorrect NITZ time
+        verify(mAlarmManager, times(0)).setTime(anyLong());
+
+        // Mock sending correct nitz str from RIL
+        mSimulatedCommands.triggerNITZupdate("15/06/20,00:00:00+0");
+        waitForMs(100);
+        verify(mAlarmManager, times(1)).setTime(anyLong());
     }
 }
