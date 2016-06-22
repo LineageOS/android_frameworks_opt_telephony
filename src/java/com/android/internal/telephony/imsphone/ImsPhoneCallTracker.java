@@ -19,7 +19,9 @@ package com.android.internal.telephony.imsphone;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -184,6 +186,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_RESUME_BACKGROUND = 19;
     private static final int EVENT_DIAL_PENDINGMO = 20;
     private static final int EVENT_EXIT_ECBM_BEFORE_PENDINGMO = 21;
+    private static final int EVENT_VT_DATA_USAGE_UPDATE = 22;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
 
@@ -198,6 +201,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public ImsPhoneCall mBackgroundCall = new ImsPhoneCall(this,
             ImsPhoneCall.CONTEXT_BACKGROUND);
     public ImsPhoneCall mHandoverCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_HANDOVER);
+
+    // Hold aggregated video call data usage for each video call since boot.
+    // The ImsCall's call id is the key of the map.
+    private final HashMap<Integer, Long> mVtDataUsageMap = new HashMap<>();
+    private volatile long mTotalVtDataUsage = 0;
 
     private ImsPhoneConnection mPendingMO;
     private int mClirMode = CommandsInterface.CLIR_DEFAULT;
@@ -2035,6 +2043,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
                 mPhone.unsetOnEcbModeExitResponse(this);
                 break;
+            case EVENT_VT_DATA_USAGE_UPDATE:
+                ar = (AsyncResult) msg.obj;
+                ImsCall call = (ImsCall) ar.userObj;
+                Long usage = (long) ar.result;
+                log("VT data usage update. usage = " + usage + ", imsCall = " + call);
+
+                Long oldUsage = 0L;
+                if (mVtDataUsageMap.containsKey(call.uniqueId)) {
+                    oldUsage = mVtDataUsageMap.get(call.uniqueId);
+                }
+                mTotalVtDataUsage += (usage - oldUsage);
+                mVtDataUsageMap.put(call.uniqueId, usage);
+                break;
         }
     }
 
@@ -2093,6 +2114,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             pw.println(" " + mImsFeatureStrings[i] + ": "
                     + ((mImsFeatureEnabled[i]) ? "enabled" : "disabled"));
         }
+        pw.println(" mTotalVtDataUsage=" + mTotalVtDataUsage);
+        for (Map.Entry<Integer, Long> entry : mVtDataUsageMap.entrySet()) {
+            pw.println("    id=" + entry.getKey() + " ,usage=" + entry.getValue());
+        }
+
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
@@ -2174,6 +2200,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
                     new ImsVideoCallProviderWrapper(imsVideoCallProvider);
             conn.setVideoProvider(imsVideoCallProviderWrapper);
+            imsVideoCallProviderWrapper.registerForDataUsageUpdate
+                    (this, EVENT_VT_DATA_USAGE_UPDATE, imsCall);
         }
     }
 
@@ -2301,5 +2329,23 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean isIncomingCallAudio = !incomingCall.isVideoCall();
 
         return isActiveCallVideo && isActiveCallOnWifi && isIncomingCallAudio;
+    }
+
+    /** Get aggregated video call data usage since boot.
+     *
+     * @return data usage in bytes
+     */
+    public long getVtDataUsage() {
+
+        // If there is an ongoing VT call, request the latest VT usage from the modem. The latest
+        // usage will return asynchronously so it won't be counted in this round, but it will be
+        // eventually counted when next getVtDataUsage is called.
+        if (mState != PhoneConstants.State.IDLE) {
+            for (ImsPhoneConnection conn : mConnections) {
+                conn.getVideoProvider().onRequestConnectionDataUsage();
+            }
+        }
+
+        return mTotalVtDataUsage;
     }
 }
