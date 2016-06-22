@@ -722,7 +722,11 @@ public class SubscriptionInfoUpdater extends Handler {
                             Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
                             SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 
-                    if (realStoredDataSub != SubscriptionManager.getDefaultDataSubscriptionId()) {
+                    if (realStoredDataSub != SubscriptionManager.INVALID_SUBSCRIPTION_ID &&
+                            realStoredDataSub != SubscriptionManager.getDefaultDataSubscriptionId()) {
+                        logd("switching data off; real stored sub: " + realStoredDataSub
+                                + ", and we think the default sub id is now: "
+                                + SubscriptionManager.getDefaultDataSubscriptionId());
                         PhoneFactory.getDefaultPhone().setDataEnabled(false);
                     }
                 } else if (insertedSimCount > 1) {
