@@ -30,6 +30,7 @@
 package org.codeaurora.ims.qtiims;
 
 import android.content.ContentResolver;
+import android.content.Context;
 
 /**
  * This class contains QtiImsInterface specific utiltity functions.
@@ -85,5 +86,9 @@ public class QtiImsInterfaceUtils {
 
         android.provider.Settings.Global.putString(contentResolver,
                 QTI_IMS_CALL_DEFLECT_NUMBER, deflectNum);
+    }
+
+    public static boolean isCallTransferEnabled(Context context) {
+        return false;
     }
 }
