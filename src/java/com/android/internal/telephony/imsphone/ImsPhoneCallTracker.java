@@ -994,6 +994,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (DBG) log("callEndCleanupHandOverCallIfAny, mHandoverCall.mConnections="
                     + mHandoverCall.mConnections);
             mHandoverCall.mConnections.clear();
+            mConnections.clear();
             mState = PhoneConstants.State.IDLE;
         }
     }
