@@ -522,6 +522,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         boolean isConferenceUri = false;
         boolean isSkipSchemaParsing = false;
+        boolean isCallPull = false;
 
         if (intentExtras != null) {
             isConferenceUri = intentExtras.getBoolean(
@@ -565,9 +566,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                     android.telecom.TelecomManager.EXTRA_CALL_SUBJECT))
                     );
                 }
+                isCallPull = intentExtras.getBoolean(TelephonyProperties.EXTRA_IS_CALL_PULL, false);
 
                 // Pack the OEM-specific call extras.
                 profile.mCallExtras.putBundle(ImsCallProfile.EXTRA_OEM_EXTRAS, intentExtras);
+
+                profile.setCallExtraBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL, isCallPull);
 
                 // NOTE: Extras to be sent over the network are packed into the
                 // intentExtras individually, with uniquely defined keys.
