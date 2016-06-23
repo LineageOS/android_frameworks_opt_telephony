@@ -166,7 +166,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 public void onForegroundProfileSwitch(int newProfileId) throws RemoteException {
                     // Ignore.
                 }
-            });
+            }, LOG_TAG);
             mCurrentlyActiveUserId = ActivityManagerNative.getDefault().getCurrentUser().id;
         } catch (RemoteException e) {
             logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
