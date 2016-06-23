@@ -34,6 +34,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * {@hide}
  */
 public abstract class Connection {
+
     public interface PostDialListener {
         void onPostDialWait();
         void onPostDialChar(char c);
@@ -184,6 +185,7 @@ public abstract class Connection {
     public Call.State mPreHandoverState = Call.State.IDLE;
     private Bundle mExtras;
     private int mPhoneType;
+    private boolean mAnsweringDisconnectsActiveCall;
 
     protected Connection(int phoneType) {
         mPhoneType = phoneType;
@@ -772,6 +774,26 @@ public abstract class Connection {
      */
     public Bundle getConnectionExtras() {
         return mExtras;
+    }
+
+    /**
+     * @return {@code true} if answering the call will cause the current active call to be
+     *      disconnected, {@code false} otherwise.
+     */
+    public boolean isActiveCallDisconnectedOnAnswer() {
+        return mAnsweringDisconnectsActiveCall;
+    }
+
+    /**
+     * Sets whether answering this call will cause the active call to be disconnected.
+     * <p>
+     * Should only be set {@code true} if there is an active call and this call is ringing.
+     *
+     * @param answeringDisconnectsActiveCall {@code true} if answering the call will call the active
+     *      call to be disconnected.
+     */
+    public void setActiveCallDisconnectedOnAnswer(boolean answeringDisconnectsActiveCall) {
+        mAnsweringDisconnectsActiveCall = answeringDisconnectsActiveCall;
     }
 
     /**
