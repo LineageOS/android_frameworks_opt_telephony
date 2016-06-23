@@ -267,7 +267,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
     public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
     public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
-    protected static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
+    public static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
 
     private final RegistrantList mPreciseCallStateRegistrants
             = new RegistrantList();
