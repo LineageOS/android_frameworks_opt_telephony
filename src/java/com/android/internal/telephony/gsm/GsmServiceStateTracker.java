@@ -1586,33 +1586,33 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
             try {
                 mWakeLock.acquire();
 
+		long millisSinceNitzReceived
+				= SystemClock.elapsedRealtime() - nitzReceiveTime;
+
+		if (millisSinceNitzReceived < 0) {
+			// Sanity check: something is wrong
+			if (DBG) {
+				log("NITZ: not setting time, clock has rolled "
+								+ "backwards since NITZ time was received, "
+								+ nitz);
+			}
+			return;
+		}
+
+		if (millisSinceNitzReceived > Integer.MAX_VALUE) {
+			// If the time is this far off, something is wrong > 24 days!
+			if (DBG) {
+				log("NITZ: not setting time, processing has taken "
+							+ (millisSinceNitzReceived / (1000 * 60 * 60 * 24))
+							+ " days");
+			}
+			return;
+		}
+
+		// Note: with range checks above, cast to int is safe
+		c.add(Calendar.MILLISECOND, (int)millisSinceNitzReceived);
+
                 if (getAutoTime()) {
-                    long millisSinceNitzReceived
-                            = SystemClock.elapsedRealtime() - nitzReceiveTime;
-
-                    if (millisSinceNitzReceived < 0) {
-                        // Sanity check: something is wrong
-                        if (DBG) {
-                            log("NITZ: not setting time, clock has rolled "
-                                            + "backwards since NITZ time was received, "
-                                            + nitz);
-                        }
-                        return;
-                    }
-
-                    if (millisSinceNitzReceived > Integer.MAX_VALUE) {
-                        // If the time is this far off, something is wrong > 24 days!
-                        if (DBG) {
-                            log("NITZ: not setting time, processing has taken "
-                                        + (millisSinceNitzReceived / (1000 * 60 * 60 * 24))
-                                        + " days");
-                        }
-                        return;
-                    }
-
-                    // Note: with range checks above, cast to int is safe
-                    c.add(Calendar.MILLISECOND, (int)millisSinceNitzReceived);
-
                     if (DBG) {
                         log("NITZ: Setting time of day to " + c.getTime()
                             + " NITZ receive delay(ms): " + millisSinceNitzReceived
