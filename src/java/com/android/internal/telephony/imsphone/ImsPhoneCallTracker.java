@@ -129,6 +129,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     ImsPhoneConnection conn = new ImsPhoneConnection(mPhone, imsCall,
                             ImsPhoneCallTracker.this,
                             (isUnknown? mForegroundCall: mRingingCall), isUnknown);
+
+                    // If there is an active call.
+                    if (mForegroundCall.hasConnections()) {
+                        ImsCall activeCall = mForegroundCall.getFirstConnection().getImsCall();
+                        boolean answeringWillDisconnect =
+                                shouldDisconnectActiveCallOnAnswer(activeCall, imsCall);
+                        conn.setActiveCallDisconnectedOnAnswer(answeringWillDisconnect);
+                    }
                     addConnection(conn);
 
                     setVideoCallProvider(conn, imsCall);
@@ -158,7 +166,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID);
                 if (subId == mPhone.getSubId()) {
-                    mAllowEmergencyVideoCalls = isEmergencyVtCallAllowed(subId);
+                    cacheCarrierConfiguration(subId);
                     log("onReceive : Updating mAllowEmergencyVideoCalls = " +
                             mAllowEmergencyVideoCalls);
                 }
@@ -220,6 +228,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private ImsCall mCallExpectedToResume = null;
     private boolean mAllowEmergencyVideoCalls = false;
 
+    /**
+     * Carrier configuration option which determines if video calls which have been downgraded to an
+     * audio call should be treated as if they are still video calls.
+     */
+    private boolean mTreatDowngradedVideoCallsAsVideoCalls = false;
+
+    /**
+     * Carrier configuration option which determines if an ongoing video call over wifi should be
+     * dropped when an audio call is answered.
+     */
+    private boolean mDropVideoCallWhenAnsweringAudioCall = false;
+
     //***** Events
 
 
@@ -234,7 +254,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         intentfilter.addAction(ImsManager.ACTION_IMS_INCOMING_CALL);
         intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
-        mAllowEmergencyVideoCalls = isEmergencyVtCallAllowed(mPhone.getSubId());
+        cacheCarrierConfiguration(mPhone.getSubId());
 
         Thread t = new Thread() {
             public void run() {
@@ -437,27 +457,32 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     /**
-     * Determines if the carrier associated with the specified SubId supports making video emergency
-     * calls.
+     * Caches frequently used carrier configuration items locally.
      *
      * @param subId The sub id.
-     * @return {@code true} if video emergency calls are supported, {@code false} otherwise.
      */
-    private boolean isEmergencyVtCallAllowed(int subId) {
+    private void cacheCarrierConfiguration(int subId) {
         CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
                 mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
         if (carrierConfigManager == null) {
-            loge("isEmergencyVideoCallsSupported: No carrier config service found.");
-            return false;
+            loge("cacheCarrierConfiguration: No carrier config service found.");
+            return;
         }
 
         PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
         if (carrierConfig == null) {
-            loge("isEmergencyVideoCallsSupported: Empty carrier config.");
-            return false;
+            loge("cacheCarrierConfiguration: Empty carrier config.");
+            return;
         }
 
-        return carrierConfig.getBoolean(CarrierConfigManager.KEY_ALLOW_EMERGENCY_VIDEO_CALLS_BOOL);
+        mAllowEmergencyVideoCalls =
+                carrierConfig.getBoolean(CarrierConfigManager.KEY_ALLOW_EMERGENCY_VIDEO_CALLS_BOOL);
+        mTreatDowngradedVideoCallsAsVideoCalls =
+                carrierConfig.getBoolean(
+                        CarrierConfigManager.KEY_TREAT_DOWNGRADED_VIDEO_CALLS_AS_VIDEO_CALLS_BOOL);
+        mDropVideoCallWhenAnsweringAudioCall =
+                carrierConfig.getBoolean(
+                        CarrierConfigManager.KEY_DROP_VIDEO_CALL_WHEN_ANSWERING_AUDIO_CALL_BOOL);
     }
 
     private void handleEcmTimer(int action) {
@@ -558,9 +583,29 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if ((mRingingCall.getState() == ImsPhoneCall.State.WAITING)
                 && mForegroundCall.getState().isAlive()) {
             setMute(false);
+
+            boolean answeringWillDisconnect = false;
+            ImsCall activeCall = mForegroundCall.getImsCall();
+            ImsCall ringingCall = mRingingCall.getImsCall();
+            if (mForegroundCall.hasConnections() && mRingingCall.hasConnections()) {
+                answeringWillDisconnect =
+                        shouldDisconnectActiveCallOnAnswer(activeCall, ringingCall);
+            }
+
             // Cache video state for pending MT call.
             mPendingCallVideoState = videoState;
-            switchWaitingOrHoldingAndActive();
+
+            if (answeringWillDisconnect) {
+                // We need to disconnect the foreground call before answering the background call.
+                mForegroundCall.hangup();
+                try {
+                    ringingCall.accept(ImsCallProfile.getCallTypeFromVideoState(videoState));
+                } catch (ImsException e) {
+                    throw new CallStateException("cannot accept call");
+                }
+            } else {
+                switchWaitingOrHoldingAndActive();
+            }
         } else if (mRingingCall.getState().isRinging()) {
             if (DBG) log("acceptCall: incoming...");
             // Always unmute when answering a new call
@@ -2217,5 +2262,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private ImsException getImsManagerIsNullException() {
         return new ImsException("no ims manager", ImsReasonInfo.CODE_LOCAL_ILLEGAL_STATE);
+    }
+
+    /**
+     * Determines if answering an incoming call will cause the active call to be disconnected.
+     * <p>
+     * This will be the case if
+     * {@link CarrierConfigManager#KEY_DROP_VIDEO_CALL_WHEN_ANSWERING_AUDIO_CALL_BOOL} is
+     * {@code true} for the carrier, the active call is a video call over WIFI, and the incoming
+     * call is an audio call.
+     *
+     * @param activeCall The active call.
+     * @param incomingCall The incoming call.
+     * @return {@code true} if answering the incoming call will cause the active call to be
+     *      disconnected, {@code false} otherwise.
+     */
+    private boolean shouldDisconnectActiveCallOnAnswer(ImsCall activeCall,
+            ImsCall incomingCall) {
+
+        if (!mDropVideoCallWhenAnsweringAudioCall) {
+            return false;
+        }
+
+        boolean isActiveCallVideo = activeCall.isVideoCall() ||
+                (mTreatDowngradedVideoCallsAsVideoCalls && activeCall.wasVideoCall());
+        boolean isActiveCallOnWifi = activeCall.isWifiCall();
+        boolean isIncomingCallAudio = !incomingCall.isVideoCall();
+
+        return isActiveCallVideo && isActiveCallOnWifi && isIncomingCallAudio;
     }
 }
