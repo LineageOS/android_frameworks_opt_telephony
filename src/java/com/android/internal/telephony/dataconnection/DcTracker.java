@@ -2960,17 +2960,19 @@ public class DcTracker extends Handler {
                 if (Build.IS_DEBUGGABLE) {
                     // adb shell setprop persist.radio.test.pco [pco_val]
                     String radioTestProperty = "persist.radio.test.pco";
-                    int pcoVal = SystemProperties.getInt(radioTestProperty, 0);
-                    log("PCO testing: read pco value from persist.radio.test.pco " + pcoVal);
-                    final byte[] value = new byte[4];
-                    java.nio.ByteBuffer.wrap(value).putInt(pcoVal);
-                    final Intent intent =
-                            new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
-                    intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, "default");
-                    intent.putExtra(TelephonyIntents.EXTRA_APN_PROTO_KEY, "IPV4V6");
-                    intent.putExtra(TelephonyIntents.EXTRA_PCO_ID_KEY, 0xFF00);
-                    intent.putExtra(TelephonyIntents.EXTRA_PCO_VALUE_KEY, value);
-                    mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
+                    int pcoVal = SystemProperties.getInt(radioTestProperty, -1);
+                    if (pcoVal != -1) {
+                        log("PCO testing: read pco value from persist.radio.test.pco " + pcoVal);
+                        final byte[] value = new byte[1];
+                        value[0] = (byte) pcoVal;
+                        final Intent intent =
+                                new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
+                        intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, "default");
+                        intent.putExtra(TelephonyIntents.EXTRA_APN_PROTO_KEY, "IPV4V6");
+                        intent.putExtra(TelephonyIntents.EXTRA_PCO_ID_KEY, 0xFF00);
+                        intent.putExtra(TelephonyIntents.EXTRA_PCO_VALUE_KEY, value);
+                        mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
+                    }
                 }
             }
         } else {
@@ -4516,21 +4518,52 @@ public class DcTracker extends Handler {
             return;
         }
         PcoData pcoData = (PcoData)(ar.result);
-        DataConnection dc = mDcc.getActiveDcByCid(pcoData.cid);
-        if (dc == null || dc.mApnContexts.size() == 0) {
-            Rlog.e(LOG_TAG, "PCO_DATA for unknown cid: " + pcoData.cid);
+        ArrayList<DataConnection> dcList = new ArrayList<>();
+        DataConnection temp = mDcc.getActiveDcByCid(pcoData.cid);
+        if (temp != null) {
+            dcList.add(temp);
+        }
+        if (dcList.size() == 0) {
+            Rlog.e(LOG_TAG, "PCO_DATA for unknown cid: " + pcoData.cid + ", inferring");
+            for (DataConnection dc : mDataConnections.values()) {
+                final int cid = dc.getCid();
+                if (cid == pcoData.cid) {
+                    if (VDBG) Rlog.d(LOG_TAG, "  found " + dc);
+                    dcList.clear();
+                    dcList.add(dc);
+                    break;
+                }
+                // check if this dc is still connecting
+                if (cid == -1) {
+                    for (ApnContext apnContext : dc.mApnContexts.keySet()) {
+                        if (apnContext.getState() == DctConstants.State.CONNECTING) {
+                            if (VDBG) Rlog.d(LOG_TAG, "  found potential " + dc);
+                            dcList.add(dc);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (dcList.size() == 0) {
+            Rlog.e(LOG_TAG, "PCO_DATA - couldn't infer cid");
             return;
         }
-        // send one out for each apn type in play
-        for (ApnContext apnContext : dc.mApnContexts.keySet()) {
-            String apnType = apnContext.getApnType();
+        for (DataConnection dc : dcList) {
+            if (dc.mApnContexts.size() == 0) {
+                break;
+            }
+            // send one out for each apn type in play
+            for (ApnContext apnContext : dc.mApnContexts.keySet()) {
+                String apnType = apnContext.getApnType();
 
-            final Intent intent = new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
-            intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, apnType);
-            intent.putExtra(TelephonyIntents.EXTRA_APN_PROTO_KEY, pcoData.bearerProto);
-            intent.putExtra(TelephonyIntents.EXTRA_PCO_ID_KEY, pcoData.pcoId);
-            intent.putExtra(TelephonyIntents.EXTRA_PCO_VALUE_KEY, pcoData.contents);
-            mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
+                final Intent intent = new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
+                intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, apnType);
+                intent.putExtra(TelephonyIntents.EXTRA_APN_PROTO_KEY, pcoData.bearerProto);
+                intent.putExtra(TelephonyIntents.EXTRA_PCO_ID_KEY, pcoData.pcoId);
+                intent.putExtra(TelephonyIntents.EXTRA_PCO_VALUE_KEY, pcoData.contents);
+                mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
+            }
         }
     }
 
