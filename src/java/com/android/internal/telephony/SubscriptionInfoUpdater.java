@@ -230,13 +230,15 @@ public class SubscriptionInfoUpdater extends Handler {
                 }
             }
 
-            if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
-                mLockedSims.set(slotId);
-                update(slotId);
-            } else if (IccCardConstants.INTENT_VALUE_ICC_READY.equals(simStatus)
-                    || IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
-                mLockedSims.clear(slotId);
-                update(slotId);
+            if (isAllIccIdQueryDone()) {
+                if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
+                    mLockedSims.set(slotId);
+                    update(slotId);
+                } else if (IccCardConstants.INTENT_VALUE_ICC_READY.equals(simStatus)
+                        || IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
+                    mLockedSims.clear(slotId);
+                    update(slotId);
+                }
             }
 
             logd("[Receiver]-");
