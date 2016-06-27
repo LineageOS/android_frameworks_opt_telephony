@@ -789,11 +789,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             return false;
         }
 
-        if (!mUserManager.isUserUnlocked()) {
-            return processMessagePartWithUserLocked(tracker, pdus, destPort);
-        }
-
         SmsBroadcastReceiver resultReceiver = new SmsBroadcastReceiver(tracker);
+
+        if (!mUserManager.isUserUnlocked()) {
+            return processMessagePartWithUserLocked(tracker, pdus, destPort, resultReceiver);
+        }
 
         if (destPort == SmsHeader.PORT_WAP_PUSH) {
             // Build up the data stream
@@ -849,7 +849,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return true if an ordered broadcast was sent to the carrier app; false otherwise.
      */
     private boolean processMessagePartWithUserLocked(InboundSmsTracker tracker,
-            byte[][] pdus, int destPort) {
+            byte[][] pdus, int destPort, SmsBroadcastReceiver resultReceiver) {
         log("Credential-encrypted storage not available. Port: " + destPort);
         if (destPort == SmsHeader.PORT_WAP_PUSH && mWapPush.isWapPushForMms(pdus[0], this)) {
             showNewMessageNotification();
@@ -858,7 +858,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (destPort == -1) {
             // This is a regular SMS - hand it to the carrier or system app for filtering.
             boolean filterInvoked = filterSms(
-                pdus, destPort, tracker, null, false /* userUnlocked */);
+                pdus, destPort, tracker, resultReceiver, false /* userUnlocked */);
             if (filterInvoked) {
                 // filter invoked, wait for it to return the result.
                 return true;
