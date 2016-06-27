@@ -1301,7 +1301,8 @@ public class DcTracker extends Handler {
         return false;
     }
 
-    boolean isDataEnabled(boolean checkUserDataEnabled) {
+    @VisibleForTesting
+    public boolean isDataEnabled(boolean checkUserDataEnabled) {
         synchronized (mDataEnabledLock) {
             if (!(mInternalDataEnabled && (!checkUserDataEnabled || mUserDataEnabled)
                     && (!checkUserDataEnabled || sPolicyDataEnabled)
