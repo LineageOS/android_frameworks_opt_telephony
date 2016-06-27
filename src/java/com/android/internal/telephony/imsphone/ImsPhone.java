@@ -1484,7 +1484,7 @@ public class ImsPhone extends ImsPhoneBase {
                             com.android.internal.R.array.wfcOperatorErrorNotificationMessages);
 
             for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
-                String[] codes = wfcOperatorErrorCodes[i].split("|");
+                String[] codes = wfcOperatorErrorCodes[i].split("\\|");
                 if (codes.length != 2) {
                     Rlog.e(LOG_TAG, "Invalid carrier config: " + wfcOperatorErrorCodes[i]);
                     continue;
