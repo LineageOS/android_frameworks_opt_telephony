@@ -796,9 +796,9 @@ public class RuimRecords extends IccRecords {
         // TODO: The below is hacky since the SubscriptionController may not be ready at this time.
         if (!TextUtils.isEmpty(mMdn)) {
             int phoneId = mParentApp.getUiccCard().getPhoneId();
-            int[] subIds = SubscriptionController.getInstance().getSubId(phoneId);
-            if (subIds != null) {
-                SubscriptionManager.from(mContext).setDisplayNumber(mMdn, subIds[0]);
+            int subId = SubscriptionController.getInstance().getSubIdUsingPhoneId(phoneId);
+            if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                SubscriptionManager.from(mContext).setDisplayNumber(mMdn, subId);
             } else {
                 log("Cannot call setDisplayNumber: invalid subId");
             }

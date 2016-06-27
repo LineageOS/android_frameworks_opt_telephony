@@ -406,92 +406,86 @@ public class SubscriptionInfoUpdater extends Handler {
 
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
-        }
+            int[] subIds = mSubscriptionManager.getActiveSubscriptionIdList();
+            for (int subId : subIds) {
+                TelephonyManager tm = TelephonyManager.getDefault();
 
-        int subId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
-        int[] subIds = SubscriptionController.getInstance().getSubId(slotId);
-        if (subIds != null) {   // Why an array?
-            subId = subIds[0];
-        }
+                String operator = tm.getSimOperatorNumeric(subId);
+                slotId = SubscriptionController.getInstance().getPhoneId(subId);
 
-        if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            TelephonyManager tm = TelephonyManager.getDefault();
-
-            String operator = tm.getSimOperatorNumericForPhone(slotId);
-
-            if (!TextUtils.isEmpty(operator)) {
-                if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
-                    MccTable.updateMccMncConfiguration(mContext, operator, false);
-                }
-                SubscriptionController.getInstance().setMccMnc(operator, subId);
-            } else {
-                logd("EVENT_RECORDS_LOADED Operator name is null");
-            }
-
-            String msisdn = tm.getLine1Number(subId);
-            ContentResolver contentResolver = mContext.getContentResolver();
-
-            if (msisdn != null) {
-                ContentValues number = new ContentValues(1);
-                number.put(SubscriptionManager.NUMBER, msisdn);
-                contentResolver.update(SubscriptionManager.CONTENT_URI, number,
-                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
-                        + Long.toString(subId), null);
-            }
-
-            SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
-            String nameToSet;
-            String simCarrierName = tm.getSimOperatorName(subId);
-            ContentValues name = new ContentValues(1);
-
-            if (subInfo != null && subInfo.getNameSource() !=
-                    SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                if (!TextUtils.isEmpty(simCarrierName)) {
-                    nameToSet = simCarrierName;
+                if (!TextUtils.isEmpty(operator)) {
+                    if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
+                        MccTable.updateMccMncConfiguration(mContext, operator, false);
+                    }
+                    SubscriptionController.getInstance().setMccMnc(operator, subId);
                 } else {
-                    nameToSet = "CARD " + Integer.toString(slotId + 1);
+                    logd("EVENT_RECORDS_LOADED Operator name is null");
                 }
-                name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                logd("sim name = " + nameToSet);
-                contentResolver.update(SubscriptionManager.CONTENT_URI, name,
-                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                        + "=" + Long.toString(subId), null);
+
+                String msisdn = tm.getLine1Number(subId);
+                ContentResolver contentResolver = mContext.getContentResolver();
+
+                if (msisdn != null) {
+                    ContentValues number = new ContentValues(1);
+                    number.put(SubscriptionManager.NUMBER, msisdn);
+                    contentResolver.update(SubscriptionManager.CONTENT_URI, number,
+                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
+                                    + Long.toString(subId), null);
+                }
+
+                SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
+                String nameToSet;
+                String simCarrierName = tm.getSimOperatorName(subId);
+                ContentValues name = new ContentValues(1);
+
+                if (subInfo != null && subInfo.getNameSource() !=
+                        SubscriptionManager.NAME_SOURCE_USER_INPUT) {
+                    if (!TextUtils.isEmpty(simCarrierName)) {
+                        nameToSet = simCarrierName;
+                    } else {
+                        nameToSet = "CARD " + Integer.toString(slotId + 1);
+                    }
+                    name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                    logd("sim name = " + nameToSet);
+                    contentResolver.update(SubscriptionManager.CONTENT_URI, name,
+                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                                    + "=" + Long.toString(subId), null);
+                }
+
+                /* Update preferred network type and network selection mode on SIM change.
+                 * Storing last subId in SharedPreference for now to detect SIM change. */
+                SharedPreferences sp =
+                        PreferenceManager.getDefaultSharedPreferences(mContext);
+                int storedSubId = sp.getInt(CURR_SUBID + slotId, -1);
+
+                if (storedSubId != subId) {
+                    int networkType = RILConstants.PREFERRED_NETWORK_MODE;
+
+                    // Set the modem network mode
+                    mPhone[slotId].setPreferredNetworkType(networkType, null);
+                    Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
+                            Settings.Global.PREFERRED_NETWORK_MODE + subId,
+                            networkType);
+
+                    // Only support automatic selection mode on SIM change.
+                    mPhone[slotId].getNetworkSelectionMode(
+                            obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE,
+                                    new Integer(slotId)));
+
+                    // Update stored subId
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.putInt(CURR_SUBID + slotId, subId);
+                    editor.apply();
+                }
+
+                // Update set of enabled carrier apps now that the privilege rules may have changed.
+                CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
+                        mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
+
+                broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+                updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
             }
-
-            /* Update preferred network type and network selection mode on SIM change.
-             * Storing last subId in SharedPreference for now to detect SIM change. */
-            SharedPreferences sp =
-                    PreferenceManager.getDefaultSharedPreferences(mContext);
-            int storedSubId = sp.getInt(CURR_SUBID + slotId, -1);
-
-            if (storedSubId != subId) {
-                int networkType = RILConstants.PREFERRED_NETWORK_MODE;
-
-                // Set the modem network mode
-                mPhone[slotId].setPreferredNetworkType(networkType, null);
-                Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
-                        Settings.Global.PREFERRED_NETWORK_MODE + subId,
-                        networkType);
-
-                // Only support automatic selection mode on SIM change.
-                mPhone[slotId].getNetworkSelectionMode(
-                        obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE, new Integer(slotId)));
-
-                // Update stored subId
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putInt(CURR_SUBID + slotId, subId);
-                editor.apply();
-            }
-        } else {
-            logd("Invalid subId, could not update ContentResolver");
         }
-
-        // Update set of enabled carrier apps now that the privilege rules may have changed.
-        CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
-                mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
-
-        broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
-        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
     private void updateCarrierServices(int slotId, String simState) {

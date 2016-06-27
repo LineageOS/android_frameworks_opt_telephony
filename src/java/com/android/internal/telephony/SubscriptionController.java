@@ -790,16 +790,15 @@ public class SubscriptionController extends ISub.Stub {
             }
 
             // Set Display name after sub id is set above so as to get valid simCarrierName
-            int[] subIds = getSubId(slotId);
-            if (subIds == null || subIds.length == 0) {
+            int subId = getSubIdUsingPhoneId(slotId);
+            if (!SubscriptionManager.isValidSubscriptionId(subId)) {
                 if (DBG) {
-                    logdl("[addSubInfoRecord]- getSubId failed subIds == null || length == 0 subIds="
-                            + subIds);
+                    logdl("[addSubInfoRecord]- getSubId failed invalid subId = " + subId);
                 }
                 return -1;
             }
             if (setDisplayName) {
-                String simCarrierName = mTelephonyManager.getSimOperatorName(subIds[0]);
+                String simCarrierName = mTelephonyManager.getSimOperatorName(subId);
                 String nameToSet;
 
                 if (!TextUtils.isEmpty(simCarrierName)) {
@@ -812,7 +811,7 @@ public class SubscriptionController extends ISub.Stub {
                 value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                 resolver.update(SubscriptionManager.CONTENT_URI, value,
                         SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
-                                "=" + Long.toString(subIds[0]), null);
+                                "=" + Long.toString(subId), null);
 
                 if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
             }
@@ -839,11 +838,10 @@ public class SubscriptionController extends ISub.Stub {
     public boolean setPlmnSpn(int slotId, boolean showPlmn, String plmn, boolean showSpn,
                               String spn) {
         synchronized (mLock) {
-            int[] subIds = getSubId(slotId);
+            int subId = getSubIdUsingPhoneId(slotId);
             if (mContext.getPackageManager().resolveContentProvider(
                     SubscriptionManager.CONTENT_URI.getAuthority(), 0) == null ||
-                    subIds == null ||
-                    !SubscriptionManager.isValidSubscriptionId(subIds[0])) {
+                    !SubscriptionManager.isValidSubscriptionId(subId)) {
                 // No place to store this info. Notify registrants of the change anyway as they
                 // might retrieve the SPN/PLMN text from the SST sticky broadcast.
                 // TODO: This can be removed once SubscriptionController is not running on devices
@@ -867,9 +865,7 @@ public class SubscriptionController extends ISub.Stub {
             } else if (showSpn) {
                 carrierText = spn;
             }
-            for (int i = 0; i < subIds.length; i++) {
-                setCarrierText(carrierText, subIds[i]);
-            }
+            setCarrierText(carrierText, subId);
             return true;
         }
     }
@@ -1562,10 +1558,6 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         }
         return subIds[0];
-    }
-
-    public int[] getSubIdUsingSlotId(int slotId) {
-        return getSubId(slotId);
     }
 
     public List<SubscriptionInfo> getSubInfoUsingSlotIdWithCheck(int slotId, boolean needCheck,

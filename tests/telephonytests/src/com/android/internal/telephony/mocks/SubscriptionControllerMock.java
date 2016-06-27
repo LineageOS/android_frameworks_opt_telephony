@@ -243,10 +243,6 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public int[] getSubIdUsingSlotId(int slotId) {
-        return getSubId(slotId);
-    }
-    @Override
     public List<SubscriptionInfo> getSubInfoUsingSlotIdWithCheck(int slotId, boolean needCheck,
             String callingPackage) {
         throw new RuntimeException("not implemented");
