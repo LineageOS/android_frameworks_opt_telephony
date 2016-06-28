@@ -186,6 +186,7 @@ public abstract class Connection {
     private Bundle mExtras;
     private int mPhoneType;
     private boolean mAnsweringDisconnectsActiveCall;
+    private boolean mAllowAddCallDuringVideoCall;
 
     protected Connection(int phoneType) {
         mPhoneType = phoneType;
@@ -758,11 +759,12 @@ public abstract class Connection {
      * listeners.
      */
     public void setConnectionExtras(Bundle extras) {
-        if(extras != null) {
+        if (extras != null) {
             mExtras = new Bundle(extras);
         } else {
             mExtras = null;
         }
+
         for (Listener l : mListeners) {
             l.onExtrasChanged(mExtras);
         }
@@ -773,7 +775,7 @@ public abstract class Connection {
      * @return the connection extras.
      */
     public Bundle getConnectionExtras() {
-        return mExtras;
+        return mExtras == null ? null : new Bundle(mExtras);
     }
 
     /**
@@ -794,6 +796,14 @@ public abstract class Connection {
      */
     public void setActiveCallDisconnectedOnAnswer(boolean answeringDisconnectsActiveCall) {
         mAnsweringDisconnectsActiveCall = answeringDisconnectsActiveCall;
+    }
+
+    public boolean shouldAllowAddCallDuringVideoCall() {
+        return mAllowAddCallDuringVideoCall;
+    }
+
+    public void setAllowAddCallDuringVideoCall(boolean allowAddCallDuringVideoCall) {
+        mAllowAddCallDuringVideoCall = allowAddCallDuringVideoCall;
     }
 
     /**
