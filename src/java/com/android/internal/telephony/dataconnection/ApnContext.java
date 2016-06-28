@@ -418,9 +418,7 @@ public class ApnContext {
             } else {
                 mLocalLogs.add(log);
                 mNetworkRequests.add(networkRequest);
-                if (mNetworkRequests.size() == 1) {
-                    mDcTracker.setEnabled(apnIdForApnName(mApnType), true);
-                }
+                mDcTracker.setEnabled(apnIdForApnName(mApnType), true);
             }
         }
     }
