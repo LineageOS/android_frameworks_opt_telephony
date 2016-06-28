@@ -49,6 +49,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.Spanned;
+import android.text.TextPaint;
 import android.util.EventLog;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -81,6 +82,7 @@ public abstract class SMSDispatcher extends Handler {
     static final String TAG = "SMSDispatcher";    // accessed from inner class
     static final boolean DBG = false;
     private static final String SEND_NEXT_MSG_EXTRA = "SendNextMsg";
+    private static final float MAX_LABEL_SIZE_PX = 500f;
 
     /** Permission required to send SMS to short codes without user confirmation. */
     private static final String SEND_RESPOND_VIA_MESSAGE_PERMISSION =
@@ -920,7 +922,8 @@ public abstract class SMSDispatcher extends Handler {
         PackageManager pm = mContext.getPackageManager();
         try {
             ApplicationInfo appInfo = pm.getApplicationInfo(appPackage, 0);
-            return appInfo.loadLabel(pm);
+            String label = appInfo.loadLabel(pm).toString();
+            return convertSafeLabel(label, appPackage);
         } catch (PackageManager.NameNotFoundException e) {
             Rlog.e(TAG, "PackageManager Name Not Found for package " + appPackage);
             return appPackage;  // fall back to package name if we can't get app label
@@ -944,6 +947,52 @@ public abstract class SMSDispatcher extends Handler {
             packageName = sentIntent.getCreatorPackage();
         }
         return packageName;
+    }
+
+    /**
+     * Check appLabel with the addition that the returned label is safe for being presented
+     * in the UI since it will not contain new lines and the length will be limited to a
+     * reasonable amount. This prevents a malicious party to influence UI
+     * layout via the app label misleading the user into performing a
+     * detrimental for them action. If the label is too long it will be
+     * truncated and ellipsized at the end.
+     *
+     * @param label A string of appLabel from PackageItemInfo#loadLabel
+     * @param appPackage the package name of the app requesting to send an SMS
+     * @return Returns a CharSequence containing the item's label. If the
+     * item does not have a label, its name is returned.
+     */
+    private CharSequence convertSafeLabel(String labelStr, String appPackage) {
+        // If the label contains new line characters it may push the UI
+        // down to hide a part of it. Labels shouldn't have new line
+        // characters, so just truncate at the first time one is seen.
+        final int labelLength = labelStr.length();
+        int offset = 0;
+        while (offset < labelLength) {
+            final int codePoint = labelStr.codePointAt(offset);
+            final int type = Character.getType(codePoint);
+            if (type == Character.LINE_SEPARATOR
+                    || type == Character.CONTROL
+                    || type == Character.PARAGRAPH_SEPARATOR) {
+                labelStr = labelStr.substring(0, offset);
+                break;
+            }
+            // replace all non-break space to " " in order to be trimmed
+            if (type == Character.SPACE_SEPARATOR) {
+                labelStr = labelStr.substring(0, offset) + " " + labelStr.substring(offset +
+                        Character.charCount(codePoint));
+            }
+            offset += Character.charCount(codePoint);
+        }
+        labelStr = labelStr.trim();
+        if (labelStr.isEmpty()) {
+            return appPackage;
+        }
+        TextPaint paint = new TextPaint();
+        paint.setTextSize(42);
+
+        return TextUtils.ellipsize(labelStr, paint, MAX_LABEL_SIZE_PX,
+            TextUtils.TruncateAt.END);
     }
 
     /**
