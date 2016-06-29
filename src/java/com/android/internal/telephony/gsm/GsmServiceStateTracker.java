@@ -928,6 +928,9 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
          * agreements and MVNO's.
          */
         boolean roaming = (mGsmRoaming || mDataRoaming);
+        log("updateRoamingState: considered roaming? " + isOperatorConsideredRoaming(mNewSS));
+        log("updateRoamingState: is same named operator? " + isSameNamedOperators(mNewSS));
+        log("updateRoamingState: is operator considered non roaming " + isOperatorConsideredNonRoaming(mNewSS));
         if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS) &&
                 (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
             roaming = false;
@@ -965,6 +968,7 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
         // set us to false
         if (mNewSS.getState() == ServiceState.STATE_OUT_OF_SERVICE &&
                 mNewSS.getOperatorNumeric() == null) {
+            log("updateRoamingState: out of service, ignore roaming state");
             roaming = false;
         }
 
