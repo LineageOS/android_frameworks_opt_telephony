@@ -1561,6 +1561,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public long getVtDataUsage() {
+        return mCT.getVtDataUsage();
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ImsPhone extends:");
         super.dump(fd, pw, args);

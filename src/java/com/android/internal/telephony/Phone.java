@@ -3300,6 +3300,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return this;
     }
 
+    public long getVtDataUsage() {
+        if (mImsPhone == null) return 0;
+        return mImsPhone.getVtDataUsage();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
