@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
+import com.android.internal.R;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
@@ -23,7 +24,9 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
 
+import android.content.Context;
 import android.net.Uri;
+import android.telecom.PhoneAccount;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.util.Log;
@@ -44,6 +47,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * @hide
  */
 public class ImsExternalConnection extends Connection {
+
+    private static final String CONFERENCE_PREFIX = "conf";
+    private final Context mContext;
 
     public interface Listener {
         void onPullExternalCall(ImsExternalConnection connection);
@@ -79,6 +85,7 @@ public class ImsExternalConnection extends Connection {
 
     protected ImsExternalConnection(Phone phone, int callId, Uri address, boolean isPullable) {
         super(phone.getPhoneType());
+        mContext = phone.getContext();
         mCall = new ImsExternalCall(phone, this);
         mCallId = callId;
         setExternalConnectionAddress(address);
@@ -215,6 +222,15 @@ public class ImsExternalConnection extends Connection {
     public void setExternalConnectionAddress(Uri address) {
         mOriginalAddress = address;
 
+        if (PhoneAccount.SCHEME_SIP.equals(address.getScheme())) {
+            if (address.getSchemeSpecificPart().startsWith(CONFERENCE_PREFIX)) {
+                mCnapName = mContext.getString(com.android.internal.R.string.conference_call);
+                mCnapNamePresentation = PhoneConstants.PRESENTATION_ALLOWED;
+                mAddress = "";
+                mNumberPresentation = PhoneConstants.PRESENTATION_RESTRICTED;
+                return;
+            }
+        }
         Uri telUri = PhoneNumberUtils.convertSipUriToTelUri(address);
         mAddress = telUri.getSchemeSpecificPart();
     }
