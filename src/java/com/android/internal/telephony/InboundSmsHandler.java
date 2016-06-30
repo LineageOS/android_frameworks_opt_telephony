@@ -929,18 +929,33 @@ public abstract class InboundSmsHandler extends StateMachine {
         } else {
             loge("UiccCard not initialized.");
         }
-        List<String> systemPackages =
-            getSystemAppForIntent(new Intent(CarrierMessagingService.SERVICE_INTERFACE));
 
         if (carrierPackages != null && carrierPackages.size() == 1) {
             log("Found carrier package.");
             CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
                     tracker.getFormat(), resultReceiver);
             CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter,
-                    userUnlocked, true /* filterWithVvm */);
+                    userUnlocked);
             smsFilter.filterSms(carrierPackages.get(0), smsFilterCallback);
             return true;
         }
+
+        // It is possible that carrier app is not present as a CarrierPackage, but instead as a
+        // system app
+        List<String> systemPackages =
+                getSystemAppForIntent(new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+
+        if (systemPackages != null && systemPackages.size() == 1) {
+            log("Found system package.");
+            CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
+                    tracker.getFormat(), resultReceiver);
+            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter,
+                    userUnlocked);
+            smsFilter.filterSms(systemPackages.get(0), smsFilterCallback);
+            return true;
+        }
+        logv("Unable to find carrier package: " + carrierPackages
+                + ", nor systemPackages: " + systemPackages);
 
         if (VisualVoicemailSmsFilter.filter(
                 mContext, pdus, tracker.getFormat(), destPort, mPhone.getSubId())) {
@@ -949,17 +964,6 @@ public abstract class InboundSmsHandler extends StateMachine {
             return true;
         }
 
-        if (systemPackages != null && systemPackages.size() == 1) {
-            log("Found system package.");
-            CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
-                    tracker.getFormat(), resultReceiver);
-            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter,
-                    userUnlocked, false);
-            smsFilter.filterSms(systemPackages.get(0), smsFilterCallback);
-            return true;
-        }
-        logv("Unable to find carrier package: " + carrierPackages
-                + ", nor systemPackages: " + systemPackages);
         return false;
     }
 
@@ -1387,13 +1391,10 @@ public abstract class InboundSmsHandler extends StateMachine {
     private final class CarrierSmsFilterCallback extends ICarrierMessagingCallback.Stub {
         private final CarrierSmsFilter mSmsFilter;
         private final boolean mUserUnlocked;
-        private final boolean mFilterWithVvm;
 
-        CarrierSmsFilterCallback(CarrierSmsFilter smsFilter, boolean userUnlocked,
-                boolean filterWithVvm) {
+        CarrierSmsFilterCallback(CarrierSmsFilter smsFilter, boolean userUnlocked) {
             mSmsFilter = smsFilter;
             mUserUnlocked = userUnlocked;
-            mFilterWithVvm = filterWithVvm;
         }
 
         /**
@@ -1408,13 +1409,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             try {
                 logv("onFilterComplete: result is " + result);
                 if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
-                    if (mFilterWithVvm) {
-                        if (VisualVoicemailSmsFilter.filter(mContext, mSmsFilter.mPdus,
-                                mSmsFilter.mSmsFormat, mSmsFilter.mDestPort, mPhone.getSubId())) {
-                            log("Visual voicemail SMS dropped");
-                            dropSms(mSmsFilter.mSmsBroadcastReceiver);
-                            return;
-                        }
+                    if (VisualVoicemailSmsFilter.filter(mContext, mSmsFilter.mPdus,
+                            mSmsFilter.mSmsFormat, mSmsFilter.mDestPort, mPhone.getSubId())) {
+                        log("Visual voicemail SMS dropped");
+                        dropSms(mSmsFilter.mSmsBroadcastReceiver);
+                        return;
                     }
 
                     if (mUserUnlocked) {
