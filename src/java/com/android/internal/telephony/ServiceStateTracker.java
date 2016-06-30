@@ -636,6 +636,7 @@ public class ServiceStateTracker extends Handler {
     public boolean getDesiredPowerState() {
         return mDesiredPowerState;
     }
+    public boolean getPowerStateFromCarrier() { return !mRadioDisabledByCarrier; }
 
     private SignalStrength mLastSignalStrength = null;
     protected boolean notifySignalStrength() {
@@ -808,7 +809,7 @@ public class ServiceStateTracker extends Handler {
      */
     public void setRadioPowerFromCarrier(boolean enable) {
         mRadioDisabledByCarrier = !enable;
-        setRadioPower(enable);
+        setPowerStateToDesired();
     }
 
     /**
@@ -2291,11 +2292,10 @@ public class ServiceStateTracker extends Handler {
         }
 
         // If we want it on and it's off, turn it on
-        if (mDesiredPowerState
-                && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF &&
-                !mRadioDisabledByCarrier) {
+        if (mDesiredPowerState && !mRadioDisabledByCarrier
+                && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             mCi.setRadioPower(true, null);
-        } else if (!mDesiredPowerState && mCi.getRadioState().isOn()) {
+        } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState().isOn()) {
             // If it's on and available and we want it off gracefully
             if (mPhone.isPhoneTypeGsm() && mPowerOffDelayNeed) {
                 if (mImsRegistrationOnOff && !mAlarmSwitch) {
