@@ -65,7 +65,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private static final boolean DBG = false;
 
-    private static final int EVENT_SIM_LOCKED_QUERY_ICCID_DONE = 1;
+    protected static final int EVENT_SIM_LOCKED_QUERY_ICCID_DONE = 1;
     private static final int EVENT_GET_NETWORK_SELECTION_MODE_DONE = 2;
     private static final int EVENT_SIM_LOADED = 3;
     private static final int EVENT_SIM_ABSENT = 4;
@@ -419,7 +419,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private void handleSimLoaded(int slotId) {
+    protected void handleSimLoaded(int slotId) {
         logd("handleSimStateLoadedInternal: slotId: " + slotId);
 
         // The SIM should be loaded at this state, but it is possible in cases such as SIM being
