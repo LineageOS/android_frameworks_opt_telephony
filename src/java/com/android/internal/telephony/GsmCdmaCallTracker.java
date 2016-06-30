@@ -160,9 +160,10 @@ public class GsmCdmaCallTracker extends CallTracker {
         updatePhoneType(false);
     }
 
-    private void updatePhoneType(boolean init) {
-        if (!init) {
+    private void updatePhoneType(boolean duringInit) {
+        if (!duringInit) {
             reset();
+            pollCallsWhenSafe();
         }
         if (mPhone.isPhoneTypeGsm()) {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_GSM];
