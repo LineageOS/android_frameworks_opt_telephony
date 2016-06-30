@@ -458,6 +458,7 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getCurrentCalls (Message result) {
+        SimulatedCommandsVerifier.getInstance().getCurrentCalls(result);
         if ((mState == RadioState.RADIO_ON) && !isSimLocked()) {
             //Rlog.i("GSM", "[SimCmds] getCurrentCalls");
             resultSuccess(result, simulatedCallState.getDriverCalls());

@@ -350,5 +350,17 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         verify(mHandler,times(1)).sendMessageAtTime(mCaptorMessage.capture(), mCaptorLong.capture());
         assertEquals(VOICE_CALL_ENDED_EVENT, mCaptorMessage.getValue().what);
     }
+
+    @Test @SmallTest
+    public void testUpdatePhoneType() {
+        // verify getCurrentCalls is called on init
+        verify(mSimulatedCommandsVerifier).getCurrentCalls(any(Message.class));
+
+        // update phone type
+        mCTUT.updatePhoneType();
+
+        // verify getCurrentCalls is called on updating phone type
+        verify(mSimulatedCommandsVerifier, times(2)).getCurrentCalls(any(Message.class));
+    }
 }
 
