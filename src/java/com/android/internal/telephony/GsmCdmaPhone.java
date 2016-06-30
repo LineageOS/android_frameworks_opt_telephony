@@ -266,8 +266,6 @@ public class GsmCdmaPhone extends Phone {
     private void initRatSpecific(int precisePhoneType) {
         mPendingMMIs.clear();
         mIccPhoneBookIntManager.updateIccRecords(null);
-        //todo: maybe not needed?? should the count also be updated on sim_state_absent?
-        mVmCount = 0;
         mEsn = null;
         mMeid = null;
 
