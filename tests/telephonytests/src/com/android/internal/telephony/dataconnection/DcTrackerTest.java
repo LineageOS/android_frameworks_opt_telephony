@@ -735,9 +735,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(intArgumentCaptor.getValue(), null));
         waitForMs(200);
 
-        NetworkCapabilities nc = new NetworkCapabilities();
-        nc.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        NetworkRequest nr = new NetworkRequest(nc, 0, 0);
+        NetworkRequest nr = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build();
         LocalLog l = new LocalLog(100);
         mDct.requestNetwork(nr, l);
         waitForMs(200);

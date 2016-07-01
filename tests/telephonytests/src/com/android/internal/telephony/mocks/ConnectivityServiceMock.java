@@ -755,9 +755,8 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
         }
 
         NetworkRequest networkRequest = new NetworkRequest(networkCapabilities, legacyType,
-                nextNetworkRequestId());
-        NetworkRequestInfo nri = new NetworkRequestInfo(messenger, networkRequest, binder,
-                NetworkRequestInfo.REQUEST);
+                nextNetworkRequestId(), NetworkRequest.Type.REQUEST);
+        NetworkRequestInfo nri = new NetworkRequestInfo(messenger, networkRequest, binder, true);
         if (DBG) log("requestNetwork for " + nri);
 
         mHandler.sendMessage(mHandler.obtainMessage(EVENT_REGISTER_NETWORK_REQUEST, nri));
