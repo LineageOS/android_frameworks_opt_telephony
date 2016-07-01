@@ -140,9 +140,9 @@ public class ApnContextTest extends TelephonyTest {
     @SmallTest
     public void testNetworkRequest() throws Exception {
         LocalLog log = new LocalLog(3);
-        NetworkCapabilities nc = new NetworkCapabilities();
-        NetworkRequest nr = new NetworkRequest(nc, 0, 0);
+        NetworkRequest nr = new NetworkRequest.Builder().build();
         mApnContext.requestNetwork(nr, log);
+
         verify(mDcTracker, times(1)).setEnabled(eq(DctConstants.APN_DEFAULT_ID), eq(true));
         mApnContext.requestNetwork(nr, log);
         verify(mDcTracker, times(1)).setEnabled(eq(DctConstants.APN_DEFAULT_ID), eq(true));
