@@ -208,7 +208,8 @@ public class DcTracker extends Handler {
         PS_RESTRICTED(" - mIsPsRestricted= true"),
         UNDESIRED_POWER_STATE(" - desiredPowerState= false"),
         INTERNAL_DATA_DISABLED(" - mInternalDataEnabled= false"),
-        DEFAULT_DATA_UNSELECTED(" - defaultDataSelected= false");
+        DEFAULT_DATA_UNSELECTED(" - defaultDataSelected= false"),
+        RADIO_DISABLED_BY_CARRIER(" - powerStateFromCarrier= false");
 
         public String mFailReasonStr;
 
@@ -1369,9 +1370,11 @@ public class DcTracker extends Handler {
 
         boolean attachedState = mAttached.get();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
+        boolean radioStateFromCarrier = mPhone.getServiceStateTracker().getPowerStateFromCarrier();
         int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
         if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
             desiredPowerState = true;
+            radioStateFromCarrier = true;
         }
 
         IccRecords r = mIccRecords.get();
@@ -1432,6 +1435,10 @@ public class DcTracker extends Handler {
         if (!desiredPowerState) {
             if(failureReason == null) return false;
             failureReason.addDataAllowFailReason(DataAllowFailReasonType.UNDESIRED_POWER_STATE);
+        }
+        if (!radioStateFromCarrier) {
+            if(failureReason == null) return false;
+            failureReason.addDataAllowFailReason(DataAllowFailReasonType.RADIO_DISABLED_BY_CARRIER);
         }
 
         return failureReason == null || !failureReason.isFailed();
