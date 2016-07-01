@@ -837,14 +837,17 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
                             regState = Integer.parseInt(states[0]);
 
                             // states[3] (if present) is the current radio technology
-                            if (states.length >= 4 && states[3] != null) {
+                            if (states.length >= 4 && states[3] != null &&
+                                    !"null".equals(states[3])) {
                                 type = Integer.parseInt(states[3]);
                             }
                             if ((states.length >= 5 ) &&
-                                    (regState == ServiceState.RIL_REG_STATE_DENIED)) {
+                                    (regState == ServiceState.RIL_REG_STATE_DENIED) &&
+                                    !"null".equals(states[4])) {
                                 mNewReasonDataDenied = Integer.parseInt(states[4]);
                             }
-                            if (states.length >= 6) {
+                            if (states.length >= 6 && states[5] != null &&
+                                    !"null".equals(states[5])) {
                                 mNewMaxDataCalls = Integer.parseInt(states[5]);
                             }
                         } catch (NumberFormatException ex) {
