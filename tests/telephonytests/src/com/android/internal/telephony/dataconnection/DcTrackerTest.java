@@ -308,6 +308,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(true).when(mSimRecords).getRecordsLoaded();
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
         doReturn(true).when(mSST).getDesiredPowerState();
+        doReturn(true).when(mSST).getPowerStateFromCarrier();
         doAnswer(
                 new Answer<Void>() {
                     @Override
