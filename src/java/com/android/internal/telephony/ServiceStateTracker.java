@@ -2418,6 +2418,10 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    public boolean isRadioOn() {
+        return mCi.getRadioState() == CommandsInterface.RadioState.RADIO_ON;
+    }
+
     /**
      * A complete "service state" from our perspective is
      * composed of a handful of separate requests to the radio.
