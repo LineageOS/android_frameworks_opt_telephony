@@ -47,6 +47,7 @@ import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.Spanned;
 import android.text.TextPaint;
+import android.text.TextUtils;
 import android.util.EventLog;
 import android.view.LayoutInflater;
 import android.view.View;
