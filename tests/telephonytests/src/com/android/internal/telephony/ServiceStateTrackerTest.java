@@ -153,6 +153,39 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
+    public void testSetRadioPowerFromCarrier() {
+        // Carrier disable radio power
+        sst.setRadioPowerFromCarrier(false);
+        waitForMs(100);
+        assertFalse(mSimulatedCommands.getRadioState().isOn());
+        assertTrue(sst.getDesiredPowerState());
+        assertFalse(sst.getPowerStateFromCarrier());
+
+        // User toggle radio power will not overrides carrier settings
+        sst.setRadioPower(true);
+        waitForMs(100);
+        assertFalse(mSimulatedCommands.getRadioState().isOn());
+        assertTrue(sst.getDesiredPowerState());
+        assertFalse(sst.getPowerStateFromCarrier());
+
+        // Carrier re-enable radio power
+        sst.setRadioPowerFromCarrier(true);
+        waitForMs(100);
+        assertTrue(mSimulatedCommands.getRadioState().isOn());
+        assertTrue(sst.getDesiredPowerState());
+        assertTrue(sst.getPowerStateFromCarrier());
+
+        // User toggle radio power off (airplane mode) and set carrier on
+        sst.setRadioPower(false);
+        sst.setRadioPowerFromCarrier(true);
+        waitForMs(100);
+        assertFalse(mSimulatedCommands.getRadioState().isOn());
+        assertFalse(sst.getDesiredPowerState());
+        assertTrue(sst.getPowerStateFromCarrier());
+    }
+
+    @Test
+    @MediumTest
     public void testNoRilTrafficAfterSetRadioPower() {
         sst.setRadioPower(true);
         final int getOperatorCallCount = mSimulatedCommands.getGetOperatorCallCount();
