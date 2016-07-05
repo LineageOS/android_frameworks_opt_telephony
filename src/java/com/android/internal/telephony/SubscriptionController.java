@@ -977,7 +977,7 @@ public class SubscriptionController extends ISub.Stub {
 
                             // Set the default sub if not set or if single sim device
                             if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                    || subIdCountMax == 1) {
+                                    || (subIdCountMax == 1) || (!isActiveSubId(defaultSubId))) {
                                 setDefaultFallbackSubId(subId);
                             }
                             // If single sim device, set this subscription as the default for everything
