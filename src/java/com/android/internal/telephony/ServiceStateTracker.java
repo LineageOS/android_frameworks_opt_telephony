@@ -1522,8 +1522,7 @@ public class ServiceStateTracker extends Handler {
                         mNewSS.setCdmaRoamingIndicator(mDefaultRoamingIndicator);
                     } else if (namMatch && !mIsInPrl) {
                         // TODO this will be removed when we handle roaming on LTE on CDMA+LTE phones
-                        if (mNewSS.getRilVoiceRadioTechnology()
-                                == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+                        if (isRatLte(mNewSS.getRilVoiceRadioTechnology())) {
                             log("Turn off roaming indicator as voice is LTE");
                             mNewSS.setCdmaRoamingIndicator(EriInfo.ROAMING_INDICATOR_OFF);
                         } else {
@@ -1850,8 +1849,7 @@ public class ServiceStateTracker extends Handler {
                     if ((oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN &&
                             newDataRAT != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) ||
                             (ServiceState.isCdma(oldDataRAT) &&
-                                    newDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
-                            (oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_LTE &&
+                                    isRatLte(newDataRAT)) || (isRatLte(oldDataRAT) &&
                                     ServiceState.isCdma(newDataRAT))) {
                         mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
                     }
@@ -2999,15 +2997,15 @@ public class ServiceStateTracker extends Handler {
 
         boolean has4gHandoff =
                 mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&
-                        (((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
+                        ((isRatLte(mSS.getRilDataRadioTechnology()) &&
                                 (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) ||
                                 ((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD) &&
-                                        (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)));
+                                        isRatLte(mNewSS.getRilDataRadioTechnology())));
 
         boolean hasMultiApnSupport =
-                (((mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
+                ((isRatLte(mNewSS.getRilDataRadioTechnology()) ||
                         (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) &&
-                        ((mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
+                        (!isRatLte(mSS.getRilDataRadioTechnology()) &&
                                 (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
 
         boolean hasLostMultiApnSupport =
@@ -3077,7 +3075,7 @@ public class ServiceStateTracker extends Handler {
             boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) == null ? false :
                     (mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null);
             if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
-                    (mSS.getRilVoiceRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
+                    (!isRatLte(mSS.getRilVoiceRadioTechnology()) ||
                             mPhone.getContext().getResources().getBoolean(com.android.internal.R.
                                     bool.config_LTE_eri_for_network_name))) {
                 // Only when CDMA is in service, ERI will take effect
@@ -3103,7 +3101,7 @@ public class ServiceStateTracker extends Handler {
 
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
                     mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)
-                    && mSS.getRilVoiceRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+                    && !isRatLte(mSS.getRilVoiceRadioTechnology())) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
                 // one configured in SIM, use operator name from CSIM record. Note that ERI, SID,
                 // and NID are CDMA only, not applicable to LTE.
@@ -4315,7 +4313,7 @@ public class ServiceStateTracker extends Handler {
         //override isGsm for CDMA LTE
         if (mPhone.isPhoneTypeGsm() ||
                 (mPhone.isPhoneTypeCdmaLte() &&
-                        mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)) {
+                        isRatLte(mSS.getRilDataRadioTechnology()))) {
             isGsm = true;
         }
 
@@ -4847,5 +4845,13 @@ public class ServiceStateTracker extends Handler {
     /** Check if the device is shutting down. */
     public boolean isDeviceShuttingDown() {
         return mDeviceShuttingDown;
+    }
+
+    /**
+     * {@hide}
+     */
+    public boolean isRatLte(int rat) {
+        return (rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
+            rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA);
     }
 }

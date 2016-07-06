@@ -3045,7 +3045,7 @@ public class GsmCdmaPhone extends Phone {
         logd("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech);
 
         // Check for a voice over lte replacement
-        if ((newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)
+        if (getServiceStateTracker().isRatLte(newVoiceRadioTech)
                 || (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
             CarrierConfigManager configMgr = (CarrierConfigManager)
                     getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
