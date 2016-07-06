@@ -554,7 +554,9 @@ public class SIMRecords extends IccRecords {
                 // Update dialNumber if not empty and CFU is enabled.
                 // Spec reference for EF_CFIS contents, TS 51.011 section 10.3.46.
                 if (enable && !TextUtils.isEmpty(dialNumber)) {
-                    log("EF_CFIS: updating cf number, " + dialNumber);
+                    if (VDBG) {
+                        logv("EF_CFIS: updating cf number, " + dialNumber);
+                    }
                     byte[] bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(dialNumber);
 
                     System.arraycopy(bcdNumber, 0, mEfCfis, CFIS_TON_NPI_OFFSET, bcdNumber.length);
