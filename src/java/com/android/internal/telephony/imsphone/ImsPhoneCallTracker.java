@@ -2345,7 +2345,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // eventually counted when next getVtDataUsage is called.
         if (mState != PhoneConstants.State.IDLE) {
             for (ImsPhoneConnection conn : mConnections) {
-                conn.getVideoProvider().onRequestConnectionDataUsage();
+                android.telecom.Connection.VideoProvider videoProvider = conn.getVideoProvider();
+                if (videoProvider != null) {
+                    videoProvider.onRequestConnectionDataUsage();
+                }
             }
         }
 
