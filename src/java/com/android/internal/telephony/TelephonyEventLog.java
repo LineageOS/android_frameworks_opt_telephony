@@ -137,8 +137,6 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
     public static final String DATA_KEY_SMS_MESSAGE_REF = "messageRef";
     public static final String DATA_KEY_SMS_ACK_PDU = "ackPDU";
     public static final String DATA_KEY_SMS_ERROR_CODE = "errorCode";
-    public static final String DATA_KEY_CALLEE = "callee";
-    public static final String DATA_KEY_PARTICIPANTS = "participants";
     public static final String DATA_KEY_SRC_TECH = "src-tech";
     public static final String DATA_KEY_TARGET_TECH = "target-tech";
 
@@ -508,16 +506,12 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
         return null;
     }
 
-    public void writeOnImsCallStart(ImsCallSession session, String callee) {
-        Bundle b = new Bundle();
-        b.putString(DATA_KEY_CALLEE, callee);
-        writeEvent(TAG_IMS_CALL_START, getCallId(session), -1, b);
+    public void writeOnImsCallStart(ImsCallSession session) {
+        writeEvent(TAG_IMS_CALL_START, getCallId(session), -1, null);
     }
 
-    public void writeOnImsCallStartConference(ImsCallSession session, String[] participants) {
-        Bundle b = new Bundle();
-        b.putStringArray(DATA_KEY_PARTICIPANTS, participants);
-        writeEvent(TAG_IMS_CALL_START_CONFERENCE, getCallId(session), -1, b);
+    public void writeOnImsCallStartConference(ImsCallSession session) {
+        writeEvent(TAG_IMS_CALL_START_CONFERENCE, getCallId(session), -1, null);
     }
 
     public void writeOnImsCallReceive(ImsCallSession session) {
