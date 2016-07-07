@@ -557,7 +557,17 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
+    public void requestLinkProperties(NetworkRequest networkRequest) {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
     public NetworkCapabilities getNetworkCapabilities(Network network) {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public void requestNetworkCapabilities(NetworkRequest networkRequest) {
         throw new RuntimeException("not implemented");
     }
 
