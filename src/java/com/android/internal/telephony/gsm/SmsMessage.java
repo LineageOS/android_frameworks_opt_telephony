@@ -889,7 +889,12 @@ public class SmsMessage extends SmsMessageBase {
      * @return TextEncodingDetails
      */
     public static TextEncodingDetails calculateLength(CharSequence msgBody,
-            boolean use7bitOnly) {
+                                                      boolean use7bitOnly) {
+        return calculateLength(msgBody, use7bitOnly, 0);
+    }
+
+    public static TextEncodingDetails calculateLength(CharSequence msgBody,
+            boolean use7bitOnly, int subId) {
         CharSequence newMsgBody = null;
         Resources r = Resources.getSystem();
         if (r.getBoolean(com.android.internal.R.bool.config_sms_force_7bit_encoding)) {
@@ -898,7 +903,7 @@ public class SmsMessage extends SmsMessageBase {
         if (TextUtils.isEmpty(newMsgBody)) {
             newMsgBody = msgBody;
         }
-        TextEncodingDetails ted = GsmAlphabet.countGsmSeptets(newMsgBody, use7bitOnly);
+        TextEncodingDetails ted = GsmAlphabet.countGsmSeptets(newMsgBody, use7bitOnly, subId);
         if (ted == null) {
             return SmsMessageBase.calcUnicodeEncodingDetails(newMsgBody);
         }

@@ -308,6 +308,24 @@ public class SmsMessage {
      * actually matched the encoding.
      */
 
+    /***
+     * @hide
+     */
+    public static int[] calculateLength(CharSequence msgBody, boolean use7bitOnly, int subId) {
+        // this function is for MO SMS
+        TextEncodingDetails ted = (useCdmaFormatForMoSms()) ?
+                com.android.internal.telephony.cdma.SmsMessage.calculateLength(msgBody, use7bitOnly,
+                        true) :
+                com.android.internal.telephony.gsm.SmsMessage.calculateLength(msgBody, use7bitOnly,
+                        subId);
+        int ret[] = new int[4];
+        ret[0] = ted.msgCount;
+        ret[1] = ted.codeUnitCount;
+        ret[2] = ted.codeUnitsRemaining;
+        ret[3] = ted.codeUnitSize;
+        return ret;
+    }
+
     /**
      * Calculates the number of SMS's required to encode the message body and
      * the number of characters remaining until the next message.
@@ -325,17 +343,7 @@ public class SmsMessage {
      *         code unit size (see the ENCODING_* definitions in SmsConstants)
      */
     public static int[] calculateLength(CharSequence msgBody, boolean use7bitOnly) {
-        // this function is for MO SMS
-        TextEncodingDetails ted = (useCdmaFormatForMoSms()) ?
-            com.android.internal.telephony.cdma.SmsMessage.calculateLength(msgBody, use7bitOnly,
-                    true) :
-            com.android.internal.telephony.gsm.SmsMessage.calculateLength(msgBody, use7bitOnly);
-        int ret[] = new int[4];
-        ret[0] = ted.msgCount;
-        ret[1] = ted.codeUnitCount;
-        ret[2] = ted.codeUnitsRemaining;
-        ret[3] = ted.codeUnitSize;
-        return ret;
+        return calculateLength(msgBody, use7bitOnly, 0);
     }
 
     /**
@@ -429,6 +437,13 @@ public class SmsMessage {
             pos = nextPos;
         }
         return result;
+    }
+
+    /**
+     * @hide
+     */
+    public static int[] calculateLength(String messageBody, boolean use7bitOnly, int subId) {
+        return calculateLength((CharSequence)messageBody, use7bitOnly, subId);
     }
 
     /**
