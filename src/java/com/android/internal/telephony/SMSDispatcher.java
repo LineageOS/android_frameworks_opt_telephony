@@ -1082,6 +1082,12 @@ public abstract class SMSDispatcher extends Handler {
                 return true;    // not a premium short code
             }
 
+            // Do not allow any premium sms during SuW
+            if (Settings.Global.getInt(mResolver, Settings.Global.DEVICE_PROVISIONED, 0) == 0) {
+                Rlog.e(TAG, "Can't send premium sms during Setup Wizard");
+                return false;
+            }
+
             // Wait for user confirmation unless the user has set permission to always allow/deny
             int premiumSmsPermission = mUsageMonitor.getPremiumSmsPermission(
                     tracker.mAppInfo.packageName);
