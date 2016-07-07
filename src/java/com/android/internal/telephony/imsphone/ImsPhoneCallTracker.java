@@ -572,7 +572,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     callees, mImsCallListener);
             conn.setImsCall(imsCall);
 
-            mEventLog.writeOnImsCallStart(imsCall.getSession(), callees[0]);
+            mEventLog.writeOnImsCallStart(imsCall.getSession());
 
             setVideoCallProvider(conn, imsCall);
             conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
