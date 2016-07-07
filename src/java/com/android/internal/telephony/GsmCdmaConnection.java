@@ -215,6 +215,9 @@ public class GsmCdmaConnection extends Connection {
 
     public void dispose() {
         clearPostDialListeners();
+        if (mParent != null) {
+            mParent.detach(this);
+        }
         releaseAllWakeLocks();
     }
 
