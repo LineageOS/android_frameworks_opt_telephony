@@ -741,6 +741,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         boolean hasAnyCallDisconnected = false;
         boolean needsPollDelay = false;
         boolean unknownConnectionAppeared = false;
+        int handoverConnectionsSize = mHandoverConnections.size();
 
         //CDMA
         boolean noConnectionExists = true;
@@ -1066,6 +1067,13 @@ public class GsmCdmaCallTracker extends CallTracker {
             mPhone.notifyPreciseCallStateChanged();
         }
 
+        // If all handover connections are mapped during this poll process clean it up
+        if (handoverConnectionsSize > 0 && mHandoverConnections.size() == 0) {
+            Phone imsPhone = mPhone.getImsPhone();
+            if (imsPhone != null) {
+                imsPhone.callEndCleanupHandOverCallIfAny();
+            }
+        }
         //dumpState();
     }
 
