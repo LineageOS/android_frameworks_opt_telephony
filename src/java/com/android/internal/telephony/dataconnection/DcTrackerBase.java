@@ -37,11 +37,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
@@ -845,8 +847,7 @@ public abstract class DcTrackerBase extends Handler {
      * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
      */
     public boolean getDataEnabled() {
-        boolean retVal = "true".equalsIgnoreCase(SystemProperties.get(
-                "ro.com.android.mobiledata", "true"));
+        boolean retVal = getDefaultDataEnabledSystemProperty();
         try {
             if (TelephonyManager.getDefault().getSimCount() == 1) {
                 retVal = Settings.Global.getInt(mResolver, Settings.Global.MOBILE_DATA,
@@ -858,13 +859,33 @@ public abstract class DcTrackerBase extends Handler {
             }
             if (DBG) log("getDataEnabled: getIntWithSubId retVal=" + retVal);
         } catch (SettingNotFoundException snfe) {
-            retVal = "true".equalsIgnoreCase(
-                    SystemProperties.get("ro.com.android.mobiledata", "true"));
+            retVal = getDefaultDataEnabledSystemProperty();
+
+            // try to read a default from CarrierConfig
+            final CarrierConfigManager carrierConfig = mPhone.getContext().getSystemService(
+                    CarrierConfigManager.class);
+            if (carrierConfig != null) {
+                final PersistableBundle configForSubId = carrierConfig.getConfigForSubId(
+                        mPhone.getSubId());
+                if (configForSubId != null) {
+                    retVal = configForSubId.getBoolean(
+                            CarrierConfigManager.KEY_DATA_ENABLED_BY_DEFAULT,
+                            getDefaultDataEnabledSystemProperty());
+                    if (DBG) {
+                        log("getDataEnabled: value retreived from carrier condfig mgr: " + retVal);
+                    }
+                }
+            }
             if (DBG) {
                 log("getDataEnabled: system property ro.com.android.mobiledata retVal=" + retVal);
             }
         }
         return retVal;
+    }
+
+    private static boolean getDefaultDataEnabledSystemProperty() {
+        return "true".equalsIgnoreCase(SystemProperties.get(
+                "ro.com.android.mobiledata", "true"));
     }
 
     // abstract methods
