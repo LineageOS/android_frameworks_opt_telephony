@@ -423,6 +423,7 @@ public class SmsMessage extends SmsMessageBase {
 
         bo.write(userData, 0, userData.length);
         ret.encodedMessage = bo.toByteArray();
+      System.out.println("getSubmitPdu " + ret);
         return ret;
     }
 
@@ -542,6 +543,7 @@ public class SmsMessage extends SmsMessageBase {
         bo.write(data, 0, data.length);
 
         ret.encodedMessage = bo.toByteArray();
+      System.out.println("getSubmitPdu " + ret);
         return ret;
     }
 
