@@ -99,6 +99,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     private int mNitzUpdateDiff = SystemProperties.getInt("ro.nitz_update_diff",
             NITZ_UPDATE_DIFF_DEFAULT);
 
+    /** Time stamp after 19 January 2038 is not supported under 32 bit */
+    private static final int MAX_NITZ_YEAR = 2037;
+
     private boolean mCdmaRoaming = false;
     protected boolean mDataRoaming = false;
     private int mRoamingIndicator = EriInfo.ROAMING_INDICATOR_OFF;
@@ -1600,6 +1603,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             String[] nitzSubs = nitz.split("[/:,+-]");
 
             int year = 2000 + Integer.parseInt(nitzSubs[0]);
+            if (year > MAX_NITZ_YEAR) {
+              if (DBG) loge("NITZ year: " + year + " exceeds limit, skip NITZ time update");
+              return;
+            }
             c.set(Calendar.YEAR, year);
 
             // month is 0 based!
