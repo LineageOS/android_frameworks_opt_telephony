@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -49,6 +50,8 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.util.ArrayMap;
+import android.util.Pair;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
@@ -82,6 +85,10 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
  */
 public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     static final String LOG_TAG = "ImsPhoneCallTracker";
+
+    public interface PhoneStateListener {
+        void onPhoneStateChanged(PhoneConstants.State oldState, PhoneConstants.State newState);
+    }
 
     private static final boolean DBG = true;
 
@@ -238,6 +245,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mAllowEmergencyVideoCalls = false;
 
     /**
+     * Listeners to changes in the phone state.  Intended for use by other interested IMS components
+     * without the need to register a full blown {@link android.telephony.PhoneStateListener}.
+     */
+    private List<PhoneStateListener> mPhoneStateListeners = new ArrayList<>();
+
+    /**
      * Carrier configuration option which determines if video calls which have been downgraded to an
      * audio call should be treated as if they are still video calls.
      */
@@ -254,6 +267,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * should be allowed.
      */
     private boolean mAllowAddCallDuringVideoCall = true;
+
+    /**
+     * Carrier configuration option which defines a mapping from pairs of
+     * {@link ImsReasonInfo#getCode()} and {@link ImsReasonInfo#getExtraMessage()} values to a new
+     * {@code ImsReasonInfo#CODE_*} value.
+     *
+     * See {@link CarrierConfigManager#KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY}.
+     */
+    private Map<Pair<Integer, String>, Integer> mImsReasonCodeMap = new ArrayMap<>();
 
     //***** Events
 
@@ -501,6 +523,31 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mAllowAddCallDuringVideoCall =
                 carrierConfig.getBoolean(
                         CarrierConfigManager.KEY_ALLOW_ADD_CALL_DURING_VIDEO_CALL_BOOL);
+
+        String[] mappings = carrierConfig
+                .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
+        if (mappings != null && mappings.length > 0) {
+            for (String mapping : mappings) {
+                String[] values = mapping.split(Pattern.quote("|"));
+                if (values.length != 3) {
+                    continue;
+                }
+
+                try {
+                    int fromCode = Integer.parseInt(values[0]);
+                    String message = values[1];
+                    int toCode = Integer.parseInt(values[2]);
+
+                    mImsReasonCodeMap.put(new Pair<>(fromCode, message), toCode);
+                    log("Loaded ImsReasonInfo mapping : fromCode = " + fromCode + " ; message = " +
+                            message + " ; toCode = " + toCode);
+                } catch (NumberFormatException nfe) {
+                    loge("Invalid ImsReasonInfo mapping found: " + mapping);
+                }
+            }
+        } else {
+            log("No carrier ImsReasonInfo mappings defined.");
+        }
     }
 
     private void handleEcmTimer(int action) {
@@ -557,6 +604,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (intentExtras.containsKey(ImsCallProfile.EXTRA_IS_CALL_PULL)) {
                     profile.mCallExtras.putBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL,
                             intentExtras.getBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL));
+                    conn.setIsPulledCall(true);
                 }
 
                 // Pack the OEM-specific call extras.
@@ -831,6 +879,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (mState != oldState) {
             mPhone.notifyPhoneStateChanged();
             mEventLog.writePhoneState(mState);
+            notifyPhoneStateChanged(oldState, mState);
         }
     }
 
@@ -1196,11 +1245,35 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    /**
+     * Returns the {@link ImsReasonInfo#getCode()}, potentially remapping to a new value based on
+     * the {@link ImsReasonInfo#getCode()} and {@link ImsReasonInfo#getExtraMessage()}.
+     *
+     * See {@link #mImsReasonCodeMap}.
+     *
+     * @param reasonInfo The {@link ImsReasonInfo}.
+     * @return The remapped code.
+     */
+    private int maybeRemapReasonCode(ImsReasonInfo reasonInfo) {
+        int code = reasonInfo.getCode();
+
+        Pair<Integer, String> toCheck = new Pair<>(code, reasonInfo.getExtraMessage());
+
+        if (mImsReasonCodeMap.containsKey(toCheck)) {
+            int toCode = mImsReasonCodeMap.get(toCheck);
+
+            log("maybeRemapReasonCode : fromCode = " + reasonInfo.getCode() + " ; message = "
+                    + reasonInfo.getExtraMessage() + " ; toCode = " + toCode);
+            return toCode;
+        }
+        return code;
+    }
+
     private int getDisconnectCauseFromReasonInfo(ImsReasonInfo reasonInfo) {
         int cause = DisconnectCause.ERROR_UNSPECIFIED;
 
         //int type = reasonInfo.getReasonType();
-        int code = reasonInfo.getCode();
+        int code = maybeRemapReasonCode(reasonInfo);
         switch (code) {
             case ImsReasonInfo.CODE_SIP_BAD_ADDRESS:
             case ImsReasonInfo.CODE_SIP_NOT_REACHABLE:
@@ -1213,14 +1286,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.LOCAL;
 
             case ImsReasonInfo.CODE_LOCAL_CALL_DECLINE:
+            case ImsReasonInfo.CODE_REMOTE_CALL_DECLINE:
+                // If the call has been declined locally (on this device), or on remotely (on
+                // another device using multiendpoint functionality), mark it as rejected.
                 return DisconnectCause.INCOMING_REJECTED;
 
             case ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE:
                 return DisconnectCause.NORMAL;
 
+            case ImsReasonInfo.CODE_SIP_FORBIDDEN:
+                return DisconnectCause.SERVER_ERROR;
+
             case ImsReasonInfo.CODE_SIP_REDIRECTED:
             case ImsReasonInfo.CODE_SIP_BAD_REQUEST:
-            case ImsReasonInfo.CODE_SIP_FORBIDDEN:
             case ImsReasonInfo.CODE_SIP_NOT_ACCEPTABLE:
             case ImsReasonInfo.CODE_SIP_USER_REJECTED:
             case ImsReasonInfo.CODE_SIP_GLOBAL_ERROR:
@@ -1259,6 +1337,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             case ImsReasonInfo.CODE_CALL_END_CAUSE_CALL_PULL:
                 return DisconnectCause.CALL_PULLED;
+
+            case ImsReasonInfo.CODE_MAXIMUM_NUMBER_OF_CALLS_REACHED:
+                return DisconnectCause.MAXIMUM_NUMBER_OF_CALLS_REACHED;
             default:
         }
 
@@ -2355,4 +2436,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         return mTotalVtDataUsage;
     }
+
+    public void registerPhoneStateListener(PhoneStateListener listener) {
+        mPhoneStateListeners.add(listener);
+    }
+
+    public void unregisterPhoneStateListener(PhoneStateListener listener) {
+        mPhoneStateListeners.remove(listener);
+    }
+
+    /**
+     * Notifies local telephony listeners of changes to the IMS phone state.
+     *
+     * @param oldState The old state.
+     * @param newState The new state.
+     */
+    private void notifyPhoneStateChanged(PhoneConstants.State oldState,
+            PhoneConstants.State newState) {
+
+        for (PhoneStateListener listener : mPhoneStateListeners) {
+            listener.onPhoneStateChanged(oldState, newState);
+        }
+    }
+
+
 }

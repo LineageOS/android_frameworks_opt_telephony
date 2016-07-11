@@ -118,10 +118,9 @@ public class TelephonyComponentFactory {
         return new ImsPhoneCallTracker(imsPhone);
     }
 
-    public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone,
-            ImsPullCall callPuller) {
+    public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone) {
 
-        return new ImsExternalCallTracker(imsPhone, callPuller);
+        return new ImsExternalCallTracker(imsPhone);
     }
 
     public CdmaSubscriptionSourceManager
