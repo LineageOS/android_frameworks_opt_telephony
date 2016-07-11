@@ -18,13 +18,8 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.*;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_EDGE;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_GPRS;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_UMTS;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_HSPA;
 
+import android.app.ActivityThread;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -44,7 +39,6 @@ import android.os.BatteryManager;
 import android.os.SystemProperties;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
-import android.provider.Settings.SettingNotFoundException;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.NeighboringCellInfo;
@@ -77,9 +71,6 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DataProfile;
-import com.android.internal.telephony.RadioCapability;
-import com.android.internal.telephony.TelephonyDevController;
-import com.android.internal.telephony.HardwareConfig;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -93,7 +84,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -110,7 +100,6 @@ class RILRequest {
     private static RILRequest sPool = null;
     private static int sPoolSize = 0;
     private static final int MAX_POOL_SIZE = 4;
-    private Context mContext;
 
     //***** Instance Variables
     int mSerial;
@@ -119,6 +108,7 @@ class RILRequest {
     Parcel mParcel;
     RILRequest mNext;
     int mWakeLockType;
+    String mClientId;
     // time in ms when RIL request was made
     long mStartTimeMs;
 
@@ -152,6 +142,7 @@ class RILRequest {
         rr.mParcel = Parcel.obtain();
 
         rr.mWakeLockType = RIL.INVALID_WAKELOCK;
+        rr.mClientId = ActivityThread.currentOpPackageName();
         rr.mStartTimeMs = SystemClock.elapsedRealtime();
         if (result != null && result.getTarget() == null) {
             throw new NullPointerException("Message target must not be null");
@@ -160,6 +151,26 @@ class RILRequest {
         // first elements in any RIL Parcel
         rr.mParcel.writeInt(request);
         rr.mParcel.writeInt(rr.mSerial);
+
+        return rr;
+    }
+
+
+    /**
+     * Retrieves a new RILRequest instance from the pool and sets the clientId
+     *
+     * @param request RIL_REQUEST_*
+     * @param result sent when operation completes
+     * @param clientId Id to track the client which initiated this request
+     * @return a RILRequest instance from the pool.
+     */
+    static RILRequest obtain(int request, Message result, String clientId) {
+        RILRequest rr = null;
+
+        rr = obtain(request, result);
+        if(clientId != null) {
+            rr.mClientId = clientId;
+        }
 
         return rr;
     }
@@ -272,6 +283,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     public static final int INVALID_WAKELOCK = -1;
     public static final int FOR_WAKELOCK = 0;
     public static final int FOR_ACK_WAKELOCK = 1;
+    private final ClientWakelockTracker mClientWakelockTracker = new ClientWakelockTracker();
 
     //***** Instance Variables
 
@@ -2483,6 +2495,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         mWakeLock.acquire();
                         mWakeLockCount++;
                         mWlSequenceNum++;
+                        mClientWakelockTracker.startTracking(rr.mClientId,
+                                rr.mRequest, rr.mSerial, mWakeLockCount);
 
                         Message msg = mSender.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
                         msg.arg1 = mWlSequenceNum;
@@ -2519,6 +2533,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             mWakeLockCount = 0;
                             mWakeLock.release();
                         }
+                        mClientWakelockTracker.stopTracking(rr.mClientId,
+                                rr.mRequest, rr.mSerial, mWakeLockCount);
                     }
                     break;
                 case FOR_ACK_WAKELOCK:
@@ -2542,6 +2558,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         + "at time of clearing");
                 mWakeLockCount = 0;
                 mWakeLock.release();
+                mClientWakelockTracker.stopTrackingAll();
                 return true;
             }
         } else {
@@ -4961,6 +4978,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
         pw.println(" mLastNITZTimeInfo=" + Arrays.toString(mLastNITZTimeInfo));
         pw.println(" mTestingEmergencyCall=" + mTestingEmergencyCall.get());
+        mClientWakelockTracker.dumpClientRequestTracker();
     }
 
     /**
