@@ -188,6 +188,12 @@ public abstract class Connection {
     private boolean mAnsweringDisconnectsActiveCall;
     private boolean mAllowAddCallDuringVideoCall;
 
+    /**
+     * Used to indicate that this originated from pulling a {@link android.telecom.Connection} with
+     * {@link android.telecom.Connection#PROPERTY_IS_EXTERNAL_CALL}.
+     */
+    private boolean mIsPulledCall = false;
+
     protected Connection(int phoneType) {
         mPhoneType = phoneType;
     }
@@ -804,6 +810,21 @@ public abstract class Connection {
 
     public void setAllowAddCallDuringVideoCall(boolean allowAddCallDuringVideoCall) {
         mAllowAddCallDuringVideoCall = allowAddCallDuringVideoCall;
+    }
+
+    /**
+     * Sets whether the connection is the result of an external call which was pulled to the local
+     * device.
+     *
+     * @param isPulledCall {@code true} if this connection is the result of pulling an external call
+     *      to the local device.
+     */
+    public void setIsPulledCall(boolean isPulledCall) {
+        mIsPulledCall = isPulledCall;
+    }
+
+    public boolean isPulledCall() {
+        return mIsPulledCall;
     }
 
     /**

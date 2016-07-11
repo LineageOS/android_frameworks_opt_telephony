@@ -23,13 +23,18 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
 
+import android.os.AsyncResult;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.telecom.PhoneAccountHandle;
+import android.telecom.VideoProfile;
+import android.telephony.TelephonyManager;
 import android.util.ArrayMap;
 import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +42,7 @@ import java.util.Map;
 /**
  * Responsible for tracking external calls known to the system.
  */
-public class ImsExternalCallTracker {
+public class ImsExternalCallTracker implements ImsPhoneCallTracker.PhoneStateListener {
 
     /**
      * Interface implemented by modules which are capable of notifying interested parties of new
@@ -47,7 +52,6 @@ public class ImsExternalCallTracker {
      *
      * @hide
      */
-
     public static interface ImsCallNotify {
         /**
          * Notifies that an unknown connection has been added.
@@ -80,11 +84,17 @@ public class ImsExternalCallTracker {
         @Override
         public void onPullExternalCall(ImsExternalConnection connection) {
             Log.d(TAG, "onPullExternalCall: connection = " + connection);
+            if (mCallPuller == null) {
+                Log.e(TAG, "onPullExternalCall : No call puller defined");
+                return;
+            }
             mCallPuller.pullExternalCall(connection.getAddress(), connection.getVideoState());
         }
     }
 
     public final static String TAG = "ImsExternalCallTracker";
+
+    private static final int EVENT_VIDEO_CAPABILITIES_CHANGED = 1;
 
     /**
      * Extra key used when informing telecom of a new external call using the
@@ -97,18 +107,45 @@ public class ImsExternalCallTracker {
             "android.telephony.ImsExternalCallTracker.extra.EXTERNAL_CALL_ID";
 
     /**
-     * Contains a list of the external connections known by the ImsPhoneCallTracker.  These are
+     * Contains a list of the external connections known by the ImsExternalCallTracker.  These are
      * connections which originated from a dialog event package and reside on another device.
      * Used in multi-endpoint (VoLTE for internet connected endpoints) scenarios.
      */
     private Map<Integer, ImsExternalConnection> mExternalConnections =
             new ArrayMap<>();
+
+    /**
+     * Tracks whether each external connection tracked in
+     * {@link #mExternalConnections} can be pulled, as reported by the latest dialog event package
+     * received from the network.  We need to know this because the pull state of a call can be
+     * overridden based on the following factors:
+     * 1) An external video call cannot be pulled if the current device does not have video
+     *    capability.
+     * 2) If the device has any active or held calls locally, no external calls may be pulled to
+     *    the local device.
+     */
+    private Map<Integer, Boolean> mExternalCallPullableState = new ArrayMap<>();
     private final ImsPhone mPhone;
     private final ImsCallNotify mCallStateNotifier;
     private final ExternalCallStateListener mExternalCallStateListener;
     private final ExternalConnectionListener mExternalConnectionListener =
             new ExternalConnectionListener();
-    private final ImsPullCall mCallPuller;
+    private ImsPullCall mCallPuller;
+    private boolean mIsVideoCapable;
+    private boolean mHasActiveCalls;
+
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case EVENT_VIDEO_CAPABILITIES_CHANGED:
+                    handleVideoCapabilitiesChanged((AsyncResult) msg.obj);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
 
     @VisibleForTesting
     public ImsExternalCallTracker(ImsPhone phone, ImsPullCall callPuller,
@@ -118,9 +155,9 @@ public class ImsExternalCallTracker {
         mCallStateNotifier = callNotifier;
         mExternalCallStateListener = new ExternalCallStateListener();
         mCallPuller = callPuller;
-
     }
-    public ImsExternalCallTracker(ImsPhone phone, ImsPullCall callPuller) {
+
+    public ImsExternalCallTracker(ImsPhone phone) {
         mPhone = phone;
         mCallStateNotifier = new ImsCallNotify() {
             @Override
@@ -134,12 +171,64 @@ public class ImsExternalCallTracker {
             }
         };
         mExternalCallStateListener = new ExternalCallStateListener();
-        mCallPuller = callPuller;
+        registerForNotifications();
+    }
+
+    /**
+     * Performs any cleanup required before the ImsExternalCallTracker is destroyed.
+     */
+    public void tearDown() {
+        unregisterForNotifications();
+    }
+
+    /**
+     * Sets the implementation of {@link ImsPullCall} which is responsible for pulling calls.
+     *
+     * @param callPuller The pull call implementation.
+     */
+    public void setCallPuller(ImsPullCall callPuller) {
+       mCallPuller = callPuller;
     }
 
     public ExternalCallStateListener getExternalCallStateListener() {
         return mExternalCallStateListener;
     }
+
+    /**
+     * Handles changes to the phone state as notified by the {@link ImsPhoneCallTracker}.
+     *
+     * @param oldState The previous phone state.
+     * @param newState The new phone state.
+     */
+    @Override
+    public void onPhoneStateChanged(PhoneConstants.State oldState, PhoneConstants.State newState) {
+        mHasActiveCalls = newState != PhoneConstants.State.IDLE;
+        Log.i(TAG, "onPhoneStateChanged : hasActiveCalls = " + mHasActiveCalls);
+
+        refreshCallPullState();
+    }
+
+    /**
+     * Registers for video capability changes.
+     */
+    private void registerForNotifications() {
+        if (mPhone != null) {
+            Log.d(TAG, "Registering: " + mPhone);
+            mPhone.getDefaultPhone().registerForVideoCapabilityChanged(mHandler,
+                    EVENT_VIDEO_CAPABILITIES_CHANGED, null);
+        }
+    }
+
+    /**
+     * Unregisters for video capability changes.
+     */
+    private void unregisterForNotifications() {
+        if (mPhone != null) {
+            Log.d(TAG, "Unregistering: " + mPhone);
+            mPhone.unregisterForVideoCapabilityChanged(mHandler);
+        }
+    }
+
 
     /**
      * Called when the IMS stack receives a new dialog event package.  Triggers the creation and
@@ -212,17 +301,30 @@ public class ImsExternalCallTracker {
      * @param state External call state from a dialog event package.
      */
     private void createExternalConnection(ImsExternalCallState state) {
-        Log.i(TAG, "createExternalConnection");
+        Log.i(TAG, "createExternalConnection : state = " + state);
 
+        int videoState = ImsCallProfile.getVideoStateFromCallType(state.getCallType());
+
+        boolean isCallPullPermitted = isCallPullPermitted(state.isCallPullable(), videoState);
         ImsExternalConnection connection = new ImsExternalConnection(mPhone,
                 state.getCallId(), /* Dialog event package call id */
                 state.getAddress() /* phone number */,
-                state.isCallPullable());
-        connection.setVideoState(ImsCallProfile.getVideoStateFromCallType(state.getCallType()));
+                isCallPullPermitted);
+        connection.setVideoState(videoState);
         connection.addListener(mExternalConnectionListener);
+
+        Log.d(TAG,
+                "createExternalConnection - pullable state : externalCallId = "
+                        + connection.getCallId()
+                        + " ; isPullable = " + isCallPullPermitted
+                        + " ; networkPullable = " + state.isCallPullable()
+                        + " ; isVideo = " + VideoProfile.isVideo(videoState)
+                        + " ; videoEnabled = " + mIsVideoCapable
+                        + " ; hasActiveCalls = " + mHasActiveCalls);
 
         // Add to list of tracked connections.
         mExternalConnections.put(connection.getCallId(), connection);
+        mExternalCallPullableState.put(connection.getCallId(), isCallPullPermitted);
 
         // Note: The notification of unknown connection is ultimately handled by
         // PstnIncomingCallNotifier#addNewUnknownCall.  That method will ensure that an extra is set
@@ -240,6 +342,8 @@ public class ImsExternalCallTracker {
      */
     private void updateExistingConnection(ImsExternalConnection connection,
             ImsExternalCallState state) {
+
+        Log.i(TAG, "updateExistingConnection : state = " + state);
         Call.State existingState = connection.getState();
         Call.State newState = state.getCallState() == ImsExternalCallState.CALL_STATE_CONFIRMED ?
                 Call.State.ACTIVE : Call.State.DISCONNECTED;
@@ -251,15 +355,51 @@ public class ImsExternalCallTracker {
                 connection.setTerminated();
                 connection.removeListener(mExternalConnectionListener);
                 mExternalConnections.remove(connection.getCallId());
+                mExternalCallPullableState.remove(connection.getCallId());
                 mCallStateNotifier.notifyPreciseCallStateChanged();
             }
         }
 
-        connection.setIsPullable(state.isCallPullable());
-
         int newVideoState = ImsCallProfile.getVideoStateFromCallType(state.getCallType());
         if (newVideoState != connection.getVideoState()) {
             connection.setVideoState(newVideoState);
+        }
+
+        boolean isCallPullPermitted = isCallPullPermitted(state.isCallPullable(), newVideoState);
+        Log.d(TAG,
+                "updateExistingConnection - pullable state : externalCallId = " + connection.getCallId()
+                        + " ; isPullable = " + isCallPullPermitted
+                        + " ; networkPullable = " + state.isCallPullable()
+                        + " ; isVideo = "
+                        + VideoProfile.isVideo(connection.getVideoState())
+                        + " ; videoEnabled = " + mIsVideoCapable
+                        + " ; hasActiveCalls = " + mHasActiveCalls);
+
+        connection.setIsPullable(isCallPullPermitted);
+    }
+
+    /**
+     * Update whether the external calls known can be pulled.  Combines the last known network
+     * pullable state with local device conditions to determine if each call can be pulled.
+     */
+    private void refreshCallPullState() {
+        Log.d(TAG, "refreshCallPullState");
+
+        for (ImsExternalConnection imsExternalConnection : mExternalConnections.values()) {
+            boolean isNetworkPullable =
+                    mExternalCallPullableState.get(imsExternalConnection.getCallId())
+                            .booleanValue();
+            boolean isCallPullPermitted =
+                    isCallPullPermitted(isNetworkPullable, imsExternalConnection.getVideoState());
+            Log.d(TAG,
+                    "refreshCallPullState : externalCallId = " + imsExternalConnection.getCallId()
+                            + " ; isPullable = " + isCallPullPermitted
+                            + " ; networkPullable = " + isNetworkPullable
+                            + " ; isVideo = "
+                            + VideoProfile.isVideo(imsExternalConnection.getVideoState())
+                            + " ; videoEnabled = " + mIsVideoCapable
+                            + " ; hasActiveCalls = " + mHasActiveCalls);
+            imsExternalConnection.setIsPullable(isCallPullPermitted);
         }
     }
 
@@ -283,5 +423,43 @@ public class ImsExternalCallTracker {
         }
 
         return false;
+    }
+
+    /**
+     * Handles a change to the video capabilities reported by
+     * {@link Phone#notifyForVideoCapabilityChanged(boolean)}.
+     *
+     * @param ar The AsyncResult containing the new video capability of the device.
+     */
+    private void handleVideoCapabilitiesChanged(AsyncResult ar) {
+        mIsVideoCapable = (Boolean) ar.result;
+        Log.i(TAG, "handleVideoCapabilitiesChanged : isVideoCapable = " + mIsVideoCapable);
+
+        // Refresh pullable state if video capability changed.
+        refreshCallPullState();
+    }
+
+    /**
+     * Determines whether an external call can be pulled based on the pullability state enforced
+     * by the network, as well as local device rules.
+     *
+     * @param isNetworkPullable {@code true} if the network indicates the call can be pulled,
+     *      {@code false} otherwise.
+     * @param videoState the VideoState of the external call.
+     * @return {@code true} if the external call can be pulled, {@code false} otherwise.
+     */
+    private boolean isCallPullPermitted(boolean isNetworkPullable, int videoState) {
+        if (VideoProfile.isVideo(videoState) && !mIsVideoCapable) {
+            // If the external call is a video call and the local device does not have video
+            // capability at this time, it cannot be pulled.
+            return false;
+        }
+
+        if (mHasActiveCalls) {
+            // If there are active calls on the local device, the call cannot be pulled.
+            return false;
+        }
+
+        return isNetworkPullable;
     }
 }

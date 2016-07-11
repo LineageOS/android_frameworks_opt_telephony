@@ -183,9 +183,15 @@ public class ImsPhone extends ImsPhoneBase {
         super("ImsPhone", context, notifier, unitTestMode);
 
         mDefaultPhone = defaultPhone;
-        mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+        // The ImsExternalCallTracker needs to be defined before the ImsPhoneCallTracker, as the
+        // ImsPhoneCallTracker uses a thread to spool up the ImsManager.  Part of this involves
+        // setting the multiendpoint listener on the external call tracker.  So we need to ensure
+        // the external call tracker is available first to avoid potential timing issues.
         mExternalCallTracker =
-                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this, mCT);
+                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this);
+        mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+        mCT.registerPhoneStateListener(mExternalCallTracker);
+        mExternalCallTracker.setCallPuller(mCT);
 
         mSS.setStateOff();
 
@@ -215,6 +221,8 @@ public class ImsPhone extends ImsPhoneBase {
         // Nothing to dispose in Phone
         //super.dispose();
         mPendingMMIs.clear();
+        mExternalCallTracker.tearDown();
+        mCT.unregisterPhoneStateListener(mExternalCallTracker);
         mCT.dispose();
 
         //Force all referenced classes to unregister their former registered events
