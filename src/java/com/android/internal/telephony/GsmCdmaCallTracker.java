@@ -189,6 +189,10 @@ public class GsmCdmaCallTracker extends CallTracker {
                 gsmCdmaConnection.dispose();
             }
         }
+
+        mConnections = null;
+        mPendingMO = null;
+        mState = PhoneConstants.State.IDLE;
     }
 
     @Override
