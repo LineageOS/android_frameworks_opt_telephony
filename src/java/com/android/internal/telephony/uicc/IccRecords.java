@@ -133,9 +133,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsRequested=" + mRecordsRequested
                 + " iccid=" + iccIdToPrint
                 + " msisdnTag=" + mMsisdnTag
-                + " voiceMailNum=" + mVoiceMailNum
+                + (VDBG ? (" voiceMailNum=" + mVoiceMailNum) : "")
                 + " voiceMailTag=" + mVoiceMailTag
-                + " newVoiceMailNum=" + mNewVoiceMailNum
+                + (VDBG ? (" voiceMailNum=" + mNewVoiceMailNum) : "")
                 + " newVoiceMailTag=" + mNewVoiceMailTag
                 + " isVoiceMailFixed=" + mIsVoiceMailFixed
                 + (VDBG ? (" mImsi=" + mImsi) : "")
@@ -743,9 +743,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
             pw.println(" mMsisdn=" + (VDBG ? mMsisdn : "XXX"));
         }
         pw.println(" mMsisdnTag=" + mMsisdnTag);
-        pw.println(" mVoiceMailNum=" + mVoiceMailNum);
+        pw.println(" mVoiceMailNum=" + (VDBG ? mVoiceMailNum : "XXX"));
         pw.println(" mVoiceMailTag=" + mVoiceMailTag);
-        pw.println(" mNewVoiceMailNum=" + mNewVoiceMailNum);
+        pw.println(" mNewVoiceMailNum=" +(VDBG ? mNewVoiceMailNum : "XXX"));
         pw.println(" mNewVoiceMailTag=" + mNewVoiceMailTag);
         pw.println(" mIsVoiceMailFixed=" + mIsVoiceMailFixed);
         if (VDBG) pw.println(" mImsi=" + mImsi);
