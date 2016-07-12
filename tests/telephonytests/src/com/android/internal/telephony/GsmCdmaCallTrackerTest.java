@@ -358,6 +358,18 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
         // verify getCurrentCalls is called on updating phone type
         verify(mSimulatedCommandsVerifier, times(2)).getCurrentCalls(any(Message.class));
+
+        // verify that if phone type is updated, calls and callTracker go to idle
+        testMOCallPickUp();
+
+        // update phone type
+        mCTUT.updatePhoneType();
+
+        // verify CT and calls go to idle
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
+        assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mBackgroundCall.getState());
+        assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mRingingCall.getState());
     }
 }
 
