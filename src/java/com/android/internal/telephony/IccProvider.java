@@ -29,10 +29,10 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.telephony.Rlog;
+import android.util.Log;
 
 import java.util.List;
 
-import com.android.internal.telephony.IIccPhoneBook;
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccConstants;
 
@@ -43,6 +43,7 @@ import com.android.internal.telephony.uicc.IccConstants;
 public class IccProvider extends ContentProvider {
     private static final String TAG = "IccProvider";
     private static final boolean DBG = true;
+    private static final boolean VDBG = Rlog.isLoggable(TAG, Log.VERBOSE);
 
 
     private static final String[] ADDRESS_BOOK_COLUMN_NAMES = new String[] {
@@ -428,7 +429,7 @@ public class IccProvider extends ContentProvider {
     addIccRecordToEf(int efType, String name, String number, String[] emails,
             String pin2, int subId) {
         if (DBG) log("addIccRecordToEf: efType=0x" + Integer.toHexString(efType).toUpperCase() +
-                ", name=" + name + ", number=" + number + ", emails=" + emails +
+                (VDBG ? ", name=" + name + ", number=" + number + ", emails=" + emails : "") +
                 ", subscription=" + subId);
 
         boolean success = false;
@@ -458,9 +459,8 @@ public class IccProvider extends ContentProvider {
     updateIccRecordInEf(int efType, String oldName, String oldNumber,
             String newName, String newNumber, String pin2, int subId) {
         if (DBG) log("updateIccRecordInEf: efType=0x" + Integer.toHexString(efType).toUpperCase() +
-                ", oldname=" + oldName + ", oldnumber=" + oldNumber +
-                ", newname=" + newName + ", newnumber=" + newNumber +
-                ", subscription=" + subId);
+                (VDBG ? ", oldname=" + oldName + ", oldnumber=" + oldNumber + ", newname=" +
+                        newName + ", newnumber=" + newName : "") + ", subscription=" + subId);
 
         boolean success = false;
 
@@ -484,9 +484,8 @@ public class IccProvider extends ContentProvider {
     private boolean deleteIccRecordFromEf(int efType, String name, String number, String[] emails,
             String pin2, int subId) {
         if (DBG) log("deleteIccRecordFromEf: efType=0x" +
-                Integer.toHexString(efType).toUpperCase() +
-                ", name=" + name + ", number=" + number + ", emails=" + emails +
-                ", pin2=" + pin2 + ", subscription=" + subId);
+                Integer.toHexString(efType).toUpperCase() + (VDBG ? ", name=" + name + ", number=" +
+                number + ", emails=" + emails + ", pin2=" + pin2 : "") + ", subscription=" + subId);
 
         boolean success = false;
 
@@ -518,7 +517,7 @@ public class IccProvider extends ContentProvider {
             String alphaTag = record.getAlphaTag();
             String number = record.getNumber();
 
-            if (DBG) log("loadRecord: " + alphaTag + ", " + number + ",");
+            if (DBG) log("loadRecord: " + alphaTag + (VDBG ? ", " + number : ""));
             contact[0] = alphaTag;
             contact[1] = number;
 
@@ -526,7 +525,7 @@ public class IccProvider extends ContentProvider {
             if (emails != null) {
                 StringBuilder emailString = new StringBuilder();
                 for (String email: emails) {
-                    if (DBG) log("Adding email:" + email);
+                    if (VDBG) log("Adding email:" + email);
                     emailString.append(email);
                     emailString.append(",");
                 }
