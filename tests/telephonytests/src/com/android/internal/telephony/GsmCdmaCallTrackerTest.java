@@ -353,21 +353,34 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         // verify getCurrentCalls is called on init
         verify(mSimulatedCommandsVerifier).getCurrentCalls(any(Message.class));
 
-        // update phone type
-        mCTUT.updatePhoneType();
+        // update phone type (call the function on same thread as the call tracker)
+        Handler updatePhoneTypeHandler = new Handler(mCTUT.getLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                mCTUT.updatePhoneType();
+            }
+        };
+        updatePhoneTypeHandler.sendEmptyMessage(0);
+        waitForMs(100);
 
         // verify getCurrentCalls is called on updating phone type
         verify(mSimulatedCommandsVerifier, times(2)).getCurrentCalls(any(Message.class));
 
-        // verify that if phone type is updated, calls and callTracker go to idle
+        // we'd like to verify that if phone type is updated, calls and callTracker go to idle.
+        // However, as soon as phone type is updated, call tracker queries for calls from RIL and
+        // will go back to OFFHOOK
+
+        // call tracker goes to OFFHOOK
         testMOCallPickUp();
 
-        // update phone type
-        mCTUT.updatePhoneType();
+        // update phone type - call tracker goes to IDLE and then due to getCurrentCalls(),
+        // goes back to OFFHOOK
+        updatePhoneTypeHandler.sendEmptyMessage(0);
+        waitForMs(100);
 
         // verify CT and calls go to idle
-        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
-        assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
+        assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
+        assertEquals(GsmCdmaCall.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mBackgroundCall.getState());
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mRingingCall.getState());
     }
