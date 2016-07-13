@@ -20,6 +20,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
+import android.os.Looper;
 import android.os.ServiceManager;
 import android.telephony.Rlog;
 
@@ -241,5 +242,14 @@ public class TelephonyComponentFactory {
     public void makeExtTelephonyClasses(Context context,
             Phone[] phones, CommandsInterface[] commandsInterfaces) {
         Rlog.d(LOG_TAG, "makeExtTelephonyClasses");
+    }
+
+    public PhoneSwitcher makePhoneSwitcher(int maxActivePhones, int numPhones, Context context,
+            SubscriptionController subscriptionController, Looper looper, ITelephonyRegistry tr,
+            CommandsInterface[] cis, Phone[] phones) {
+        Rlog.d(LOG_TAG, "makePhoneSwitcher");
+        return new PhoneSwitcher(maxActivePhones,numPhones,
+                context, subscriptionController, looper, tr, cis,
+                phones);
     }
 }
