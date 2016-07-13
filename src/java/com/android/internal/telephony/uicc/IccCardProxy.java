@@ -403,6 +403,11 @@ public class IccCardProxy extends Handler implements IccCard {
                 setExternalState(State.PIN_REQUIRED);
                 break;
             case APPSTATE_PUK:
+                PinState pin1State = mUiccApplication.getPin1State();
+                if (pin1State.isPermBlocked()) {
+                    setExternalState(State.PERM_DISABLED);
+                    return;
+                }
                 setExternalState(State.PUK_REQUIRED);
                 break;
             case APPSTATE_SUBSCRIPTION_PERSO:
