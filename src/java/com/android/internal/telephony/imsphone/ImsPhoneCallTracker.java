@@ -194,6 +194,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_DIAL_PENDINGMO = 20;
     private static final int EVENT_EXIT_ECBM_BEFORE_PENDINGMO = 21;
     private static final int EVENT_VT_DATA_USAGE_UPDATE = 22;
+    private static final int EVENT_DATA_ENABLED_CHANGED = 23;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
 
@@ -293,6 +294,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
         cacheCarrierConfiguration(mPhone.getSubId());
 
+        mPhone.getDefaultPhone().registerForDataEnabledChanged(
+                this, EVENT_DATA_ENABLED_CHANGED, null);
+
         Thread t = new Thread() {
             public void run() {
                 getImsService();
@@ -351,6 +355,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         clearDisconnected();
         mPhone.getContext().unregisterReceiver(mReceiver);
+        mPhone.unregisterForDataEnabledChanged(this);
     }
 
     @Override
@@ -2141,6 +2146,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mTotalVtDataUsage += (usage - oldUsage);
                 mVtDataUsageMap.put(call.uniqueId, usage);
                 break;
+            case EVENT_DATA_ENABLED_CHANGED:
+                ar = (AsyncResult) msg.obj;
+                if (ar.result instanceof Pair) {
+                    Pair<Boolean, Integer> p = (Pair<Boolean, Integer>) ar.result;
+                    onDataEnabledChanged(p.first, p.second);
+                }
+                break;
         }
     }
 
@@ -2459,5 +2471,45 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    /** Modify video call to a new video state.
+     *
+     * @param imsCall IMS call to be modified
+     * @param newVideoState New video state. (Refer to VideoProfile)
+     */
+    private void modifyVideoCall(ImsCall imsCall, int newVideoState) {
+        ImsPhoneConnection conn = findConnection(imsCall);
+        if (conn != null) {
+            int oldVideoState = conn.getVideoState();
+            if (conn.getVideoProvider() != null) {
+                conn.getVideoProvider().onSendSessionModifyRequest(
+                        new VideoProfile(oldVideoState), new VideoProfile(newVideoState));
+            }
+        }
+    }
 
+    /**
+     * Handler of data enabled changed event
+     * @param enabled True if data is enabled, otherwise disabled.
+     * @param reason Reason for data enabled/disabled
+     */
+    private void onDataEnabledChanged(boolean enabled, int reason) {
+
+        log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
+        ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId()).setDataEnabled(enabled);
+
+        if (enabled == false) {
+            // If data are disabled while there are ongoing VT calls, we need to downgrade
+            // the VT calls (except on VT over Wifi)
+            for (ImsPhoneConnection conn : mConnections) {
+                ImsCall imsCall = conn.getImsCall();
+                if (imsCall != null && imsCall.isVideoCall() && !imsCall.isWifiCall()) {
+                    modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
+                }
+            }
+        }
+
+        // This will call into updateVideoCallFeatureValue and eventually all clients will be
+        // asynchronously notified that the availability of VT over LTE has changed.
+        ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+    }
 }

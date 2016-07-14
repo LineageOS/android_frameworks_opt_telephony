@@ -873,7 +873,7 @@ public class DataConnection extends StateMachine {
             return;
         }
 
-        // Is user data disabled?
+        // Is data disabled?
         mRestrictedNetworkOverride = (mDct.isDataEnabled(true) == false);
     }
 

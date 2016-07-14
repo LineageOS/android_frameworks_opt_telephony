@@ -94,10 +94,6 @@ public class DcTrackerMock extends DcTracker {
         throw new RuntimeException("Not Implemented");
     }
     @Override
-    public boolean getAnyDataEnabled(boolean checkUserDataEnabled) {
-        throw new RuntimeException("Not Implemented");
-    }
-    @Override
     public boolean hasMatchedTetherApnSetting() {
         throw new RuntimeException("Not Implemented");
     }
@@ -146,15 +142,7 @@ public class DcTrackerMock extends DcTracker {
         throw new RuntimeException("Not Implemented");
     }
     @Override
-    public boolean setInternalDataEnabledFlag(boolean enable) {
-        throw new RuntimeException("Not Implemented");
-    }
-    @Override
     public boolean setInternalDataEnabled(boolean enable) {
-        throw new RuntimeException("Not Implemented");
-    }
-    @Override
-    public void setDataAllowed(boolean enable, Message response) {
         throw new RuntimeException("Not Implemented");
     }
     @Override
