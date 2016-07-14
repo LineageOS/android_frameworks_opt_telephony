@@ -118,22 +118,11 @@ public class DcTracker extends Handler {
 
     private final AlarmManager mAlarmManager;
 
-    private Object mDataEnabledLock = new Object();
-
-    // responds to the setInternalDataEnabled call - used internally to turn off data
-    // for example during emergency calls
-    private boolean mInternalDataEnabled = true;
-
-    // responds to public (user) API to enable/disable data use
-    // independent of mInternalDataEnabled and requests for APN access
-    // persisted
-    private boolean mUserDataEnabled = true;
-
-    // TODO: move away from static state once 5587429 is fixed.
-    private static boolean sPolicyDataEnabled = true;
-
     /* Currently requested APN type (TODO: This should probably be a parameter not a member) */
     private String mRequestedApnType = PhoneConstants.APN_TYPE_DEFAULT;
+
+    // All data enabling/disabling related settings
+    private final DataEnabledSettings mDataEnabledSettings = new DataEnabledSettings();
 
     /**
      * After detecting a potential connection problem, this is the max number
@@ -690,7 +679,7 @@ public class DcTracker extends Handler {
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
 
         // TODO - redundent with update call below?
-        mUserDataEnabled = getDataEnabled();
+        mDataEnabledSettings.setUserDataEnabled(getDataEnabled());
 
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
@@ -872,10 +861,11 @@ public class DcTracker extends Handler {
     }
 
     private void onSetUserDataEnabled(boolean enabled) {
-        synchronized (mDataEnabledLock) {
-            if (mUserDataEnabled != enabled) {
-                mUserDataEnabled = enabled;
+        synchronized (mDataEnabledSettings) {
+            if (mDataEnabledSettings.isUserDataEnabled() != enabled) {
+                mDataEnabledSettings.setUserDataEnabled(enabled);
 
+                //TODO: We should move the followings into DataEnabledSettings class.
                 // For single SIM phones, this is a per phone property.
                 if (TelephonyManager.getDefault().getSimCount() == 1) {
                     Settings.Global.putInt(mResolver, Settings.Global.MOBILE_DATA, enabled ? 1 : 0);
@@ -893,6 +883,8 @@ public class DcTracker extends Handler {
                     }
                 }
 
+                // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
+                // handle the rest from there.
                 if (enabled) {
                     teardownRestrictedMeteredConnections();
                     onTrySetupData(Phone.REASON_DATA_ENABLED);
@@ -912,7 +904,7 @@ public class DcTracker extends Handler {
      * to it in an unrestricted way.
      */
     private void teardownRestrictedMeteredConnections() {
-        if (isDataEnabled(true)) {
+        if (mDataEnabledSettings.isDataEnabled(true)) {
             for (ApnContext apnContext : mApnContexts.values()) {
                 if (apnContext.isConnectedOrConnecting() &&
                         apnContext.getApnSetting().isMetered(mPhone.getContext(),
@@ -927,11 +919,11 @@ public class DcTracker extends Handler {
 
     private void onDeviceProvisionedChange() {
         if (getDataEnabled()) {
-            mUserDataEnabled = true;
+            mDataEnabledSettings.setUserDataEnabled(true);
             teardownRestrictedMeteredConnections();
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
-            mUserDataEnabled = false;
+            mDataEnabledSettings.setUserDataEnabled(false);
             onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
         }
     }
@@ -1268,7 +1260,7 @@ public class DcTracker extends Handler {
      * {@code true} otherwise.
      */
     public boolean getAnyDataEnabled() {
-        if (!isDataEnabled(true)) return false;
+        if (!mDataEnabledSettings.isDataEnabled(true)) return false;
         DataAllowFailReason failureReason = new DataAllowFailReason();
         if (!isDataAllowed(failureReason)) {
             if (DBG) log(failureReason.getDataAllowFailReason());
@@ -1284,33 +1276,9 @@ public class DcTracker extends Handler {
         return false;
     }
 
-    public boolean getAnyDataEnabled(boolean checkUserDataEnabled) {
-        if (!isDataEnabled(checkUserDataEnabled)) return false;
-
-        DataAllowFailReason failureReason = new DataAllowFailReason();
-        if (!isDataAllowed(failureReason)) {
-            if (DBG) log(failureReason.getDataAllowFailReason());
-            return false;
-        }
-        for (ApnContext apnContext : mApnContexts.values()) {
-            // Make sure we dont have a context that going down
-            // and is explicitly disabled.
-            if (isDataAllowedForApn(apnContext)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @VisibleForTesting
     public boolean isDataEnabled(boolean checkUserDataEnabled) {
-        synchronized (mDataEnabledLock) {
-            if (!(mInternalDataEnabled && (!checkUserDataEnabled || mUserDataEnabled)
-                    && (!checkUserDataEnabled || sPolicyDataEnabled)
-                    && (!checkUserDataEnabled || !mMeteredApnDisabled)))
-                return false;
-        }
-        return true;
+        return mDataEnabledSettings.isDataEnabled(checkUserDataEnabled);
     }
 
     private boolean isDataAllowedForApn(ApnContext apnContext) {
@@ -1364,9 +1332,7 @@ public class DcTracker extends Handler {
 
     private boolean isDataAllowed(DataAllowFailReason failureReason) {
         final boolean internalDataEnabled;
-        synchronized (mDataEnabledLock) {
-            internalDataEnabled = mInternalDataEnabled;
-        }
+        internalDataEnabled = mDataEnabledSettings.isInternalDataEnabled();
 
         boolean attachedState = mAttached.get();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
@@ -1513,10 +1479,7 @@ public class DcTracker extends Handler {
     }
 
     boolean isEmergency() {
-        final boolean result;
-        synchronized (mDataEnabledLock) {
-            result = mPhone.isInEcm() || mPhone.isInEmergencyCall();
-        }
+        final boolean result = mPhone.isInEcm() || mPhone.isInEmergencyCall();
         log("isEmergency: result=" + result);
         return result;
     }
@@ -1567,7 +1530,7 @@ public class DcTracker extends Handler {
 
         if (apnContext.isConnectable() && (isEmergencyApn ||
                 (isDataAllowed && isDataAllowedForApn(apnContext) &&
-                isDataEnabled(checkUserDataEnabled) && !isEmergency()))) {
+                        mDataEnabledSettings.isDataEnabled(checkUserDataEnabled) && !isEmergency()))) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 String str = "trySetupData: make a FAILED ApnContext IDLE so its reusable";
                 if (DBG) log(str);
@@ -1625,11 +1588,13 @@ public class DcTracker extends Handler {
                 str.append("isDataAllowedForApn = false. RAT = " +
                         mPhone.getServiceState().getRilDataRadioTechnology());
             }
-            if (!isDataEnabled(checkUserDataEnabled)) {
+            if (!mDataEnabledSettings.isDataEnabled(checkUserDataEnabled)) {
                 str.append("isDataEnabled(" + checkUserDataEnabled + ") = false. " +
-                        "mInternalDataEnabled = " + mInternalDataEnabled + " , mUserDataEnabled = "
-                        + mUserDataEnabled + ", sPolicyDataEnabled = " + sPolicyDataEnabled +
-                        ", mMeteredApnDisabled = " + mMeteredApnDisabled);
+                        "isInternalDataEnabled = " + mDataEnabledSettings.isInternalDataEnabled() +
+                        ", userDataEnabled = " + mDataEnabledSettings.isUserDataEnabled() +
+                        ", isPolicyDataEnabled = " + mDataEnabledSettings.isPolicyDataEnabled() +
+                        ", isCarrierDataEnabled = " +
+                        mDataEnabledSettings.isCarrierDataEnabled());
             }
             if (isEmergency()) {
                 str.append("emergency = true");
@@ -2379,24 +2344,34 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
     }
 
+    public void setApnsEnabledByCarrier(boolean enabled) {
+        Message msg = obtainMessage(DctConstants.EVENT_SET_CARRIER_DATA_ENABLED);
+        msg.arg1 = (enabled ? DctConstants.ENABLED : DctConstants.DISABLED);
+        sendMessage(msg);
+    }
+
     /**
      * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
      */
-    public void carrierActionSetMeteredApnsEnabled(boolean enabled) {
-        if (enabled == mMeteredApnDisabled) {
-            if (DBG) {
-                log("carrier Action: set metered apns enabled: " + enabled);
-            }
-            // Disable/enable all metered apns
-            mMeteredApnDisabled = !enabled;
-            if (!enabled) {
-                // Send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
-                mPhone.notifyOtaspChanged(ServiceStateTracker.OTASP_SIM_UNPROVISIONED);
-                // Tear down all metered apns
-                cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
-            } else {
-                teardownRestrictedMeteredConnections();
-                setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
+    private void onSetCarrierDataEnabled(boolean enabled) {
+        synchronized (mDataEnabledSettings) {
+            if (enabled != mDataEnabledSettings.isCarrierDataEnabled()) {
+                if (DBG) {
+                    log("carrier Action: set metered apns enabled: " + enabled);
+                }
+
+                // Disable/enable all metered apns
+                mDataEnabledSettings.setCarrierDataEnabled(enabled);
+
+                if (!enabled) {
+                    // Send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
+                    mPhone.notifyOtaspChanged(ServiceStateTracker.OTASP_SIM_UNPROVISIONED);
+                    // Tear down all metered apns
+                    cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
+                } else {
+                    teardownRestrictedMeteredConnections();
+                    setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
+                }
             }
         }
     }
@@ -2438,11 +2413,20 @@ public class DcTracker extends Handler {
         }
     }
 
+    public void setPolicyDataEnabled(boolean enabled) {
+        if (DBG) log("setPolicyDataEnabled: " + enabled);
+        Message msg = obtainMessage(DctConstants.CMD_SET_POLICY_DATA_ENABLE);
+        msg.arg1 = (enabled ? DctConstants.ENABLED : DctConstants.DISABLED);
+        sendMessage(msg);
+    }
+
     private void onSetPolicyDataEnabled(boolean enabled) {
-        synchronized (mDataEnabledLock) {
+        synchronized (mDataEnabledSettings) {
             final boolean prevEnabled = getAnyDataEnabled();
-            if (sPolicyDataEnabled != enabled) {
-                sPolicyDataEnabled = enabled;
+            if (mDataEnabledSettings.isPolicyDataEnabled() != enabled) {
+                mDataEnabledSettings.setPolicyDataEnabled(enabled);
+                // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
+                // handle the rest from there.
                 if (prevEnabled != getAnyDataEnabled()) {
                     if (!prevEnabled) {
                         teardownRestrictedMeteredConnections();
@@ -2454,7 +2438,6 @@ public class DcTracker extends Handler {
             }
         }
     }
-
 
     private void applyNewState(ApnContext apnContext, boolean enabled, boolean met) {
         boolean cleanup = false;
@@ -2636,6 +2619,7 @@ public class DcTracker extends Handler {
     /**
      * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
      */
+    //TODO: Merge this into DataSettings. And probably should rename to getUserDataEnabled().
     public boolean getDataEnabled() {
         final int device_provisioned =
                 Settings.Global.getInt(mResolver, Settings.Global.DEVICE_PROVISIONED, 0);
@@ -2736,7 +2720,7 @@ public class DcTracker extends Handler {
     private void onRoamingOff() {
         if (DBG) log("onRoamingOff");
 
-        if (!mUserDataEnabled) return;
+        if (!mDataEnabledSettings.isUserDataEnabled()) return;
 
         if (getDataOnRoamingEnabled() == false) {
             notifyOffApnsOfAvailability(Phone.REASON_ROAMING_OFF);
@@ -2749,7 +2733,7 @@ public class DcTracker extends Handler {
     private void onRoamingOn() {
         if (DBG) log("onRoamingOn");
 
-        if (!mUserDataEnabled) {
+        if (!mDataEnabledSettings.isUserDataEnabled()) {
             if (DBG) log("data not enabled by user");
             return;
         }
@@ -3029,7 +3013,7 @@ public class DcTracker extends Handler {
         /* If flag is set to false after SETUP_DATA_CALL is invoked, we need
          * to clean data connections.
          */
-        if (!mInternalDataEnabled) {
+        if (!mDataEnabledSettings.isInternalDataEnabled()) {
             cleanUpAllConnections(Phone.REASON_DATA_DISABLED);
         }
 
@@ -3992,6 +3976,9 @@ public class DcTracker extends Handler {
                 handlePcoData((AsyncResult)msg.obj);
                 break;
             }
+            case DctConstants.EVENT_SET_CARRIER_DATA_ENABLED:
+                onSetCarrierDataEnabled(msg.arg1 == DctConstants.ENABLED);
+                break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
                 break;
@@ -4057,7 +4044,7 @@ public class DcTracker extends Handler {
                     // reset carrier actions on sim loaded
                     final ServiceStateTracker sst = mPhone.getServiceStateTracker();
                     sst.setRadioPowerFromCarrier(true);
-                    mMeteredApnDisabled = false;
+                    mDataEnabledSettings.setCarrierDataEnabled(true);
                     mPhone.getCarrierSignalAgent().reset();
                 }
             } else {
@@ -4071,7 +4058,7 @@ public class DcTracker extends Handler {
         log("update(): Active DDS, register for all events now!");
         onUpdateIcc();
 
-        mUserDataEnabled = getDataEnabled();
+        mDataEnabledSettings.setUserDataEnabled(getDataEnabled());
         mAutoAttachOnCreation.set(false);
 
         ((GsmCdmaPhone)mPhone).updateCurrentCarrierInProvider();
@@ -4124,13 +4111,20 @@ public class DcTracker extends Handler {
         mAllDataDisconnectedRegistrants.remove(h);
     }
 
+    public void registerForDataEnabledChanged(Handler h, int what, Object obj) {
+        mDataEnabledSettings.registerForDataEnabledChanged(h, what, obj);
+    }
+
+    public void unregisterForDataEnabledChanged(Handler h) {
+        mDataEnabledSettings.unregisterForDataEnabledChanged(h);
+    }
 
     private void onSetInternalDataEnabled(boolean enabled, Message onCompleteMsg) {
-        if (DBG) log("onSetInternalDataEnabled: enabled=" + enabled);
-        boolean sendOnComplete = true;
+        synchronized (mDataEnabledSettings) {
+            if (DBG) log("onSetInternalDataEnabled: enabled=" + enabled);
+            boolean sendOnComplete = true;
 
-        synchronized (mDataEnabledLock) {
-            mInternalDataEnabled = enabled;
+            mDataEnabledSettings.setInternalDataEnabled(enabled);
             if (enabled) {
                 log("onSetInternalDataEnabled: changed to enabled, try to setup data call");
                 onTrySetupData(Phone.REASON_DATA_ENABLED);
@@ -4139,22 +4133,13 @@ public class DcTracker extends Handler {
                 log("onSetInternalDataEnabled: changed to disabled, cleanUpAllConnections");
                 cleanUpAllConnections(Phone.REASON_DATA_DISABLED, onCompleteMsg);
             }
-        }
 
-        if (sendOnComplete) {
-            if (onCompleteMsg != null) {
-                onCompleteMsg.sendToTarget();
+            if (sendOnComplete) {
+                if (onCompleteMsg != null) {
+                    onCompleteMsg.sendToTarget();
+                }
             }
         }
-    }
-
-    public boolean setInternalDataEnabledFlag(boolean enable) {
-        if (DBG) log("setInternalDataEnabledFlag(" + enable + ")");
-
-        if (mInternalDataEnabled != enable) {
-            mInternalDataEnabled = enable;
-        }
-        return true;
     }
 
     public boolean setInternalDataEnabled(boolean enable) {
@@ -4170,13 +4155,6 @@ public class DcTracker extends Handler {
         return true;
     }
 
-    public void setDataAllowed(boolean enable, Message response) {
-         if (DBG) log("setDataAllowed: enable=" + enable);
-         isCleanupRequired.set(!enable);
-         mPhone.mCi.setDataAllowed(enable, response);
-         mInternalDataEnabled = enable;
-    }
-
     private void log(String s) {
         Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "]" + s);
     }
@@ -4188,9 +4166,9 @@ public class DcTracker extends Handler {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("DcTracker:");
         pw.println(" RADIO_TESTS=" + RADIO_TESTS);
-        pw.println(" mInternalDataEnabled=" + mInternalDataEnabled);
-        pw.println(" mUserDataEnabled=" + mUserDataEnabled);
-        pw.println(" sPolicyDataEnabed=" + sPolicyDataEnabled);
+        pw.println(" isInternalDataEnabled=" + mDataEnabledSettings.isInternalDataEnabled());
+        pw.println(" isUserDataEnabled=" + mDataEnabledSettings.isUserDataEnabled());
+        pw.println(" isPolicyDataEnabled=" + mDataEnabledSettings.isPolicyDataEnabled());
         pw.flush();
         pw.println(" mRequestedApnType=" + mRequestedApnType);
         pw.println(" mPhone=" + mPhone.getPhoneName());
@@ -4202,7 +4180,7 @@ public class DcTracker extends Handler {
         pw.println(" mNetStatPollEnabled=" + mNetStatPollEnabled);
         pw.println(" mDataStallTxRxSum=" + mDataStallTxRxSum);
         pw.println(" mDataStallAlarmTag=" + mDataStallAlarmTag);
-        pw.println(" mDataStallDetectionEanbled=" + mDataStallDetectionEnabled);
+        pw.println(" mDataStallDetectionEnabled=" + mDataStallDetectionEnabled);
         pw.println(" mSentSinceLastRecv=" + mSentSinceLastRecv);
         pw.println(" mNoRecvPollCount=" + mNoRecvPollCount);
         pw.println(" mResolver=" + mResolver);
