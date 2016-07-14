@@ -88,11 +88,21 @@ public class VisualVoicemailSmsParser {
             if (entry.length() == 0) {
                 continue;
             }
-            String[] keyValue = entry.split("=");
-            if (keyValue.length != 2) {
+            // The format for a field is <key>=<value>.
+            // As the OMTP spec both key and value are required, but in some cases carriers will
+            // send an SMS with missing value, so only the presence of the key is enforced.
+            // For example, an SMS for a voicemail from restricted number might have "s=" for the
+            // sender field, instead of omitting the field.
+            int separatorIndex = entry.indexOf("=");
+            if (separatorIndex == -1 || separatorIndex == 0) {
+                // No separator or no key.
+                // For example "foo" or "=value".
+                // A VVM SMS should have all of its' field valid.
                 return null;
             }
-            keyValues.putString(keyValue[0].trim(), keyValue[1].trim());
+            String key = entry.substring(0, separatorIndex);
+            String value = entry.substring(separatorIndex + 1);
+            keyValues.putString(key, value);
         }
 
         return keyValues;
