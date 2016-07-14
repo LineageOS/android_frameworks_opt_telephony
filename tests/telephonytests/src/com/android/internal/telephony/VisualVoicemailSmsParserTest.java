@@ -132,4 +132,19 @@ public class VisualVoicemailSmsParserTest extends TestCase {
                 "//VVM:STATUS:key");
         assertNull(result);
     }
+
+    @SmallTest
+    public void testParsingFail_InvalidMissingKey() {
+        WrappedMessageData result = VisualVoicemailSmsParser.parse("//VVM",
+                "//VVM:STATUS:=value");
+        assertNull(result);
+    }
+
+    @SmallTest
+    public void testParsingFail_MissingValue() {
+        WrappedMessageData result = VisualVoicemailSmsParser.parse("//VVM",
+                "//VVM:STATUS:key=");
+        assertEquals("STATUS", result.prefix);
+        assertEquals("", result.fields.getString("key"));
+    }
 }
