@@ -185,7 +185,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // Carrier's CDMA prefer mode setting
     protected static final int EVENT_SET_ROAMING_PREFERENCE_DONE    = 44;
 
-    protected static final int EVENT_LAST                           = EVENT_CARRIER_CONFIG_CHANGED;
+    protected static final int EVENT_LAST                       = EVENT_SET_ROAMING_PREFERENCE_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -2636,7 +2636,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void carrierActionSetMeteredApnsEnabled(boolean enabled) {
         if(mDcTracker != null) {
-            mDcTracker.carrierActionSetMeteredApnsEnabled(enabled);
+            mDcTracker.setApnsEnabledByCarrier(enabled);
         }
     }
 
@@ -3242,6 +3242,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mDcTracker.unregisterForAllDataDisconnected(h);
     }
 
+    public void registerForDataEnabledChanged(Handler h, int what, Object obj) {
+        mDcTracker.registerForDataEnabledChanged(h, what, obj);
+    }
+
+    public void unregisterForDataEnabledChanged(Handler h) {
+        mDcTracker.unregisterForDataEnabledChanged(h);
+    }
+
     public IccSmsInterfaceManager getIccSmsInterfaceManager(){
         return null;
     }
@@ -3303,6 +3311,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public long getVtDataUsage() {
         if (mImsPhone == null) return 0;
         return mImsPhone.getVtDataUsage();
+    }
+
+    /**
+     * Policy control of data connection. Usually used when we hit data limit.
+     * @param enabled True if enabling the data, otherwise disabling.
+     */
+    public void setPolicyDataEnabled(boolean enabled) {
+        mDcTracker.setPolicyDataEnabled(enabled);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

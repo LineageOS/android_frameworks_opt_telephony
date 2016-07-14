@@ -794,7 +794,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
 
-        mDct.carrierActionSetMeteredApnsEnabled(false);
+        mDct.setApnsEnabledByCarrier(false);
         waitForMs(100);
 
         // Validate all metered data connections have been torn down
