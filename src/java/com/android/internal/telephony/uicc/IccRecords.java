@@ -120,6 +120,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int CALL_FORWARDING_STATUS_ENABLED = 1;
     public static final int CALL_FORWARDING_STATUS_UNKNOWN = -1;
 
+    public static final int DEFAULT_VOICE_MESSAGE_COUNT = -2;
+    public static final int UNKNOWN_VOICE_MESSAGE_COUNT = -1;
+
     @Override
     public String toString() {
         String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
