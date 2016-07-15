@@ -54,6 +54,8 @@ public class IccRecordsTest extends TelephonyTest {
 
     private SIMFileHandler mSIMFileHandler;
     private SIMRecordsExt mSimRecordsExt;
+    private static final int EVENT_GET_MWIS_DONE = 7;
+    private static final int EVENT_GET_VOICE_MAIL_INDICATOR_CPHS_DONE = 8;
 
     private class SIMRecordsExt extends SIMRecords {
         public SIMRecordsExt(UiccCardApplication app, Context c, CommandsInterface ci) {
@@ -140,4 +142,27 @@ public class IccRecordsTest extends TelephonyTest {
         verify(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
     }
 
+    @Test
+    public void testGetVoiceMessageCountMWIS() {
+        // verify DEFAULT_VOICE_MESSAGE_COUNT
+        assertEquals(mIccRecords.getVoiceMessageCount(), -2);
+        byte[] records = {1, 0};
+        Message getMWISDone = mIccRecords.obtainMessage(EVENT_GET_MWIS_DONE);
+        AsyncResult.forMessage(getMWISDone, records, null);
+        getMWISDone.sendToTarget();
+        waitForMs(500);
+        // verify UNKNOWN_VOICE_MESSAGE_COUNT
+        assertEquals(mIccRecords.getVoiceMessageCount(), -1);
+    }
+
+    @Test
+    public void testGetVoiceMessageCountCPHS() {
+        byte records[] = {0xA};
+        Message getCPHSDone = mIccRecords.obtainMessage(EVENT_GET_VOICE_MAIL_INDICATOR_CPHS_DONE);
+        AsyncResult.forMessage(getCPHSDone, records, null);
+        getCPHSDone.sendToTarget();
+        waitForMs(500);
+        // verify UNKNOWN_VOICE_MESSAGE_COUNT
+        assertEquals(mIccRecords.getVoiceMessageCount(), -1);
+    }
 }
