@@ -1356,6 +1356,12 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             return mImei;
         } else {
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            boolean force_imei = configManager.getConfigForSubId(getSubId())
+                    .getBoolean(CarrierConfigManager.KEY_FORCE_IMEI_BOOL);
+            if (force_imei) return mImei;
+
             String id = getMeid();
             if ((id == null) || id.matches("^0*$")) {
                 loge("getDeviceId(): MEID is not initialized use ESN");
