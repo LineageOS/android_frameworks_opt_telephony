@@ -20,6 +20,10 @@ import android.os.Bundle;
 
 public class VisualVoicemailSmsParser {
 
+    private static final String[] ALLOWED_ALTERNATIVE_FORMAT_EVENT = new String[] {
+            "MBOXUPDATE", "UNRECOGNIZED"
+    };
+
     /**
      * Class wrapping the raw OMTP message data, internally represented as as map of all key-value
      * pairs found in the SMS body. <p> All the methods return null if either the field was not
@@ -80,6 +84,7 @@ public class VisualVoicemailSmsParser {
      * @param message The sms string with the prefix removed.
      * @return A WrappedMessageData object containing the map.
      */
+    @Nullable
     private static Bundle parseSmsBody(String message) {
         // TODO: ensure fail if format does not match
         Bundle keyValues = new Bundle();
@@ -106,5 +111,43 @@ public class VisualVoicemailSmsParser {
         }
 
         return keyValues;
+    }
+
+    /**
+     * The alternative format is [Event]?([key]=[value])*, for example
+     *
+     * <p>"MBOXUPDATE?m=1;server=example.com;port=143;name=foo@example.com;pw=foo".
+     *
+     * <p>This format is not protected with a client prefix and should be handled with care. For
+     * safety, the event type must be one of {@link #ALLOWED_ALTERNATIVE_FORMAT_EVENT}
+     */
+    @Nullable
+    public static WrappedMessageData parseAlternativeFormat(String smsBody) {
+        try {
+            int eventTypeEnd = smsBody.indexOf("?");
+            if (eventTypeEnd == -1) {
+                return null;
+            }
+            String eventType = smsBody.substring(0, eventTypeEnd);
+            if (!isAllowedAlternativeFormatEvent(eventType)) {
+                return null;
+            }
+            Bundle fields = parseSmsBody(smsBody.substring(eventTypeEnd + 1));
+            if (fields == null) {
+                return null;
+            }
+            return new WrappedMessageData(eventType, fields);
+        } catch (IndexOutOfBoundsException e) {
+            return null;
+        }
+    }
+
+    private static boolean isAllowedAlternativeFormatEvent(String eventType) {
+        for (String event : ALLOWED_ALTERNATIVE_FORMAT_EVENT) {
+            if (event.equals(eventType)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
