@@ -2423,9 +2423,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean isActiveCallVideo = activeCall.isVideoCall() ||
                 (mTreatDowngradedVideoCallsAsVideoCalls && activeCall.wasVideoCall());
         boolean isActiveCallOnWifi = activeCall.isWifiCall();
+        boolean isVoWifiEnabled = mImsManager.isWfcEnabledByPlatform(mPhone.getContext()) &&
+                mImsManager.isWfcEnabledByUser(mPhone.getContext());
         boolean isIncomingCallAudio = !incomingCall.isVideoCall();
 
-        return isActiveCallVideo && isActiveCallOnWifi && isIncomingCallAudio;
+        log("shouldDisconnectActiveCallOnAnswer : isActiveCallVideo=" + isActiveCallVideo +
+                " isActiveCallOnWifi=" + isActiveCallOnWifi + " isIncomingCallAudio=" +
+                isIncomingCallAudio + " isVowifiEnabled=" + isVoWifiEnabled);
+
+        return isActiveCallVideo && isActiveCallOnWifi && isIncomingCallAudio && !isVoWifiEnabled;
     }
 
     /** Get aggregated video call data usage since boot.
