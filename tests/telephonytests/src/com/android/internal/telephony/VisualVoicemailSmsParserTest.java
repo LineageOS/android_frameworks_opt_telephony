@@ -16,9 +16,7 @@
 package com.android.internal.telephony;
 
 import android.test.suitebuilder.annotation.SmallTest;
-
 import com.android.internal.telephony.VisualVoicemailSmsParser.WrappedMessageData;
-
 import junit.framework.TestCase;
 
 public class VisualVoicemailSmsParserTest extends TestCase {
@@ -146,5 +144,43 @@ public class VisualVoicemailSmsParserTest extends TestCase {
                 "//VVM:STATUS:key=");
         assertEquals("STATUS", result.prefix);
         assertEquals("", result.fields.getString("key"));
+    }
+
+    @SmallTest
+    public void testAlternativeParsing_Mboxupdate() {
+        WrappedMessageData result = VisualVoicemailSmsParser.parseAlternativeFormat(
+            "MBOXUPDATE?m=1;server=example.com;port=143;name=foo@example.com;pw=bar");
+
+        assertEquals("MBOXUPDATE", result.prefix);
+        assertEquals("1", result.fields.getString("m"));
+        assertEquals("example.com", result.fields.getString("server"));
+        assertEquals("143", result.fields.getString("port"));
+        assertEquals("foo@example.com", result.fields.getString("name"));
+        assertEquals("bar", result.fields.getString("pw"));
+    }
+
+    @SmallTest
+    public void testAlternativeParsing_Unrecognized() {
+        WrappedMessageData result = VisualVoicemailSmsParser.parseAlternativeFormat(
+            "UNRECOGNIZED?cmd=STATUS");
+
+        assertEquals("UNRECOGNIZED", result.prefix);
+        assertEquals("STATUS", result.fields.getString("cmd"));
+    }
+
+    @SmallTest
+    public void testAlternativeParsingFail_MissingSeparator() {
+        WrappedMessageData result = VisualVoicemailSmsParser.parseAlternativeFormat(
+            "I send SMS in weird formats");
+
+        assertNull(result);
+    }
+
+    @SmallTest
+    public void testAlternativeParsingFail_NotWhitelistedEvent() {
+        WrappedMessageData result = VisualVoicemailSmsParser.parseAlternativeFormat(
+            "AreYouStillThere?");
+
+        assertNull(result);
     }
 }

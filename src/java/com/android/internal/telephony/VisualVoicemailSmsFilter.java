@@ -15,18 +15,17 @@
  */
 package com.android.internal.telephony;
 
-import android.annotation.Nullable;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Bundle;
 import android.provider.VoicemailContract;
+import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.telephony.VisualVoicemailSmsFilterSettings;
 import android.util.Log;
 
-import android.telephony.SmsMessage;
-
 import com.android.internal.telephony.VisualVoicemailSmsParser.WrappedMessageData;
+
+import java.nio.charset.StandardCharsets;
 
 public class VisualVoicemailSmsFilter {
 
@@ -61,24 +60,41 @@ public class VisualVoicemailSmsFilter {
         // TODO: filter base on originating number and destination port.
 
         String messageBody = getFullMessage(pdus, format);
+
         if(messageBody == null){
+            // Verizon WAP push SMS is not recognized by android, which has a ascii PDU.
+            // Attempt to parse it.
+            Log.i(TAG, "Unparsable SMS received");
+            String asciiMessage = parseAsciiPduMessage(pdus);
+            WrappedMessageData messageData = VisualVoicemailSmsParser
+                .parseAlternativeFormat(asciiMessage);
+            if (messageData != null) {
+                sendVvmSmsBroadcast(context, vvmClientPackage, subId, messageData);
+            }
+            // Confidence for what the message actually is is low. Don't remove the message and let
+            // system decide. Usually because it is not parsable it will be dropped.
             return false;
+        } else {
+            String clientPrefix = settings.clientPrefix;
+            WrappedMessageData messageData = VisualVoicemailSmsParser
+                .parse(clientPrefix, messageBody);
+            if (messageData != null) {
+                sendVvmSmsBroadcast(context, vvmClientPackage, subId, messageData);
+                return true;
+            }
         }
-        String clientPrefix = settings.clientPrefix;
-
-        WrappedMessageData messageData = VisualVoicemailSmsParser.parse(clientPrefix, messageBody);
-        if (messageData != null) {
-            Log.i(TAG, "VVM SMS received");
-            Intent intent = new Intent(VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED);
-            intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_PREFIX, messageData.prefix);
-            intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_FIELDS, messageData.fields);
-            intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_SUBID, subId);
-            intent.setPackage(vvmClientPackage);
-            context.sendBroadcast(intent);
-            return true;
-        }
-
         return false;
+    }
+
+    private static void sendVvmSmsBroadcast(Context context, String vvmClientPackage, int subId,
+        WrappedMessageData messageData) {
+        Log.i(TAG, "VVM SMS received");
+        Intent intent = new Intent(VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED);
+        intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_PREFIX, messageData.prefix);
+        intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_FIELDS, messageData.fields);
+        intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_SUBID, subId);
+        intent.setPackage(vvmClientPackage);
+        context.sendBroadcast(intent);
     }
 
     private static String getFullMessage(byte[][] pdus, String format) {
@@ -86,16 +102,22 @@ public class VisualVoicemailSmsFilter {
         for (byte pdu[] : pdus) {
             SmsMessage message =SmsMessage.createFromPdu(pdu, format);
 
-            if(message == null || message.mWrappedSmsMessage == null) {
-                // b/29123941 Certain PDU will cause createFromPdu() to return a SmsMessage with
-                // null mWrappedSmsMessage, throwing NPE on any method called. In this case, just
-                // ignore the message.
+            if (message == null) {
+                // The PDU is not recognized by android
                 return null;
             }
             String body = message.getMessageBody();
             if (body != null) {
                 builder.append(body);
             }
+        }
+        return builder.toString();
+    }
+
+    private static String parseAsciiPduMessage(byte[][] pdus) {
+        StringBuilder builder = new StringBuilder();
+        for (byte pdu[] : pdus) {
+            builder.append(new String(pdu, StandardCharsets.US_ASCII));
         }
         return builder.toString();
     }
