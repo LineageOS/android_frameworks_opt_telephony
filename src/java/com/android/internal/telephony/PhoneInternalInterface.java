@@ -22,6 +22,7 @@ import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.WorkSource;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.CarrierConfigManager;
@@ -219,8 +220,9 @@ public interface PhoneInternalInterface {
 
     /**
      * Get the current CellLocation.
+     * @param workSource calling WorkSource
      */
-    CellLocation getCellLocation();
+    CellLocation getCellLocation(WorkSource workSource);
 
     /**
      * Get the current DataState. No change notification exists at this
@@ -655,8 +657,9 @@ public interface PhoneInternalInterface {
      *
      * @param response callback message that is dispatched when the query
      * completes.
+     * @param workSource calling WorkSource
      */
-    void getNeighboringCids(Message response);
+    default void getNeighboringCids(Message response, WorkSource workSource){}
 
     /**
      * Mutes or unmutes the microphone for the active call. The microphone

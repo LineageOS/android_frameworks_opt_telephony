@@ -43,6 +43,7 @@ import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
@@ -3647,16 +3648,17 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
+     * @param workSource calling WorkSource
      * @return the current cell location information. Prefer Gsm location
      * information if available otherwise return LTE location information
      */
-    public CellLocation getCellLocation() {
+    public CellLocation getCellLocation(WorkSource workSource) {
         if (((GsmCellLocation)mCellLoc).getLac() >= 0 &&
                 ((GsmCellLocation)mCellLoc).getCid() >= 0) {
             if (DBG) log("getCellLocation(): X good mCellLoc=" + mCellLoc);
             return mCellLoc;
         } else {
-            List<CellInfo> result = getAllCellInfo();
+            List<CellInfo> result = getAllCellInfo(workSource);
             if (result != null) {
                 // A hack to allow tunneling of LTE information via GsmCellLocation
                 // so that older Network Location Providers can return some information
@@ -4457,7 +4459,7 @@ public class ServiceStateTracker extends Handler {
     /**
      * @return all available cell information or null if none.
      */
-    public List<CellInfo> getAllCellInfo() {
+    public List<CellInfo> getAllCellInfo(WorkSource workSource) {
         CellInfoResult result = new CellInfoResult();
         if (VDBG) log("SST.getAllCellInfo(): E");
         int ver = mCi.getRilVersion();
@@ -4468,7 +4470,7 @@ public class ServiceStateTracker extends Handler {
                     Message msg = obtainMessage(EVENT_GET_CELL_INFO_LIST, result);
                     synchronized(result.lockObj) {
                         result.list = null;
-                        mCi.getCellInfoList(msg);
+                        mCi.getCellInfoList(msg, workSource);
                         try {
                             result.lockObj.wait(5000);
                         } catch (InterruptedException e) {

@@ -26,8 +26,10 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Parcel;
+import android.os.Process;
 import android.os.SystemClock;
 import android.os.UserHandle;
+import android.os.WorkSource;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
@@ -289,7 +291,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         list.add(cellInfo);
         mSimulatedCommands.setCellInfoList(list);
 
-        assertEquals(sst.getAllCellInfo(), list);
+        WorkSource workSource = new WorkSource(Process.myUid(),
+                mContext.getPackageName());
+        assertEquals(sst.getAllCellInfo(workSource), list);
     }
 
     @Test
@@ -366,7 +370,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                         "10", "11", "12", "13", "14", "15"}, null)));
 
         waitForMs(200);
-        GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation();
+        WorkSource workSource = new WorkSource(Process.myUid(),
+                mContext.getPackageName());
+        GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation(workSource);
         assertEquals(2, cl.getLac());
         assertEquals(3, cl.getCid());
     }

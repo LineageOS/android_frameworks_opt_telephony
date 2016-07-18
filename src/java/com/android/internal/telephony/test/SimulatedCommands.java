@@ -24,6 +24,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
@@ -1138,7 +1139,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void getNeighboringCids(Message result) {
+    public void getNeighboringCids(Message result, WorkSource workSource) {
         int ret[] = new int[7];
 
         ret[0] = 6;
@@ -1802,7 +1803,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void getCellInfoList(Message response) {
+    public void getCellInfoList(Message response, WorkSource WorkSource) {
         if (mCellInfoList == null) {
             Parcel p = Parcel.obtain();
             p.writeInt(1);
@@ -1832,7 +1833,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setCellInfoListRate(int rateInMillis, Message response) {
+    public void setCellInfoListRate(int rateInMillis, Message response, WorkSource workSource) {
         unimplemented(response);
     }
 

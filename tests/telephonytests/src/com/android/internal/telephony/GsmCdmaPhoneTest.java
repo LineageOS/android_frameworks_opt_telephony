@@ -26,6 +26,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.Process;
+import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
@@ -169,8 +171,10 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void testGetCellLocation() {
         // GSM
         CellLocation cellLocation = new GsmCellLocation();
-        doReturn(cellLocation).when(mSST).getCellLocation();
-        assertEquals(cellLocation, mPhoneUT.getCellLocation());
+        WorkSource workSource = new WorkSource(Process.myUid(),
+            mContext.getPackageName());
+        doReturn(cellLocation).when(mSST).getCellLocation(workSource);
+        assertEquals(cellLocation, mPhoneUT.getCellLocation(workSource));
 
         // Switch to CDMA
         switchToCdma();
@@ -197,7 +201,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         waitForMs(50);
         */
 
-        CdmaCellLocation actualCellLocation = (CdmaCellLocation) mPhoneUT.getCellLocation();
+        CdmaCellLocation actualCellLocation = (CdmaCellLocation) mPhoneUT.getCellLocation(workSource);
         assertEquals(CdmaCellLocation.INVALID_LAT_LONG,
                 actualCellLocation.getBaseStationLatitude());
         assertEquals(CdmaCellLocation.INVALID_LAT_LONG,

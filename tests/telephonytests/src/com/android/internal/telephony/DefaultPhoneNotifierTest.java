@@ -40,6 +40,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 import android.telephony.gsm.GsmCellLocation;
 import android.os.Bundle;
+import android.os.Process;
+import android.os.WorkSource;
 import android.test.suitebuilder.annotation.SmallTest;
 
 public class DefaultPhoneNotifierTest extends TelephonyTest {

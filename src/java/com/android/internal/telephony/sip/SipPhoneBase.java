@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.os.WorkSource;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -110,7 +111,7 @@ abstract class SipPhoneBase extends Phone {
     }
 
     @Override
-    public CellLocation getCellLocation() {
+    public CellLocation getCellLocation(WorkSource workSource) {
         return null;
     }
 
@@ -393,10 +394,6 @@ abstract class SipPhoneBase extends Phone {
     @Override
     public void selectNetworkManually(OperatorInfo network, boolean persistSelection,
             Message response) {
-    }
-
-    @Override
-    public void getNeighboringCids(Message response) {
     }
 
     @Override

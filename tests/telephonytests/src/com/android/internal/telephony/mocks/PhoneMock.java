@@ -24,6 +24,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.WorkSource;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.service.carrier.CarrierIdentifier;
@@ -1071,7 +1072,7 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public CellLocation getCellLocation() {
+    public CellLocation getCellLocation(WorkSource workSource) {
         throw new RuntimeException("not implemented");
     }
 
