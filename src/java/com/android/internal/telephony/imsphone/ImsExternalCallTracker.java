@@ -324,7 +324,7 @@ public class ImsExternalCallTracker implements ImsPhoneCallTracker.PhoneStateLis
 
         // Add to list of tracked connections.
         mExternalConnections.put(connection.getCallId(), connection);
-        mExternalCallPullableState.put(connection.getCallId(), isCallPullPermitted);
+        mExternalCallPullableState.put(connection.getCallId(), state.isCallPullable());
 
         // Note: The notification of unknown connection is ultimately handled by
         // PstnIncomingCallNotifier#addNewUnknownCall.  That method will ensure that an extra is set
@@ -365,9 +365,11 @@ public class ImsExternalCallTracker implements ImsPhoneCallTracker.PhoneStateLis
             connection.setVideoState(newVideoState);
         }
 
+        mExternalCallPullableState.put(state.getCallId(), state.isCallPullable());
         boolean isCallPullPermitted = isCallPullPermitted(state.isCallPullable(), newVideoState);
         Log.d(TAG,
-                "updateExistingConnection - pullable state : externalCallId = " + connection.getCallId()
+                "updateExistingConnection - pullable state : externalCallId = " + connection
+                        .getCallId()
                         + " ; isPullable = " + isCallPullPermitted
                         + " ; networkPullable = " + state.isCallPullable()
                         + " ; isVideo = "
