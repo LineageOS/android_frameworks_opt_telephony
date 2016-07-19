@@ -30,6 +30,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -2003,6 +2004,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onVoiceMessageCountChanged(int count) {
             if (DBG) log("onVoiceMessageCountChanged :: count=" + count);
             mPhone.mDefaultPhone.setVoiceMessageCount(count);
+        }
+
+        @Override
+        public void registrationAssociatedUriChanged(Uri[] uris) {
+            if (DBG) log("registrationAssociatedUriChanged");
+            mPhone.setCurrentSubscriberUris(uris);
         }
     };
 
