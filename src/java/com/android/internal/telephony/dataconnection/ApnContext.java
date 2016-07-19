@@ -450,9 +450,14 @@ public class ApnContext {
         }
     }
 
-    public boolean hasNoRestrictedRequests() {
+    public boolean hasNoRestrictedRequests(boolean excludeDun) {
         synchronized (mRefCountLock) {
             for (NetworkRequest nr : mNetworkRequests) {
+                if (excludeDun &&
+                        nr.networkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_DUN)) {
+                    continue;
+                }
                 if (nr.networkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) == false) {
                     return false;

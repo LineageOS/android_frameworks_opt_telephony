@@ -1514,10 +1514,12 @@ public class DcTracker extends Handler {
         // request for the network.
         // TODO - may want restricted requests to only apply to carrier-limited data access
         //        rather than applying to user limited as well.
+        // Exclude DUN for the purposes of the override until we get finer grained
+        // intention in NetworkRequests
         boolean checkUserDataEnabled =
                 ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
                         mPhone.getSubId(), mPhone.getServiceState().getDataRoaming()) &&
-                apnContext.hasNoRestrictedRequests();
+                apnContext.hasNoRestrictedRequests(true /*exclude DUN */);
 
         DataAllowFailReason failureReason = new DataAllowFailReason();
 
