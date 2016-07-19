@@ -24,6 +24,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -155,6 +156,17 @@ public class ImsPhone extends ImsPhoneBase {
             exitEmergencyCallbackMode();
         }
     };
+
+    private Uri[] selfIdentityUris;
+
+    protected void setCurrentSubscriberUris(Uri[] selfIdentityUris) {
+        this.selfIdentityUris = selfIdentityUris;
+    }
+
+    @Override
+    public Uri[] getCurrentSubscriberUris() {
+        return selfIdentityUris;
+    }
 
     // Create Cf (Call forward) so that dialling number &
     // mIsCfu (true if reason is call forward unconditional)

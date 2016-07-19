@@ -23,6 +23,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -3319,6 +3320,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void setPolicyDataEnabled(boolean enabled) {
         mDcTracker.setPolicyDataEnabled(enabled);
+    }
+
+    /**
+     * SIP URIs aliased to the current subscriber given by the IMS implementation.
+     * Applicable only on IMS; used in absence of line1number.
+     * @return array of SIP URIs aliased to the current subscriber
+     */
+    public Uri[] getCurrentSubscriberUris() {
+        return null;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
