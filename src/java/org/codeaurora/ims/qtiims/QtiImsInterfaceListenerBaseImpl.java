@@ -79,5 +79,10 @@ public class QtiImsInterfaceListenerBaseImpl extends IQtiImsInterfaceListener.St
         Rlog.e(LOG_TAG, "Error! " + name + "() in QtiImsInterfaceListener should not be " +
                 "called, Default Implementation.");
     }
+	
+	@Override
+    public void receiveCallTransferResponse(int result) {
+    }
+
 }
 

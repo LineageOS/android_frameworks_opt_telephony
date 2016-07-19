@@ -30,6 +30,8 @@
 package org.codeaurora.ims.qtiims;
 
 import android.content.ContentResolver;
+import android.content.Context;
+import com.android.internal.telephony.ConfigResourceUtil;
 
 /**
  * This class contains QtiImsInterface specific utiltity functions.
@@ -50,7 +52,36 @@ public class QtiImsInterfaceUtils {
     /* Default error value */
     public static final int QTI_IMS_REQUEST_ERROR = 1;
 
-    /* Call RAT extra key */
+    /**
+     * Definitions for the call transfer type. For easier implementation,
+     * the transfer type is defined as a bit mask value.
+     */
+    //Value representing blind call transfer type
+    public static final int QTI_IMS_BLIND_TRANSFER = 0x01;
+    //Value representing assured call transfer type
+    public static final int QTI_IMS_ASSURED_TRANSFER = 0x02;
+    //Value representing consultative call transfer type
+    public static final int QTI_IMS_CONSULTATIVE_TRANSFER = 0x04;
+
+    /* Call transfer extra key */
+    public static final String QTI_IMS_TRANSFER_EXTRA_KEY = "transferType";
+
+    /* Constants used for VOPS and SSAC feature */
+    // Intent action
+    public static final String ACTION_VOPS_SSAC_STATUS =
+            "org.codeaurora.VOIP_VOPS_SSAC_STATUS";
+    /* Intent extra
+     * if true  : Voice is supported on LTE
+     * if false : Voice is not supported on LTE
+     */
+    public static final String EXTRA_VOPS = "Vops";
+    /* Intent extra
+     * if true  : Access barring factor for voice calls is 0
+     * if false : Access barring factor for voice calls is non-zero
+     *            Range: 0 to 100. Value 100 is used when
+     *            the UE goes to the LTE Connected state
+     */
+    public static final String EXTRA_SSAC = "Ssac";
     public static final String QTI_IMS_CALL_RAT_EXTRA_KEY = "callRadioTech";
 
     /**
@@ -85,5 +116,15 @@ public class QtiImsInterfaceUtils {
 
         android.provider.Settings.Global.putString(contentResolver,
                 QTI_IMS_CALL_DEFLECT_NUMBER, deflectNum);
+    }
+
+    /***
+     * Checks if the IMS call transfer property is enabled or not.
+     * Returns true if enabled, or false otherwise.
+     */
+    public static boolean isCallTransferEnabled(Context context) {
+        //ConfigResourceUtil mConfigResUtil = new ConfigResourceUtil();
+        //return mConfigResUtil.getBooleanValue(context, "config_enable_calltransfer_over_ims");
+		return false;
     }
 }
