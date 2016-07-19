@@ -860,7 +860,7 @@ public class DataConnection extends StateMachine {
         // first, if we have no restricted requests, this override can stay FALSE:
         boolean noRestrictedRequests = true;
         for (ApnContext apnContext : mApnContexts.keySet()) {
-            noRestrictedRequests &= apnContext.hasNoRestrictedRequests();
+            noRestrictedRequests &= apnContext.hasNoRestrictedRequests(true /* exclude DUN */);
         }
         if (noRestrictedRequests) {
             return;
@@ -948,6 +948,8 @@ public class DataConnection extends StateMachine {
         }
         if (mRestrictedNetworkOverride) {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            // don't use dun on restriction-overriden networks.
+            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
         }
 
         int up = 14;
@@ -2055,7 +2057,8 @@ public class DataConnection extends StateMachine {
                 + " mLastFailCause=" + mLastFailCause
                 + " mTag=" + mTag
                 + " mLinkProperties=" + mLinkProperties
-                + " linkCapabilities=" + makeNetworkCapabilities();
+                + " linkCapabilities=" + makeNetworkCapabilities()
+                + " mRestrictedNetworkOverride=" + mRestrictedNetworkOverride;
     }
 
     @Override
