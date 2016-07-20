@@ -245,6 +245,14 @@ public final class SmsManager {
      */
     public static final String MMS_CONFIG_SUPPORT_HTTP_CHARSET_HEADER =
             CarrierConfigManager.KEY_MMS_SUPPORT_HTTP_CHARSET_HEADER_BOOL;
+    /**
+     * If true, add "Connection: close" header to MMS HTTP requests so the connection
+     * is immediately closed (disabling keep-alive). (Boolean type)
+     * @hide
+     */
+    public static final String MMS_CONFIG_CLOSE_CONNECTION =
+            CarrierConfigManager.KEY_MMS_CLOSE_CONNECTION_BOOL;
+
     /*
      * Forwarded constants from SimDialogActivity.
      */
@@ -1618,6 +1626,8 @@ public final class SmsManager {
                 config.getBoolean(MMS_CONFIG_MMS_READ_REPORT_ENABLED));
         filtered.putBoolean(MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED,
                 config.getBoolean(MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED));
+        filtered.putBoolean(MMS_CONFIG_CLOSE_CONNECTION,
+                config.getBoolean(MMS_CONFIG_CLOSE_CONNECTION));
         filtered.putInt(MMS_CONFIG_MAX_MESSAGE_SIZE, config.getInt(MMS_CONFIG_MAX_MESSAGE_SIZE));
         filtered.putInt(MMS_CONFIG_MAX_IMAGE_WIDTH, config.getInt(MMS_CONFIG_MAX_IMAGE_WIDTH));
         filtered.putInt(MMS_CONFIG_MAX_IMAGE_HEIGHT, config.getInt(MMS_CONFIG_MAX_IMAGE_HEIGHT));
