@@ -609,7 +609,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (intentExtras.containsKey(ImsCallProfile.EXTRA_IS_CALL_PULL)) {
                     profile.mCallExtras.putBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL,
                             intentExtras.getBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL));
+                    int dialogId = intentExtras.getInt(
+                            ImsExternalCallTracker.EXTRA_IMS_EXTERNAL_CALL_ID);
                     conn.setIsPulledCall(true);
+                    conn.setPulledDialogId(dialogId);
                 }
 
                 // Pack the OEM-specific call extras.
@@ -1455,17 +1458,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mOnHoldToneStarted = false;
                 mOnHoldToneId = -1;
             }
-            if (conn != null && conn.isIncoming() && conn.getConnectTime() == 0
-                    && cause != DisconnectCause.ANSWERED_ELSEWHERE) {
-                // Missed
-                if (cause == DisconnectCause.NORMAL) {
-                    cause = DisconnectCause.INCOMING_MISSED;
-                } else {
-                    cause = DisconnectCause.INCOMING_REJECTED;
-                }
-                if (DBG) log("Incoming connection of 0 connect time detected - translated cause = "
-                        + cause);
+            if (conn != null) {
+                if (conn.isPulledCall() && (
+                        reasonInfo.getCode() == ImsReasonInfo.CODE_CALL_PULL_OUT_OF_SYNC ||
+                        reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_TEMPRARILY_UNAVAILABLE) &&
+                        mPhone != null && mPhone.getExternalCallTracker() != null) {
 
+                    log("Call pull failed.");
+                    // Call was being pulled, but the call pull has failed -- inform the associated
+                    // TelephonyConnection that the pull failed, and provide it with the original
+                    // external connection which was pulled so that it can be swapped back.
+                    conn.onCallPullFailed(mPhone.getExternalCallTracker()
+                            .getConnectionById(conn.getPulledDialogId()));
+                    // Do not mark as disconnected; the call will just change from being a regular
+                    // call to being an external call again.
+                    cause = DisconnectCause.NOT_DISCONNECTED;
+
+                } else if (conn.isIncoming() && conn.getConnectTime() == 0
+                        && cause != DisconnectCause.ANSWERED_ELSEWHERE) {
+                    // Missed
+                    if (cause == DisconnectCause.NORMAL) {
+                        cause = DisconnectCause.INCOMING_MISSED;
+                    } else {
+                        cause = DisconnectCause.INCOMING_REJECTED;
+                    }
+                    if (DBG) log("Incoming connection of 0 connect time detected - translated " +
+                            "cause = " + cause);
+                }
             }
 
             if (cause == DisconnectCause.NORMAL && conn != null && conn.getImsCall().isMerged()) {
@@ -2383,11 +2402,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      *
      * @param number The phone number of the call to be pulled.
      * @param videoState The desired video state of the pulled call.
+     * @param dialogId The {@link ImsExternalConnection#getCallId()} dialog id associated with the
+     *                 call which is being pulled.
      */
     @Override
-    public void pullExternalCall(String number, int videoState) {
+    public void pullExternalCall(String number, int videoState, int dialogId) {
         Bundle extras = new Bundle();
         extras.putBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL, true);
+        extras.putInt(ImsExternalCallTracker.EXTRA_IMS_EXTERNAL_CALL_ID, dialogId);
         try {
             Connection connection = dial(number, videoState, extras);
             mPhone.notifyUnknownConnection(connection);
