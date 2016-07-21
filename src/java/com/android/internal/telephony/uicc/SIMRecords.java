@@ -480,7 +480,7 @@ public class SIMRecords extends IccRecords {
             voiceMailWaiting = ((mEfMWIS[0] & 0x01) != 0);
             countVoiceMessages = mEfMWIS[1] & 0xff;
 
-            if (voiceMailWaiting && countVoiceMessages == 0) {
+            if (voiceMailWaiting && (countVoiceMessages == 0 || countVoiceMessages == 0xff)) {
                 // Unknown count = -1
                 countVoiceMessages = -1;
             }
