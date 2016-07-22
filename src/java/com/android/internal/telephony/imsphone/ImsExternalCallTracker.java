@@ -88,7 +88,8 @@ public class ImsExternalCallTracker implements ImsPhoneCallTracker.PhoneStateLis
                 Log.e(TAG, "onPullExternalCall : No call puller defined");
                 return;
             }
-            mCallPuller.pullExternalCall(connection.getAddress(), connection.getVideoState());
+            mCallPuller.pullExternalCall(connection.getAddress(), connection.getVideoState(),
+                    connection.getCallId());
         }
     }
 
