@@ -68,6 +68,7 @@ import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsSuppServiceNotification;
 import com.android.ims.ImsUtInterface;
 import com.android.ims.internal.IImsVideoCallProvider;
+import com.android.ims.internal.ImsVideoCallProvider;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -1449,6 +1450,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsPhoneConnection conn = findConnection(imsCall);
             if (DBG) log("cause = " + cause + " conn = " + conn);
 
+            if (conn != null) {
+                android.telecom.Connection.VideoProvider videoProvider = conn.getVideoProvider();
+                if (videoProvider instanceof ImsVideoCallProviderWrapper) {
+                    ImsVideoCallProviderWrapper wrapper = (ImsVideoCallProviderWrapper)
+                            videoProvider;
+
+                    wrapper.removeImsVideoProviderCallback(conn);
+                }
+            }
             if (mOnHoldToneId == System.identityHashCode(conn)) {
                 if (conn != null && mOnHoldToneStarted) {
                     mPhone.stopOnHoldTone(conn);
@@ -2306,6 +2316,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             conn.setVideoProvider(imsVideoCallProviderWrapper);
             imsVideoCallProviderWrapper.registerForDataUsageUpdate
                     (this, EVENT_VT_DATA_USAGE_UPDATE, imsCall);
+            imsVideoCallProviderWrapper.addImsVideoProviderCallback(conn);
         }
     }
 
