@@ -98,6 +98,7 @@ public abstract class Connection {
         public void onConferenceMergedFailed();
         public void onExtrasChanged(Bundle extras);
         public void onExitedEcmMode();
+        public void onCallPullFailed(Connection externalConnection);
     }
 
     /**
@@ -127,6 +128,8 @@ public abstract class Connection {
         public void onExtrasChanged(Bundle extras) {}
         @Override
         public void onExitedEcmMode() {}
+        @Override
+        public void onCallPullFailed(Connection externalConnection) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -193,6 +196,13 @@ public abstract class Connection {
      * {@link android.telecom.Connection#PROPERTY_IS_EXTERNAL_CALL}.
      */
     private boolean mIsPulledCall = false;
+
+    /**
+     * Where {@link #mIsPulledCall} is {@code true}, contains the dialog Id of the external call
+     * which is being pulled (e.g.
+     * {@link com.android.internal.telephony.imsphone.ImsExternalConnection#getCallId()}).
+     */
+    private int mPulledDialogId;
 
     protected Connection(int phoneType) {
         mPhoneType = phoneType;
@@ -828,6 +838,21 @@ public abstract class Connection {
     }
 
     /**
+     * For an external call which is being pulled (e.g. {@link #isPulledCall()} is {@code true}),
+     * sets the dialog Id for the external call.  Used to handle failures to pull a call so that the
+     * pulled call can be reconciled with its original external connection.
+     *
+     * @param pulledDialogId The dialog id associated with a pulled call.
+     */
+    public void setPulledDialogId(int pulledDialogId) {
+        mPulledDialogId = pulledDialogId;
+    }
+
+    public int getPulledDialogId() {
+        return mPulledDialogId;
+    }
+
+    /**
      * Sets the call substate for the current connection and reports the changes to all listeners.
      * Valid call substates are defined in {@link android.telecom.Connection}.
      *
@@ -900,6 +925,20 @@ public abstract class Connection {
     }
 
     /**
+     * Notifies the connection that a call to {@link #pullExternalCall()} has failed to pull the
+     * call to the local device.
+     *
+     * @param externalConnection The original
+     *      {@link com.android.internal.telephony.imsphone.ImsExternalConnection} from which the
+     *      pull was initiated.
+     */
+    public void onCallPullFailed(Connection externalConnection) {
+        for (Listener l : mListeners) {
+            l.onCallPullFailed(externalConnection);
+        }
+    }
+
+    /**
      * Notifies this Connection of a request to disconnect a participant of the conference managed
      * by the connection.
      *
@@ -931,6 +970,8 @@ public abstract class Connection {
         StringBuilder str = new StringBuilder(128);
 
         str.append(" callId: " + getTelecomCallId());
+        str.append(" isExternal: " + (((mConnectionCapabilities & Capability.IS_EXTERNAL_CONNECTION)
+                == Capability.IS_EXTERNAL_CONNECTION) ? "Y" : "N"));
         if (Rlog.isLoggable(LOG_TAG, Log.DEBUG)) {
             str.append("addr: " + getAddress())
                     .append(" pres.: " + getNumberPresentation())
