@@ -157,15 +157,15 @@ public class ImsPhone extends ImsPhoneBase {
         }
     };
 
-    private Uri[] selfIdentityUris;
+    private Uri[] mCurrentSubscriberUris;
 
-    protected void setCurrentSubscriberUris(Uri[] selfIdentityUris) {
-        this.selfIdentityUris = selfIdentityUris;
+    protected void setCurrentSubscriberUris(Uri[] currentSubscriberUris) {
+        this.mCurrentSubscriberUris = currentSubscriberUris;
     }
 
     @Override
     public Uri[] getCurrentSubscriberUris() {
-        return selfIdentityUris;
+        return mCurrentSubscriberUris;
     }
 
     // Create Cf (Call forward) so that dialling number &
