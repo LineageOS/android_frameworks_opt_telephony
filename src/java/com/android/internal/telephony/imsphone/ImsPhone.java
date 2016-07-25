@@ -1305,10 +1305,10 @@ public class ImsPhone extends ImsPhoneBase {
         }
         // if phone is not in Ecm mode, and it's changed to Ecm mode
         if (mIsPhoneInEcmState == false) {
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
             mIsPhoneInEcmState = true;
             // notify change
             sendEmergencyCallbackModeChange();
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
@@ -1325,6 +1325,12 @@ public class ImsPhone extends ImsPhoneBase {
             Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode: mIsPhoneInEcmState = "
                     + mIsPhoneInEcmState);
         }
+
+        if (mIsPhoneInEcmState) {
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+            mIsPhoneInEcmState = false;
+        }
+
         // Remove pending exit Ecm runnable, if any
         removeCallbacks(mExitEcmRunnable);
 
@@ -1337,10 +1343,6 @@ public class ImsPhone extends ImsPhoneBase {
             mWakeLock.release();
         }
 
-        if (mIsPhoneInEcmState) {
-            mIsPhoneInEcmState = false;
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-        }
         // send an Intent
         sendEmergencyCallbackModeChange();
     }
