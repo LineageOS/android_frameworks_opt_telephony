@@ -27,7 +27,6 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
-import android.telecom.Log;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
@@ -753,7 +752,7 @@ public class ImsPhoneConnection extends Connection implements
             int namep = ImsCallProfile.OIRToPresentation(
                     callProfile.getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
             if (Phone.DEBUG_PHONE) {
-                Rlog.d(LOG_TAG, "address = " +  address + " name = " + name +
+                Rlog.d(LOG_TAG, "address = " + Rlog.pii(LOG_TAG, address) + " name = " + name +
                         " nump = " + nump + " namep = " + namep);
             }
             if(equalsHandlesNulls(mAddress, address)) {
@@ -1022,7 +1021,7 @@ public class ImsPhoneConnection extends Connection implements
         sb.append(" telecomCallID: ");
         sb.append(getTelecomCallId());
         sb.append(" address: ");
-        sb.append(Log.pii(getAddress()));
+        sb.append(Rlog.pii(LOG_TAG, getAddress()));
         sb.append(" ImsCall: ");
         if (mImsCall == null) {
             sb.append("null");

@@ -22,7 +22,6 @@ import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.telephony.cdma.CdmaSmsCbProgramResults;
 import android.text.format.Time;
 import android.telephony.Rlog;
-import android.util.Log;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
@@ -436,8 +435,7 @@ public final class BearerData {
         builder.append(", readAckReq=" + readAckReq);
         builder.append(", reportReq=" + reportReq);
         builder.append(", numberOfMessages=" + numberOfMessages);
-        builder.append(", callbackNumber=" +
-                (Rlog.isLoggable(LOG_TAG, Log.DEBUG) ? callbackNumber : "XXX"));
+        builder.append(", callbackNumber=" + Rlog.pii(LOG_TAG, callbackNumber));
         builder.append(", depositIndex=" + depositIndex);
         builder.append(", hasUserDataHeader=" + hasUserDataHeader);
         builder.append(", userData=" + userData);
