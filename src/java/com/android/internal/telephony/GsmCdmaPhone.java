@@ -283,7 +283,7 @@ public class GsmCdmaPhone extends Phone {
             tm.setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_GSM);
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         } else {
-            mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
+            mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
             // This is needed to handle phone process crashes
             String inEcm = SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
             mIsPhoneInEcmState = inEcm.equals("true");
