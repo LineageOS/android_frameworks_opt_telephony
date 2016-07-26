@@ -760,6 +760,11 @@ public class DataConnection extends StateMachine {
 
     private void updateTcpBufferSizes(int rilRat) {
         String sizes = null;
+        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA) {
+            // for now treat CA as LTE.  Plan to surface the extra bandwith in a more
+            // precise manner which should affect buffer sizes
+            rilRat = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+        }
         String ratName = ServiceState.rilRadioTechnologyToString(rilRat).toLowerCase(Locale.ROOT);
         // ServiceState gives slightly different names for EVDO tech ("evdo-rev.0" for ex)
         // - patch it up:
