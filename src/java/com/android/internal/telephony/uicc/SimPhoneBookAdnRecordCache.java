@@ -293,6 +293,10 @@ public final class SimPhoneBookAdnRecordCache extends Handler {
             case EVENT_QUERY_ADN_RECORD_DONE:
                 log("Querying ADN record done");
                 if (ar.exception != null) {
+                    for (Message response : mAdnLoadingWaiters) {
+                        sendErrorResponse(response, "Query adn record failed" + ar.exception);
+                    }
+                    mAdnLoadingWaiters.clear();
                     break;
                 }
                 mAdnCount = ((int[]) (ar.result))[0];
