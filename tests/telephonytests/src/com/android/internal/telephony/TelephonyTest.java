@@ -58,6 +58,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.mocks.TelephonyRegistryMock;
@@ -172,6 +173,8 @@ public abstract class TelephonyTest {
     protected IBinder mConnMetLoggerBinder;
     @Mock
     protected CarrierSignalAgent mCarrierSignalAgent;
+    @Mock
+    protected ImsExternalCallTracker mImsExternalCallTracker;
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
@@ -340,6 +343,8 @@ public abstract class TelephonyTest {
                         anyInt(), any(Object.class));
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
                 .getIDeviceIdleController();
+        doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory).
+                makeImsExternalCallTracker(any(ImsPhone.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
