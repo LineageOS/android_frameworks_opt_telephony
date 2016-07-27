@@ -2794,6 +2794,19 @@ public class ServiceStateTracker extends Handler {
         boolean hasCdmaDataConnectionChanged =
                 mSS.getDataRegState() != mNewSS.getDataRegState();
 
+        boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
+
+        // ratchet the new tech up through it's rat family but don't drop back down
+        // until cell change
+        if (hasLocationChanged == false) {
+            mNewSS.setRilVoiceRadioTechnology(mRatRatcheter.ratchetRat(
+                    mSS.getRilVoiceRadioTechnology(),
+                    mNewSS.getRilVoiceRadioTechnology()));
+            mNewSS.setRilDataRadioTechnology(mRatRatcheter.ratchetRat(
+                    mSS.getRilDataRadioTechnology(),
+                    mNewSS.getRilDataRadioTechnology()));
+        }
+
         boolean hasRilVoiceRadioTechnologyChanged =
                 mSS.getRilVoiceRadioTechnology() != mNewSS.getRilVoiceRadioTechnology();
 
@@ -2809,8 +2822,6 @@ public class ServiceStateTracker extends Handler {
         boolean hasDataRoamingOn = !mSS.getDataRoaming() && mNewSS.getDataRoaming();
 
         boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
-
-        boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         TelephonyManager tm =
                 (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
@@ -2989,6 +3000,19 @@ public class ServiceStateTracker extends Handler {
         boolean hasCdmaDataConnectionChanged =
                 mSS.getDataRegState() != mNewSS.getDataRegState();
 
+        boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
+
+        // ratchet the new tech up through it's rat family but don't drop back down
+        // until cell change
+        if (hasLocationChanged == false) {
+            mNewSS.setRilVoiceRadioTechnology(mRatRatcheter.ratchetRat(
+                    mSS.getRilVoiceRadioTechnology(),
+                    mNewSS.getRilVoiceRadioTechnology()));
+            mNewSS.setRilDataRadioTechnology(mRatRatcheter.ratchetRat(
+                    mSS.getRilDataRadioTechnology(),
+                    mNewSS.getRilDataRadioTechnology()));
+        }
+
         boolean hasVoiceRadioTechnologyChanged = mSS.getRilVoiceRadioTechnology()
                 != mNewSS.getRilVoiceRadioTechnology();
 
@@ -3004,8 +3028,6 @@ public class ServiceStateTracker extends Handler {
         boolean hasDataRoamingOn = !mSS.getDataRoaming() && mNewSS.getDataRoaming();
 
         boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
-
-        boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         boolean has4gHandoff =
                 mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&
