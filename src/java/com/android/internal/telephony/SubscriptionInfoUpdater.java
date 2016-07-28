@@ -147,7 +147,8 @@ public class SubscriptionInfoUpdater extends Handler {
                         throws RemoteException {
                     mCurrentlyActiveUserId = newUserId;
                     CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
-                            mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
+                            mPackageManager, TelephonyManager.getDefault(),
+                            mContext.getContentResolver(), mCurrentlyActiveUserId);
 
                     if (reply != null) {
                         try {
@@ -172,7 +173,8 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
         }
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
-                mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
+                mPackageManager, TelephonyManager.getDefault(), mContext.getContentResolver(),
+                mCurrentlyActiveUserId);
     }
 
     private final BroadcastReceiver sReceiver = new  BroadcastReceiver() {
@@ -480,7 +482,8 @@ public class SubscriptionInfoUpdater extends Handler {
 
                 // Update set of enabled carrier apps now that the privilege rules may have changed.
                 CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
-                        mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
+                        mPackageManager, TelephonyManager.getDefault(),
+                        mContext.getContentResolver(), mCurrentlyActiveUserId);
 
                 broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
                 updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
