@@ -68,7 +68,6 @@ import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsSuppServiceNotification;
 import com.android.ims.ImsUtInterface;
 import com.android.ims.internal.IImsVideoCallProvider;
-import com.android.ims.internal.ImsVideoCallProvider;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -197,8 +196,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_EXIT_ECBM_BEFORE_PENDINGMO = 21;
     private static final int EVENT_VT_DATA_USAGE_UPDATE = 22;
     private static final int EVENT_DATA_ENABLED_CHANGED = 23;
+    private static final int EVENT_GET_IMS_SERVICE = 24;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
+
+    // The number of times we will try to connect to the ImsService before giving up.
+    private static final int NUM_IMS_SERVICE_RETRIES = 10;
+    // The number of milliseconds in between each try.
+    private static final int TIME_BETWEEN_IMS_SERVICE_RETRIES_MS = 400; // ms
 
     //***** Instance Variables
     private ArrayList<ImsPhoneConnection> mConnections = new ArrayList<ImsPhoneConnection>();
@@ -232,6 +237,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
+    private int mImsServiceRetryCount;
     private ImsManager mImsManager;
     private int mServiceId = -1;
 
@@ -299,12 +305,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getDefaultPhone().registerForDataEnabledChanged(
                 this, EVENT_DATA_ENABLED_CHANGED, null);
 
-        Thread t = new Thread() {
-            public void run() {
-                getImsService();
-            }
-        };
-        t.start();
+        mImsServiceRetryCount = 0;
+        // Send a message to connect to the Ims Service and open a connection through
+        // getImsService().
+        sendEmptyMessage(EVENT_GET_IMS_SERVICE);
     }
 
     private PendingIntent createIncomingCallPendingIntent() {
@@ -314,37 +318,31 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
-    private void getImsService() {
+    private void getImsService() throws ImsException {
         if (DBG) log("getImsService");
         mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId());
-        try {
-            mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
-                    createIncomingCallPendingIntent(),
-                    mImsConnectionStateListener);
+        mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
+                createIncomingCallPendingIntent(),
+                mImsConnectionStateListener);
 
-            mImsManager.setImsConfigListener(mImsConfigListener);
+        mImsManager.setImsConfigListener(mImsConfigListener);
 
-            // Get the ECBM interface and set IMSPhone's listener object for notifications
-            getEcbmInterface().setEcbmStateListener(mPhone.getImsEcbmStateListener());
-            if (mPhone.isInEcm()) {
-                // Call exit ECBM which will invoke onECBMExited
-                mPhone.exitEmergencyCallbackMode();
-            }
-            int mPreferredTtyMode = Settings.Secure.getInt(
-                mPhone.getContext().getContentResolver(),
-                Settings.Secure.PREFERRED_TTY_MODE,
-                Phone.TTY_MODE_OFF);
-            mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
+        // Get the ECBM interface and set IMSPhone's listener object for notifications
+        getEcbmInterface().setEcbmStateListener(mPhone.getImsEcbmStateListener());
+        if (mPhone.isInEcm()) {
+            // Call exit ECBM which will invoke onECBMExited
+            mPhone.exitEmergencyCallbackMode();
+        }
+        int mPreferredTtyMode = Settings.Secure.getInt(
+            mPhone.getContext().getContentResolver(),
+            Settings.Secure.PREFERRED_TTY_MODE,
+            Phone.TTY_MODE_OFF);
+        mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
 
-            ImsMultiEndpoint multiEndpoint = getMultiEndpointInterface();
-            if (multiEndpoint != null) {
-                multiEndpoint.setExternalCallStateListener(
-                        mPhone.getExternalCallTracker().getExternalCallStateListener());
-            }
-        } catch (ImsException e) {
-            loge("getImsService: " + e);
-            //Leave mImsManager as null, then CallStateException will be thrown when dialing
-            mImsManager = null;
+        ImsMultiEndpoint multiEndpoint = getMultiEndpointInterface();
+        if (multiEndpoint != null) {
+            multiEndpoint.setExternalCallStateListener(
+                    mPhone.getExternalCallTracker().getExternalCallStateListener());
         }
     }
 
@@ -358,6 +356,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         clearDisconnected();
         mPhone.getContext().unregisterReceiver(mReceiver);
         mPhone.unregisterForDataEnabledChanged(this);
+        removeMessages(EVENT_GET_IMS_SERVICE);
     }
 
     @Override
@@ -2187,6 +2186,27 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (ar.result instanceof Pair) {
                     Pair<Boolean, Integer> p = (Pair<Boolean, Integer>) ar.result;
                     onDataEnabledChanged(p.first, p.second);
+                }
+                break;
+            case EVENT_GET_IMS_SERVICE:
+                try {
+                    getImsService();
+                } catch (ImsException e) {
+                    loge("getImsService: " + e);
+                    //Leave mImsManager as null, then CallStateException will be thrown when dialing
+                    mImsManager = null;
+                    if (mImsServiceRetryCount < NUM_IMS_SERVICE_RETRIES) {
+                        loge("getImsService: Retrying getting ImsService...");
+                        sendEmptyMessageDelayed(EVENT_GET_IMS_SERVICE,
+                                TIME_BETWEEN_IMS_SERVICE_RETRIES_MS);
+                        mImsServiceRetryCount++;
+                    } else {
+                        // We have been unable to connect for
+                        // NUM_IMS_SERVICE_RETRIES*TIME_BETWEEN_IMS_SERVICE_RETRIES_MS ms. We will
+                        // probably never be able to connect, so we should just give up.
+                        loge("getImsService: ImsService retrieval timeout... ImsService is " +
+                                "unavailable.");
+                    }
                 }
                 break;
         }
