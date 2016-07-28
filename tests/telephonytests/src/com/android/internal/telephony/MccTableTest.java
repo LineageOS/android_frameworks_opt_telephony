@@ -63,6 +63,13 @@ public class MccTableTest extends AndroidTestCase {
     }
 
     @SmallTest
+    public void testLang_India() throws Exception {
+        assertEquals(MccTable.defaultLanguageForMcc(404), "en");
+        assertEquals(MccTable.defaultLanguageForMcc(405), "en");
+        assertEquals(MccTable.defaultLanguageForMcc(406), "en");
+    }
+
+    @SmallTest
     public void testSmDigits() throws Exception {
         assertEquals(MccTable.smallestDigitsMccForMnc(312), 3);
         assertEquals(MccTable.smallestDigitsMccForMnc(430), 2);
