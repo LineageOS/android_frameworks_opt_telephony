@@ -58,10 +58,16 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.ArrayUtils;
+
+import com.mediatek.internal.telephony.cdma.CdmaFeatureOptionUtils;
+// import com.mediatek.internal.telephony.dataconnection.DataSubSelector;
+import com.mediatek.internal.telephony.dataconnection.IaExtendParam;
+import com.mediatek.internal.telephony.ltedc.svlte.SvlteUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1795,6 +1801,66 @@ public abstract class DcTrackerBase extends Handler {
 
     protected void setInitialAttachApn(ArrayList <ApnSetting> apnList,
             ApnSetting preferredApn) {
+        // MTK
+        // M:[C2K][IRAT] Set initial attach APN for SVLTE. {@
+        if (mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            if (CdmaFeatureOptionUtils.isCdmaLteDcSupport() && SvlteUtils.isActiveSvlteMode(mPhone)
+                    && mSvlteOperatorNumeric != null) {
+                // MTK TODO
+                // setInitialAttachApnForSvlte();
+            } else {
+                log("[IRAT_DcTracker] DO NOT setInitialApn for CDMA: numeric = "
+                        + mSvlteOperatorNumeric);
+            }
+            return;
+        } else if (mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
+            log("[IRAT_DcTracker] GSM setInitialAttachApn: numeric = "
+                    + mSvlteOperatorNumeric);
+            if (CdmaFeatureOptionUtils.isCdmaLteDcSupport()
+                    && SvlteUtils.isActiveSvlteMode(mPhone)) {
+                if (mSvlteOperatorNumeric != null) {
+                    // Since only CTLTE/Empty APN can be used to attach LTE
+                    // network for CT network, only set CTLTE as initial attach.
+                    if (OPERATOR_NUMERIC_CTLTE.equals(mSvlteOperatorNumeric)) {
+                        // MTK TODO
+                        // setInitialAttachApnForSvlte();
+                        return;
+                    }
+                    // Else if the SIM is not CT card(not equals 46011), follow
+                    // the default flow.
+                } else {
+                    // Do nothing since LTE records is not loaded yet.
+                    log("[IRAT_DcTracker] GSM ignore IA because SIM not loaded.");
+                    IccRecords r = mIccRecords.get();
+                    String operatorNumeric = (r != null) ? r.getOperatorNumeric() : "";
+                    if (operatorNumeric == null || operatorNumeric.length() == 0) {
+                        log("setInitialApn: but no operator numeric");
+                        return;
+                    }
+                }
+            }
+        }
+        // M: @}
+
+        // MTK TODO: mInitialAttachApnSetting
+        // ApnSetting previousAttachApn = mInitialAttachApnSetting;
+        IccRecords r = mIccRecords.get();
+        String operatorNumeric = (r != null) ? r.getOperatorNumeric() : "";
+        if (operatorNumeric == null || operatorNumeric.length() == 0) {
+            log("setInitialApn: but no operator numeric");
+            return;
+        }
+
+        String[] dualApnPlmnList = null;
+        /*
+        if (MTK_DUAL_APN_SUPPORT == true) {
+            dualApnPlmnList = mPhone.getContext().getResources()
+                        .getStringArray(com.mediatek.internal.R.array.dtag_dual_apn_plmn_list);
+        }
+        */
+
+        // log("setInitialApn: current attach Apn [" + mInitialAttachApnSetting + "]");
+
         ApnSetting iaApnSetting = null;
         ApnSetting defaultApnSetting = null;
         ApnSetting firstApnSetting = null;
@@ -1845,13 +1911,29 @@ public abstract class DcTrackerBase extends Handler {
         }
 
         if (initialAttachApnSetting == null) {
+            // MTK
+            if (operatorNumeric == null) {
+                if (DBG) log("setInitialAttachApn: but no operator and no available apn");
+            } else {
             if (DBG) log("setInitialAttachApn: X There in no available apn");
+            IaExtendParam param = new IaExtendParam(operatorNumeric, dualApnPlmnList);
+            mPhone.mCi.setInitialAttachApn("", RILConstants.SETUP_DATA_PROTOCOL_IP, -1, "", "",
+                    (Object) param, null);
+            } // MTK
         } else {
+            // MTK
+            if (operatorNumeric == null) {
+                if (DBG) log("setInitialAttachApn: but no operator");
+            } else {
             if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
 
+            IaExtendParam param = new IaExtendParam(operatorNumeric,
+                        initialAttachApnSetting.canHandleType(PhoneConstants.APN_TYPE_IMS),
+                        dualApnPlmnList);
             mPhone.mCi.setInitialAttachApn(initialAttachApnSetting.apn,
                     initialAttachApnSetting.protocol, initialAttachApnSetting.authType,
-                    initialAttachApnSetting.user, initialAttachApnSetting.password, null);
+                    initialAttachApnSetting.user, initialAttachApnSetting.password, /* MTK */ param, null);
+            }  // MTK
         }
     }
 
@@ -2042,4 +2124,30 @@ public abstract class DcTrackerBase extends Handler {
         pw.println(" mDataRoamingSettingObserver=" + mDataRoamingSettingObserver);
         pw.flush();
     }
+
+    // MTK
+
+    protected static final String PROPERTY_MOBILE_DATA_ENABLE = "persist.radio.mobile.data";
+    protected static final boolean DUALTALK_SPPORT =
+            SystemProperties.getInt("ro.mtk_dt_support", 0) == 1;
+    protected ApnSetting mInitialAttachApnSetting;
+    protected Handler mWorkerHandler;
+    protected boolean mDataRoamingEnabled;
+    private static final String NO_SIM_VALUE = "N/A";
+    private String[] PROPERTY_ICCID = {
+        "ril.iccid.sim1",
+        "ril.iccid.sim2",
+        "ril.iccid.sim3",
+        "ril.iccid.sim4",
+    };
+
+    // M: [C2K][IRAT] Record initial attach APN for SVLTE, distinguish with
+    // original initial attach APN.
+    // TODO: move C2K logic to OP09 if it is not OM request.
+    protected static final String OPERATOR_NUMERIC_CTLTE = "46011";
+    protected static final String OPERATOR_NUMERIC_VODAFONE = "20404";
+    protected static final String OPERATOR_NUMERIC_HUTCHISON = "45403";
+
+    protected String mSvlteOperatorNumeric;
+    protected ApnSetting mSvlteIaApnSetting;
 }

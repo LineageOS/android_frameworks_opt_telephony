@@ -229,6 +229,11 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
         mCi.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         mCi.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
 
+        if (SystemProperties.get("ro.mtk_ims_support").equals("1")) {
+            // mCi.registerForImsDisable(this, EVENT_IMS_DISABLED_URC, null);  // completely unused
+            mCi.registerForImsRegistrationInfo(this, EVENT_IMS_REGISTRATION_INFO, null);
+        }
+
         // system setting property AIRPLANE_MODE_ON is set in Settings.
         int airplaneMode = Settings.Global.getInt(
                 phone.getContext().getContentResolver(),
@@ -278,6 +283,11 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
         if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         mCi.unSetOnRestrictedStateChanged(this);
         mCi.unSetOnNITZTime(this);
+        // xen0n: MTK forgot to unregister this
+        if (SystemProperties.get("ro.mtk_ims_support").equals("1")) {
+            // mCi.unregisterForImsDisable(this);  // completely unused
+            mCi.unregisterForImsRegistrationInfo(this);
+        }
         mCr.unregisterContentObserver(mAutoTimeObserver);
         mCr.unregisterContentObserver(mAutoTimeZoneObserver);
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
@@ -507,6 +517,31 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
             case EVENT_IMS_CAPABILITY_CHANGED:
                 if (DBG) log("EVENT_IMS_CAPABILITY_CHANGED");
                 updateSpnDisplay();
+                break;
+
+            // MTK
+            // seems totally useless besides debug purposes... but let's debug it anyway
+            case EVENT_IMS_REGISTRATION_INFO:
+                // xen0n: don't pollute namespace with otherwise unused variables
+                int mImsRegInfo = -1;
+                int mImsExtInfo = -1;
+
+                log("handle EVENT_IMS_REGISTRATION_INFO");
+                ar = (AsyncResult) msg.obj;
+                /// M: Simulate IMS Registration @{
+                /*
+                if (SystemProperties.getInt("persist.ims.simulate", 0) == 1) {
+                    ((int[]) ar.result)[0] = (mImsRegistry ? 1 : 0);
+                    log("Override EVENT_IMS_REGISTRATION_INFO: new mImsRegInfo=" +
+                            ((int[]) ar.result)[0]);
+                }
+                */
+                /// @}
+                mImsRegInfo = ((int[]) ar.result)[0];  // xen0n
+                if (((int[]) ar.result)[1] > 0) {
+                    mImsExtInfo = ((int[]) ar.result)[1];
+                }
+                log("ImsRegistrationInfoResult [" + mImsRegInfo + ", " + mImsExtInfo + "]");
                 break;
 
             default:
@@ -1663,15 +1698,8 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
      */
     private boolean isOperatorConsideredNonRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray;
-        int subId = mPhone.getSubId();
-        if (subId >= 0) {
-            numericArray = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),subId)
-                 .getStringArray(com.android.internal.R.array.config_operatorConsideredNonRoaming);
-        } else {
-            numericArray = mPhone.getContext().getResources().getStringArray(
+        String[] numericArray = mPhone.getContext().getResources().getStringArray(
                     com.android.internal.R.array.config_operatorConsideredNonRoaming);
-        }
 
         if (numericArray.length == 0 || operatorNumeric == null) {
             return false;
@@ -1687,16 +1715,8 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
 
     private boolean isOperatorConsideredRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray;
-        int subId = mPhone.getSubId();
-        if (subId >= 0) {
-            numericArray = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),subId)
-                .getStringArray(
+        String[] numericArray = mPhone.getContext().getResources().getStringArray(
                     com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
-        } else {
-            numericArray = mPhone.getContext().getResources().getStringArray(
-                    com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
-        }
 
         if (numericArray.length == 0 || operatorNumeric == null) {
             return false;

@@ -21,6 +21,7 @@ import android.os.Message;
 
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
 
@@ -231,4 +232,102 @@ public interface IccCard {
      * @return true if ICC card is PUK2 blocked
      */
     public boolean getIccPuk2Blocked();
+
+    // MTK
+
+    /**
+     * Supply Network depersonalization code to the RIL
+     */
+    public void supplyNetworkDepersonalization (String pin, Message onComplete);
+
+    /**
+     * Use to query the network lock type.
+     *
+     * @return the network lock type define in IccCardApplicationStatus.PersoSubState
+     *
+     * @internal
+     */
+    public PersoSubState getNetworkPersoType();
+
+    /**
+     * Use to query indicated category's ME lock status
+     *
+     * @param category 0:Network, 1:Network subset, 2:Service Provider, 3: Corporate, 4:SIM
+     * @param onComplete
+     *        onComplete.obj will be an AsyncResult
+     *        ((AsyncResult)onComplete.obj).exception == null on success
+     *        ((AsyncResult)onComplete.obj).exception != null on fail
+     *
+     * @return the network lock type define in IccCardApplicationStatus.PersoSubState
+     *
+     * @internal
+     */
+    public void queryIccNetworkLock(int category, Message onComplete);
+
+    /**
+     * Use to set indicated category's ME lock status
+     *
+     * @param category 0:Network, 1:Network subset, 2:Service Provider, 3: Corporate, 4:SIM
+     * @param lockop 0: Unlock, 1: Lock, 2:Add, 3:Remove, 4:Permanently unlock
+     * @param password password of indicated category lock
+     * @param data_imsi IMSI
+     * @param gid1 GID1 value
+     * @param gid2 GID2 value
+     * @param onComplete
+     *        onComplete.obj will be an AsyncResult
+     *        ((AsyncResult)onComplete.obj).exception == null on success
+     *        ((AsyncResult)onComplete.obj).exception != null on fail
+     *
+     * @return the network lock type define in IccCardApplicationStatus.PersoSubState
+     *
+     * @internal
+     */
+    public void setIccNetworkLockEnabled(int category,
+            int lockop, String password, String data_imsi, String gid1, String gid2, Message onComplete);
+
+    /**
+     * Use to repolling icc card status (Used by SIM ME lock related enhancement feature)
+     *
+     * @param needIntent indicated need an Intent to notify needed to unlock another SIM or not.
+     *                   if yes, will broadcast TelephonyIntents.ACTION_UNLOCK_SIM_LOCK to notify.
+     *                   if no, will notify by original TelephonyIntents.ACTION_SIM_STATE_CHANGED.
+     */
+    public void repollIccStateForModemSmlChangeFeatrue(boolean needIntent);
+
+    /**
+     * NFC API, use to exchange SIM IO.
+     *
+     * @internal
+     */
+    public void exchangeSimIo(int fileID, int command,
+                                           int p1, int p2, int p3, String pathID, String data, String pin2, Message onComplete);
+
+    /**
+     * NFC API, use to get ATR.
+     *
+     * @internal
+     */
+    public void iccGetAtr(Message onComplete);
+
+    public String getIccCardType();
+    // MTK-START
+    /**
+     * Request to get UICC card type.
+     *
+     * @return index for UICC card type
+     *
+     */
+    public int getSvlteCardType();
+    // MTK-END
+     /**
+     * NFC API, use to open logical channel with sw.
+     *
+     * @internal
+     */
+    public void openLogicalChannelWithSw(String AID, Message onComplete);
+    /**
+     * Notifies handler in case of FDN changed
+     */
+    public void registerForFdnChanged(Handler h, int what, Object obj);
+    public void unregisterForFdnChanged(Handler h);
 }

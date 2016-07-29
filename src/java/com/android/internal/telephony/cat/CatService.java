@@ -891,11 +891,52 @@ public class CatService extends Handler implements AppInterface {
             }
             break;
         case MSG_ID_ALPHA_NOTIFY:
+            // MTK
             CatLog.d(this, "Received CAT CC Alpha message from card");
             if (msg.obj != null) {
                 AsyncResult ar = (AsyncResult) msg.obj;
                 if (ar != null && ar.result != null) {
-                    broadcastAlphaMessage((String)ar.result);
+                    if (ar.result instanceof String) {
+                        broadcastAlphaMessage((String)ar.result);
+                    } else if (ar.result instanceof String[]) {
+                        // MTK
+                        String[] callCtrlInfo = (String[]) ar.result;
+                        CatLog.d(this, "callCtrlInfo.length: " + callCtrlInfo.length + "," +
+                                callCtrlInfo[0] + "," + callCtrlInfo[1] + "," +
+                                callCtrlInfo[2]);
+                        byte[] rawData = null;
+                        try {
+                            if (null != callCtrlInfo[1] && callCtrlInfo[1].length() > 0) {
+                                rawData = IccUtils.hexStringToBytes(callCtrlInfo[1]);
+                            } else {
+                                CatLog.d(this, "Null CC alpha id.");
+                                break;
+                            }
+                        } catch (Exception e) {
+                            // zombie messages are dropped
+                            CatLog.d(this, "CC message drop");
+                            break;
+                        }
+                        String alphaId = null;
+                        try {
+                            alphaId = IccUtils.adnStringFieldToString(
+                                    rawData, 0, rawData.length);
+                        } catch (IndexOutOfBoundsException e) {
+                            CatLog.d(this, "IndexOutOfBoundsException adnStringFieldToString");
+                            break;
+                        }
+                        CatLog.d(this, "CC Alpha msg: " + alphaId + ", sim id: " + mSlotId);
+                        TextMessage textMessage = new TextMessage();
+                        CommandDetails cmdDet = new CommandDetails();
+                        cmdDet.typeOfCommand = AppInterface.CommandType.CALLCTRL_RSP_MSG.value();
+                        textMessage.text = alphaId;
+                        CallCtrlBySimParams cmdParams = new CallCtrlBySimParams(cmdDet,
+                                textMessage, Integer.parseInt(callCtrlInfo[0]), callCtrlInfo[2]);
+                        CatCmdMessage cmdMsg = new CatCmdMessage(cmdParams);
+                        broadcastCatCmdIntent(cmdMsg);
+                    } else {
+                        CatLog.d(this, "CAT Alpha message: unexpected response type!");
+                    }
                 } else {
                     CatLog.d(this, "CAT Alpha message: ar.result is null");
                 }

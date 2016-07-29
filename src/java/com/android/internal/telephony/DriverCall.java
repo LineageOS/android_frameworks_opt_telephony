@@ -51,6 +51,15 @@ public class DriverCall implements Comparable<DriverCall> {
     public int namePresentation;
     public UUSInfo uusInfo;
 
+    /// M: Add for IMS conference call. @{
+    public int     callMode;
+    public String  pau;
+    /// @}
+
+    /// M: For 3G VT only @{
+    public boolean isVideo;
+    /// @}
+
     /** returns null on error */
     static DriverCall
     fromCLCCLine(String line) {
@@ -66,6 +75,10 @@ public class DriverCall implements Comparable<DriverCall> {
             ret.state = stateFromCLCC(p.nextInt());
 
             ret.isVoice = (0 == p.nextInt());
+            /// M: For 3G VT only @{
+            // callmode: 0(voice), 10(video)
+            ret.isVideo = (10 == p.nextInt());
+            /// @}
             ret.isMpty = p.nextBoolean();
 
             // use ALLOWED as default presentation while parsing CLCC
@@ -111,9 +124,13 @@ public class DriverCall implements Comparable<DriverCall> {
                 + (isMT ? "mt" : "mo") + ","
                 + als + ","
                 + (isVoice ? "voc" : "nonvoc") + ","
+                /// M: For 3G VT only @{
+                + (isVideo ? "vid" : "nonvid") + ","
+                /// @}
                 + (isVoicePrivacy ? "evp" : "noevp") + ","
                 /*+ "number=" + number */ + ",cli=" + numberPresentation + ","
-                /*+ "name="+ name */ + "," + namePresentation;
+                /*+ "name="+ name */ + "," + namePresentation + ","
+                + callMode;
     }
 
     public static State
