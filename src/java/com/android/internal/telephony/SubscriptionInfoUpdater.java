@@ -399,7 +399,7 @@ public class SubscriptionInfoUpdater extends Handler {
             if (iccId == null) {
                 logd("Querying IccId");
                 fileHandler.loadEFTransparent(IccConstants.EF_ICCID,
-                        obtainMessage(EVENT_SIM_LOCKED_QUERY_ICCID_DONE,
+                        obtainMessage(EVENT_SIM_LOCKED_QUERY_ICCID_DONE, slotId, -1,
                                 new QueryIccIdUserObj(reason, slotId)));
             } else {
                 logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
