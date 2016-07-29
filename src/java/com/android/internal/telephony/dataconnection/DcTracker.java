@@ -81,6 +81,10 @@ import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.ArrayUtils;
 
+import com.mediatek.internal.telephony.cdma.CdmaFeatureOptionUtils;
+import com.mediatek.internal.telephony.dataconnection.IaExtendParam;
+import com.mediatek.internal.telephony.ltedc.svlte.SvlteUtils;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -3013,15 +3017,19 @@ public class DcTracker extends DcTrackerBase {
 
         int dataRat = mPhone.getServiceState().getRilDataRadioTechnology();
         int appFamily = UiccController.getFamilyFromRadioTechnology(dataRat);
-        IccRecords newIccRecords = getUiccRecords(appFamily);
+        final int mtkFamily = getUiccFamily(mPhone);  // MTK
+        IccRecords newIccRecords = getUiccRecords(mtkFamily /* appFamily */);
         log("onUpdateIcc: newIccRecords " + ((newIccRecords != null) ?
                 newIccRecords.getClass().getName() : null));
+        // MTK stack would fail to perform IA with this as on MTK dataRat is set late *AFTER* IA
+        /*
         if (dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
             // Ignore this. This could be due to data not registered
             // We want to ignore RADIO_TECHNOLOGY_UNKNOWN so that we do not tear down data
             // call in case we are out of service.
             return false;
         }
+        */
 
         IccRecords r = mIccRecords.get();
         if (r != newIccRecords) {
@@ -3044,6 +3052,66 @@ public class DcTracker extends DcTrackerBase {
             // Records changed -> return true
             result = true;
         }
+
+        // MTK TODO
+        /*
+        // M: [C2K][IRAT] Register for LTE records loaded.
+        if (CdmaFeatureOptionUtils.isCdmaLteDcSupport() && SvlteUtils.isActiveSvlteMode(mPhone)) {
+            IccRecords newLteIccRecords = getUiccRecords(UiccController.APP_FAM_3GPP);
+            IccRecords oldLteIccRecords = mLteIccRecords.get();
+            log("[IRAT_DcTracker] Register for LTE IccRecords: newLteIccRecords = "
+                    + newLteIccRecords
+                    + ", oldLteIccRecords = "
+                    + oldLteIccRecords);
+
+            // Do not judge whether the records is the same before registering
+            // LTE records, because only single SIM record on Android, the SIM
+            // record instance is always the same.
+            if (oldLteIccRecords != null) {
+                log("Removing stale LTE icc objects.");
+                oldLteIccRecords.unregisterForRecordsLoaded(this);
+                mLteIccRecords.set(null);
+
+                // Register back the records loaded event if it is removed.
+                if (oldLteIccRecords == newIccRecords) {
+                    newIccRecords.registerForRecordsLoaded(this,
+                            DctConstants.EVENT_RECORDS_LOADED, null);
+                }
+            }
+            if (newLteIccRecords != null) {
+                log("New LTE records found");
+                mLteIccRecords.set(newLteIccRecords);
+                newLteIccRecords.registerForRecordsLoaded(this,
+                        LteDcConstants.EVENT_LTE_RECORDS_LOADED, null);
+            }
+        }
+
+        if (mAllApnSettings != null && r == null && newIccRecords == null) {
+            mAllApnSettings.clear();
+        }
+
+        //MTK START: FDN Support
+        UiccCardApplication app = mUiccCardApplication.get();
+        UiccCardApplication newUiccCardApp = mUiccController.getUiccCardApplication(
+                mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ?
+                UiccController.APP_FAM_3GPP2 : UiccController.APP_FAM_3GPP);
+
+        if (app != newUiccCardApp) {
+            if (app != null) {
+                log("Removing stale UiccCardApplication objects.");
+                app.unregisterForFdnChanged(this);
+                mUiccCardApplication.set(null);
+            }
+
+            if (newUiccCardApp != null) {
+                log("New UiccCardApplication found");
+                newUiccCardApp.registerForFdnChanged(this, DctConstants.EVENT_FDN_CHANGED, null);
+                mUiccCardApplication.set(newUiccCardApp);
+            }
+        }
+        //MTK END: FDN Support
+        */
+
         return result;
     }
 
@@ -3340,6 +3408,67 @@ public class DcTracker extends DcTrackerBase {
         if (tearDown && mDisconnectPendingCount == 0) {
             notifyDataDisconnectComplete();
             notifyAllDataDisconnected();
+        }
+    }
+
+    // MTK
+
+    private static final String PROP_NAME_SET_TEST_RAT = "mtk.test.rat";
+
+    // Set APP family to unknown when radio technology is not specified.
+    public static final int APP_FAM_UNKNOWN = 0;
+
+    // NOTE: DcTracker.java:4983
+    private int getUiccFamily(PhoneBase phone) {
+        int family = UiccController.APP_FAM_3GPP;
+        if (!CdmaFeatureOptionUtils.isCdmaLteDcSupport() || !SvlteUtils.isActiveSvlteMode(phone)) {
+            if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                family = UiccController.APP_FAM_3GPP2;
+            }
+        } else {
+            int radioTech = getRilDataRadioTechnology(phone);
+            if (radioTech != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
+                family = getUiccFamilyByRat(radioTech);
+            } else {
+                // Return 3GPP2 family if the phone is CDMA.
+                if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                    family = UiccController.APP_FAM_3GPP2;
+                }
+            }
+            log("[IRAT_DcTracker] getUiccFamily: radioTech = " + radioTech
+                    + ", family=" + family + ", phone = " + phone);
+        }
+        return family;
+    }
+
+    private int getRilDataRadioTechnology(PhoneBase phone) {
+        int testRat = SystemProperties.getInt(PROP_NAME_SET_TEST_RAT, 0);
+        if (testRat != 0) {
+            log("[IRAT_DcTracker] Use test RAT " + testRat + " instead of "
+                    + phone.getServiceState().getRilDataRadioTechnology()
+                    + " for test.");
+            return testRat;
+        }
+        return phone.getServiceState().getRilDataRadioTechnology();
+    }
+
+    // NOTE: DcTracker.java:5082
+    /**
+     * M: Get Uicc Family by radio technology.
+     * @param radioTech Ratio technology.
+     * @return APP family of the RAT.
+     */
+    private static int getUiccFamilyByRat(int radioTech) {
+        if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
+            return APP_FAM_UNKNOWN;
+        }
+
+        if ((radioTech >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A
+                && radioTech <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A)
+                || radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B) {
+            return UiccController.APP_FAM_3GPP2;
+        } else {
+            return UiccController.APP_FAM_3GPP;
         }
     }
 }

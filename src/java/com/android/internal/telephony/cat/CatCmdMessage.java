@@ -35,6 +35,9 @@ public class CatCmdMessage implements Parcelable {
     private CallSettings mCallSettings = null;
     private SetupEventListSettings mSetupEventListSettings = null;
     private boolean mLoadIconFailed = false;
+    // MTK
+    public int mInfoType = 0;
+    public String mDestAddress = null;
 
     // Command Qualifier values for refresh command
     static final int REFRESH_NAA_INIT_AND_FULL_FILE_CHANGE  = 0x00;
@@ -129,6 +132,13 @@ public class CatCmdMessage implements Parcelable {
             break;
         case ACTIVATE:
         case PROVIDE_LOCAL_INFORMATION:
+            break;
+        // MTK
+        case CALLCTRL_RSP_MSG:
+            mTextMsg = ((CallCtrlBySimParams) cmdParams).mTextMsg;
+            mInfoType = ((CallCtrlBySimParams) cmdParams).mInfoType;
+            mDestAddress = ((CallCtrlBySimParams) cmdParams).mDestAddress;
+            break;
         default:
             break;
         }

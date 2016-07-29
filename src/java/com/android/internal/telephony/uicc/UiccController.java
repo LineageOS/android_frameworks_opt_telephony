@@ -30,6 +30,8 @@ import android.text.format.Time;
 import android.telephony.ServiceState;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.IccCardConstants;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -414,5 +416,161 @@ public class UiccController extends Handler {
         for (int i = 0; i < mCardLogs.size(); ++i) {
             pw.println("  " + mCardLogs.get(i));
         }
+    }
+
+    // MTK
+
+    protected static final int EVENT_RADIO_AVAILABLE = 100;
+    protected static final int EVENT_VIRTUAL_SIM_ON = 101;
+    protected static final int EVENT_VIRTUAL_SIM_OFF = 102;
+    protected static final int EVENT_SIM_MISSING = 103;
+    protected static final int EVENT_QUERY_SIM_MISSING_STATUS = 104;
+    protected static final int EVENT_SIM_RECOVERY = 105;
+    protected static final int EVENT_GET_ICC_STATUS_DONE_FOR_SIM_MISSING = 106;
+    protected static final int EVENT_GET_ICC_STATUS_DONE_FOR_SIM_RECOVERY = 107;
+    protected static final int EVENT_QUERY_ICCID_DONE_FOR_HOT_SWAP = 108;
+    protected static final int EVENT_SIM_PLUG_OUT = 109;
+    protected static final int EVENT_SIM_PLUG_IN = 110;
+    protected static final int EVENT_HOTSWAP_GET_ICC_STATUS_DONE = 111;
+    protected static final int EVENT_QUERY_SIM_STATUS_FOR_PLUG_IN = 112;
+    protected static final int EVENT_QUERY_SIM_MISSING = 113;
+    protected static final int EVENT_INVALID_SIM_DETECTED = 114;
+    protected static final int EVENT_REPOLL_SML_STATE = 115;
+    protected static final int EVENT_COMMON_SLOT_NO_CHANGED = 116;
+    protected static final int EVENT_CDMA_CARD_TYPE = 117;
+    protected static final int EVENT_EUSIM_READY = 118;
+
+    //Multi-application
+    // FIXME: Remove them when IccCardProxyEx is removed
+    protected static final int EVENT_TURN_ON_ISIM_APPLICATION_DONE = 200;
+    protected static final int EVENT_GET_ICC_APPLICATION_STATUS = 201;
+    protected static final int EVENT_APPLICATION_SESSION_CHANGED = 202;
+
+    private static final int SML_FEATURE_NO_NEED_BROADCAST_INTENT = 0;
+    private static final int SML_FEATURE_NEED_BROADCAST_INTENT = 1;
+
+    /* SIM inserted status constants */
+    private static final int STATUS_NO_SIM_INSERTED = 0x00;
+    private static final int STATUS_SIM1_INSERTED = 0x01;
+    private static final int STATUS_SIM2_INSERTED = 0x02;
+    private static final int STATUS_SIM3_INSERTED = 0x04;
+    private static final int STATUS_SIM4_INSERTED = 0x08;
+
+    private static final String ACTION_RESET_MODEM = "android.intent.action.sim.ACTION_RESET_MODEM";
+    private static final String PROPERTY_3G_SIM = "persist.radio.simswitch";
+
+    
+    public static final int CARD_TYPE_NONE = 0;
+    public static final int CARD_TYPE_SIM  = 1;
+    public static final int CARD_TYPE_USIM = 2;
+    public static final int CARD_TYPE_RUIM = 4;
+    public static final int CARD_TYPE_CSIM = 8;
+
+    private boolean mIsHotSwap = false;
+    private boolean mClearMsisdn = false;
+    private IccCardConstants.CardType mCdmaCardType = IccCardConstants.CardType.UNKNOW_CARD;
+
+    private RegistrantList mRecoveryRegistrants = new RegistrantList();
+    //Multi-application
+    private int[] mIsimSessionId = new int[TelephonyManager.getDefault().getPhoneCount()];
+    private RegistrantList mApplicationChangedRegistrants = new RegistrantList();
+
+    /*
+    private int[] UICCCONTROLLER_STRING_NOTIFICATION_SIM_MISSING = {
+        com.mediatek.internal.R.string.sim_missing_slot1,
+        com.mediatek.internal.R.string.sim_missing_slot2,
+        com.mediatek.internal.R.string.sim_missing_slot3,
+        com.mediatek.internal.R.string.sim_missing_slot4
+    };
+
+    private int[] UICCCONTROLLER_STRING_NOTIFICATION_VIRTUAL_SIM_ON = {
+        com.mediatek.internal.R.string.virtual_sim_on_slot1,
+        com.mediatek.internal.R.string.virtual_sim_on_slot2,
+        com.mediatek.internal.R.string.virtual_sim_on_slot3,
+        com.mediatek.internal.R.string.virtual_sim_on_slot4
+    };
+    */
+
+    private static final String COMMON_SLOT_PROPERTY = "ro.mtk_sim_hot_swap_common_slot";
+
+    private CommandsInterface mSvlteCi;
+    public static final int INDEX_SVLTE = 100;
+    private int mSvlteIndex = -1;
+    private int mNotifyIccCount = 0;
+    private static final String[]  PROPERTY_RIL_FULL_UICC_TYPE = {
+        "gsm.ril.fulluicctype",
+        "gsm.ril.fulluicctype.2",
+        "gsm.ril.fulluicctype.3",
+        "gsm.ril.fulluicctype.4",
+    };
+    private static final String  PROPERTY_CONFIG_EMDSTATUS_SEND = "ril.cdma.emdstatus.send";
+    private static final String  PROPERTY_RIL_CARD_TYPE_SET = "gsm.ril.cardtypeset";
+    private static final String  PROPERTY_RIL_CARD_TYPE_SET_2 = "gsm.ril.cardtypeset.2";
+    private static final String  PROPERTY_NET_CDMA_MDMSTAT = "net.cdma.mdmstat";
+    private static final String  PROPERTY_ICCID_C2K = "ril.iccid.sim1_c2k";
+    private static final int INITIAL_RETRY_INTERVAL_MSEC = 200;
+    private int mRetryCounter = 0;
+
+    private int[] mC2KWPCardtype = new int[TelephonyManager.getDefault().getPhoneCount()];
+
+    private RegistrantList mC2KWPCardTypeReadyRegistrants = new RegistrantList();
+    // int mOldSvlteSlotId = SvlteModeController.getActualSvlteModeSlotId();
+    boolean mSetRadioDone = false;
+    boolean mSetTrm = false;
+    boolean mRilInit = false;
+    boolean mSwitchCardtype = false;
+
+    private String mOperatorSpec;
+    private static final String OPERATOR_OM = "OM";
+    private static final String OPERATOR_OP09 = "OP09";
+    Phone[] sProxyPhones = null;
+
+    // MTK-START
+    public int getIccApplicationChannel(int slotId, int family) {
+        synchronized (mLock) {
+            int index = 0;
+            switch (family) {
+                case UiccController.APP_FAM_IMS:
+                    // FIXME: error handling for invaild slotId?
+                    index = mIsimSessionId[slotId];
+                    // Workaround: to avoid get sim status has open isim channel but java layer
+                    // haven't update channel id
+                    if (index == 0) {
+                        index = (getUiccCardApplication(slotId, family) != null) ? 1 : 0;
+                    }
+                    break;
+                default:
+                    if (DBG) log("unknown application");
+                    break;
+            }
+            return index;
+        }
+    }
+    // MTK-END
+
+    //Notifies when card status changes
+    public void registerForIccRecovery(Handler h, int what, Object obj) {
+        synchronized (mLock) {
+            Registrant r = new Registrant(h, what, obj);
+            mRecoveryRegistrants.add(r);
+            //Notify registrant right after registering, so that it will get the latest ICC status,
+            //otherwise which may not happen until there is an actual change in ICC status.
+            r.notifyRegistrant();
+        }
+    }
+
+    public void unregisterForIccRecovery(Handler h) {
+        synchronized (mLock) {
+            mRecoveryRegistrants.remove(h);
+        }
+    }
+
+    //Modem SML change feature.
+    public void repollIccStateForModemSmlChangeFeatrue(int slotId, boolean needIntent) {
+        if (DBG) log("repollIccStateForModemSmlChangeFeatrue, needIntent = " + needIntent);
+        int arg1 = needIntent == true ? SML_FEATURE_NEED_BROADCAST_INTENT : SML_FEATURE_NO_NEED_BROADCAST_INTENT;
+        //Use arg1 to determine the intent is needed or not
+        //Use object to indicated slotId
+        mCis[slotId].getIccCardStatus(obtainMessage(EVENT_REPOLL_SML_STATE, arg1, 0, slotId));
     }
 }

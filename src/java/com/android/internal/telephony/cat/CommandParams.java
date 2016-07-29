@@ -254,3 +254,22 @@ class SendUSSDParams extends DisplayTextParams {
         ussdString = ussdstring;
     }
 }
+
+// MTK
+
+/**
+ * CallCtrlBySimParams class for CC by SIM parameters.
+ */
+class CallCtrlBySimParams extends CommandParams {
+    TextMessage mTextMsg;
+    int mInfoType;
+    String mDestAddress;
+
+    CallCtrlBySimParams(CommandDetails cmdDet, TextMessage textMsg,
+        int infoType, String destAddress) {
+        super(cmdDet);
+        mTextMsg = textMsg;
+        mInfoType = infoType;
+        mDestAddress = destAddress;
+    }
+}

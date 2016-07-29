@@ -616,4 +616,113 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     public boolean needsOldRilFeature(String feature) { return false; }
+
+    // MTK
+
+    @Override
+    public void supplyNetworkDepersonalization(String netpin, Message result) {
+    }
+
+    /* M: SS part */
+    public void changeBarringPassword(String facility, String oldPwd, String newPwd,
+        String newCfm , Message result) {
+    }
+    /* M: SS part end */
+
+    @Override
+    public void setBandMode(int[] bandMode, Message response) {
+    }
+
+    @Override
+    public void handleCallSetupRequestFromSim(
+            boolean accept, int resCode, Message response) {
+    }
+
+    public void getCOLR(Message response) {
+    }
+
+    public void setCOLP(boolean enable, Message response) {
+    }
+
+    public void getCOLP(Message response) {
+    }
+
+    // Added by M begin
+    @Override
+    public void iccGetATR(Message response) {
+    }
+
+    @Override
+    public void iccOpenChannelWithSw(String AID, Message result){
+    }
+    // Added by M end
+
+    @Override
+    public void setTrm(int mode, Message result) {
+    }
+
+    @Override
+    public void setOnPlmnChangeNotification(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unSetOnPlmnChangeNotification(Handler h) {
+    }
+
+    @Override
+    public void setOnRegistrationSuspended(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unSetOnRegistrationSuspended(Handler h) {
+    }
+
+    @Override
+    public void setResumeRegistration(int sessionId, Message response) {
+    }
+
+    @Override
+    public void queryModemType(Message response) {
+    }
+
+    @Override
+    public void storeModemType(int modemType, Message response) {
+    }
+
+    @Override
+    public void reloadModemType(int modemType, Message response) {
+    }
+
+    // M: Fast Dormancy
+    public void setScri(boolean forceRelease, Message response) {
+    }
+
+    public void setFDMode(int mode, int parameter1, int parameter2, Message response) {
+    }
+
+    //UTK start
+    public void getUtkLocalInfo(Message response) {
+    }
+
+    public void requestUtkRefresh(int type, Message response) {
+    }
+
+    public void reportUtkServiceIsRunning(Message result) {
+    }
+
+    public void profileDownload(String profile, Message response) {
+    }
+
+    public void handleCallSetupRequestFromUim(boolean accept, Message response) {
+    }
+
+    public void queryUtkSetupMenuFromMD(String contents, Message response) {
+    }
+
+    public void setStkSwitchMode(int mode) {
+    }
+
+    public void setBipPsType(int type) {
+    }
+    //UTK end
 }

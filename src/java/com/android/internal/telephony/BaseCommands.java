@@ -18,13 +18,18 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
+import android.os.AsyncResult;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
 import android.os.Handler;
 import android.os.AsyncResult;
 import android.telephony.RadioAccessFamily;
+import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+
+import com.mediatek.internal.telephony.FemtoCellInfo;
+import com.mediatek.internal.telephony.SrvccCallContext;
 
 import com.android.internal.telephony.RadioCapability;
 
@@ -462,6 +467,15 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void setOnIccSmsFull(Handler h, int what, Object obj) {
         mIccSmsFullRegistrant = new Registrant (h, what, obj);
+
+        // MTK-START, SMS part
+        if (mIsSmsSimFull == true) {
+            mIccSmsFullRegistrant.notifyRegistrant();
+            // Already notify, set as false. Because there is no URC to notify avaliable and
+            // only one module will register. Looks like a workaround solution and make it easy
+            mIsSmsSimFull = false;
+        }
+        // MTK-END, SMS part
     }
 
     @Override
@@ -945,4 +959,1367 @@ public abstract class BaseCommands implements CommandsInterface {
         return TelephonyManager.getLteOnGsmModeStatic();
     }
 
+    // MTK
+
+    //MTK-START Support Multi-Application
+    protected RegistrantList mSessionChangedRegistrants = new RegistrantList();
+    //MTK-END Support Multi-Application
+
+    protected Registrant mStkEvdlCallRegistrant;
+    protected Registrant mStkSetupMenuResetRegistrant;
+    protected Registrant mStkCallCtrlRegistrant;
+
+    /// M: CC010: Add RIL interface @{
+    protected RegistrantList mCallForwardingInfoRegistrants = new RegistrantList();
+    protected Registrant mCallRelatedSuppSvcRegistrant;
+    protected Registrant mIncomingCallIndicationRegistrant;
+    //protected Registrant mCnapNotifyRegistrant; //obsolete
+    protected RegistrantList mCipherIndicationRegistrant = new RegistrantList();
+    /// @}
+    /// M: CC077: 2/3G CAPABILITY_HIGH_DEF_AUDIO @{
+    protected Registrant mSpeechCodecInfoRegistrant;
+    /// @}
+
+    //Remote SIM ME lock related APIs [Start]
+    protected RegistrantList mMelockRegistrants = new RegistrantList();
+    //Remote SIM ME lock related APIs [End]
+
+    protected RegistrantList mPhbReadyRegistrants = new RegistrantList();
+
+    /// M: IMS feature. @{
+    /* Register for updating call ids for conference call after SRVCC is done. */
+    protected RegistrantList mEconfSrvccRegistrants = new RegistrantList();
+    /* Register for updating conference call merged/added result. */
+    protected RegistrantList mEconfResultRegistrants = new RegistrantList();
+    /* Register for updating call mode and pau. */
+    protected RegistrantList mCallInfoRegistrants = new RegistrantList();
+    /// @}
+
+    // M: fast dormancy.
+    protected Registrant mScriResultRegistrant;
+    // M: CC33 LTE.
+    protected RegistrantList mRacUpdateRegistrants = new RegistrantList();
+    protected RegistrantList mRemoveRestrictEutranRegistrants = new RegistrantList();
+
+    protected RegistrantList mResetAttachApnRegistrants = new RegistrantList();
+
+    /// M: [C2K] for eng mode
+    protected RegistrantList mEngModeNetworkInfoRegistrant = new RegistrantList();
+
+    /// M: [C2K] for call fade
+    protected Registrant mCdmaSignalFadeRegistrant;
+    /// M: [C2K] for tone signal
+    protected Registrant mCdmaToneSignalsRegistrant;
+    /// M: BIP {
+    protected Registrant mBipProCmdRegistrant;
+    /// M: BIP }
+
+    // Mode of Xtk, Stk or Utk. Set by SvlteRatController
+    protected int mStkSwitchMode;
+    // xTK BIP PS Type. Set by SvltePhoneProxy
+    protected int mBipPsType;
+    // for capability switch to early get modem capability
+    RadioCapability mRadioCapability;
+
+    /* M: network part start */
+    protected RegistrantList mFemtoCellInfoRegistrants = new RegistrantList();
+    protected RegistrantList mNeighboringInfoRegistrants = new RegistrantList();
+    protected RegistrantList mNetworkInfoRegistrants = new RegistrantList();
+    protected RegistrantList mNetworkExistRegistrants = new RegistrantList();
+
+    protected RegistrantList mPlmnChangeNotificationRegistrant = new RegistrantList();
+    protected Registrant mRegistrationSuspendedRegistrant;
+    protected Object mEmsrReturnValue = null;
+    protected Object mEcopsReturnValue = null;
+    protected Object mWPMonitor = new Object();
+
+    //VoLTE
+    protected RegistrantList mImsEnableRegistrants = new RegistrantList();
+    protected RegistrantList mImsDisableRegistrants = new RegistrantList();
+    protected RegistrantList mImsRegistrationInfoRegistrants = new RegistrantList();
+    protected RegistrantList mDedicateBearerActivatedRegistrant = new RegistrantList();
+    protected RegistrantList mDedicateBearerModifiedRegistrant = new RegistrantList();
+    protected RegistrantList mDedicateBearerDeactivatedRegistrant = new RegistrantList();
+
+    protected RegistrantList mPsNetworkStateRegistrants = new RegistrantList();
+    protected RegistrantList mImeiLockRegistrant = new RegistrantList();
+    protected RegistrantList mInvalidSimInfoRegistrant = new RegistrantList();
+    protected RegistrantList mGetAvailableNetworkDoneRegistrant = new RegistrantList();
+    /* M: network part end */
+
+    /// M: CC010: Add RIL interface @{
+    protected Object mCfuReturnValue = null; ///* M: SS part */
+    /// @}
+
+    // MTK-START, SMS part
+    // In order to cache the event from modem at boot-up sequence
+    protected boolean mIsSmsSimFull = false;
+    protected boolean mIsSmsReady = false;
+    protected RegistrantList mSmsReadyRegistrants = new RegistrantList();
+    protected Registrant mMeSmsFullRegistrant;
+    protected Registrant mEtwsNotificationRegistrant;
+    // MTK-END
+
+    // IMS VoLTE
+    protected RegistrantList mEpsNetworkFeatureSupportRegistrants = new RegistrantList();
+    protected RegistrantList mEpsNetworkFeatureInfoRegistrants = new RegistrantList();
+    protected RegistrantList mSrvccHandoverInfoIndicationRegistrants = new RegistrantList();
+    protected RegistrantList mMoDataBarringInfoRegistrants = new RegistrantList();
+    protected RegistrantList mSsacBarringInfoRegistrants = new RegistrantList();
+    /// M: CC071: Add Customer proprietary-IMS RIL interface. @{
+    protected RegistrantList mEmergencyBearerSupportInfoRegistrants = new RegistrantList();
+    /// @}
+
+    /* C2K part start */
+    protected RegistrantList mViaGpsEvent = new RegistrantList();
+    protected RegistrantList mAcceptedRegistrant = new RegistrantList();
+    protected RegistrantList mNetworkTypeChangedRegistrant = new RegistrantList();
+    protected Registrant mUtkSessionEndRegistrant;
+    protected Registrant mUtkProCmdRegistrant;
+    protected Registrant mUtkEventRegistrant;
+    protected RegistrantList mInvalidSimDetectedRegistrant = new RegistrantList();
+
+    /// M: [C2K][IR] Support SVLTE IR feature. @{
+    protected RegistrantList mMccMncChangeRegistrants = new RegistrantList();
+    /// M: [C2K][IR] Support SVLTE IR feature. @}
+
+    /// M: [C2K][IR][MD-IRAT] URC for GMSS RAT changed. @{
+    protected RegistrantList mGmssRatChangedRegistrant = new RegistrantList();
+    /// M: [C2K][IR][MD-IRAT] URC for GMSS RAT changed. @}
+
+    /// M: [C2K] for ps type changed.
+    protected RegistrantList mDataNetworkTypeChangedRegistrant = new RegistrantList();
+
+    /// M: [C2K][MD IRAT] add IRat state change registrant.
+    protected RegistrantList mIratStateChangeRegistrant = new RegistrantList();
+
+    /* C2K part end */
+
+    protected RegistrantList mAbnormalEventRegistrant = new RegistrantList();
+
+    /// M: For 3G VT only @{
+    protected RegistrantList mVtStatusInfoRegistrants = new RegistrantList();
+    protected RegistrantList mVtRingRegistrants = new RegistrantList();
+    /// @}
+
+    protected RegistrantList mCdmaImsiReadyRegistrant = new RegistrantList();
+    protected RegistrantList mImsiRefreshDoneRegistrant = new RegistrantList();
+
+    // M: [LTE][Low Power][UL traffic shaping] Start
+    protected RegistrantList mLteAccessStratumStateRegistrants = new RegistrantList();
+    // M: [LTE][Low Power][UL traffic shaping] End
+
+    /// M: BIP {
+    @Override
+    public void setOnBipProactiveCmd(Handler h, int what, Object obj) {
+        mBipProCmdRegistrant = new Registrant (h, what, obj);
+    }
+
+    @Override
+    public void unSetOnBipProactiveCmd(Handler h) {
+        if (mBipProCmdRegistrant != null && mBipProCmdRegistrant.getHandler() == h) {
+            mBipProCmdRegistrant.clear();
+            mBipProCmdRegistrant = null;
+        }
+    }
+    /// M: BIP }
+
+    @Override
+    public void setStkEvdlCallByAP(int enabled, Message response) {
+    }
+
+
+    @Override
+    public void setOnStkEvdlCall(Handler h, int what, Object obj) {
+        mStkEvdlCallRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnStkEvdlCall(Handler h) {
+        mStkEvdlCallRegistrant.clear();
+    }
+
+    @Override
+    public void setOnStkSetupMenuReset(Handler h, int what, Object obj) {
+        mStkSetupMenuResetRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnStkSetupMenuReset(Handler h) {
+        mStkSetupMenuResetRegistrant.clear();
+    }
+
+    @Override
+    public void setOnStkCallCtrl(Handler h, int what, Object obj) {
+        mStkCallCtrlRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnStkCallCtrl(Handler h) {
+        mStkCallCtrlRegistrant.clear();
+    }
+
+    //MTK-START [mtk06800] modem power on/off
+    @Override
+    public void setModemPower(boolean power, Message response) {
+    }
+    //MTK-END [mtk06800] modem power on/off
+
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message response) {
+    }
+
+    /// M: CC010: Add RIL interface @{
+    public void registerForCipherIndication(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCipherIndicationRegistrant.add(r);
+    }
+
+    public void unregisterForCipherIndication(Handler h) {
+        mCipherIndicationRegistrant.remove(h);
+    }
+
+    public void registerForCallForwardingInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCallForwardingInfoRegistrants.add(r);
+        /* M: SS part */
+        if (mCfuReturnValue != null) {
+           r.notifyRegistrant(new AsyncResult(null, mCfuReturnValue, null));
+        }
+        /* M: SS part end */
+    }
+
+    public void unregisterForCallForwardingInfo(Handler h) {
+        mCallForwardingInfoRegistrants.remove(h);
+    }
+
+    public void setOnCallRelatedSuppSvc(Handler h, int what, Object obj) {
+        mCallRelatedSuppSvcRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unSetOnCallRelatedSuppSvc(Handler h) {
+        mCallRelatedSuppSvcRegistrant.clear();
+    }
+
+    public void setOnIncomingCallIndication(Handler h, int what, Object obj) {
+        mIncomingCallIndicationRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unsetOnIncomingCallIndication(Handler h) {
+        mIncomingCallIndicationRegistrant.clear();
+    }
+
+    //obsolete
+    /*
+    public void setCnapNotify(Handler h, int what, Object obj) {
+        mCnapNotifyRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unSetCnapNotify(Handler h) {
+        mCnapNotifyRegistrant.clear();
+    }
+    */
+    /// @}
+
+    /// M: CC077: 2/3G CAPABILITY_HIGH_DEF_AUDIO @{
+    @Override
+    public void setOnSpeechCodecInfo(Handler h, int what, Object obj) {
+        mSpeechCodecInfoRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnSpeechCodecInfo(Handler h) {
+        if (mSpeechCodecInfoRegistrant != null && mSpeechCodecInfoRegistrant.getHandler() == h) {
+            mSpeechCodecInfoRegistrant.clear();
+            mSpeechCodecInfoRegistrant = null;
+        }
+    }
+    /// @}
+
+    public void hangupAll(Message result) {}
+    public void forceReleaseCall(int index, Message response) {}
+    public void setCallIndication(int mode, int callId, int seqNumber, Message response) {}
+    public void emergencyDial(String address, int clirMode, UUSInfo uusInfo, Message result) {}
+    public void setEccServiceCategory(int serviceCategory) {}
+    /// @}
+    /// M: CC077: 2/3G CAPABILITY_HIGH_DEF_AUDIO @{
+    public void setSpeechCodecInfo(boolean enable, Message response) {}
+    /// @}
+
+    /// M: For 3G VT only @{
+    public void registerForVtStatusInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mVtStatusInfoRegistrants.add(r);
+    }
+
+    public void unregisterForVtStatusInfo(Handler h) {
+        mVtStatusInfoRegistrants.remove(h);
+    }
+
+    public void registerForVtRingInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mVtRingRegistrants.add(r);
+    }
+
+    public void unregisterForVtRingInfo(Handler h) {
+        mVtRingRegistrants.remove(h);
+    }
+    /// @}
+
+    /// M: For 3G VT only @{
+    public void vtDial(String address, int clirMode, UUSInfo uusInfo, Message result) {}
+    public void acceptVtCallWithVoiceOnly(int callId, Message result) {}
+    public void replaceVtCall(int index, Message result) {}
+    /// @}
+    /* M: SS part  */
+    ///M: For query CNAP
+    public void sendCNAPSS(String cnapssString, Message response){}
+    public void setCLIP(boolean enable, Message response) {}
+    /* M: SS part end */
+
+    //MTK-START Support Multi-Application
+    @Override
+    public void openIccApplication(int application, Message response){}
+    @Override
+    public void getIccApplicationStatus(int sessionId, Message result){}
+
+    @Override
+    public void registerForSessionChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSessionChangedRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForSessionChanged(Handler h) {
+        mSessionChangedRegistrants.remove(h);
+    }
+    //MTK-END Support Multi-Application
+
+    //MTK-START Support SIM ME lock
+    @Override
+    public void queryNetworkLock(int categrory, Message response){};
+
+    @Override
+    public void setNetworkLock(int catagory, int lockop, String password,
+            String data_imsi, String gid1, String gid2, Message response){};
+    //MTK-END Support SIM ME lock
+
+    @Override
+    public void doGeneralSimAuthentication(int sessionId, int mode , int tag, String param1,
+                                          String param2, Message response) {
+    }
+    // Added by M begin
+
+    protected RegistrantList mSimMissing = new RegistrantList();
+    protected RegistrantList mSimRecovery = new RegistrantList();
+    protected RegistrantList mVirtualSimOn = new RegistrantList();
+    protected RegistrantList mVirtualSimOff = new RegistrantList();
+    protected RegistrantList mSimPlugOutRegistrants = new RegistrantList();
+    protected RegistrantList mSimPlugInRegistrants = new RegistrantList();
+    protected RegistrantList mTrayPlugInRegistrants = new RegistrantList();
+    protected RegistrantList mCdmaCardTypeRegistrants = new RegistrantList();
+    protected RegistrantList mCommonSlotNoChangedRegistrants = new RegistrantList();
+    protected RegistrantList mDataAllowedRegistrants = new RegistrantList();
+    protected RegistrantList mEusimReady = new RegistrantList();
+    protected boolean mIsEusimReady = false;
+    protected Object mCdmaCardTypeValue = null;
+
+    public void registerForSimMissing(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSimMissing.add(r);
+    }
+    public void unregisterForSimMissing(Handler h) {
+        mSimMissing.remove(h);
+    }
+
+    public void registerForSimRecovery(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSimRecovery.add(r);
+    }
+
+    public void unregisterForSimRecovery(Handler h) {
+        mSimRecovery.remove(h);
+    }
+
+    public void registerForVirtualSimOn(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mVirtualSimOn.add(r);
+    }
+
+    public void unregisterForVirtualSimOn(Handler h) {
+        mVirtualSimOn.remove(h);
+    }
+
+    public void registerForVirtualSimOff(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mVirtualSimOff.add(r);
+    }
+
+    public void unregisterForVirtualSimOff(Handler h) {
+        mVirtualSimOff.remove(h);
+    }
+
+    public void registerForSimPlugOut(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSimPlugOutRegistrants.add(r);
+    }
+
+    public void unregisterForSimPlugOut(Handler h) {
+        mSimPlugOutRegistrants.remove(h);
+    }
+
+    public void registerForSimPlugIn(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSimPlugInRegistrants.add(r);
+    }
+
+    public void unregisterForSimPlugIn(Handler h) {
+        mSimPlugInRegistrants.remove(h);
+    }
+
+    public void registerForTrayPlugIn(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mTrayPlugInRegistrants.add(r);
+    }
+
+    public void unregisterForTrayPlugIn(Handler h) {
+        mTrayPlugInRegistrants.remove(h);
+    }
+    /**
+      * Rregister for cdma card type.
+      * @param h Handler for network information messages.
+      * @param what User-defined message code.
+      * @param obj User object.
+      */
+    public void registerForCdmaCardType(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCdmaCardTypeRegistrants.add(r);
+
+        if (mCdmaCardTypeValue != null) {
+            r.notifyRegistrant(new AsyncResult(null, mCdmaCardTypeValue, null));
+        }
+    }
+
+    /**
+      * Rregister for cdma card type.
+      * @param h Handler for network information messages.
+      */
+    public void unregisterForCdmaCardType(Handler h) {
+        mCdmaCardTypeRegistrants.remove(h);
+    }
+
+    public void registerForCommonSlotNoChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCommonSlotNoChangedRegistrants.add(r);
+    }
+
+    public void unregisterForCommonSlotNoChanged(Handler h) {
+        mCommonSlotNoChangedRegistrants.remove(h);
+    }
+
+    public void registerForEusimReady(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEusimReady.add(r);
+    }
+
+    public void unregisterForEusimReady(Handler h) {
+        mEusimReady.remove(h);
+    }
+
+    /* M: CC33 LTE. */
+    public void setDataOnToMD(boolean enable, Message result){}
+    public void setRemoveRestrictEutranMode(boolean enable, Message result){}
+    public void registerForRemoveRestrictEutran(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mRemoveRestrictEutranRegistrants.add(r);
+    }
+    public void unregisterForRemoveRestrictEutran(Handler h) {
+        mRemoveRestrictEutranRegistrants.remove(h);
+    }
+    public void registerForRacUpdate(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+
+        mRacUpdateRegistrants.add(r);
+    }
+    public void unregisterForRacUpdate(Handler h) {
+        mRacUpdateRegistrants.remove(h);
+    }
+
+    public void registerForResetAttachApn(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mResetAttachApnRegistrants.add(r);
+    }
+
+    public void unregisterForResetAttachApn(Handler h) {
+        mResetAttachApnRegistrants.remove(h);
+    }
+
+    public void registerSetDataAllowed(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mDataAllowedRegistrants.add(r);
+    }
+
+    public void unregisterSetDataAllowed(Handler h) {
+        mDataAllowedRegistrants.remove(h);
+    }
+
+    public void sendBTSIMProfile(int nAction, int nType, String strData, Message response){
+    }
+
+    protected Registrant mEfCspPlmnModeBitRegistrant;
+
+    public void registerForEfCspPlmnModeBitChanged(Handler h, int what, Object obj) {
+        mEfCspPlmnModeBitRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unregisterForEfCspPlmnModeBitChanged(Handler h) {
+        mEfCspPlmnModeBitRegistrant.clear();
+    }
+
+    public void queryPhbStorageInfo(int type, Message response) {
+    }
+
+    public void writePhbEntry(PhbEntry entry, Message result) {
+    }
+
+    public void ReadPhbEntry(int type, int bIndex, int eIndex, Message response) {
+    }
+
+    public void registerForPhbReady(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mPhbReadyRegistrants.add(r);
+    }
+
+    public void unregisterForPhbReady(Handler h) {
+        mPhbReadyRegistrants.remove(h);
+    }
+
+    public void queryUPBCapability(Message response){
+    }
+
+    public void editUPBEntry(int entryType, int adnIndex, int entryIndex, String strVal, String tonForNum, Message response) {
+    }
+
+    public void deleteUPBEntry(int entryType, int adnIndex, int entryIndex, Message response) {
+    }
+
+    public void readUPBGasList(int startIndex, int endIndex, Message response) {
+    }
+
+    public void readUPBGrpEntry(int adnIndex, Message response) {
+    }
+
+    public void writeUPBGrpEntry(int adnIndex, int[] grpIds, Message response) {
+    }
+
+    public void getPhoneBookStringsLength(Message result) {
+
+    }
+    public void getPhoneBookMemStorage(Message result) {
+
+    }
+    public void setPhoneBookMemStorage(String storage, String password, Message result) {
+    }
+
+    // xen0n: MTK TODO
+    /*
+    public void readPhoneBookEntryExt(int index1, int index2, Message result) {
+    }
+
+    public void writePhoneBookEntryExt(PBEntry entry, Message result) {
+    }
+    */
+
+    // M: [LTE][Low Power][UL traffic shaping] Start
+    public void setLteAccessStratumReport(boolean enable, Message result) {
+    }
+
+    public void setLteUplinkDataTransfer(int state, int interfaceId, Message result) {
+    }
+
+    public void registerForLteAccessStratumState(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mLteAccessStratumStateRegistrants.add(r);
+    }
+
+    public void unregisterForLteAccessStratumState(Handler h) {
+        mLteAccessStratumStateRegistrants.remove(h);
+    }
+    // M: [LTE][Low Power][UL traffic shaping] End
+
+    // Added by M end
+
+    // MTK-START, SMS part
+    public void registerForSmsReady(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSmsReadyRegistrants.add(r);
+
+        if (mIsSmsReady == true) {
+            // Only notify the new registrant
+            r.notifyRegistrant();
+        }
+    }
+
+    public void unregisterForSmsReady(Handler h) {
+        mSmsReadyRegistrants.remove(h);
+    }
+
+    public void setOnMeSmsFull(Handler h, int what, Object obj) {
+        mMeSmsFullRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unSetOnMeSmsFull(Handler h) {
+        mMeSmsFullRegistrant.clear();
+    }
+
+    // xen0n: MTK TODO
+    /*
+    public void getSmsParameters(Message response) {
+    }
+
+    public void setSmsParameters(SmsParameters params, Message response) {
+    }
+    */
+
+    public void setEtws(int mode, Message result) {
+    }
+
+    public void setOnEtwsNotification(Handler h, int what, Object obj) {
+        mEtwsNotificationRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unSetOnEtwsNotification(Handler h) {
+        mEtwsNotificationRegistrant.clear();
+    }
+
+    public void setCellBroadcastChannelConfigInfo(String config, int cb_set_type,
+            Message response) {
+    }
+
+    public void setCellBroadcastLanguageConfigInfo(String config, Message response) {
+    }
+
+    public void queryCellBroadcastConfigInfo(Message response) {
+    }
+
+    public void removeCellBroadcastMsg(int channelId, int serialId, Message response) {
+    }
+
+    public void getSmsSimMemoryStatus(Message result) {
+    }
+    // MTK-END, SMS part
+
+    public void registerForNeighboringInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mNeighboringInfoRegistrants.add(r);
+    }
+
+    public void unregisterForNeighboringInfo(Handler h) {
+        mNeighboringInfoRegistrants.remove(h);
+    }
+
+    public void registerForNetworkInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mNetworkInfoRegistrants.add(r);
+    }
+
+    public void unregisterForNetworkInfo(Handler h) {
+        mNetworkInfoRegistrants.remove(h);
+    }
+
+    public void setInvalidSimInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mInvalidSimInfoRegistrant.add(r);
+    }
+
+    public void unSetInvalidSimInfo(Handler h) {
+        mInvalidSimInfoRegistrant.remove(h);
+    }
+
+    public void registerForIMEILock(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mImeiLockRegistrant.add(r);
+    }
+
+    public void unregisterForIMEILock(Handler h) {
+        mImeiLockRegistrant.remove(h);
+    }
+
+    public void setNetworkSelectionModeManualWithAct(String operatorNumeric,
+                                                                  String act, Message result) {
+    }
+
+    public void setNetworkSelectionModeSemiAutomatic(String operatorNumeric, String act, Message response) {
+
+    }
+
+    public void cancelAvailableNetworks(Message response) {}
+
+    public void registerForGetAvailableNetworksDone(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mGetAvailableNetworkDoneRegistrant.add(r);
+    }
+
+    public void unregisterForGetAvailableNetworksDone(Handler h) {
+        mGetAvailableNetworkDoneRegistrant.remove(h);
+    }
+
+    public void getPOLCapabilty(Message response) {
+    }
+    public void getCurrentPOLList(Message response) {
+    }
+    public void setPOLEntry(int index, String numeric, int nAct, Message response) {
+    }
+
+    // Femtocell (CSG) feature START
+    public void getFemtoCellList(String operatorNumeric, int rat, Message response){}
+    public void abortFemtoCellList(Message response){}
+    public void selectFemtoCell(FemtoCellInfo femtocell, Message response){}
+    public void registerForFemtoCellInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+
+        mFemtoCellInfoRegistrants.add(r);
+    }
+
+    public void registerForPsNetworkStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+
+        mPsNetworkStateRegistrants.add(r);
+    }
+
+    public void unregisterForPsNetworkStateChanged(Handler h) {
+        mPsNetworkStateRegistrants.remove(h);
+    }
+
+    public boolean isGettingAvailableNetworks() { return false; }
+
+    public void unregisterForFemtoCellInfo(Handler h) {
+        mFemtoCellInfoRegistrants.remove(h);
+    }
+
+    // IMS
+    public void registerForImsEnable(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mImsEnableRegistrants.add(r);
+    }
+
+    public void unregisterForImsEnable(Handler h) {
+        mImsEnableRegistrants.remove(h);
+    }
+
+    public void registerForImsDisable(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mImsDisableRegistrants.add(r);
+    }
+
+    public void unregisterForImsDisable(Handler h) {
+        mImsDisableRegistrants.remove(h);
+    }
+
+    public void registerForImsRegistrationInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mImsRegistrationInfoRegistrants.add(r);
+    }
+
+    public void unregisterForImsRegistrationInfo(Handler h) {
+        mImsRegistrationInfoRegistrants.remove(h);
+    }
+
+    public void setIMSEnabled(boolean enable, Message response){}
+    public void registerForImsDisableDone(Handler h, int what, Object obj){}
+    public void unregisterForImsDisableDone(Handler h){}
+
+    public void setTrm(int mode, Message result) {}
+
+    public void setOnPlmnChangeNotification(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+         synchronized (mWPMonitor) {
+            mPlmnChangeNotificationRegistrant.add(r);
+
+            if (mEcopsReturnValue != null) {
+               // Only notify the new registrant
+               r.notifyRegistrant(new AsyncResult(null, mEcopsReturnValue, null));
+               mEcopsReturnValue = null;
+            }
+        }
+    }
+
+    public void unSetOnPlmnChangeNotification(Handler h) {
+        synchronized (mWPMonitor) {
+            mPlmnChangeNotificationRegistrant.remove(h);
+        }
+    }
+
+    public void setOnRegistrationSuspended(Handler h, int what, Object obj) {
+        synchronized (mWPMonitor) {
+            mRegistrationSuspendedRegistrant = new Registrant(h, what, obj);
+
+            if (mEmsrReturnValue != null) {
+                // Only notify the new registrant
+                mRegistrationSuspendedRegistrant.notifyRegistrant(
+                    new AsyncResult(null, mEmsrReturnValue, null));
+                mEmsrReturnValue = null;
+            }
+        }
+    }
+
+    public void unSetOnRegistrationSuspended(Handler h) {
+        synchronized (mWPMonitor) {
+            mRegistrationSuspendedRegistrant.clear();
+        }
+    }
+
+    //Remote SIM ME lock related APIs [Start]
+    public void registerForMelockChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mMelockRegistrants.add(r);
+    }
+
+    public void unregisterForMelockChanged(Handler h) {
+        mMelockRegistrants.remove(h);
+    }
+    //Remote SIM ME lock related APIs [End]
+
+    /** M: start */
+    public void setupDataCall(String radioTechnology, String profile,
+            String apn, String user, String password, String authType,
+            String protocol, Message result) {
+    }
+
+    public void setupDataCall(String radioTechnology, String profile,
+            String apn, String user, String password, String authType,
+            String protocol, String interfaceId, Message result) {
+    }
+
+    // M: fast dormancy
+    public void setScriResult(Handler h, int what, Object obj) {
+        mScriResultRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unSetScriResult(Handler h) {
+        mScriResultRegistrant.clear();
+    }
+
+    public void setScri(boolean forceRelease, Message response){
+    }
+
+    public void setFDMode(int mode, int parameter1, int parameter2, Message response){
+    }
+
+
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, Object obj, Message result) {
+    }
+    /** M: end */
+
+    // For IMS VoLTE, EPS network feature support
+    public void registerForEpsNetworkFeatureSupport(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEpsNetworkFeatureSupportRegistrants.add(r);
+    }
+
+    public void unregisterForEpsNetworkFeatureSupport(Handler h) {
+        mEpsNetworkFeatureSupportRegistrants.remove(h);
+    }
+
+    /// M: IMS feature. @{
+    /* Register for updating call ids for conference call after SRVCC is done. */
+    public void registerForEconfSrvcc(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEconfSrvccRegistrants.add(r);
+    }
+
+    public void unregisterForEconfSrvcc(Handler h) {
+        mEconfSrvccRegistrants.remove(h);
+    }
+
+    /* Register for updating conference call merged/added result. */
+    public void registerForEconfResult(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEconfResultRegistrants.add(r);
+    }
+
+    public void unregisterForEconfResult(Handler h) {
+        mEconfResultRegistrants.remove(h);
+    }
+
+    public void registerForCallInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCallInfoRegistrants.add(r);
+    }
+
+    public void unregisterForCallInfo(Handler h) {
+        mCallInfoRegistrants.remove(h);
+    }
+
+
+    /* Add/Remove VoLTE(IMS) conference call member. */
+    public void addConferenceMember(int confCallId, String address, int callIdToAdd, Message response) {}
+    public void removeConferenceMember(int confCallId, String address, int callIdToRemove, Message response) {}
+
+    /**
+     * To resume the call.
+     * @param callIdToResume toIndicate which call session to resume.
+     * @param response command response.
+     */
+    public void resumeCall(int callIdToResume, Message response) {}
+
+    /**
+     * To hold the call.
+     * @param callIdToHold toIndicate which call session to hold.
+     * @param response command response.
+     */
+    public void holdCall(int callIdToHold, Message response) {}
+    /// @}
+
+    public void registerForEpsNetworkFeatureInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEpsNetworkFeatureInfoRegistrants.add(r);
+    }
+
+    public void unregisterForEpsNetworkFeatureInfo(Handler h) {
+        mEpsNetworkFeatureInfoRegistrants.remove(h);
+    }
+
+    public void registerForMoDataBarringInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mMoDataBarringInfoRegistrants.add(r);
+    }
+
+    public void unregisterForMoDataBarringInfo(Handler h) {
+        mMoDataBarringInfoRegistrants.remove(h);
+    }
+
+    public void registerForSsacBarringInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSsacBarringInfoRegistrants.add(r);
+    }
+
+    public void unregisterForSsacBarringInfo(Handler h) {
+        mSsacBarringInfoRegistrants.remove(h);
+    }
+
+    public void registerForSrvccHandoverInfoIndication(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSrvccHandoverInfoIndicationRegistrants.add(r);
+    }
+    public void unregisterForSrvccHandoverInfoIndication(Handler h) {
+        mSrvccHandoverInfoIndicationRegistrants.remove(h);
+    }
+
+    /// M: CC071: Add Customer proprietary-IMS RIL interface. @{
+    public void registerForEmergencyBearerSupportInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEmergencyBearerSupportInfoRegistrants.add(r);
+    }
+
+    public void unregisterForEmergencyBearerSupportInfo(Handler h) {
+        mEmergencyBearerSupportInfoRegistrants.remove(h);
+    }
+    /// @}
+
+    public void sendScreenState(boolean on){}
+
+    @Override
+    public void setDataCentric(boolean enable, Message response) {}
+
+    /// M: CC010: Add RIL interface @{
+    @Override
+    public void setImsCallStatus(boolean existed, Message response) {}
+    /// @}
+
+    /// M: CC072: Add Customer proprietary-IMS RIL interface. @{
+    /**
+     * Transfer IMS call to modem.
+     *
+     * @param numberOfCall The number of call
+     * @param callList IMS call context
+     */
+     public void setSrvccCallContextTransfer(int numberOfCall, SrvccCallContext[] callList) {}
+
+    /**
+     * Update IMS registration status to modem.
+     *
+     * @param regState IMS registration state
+     *                 0: IMS unregistered
+     *                 1: IMS registered
+     * @param regType  IMS registration type
+     *                 0: Normal IMS registration
+     *                 1: Emergency IMS registration
+     * @param reason   The reason of state transition from registered to unregistered
+     *                 0: Unspecified
+     *                 1: Power off
+     *                 2: RF off
+     */
+     public void updateImsRegistrationStatus(int regState, int regType, int reason) {}
+     /// @}
+
+    /* C2K part start */
+    @Override
+    public void setViaTRM(int mode, Message result) {}
+
+    @Override
+    public void getNitzTime(Message result) {}
+
+    @Override
+    public void requestSwitchHPF(boolean enableHPF, Message response) {}
+
+    @Override
+    public void setAvoidSYS(boolean avoidSYS, Message response) {}
+
+    @Override
+    public void getAvoidSYSList(Message response) {}
+
+    @Override
+    public void queryCDMANetworkInfo(Message response) {}
+
+    @Override
+    public void setOplmn(String oplmnInfo, Message response) {
+    }
+
+    @Override
+    public void getOplmnVersion(Message response) {
+    }
+
+    @Override
+    public void registerForCallAccepted(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mAcceptedRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForCallAccepted(Handler h) {
+        mAcceptedRegistrant.remove(h);
+    }
+
+    @Override
+    public void registerForViaGpsEvent(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mViaGpsEvent.add(r);
+    }
+
+    @Override
+    public void unregisterForViaGpsEvent(Handler h) {
+        mViaGpsEvent.remove(h);
+    }
+
+    @Override
+    public void setMeid(String meid, Message response) {}
+
+    @Override
+    public void setArsiReportThreshold(int threshold, Message response) {}
+
+    @Override
+    public void registerForNetworkTypeChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mNetworkTypeChangedRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForNetworkTypeChanged(Handler h) {
+        mNetworkTypeChangedRegistrant.remove(h);
+    }
+
+    @Override
+    public void queryCDMASmsAndPBStatus(Message response) {}
+
+    @Override
+    public void queryCDMANetWorkRegistrationState(Message response) {}
+
+    @Override
+    public void requestSetEtsDev(int dev, Message result) {}
+
+    @Override
+    public void requestAGPSGetMpcIpPort(Message result) {}
+
+    @Override
+    public void requestAGPSSetMpcIpPort(String ip, String port, Message result) {}
+
+    @Override
+    public void requestAGPSTcpConnected(int connected, Message result) {}
+
+    @Override
+    public void setMdnNumber(String mdn, Message response) {}
+
+    // UTK start
+    @Override
+    public void setOnUtkSessionEnd(Handler h, int what, Object obj) {
+        mUtkSessionEndRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnUtkSessionEnd(Handler h) {
+        mUtkSessionEndRegistrant.clear();
+    }
+
+    @Override
+    public void setOnUtkProactiveCmd(Handler h, int what, Object obj) {
+        mUtkProCmdRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnUtkProactiveCmd(Handler h) {
+        mUtkProCmdRegistrant.clear();
+    }
+
+    @Override
+    public void setOnUtkEvent(Handler h, int what, Object obj) {
+        mUtkEventRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnUtkEvent(Handler h) {
+        mUtkEventRegistrant.clear();
+    }
+    //UTK end
+
+    //C2K SVLTE remote SIM access
+    @Override
+    public void configModemStatus(int modemStatus, int remoteSimProtocol, Message result) {}
+
+    @Override
+    public void disconnectRilSocket() {}
+
+    @Override
+    public void connectRilSocket() {}
+
+    @Override
+    public void configEvdoMode(int evdoMode, Message result) {}
+    /* C2k part end */
+
+    public void registerForAbnormalEvent(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mAbnormalEventRegistrant.add(r);
+    }
+
+    public void unregisterForAbnormalEvent(Handler h) {
+        mAbnormalEventRegistrant.remove(h);
+    }
+
+    /// M: [C2K] for eng mode start
+    @Override
+    public void registerForEngModeNetworkInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEngModeNetworkInfoRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForEngModeNetworkInfo(Handler h) {
+        mEngModeNetworkInfoRegistrant.remove(h);
+    }
+    /// M: [C2K] for eng mode end
+
+    public int getDisplayState() {
+        //return Display type: Unknown display type.
+        return 0;
+    }
+
+    public String lookupOperatorNameFromNetwork(long subId, String numeric, boolean desireLongName) {
+        // return operator name from network: null string
+        return null;
+    }
+
+    /* M: IMS VoLTE conference dial feature start*/
+    /**
+     * Dial conference call.
+     * @param participants participants' dailing number.
+     * @param clirMode indication to present the dialing number or not.
+     * @param isVideoCall indicate this call is belong to video call or voice call.
+     * @param result the command result.
+     */
+    public void conferenceDial(String[] participants, int clirMode,
+            boolean isVideoCall, Message result) {}
+    /* IMS VoLTE conference dial feature end*/
+
+    /// M: [C2K][IR][MD-IRAT] URC for GMSS RAT changed. @{
+    @Override
+    public void registerForGmssRatChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mGmssRatChangedRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForGmssRatChanged(Handler h) {
+        mGmssRatChangedRegistrant.remove(h);
+    }
+    /// M: [C2K][IR][MD-IRAT] URC for GMSS RAT changed. @}
+
+    /// M: [C2K] for ps type changed. @{
+    @Override
+    public void registerForDataNetworkTypeChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mDataNetworkTypeChangedRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForDataNetworkTypeChanged(Handler h) {
+        mDataNetworkTypeChangedRegistrant.remove(h);
+    }
+    /// @}
+
+    /// [C2K][IRAT] @{
+    @Override
+    public void registerForIratStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mIratStateChangeRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForIratStateChanged(Handler h) {
+        mIratStateChangeRegistrant.remove(h);
+    }
+
+    @Override
+    public void confirmIratChange(int apDecision, Message result) {
+
+    }
+
+    @Override
+    public void requestSetPsActiveSlot(int psSlot, Message response) {
+    }
+
+    @Override
+    public void syncNotifyDataCallList(AsyncResult dcList) {
+
+    }
+
+    @Override
+    public void requestDeactivateLinkDownPdn(Message response) {
+
+    }
+    /// @}
+
+    @Override
+    public void registerForImsiRefreshDone(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mImsiRefreshDoneRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForImsiRefreshDone(Handler h) {
+        mImsiRefreshDoneRegistrant.remove(h);
+    }
+
+    @Override
+    public RadioCapability getBootupRadioCapability() {
+        Rlog.d("RILJ", "getBootupRadioCapability: " + mRadioCapability);
+        return mRadioCapability;
+    }
+
+    @Override
+    public void registerForCdmaImsiReady(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCdmaImsiReadyRegistrant.add(r);
+    }
+
+    @Override
+    public void unregisterForCdmaImsiReady(Handler h) {
+        mCdmaImsiReadyRegistrant.remove(h);
+    }
+
+    /// M: [C2K][SVLTE] Set the SVLTE RAT mode. @{
+    @Override
+    public void setSvlteRatMode(int radioTechMode, int preSvlteMode, int svlteMode,
+            int preRoamingMode, int roamingMode, boolean is3GDualModeCard, Message response) {
+    }
+    /// M: [C2K][SVLTE] Set the SVLTE RAT mode. @}
+
+    /// M: [C2K][SVLTE] Set the STK UTK mode. @{
+    public void setStkUtkMode(int stkUtkMode, Message response) {
+    }
+    /// M: [C2K][SVLTE] Set the STK UTK mode. @}
+
+    /// M: [C2K][SVLTE] Update RIL instance id for SVLTE switch ActivePhone. @{
+    @Override
+    public void setInstanceId(int instanceId) {
+    }
+    /// @}
+
+    /// M: [C2K][IR] Support SVLTE IR feature. @{
+
+    @Override
+    public void setRegistrationSuspendEnabled(int enabled, Message response) {
+    }
+
+    @Override
+    public void setResumeRegistration(int sessionId, Message response) {
+    }
+
+    @Override
+    public void setCdmaRegistrationSuspendEnabled(boolean enabled, Message response) {
+    }
+
+    @Override
+    public void setResumeCdmaRegistration(Message response) {
+    }
+
+    @Override
+    public void registerForMccMncChange(Handler h, int what, Object obj) {
+        Rlog.d(RIL.RILJ_LOG_TAG, "registerForMccMncChange h=" + h + " w=" + what);
+        Registrant r = new Registrant(h, what, obj);
+        mMccMncChangeRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForMccMncChange(Handler h) {
+        Rlog.d(RIL.RILJ_LOG_TAG, "unregisterForMccMncChange");
+        mMccMncChangeRegistrants.remove(h);
+    }
+
+    @Override
+    public void queryStkSetUpMenuFromMD(String contents, Message response) {}
+
+    /// M: [C2K][IR] Support SVLTE IR feature. @}
+
+    /// M: [C2K] Support Signal Fade. @{
+    @Override
+    public void setOnCdmaSignalFade(Handler h, int what, Object obj) {
+        mCdmaSignalFadeRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnCdmaSignalFade(Handler h) {
+        if (mCdmaSignalFadeRegistrant != null && mCdmaSignalFadeRegistrant.getHandler() == h) {
+            mCdmaSignalFadeRegistrant.clear();
+            mCdmaSignalFadeRegistrant = null;
+        }
+    }
+    /// @}
+
+    /// M: [C2K] Support Tone Signal. @{
+    @Override
+    public void setOnCdmaToneSignal(Handler h, int what, Object obj) {
+        mCdmaToneSignalsRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnCdmaToneSignal(Handler h) {
+        if (mCdmaToneSignalsRegistrant != null && mCdmaToneSignalsRegistrant.getHandler() == h) {
+            mCdmaToneSignalsRegistrant.clear();
+            mCdmaToneSignalsRegistrant = null;
+        }
+    }
+    /// @}
+
+    @Override
+    public void switchAntenna(int callState, int ratMode) {}
+    @Override
+    public void switchCardType(int cardtype) {}
+
+    @Override
+    public void enableMd3Sleep(int enable) {
+    }
+
+    @Override
+    public void registerForNetworkExsit(Handler h, int what, Object obj) {
+        Rlog.d(RIL.RILJ_LOG_TAG, "registerForNetworkExsit h=" + h + " w=" + what);
+        Registrant r = new Registrant(h, what, obj);
+        mNetworkExistRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForNetworkExsit(Handler h) {
+        Rlog.d(RIL.RILJ_LOG_TAG, "registerForNetworkExsit");
+        mNetworkExistRegistrants.remove(h);
+    }
 }

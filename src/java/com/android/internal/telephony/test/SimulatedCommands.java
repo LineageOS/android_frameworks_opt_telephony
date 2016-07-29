@@ -1804,4 +1804,139 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     public boolean needsOldRilFeature(String feature) { return false; }
+
+    // MTK
+
+    @Override
+    public void supplyNetworkDepersonalization(String netpin, Message result)  {
+        unimplemented(result);
+    }
+
+    @Override
+    public void setBandMode(int[] bandMode, Message response) {
+        resultSuccess(response, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void handleCallSetupRequestFromSim(
+            boolean accept, int resCode, Message response) {
+        resultSuccess(response, null);
+    }
+
+    /* M: SS part */
+    public void getCOLR(Message response) {
+        unimplemented(response);
+    }
+
+    public void setCOLP(boolean enable, Message response) {
+        unimplemented(response);
+    }
+
+    public void getCOLP(Message response) {
+        unimplemented(response);
+    }
+    /* M: SS part end */
+
+    /* M: SS part */
+    public void changeBarringPassword(String facility, String oldPwd, String newPwd,
+        String newCfm , Message result) {
+            unimplemented(result);
+    }
+    /* M: SS part end */
+
+    /// M: CC010: Add RIL interface @{
+    public void emergencyDial(String address, int clirMode, UUSInfo uusInfo, Message result) {
+        resultSuccess(result, null);
+    }
+
+    public void hangupAll(Message result) {
+        resultSuccess(result, null);
+    }
+
+    public void forceReleaseCall(int index, Message response) {
+        unimplemented(response);
+    }
+
+    public void setCallIndication(int mode, int callId, int seqNumber, Message response) {
+        unimplemented(response);
+    }
+    /// @}
+
+    // Added by M begin
+    @Override
+    public void iccGetATR(Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void iccOpenChannelWithSw(String AID, Message response) {
+        unimplemented(response);
+    }
+    // Added by M end
+
+    @Override
+    public void setTrm(int mode, Message result) {
+    }
+
+    @Override
+    public void setResumeRegistration(int sessionId, Message response) {
+    }
+
+    @Override
+    public void queryModemType(Message response) {
+    }
+
+    @Override
+    public void storeModemType(int modemType, Message response) {
+    }
+
+    @Override
+    public void reloadModemType(int modemType, Message response) {
+    }
+
+    // M: Fast Dormancy
+    public void setScri(boolean forceRelease, Message response) {
+        resultSuccess(response, null);
+    }
+
+    public void setFDMode(int mode, int parameter1, int parameter2, Message response) {
+    }
+
+    // UTK start
+    public void getUtkLocalInfo(Message response) {
+        unimplemented(response);
+    }
+
+    public void requestUtkRefresh(int type, Message response) {
+        unimplemented(response);
+    }
+
+    public void handleCallSetupRequestFromUim(boolean accept, Message response) {
+        unimplemented(response);
+    }
+
+    public void reportUtkServiceIsRunning(Message result) {
+        resultSuccess(result, null);
+    }
+
+    public void profileDownload(String profile, Message response) {
+        resultSuccess(response, null);
+    }
+
+    public void queryUtkSetupMenuFromMD(String contents, Message response) {
+        resultSuccess(response, null);
+    }
+
+
+    @Override
+    public void setStkSwitchMode(int mode) {
+    }
+
+    @Override
+    public void setBipPsType(int type) {
+    }
+    //UTK end
 }

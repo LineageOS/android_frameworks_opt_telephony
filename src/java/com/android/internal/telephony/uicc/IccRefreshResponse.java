@@ -27,13 +27,20 @@ public class IccRefreshResponse {
     public static final int REFRESH_RESULT_FILE_UPDATE = 0; /* Single file was updated */
     public static final int REFRESH_RESULT_INIT = 1;        /* The Icc has been initialized */
     public static final int REFRESH_RESULT_RESET = 2;       /* The Icc was reset */
+    // MTK
+    public static final int REFRESH_RESULT_APP_INIT = 3; /* UICC APP reset, for wifi calling */
+    public static final int REFRESH_INIT_FULL_FILE_UPDATED = 4;  /* SIM init and full file upload */
+    public static final int REFRESH_INIT_FILE_UPDATED = 5;  /* SIM init and single file updated */
 
     public int             refreshResult;      /* Sim Refresh result */
-    public int             efId;               /* EFID */
+    public int[]           efId;               /* EFID */
     public String          aid;                /* null terminated string, e.g.,
                                                   from 0xA0, 0x00 -> 0x41,
                                                   0x30, 0x30, 0x30 */
                                                /* Example: a0000000871002f310ffff89080000ff */
+
+    // MTK
+    public int             sessionId;          /* active channel id */
 
     @Override
     public String toString() {

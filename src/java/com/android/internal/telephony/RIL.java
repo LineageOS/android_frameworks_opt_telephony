@@ -82,6 +82,8 @@ import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.TelephonyDevController;
 import com.android.internal.telephony.HardwareConfig;
 
+import com.mediatek.internal.telephony.cdma.CdmaFeatureOptionUtils;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.FileDescriptor;
@@ -299,7 +301,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     //***** Constants
 
     // match with constant in ril.cpp
-    static final int RIL_MAX_COMMAND_BYTES = (8 * 1024);
+    static final int RIL_MAX_COMMAND_BYTES = (20 * 1024);  // MTK
     static final int RESPONSE_SOLICITED = 0;
     static final int RESPONSE_UNSOLICITED = 1;
 
@@ -691,35 +693,53 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 DEFAULT_WAKE_LOCK_TIMEOUT);
         mWakeLockCount = 0;
 
-        mSenderThread = new HandlerThread("RILSender" + mInstanceId);
-        mSenderThread.start();
-
-        Looper looper = mSenderThread.getLooper();
-        mSender = new RILSender(looper);
-
-        ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        if (cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE) == false) {
-            riljLog("Not starting RILReceiver: wifi-only");
-        } else {
-            riljLog("Starting RILReceiver" + mInstanceId);
-            mReceiver = createRILReceiver();
-            mReceiverThread = new Thread(mReceiver, "RILReceiver" + mInstanceId);
-            mReceiverThread.start();
-
+        ///M: SVLTE solution2 C2K RIL connect/disconnect  control. @{
+        if (CdmaFeatureOptionUtils.isCdmaLteDcSupport()) {
+            if (mPreferredNetworkType != RILConstants.NETWORK_MODE_CDMA) {
+                connectRild();
+            }
             DisplayManager dm = (DisplayManager)context.getSystemService(
                     Context.DISPLAY_SERVICE);
             mDefaultDisplay = dm.getDisplay(Display.DEFAULT_DISPLAY);
             dm.registerDisplayListener(mDisplayListener, null);
-            mDefaultDisplayState = mDefaultDisplay.getState();
+        } else {
+            mSenderThread = new HandlerThread("RILSender" + mInstanceId);
+            mSenderThread.start();
 
-            IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-            Intent batteryStatus = context.registerReceiver(mBatteryStateListener, filter);
-            if (batteryStatus != null) {
-                // 0 means it's on battery
-                mIsDevicePlugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+            Looper looper = mSenderThread.getLooper();
+            mSender = new RILSender(looper);
+
+            ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
+                    Context.CONNECTIVITY_SERVICE);
+            if (cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE) == false) {
+                riljLog("Not starting RILReceiver: wifi-only");
+            } else {
+                riljLog("Starting RILReceiver" + mInstanceId);
+                mReceiver = createRILReceiver();
+                mReceiverThread = new Thread(mReceiver, "RILReceiver" + mInstanceId);
+                mReceiverThread.start();
+
+                DisplayManager dm = (DisplayManager)context.getSystemService(
+                        Context.DISPLAY_SERVICE);
+                mDefaultDisplay = dm.getDisplay(Display.DEFAULT_DISPLAY);
+                dm.registerDisplayListener(mDisplayListener, null);
+                mDefaultDisplayState = mDefaultDisplay.getState();
+
+                IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                Intent batteryStatus = context.registerReceiver(mBatteryStateListener, filter);
+                if (batteryStatus != null) {
+                    // 0 means it's on battery
+                    mIsDevicePlugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+                }
             }
         }
+        /// @}
+        // xen0n: (useless) refactoring
+        /*
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.mtk.TEST_TRM");
+        context.registerReceiver(mIntentReceiver, filter);
+        */
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
         tdc.registerRIL(this);
@@ -2042,7 +2062,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             Message response) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_QUERY_FACILITY_LOCK, response);
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        // MTK
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                                 + " [" + facility + " " + serviceClass
+                                                 + " " + appId + "]");
 
         boolean oldRil = needsOldRilFeature("facilitylock");
 
@@ -2492,7 +2515,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    protected void sendScreenState(boolean on) {
+    public /* MTK */ void sendScreenState(boolean on) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_SCREEN_STATE, null);
         rr.mParcel.writeInt(1);
         rr.mParcel.writeInt(on ? 1 : 0);
@@ -3747,7 +3770,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
         IccRefreshResponse response = new IccRefreshResponse();
 
         response.refreshResult = p.readInt();
-        response.efId   = p.readInt();
+        // xen0n
+        // response.efId   = p.readInt();
+        response.efId = new int[1];
+        response.efId[0] = p.readInt();
         response.aid = p.readString();
         return response;
     }
@@ -4353,6 +4379,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SETUP_DATA_CALL: return "SETUP_DATA_CALL";
             case RIL_REQUEST_SIM_IO: return "SIM_IO";
             case RIL_REQUEST_SEND_USSD: return "SEND_USSD";
+            /* M: SS part */
+            ///M: For query CNAP
+            case RIL_REQUEST_SEND_CNAP: return "SEND_CNAP";
+            /* M: SS part end */
             case RIL_REQUEST_CANCEL_USSD: return "CANCEL_USSD";
             case RIL_REQUEST_GET_CLIR: return "GET_CLIR";
             case RIL_REQUEST_SET_CLIR: return "SET_CLIR";
@@ -4372,6 +4402,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SET_NETWORK_SELECTION_AUTOMATIC: return "SET_NETWORK_SELECTION_AUTOMATIC";
             case RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL: return "SET_NETWORK_SELECTION_MANUAL";
             case RIL_REQUEST_QUERY_AVAILABLE_NETWORKS : return "QUERY_AVAILABLE_NETWORKS ";
+            case RIL_REQUEST_ABORT_QUERY_AVAILABLE_NETWORKS : return "ABORT_QUERY_AVAILABLE_NETWORKS";
             case RIL_REQUEST_DTMF_START: return "DTMF_START";
             case RIL_REQUEST_DTMF_STOP: return "DTMF_STOP";
             case RIL_REQUEST_BASEBAND_VERSION: return "BASEBAND_VERSION";
@@ -4461,6 +4492,194 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_PULL_LCEDATA: return "RIL_REQUEST_PULL_LCEDATA";
             case RIL_REQUEST_GET_ACTIVITY_INFO: return "RIL_REQUEST_GET_ACTIVITY_INFO";
             case RIL_REQUEST_SET_MAX_TRANSMIT_POWER: return "RIL_REQUEST_SET_MAX_TRANSMIT_POWER";
+
+            /// M: CC010: Add RIL interface @{
+            case RIL_REQUEST_HANGUP_ALL: return "HANGUP_ALL";
+            case RIL_REQUEST_FORCE_RELEASE_CALL: return "FORCE_RELEASE_CALL";
+            case RIL_REQUEST_SET_CALL_INDICATION: return "SET_CALL_INDICATION";
+            case RIL_REQUEST_EMERGENCY_DIAL: return "EMERGENCY_DIAL";
+            case RIL_REQUEST_SET_ECC_SERVICE_CATEGORY: return "SET_ECC_SERVICE_CATEGORY";
+            case RIL_REQUEST_SET_ECC_LIST: return "SET_ECC_LIST";
+            /// @}
+            /// M: CC077: 2/3G CAPABILITY_HIGH_DEF_AUDIO @{
+            case RIL_REQUEST_SET_SPEECH_CODEC_INFO: return "SET_SPEECH_CODEC_INFO";
+            /// @}
+            /// M: For 3G VT only @{
+            case RIL_REQUEST_VT_DIAL: return "RIL_REQUEST_VT_DIAL";
+            case RIL_REQUEST_VOICE_ACCEPT: return "VOICE_ACCEPT";
+            case RIL_REQUEST_REPLACE_VT_CALL: return "RIL_REQUEST_REPLACE_VT_CALL";
+            /// @}
+
+            /// M: IMS feature. @{
+            case RIL_REQUEST_ADD_IMS_CONFERENCE_CALL_MEMBER: return "RIL_REQUEST_ADD_IMS_CONFERENCE_CALL_MEMBER";
+            case RIL_REQUEST_REMOVE_IMS_CONFERENCE_CALL_MEMBER: return "RIL_REQUEST_REMOVE_IMS_CONFERENCE_CALL_MEMBER";
+            case RIL_REQUEST_DIAL_WITH_SIP_URI: return "RIL_REQUEST_DIAL_WITH_SIP_URI";
+            case RIL_REQUEST_RESUME_CALL: return "RIL_REQUEST_RESUNME_CALL";
+            case RIL_REQUEST_HOLD_CALL: return "RIL_REQUEST_HOLD_CALL";
+            /// @}
+
+            //MTK-START SS
+            case RIL_REQUEST_GET_COLP: return "GET_COLP";
+            case RIL_REQUEST_SET_COLP: return "SET_COLP";
+            case RIL_REQUEST_GET_COLR: return "GET_COLR";
+            //MTK-END SS
+
+            //MTK-START SIM ME lock
+            case RIL_REQUEST_QUERY_SIM_NETWORK_LOCK: return "QUERY_SIM_NETWORK_LOCK";
+            case RIL_REQUEST_SET_SIM_NETWORK_LOCK: return "SET_SIM_NETWORK_LOCK";
+            //MTK-END SIM ME lock
+            //ISIM
+            case RIL_REQUEST_GENERAL_SIM_AUTH: return "RIL_REQUEST_GENERAL_SIM_AUTH";
+            case RIL_REQUEST_OPEN_ICC_APPLICATION: return "RIL_REQUEST_OPEN_ICC_APPLICATION";
+            case RIL_REQUEST_GET_ICC_APPLICATION_STATUS: return "RIL_REQUEST_GET_ICC_APPLICATION_STATUS";
+            case RIL_REQUEST_SIM_IO_EX: return "SIM_IO_EX";
+
+            // PHB Start
+            case RIL_REQUEST_QUERY_PHB_STORAGE_INFO: return "RIL_REQUEST_QUERY_PHB_STORAGE_INFO";
+            case RIL_REQUEST_WRITE_PHB_ENTRY: return "RIL_REQUEST_WRITE_PHB_ENTRY";
+            case RIL_REQUEST_READ_PHB_ENTRY: return "RIL_REQUEST_READ_PHB_ENTRY";
+            case RIL_REQUEST_QUERY_UPB_CAPABILITY: return "RIL_REQUEST_QUERY_UPB_CAPABILITY";
+            case RIL_REQUEST_EDIT_UPB_ENTRY: return "RIL_REQUEST_EDIT_UPB_ENTRY";
+            case RIL_REQUEST_DELETE_UPB_ENTRY: return "RIL_REQUEST_DELETE_UPB_ENTRY";
+            case RIL_REQUEST_READ_UPB_GAS_LIST: return "RIL_REQUEST_READ_UPB_GAS_LIST";
+            case RIL_REQUEST_READ_UPB_GRP: return "RIL_REQUEST_READ_UPB_GRP";
+            case RIL_REQUEST_WRITE_UPB_GRP: return "RIL_REQUEST_WRITE_UPB_GRP";
+            case RIL_REQUEST_GET_PHB_STRING_LENGTH: return "RIL_REQUEST_GET_PHB_STRING_LENGTH";
+            case RIL_REQUEST_GET_PHB_MEM_STORAGE: return "RIL_REQUEST_GET_PHB_MEM_STORAGE";
+            case RIL_REQUEST_SET_PHB_MEM_STORAGE: return "RIL_REQUEST_SET_PHB_MEM_STORAGE";
+            case RIL_REQUEST_READ_PHB_ENTRY_EXT: return "RIL_REQUEST_READ_PHB_ENTRY_EXT";
+            case RIL_REQUEST_WRITE_PHB_ENTRY_EXT: return "RIL_REQUEST_WRITE_PHB_ENTRY_EXT";
+            // PHB End
+
+            /* M: network part start */
+            case RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL_WITH_ACT: return "SET_NETWORK_SELECTION_MANUAL_WITH_ACT";
+            case RIL_REQUEST_GET_POL_CAPABILITY: return "RIL_REQUEST_GET_POL_CAPABILITY";
+            case RIL_REQUEST_GET_POL_LIST: return "RIL_REQUEST_GET_POL_LIST";
+            case RIL_REQUEST_SET_POL_ENTRY: return "RIL_REQUEST_SET_POL_ENTRY";
+            case RIL_REQUEST_SET_TRM: return "RIL_REQUEST_SET_TRM";
+            case RIL_REQUEST_QUERY_AVAILABLE_NETWORKS_WITH_ACT : return "QUERY_AVAILABLE_NETWORKS_WITH_ACT";
+            //Femtocell (CSG) feature START
+            case RIL_REQUEST_GET_FEMTOCELL_LIST: return "RIL_REQUEST_GET_FEMTOCELL_LIST";
+            case RIL_REQUEST_ABORT_FEMTOCELL_LIST: return "RIL_REQUEST_ABORT_FEMTOCELL_LIST";
+            case RIL_REQUEST_SELECT_FEMTOCELL: return "RIL_REQUEST_SELECT_FEMTOCELL";
+            //Femtocell (CSG) feature END
+            /* M: network part end */
+            case RIL_REQUEST_STK_EVDL_CALL_BY_AP: return "RIL_REQUEST_STK_EVDL_CALL_BY_AP";
+            case RIL_REQUEST_QUERY_MODEM_TYPE: return "RIL_REQUEST_QUERY_MODEM_TYPE";
+            case RIL_REQUEST_STORE_MODEM_TYPE: return "RIL_REQUEST_STORE_MODEM_TYPE";
+            case RIL_REQUEST_SIM_GET_ATR: return "SIM_GET_ATR";
+            case RIL_REQUEST_SIM_OPEN_CHANNEL_WITH_SW: return "SIM_OPEN_CHANNEL_WITH_SW";
+
+            // IMS
+            case RIL_REQUEST_SET_IMS_ENABLE: return "RIL_REQUEST_SET_IMS_ENABLE";
+
+            // M: Fast Dormancy
+            case RIL_REQUEST_SET_SCRI: return "RIL_REQUEST_SET_SCRI";
+            case RIL_REQUEST_SET_FD_MODE: return "RIL_REQUEST_SET_FD_MODE";
+            // MTK-START, SMS part
+            case RIL_REQUEST_GET_SMS_PARAMS: return "RIL_REQUEST_GET_SMS_PARAMS";
+            case RIL_REQUEST_SET_SMS_PARAMS: return "RIL_REQUEST_SET_SMS_PARAMS";
+            case RIL_REQUEST_GET_SMS_SIM_MEM_STATUS: return "RIL_REQUEST_GET_SMS_SIM_MEM_STATUS";
+            case RIL_REQUEST_SET_ETWS: return "RIL_REQUEST_SET_ETWS";
+            case RIL_REQUEST_SET_CB_CHANNEL_CONFIG_INFO:
+                return "RIL_REQUEST_SET_CB_CHANNEL_CONFIG_INFO";
+            case RIL_REQUEST_SET_CB_LANGUAGE_CONFIG_INFO:
+                return "RIL_REQUEST_SET_CB_LANGUAGE_CONFIG_INFO";
+            case RIL_REQUEST_GET_CB_CONFIG_INFO: return "RIL_REQUEST_GET_CB_CONFIG_INFO";
+            case RIL_REQUEST_REMOVE_CB_MESSAGE: return "RIL_REQUEST_REMOVE_CB_MESSAGE";
+            // MTK-END, SMS part
+            case RIL_REQUEST_SET_DATA_CENTRIC: return "RIL_REQUEST_SET_DATA_CENTRIC";
+
+            case RIL_REQUEST_MODEM_POWEROFF: return "MODEM_POWEROFF";
+            case RIL_REQUEST_MODEM_POWERON: return "MODEM_POWERON";
+            // M: CC33 LTE.
+            case RIL_REQUEST_SET_DATA_ON_TO_MD: return "RIL_REQUEST_SET_DATA_ON_TO_MD";
+            case RIL_REQUEST_SET_REMOVE_RESTRICT_EUTRAN_MODE: return "RIL_REQUEST_SET_REMOVE_RESTRICT_EUTRAN_MODE";
+            case RIL_REQUEST_BTSIM_CONNECT: return "RIL_REQUEST_BTSIM_CONNECT";
+            case RIL_REQUEST_BTSIM_DISCONNECT_OR_POWEROFF: return "RIL_REQUEST_BTSIM_DISCONNECT_OR_POWEROFF";
+            case RIL_REQUEST_BTSIM_POWERON_OR_RESETSIM: return "RIL_REQUEST_BTSIM_POWERON_OR_RESETSIM";
+            case RIL_REQUEST_BTSIM_TRANSFERAPDU: return "RIL_REQUEST_SEND_BTSIM_TRANSFERAPDU";
+
+            /// M: IMS VoLTE conference dial feature. @{
+            case RIL_REQUEST_CONFERENCE_DIAL: return "RIL_REQUEST_CONFERENCE_DIAL";
+            /// @}
+            case RIL_REQUEST_RELOAD_MODEM_TYPE: return "RIL_REQUEST_RELOAD_MODEM_TYPE";
+            /// M: CC010: Add RIL interface @{
+            case RIL_REQUEST_SET_IMS_CALL_STATUS: return "RIL_REQUEST_SET_IMS_CALL_STATUS";
+            /// @}
+
+            /// M: CC072: Add Customer proprietary-IMS RIL interface. @{
+            case RIL_REQUEST_SET_SRVCC_CALL_CONTEXT_TRANSFER: return "RIL_REQUEST_SET_SRVCC_CALL_CONTEXT_TRANSFER";
+            case RIL_REQUEST_UPDATE_IMS_REGISTRATION_STATUS: return "RIL_REQUEST_UPDATE_IMS_REGISTRATION_STATUS";
+            /// @}
+
+            /// M: SVLTE remote SIM access feature
+            case RIL_REQUEST_CONFIG_MODEM_STATUS: return "RIL_REQUEST_CONFIG_MODEM_STATUS";
+            /* M: C2K part start */
+            case RIL_REQUEST_GET_NITZ_TIME: return "RIL_REQUEST_GET_NITZ_TIME";
+            case RIL_REQUEST_QUERY_UIM_INSERTED: return "RIL_REQUEST_QUERY_UIM_INSERTED";
+            case RIL_REQUEST_SWITCH_HPF: return "RIL_REQUEST_SWITCH_HPF";
+            case RIL_REQUEST_SET_AVOID_SYS: return "RIL_REQUEST_SET_AVOID_SYS";
+            case RIL_REQUEST_QUERY_AVOID_SYS: return "RIL_REQUEST_QUERY_AVOID_SYS";
+            case RIL_REQUEST_QUERY_CDMA_NETWORK_INFO: return "RIL_REQUEST_QUERY_CDMA_NETWORK_INFO";
+            case RIL_REQUEST_GET_LOCAL_INFO: return "RIL_REQUEST_GET_LOCAL_INFO";
+            case RIL_REQUEST_UTK_REFRESH: return "RIL_REQUEST_UTK_REFRESH";
+            case RIL_REQUEST_QUERY_SMS_AND_PHONEBOOK_STATUS:
+                return "RIL_REQUEST_QUERY_SMS_AND_PHONEBOOK_STATUS";
+            case RIL_REQUEST_QUERY_NETWORK_REGISTRATION:
+                return "RIL_REQUEST_QUERY_NETWORK_REGISTRATION";
+            case RIL_REQUEST_AGPS_TCP_CONNIND: return "RIL_REQUEST_AGPS_TCP_CONNIND";
+            case RIL_REQUEST_AGPS_SET_MPC_IPPORT: return "RIL_REQUEST_AGPS_SET_MPC_IPPORT";
+            case RIL_REQUEST_AGPS_GET_MPC_IPPORT: return "RIL_REQUEST_AGPS_GET_MPC_IPPORT";
+            case RIL_REQUEST_SET_MEID: return "RIL_REQUEST_SET_MEID";
+            case RIL_REQUEST_SET_ETS_DEV: return "RIL_REQUEST_SET_ETS_DEV";
+            case RIL_REQUEST_WRITE_MDN: return "RIL_REQUEST_WRITE_MDN";
+            case RIL_REQUEST_SET_VIA_TRM: return "RIL_REQUEST_SET_VIA_TRM";
+            case RIL_REQUEST_SET_ARSI_THRESHOLD: return "RIL_REQUEST_SET_ARSI_THRESHOLD";
+            case RIL_REQUEST_QUERY_UTK_MENU_FROM_MD: return "RIL_REQUEST_QUERY_UTK_MENU_FROM_MD";
+            case RIL_REQUEST_QUERY_STK_MENU_FROM_MD: return "RIL_REQUEST_QUERY_STK_MENU_FROM_MD";
+            /* M: C2K part end */
+            // M: [C2K][MD IRAT]RIL
+            case RIL_REQUEST_SET_ACTIVE_PS_SLOT: return "RIL_REQUEST_SET_ACTIVE_PS_SLOT";
+            case RIL_REQUEST_CONFIRM_INTER_3GPP_IRAT_CHANGE:
+                return "RIL_REQUEST_CONFIRM_INTER_3GPP_IRAT_CHANGE";
+            case RIL_REQUEST_DEACTIVATE_LINK_DOWN_PDN:
+                return "RIL_REQUEST_DEACTIVATE_LINK_DOWN_PDN";
+            /// @}
+            /// M: [C2K][SVLTE] Set the SVLTE RAT mode. @{
+            case RIL_REQUEST_SET_SVLTE_RAT_MODE: return "RIL_REQUEST_SET_SVLTE_RAT_MODE";
+            /// M: [C2K][SVLTE] Set the SVLTE RAT mode. @}
+
+            /// M: [C2K][IR] Support SVLTE IR feature. @{
+            case RIL_REQUEST_SET_REG_SUSPEND_ENABLED: return "RIL_REQUEST_SET_REG_SUSPEND_ENABLED";
+            case RIL_REQUEST_RESUME_REGISTRATION: return "RIL_REQUEST_RESUME_REGISTRATION";
+            case RIL_REQUEST_SET_REG_SUSPEND_ENABLED_CDMA:
+                return "RIL_REQUEST_SET_REG_SUSPEND_ENABLED_CDMA";
+            case RIL_REQUEST_RESUME_REGISTRATION_CDMA:
+                return "RIL_REQUEST_RESUME_REGISTRATION_CDMA";
+            case RIL_REQUEST_CONFIG_EVDO_MODE:
+                return "RIL_REQUEST_CONFIG_EVDO_MODE";
+            /// M: [C2K][IR] Support SVLTE IR feature. @}
+
+            case RIL_UNSOL_CDMA_SIGNAL_FADE:
+                return "RIL_UNSOL_CDMA_SIGNAL_FADE";
+            // M: Notify RILJ that the AT+EFNM was received
+            case RIL_UNSOL_CDMA_TONE_SIGNALS:
+                return "RIL_UNSOL_CDMA_TONE_SIGNALS";
+
+            case RIL_REQUEST_SET_STK_UTK_MODE:
+                return "RIL_REQUEST_SET_STK_UTK_MODE";
+
+            case RIL_REQUEST_SWITCH_ANTENNA: return "RIL_REQUEST_SWITCH_ANTENNA";
+            case RIL_REQUEST_SWITCH_CARD_TYPE: return "RIL_REQUEST_SWITCH_CARD_TYPE";
+            case RIL_REQUEST_ENABLE_MD3_SLEEP: return "RIL_REQUEST_ENABLE_MD3_SLEEP";
+
+            // M: [LTE][Low Power][UL traffic shaping] Start
+            case RIL_REQUEST_SET_LTE_ACCESS_STRATUM_REPORT:
+                return "RIL_REQUEST_SET_LTE_ACCESS_STRATUM_REPORT";
+            case RIL_REQUEST_SET_LTE_UPLINK_DATA_TRANSFER:
+                return "RIL_REQUEST_SET_LTE_UPLINK_DATA_TRANSFER";
+            // M: [LTE][Low Power][UL traffic shaping] End
             default: return "<unknown request>";
         }
     }
@@ -4523,6 +4742,131 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_ON_SS: return "UNSOL_ON_SS";
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: return "UNSOL_STK_CC_ALPHA_NOTIFY";
             case RIL_UNSOL_LCEDATA_RECV: return "UNSOL_LCE_INFO_RECV";
+
+            /// M: CC010: Add RIL interface @{
+            case RIL_UNSOL_CALL_FORWARDING: return "UNSOL_CALL_FORWARDING";
+            case RIL_UNSOL_CRSS_NOTIFICATION: return "UNSOL_CRSS_NOTIFICATION";
+            case RIL_UNSOL_INCOMING_CALL_INDICATION: return "UNSOL_INCOMING_CALL_INDICATION";
+            case RIL_UNSOL_CIPHER_INDICATION: return "UNSOL_CIPHER_INDICATION";
+            //case RIL_UNSOL_CNAP: return "UNSOL_CNAP"; //obsolete
+            /// @}
+            /// M: CC077: 2/3G CAPABILITY_HIGH_DEF_AUDIO @{
+            case RIL_UNSOL_SPEECH_CODEC_INFO: return "UNSOL_SPEECH_CODEC_INFO";
+            /// @}
+            //MTK-START multiple application support
+            case RIL_UNSOL_APPLICATION_SESSION_ID_CHANGED: return "RIL_UNSOL_APPLICATION_SESSION_ID_CHANGED";
+            //MTK-END multiple application support
+            case RIL_UNSOL_SIM_MISSING: return "UNSOL_SIM_MISSING";
+            case RIL_UNSOL_VIRTUAL_SIM_ON: return "UNSOL_VIRTUAL_SIM_ON";
+            case RIL_UNSOL_VIRTUAL_SIM_OFF: return "UNSOL_VIRTUAL_SIM_ON_OFF";
+            case RIL_UNSOL_SIM_RECOVERY: return "UNSOL_SIM_RECOVERY";
+            case RIL_UNSOL_SIM_PLUG_OUT: return "UNSOL_SIM_PLUG_OUT";
+            case RIL_UNSOL_SIM_PLUG_IN: return "UNSOL_SIM_PLUG_IN";
+            case RIL_UNSOL_TRAY_PLUG_IN: return "UNSOL_TRAY_PLUG_IN";
+            case RIL_UNSOL_SIM_COMMON_SLOT_NO_CHANGED: return "RIL_UNSOL_SIM_COMMON_SLOT_NO_CHANGED";
+            case RIL_UNSOL_DATA_ALLOWED: return "RIL_UNSOL_DATA_ALLOWED";
+            case RIL_UNSOL_PHB_READY_NOTIFICATION: return "UNSOL_PHB_READY_NOTIFICATION";
+            case RIL_UNSOL_IMEI_LOCK: return "UNSOL_IMEI_LOCK";
+            case RIL_UNSOL_RESPONSE_ACMT: return "UNSOL_ACMT_INFO";
+            case RIL_UNSOL_RESPONSE_PS_NETWORK_STATE_CHANGED: return "UNSOL_RESPONSE_PS_NETWORK_STATE_CHANGED";
+            case RIL_UNSOL_RESPONSE_MMRR_STATUS_CHANGED: return "UNSOL_RESPONSE_MMRR_STATUS_CHANGED";
+            case RIL_UNSOL_NEIGHBORING_CELL_INFO: return "UNSOL_NEIGHBORING_CELL_INFO";
+            case RIL_UNSOL_NETWORK_INFO: return "UNSOL_NETWORK_INFO";
+            case RIL_UNSOL_FEMTOCELL_INFO: return "RIL_UNSOL_FEMTOCELL_INFO";
+            case RIL_UNSOL_INVALID_SIM: return "RIL_UNSOL_INVALID_SIM";
+            case RIL_UNSOL_IMS_ENABLE_DONE: return "RIL_UNSOL_IMS_ENABLE_DONE";
+            case RIL_UNSOL_IMS_DISABLE_DONE: return "RIL_UNSOL_IMS_DISABLE_DONE";
+            case RIL_UNSOL_IMS_REGISTRATION_INFO: return "RIL_UNSOL_IMS_REGISTRATION_INFO";
+            case RIL_UNSOL_STK_SETUP_MENU_RESET: return "RIL_UNSOL_STK_SETUP_MENU_RESET";
+            case RIL_UNSOL_RESPONSE_PLMN_CHANGED: return "RIL_UNSOL_RESPONSE_PLMN_CHANGED";
+            case RIL_UNSOL_RESPONSE_REGISTRATION_SUSPENDED: return "RIL_UNSOL_RESPONSE_REGISTRATION_SUSPENDED";
+            //Remote SIM ME lock related APIs [Start]
+            case RIL_UNSOL_MELOCK_NOTIFICATION: return "RIL_UNSOL_MELOCK_NOTIFICATION";
+            //Remote SIM ME lock related APIs [End]
+            // M: Fast Dormancy
+            case RIL_UNSOL_SCRI_RESULT: return "RIL_UNSOL_SCRI_RESULT";
+            case RIL_UNSOL_STK_EVDL_CALL: return "RIL_UNSOL_STK_EVDL_CALL";
+            case RIL_UNSOL_STK_CALL_CTRL: return "RIL_UNSOL_STK_CALL_CTRL";
+
+            /// M: IMS feature. @{
+            case RIL_UNSOL_ECONF_SRVCC_INDICATION: return "RIL_UNSOL_ECONF_SRVCC_INDICATION";
+            //For updating conference call merged/added result.
+            case RIL_UNSOL_ECONF_RESULT_INDICATION: return "RIL_UNSOL_ECONF_RESULT_INDICATION";
+            //For updating call mode and pau information.
+            case RIL_UNSOL_CALL_INFO_INDICATION : return "RIL_UNSOL_CALL_INFO_INDICATION";
+            /// @}
+
+            case RIL_UNSOL_VOLTE_EPS_NETWORK_FEATURE_INFO: return "RIL_UNSOL_VOLTE_EPS_NETWORK_FEATURE_INFO";
+            case RIL_UNSOL_SRVCC_HANDOVER_INFO_INDICATION: return "RIL_UNSOL_SRVCC_HANDOVER_INFO_INDICATION";
+            // M: CC33 LTE.
+            case RIL_UNSOL_RAC_UPDATE: return "RIL_UNSOL_RAC_UPDATE";
+            case RIL_UNSOL_REMOVE_RESTRICT_EUTRAN: return "RIL_UNSOL_REMOVE_RESTRICT_EUTRAN";
+
+            //MTK-START for MD state change
+            case RIL_UNSOL_MD_STATE_CHANGE: return "RIL_UNSOL_MD_STATE_CHANGE";
+            //MTK-END for MD state change
+
+            case RIL_UNSOL_MO_DATA_BARRING_INFO: return "RIL_UNSOL_MO_DATA_BARRING_INFO";
+            case RIL_UNSOL_SSAC_BARRING_INFO: return "RIL_UNSOL_SSAC_BARRING_INFO";
+
+            case RIL_UNSOL_SET_ATTACH_APN: return "RIL_UNSOL_SET_ATTACH_APN";
+
+            /// M: CC071: Add Customer proprietary-IMS RIL interface. @{
+            case RIL_UNSOL_EMERGENCY_BEARER_SUPPORT_NOTIFY: return "RIL_UNSOL_EMERGENCY_BEARER_SUPPORT_NOTIFY";
+            /// @}
+
+            /* M: C2K part start */
+            case RIL_UNSOL_CDMA_CALL_ACCEPTED: return "RIL_UNSOL_CDMA_CALL_ACCEPTED";
+            case RIL_UNSOL_UTK_SESSION_END: return "RIL_UNSOL_UTK_SESSION_END";
+            case RIL_UNSOL_UTK_PROACTIVE_COMMAND: return "RIL_UNSOL_UTK_PROACTIVE_COMMAND";
+            case RIL_UNSOL_UTK_EVENT_NOTIFY: return "RIL_UNSOL_UTK_EVENT_NOTIFY";
+            case RIL_UNSOL_VIA_GPS_EVENT: return "RIL_UNSOL_VIA_GPS_EVENT";
+            case RIL_UNSOL_VIA_NETWORK_TYPE_CHANGE: return "RIL_UNSOL_VIA_NETWORK_TYPE_CHANGE";
+            case RIL_UNSOL_VIA_INVALID_SIM_DETECTED: return "RIL_UNSOL_VIA_INVALID_SIM_DETECTED";
+            /// M: [C2K][IR] Support SVLTE IR feature. @{
+            case RIL_UNSOL_CDMA_PLMN_CHANGED: return "RIL_UNSOL_CDMA_PLMN_CHANGED";
+            /// M: [C2K][IR] Support SVLTE IR feature. @}
+            /// M: [C2K][IR][MD-IRAT] URC for GMSS RAT changed. @{
+            case RIL_UNSOL_GMSS_RAT_CHANGED: return "RIL_UNSOL_GMSS_RAT_CHANGED";
+            /// M: [C2K][IR][MD-IRAT] URC for GMSS RAT changed. @}
+            /// M: [C2K] for ps type changed.
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_TYPE_CHANGED:
+                return "RIL_UNSOL_RESPONSE_DATA_NETWORK_TYPE_CHANGED";
+            /* M: C2K part end */
+            case RIL_UNSOL_ABNORMAL_EVENT: return "RIL_UNSOL_ABNORMAL_EVENT";
+            case RIL_UNSOL_CDMA_CARD_TYPE: return "RIL_UNSOL_CDMA_CARD_TYPE";
+            /// M: [C2K][MD IRAT] start
+            case RIL_UNSOL_INTER_3GPP_IRAT_STATE_CHANGE:
+                return "UNSOL_INTER_3GPP_IRAT_STATE_CHANGE";
+            /// @} [C2K][MD IRAT] end
+            /// M:[C2K] for eng mode
+            case RIL_UNSOL_ENG_MODE_NETWORK_INFO: return "RIL_UNSOL_ENG_MODE_NETWORK_INFO";
+            // MTK-START, SMS part
+            // SMS ready notification
+            case RIL_UNSOL_SMS_READY_NOTIFICATION: return "RIL_UNSOL_SMS_READY_NOTIFICATION";
+            // New sms but phone storage is full
+            case RIL_UNSOL_ME_SMS_STORAGE_FULL: return "RIL_UNSOL_ME_SMS_STORAGE_FULL";
+            // ETWS primary notification
+            case RIL_UNSOL_RESPONSE_ETWS_NOTIFICATION: return "RIL_UNSOL_RESPONSE_ETWS_NOTIFICATION";
+            // MTK-END, SMS part
+            case RIL_UNSOL_CDMA_IMSI_READY: return "RIL_UNSOL_CDMA_IMSI_READY";
+            case RIL_UNSOL_IMSI_REFRESH_DONE: return "RIL_UNSOL_IMSI_REFRESH_DONE";
+            // M: Notify RILJ that the AT+EUSIM was received
+            case RIL_UNSOL_EUSIM_READY: return "UNSOL_EUSIM_READY";
+            /// M: BIP {
+            case RIL_UNSOL_STK_BIP_PROACTIVE_COMMAND: return "UNSOL_STK_BIP_PROACTIVE_COMMAND";
+            /// M: BIP }
+            //WorldMode
+            case RIL_UNSOL_WORLD_MODE_CHANGED: return "RIL_UNSOL_WORLD_MODE_CHANGED";
+            /// M: For 3G VT only @{
+            case RIL_UNSOL_VT_STATUS_INFO: return "UNSOL_VT_STATUS_INFO";
+            case RIL_UNSOL_VT_RING_INFO: return "UNSOL_VT_RING_INFO";
+            /// @}
+            //M: Add for ECC only
+            case RIL_UNSOL_NETWORK_EXIST: return "UNSOL_NETWORK_EXIST";
+            case RIL_UNSOL_LTE_ACCESS_STRATUM_STATE_CHANGE:
+                return "RIL_UNSOL_LTE_ACCESS_STRATUM_STATE_CHANGE";
+            // M: [LTE][Low Power][UL traffic shaping] End
             default: return "<unknown response>";
         }
     }
@@ -4553,7 +4897,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         riljLogv("[UNSL]< " + responseToString(response) + " " + retToString(response, ret));
     }
 
-    private Object
+    // xen0n: changed to protected for access from MediaTekRIL
+    protected Object
     responseSsData(Parcel p) {
         int num;
         SsData ssData = new SsData();
@@ -5181,5 +5526,150 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         rr.mParcel.writeInt(state);
         send(rr);
+    }
+
+    // MTK
+    // xen0n: move MTK-specific method implementations into MediaTekRIL
+
+    protected void unexpectedMTKCall() {
+        Rlog.e(RILJ_LOG_TAG, "MTK-only method called on generic RIL!", new Exception());
+    }
+
+    @Override
+    public void supplyNetworkDepersonalization(String netpin, Message result)  {
+        unexpectedMTKCall();
+    }
+
+    /* M: SS part */
+    public void changeBarringPassword(String facility, String oldPwd, String newPwd,
+        String newCfm , Message result) {
+        unexpectedMTKCall();
+    }
+    /* M: SS part end */
+
+    @Override
+    public void setBandMode(int[] bandMode, Message response) {
+        unexpectedMTKCall();
+    }
+
+    @Override
+    public void handleCallSetupRequestFromSim(
+            boolean accept, int resCode, Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void getCOLR(Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void setCOLP(boolean enable, Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void getCOLP(Message response) {
+        unexpectedMTKCall();
+    }
+
+    // Added by M begin
+    @Override
+    public void iccGetATR(Message response) {
+        unexpectedMTKCall();
+    }
+
+    @Override
+    public void iccOpenChannelWithSw(String AID, Message result){
+        unexpectedMTKCall();
+    }
+    // Added by M end
+
+    @Override
+    public void setTrm(int mode, Message result) {
+        unexpectedMTKCall();
+    }
+
+    @Override
+    public void setResumeRegistration(int sessionId, Message response) {
+        unexpectedMTKCall();
+    }
+
+    @Override
+    public void queryModemType(Message response) {
+        unexpectedMTKCall();
+    }
+
+    @Override
+    public void storeModemType(int modemType, Message response) {
+        unexpectedMTKCall();
+    }
+
+    @Override
+    public void reloadModemType(int modemType, Message response) {
+        unexpectedMTKCall();
+    }
+
+    // M: Fast Dormancy
+    public void setScri(boolean forceRelease, Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void setFDMode(int mode, int parameter1, int parameter2, Message response) {
+        unexpectedMTKCall();
+    }
+
+    //UTK start
+    public void getUtkLocalInfo(Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void requestUtkRefresh(int type, Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void reportUtkServiceIsRunning(Message result) {
+        unexpectedMTKCall();
+    }
+
+    public void profileDownload(String profile, Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void handleCallSetupRequestFromUim(boolean accept, Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void queryUtkSetupMenuFromMD(String contents, Message response) {
+        unexpectedMTKCall();
+    }
+
+    public void setStkSwitchMode(int mode) {
+        unexpectedMTKCall();
+    }
+
+    public void setBipPsType(int type) {
+        unexpectedMTKCall();
+    }
+    //UTK end
+
+    ///M: C2K RIL SWITCH @{
+    protected void connectRild() {
+        mSenderThread = new HandlerThread("RILSender" + mInstanceId);
+        mSenderThread.start();
+        Looper looper = mSenderThread.getLooper();
+        mSender = new RILSender(looper);
+
+        riljLog("Starting RILReceiver" + mInstanceId);
+        mReceiver = new RILReceiver();
+        mReceiverThread = new Thread(mReceiver, "RILReceiver" + mInstanceId);
+        mReceiverThread.start();
+    }
+
+    @Override
+    public void connectRilSocket() {
+        unexpectedMTKCall();
+    }
+
+    @Override
+    public void disconnectRilSocket() {
+        unexpectedMTKCall();
     }
 }

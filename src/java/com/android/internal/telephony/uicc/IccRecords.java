@@ -601,6 +601,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected abstract void handleFileUpdate(int efid);
 
+    // xen0n
+    protected void handleFileUpdate(int[] efids) {
+        for (int efid : efids) {
+            handleFileUpdate(efid);
+        }
+    }
+
     protected void broadcastRefresh() {
     }
 
