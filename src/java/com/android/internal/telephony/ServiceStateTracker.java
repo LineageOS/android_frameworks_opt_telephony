@@ -2548,10 +2548,7 @@ public class ServiceStateTracker extends Handler {
         // ratchet the new tech up through it's rat family but don't drop back down
         // until cell change
         if (hasLocationChanged == false) {
-            mNewSS.setRilVoiceRadioTechnology(mRatRatcheter.ratchetRat(
-                    mSS.getRilVoiceRadioTechnology(), mNewSS.getRilVoiceRadioTechnology()));
-            mNewSS.setRilDataRadioTechnology(mRatRatcheter.ratchetRat(
-                    mSS.getRilDataRadioTechnology(), mNewSS.getRilDataRadioTechnology()));
+            mRatRatcheter.ratchetRat(mSS, mNewSS);
         }
 
         boolean hasRilVoiceRadioTechnologyChanged =
@@ -2799,12 +2796,7 @@ public class ServiceStateTracker extends Handler {
         // ratchet the new tech up through it's rat family but don't drop back down
         // until cell change
         if (hasLocationChanged == false) {
-            mNewSS.setRilVoiceRadioTechnology(mRatRatcheter.ratchetRat(
-                    mSS.getRilVoiceRadioTechnology(),
-                    mNewSS.getRilVoiceRadioTechnology()));
-            mNewSS.setRilDataRadioTechnology(mRatRatcheter.ratchetRat(
-                    mSS.getRilDataRadioTechnology(),
-                    mNewSS.getRilDataRadioTechnology()));
+            mRatRatcheter.ratchetRat(mSS, mNewSS);
         }
 
         boolean hasRilVoiceRadioTechnologyChanged =
@@ -3005,12 +2997,7 @@ public class ServiceStateTracker extends Handler {
         // ratchet the new tech up through it's rat family but don't drop back down
         // until cell change
         if (hasLocationChanged == false) {
-            mNewSS.setRilVoiceRadioTechnology(mRatRatcheter.ratchetRat(
-                    mSS.getRilVoiceRadioTechnology(),
-                    mNewSS.getRilVoiceRadioTechnology()));
-            mNewSS.setRilDataRadioTechnology(mRatRatcheter.ratchetRat(
-                    mSS.getRilDataRadioTechnology(),
-                    mNewSS.getRilDataRadioTechnology()));
+            mRatRatcheter.ratchetRat(mSS, mNewSS);
         }
 
         boolean hasVoiceRadioTechnologyChanged = mSS.getRilVoiceRadioTechnology()
