@@ -952,7 +952,8 @@ public class ServiceStateTracker extends Handler {
                 }
                 // This will do nothing in the 'radio not available' case
                 setPowerStateToDesired();
-                pollState();
+                // These events are modem triggered, so pollState() needs to be forced
+                modemTriggeredPollState();
                 break;
 
             case EVENT_NETWORK_STATE_CHANGED:
