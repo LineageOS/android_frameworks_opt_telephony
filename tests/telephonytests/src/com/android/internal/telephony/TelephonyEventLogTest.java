@@ -132,10 +132,10 @@ public class TelephonyEventLogTest extends TelephonyTest {
         m.put(TelephonyEventLog.SERVICE_STATE_DATA_ROAMING_TYPE,
                 ServiceState.ROAMING_TYPE_NOT_ROAMING);
         //m.put(TelephonyEventLog.SERVICE_STATE_VOICE_ALPHA_LONG, "Test Voice Long");
-        m.put(TelephonyEventLog.SERVICE_STATE_VOICE_ALPNA_SHORT, "TestVoice");
+        m.put(TelephonyEventLog.SERVICE_STATE_VOICE_ALPHA_SHORT, "TestVoice");
         m.put(TelephonyEventLog.SERVICE_STATE_VOICE_NUMERIC, "12345");
         //m.put(TelephonyEventLog.SERVICE_STATE_DATA_ALPHA_LONG, "Test Date Long");
-        m.put(TelephonyEventLog.SERVICE_STATE_DATA_ALPNA_SHORT, "TestData");
+        m.put(TelephonyEventLog.SERVICE_STATE_DATA_ALPHA_SHORT, "TestData");
         m.put(TelephonyEventLog.SERVICE_STATE_DATA_NUMERIC, "67890");
         m.put(TelephonyEventLog.SERVICE_STATE_VOICE_RAT, ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         m.put(TelephonyEventLog.SERVICE_STATE_DATA_RAT, ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
