@@ -22,6 +22,7 @@ import android.content.IntentFilter;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
+import android.telephony.ServiceState;
 import android.telephony.Rlog;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -72,6 +73,19 @@ public class RatRatcheter {
             final int newRatRank = newFamily.get(newRat, -1);
             return (oldRatRank > newRatRank ? oldRat : newRat);
         }
+    }
+
+    public void ratchetRat(ServiceState oldSS, ServiceState newSS) {
+        int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
+                newSS.getRilVoiceRadioTechnology());
+        int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
+                newSS.getRilDataRadioTechnology());
+        boolean newUsingCA = oldSS.isUsingCarrierAggregation() ||
+                newSS.isUsingCarrierAggregation();
+
+        newSS.setRilVoiceRadioTechnology(newVoiceRat);
+        newSS.setRilDataRadioTechnology(newDataRat);
+        newSS.setIsUsingCarrierAggregation(newUsingCA);
     }
 
     private BroadcastReceiver mConfigChangedReceiver = new BroadcastReceiver() {
