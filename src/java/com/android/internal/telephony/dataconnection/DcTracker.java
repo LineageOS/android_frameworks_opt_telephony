@@ -460,7 +460,7 @@ public class DcTracker extends Handler {
     // member variables
     protected final Phone mPhone;
     private final UiccController mUiccController;
-    private final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
+    protected final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     private DctConstants.Activity mActivity = DctConstants.Activity.NONE;
     protected DctConstants.State mState = DctConstants.State.IDLE;
     private final Handler mDataConnectionTracker;
@@ -2080,6 +2080,11 @@ public class DcTracker extends Handler {
             }
         }
 
+        if ((iaApnSetting == null) && (defaultApnSetting == null) &&
+                !allowInitialAttachForOperator()) {
+            log("Abort Initial attach");
+            return;
+        }
         // The priority of apn candidates from highest to lowest is:
         //   1) APN_TYPE_IA (Initial Attach)
         //   2) mPreferredApn, i.e. the current preferred apn
@@ -2109,6 +2114,10 @@ public class DcTracker extends Handler {
             mPhone.mCi.setInitialAttachApn(new DataProfile(initialAttachApnSetting),
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
+    }
+
+    protected boolean allowInitialAttachForOperator() {
+        return true;
     }
 
     /**
