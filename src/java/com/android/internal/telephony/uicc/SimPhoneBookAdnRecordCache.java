@@ -381,6 +381,7 @@ public final class SimPhoneBookAdnRecordCache extends Handler {
                         int adnRecordIndex = mSimPbRecords.get(index - 1).getRecordNumber();
                         log("Record number for changed ADN is " + adnRecordIndex);
                         if(recordIndex == adnRecordIndex) {
+                            adn.setRecordNumber(recordIndex);
                             mSimPbRecords.set(index - 1, adn);
                         } else {
                             e = new RuntimeException(
