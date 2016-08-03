@@ -3157,7 +3157,7 @@ public class GsmCdmaPhone extends Phone {
         pw.println(" mIccPhoneBookIntManager=" + mIccPhoneBookIntManager);
         if (VDBG) pw.println(" mImei=" + mImei);
         if (VDBG) pw.println(" mImeiSv=" + mImeiSv);
-        pw.println(" mVmNumber=" + mVmNumber);
+        if (VDBG) pw.println(" mVmNumber=" + mVmNumber);
         pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mCdmaSubscriptionSource=" + mCdmaSubscriptionSource);
         pw.println(" mEriManager=" + mEriManager);
