@@ -1702,6 +1702,9 @@ public class DcTracker extends DcTrackerBase {
                 // those requests and not torn down organically.
                 if ((apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun())
                         || apnContext.getState() != DctConstants.State.CONNECTED
+                        || (ConfigResourceUtil.getBooleanValue(mPhone.getContext(),
+                               "config_enable_mms_with_mobile_data_off") &&
+                            apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS))
                         || mPhone.getSubId() != SubscriptionManager.getDefaultDataSubId() ) {
                     cleanup = true;
                 } else {
