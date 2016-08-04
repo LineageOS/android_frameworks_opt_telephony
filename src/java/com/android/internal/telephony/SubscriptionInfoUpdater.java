@@ -194,7 +194,6 @@ public class SubscriptionInfoUpdater extends Handler {
                     ActivityManagerNative.broadcastStickyIntent(i, READ_PHONE_STATE,
                             UserHandle.USER_ALL);
                 }
-                rebroadcastIntentsOnUnlock = null;
                 logd("[Receiver]-");
                 return;
             }
@@ -215,6 +214,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("simStatus: " + simStatus);
 
             if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
+                rebroadcastIntentsOnUnlock.put(slotId, intent);
                 if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotId, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_UNKNOWN.equals(simStatus)) {
@@ -686,9 +686,7 @@ public class SubscriptionInfoUpdater extends Handler {
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
              " for mCardIndex: " + slotId);
         ActivityManagerNative.broadcastStickyIntent(i, READ_PHONE_STATE, UserHandle.USER_ALL);
-        if (!mUserManager.isUserUnlocked()) {
-            rebroadcastIntentsOnUnlock.put(slotId, i);
-        }
+        rebroadcastIntentsOnUnlock.put(slotId, i);
     }
 
     public void dispose() {
