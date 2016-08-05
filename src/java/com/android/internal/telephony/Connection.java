@@ -99,6 +99,7 @@ public abstract class Connection {
         public void onExtrasChanged(Bundle extras);
         public void onExitedEcmMode();
         public void onCallPullFailed(Connection externalConnection);
+        public void onHandoverToWifiFailed();
     }
 
     /**
@@ -130,6 +131,8 @@ public abstract class Connection {
         public void onExitedEcmMode() {}
         @Override
         public void onCallPullFailed(Connection externalConnection) {}
+        @Override
+        public void onHandoverToWifiFailed() {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -935,6 +938,15 @@ public abstract class Connection {
     public void onCallPullFailed(Connection externalConnection) {
         for (Listener l : mListeners) {
             l.onCallPullFailed(externalConnection);
+        }
+    }
+
+    /**
+     * Notifies the connection that there was a failure while handing over to WIFI.
+     */
+    public void onHandoverToWifiFailed() {
+        for (Listener l : mListeners) {
+            l.onHandoverToWifiFailed();
         }
     }
 
