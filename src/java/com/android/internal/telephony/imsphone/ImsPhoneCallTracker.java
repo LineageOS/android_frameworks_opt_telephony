@@ -1820,6 +1820,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech=" +
                     targetAccessTech + ", reasonInfo=" + reasonInfo);
             }
+
             mEventLog.writeOnImsCallHandover(imsCall.getCallSession(),
                     srcAccessTech, targetAccessTech, reasonInfo);
         }
@@ -1833,6 +1834,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             mEventLog.writeOnImsCallHandoverFailed(imsCall.getCallSession(),
                     srcAccessTech, targetAccessTech, reasonInfo);
+
+            boolean isHandoverToWifi = srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN &&
+                    targetAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null && isHandoverToWifi) {
+                log("onCallHandoverFailed - handover to WIFI Failed");
+                conn.onHandoverToWifiFailed();
+            }
         }
 
         /**
