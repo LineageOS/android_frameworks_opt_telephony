@@ -2087,6 +2087,34 @@ public class ServiceStateTracker extends Handler {
     }
 
     protected void updateSpnDisplay() {
+        String wfcVoiceSpnFormat = null;
+        String wfcDataSpnFormat = null;
+        if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()) {
+            // In Wi-Fi Calling mode show SPN+WiFi
+
+            String[] wfcSpnFormats = mPhone.getContext().getResources().getStringArray(
+                    com.android.internal.R.array.wfcSpnFormats);
+            int voiceIdx = 0;
+            int dataIdx = 0;
+            CarrierConfigManager configLoader = (CarrierConfigManager)
+                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configLoader != null) {
+                try {
+                    PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
+                    if (b != null) {
+                        voiceIdx = b.getInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT);
+                        dataIdx = b.getInt(
+                                CarrierConfigManager.KEY_WFC_DATA_SPN_FORMAT_IDX_INT);
+                    }
+                } catch (Exception e) {
+                    loge("updateSpnDisplay: carrier config error: " + e);
+                }
+            }
+
+            wfcVoiceSpnFormat = wfcSpnFormats[voiceIdx];
+            wfcDataSpnFormat = wfcSpnFormats[dataIdx];
+        }
+
         if (mPhone.isPhoneTypeGsm()) {
             // The values of plmn/showPlmn change in different scenarios.
             // 1) No service but emergency call allowed -> expected
@@ -2149,36 +2177,13 @@ public class ServiceStateTracker extends Handler {
                     && ((rule & SIMRecords.SPN_RULE_SHOW_SPN)
                     == SIMRecords.SPN_RULE_SHOW_SPN);
 
-            if (!TextUtils.isEmpty(spn)
-                    && mPhone.getImsPhone() != null
-                    && mPhone.getImsPhone().isWifiCallingEnabled()) {
+            if (!TextUtils.isEmpty(spn) && !TextUtils.isEmpty(wfcVoiceSpnFormat) &&
+                    !TextUtils.isEmpty(wfcDataSpnFormat)) {
                 // In Wi-Fi Calling mode show SPN+WiFi
 
-                final String[] wfcSpnFormats =
-                        mPhone.getContext().getResources().getStringArray(
-                                com.android.internal.R.array.wfcSpnFormats);
-                int voiceIdx = 0;
-                int dataIdx = 0;
-                CarrierConfigManager configLoader = (CarrierConfigManager)
-                        mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-                if (configLoader != null) {
-                    try {
-                        PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
-                        if (b != null) {
-                            voiceIdx = b.getInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT);
-                            dataIdx = b.getInt(
-                                    CarrierConfigManager.KEY_WFC_DATA_SPN_FORMAT_IDX_INT);
-                        }
-                    } catch (Exception e) {
-                        loge("updateSpnDisplay: carrier config error: " + e);
-                    }
-                }
-
-                String formatVoice = wfcSpnFormats[voiceIdx];
-                String formatData = wfcSpnFormats[dataIdx];
                 String originalSpn = spn.trim();
-                spn = String.format(formatVoice, originalSpn);
-                dataSpn = String.format(formatData, originalSpn);
+                spn = String.format(wfcVoiceSpnFormat, originalSpn);
+                dataSpn = String.format(wfcDataSpnFormat, originalSpn);
                 showSpn = true;
                 showPlmn = false;
             } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF
@@ -2202,10 +2207,9 @@ public class ServiceStateTracker extends Handler {
                     || !TextUtils.equals(dataSpn, mCurDataSpn)
                     || !TextUtils.equals(plmn, mCurPlmn)) {
                 if (DBG) {
-                    log(String.format("updateSpnDisplay: changed" +
-                                    " sending intent rule=" + rule +
-                                    " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' subId='%d'",
-                            showPlmn, plmn, showSpn, spn, dataSpn, subId));
+                    log(String.format("updateSpnDisplay: changed sending intent rule=" + rule +
+                            " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' " +
+                            "subId='%d'", showPlmn, plmn, showSpn, spn, dataSpn, subId));
                 }
                 Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
                 intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
@@ -2240,6 +2244,20 @@ public class ServiceStateTracker extends Handler {
             int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
             if (subIds != null && subIds.length > 0) {
                 subId = subIds[0];
+            }
+
+            if (!TextUtils.isEmpty(plmn) && !TextUtils.isEmpty(wfcVoiceSpnFormat)) {
+                // In Wi-Fi Calling mode show SPN+WiFi
+
+                String originalPlmn = plmn.trim();
+                plmn = String.format(wfcVoiceSpnFormat, originalPlmn);
+            } else if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
+                // todo: temporary hack; should have a better fix. This is to avoid using operator
+                // name from ServiceState (populated in resetServiceStateInIwlanMode()) until
+                // wifi calling is actually enabled
+                log("updateSpnDisplay: overwriting plmn from " + plmn + " to null as radio " +
+                        "state is off");
+                plmn = null;
             }
 
             if (mSubId != subId || !TextUtils.equals(plmn, mCurPlmn)) {
@@ -2414,9 +2432,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     public void onImsCapabilityChanged() {
-        if (mPhone.isPhoneTypeGsm()) {
-            sendMessage(obtainMessage(EVENT_IMS_CAPABILITY_CHANGED));
-        }
+        sendMessage(obtainMessage(EVENT_IMS_CAPABILITY_CHANGED));
     }
 
     public boolean isRadioOn() {
@@ -4809,10 +4825,13 @@ public class ServiceStateTracker extends Handler {
                 log("pollStateDone: reset iwlan RAT value");
                 resetIwlanRatVal = true;
             }
+            // operator info should be kept in SS
+            String operator = mNewSS.getOperatorAlphaLong();
             mNewSS.setStateOff();
             if (resetIwlanRatVal) {
                 mNewSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
                 mNewSS.setDataRegState(ServiceState.STATE_IN_SERVICE);
+                mNewSS.setOperatorAlphaLong(operator);
                 log("pollStateDone: mNewSS = " + mNewSS);
             }
         }
