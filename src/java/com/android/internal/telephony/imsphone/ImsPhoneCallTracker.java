@@ -2579,7 +2579,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             for (ImsPhoneConnection conn : mConnections) {
                 ImsCall imsCall = conn.getImsCall();
                 if (imsCall != null && imsCall.isVideoCall() && !imsCall.isWifiCall()) {
+                    log("Downgrading the VT call " + imsCall);
                     modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
+                } else {
+                    log("Not downgrading the ims call " + imsCall);
                 }
             }
         }
