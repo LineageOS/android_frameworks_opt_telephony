@@ -30,6 +30,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -197,6 +199,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_VT_DATA_USAGE_UPDATE = 22;
     private static final int EVENT_DATA_ENABLED_CHANGED = 23;
     private static final int EVENT_GET_IMS_SERVICE = 24;
+    private static final int EVENT_CHECK_FOR_WIFI_HANDOVER = 25;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
 
@@ -204,6 +207,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int NUM_IMS_SERVICE_RETRIES = 10;
     // The number of milliseconds in between each try.
     private static final int TIME_BETWEEN_IMS_SERVICE_RETRIES_MS = 400; // ms
+
+    private static final int HANDOVER_TO_WIFI_TIMEOUT_MS = 60000; // ms
 
     //***** Instance Variables
     private ArrayList<ImsPhoneConnection> mConnections = new ArrayList<ImsPhoneConnection>();
@@ -276,6 +281,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * should be allowed.
      */
     private boolean mAllowAddCallDuringVideoCall = true;
+
+    /**
+     * Carrier configuration option which determines whether to notify the connection if a handover
+     * to wifi fails.
+     */
+    private boolean mNotifyVtHandoverToWifiFail = false;
 
     /**
      * Carrier configuration option which defines a mapping from pairs of
@@ -529,6 +540,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mAllowAddCallDuringVideoCall =
                 carrierConfig.getBoolean(
                         CarrierConfigManager.KEY_ALLOW_ADD_CALL_DURING_VIDEO_CALL_BOOL);
+        mNotifyVtHandoverToWifiFail = carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
 
         String[] mappings = carrierConfig
                 .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
@@ -1397,6 +1410,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mPendingMO = null;
             processCallStateChange(imsCall, ImsPhoneCall.State.ACTIVE,
                     DisconnectCause.NOT_DISCONNECTED);
+
+            if (mNotifyVtHandoverToWifiFail &&
+                    !imsCall.isWifiCall() && imsCall.isVideoCall() && isWifiConnected()) {
+                // Schedule check to see if handover succeeded.
+                sendMessageDelayed(obtainMessage(EVENT_CHECK_FOR_WIFI_HANDOVER, imsCall),
+                        HANDOVER_TO_WIFI_TIMEOUT_MS);
+            }
+
             mEventLog.writeOnImsCallStarted(imsCall.getCallSession());
         }
 
@@ -1821,6 +1842,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     targetAccessTech + ", reasonInfo=" + reasonInfo);
             }
 
+            boolean isHandoverToWifi = srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN &&
+                    targetAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            if (isHandoverToWifi) {
+                // If we handed over to wifi successfully, don't check for failure in the future.
+                removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
+            }
+
             mEventLog.writeOnImsCallHandover(imsCall.getCallSession(),
                     srcAccessTech, targetAccessTech, reasonInfo);
         }
@@ -1840,7 +1868,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null && isHandoverToWifi) {
                 log("onCallHandoverFailed - handover to WIFI Failed");
-                conn.onHandoverToWifiFailed();
+
+                // If we know we failed to handover, don't check for failure in the future.
+                removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
+
+                if (mNotifyVtHandoverToWifiFail) {
+                    // Only notify others if carrier config indicates to do so.
+                    conn.onHandoverToWifiFailed();
+                }
             }
         }
 
@@ -1890,6 +1925,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallTerminated(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (DBG) log("mImsUssdListener onCallTerminated reasonCode=" + reasonInfo.getCode());
+            removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
 
             if (imsCall == mUssdSession) {
                 mUssdSession = null;
@@ -2219,6 +2255,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 }
                 break;
+            case EVENT_CHECK_FOR_WIFI_HANDOVER:
+                if (msg.obj instanceof ImsCall) {
+                    ImsCall imsCall = (ImsCall) msg.obj;
+                    if (!imsCall.isWifiCall()) {
+                        // Call did not handover to wifi, notify of handover failure.
+                        ImsPhoneConnection conn = findConnection(imsCall);
+                        if (conn != null) {
+                            conn.onHandoverToWifiFailed();
+                        }
+                    }
+                }
+                break;
         }
     }
 
@@ -2496,7 +2544,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean isVoWifiEnabled = mImsManager.isWfcEnabledByPlatform(mPhone.getContext()) &&
                 mImsManager.isWfcEnabledByUser(mPhone.getContext());
         boolean isIncomingCallAudio = !incomingCall.isVideoCall();
-
         log("shouldDisconnectActiveCallOnAnswer : isActiveCallVideo=" + isActiveCallVideo +
                 " isActiveCallOnWifi=" + isActiveCallOnWifi + " isIncomingCallAudio=" +
                 isIncomingCallAudio + " isVowifiEnabled=" + isVoWifiEnabled);
@@ -2590,5 +2637,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // This will call into updateVideoCallFeatureValue and eventually all clients will be
         // asynchronously notified that the availability of VT over LTE has changed.
         ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+    }
+
+    /**
+     * @return {@code true} if the device is connected to a WIFI network, {@code false} otherwise.
+     */
+    private boolean isWifiConnected() {
+        ConnectivityManager cm = (ConnectivityManager) mPhone.getContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm != null) {
+            NetworkInfo ni = cm.getActiveNetworkInfo();
+            if (ni != null && ni.isConnected()) {
+                return ni.getType() == ConnectivityManager.TYPE_WIFI;
+            }
+        }
+        return false;
     }
 }
