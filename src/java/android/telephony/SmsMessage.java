@@ -609,7 +609,7 @@ public class SmsMessage {
      * Returns the service centre timestamp in currentTimeMillis() format
      */
     public long getTimestampMillis() {
-        return mWrappedSmsMessage.getTimestampMillis();
+        return mWrappedSmsMessage != null ? mWrappedSmsMessage.getTimestampMillis() : 0;
     }
 
     /**
