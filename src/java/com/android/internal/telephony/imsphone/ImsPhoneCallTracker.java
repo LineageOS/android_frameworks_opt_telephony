@@ -81,6 +81,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyEventLog;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 
 /**
@@ -1362,6 +1363,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             case ImsReasonInfo.CODE_MAXIMUM_NUMBER_OF_CALLS_REACHED:
                 return DisconnectCause.MAXIMUM_NUMBER_OF_CALLS_REACHED;
+
+            case ImsReasonInfo.CODE_DATA_DISABLED:
+                return DisconnectCause.DATA_DISABLED;
+
+            case ImsReasonInfo.CODE_DATA_LIMIT_REACHED:
+                return DisconnectCause.DATA_LIMIT_REACHED;
             default:
         }
 
@@ -2613,23 +2620,36 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     /**
      * Handler of data enabled changed event
      * @param enabled True if data is enabled, otherwise disabled.
-     * @param reason Reason for data enabled/disabled
+     * @param reason Reason for data enabled/disabled (see {@code REASON_*} in
+     *      {@link DataEnabledSettings}.
      */
     private void onDataEnabledChanged(boolean enabled, int reason) {
 
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
         ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId()).setDataEnabled(enabled);
 
-        if (enabled == false) {
-            // If data are disabled while there are ongoing VT calls, we need to downgrade
-            // the VT calls (except on VT over Wifi)
+        if (!enabled) {
+            int reasonCode;
+            if (reason == DataEnabledSettings.REASON_POLICY_DATA_ENABLED) {
+                reasonCode = ImsReasonInfo.CODE_DATA_LIMIT_REACHED;
+            } else if (reason == DataEnabledSettings.REASON_USER_DATA_ENABLED) {
+                reasonCode = ImsReasonInfo.CODE_DATA_DISABLED;
+            } else {
+                // Unexpected code, default to data disabled.
+                reasonCode = ImsReasonInfo.CODE_DATA_DISABLED;
+            }
+
+            // If data is disabled while there are ongoing VT calls which are not taking place over
+            // wifi, then they should be disconnected to prevent the user from incurring further
+            // data charges.
             for (ImsPhoneConnection conn : mConnections) {
                 ImsCall imsCall = conn.getImsCall();
                 if (imsCall != null && imsCall.isVideoCall() && !imsCall.isWifiCall()) {
-                    log("Downgrading the VT call " + imsCall);
-                    modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
-                } else {
-                    log("Not downgrading the ims call " + imsCall);
+                    try {
+                        imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);
+                    } catch (ImsException ie) {
+                        loge("Couldn't terminate call " + imsCall);
+                    }
                 }
             }
         }
