@@ -100,6 +100,7 @@ public abstract class Connection {
         public void onExitedEcmMode();
         public void onCallPullFailed(Connection externalConnection);
         public void onHandoverToWifiFailed();
+        public void onConnectionEvent(String event, Bundle extras);
     }
 
     /**
@@ -133,6 +134,8 @@ public abstract class Connection {
         public void onCallPullFailed(Connection externalConnection) {}
         @Override
         public void onHandoverToWifiFailed() {}
+        @Override
+        public void onConnectionEvent(String event, Bundle extras) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -659,6 +662,13 @@ public abstract class Connection {
     }
 
     /**
+     * @return {@code} true if the connection has the specified capabilities.
+     */
+    public boolean hasCapabilities(int connectionCapabilities) {
+        return (mConnectionCapabilities & connectionCapabilities) == connectionCapabilities;
+    }
+
+    /**
      * Applies a capability to a capabilities bit-mask.
      *
      * @param capabilities The capabilities bit-mask.
@@ -947,6 +957,15 @@ public abstract class Connection {
     public void onHandoverToWifiFailed() {
         for (Listener l : mListeners) {
             l.onHandoverToWifiFailed();
+        }
+    }
+
+    /**
+     * Notifies the connection of a connection event.
+     */
+    public void onConnectionEvent(String event, Bundle extras) {
+        for (Listener l : mListeners) {
+            l.onConnectionEvent(event, extras);
         }
     }
 

@@ -233,38 +233,32 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     private static int applyLocalCallCapabilities(ImsCallProfile localProfile, int capabilities) {
+        Rlog.w(LOG_TAG, "applyLocalCallCapabilities - localProfile = "+localProfile);
         capabilities = removeCapability(capabilities,
-                Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL
-                | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+                Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
 
         switch (localProfile.mCallType) {
             case ImsCallProfile.CALL_TYPE_VT:
-                capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
-                break;
+                // Fall-through
             case ImsCallProfile.CALL_TYPE_VIDEO_N_VOICE:
                 capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL
-                        | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+                        Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
                 break;
         }
         return capabilities;
     }
 
     private static int applyRemoteCallCapabilities(ImsCallProfile remoteProfile, int capabilities) {
+        Rlog.w(LOG_TAG, "applyRemoteCallCapabilities - remoteProfile = "+remoteProfile);
         capabilities = removeCapability(capabilities,
-                Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL
-                | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
+                Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
 
         switch (remoteProfile.mCallType) {
             case ImsCallProfile.CALL_TYPE_VT:
-                capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
-                break;
+                // fall-through
             case ImsCallProfile.CALL_TYPE_VIDEO_N_VOICE:
                 capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL
-                        | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
+                        Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
                 break;
         }
         return capabilities;
@@ -841,6 +835,18 @@ public class ImsPhoneConnection extends Connection implements
             // Check for a change in the capabilities for the call and update
             // {@link ImsPhoneConnection} with this information.
             int capabilities = getConnectionCapabilities();
+
+            // Use carrier config to determine if downgrading directly to audio-only is supported.
+            if (mOwner.isCarrierDowngradeOfVtCallSupported()) {
+                capabilities = addCapability(capabilities,
+                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE |
+                                Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+            } else {
+                capabilities = removeCapability(capabilities,
+                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE |
+                                Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+            }
+
             // Get the current local call capabilities which might be voice or video or both.
             ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
             Rlog.v(LOG_TAG, "update localCallProfile=" + localCallProfile);
