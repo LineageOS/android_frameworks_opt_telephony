@@ -28,15 +28,15 @@ import android.util.Pair;
  */
 public class DataEnabledSettings {
 
-    private static final int REASON_REGISTERED = 0;
+    public static final int REASON_REGISTERED = 0;
 
-    private static final int REASON_INTERNAL_DATA_ENABLED = 1;
+    public static final int REASON_INTERNAL_DATA_ENABLED = 1;
 
-    private static final int REASON_USER_DATA_ENABLED = 2;
+    public static final int REASON_USER_DATA_ENABLED = 2;
 
-    private static final int REASON_POLICY_DATA_ENABLED = 3;
+    public static final int REASON_POLICY_DATA_ENABLED = 3;
 
-    private static final int REASON_DATA_ENABLED_BY_CARRIER = 4;
+    public static final int REASON_DATA_ENABLED_BY_CARRIER = 4;
 
     /**
      * responds to the setInternalDataEnabled call - used internally to turn off data.
