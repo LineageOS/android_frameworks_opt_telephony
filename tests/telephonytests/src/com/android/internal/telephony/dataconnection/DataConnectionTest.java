@@ -16,10 +16,13 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -32,15 +35,20 @@ import com.android.internal.telephony.dataconnection.DataConnection.DisconnectPa
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -245,5 +253,48 @@ public class DataConnectionTest extends TelephonyTest {
         response.suggestedRetryTime = Integer.MAX_VALUE;
         AsyncResult ar = new AsyncResult(null, response, null);
         assertEquals(RetryManager.NO_RETRY, getSuggestedRetryDelay(ar));
+    }
+
+    private NetworkInfo getNetworkInfo() throws Exception {
+        Field f = DataConnection.class.getDeclaredField("mNetworkInfo");
+        f.setAccessible(true);
+        return (NetworkInfo) f.get(mDc);
+    }
+
+    private NetworkCapabilities getCopyNetworkCapabilities() throws Exception {
+        Method method = DataConnection.class.getDeclaredMethod("getCopyNetworkCapabilities");
+        method.setAccessible(true);
+        return (NetworkCapabilities) method.invoke(mDc);
+    }
+
+    @Test
+    @SmallTest
+    public void testMeteredCapability() throws Exception {
+
+        mContextFixture.getCarrierConfigBundle().
+                putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[] {"default"});
+
+        testConnectEvent();
+
+        assertTrue(getNetworkInfo().isMetered());
+        assertFalse(getCopyNetworkCapabilities().
+                hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
+    }
+
+    @Test
+    @SmallTest
+    public void testNonMeteredCapability() throws Exception {
+
+        doReturn(1).when(mPhone).getSubId();
+        mContextFixture.getCarrierConfigBundle().
+                putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                        new String[] {"mms"});
+
+        testConnectEvent();
+
+        assertFalse(getNetworkInfo().isMetered());
+        assertTrue(getCopyNetworkCapabilities().
+                hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
     }
 }
