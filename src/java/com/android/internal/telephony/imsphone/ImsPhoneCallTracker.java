@@ -44,6 +44,7 @@ import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.preference.PreferenceManager;
 import android.telecom.ConferenceParticipant;
@@ -288,6 +289,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * to wifi fails.
      */
     private boolean mNotifyVtHandoverToWifiFail = false;
+
+    /**
+     * Carrier configuration option which determines whether the carrier supports downgrading a
+     * TX/RX/TX-RX video call directly to an audio-only call.
+     */
+    private boolean mSupportDowngradeVtToAudio = false;
 
     /**
      * Carrier configuration option which defines a mapping from pairs of
@@ -543,6 +550,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         CarrierConfigManager.KEY_ALLOW_ADD_CALL_DURING_VIDEO_CALL_BOOL);
         mNotifyVtHandoverToWifiFail = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
+        mSupportDowngradeVtToAudio = carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_SUPPORT_DOWNGRADE_VT_TO_AUDIO_BOOL);
 
         String[] mappings = carrierConfig
                 .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
@@ -2645,10 +2654,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             for (ImsPhoneConnection conn : mConnections) {
                 ImsCall imsCall = conn.getImsCall();
                 if (imsCall != null && imsCall.isVideoCall() && !imsCall.isWifiCall()) {
-                    try {
-                        imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);
-                    } catch (ImsException ie) {
-                        loge("Couldn't terminate call " + imsCall);
+                    if (conn.hasCapabilities(
+                            Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL |
+                                    Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE)) {
+
+                        // If the carrier supports downgrading to voice, then we can simply issue a
+                        // downgrade to voice instead of terminating the call.
+                        if (reasonCode == ImsReasonInfo.CODE_DATA_DISABLED) {
+                            conn.onConnectionEvent(TelephonyManager.EVENT_DOWNGRADE_DATA_DISABLED,
+                                    null);
+                        } else if (reasonCode == ImsReasonInfo.CODE_DATA_LIMIT_REACHED) {
+                            conn.onConnectionEvent(
+                                    TelephonyManager.EVENT_DOWNGRADE_DATA_LIMIT_REACHED, null);
+                        }
+                        modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
+                    } else {
+                        // If the carrier does not support downgrading to voice, the only choice we
+                        // have is to terminate the call.
+                        try {
+                            imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);
+                        } catch (ImsException ie) {
+                            loge("Couldn't terminate call " + imsCall);
+                        }
                     }
                 }
             }
@@ -2672,5 +2699,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
         }
         return false;
+    }
+
+    /**
+     * @return {@code true} if downgrading of a video call to audio is supported.
+     */
+    public boolean isCarrierDowngradeOfVtCallSupported() {
+        return mSupportDowngradeVtToAudio;
     }
 }
