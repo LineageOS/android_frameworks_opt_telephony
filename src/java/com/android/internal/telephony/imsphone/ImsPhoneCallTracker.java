@@ -1714,9 +1714,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onCallResumeReceived(ImsCall imsCall) {
             if (DBG) log("onCallResumeReceived");
             ImsPhoneConnection conn = findConnection(imsCall);
-            if (conn != null && mOnHoldToneStarted) {
-                mPhone.stopOnHoldTone(conn);
-                mOnHoldToneStarted = false;
+            if (conn != null) {
+                if (mOnHoldToneStarted) {
+                    mPhone.stopOnHoldTone(conn);
+                    mOnHoldToneStarted = false;
+                }
+
+                conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
             }
 
             SuppServiceNotification supp = new SuppServiceNotification();
@@ -1733,12 +1737,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (DBG) log("onCallHoldReceived");
 
             ImsPhoneConnection conn = findConnection(imsCall);
-            if (conn != null && conn.getState() == ImsPhoneCall.State.ACTIVE) {
-                if (!mOnHoldToneStarted && ImsPhoneCall.isLocalTone(imsCall)) {
+            if (conn != null) {
+                if (!mOnHoldToneStarted && ImsPhoneCall.isLocalTone(imsCall) &&
+                        conn.getState() == ImsPhoneCall.State.ACTIVE) {
                     mPhone.startOnHoldTone(conn);
                     mOnHoldToneStarted = true;
                     mOnHoldToneId = System.identityHashCode(conn);
                 }
+
+                conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
             }
 
             SuppServiceNotification supp = new SuppServiceNotification();
