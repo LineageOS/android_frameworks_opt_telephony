@@ -1892,20 +1892,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     srcAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN &&
                             targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
             if (mNotifyHandoverVideoFromWifiToLTE && isHandoverFromWifi && imsCall.isVideoCall()) {
-                if (!hasNotifiedHandoverVideoFromWifiToLTE() ) {
-                    log("onCallHandover :: notifying of WIFI to LTE handover.");
-                    ImsPhoneConnection conn = findConnection(imsCall);
-                    if (conn != null) {
-                        conn.onConnectionEvent(
-                                TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE,
-                                null);
-                        setNotifiedHandoverVideoFromWifiToLTE(true);
-                    } else {
-                        loge("onCallHandover :: failed to notify of handover; connection is null.");
-                    }
-
+                log("onCallHandover :: notifying of WIFI to LTE handover.");
+                ImsPhoneConnection conn = findConnection(imsCall);
+                if (conn != null) {
+                    conn.onConnectionEvent(
+                            TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE, null);
                 } else {
-                    log("onCallHandover :: already notified of WIFI to LTE handover.");
+                    loge("onCallHandover :: failed to notify of handover; connection is null.");
                 }
             }
 
@@ -2750,25 +2743,5 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      */
     public boolean isCarrierDowngradeOfVtCallSupported() {
         return mSupportDowngradeVtToAudio;
-    }
-
-    /**
-     * @return {@code true} if the user has been previously notified of a video call which has been
-     *      handed over from WIFI to LTE, {@code false} otherwise.
-     */
-    private boolean hasNotifiedHandoverVideoFromWifiToLTE() {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        return sp.getBoolean(NOTIFIED_HANDOVER_TO_LTE_KEY, false);
-    }
-
-    /**
-     * Sets whether the user has been notified of the fact a video call has been handed over from
-     * WIFI to LTE.  Saved to shared preferences.
-     *
-     * @param notified {@code true} if the user has been notified, {@code false} otherwise.
-     */
-    private void setNotifiedHandoverVideoFromWifiToLTE(boolean notified) {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        sp.edit().putBoolean(NOTIFIED_HANDOVER_TO_LTE_KEY, notified).commit();
     }
 }
