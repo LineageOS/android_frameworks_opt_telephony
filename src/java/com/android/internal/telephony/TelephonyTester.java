@@ -82,13 +82,6 @@ public class TelephonyTester {
     private static final String ACTION_TEST_HANDOVER_FAIL =
             "com.android.internal.telephony.TestHandoverFail";
 
-    /**
-     * Test-only intent used to reset the shared preference associated with
-     * {@link android.telephony.CarrierConfigManager#KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL}.
-     */
-    private static final String ACTION_RESET_HANDOVER_NOTICE =
-            "com.android.internal.telephony.ResetHandoverNotice";
-
     private static List<ImsExternalCallState> mImsExternalCallStates = null;
 
     private Phone mPhone;
@@ -115,10 +108,6 @@ public class TelephonyTester {
             } else if (action.equals(ACTION_TEST_HANDOVER_FAIL)) {
                 log("handle handover fail test intent");
                 handleHandoverFailedIntent();
-            } else if (action.equals(ACTION_RESET_HANDOVER_NOTICE)) {
-                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-                sp.edit().putBoolean(ImsPhoneCallTracker.NOTIFIED_HANDOVER_TO_LTE_KEY, false)
-                        .commit();
             } else {
                 if (DBG) log("onReceive: unknown action=" + action);
             }
@@ -142,7 +131,6 @@ public class TelephonyTester {
                 filter.addAction(ACTION_TEST_CONFERENCE_EVENT_PACKAGE);
                 filter.addAction(ACTION_TEST_DIALOG_EVENT_PACKAGE);
                 filter.addAction(ACTION_TEST_HANDOVER_FAIL);
-                filter.addAction(ACTION_RESET_HANDOVER_NOTICE);
                 mImsExternalCallStates = new ArrayList<ImsExternalCallState>();
             }
 
