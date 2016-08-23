@@ -33,6 +33,7 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
     public static final int TAG_DATA_CALL_LIST = 5;
 
     public static final int TAG_PHONE_STATE = 8;
+    public static final int TAG_DATA_STALL = 9;
 
     public static final int TAG_RIL_REQUEST = 1001;
     public static final int TAG_RIL_RESPONSE = 1002;
@@ -265,6 +266,10 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
             mLastServiceStateBundle = b;
             writeEvent(TAG_SERVICE_STATE, b);
         }
+    }
+
+    public void writeDataStallEvent(int recoveryAction) {
+        writeEvent(TAG_DATA_STALL, recoveryAction, -1);
     }
 
     public void writeSetAirplaneMode(boolean enabled) {
