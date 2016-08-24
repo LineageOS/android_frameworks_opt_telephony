@@ -349,7 +349,8 @@ public class SIMRecords extends IccRecords {
         mNewMsisdn = number;
         mNewMsisdnTag = alphaTag;
 
-        if(DBG) log("Set MSISDN: " + mNewMsisdnTag + " " + /*mNewMsisdn*/ "xxxxxxx");
+        if(DBG) log("Set MSISDN: " + mNewMsisdnTag + " " + /*mNewMsisdn*/
+                Rlog.pii(LOG_TAG, mNewMsisdn));
 
         AdnRecord adn = new AdnRecord(mNewMsisdnTag, mNewMsisdn);
 
@@ -815,7 +816,7 @@ public class SIMRecords extends IccRecords {
                 mMsisdn = adn.getNumber();
                 mMsisdnTag = adn.getAlphaTag();
 
-                log("MSISDN: " + /*mMsisdn*/ "xxxxxxx");
+                log("MSISDN: " + /*mMsisdn*/ Rlog.pii(LOG_TAG, mMsisdn));
             break;
 
             case EVENT_SET_MSISDN_DONE:
