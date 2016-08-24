@@ -28,6 +28,10 @@ LOCAL_JAVA_LIBRARIES := voip-common ims-common
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := telephony-common
 
+ifeq ($(EMMA_INSTRUMENT_FRAMEWORK),true)
+LOCAL_EMMA_INSTRUMENT := true
+endif
+
 include $(BUILD_JAVA_LIBRARY)
 
 # Include subdirectory makefiles
