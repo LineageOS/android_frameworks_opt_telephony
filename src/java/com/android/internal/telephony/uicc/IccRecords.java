@@ -22,10 +22,10 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-
+import android.telephony.Rlog;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-import android.telephony.SubscriptionInfo;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -133,12 +133,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsRequested=" + mRecordsRequested
                 + " iccid=" + iccIdToPrint
                 + " msisdnTag=" + mMsisdnTag
-                + (VDBG ? (" voiceMailNum=" + mVoiceMailNum) : "")
+                + " voiceMailNum=" + Rlog.pii(VDBG, mVoiceMailNum)
                 + " voiceMailTag=" + mVoiceMailTag
-                + (VDBG ? (" voiceMailNum=" + mNewVoiceMailNum) : "")
+                + " voiceMailNum=" + Rlog.pii(VDBG, mNewVoiceMailNum)
                 + " newVoiceMailTag=" + mNewVoiceMailTag
                 + " isVoiceMailFixed=" + mIsVoiceMailFixed
-                + (VDBG ? (" mImsi=" + mImsi) : "")
+                + " mImsi=" + ((mImsi != null) ?
+                mImsi.substring(0, 6) + Rlog.pii(VDBG, mImsi.substring(6)) : "null")
                 + " mncLength=" + mMncLength
                 + " mailboxIndex=" + mMailboxIndex
                 + " spn=" + mSpn;
@@ -736,19 +737,15 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
         String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
         pw.println(" iccid=" + iccIdToPrint);
-
-        if (TextUtils.isEmpty(mMsisdn)) {
-            pw.println(" mMsisdn=null");
-        } else {
-            pw.println(" mMsisdn=" + (VDBG ? mMsisdn : "XXX"));
-        }
+        pw.println(" mMsisdn=" + Rlog.pii(VDBG, mMsisdn));
         pw.println(" mMsisdnTag=" + mMsisdnTag);
-        pw.println(" mVoiceMailNum=" + (VDBG ? mVoiceMailNum : "XXX"));
+        pw.println(" mVoiceMailNum=" + Rlog.pii(VDBG, mVoiceMailNum));
         pw.println(" mVoiceMailTag=" + mVoiceMailTag);
-        pw.println(" mNewVoiceMailNum=" +(VDBG ? mNewVoiceMailNum : "XXX"));
+        pw.println(" mNewVoiceMailNum=" + Rlog.pii(VDBG, mNewVoiceMailNum));
         pw.println(" mNewVoiceMailTag=" + mNewVoiceMailTag);
         pw.println(" mIsVoiceMailFixed=" + mIsVoiceMailFixed);
-        if (VDBG) pw.println(" mImsi=" + mImsi);
+        pw.println(" mImsi=" + ((mImsi != null) ?
+                mImsi.substring(0, 6) + Rlog.pii(VDBG, mImsi.substring(6)) : "null"));
         pw.println(" mMncLength=" + mMncLength);
         pw.println(" mMailboxIndex=" + mMailboxIndex);
         pw.println(" mSpn=" + mSpn);
