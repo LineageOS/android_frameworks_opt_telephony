@@ -915,6 +915,17 @@ public class DcTracker extends Handler {
                 if (apnContext.isConnectedOrConnecting() &&
                         apnContext.getApnSetting().isMetered(mPhone.getContext(),
                         mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())) {
+
+                    final DcAsyncChannel dataConnectionAc = apnContext.getDcAc();
+                    if (dataConnectionAc != null) {
+                        final NetworkCapabilities nc =
+                                dataConnectionAc.getNetworkCapabilitiesSync();
+                        if (nc != null && nc.hasCapability(NetworkCapabilities.
+                              NET_CAPABILITY_NOT_RESTRICTED)) {
+                            if (DBG) log("not tearing down unrestricted metered net:" + apnContext);
+                            continue;
+                        }
+                    }
                     if (DBG) log("tearing down restricted metered net: " + apnContext);
                     apnContext.setReason(Phone.REASON_DATA_ENABLED);
                     cleanUpConnection(true, apnContext);
