@@ -34,6 +34,7 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
 
     public static final int TAG_PHONE_STATE = 8;
     public static final int TAG_DATA_STALL = 9;
+    public static final int TAG_MODEM_RESTART = 11;
 
     public static final int TAG_RIL_REQUEST = 1001;
     public static final int TAG_RIL_RESPONSE = 1002;
