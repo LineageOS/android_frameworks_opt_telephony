@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fa4df85_f6dcaa19",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 2185,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2016-08-26T20:18:26Z",
+      "side": 1,
+      "message": "This line is too long",
+      "range": {
+        "startLine": 2185,
+        "startChar": 0,
+        "endLine": 2185,
+        "endChar": 103
+      },
+      "revId": "f8f1cd4b540f07fa711228d36b8bb7b9af663298",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
