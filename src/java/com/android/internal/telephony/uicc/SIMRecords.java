@@ -1628,16 +1628,16 @@ public class SIMRecords extends IccRecords {
     @Override
     public int getDisplayRule(String plmn) {
         int rule;
-
-        CarrierConfigManager configLoader = (CarrierConfigManager)
-                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        if (configLoader != null && configLoader.getConfig().getBoolean(
-                "config_spn_override_enabled") && !TextUtils.isEmpty(mSpn) &&
-                (mSpnDisplayCondition == -1)) {
-            if (DBG) log("Set mSpnDisplayCondition to 0 for SPN override");
-            mSpnDisplayCondition = 0;
+        if (mContext != null) {
+            CarrierConfigManager configLoader = (CarrierConfigManager)
+                     mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configLoader != null && configLoader.getConfig().getBoolean(
+                    "config_spn_override_enabled") && !TextUtils.isEmpty(mSpn) &&
+                    (mSpnDisplayCondition == -1)) {
+                if (DBG) log("Set mSpnDisplayCondition to 0 for SPN override");
+                mSpnDisplayCondition = 0;
+            }
         }
-
         if (mParentApp != null && mParentApp.getUiccCard() != null &&
             mParentApp.getUiccCard().getOperatorBrandOverride() != null) {
         // If the operator has been overridden, treat it as the SPN file on the SIM did not exist.
