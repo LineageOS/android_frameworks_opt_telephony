@@ -10,7 +10,8 @@ LOCAL_SRC_FILES := $(call all-subdir-java-files)
 LOCAL_JAVA_LIBRARIES := android.test.runner telephony-common ims-common services.core
 LOCAL_STATIC_JAVA_LIBRARIES := guava \
                                mockito-target \
-                               android-support-test
+                               android-support-test \
+                               platform-test-annotations
 
 LOCAL_PACKAGE_NAME := FrameworksTelephonyTests
 

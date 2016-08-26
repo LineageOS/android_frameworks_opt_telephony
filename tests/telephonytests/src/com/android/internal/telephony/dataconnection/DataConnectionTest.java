@@ -22,6 +22,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.platform.test.annotations.Postsubmit;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -282,6 +283,7 @@ public class DataConnectionTest extends TelephonyTest {
                 hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
     }
 
+    @Postsubmit
     @Test
     @SmallTest
     public void testNonMeteredCapability() throws Exception {
