@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1fa4df85_bcb131e4",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2180,
+      "author": {
+        "id": 15595
+      },
+      "writtenOn": "2016-08-27T14:18:12Z",
+      "side": 1,
+      "message": "Doing it this way crashes on init and leaves you with no cellular signal. I\u0027ll fix the wrap spacing though",
+      "parentUuid": "1fa4df85_9cab15d5",
+      "range": {
+        "startLine": 2179,
+        "startChar": 0,
+        "endLine": 2180,
+        "endChar": 93
+      },
+      "revId": "eea26028161cd173b54b6652968d95cd90841fc9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1fa4df85_bca4d109",
         "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
         "patchSetId": 2
