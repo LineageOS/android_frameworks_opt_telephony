@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fa4df85_9cab15d5",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2180,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2016-08-27T11:06:47Z",
+      "side": 1,
+      "message": "8 spaces for line wraps.\n\nAnyway, how about\n\n Context context \u003d mPhone.getContext();\n ICarrierConfigLoader configLoader \u003d\n         (ICarrierConfigLoader) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);",
+      "range": {
+        "startLine": 2179,
+        "startChar": 0,
+        "endLine": 2180,
+        "endChar": 93
+      },
+      "revId": "eea26028161cd173b54b6652968d95cd90841fc9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_bca4d109",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2184,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2016-08-27T11:06:47Z",
+      "side": 1,
+      "message": "Is there any reason for not using \u0027mPhone.getId()\u0027 here?",
+      "range": {
+        "startLine": 2184,
+        "startChar": 30,
+        "endLine": 2184,
+        "endChar": 74
+      },
+      "revId": "eea26028161cd173b54b6652968d95cd90841fc9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
