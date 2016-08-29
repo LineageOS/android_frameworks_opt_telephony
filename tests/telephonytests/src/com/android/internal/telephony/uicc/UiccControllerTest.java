@@ -37,6 +37,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 public class UiccControllerTest extends TelephonyTest {
     private UiccController mUiccControllerUT;
+    private UiccControllerHandlerThread mUiccControllerHandlerThread;
     private static final int PHONE_COUNT = 1;
     private static int ICC_CHANGED_EVENT = 0;
     @Mock
@@ -85,7 +86,8 @@ public class UiccControllerTest extends TelephonyTest {
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mSimulatedCommands.setIccCardStatus(mIccCardStatus);
-        new UiccControllerHandlerThread(TAG).start();
+        mUiccControllerHandlerThread = new UiccControllerHandlerThread(TAG);
+        mUiccControllerHandlerThread.start();
         waitUntilReady();
         /* expected to get new UiccCards being created
         wait till the async result and message delay */
@@ -94,6 +96,7 @@ public class UiccControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mUiccControllerHandlerThread.quitSafely();
         super.tearDown();
     }
 

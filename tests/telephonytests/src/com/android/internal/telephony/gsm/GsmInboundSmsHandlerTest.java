@@ -74,6 +74,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
+    private GsmInboundSmsHandlerTestHandler mGsmInboundSmsHandlerTestHandler;
 
     private FakeSmsContentProvider mContentProvider;
     private static final String RAW_TABLE_NAME = "raw";
@@ -156,7 +157,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         ((MockContentResolver)mContext.getContentResolver()).addProvider(
                 Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
 
-        new GsmInboundSmsHandlerTestHandler(TAG).start();
+        mGsmInboundSmsHandlerTestHandler = new GsmInboundSmsHandlerTestHandler(TAG);
+        mGsmInboundSmsHandlerTestHandler.start();
         waitUntilReady();
     }
 
@@ -171,6 +173,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertFalse(mGsmInboundSmsHandler.getWakeLock().isHeld());
         mGsmInboundSmsHandler = null;
         mContentProvider.shutdown();
+        mGsmInboundSmsHandlerTestHandler.quitSafely();
         super.tearDown();
     }
 
