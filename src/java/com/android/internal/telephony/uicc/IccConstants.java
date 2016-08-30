@@ -72,6 +72,10 @@ public interface IccConstants {
     static final int EF_CSIM_IMSIM = 0x6F22;
     static final int EF_CSIM_CDMAHOME = 0x6F28;
     static final int EF_CSIM_EPRL = 0x6F5A;
+    static final int EF_CSIM_PRL = 0x6F30;
+    // C.S0074-Av1.0 Section 4
+    static final int EF_CSIM_MLPL = 0x4F20;
+    static final int EF_CSIM_MSPL = 0x4F21;
     static final int EF_CSIM_MIPUPP = 0x6F4D;
 
     //ISIM access
@@ -81,6 +85,12 @@ public interface IccConstants {
     static final int EF_IST = 0x6f07;
     static final int EF_PCSCF = 0x6f09;
     static final int EF_PSI = 0x6fe5;
+
+    //plmnwact
+    static final int EF_PLMNWACT = 0x6F60;
+
+    //hplmnwact
+    static final int EF_HPLMNWACT = 0x6F62;
 
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;
@@ -93,6 +103,7 @@ public interface IccConstants {
     static final String DF_GRAPHICS = "5F50";
     static final String DF_GSM = "7F20";
     static final String DF_CDMA = "7F25";
+    static final String DF_MMSS = "5F3C";
 
     //UICC access
     static final String DF_ADF = "7FFF";

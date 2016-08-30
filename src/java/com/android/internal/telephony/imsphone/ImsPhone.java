@@ -74,6 +74,8 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_NO_REPL
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_NOT_REACHABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA_SYNC;
+import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_PACKET;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
 
@@ -530,8 +532,19 @@ public class ImsPhone extends ImsPhoneBase {
 
     private Connection dialInternal(String dialString, int videoState, Bundle intentExtras)
             throws CallStateException {
-        // Need to make sure dialString gets parsed properly
-        String newDialString = PhoneNumberUtils.stripSeparators(dialString);
+        boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
+        if (intentExtras != null) {
+            isConferenceUri = intentExtras.getBoolean(
+                    TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+            isSkipSchemaParsing = intentExtras.getBoolean(
+                    TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
+        }
+        String newDialString = dialString;
+        // Need to make sure dialString gets parsed properly.
+        if (!isConferenceUri && !isSkipSchemaParsing) {
+            newDialString = PhoneNumberUtils.stripSeparators(dialString);
+        }
 
         // handle in-call MMI first if applicable
         if (handleInCallMmiCommands(newDialString)) {
@@ -564,6 +577,16 @@ public class ImsPhone extends ImsPhoneBase {
 
             return null;
         }
+    }
+
+    @Override
+    public void addParticipant(String dialString) throws CallStateException {
+        addParticipant(dialString, null);
+    }
+
+    @Override
+    public void addParticipant(String dialString, Message onComplete) throws CallStateException {
+        mCT.addParticipant(dialString, onComplete);
     }
 
     @Override
@@ -728,7 +751,15 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason,
             Message onComplete) {
-        if (DBG) Rlog.d(LOG_TAG, "getCallForwardingOption reason=" + commandInterfaceCFReason);
+        getCallForwardingOption(commandInterfaceCFReason,
+            SERVICE_CLASS_VOICE, onComplete);
+    }
+
+    @Override
+    public void getCallForwardingOption(int commandInterfaceCFReason,
+            int commandInterfaceServiceClass, Message onComplete) {
+        if (DBG) Rlog.d(LOG_TAG, "getCallForwardingOption reason=" + commandInterfaceCFReason +
+                "serviceclass =" + commandInterfaceServiceClass);
         if (isValidCommandInterfaceCFReason(commandInterfaceCFReason)) {
             if (DBG) Rlog.d(LOG_TAG, "requesting call forwarding query.");
             Message resp;
@@ -736,14 +767,16 @@ public class ImsPhone extends ImsPhoneBase {
 
             try {
                 ImsUtInterface ut = mCT.getUtInterface();
-                ut.queryCallForward(getConditionFromCFReason(commandInterfaceCFReason), null, resp);
+                ut.queryCallForward(getConditionFromCFReason(commandInterfaceCFReason), null,
+                        commandInterfaceServiceClass, resp);
             } catch (ImsException e) {
                 sendErrorResponse(onComplete, e);
             }
         } else if (onComplete != null) {
-            sendErrorResponse(onComplete);
+             sendErrorResponse(onComplete);
         }
     }
+
 
     @Override
     public void setCallForwardingOption(int commandInterfaceCFAction,
@@ -755,6 +788,7 @@ public class ImsPhone extends ImsPhoneBase {
                 CommandsInterface.SERVICE_CLASS_VOICE, timerSeconds, onComplete);
     }
 
+    @Override
     public void setCallForwardingOption(int commandInterfaceCFAction,
             int commandInterfaceCFReason,
             String dialingNumber,
@@ -1076,11 +1110,20 @@ public class ImsPhone extends ImsPhoneBase {
         return mDefaultPhone.getPhoneId();
     }
 
+    public IccRecords getIccRecords() {
+        return mDefaultPhone.getIccRecords();
+    }
+
     private CallForwardInfo getCallForwardInfo(ImsCallForwardInfo info) {
         CallForwardInfo cfInfo = new CallForwardInfo();
         cfInfo.status = info.mStatus;
         cfInfo.reason = getCFReasonFromCondition(info.mCondition);
-        cfInfo.serviceClass = SERVICE_CLASS_VOICE;
+        //Check if the service class signifies Video call forward
+        if(info.mServiceClass == (SERVICE_CLASS_DATA_SYNC + SERVICE_CLASS_PACKET)) {
+            cfInfo.serviceClass = info.mServiceClass;
+        } else {
+            cfInfo.serviceClass = SERVICE_CLASS_VOICE;
+        }
         cfInfo.toa = info.mToA;
         cfInfo.number = info.mNumber;
         cfInfo.timeSeconds = info.mTimeSeconds;
@@ -1104,7 +1147,11 @@ public class ImsPhone extends ImsPhoneBase {
         } else {
             for (int i = 0, s = infos.length; i < s; i++) {
                 if (infos[i].mCondition == ImsUtInterface.CDIV_CF_UNCONDITIONAL) {
-                    if (r != null) {
+                    //Check if the service class signifies Video call forward
+                    if (infos[i].mServiceClass == (SERVICE_CLASS_DATA_SYNC +
+                                SERVICE_CLASS_PACKET)) {
+                        setVideoCallForwardingPreference(infos[i].mStatus == 1);
+                    } else if (r != null) {
                         setVoiceCallForwardingFlag(r, 1, (infos[i].mStatus == 1),
                             infos[i].mNumber);
                     }
@@ -1382,6 +1429,10 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public boolean isVideoEnabled() {
         return mCT.isVideoCallEnabled();
+    }
+
+    public boolean isVideoWifiCallingEnabled() {
+        return mCT.isVideoWifiCallingEnabled();
     }
 
     @Override

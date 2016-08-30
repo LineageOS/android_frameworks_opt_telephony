@@ -32,6 +32,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
@@ -43,6 +44,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
@@ -113,6 +115,7 @@ public class IccCardProxy extends Handler implements IccCard {
                                         // ACTION_SIM_STATE_CHANGED intents
     private boolean mInitialized = false;
     private State mExternalState = State.UNKNOWN;
+    private PersoSubState mPersoSubState = PersoSubState.PERSOSUBSTATE_UNKNOWN;
 
     public static final String ACTION_INTERNAL_SIM_STATE_CHANGED = "android.intent.action.internal_sim_state_changed";
 
@@ -241,10 +244,11 @@ public class IccCardProxy extends Handler implements IccCard {
             case EVENT_RECORDS_LOADED:
                 // Update the MCC/MNC.
                 if (mIccRecords != null) {
-                    String operator = mIccRecords.getOperatorNumeric();
+                    Phone currentPhone = PhoneFactory.getPhone(mPhoneId);
+                    String operator = currentPhone.getOperatorNumeric();
                     log("operator=" + operator + " mPhoneId=" + mPhoneId);
 
-                    if (operator != null) {
+                    if (!TextUtils.isEmpty(operator)) {
                         mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, operator);
                         String countryCode = operator.substring(0,3);
                         if (countryCode != null) {
@@ -268,7 +272,8 @@ public class IccCardProxy extends Handler implements IccCard {
                 broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_IMSI, null);
                 break;
             case EVENT_NETWORK_LOCKED:
-                mNetworkLockedRegistrants.notifyRegistrants();
+                mPersoSubState = mUiccApplication.getPersoSubState();
+                mNetworkLockedRegistrants.notifyRegistrants((AsyncResult)msg.obj);
                 setExternalState(State.NETWORK_LOCKED);
                 break;
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
@@ -406,8 +411,8 @@ public class IccCardProxy extends Handler implements IccCard {
                 setExternalState(State.PUK_REQUIRED);
                 break;
             case APPSTATE_SUBSCRIPTION_PERSO:
-                if (mUiccApplication.getPersoSubState() ==
-                        PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
+                if (mUiccApplication.isPersoLocked()) {
+                    mPersoSubState = mUiccApplication.getPersoSubState();
                     setExternalState(State.NETWORK_LOCKED);
                 } else {
                     setExternalState(State.UNKNOWN);
@@ -662,7 +667,7 @@ public class IccCardProxy extends Handler implements IccCard {
             mNetworkLockedRegistrants.add(r);
 
             if (getState() == State.NETWORK_LOCKED) {
-                r.notifyRegistrant();
+                r.notifyRegistrant(new AsyncResult(null, mPersoSubState.ordinal(), null));
             }
         }
     }

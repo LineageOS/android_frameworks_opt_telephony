@@ -143,7 +143,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Sent on exit from {@link WaitingState} to return to idle after sending all broadcasts. */
     private static final int EVENT_RETURN_TO_IDLE = 4;
 
-    /** Release wakelock after a short timeout when returning to idle state. */
+    /** Release wakelock on entering IdleState. */
     private static final int EVENT_RELEASE_WAKELOCK = 5;
 
     /** Sent by {@link SmsBroadcastUndelivered} after cleaning the raw table. */
@@ -154,6 +154,9 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     /** New SMS received as an AsyncResult. */
     public static final int EVENT_INJECT_SMS = 8;
+
+    /** Release wakelock after a short timeout.  */
+    static final int EVENT_WAKE_LOCK_TIMEOUT = 9;
 
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
@@ -176,6 +179,9 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     /** Wake lock to ensure device stays awake while dispatching the SMS intents. */
     private final PowerManager.WakeLock mWakeLock;
+
+    /** Wakelock count to ensure that wakelock is released only when count is 0 */
+    int mWakeLockCount = 0;
 
     /** DefaultState throws an exception or logs an error for unhandled message types. */
     private final DefaultState mDefaultState = new DefaultState();
@@ -234,7 +240,8 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, name);
-        mWakeLock.acquire();    // wake lock released after we enter idle state
+        mWakeLock.setReferenceCounted(false);
+        acquireWakeLock();    // wake lock released after we enter idle state
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mDeviceIdleController = TelephonyComponentFactory.getInstance().getIDeviceIdleController();
 
@@ -280,6 +287,41 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
+     * Acquire PowerManager wakelock
+     */
+    void acquireWakeLock() {
+        synchronized (mWakeLock) {
+            mWakeLock.acquire();
+            mWakeLockCount++;
+            removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
+            sendMessageDelayed(EVENT_WAKE_LOCK_TIMEOUT, WAKELOCK_TIMEOUT);
+        }
+    }
+
+    /**
+     * Decrement wakelock
+     */
+    void decrementWakeLock() {
+        synchronized (mWakeLock) {
+            mWakeLockCount--;
+            if (mWakeLockCount == 0) {
+                releaseWakeLock();
+            }
+        }
+    }
+
+    /**
+     * Release wakelock when wakelock count is 0 or when timeout occurs.
+     */
+    void releaseWakeLock() {
+        synchronized (mWakeLock) {
+            mWakeLockCount = 0;
+            mWakeLock.release();
+            removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
+        }
+    }
+
+    /**
      * This parent state throws an exception (for debug builds) or prints an error for unhandled
      * message types.
      */
@@ -291,6 +333,12 @@ public abstract class InboundSmsHandler extends StateMachine {
                     onUpdatePhoneObject((Phone) msg.obj);
                     break;
                 }
+
+                case EVENT_WAKE_LOCK_TIMEOUT:
+                    loge("Release wakelock as it timed out");
+                    releaseWakeLock();
+                    break;
+
                 default: {
                     String errorText = "processMessage: unhandled message type " + msg.what +
                         " currState=" + getCurrentState().getName();
@@ -350,12 +398,12 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public void enter() {
             if (DBG) log("entering Idle state");
-            sendMessageDelayed(EVENT_RELEASE_WAKELOCK, WAKELOCK_TIMEOUT);
+            sendMessage(EVENT_RELEASE_WAKELOCK);
         }
 
         @Override
         public void exit() {
-            mWakeLock.acquire();
+            acquireWakeLock();
             if (DBG) log("acquired wakelock, leaving Idle state");
         }
 
@@ -372,13 +420,14 @@ public abstract class InboundSmsHandler extends StateMachine {
                     return HANDLED;
 
                 case EVENT_RELEASE_WAKELOCK:
-                    mWakeLock.release();
+                    decrementWakeLock();
                     if (DBG) {
                         if (mWakeLock.isHeld()) {
                             // this is okay as long as we call release() for every acquire()
-                            log("mWakeLock is still held after release");
+                            log("mWakeLock is still held after release wakelockcount = "
+                                    + mWakeLockCount);
                         } else {
-                            log("mWakeLock released");
+                            log("mWakeLock released wakelockcount = " + mWakeLockCount);
                         }
                     }
                     return HANDLED;
@@ -451,10 +500,11 @@ public abstract class InboundSmsHandler extends StateMachine {
                     return HANDLED;
 
                 case EVENT_RELEASE_WAKELOCK:
-                    mWakeLock.release();    // decrement wakelock from previous entry to Idle
+                    decrementWakeLock(); // decrement wakelock from previous entry to Idle
                     if (!mWakeLock.isHeld()) {
                         // wakelock should still be held until 3 seconds after we enter Idle
-                        loge("mWakeLock released while delivering/broadcasting!");
+                        loge("mWakeLock released while delivering/broadcasting! wakelockcount = "
+                                + mWakeLockCount);
                     }
                     return HANDLED;
 
@@ -1529,5 +1579,10 @@ public abstract class InboundSmsHandler extends StateMachine {
     @VisibleForTesting
     public int getWakeLockTimeout() {
         return WAKELOCK_TIMEOUT;
+    }
+
+    @VisibleForTesting
+    public int getWakelockCount() {
+        return mWakeLockCount;
     }
 }

@@ -16,6 +16,11 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.res.Resources;
+import android.content.Context;
+import android.os.PersistableBundle;
+import android.telephony.Rlog;
+import android.telephony.CarrierConfigManager;
+
 import java.util.HashMap;
 
 /**
@@ -141,8 +146,30 @@ public enum DcFailCause {
         return (this == REGULAR_DEACTIVATION && mRestartRadioOnRegularDeactivation);
     }
 
-    public boolean isPermanentFail() {
-        return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
+    private boolean getConfigItem(Context context, int subId, String key) {
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
+            context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (carrierConfigManager == null) {
+            loge("getConfigItem: No carrier config service found.");
+            return false;
+        }
+        PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
+        if (carrierConfig == null) {
+            loge("getConfigItem: Empty carrier config.");
+            return false;
+        }
+        return carrierConfig.getBoolean(key);
+    }
+
+    public boolean isPermanentFail(Context context, int subId) {
+        if (this == ACTIVATION_REJECT_GGSN) {
+            return getConfigItem(context, subId,
+                CarrierConfigManager.KEY_REJECT_GGSN_PERM_FAILURE);
+        } else if (this == PROTOCOL_ERRORS) {
+            return getConfigItem(context, subId,
+                CarrierConfigManager.KEY_PROTOCOL_ERRORS_PERM_FAILURE);
+        } else {
+            return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
                 (this == UNKNOWN_PDP_ADDRESS_TYPE) || (this == USER_AUTHENTICATION) ||
                 (this == ACTIVATION_REJECT_GGSN) || (this == SERVICE_OPTION_NOT_SUPPORTED) ||
                 (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
@@ -151,6 +178,7 @@ public enum DcFailCause {
                 (this == RADIO_POWER_OFF) || (this == TETHERED_CALL_ACTIVE) ||
                 (this == RADIO_NOT_AVAILABLE) || (this == UNACCEPTABLE_NETWORK_PARAMETER) ||
                 (this == SIGNAL_LOST);
+        }
     }
 
     public boolean isEventLoggable() {
@@ -172,5 +200,9 @@ public enum DcFailCause {
             fc = UNKNOWN;
         }
         return fc;
+    }
+
+    private void loge(String msg) {
+        Rlog.e("DcFailCause", msg);
     }
 }

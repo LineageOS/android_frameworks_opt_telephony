@@ -19,6 +19,7 @@ package com.android.internal.telephony.cdma.sms;
 import android.telephony.TelephonyManager;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsHeader;
@@ -258,6 +259,44 @@ public class CdmaSmsTest extends AndroidTestCase {
         revBearerData = BearerData.decode(BearerData.encode(bearerData));
         assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
         userData.payloadStr = "";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+    }
+
+    @SmallTest
+    public void testUserData7BitAsciiFeedback() throws Exception {
+        BearerData bearerData = new BearerData();
+        bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
+        bearerData.messageId = 0;
+        bearerData.hasUserDataHeader = false;
+        UserData userData = new UserData();
+        userData.payloadStr = "Test standard SMS";
+        userData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
+        userData.msgEncodingSet = true;
+        bearerData.userData = userData;
+        byte[] encodedSms = BearerData.encode(bearerData);
+
+        BearerData revBearerData = BearerData.decode(encodedSms);
+        assertEquals(userData.msgEncoding, revBearerData.userData.msgEncoding);
+        assertEquals(userData.payloadStr.length(), revBearerData.userData.numFields);
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+
+        userData.payloadStr = "1234567";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+        userData.payloadStr = "";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+        userData.payloadStr = "12345678901234567890123456789012345678901234567890" +
+                "12345678901234567890123456789012345678901234567890" +
+                "12345678901234567890123456789012345678901234567890" +
+                "1234567890";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+        userData.payloadStr = "Test \u007f illegal \u0000 SMS chars";
+        revBearerData = BearerData.decode(BearerData.encode(bearerData));
+        assertEquals("Test   illegal   SMS chars", revBearerData.userData.payloadStr);
+        userData.payloadStr = "More @ testing\nis great^|^~woohoo";
         revBearerData = BearerData.decode(BearerData.encode(bearerData));
         assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
     }
@@ -986,5 +1025,32 @@ public class CdmaSmsTest extends AndroidTestCase {
                 encodeDecodeAssertEquals(fragments.get(i), header2, -1);
             }
         }
+    }
+
+
+    @SmallTest
+    public void testCdmaSmsAddressDigitalMode() throws Exception {
+        String str_test;
+        CdmaSmsAddress sms_addr;
+
+        str_test = "+00123456789";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
+
+        str_test = "test@test.com";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
+
+        str_test = "123456789";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_4BIT_DTMF, sms_addr.digitMode);
+
+        str_test = "test_123@test.com";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
+
+        str_test = " \t";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
     }
 }

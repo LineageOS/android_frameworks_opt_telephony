@@ -104,7 +104,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
         logd("Testing initial state of MO ImsPhoneConnection");
         mConnectionUT = new ImsPhoneConnection(mImsPhone, String.format("+1 (700).555-41NN%c1234",
-                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false);
+                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false, null);
         assertEquals(PhoneConstants.PRESENTATION_ALLOWED, mConnectionUT.getNumberPresentation());
         assertEquals(PhoneConstants.PRESENTATION_ALLOWED, mConnectionUT.getCnapNamePresentation());
         assertEquals("+1 (700).555-41NN,1234", mConnectionUT.getOrigDialString());
@@ -117,7 +117,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     public void testImsUpdateStateForeGround() {
         // MO Foreground Connection dailing -> active
         mConnectionUT = new ImsPhoneConnection(mImsPhone, "+1 (700).555-41NN1234", mImsCT,
-                mForeGroundCall, false);
+                mForeGroundCall, false, null);
         // initially in dialing state
         doReturn(Call.State.DIALING).when(mForeGroundCall).getState();
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
@@ -145,7 +145,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     @SmallTest
     public void testImsUpdateStatePendingHold() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, "+1 (700).555-41NN1234", mImsCT,
-                mForeGroundCall, false);
+                mForeGroundCall, false, null);
         doReturn(true).when(mImsCall).isPendingHold();
         assertFalse(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         verify(mForeGroundCall, times(0)).update(eq(mConnectionUT), eq(mImsCall),
@@ -189,7 +189,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     @SmallTest
     public void testPostDialWait() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, String.format("+1 (700).555-41NN%c1234",
-                PhoneNumberUtils.WAIT), mImsCT, mForeGroundCall, false);
+                PhoneNumberUtils.WAIT), mImsCT, mForeGroundCall, false, null);
         doReturn(Call.State.DIALING).when(mForeGroundCall).getState();
         doAnswer(new Answer() {
             @Override
@@ -212,7 +212,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     @MediumTest
     public void testPostDialPause() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, String.format("+1 (700).555-41NN%c1234",
-                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false);
+                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false, null);
         doReturn(Call.State.DIALING).when(mForeGroundCall).getState();
         doAnswer(new Answer() {
             @Override

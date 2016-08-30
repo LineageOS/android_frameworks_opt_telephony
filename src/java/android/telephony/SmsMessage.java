@@ -19,6 +19,7 @@ package android.telephony;
 import android.os.Binder;
 import android.os.Parcel;
 import android.content.res.Resources;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
@@ -258,6 +259,32 @@ public class SmsMessage {
     }
 
     /**
+     * Create an SmsMessage from an SMS EF record.
+     *
+     * @param index Index of SMS record. This should be index in ArrayList
+     *              returned by SmsManager.getAllMessagesFromSim + 1.
+     * @param data Record data.
+     * @param subId Subscription Id of the SMS
+     * @return An SmsMessage representing the record.
+     *
+     * @hide
+     */
+    public static SmsMessage createFromEfRecord(int index, byte[] data, int subId) {
+        SmsMessageBase wrappedMessage;
+
+        if (isCdmaVoice(subId)) {
+            wrappedMessage = com.android.internal.telephony.cdma.SmsMessage.createFromEfRecord(
+                    index, data);
+        } else {
+            wrappedMessage = com.android.internal.telephony.gsm.SmsMessage.createFromEfRecord(
+                    index, data);
+        }
+
+        return wrappedMessage != null ? new SmsMessage(wrappedMessage) : null;
+    }
+
+
+    /**
      * Get the TP-Layer-Length for the given SMS-SUBMIT PDU Basically, the
      * length in bytes (not hex chars) less the SMSC header
      *
@@ -454,9 +481,28 @@ public class SmsMessage {
      */
     public static SubmitPdu getSubmitPdu(String scAddress,
             String destinationAddress, String message, boolean statusReportRequested) {
-        SubmitPduBase spb;
+        return getSubmitPdu(scAddress, destinationAddress, message, statusReportRequested,
+                SubscriptionManager.getDefaultSmsSubscriptionId());
+    }
 
-        if (useCdmaFormatForMoSms()) {
+    /**
+     * Get an SMS-SUBMIT PDU for a destination address and a message.
+     * This method will not attempt to use any GSM national language 7 bit encodings.
+     *
+     * @param scAddress Service Centre address.  Null means use default.
+     * @param destinationAddress the address of the destination for the message.
+     * @param message String representation of the message payload.
+     * @param statusReportRequested Indicates whether a report is requested for this message.
+     * @param subId Subscription of the message
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     * @hide
+     */
+    public static SubmitPdu getSubmitPdu(String scAddress,
+            String destinationAddress, String message, boolean statusReportRequested, int subId) {
+        SubmitPduBase spb;
+        if (useCdmaFormatForMoSms(subId)) {
             spb = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(scAddress,
                     destinationAddress, message, statusReportRequested, null);
         } else {
@@ -749,12 +795,27 @@ public class SmsMessage {
      * @return true if Cdma format should be used for MO SMS, false otherwise.
      */
     private static boolean useCdmaFormatForMoSms() {
-        if (!SmsManager.getDefault().isImsSmsSupported()) {
+        // IMS is registered with SMS support, check the SMS format supported
+        return useCdmaFormatForMoSms(SubscriptionManager.getDefaultSmsSubscriptionId());
+    }
+
+    /**
+     * Determines whether or not to use CDMA format for MO SMS.
+     * If SMS over IMS is supported, then format is based on IMS SMS format,
+     * otherwise format is based on current phone type.
+     *
+     * @param subId Subscription for which phone type is returned.
+     *
+     * @return true if Cdma format should be used for MO SMS, false otherwise.
+     */
+    private static boolean useCdmaFormatForMoSms(int subId) {
+        SmsManager smsManager = SmsManager.getSmsManagerForSubscriptionId(subId);
+        if (!smsManager.isImsSmsSupported()) {
             // use Voice technology to determine SMS format.
-            return isCdmaVoice();
+            return isCdmaVoice(subId);
         }
         // IMS is registered with SMS support, check the SMS format supported
-        return (SmsConstants.FORMAT_3GPP2.equals(SmsManager.getDefault().getImsSmsFormat()));
+        return (SmsConstants.FORMAT_3GPP2.equals(smsManager.getImsSmsFormat()));
     }
 
     /**
@@ -763,7 +824,17 @@ public class SmsMessage {
      * @return true if current phone type is cdma, false otherwise.
      */
     private static boolean isCdmaVoice() {
-        int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
+        return isCdmaVoice(SubscriptionManager.getDefaultSmsSubscriptionId());
+    }
+
+    /**
+     * Determines whether or not to current phone type is cdma.
+     *
+     * @param subId Subscription Id of the SMS
+     * @return true if current phone type is cdma, false otherwise.
+     */
+    private static boolean isCdmaVoice(int subId) {
+        int activePhone = TelephonyManager.getDefault().getCurrentPhoneType(subId);
         return (PHONE_TYPE_CDMA == activePhone);
     }
 
@@ -871,5 +942,14 @@ public class SmsMessage {
         }
 
         return false;
+    }
+
+    /**
+     * {@hide}
+     * Returns the recipient address(receiver) of this SMS message in String form or null if
+     * unavailable.
+     */
+    public String getRecipientAddress() {
+        return mWrappedSmsMessage.getRecipientAddress();
     }
 }

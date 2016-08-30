@@ -37,6 +37,9 @@ public abstract class SmsMessageBase {
     /** {@hide} The address of the sender */
     protected SmsAddress mOriginatingAddress;
 
+    /** {@hide} The address of the receiver */
+    protected SmsAddress mRecipientAddress;
+
     /** {@hide} The message body as a string. May be null if the message isn't text */
     protected String mMessageBody;
 
@@ -429,5 +432,18 @@ public abstract class SmsMessageBase {
         }
 
         return ted;
+    }
+
+    /**
+     * {@hide}
+     * Returns the receiver address of this SMS message in String
+     * form or null if unavailable
+     */
+    public String getRecipientAddress() {
+        if (mRecipientAddress == null) {
+            return null;
+        }
+
+        return mRecipientAddress.getAddressString();
     }
 }

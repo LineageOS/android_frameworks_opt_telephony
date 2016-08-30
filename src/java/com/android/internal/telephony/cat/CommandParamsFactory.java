@@ -35,6 +35,8 @@ import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.BROWSER_TERMINATION_EVENT;
 import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.BROWSING_STATUS_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.HCI_CONNECTIVITY_EVENT;
 /**
  * Factory class, used for decoding raw byte arrays, received from baseband,
  * into a CommandParams object.
@@ -55,12 +57,6 @@ class CommandParamsFactory extends Handler {
     static final int LOAD_NO_ICON           = 0;
     static final int LOAD_SINGLE_ICON       = 1;
     static final int LOAD_MULTI_ICONS       = 2;
-
-    // Command Qualifier values for refresh command
-    static final int REFRESH_NAA_INIT_AND_FULL_FILE_CHANGE  = 0x00;
-    static final int REFRESH_NAA_INIT_AND_FILE_CHANGE       = 0x02;
-    static final int REFRESH_NAA_INIT                       = 0x03;
-    static final int REFRESH_UICC_RESET                     = 0x04;
 
     // Command Qualifier values for PLI command
     static final int DTTZ_SETTING                           = 0x03;
@@ -188,9 +184,8 @@ class CommandParamsFactory extends Handler {
                  cmdPending = processSetupCall(cmdDet, ctlvs);
                  break;
              case REFRESH:
-                processRefresh(cmdDet, ctlvs);
-                cmdPending = false;
-                break;
+                 cmdPending = processEventNotify(cmdDet, ctlvs);
+                 break;
              case LAUNCH_BROWSER:
                  cmdPending = processLaunchBrowser(cmdDet, ctlvs);
                  break;
@@ -209,6 +204,9 @@ class CommandParamsFactory extends Handler {
              case SEND_DATA:
                  cmdPending = processBIPClient(cmdDet, ctlvs);
                  break;
+            case ACTIVATE:
+                cmdPending = processActivate(cmdDet, ctlvs);
+                break;
             default:
                 // unsupported proactive commands
                 mCmdParams = new CommandParams(cmdDet);
@@ -230,7 +228,9 @@ class CommandParamsFactory extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
         case MSG_ID_LOAD_ICON_DONE:
-            sendCmdParams(setIcons(msg.obj));
+            if (mIconLoader != null) {
+                sendCmdParams(setIcons(msg.obj));
+            }
             break;
         }
     }
@@ -564,32 +564,6 @@ class CommandParamsFactory extends Handler {
     }
 
     /**
-     * Processes REFRESH proactive command from the SIM card.
-     *
-     * @param cmdDet Command Details container object.
-     * @param ctlvs List of ComprehensionTlv objects following Command Details
-     *        object and Device Identities object within the proactive command
-     */
-    private boolean processRefresh(CommandDetails cmdDet,
-            List<ComprehensionTlv> ctlvs) {
-
-        CatLog.d(this, "process Refresh");
-
-        // REFRESH proactive command is rerouted by the baseband and handled by
-        // the telephony layer. IDLE TEXT should be removed for a REFRESH command
-        // with "initialization" or "reset"
-        switch (cmdDet.commandQualifier) {
-        case REFRESH_NAA_INIT_AND_FULL_FILE_CHANGE:
-        case REFRESH_NAA_INIT_AND_FILE_CHANGE:
-        case REFRESH_NAA_INIT:
-        case REFRESH_UICC_RESET:
-            mCmdParams = new DisplayTextParams(cmdDet, null);
-            break;
-        }
-        return false;
-    }
-
-    /**
      * Processes SELECT_ITEM proactive command from the SIM card.
      *
      * @param cmdDet Command Details container object.
@@ -763,6 +737,7 @@ class CommandParamsFactory extends Handler {
                         case LANGUAGE_SELECTION_EVENT:
                         case BROWSER_TERMINATION_EVENT:
                         case BROWSING_STATUS_EVENT:
+                        case HCI_CONNECTIVITY_EVENT:
                             eventList[i] = eventValue;
                             i++;
                             break;
@@ -891,6 +866,10 @@ class CommandParamsFactory extends Handler {
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
         if (ctlv != null) {
             textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            // Assign the tone message text to empty string, if alpha identifier
+            // data is null. If no alpha identifier tlv is present, then tone
+            // message text will be null.
+            if (textMsg.text == null) textMsg.text = "";
         }
         // parse tone duration
         ctlv = searchForTag(ComprehensionTlvTag.DURATION, ctlvs);
@@ -1035,6 +1014,27 @@ class CommandParamsFactory extends Handler {
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, obtainMessage(MSG_ID_LOAD_ICON_DONE));
             return true;
+        }
+        return false;
+    }
+
+    private boolean processActivate(CommandDetails cmdDet,
+                                     List<ComprehensionTlv> ctlvs) throws ResultException {
+        AppInterface.CommandType commandType =
+                AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
+        CatLog.d(this, "process " + commandType.name());
+
+        ComprehensionTlv ctlv = null;
+        int target;
+
+        //parse activate descriptor
+        ctlv = searchForTag(ComprehensionTlvTag.ACTIVATE_DESCRIPTOR, ctlvs);
+        if (ctlv != null) {
+            target = ValueParser.retrieveTarget(ctlv);
+            mCmdParams = new CommandParams(cmdDet);
+            CatLog.d(this, "Activate cmd target = " + target);
+        } else {
+            CatLog.d(this, "ctlv is null");
         }
         return false;
     }

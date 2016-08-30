@@ -209,6 +209,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_IMS_CAPABILITY_CHANGED            = 48;
     protected static final int EVENT_ALL_DATA_DISCONNECTED             = 49;
     protected static final int EVENT_PHONE_TYPE_SWITCHED               = 50;
+    protected static final int EVENT_RADIO_POWER_OFF_DONE              = 51;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -286,7 +287,7 @@ public class ServiceStateTracker extends Handler {
             // Set the network type, in case the radio does not restore it.
             int subId = mPhone.getSubId();
             if (mPreviousSubId.getAndSet(subId) != subId) {
-                if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                if (mSubscriptionController.isActiveSubId(subId)) {
                     Context context = mPhone.getContext();
 
                     mPhone.notifyPhoneStateChanged();
@@ -345,7 +346,7 @@ public class ServiceStateTracker extends Handler {
     };
 
     //Common
-    private GsmCdmaPhone mPhone;
+    protected GsmCdmaPhone mPhone;
     public CellLocation mCellLoc;
     private CellLocation mNewCellLoc;
     public static final int MS_PER_HOUR = 60 * 60 * 1000;
@@ -911,6 +912,15 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
+            case EVENT_RADIO_POWER_OFF_DONE:
+                if (DBG) log("EVENT_RADIO_POWER_OFF_DONE");
+                if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
+                    // during shutdown the modem may not send radio state changed event
+                    // as a result of radio power request
+                    // Hence, issuing shut down regardless of radio power response
+                    mCi.requestShutdown(null);
+                }
+                break;
             //GSM
             case EVENT_RADIO_AVAILABLE:
                 //this is unnecessary
@@ -937,7 +947,7 @@ public class ServiceStateTracker extends Handler {
                 }
                 // This will do nothing in the 'radio not available' case
                 setPowerStateToDesired();
-                pollState();
+                modemTriggeredPollState();
                 break;
 
             case EVENT_NETWORK_STATE_CHANGED:
@@ -1174,6 +1184,7 @@ public class ServiceStateTracker extends Handler {
             case EVENT_IMS_CAPABILITY_CHANGED:
                 if (DBG) log("EVENT_IMS_CAPABILITY_CHANGED");
                 updateSpnDisplay();
+                updateRilImsRadioTechnology();
                 break;
 
             //CDMA
@@ -1522,8 +1533,7 @@ public class ServiceStateTracker extends Handler {
                         mNewSS.setCdmaRoamingIndicator(mDefaultRoamingIndicator);
                     } else if (namMatch && !mIsInPrl) {
                         // TODO this will be removed when we handle roaming on LTE on CDMA+LTE phones
-                        if (mNewSS.getRilVoiceRadioTechnology()
-                                == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+                        if (isRatLte(mNewSS.getRilVoiceRadioTechnology())) {
                             log("Turn off roaming indicator as voice is LTE");
                             mNewSS.setCdmaRoamingIndicator(EriInfo.ROAMING_INDICATOR_OFF);
                         } else {
@@ -1577,7 +1587,7 @@ public class ServiceStateTracker extends Handler {
         return cdmaRoaming && !isSameOperatorNameFromSimAndSS(s);
     }
 
-    void handlePollStateResultMessage(int what, AsyncResult ar) {
+    protected void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
         String states[];
         switch (what) {
@@ -1590,6 +1600,7 @@ public class ServiceStateTracker extends Handler {
                     int regState = ServiceState.RIL_REG_STATE_UNKNOWN;
                     int reasonRegStateDenied = -1;
                     int psc = -1;
+                    int cssIndicator = 0;
                     if (states.length > 0) {
                         try {
                             regState = Integer.parseInt(states[0]);
@@ -1606,6 +1617,9 @@ public class ServiceStateTracker extends Handler {
                                     type = Integer.parseInt(states[3]);
                                 }
                             }
+                            if (states.length >= 8 && (states[7] != null)) {
+                                cssIndicator = Integer.parseInt(states[7]);
+                            }
                             if (states.length > 14) {
                                 if (states[14] != null && states[14].length() > 0) {
                                     psc = Integer.parseInt(states[14], 16);
@@ -1619,6 +1633,7 @@ public class ServiceStateTracker extends Handler {
                     mGsmRoaming = regCodeIsRoaming(regState);
                     mNewSS.setVoiceRegState(regCodeToServiceState(regState));
                     mNewSS.setRilVoiceRadioTechnology(type);
+                    mNewSS.setCssIndicator(cssIndicator);
 
                     boolean isVoiceCapable = mPhone.getContext().getResources()
                             .getBoolean(com.android.internal.R.bool.config_voice_capable);
@@ -1845,8 +1860,7 @@ public class ServiceStateTracker extends Handler {
                     if ((oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN &&
                             newDataRAT != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) ||
                             (ServiceState.isCdma(oldDataRAT) &&
-                                    newDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
-                            (oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_LTE &&
+                                    isRatLte(newDataRAT)) || (isRatLte(oldDataRAT) &&
                                     ServiceState.isCdma(newDataRAT))) {
                         mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
                     }
@@ -2306,8 +2320,6 @@ public class ServiceStateTracker extends Handler {
                 DcTracker dcTracker = mPhone.mDcTracker;
                 powerOffRadioSafely(dcTracker);
             }
-        } else if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
-            mCi.requestShutdown(null);
         }
     }
 
@@ -2369,7 +2381,11 @@ public class ServiceStateTracker extends Handler {
      */
     public boolean isConcurrentVoiceAndDataAllowed() {
         if (mPhone.isPhoneTypeGsm()) {
-            return (mSS.getRilVoiceRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
+            if (mSS.getRilVoiceRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS) {
+                return true;
+            } else {
+                return mSS.getCssIndicator() == 1;
+            }
         } else if (mPhone.isPhoneTypeCdma()) {
             // Note: it needs to be confirmed which CDMA network types
             // can support voice and data calls concurrently.
@@ -2403,6 +2419,18 @@ public class ServiceStateTracker extends Handler {
     public void onImsCapabilityChanged() {
         if (mPhone.isPhoneTypeGsm()) {
             sendMessage(obtainMessage(EVENT_IMS_CAPABILITY_CHANGED));
+        }
+    }
+
+    private void updateRilImsRadioTechnology() {
+        int imsRadioTechnology = mPhone.getImsPhone() != null ?
+                mPhone.getImsPhone().getServiceState().getRilImsRadioTechnology() :
+                ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
+        if (imsRadioTechnology != mSS.getRilImsRadioTechnology()) {
+            Rlog.i(LOG_TAG, "updateRilImsRadioTechnology : Old ims RAT: " +
+                    mSS.getRilImsRadioTechnology() + " new ims RAT: " + imsRadioTechnology);
+            mSS.setRilImsRadioTechnology(imsRadioTechnology);
+            mPhone.notifyServiceStateChanged(mSS);
         }
     }
 
@@ -2544,6 +2572,9 @@ public class ServiceStateTracker extends Handler {
         boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
+
+        boolean hasCssIndicatorChanged = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
+
         TelephonyManager tm =
                 (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
 
@@ -2577,6 +2608,8 @@ public class ServiceStateTracker extends Handler {
             }
         }
 
+        // Ims call capable rat will be filled as part of service state changed.
+        mNewSS.setRilImsRadioTechnology(mSS.getRilImsRadioTechnology());
         // swap mSS and mNewSS to put new state in mSS
         ServiceState tss = mSS;
         mSS = mNewSS;
@@ -2730,6 +2763,10 @@ public class ServiceStateTracker extends Handler {
             mPhone.notifyLocationChanged();
         }
 
+        if (hasCssIndicatorChanged) {
+            mPhone.notifyDataConnection(Phone.REASON_CSS_INDICATOR_CHANGED);
+        }
+
         if (!isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
             if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
                 mStartedGprsRegCheck = true;
@@ -2797,6 +2834,8 @@ public class ServiceStateTracker extends Handler {
                     mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
+        // Ims call capable rat will be filled as part of service state changed.
+        mNewSS.setRilImsRadioTechnology(mSS.getRilImsRadioTechnology());
         ServiceState tss;
         tss = mSS;
         mSS = mNewSS;
@@ -2983,15 +3022,15 @@ public class ServiceStateTracker extends Handler {
 
         boolean has4gHandoff =
                 mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&
-                        (((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
+                        ((isRatLte(mSS.getRilDataRadioTechnology()) &&
                                 (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) ||
                                 ((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD) &&
-                                        (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)));
+                                        isRatLte(mNewSS.getRilDataRadioTechnology())));
 
         boolean hasMultiApnSupport =
-                (((mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
+                ((isRatLte(mNewSS.getRilDataRadioTechnology()) ||
                         (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) &&
-                        ((mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
+                        (!isRatLte(mSS.getRilDataRadioTechnology()) &&
                                 (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
 
         boolean hasLostMultiApnSupport =
@@ -3061,7 +3100,7 @@ public class ServiceStateTracker extends Handler {
             boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) == null ? false :
                     (mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null);
             if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
-                    (mSS.getRilVoiceRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
+                    (!isRatLte(mSS.getRilVoiceRadioTechnology()) ||
                             mPhone.getContext().getResources().getBoolean(com.android.internal.R.
                                     bool.config_LTE_eri_for_network_name))) {
                 // Only when CDMA is in service, ERI will take effect
@@ -3086,8 +3125,10 @@ public class ServiceStateTracker extends Handler {
             }
 
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
-                    mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)
-                    && mSS.getRilVoiceRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+                    mIccRecords != null &&
+                    ((mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)
+                    || (mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE))
+                    && !isRatLte(mSS.getRilVoiceRadioTechnology())) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
                 // one configured in SIM, use operator name from CSIM record. Note that ERI, SID,
                 // and NID are CDMA only, not applicable to LTE.
@@ -4299,7 +4340,7 @@ public class ServiceStateTracker extends Handler {
         //override isGsm for CDMA LTE
         if (mPhone.isPhoneTypeGsm() ||
                 (mPhone.isPhoneTypeCdmaLte() &&
-                        mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)) {
+                        isRatLte(mSS.getRilDataRadioTechnology()))) {
             isGsm = true;
         }
 
@@ -4331,7 +4372,7 @@ public class ServiceStateTracker extends Handler {
             mPhone.mCT.mForegroundCall.hangupIfAlive();
         }
 
-        mCi.setRadioPower(false, null);
+        mCi.setRadioPower(false, obtainMessage(EVENT_RADIO_POWER_OFF_DONE));
 
     }
 
@@ -4831,5 +4872,13 @@ public class ServiceStateTracker extends Handler {
     /** Check if the device is shutting down. */
     public boolean isDeviceShuttingDown() {
         return mDeviceShuttingDown;
+    }
+
+    /**
+     * {@hide}
+     */
+    public boolean isRatLte(int rat) {
+        return (rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
+            rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA);
     }
 }

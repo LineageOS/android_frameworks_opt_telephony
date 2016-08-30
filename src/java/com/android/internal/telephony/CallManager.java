@@ -2258,7 +2258,8 @@ public class CallManager {
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_NEW_RINGING_CONNECTION)");
                     Connection c = (Connection) ((AsyncResult) msg.obj).result;
                     int subId = c.getCall().getPhone().getSubId();
-                    if (getActiveFgCallState(subId).isDialing() || hasMoreThanOneRingingCall()) {
+                    if (getActiveFgCallState(subId).isDialing()
+                            || hasMoreThanOneRingingCall(subId)) {
                         try {
                             Rlog.d(LOG_TAG, "silently drop incoming call: " + c.getCall());
                             c.getCall().hangup();

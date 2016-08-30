@@ -793,6 +793,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         sst.mSS.setRilVoiceRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_HSPA);
         assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
+        sst.mSS.setRilVoiceRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_EDGE);
+        sst.mSS.setCssIndicator(1);
+        assertTrue(sst.isConcurrentVoiceAndDataAllowed());
+        sst.mSS.setCssIndicator(0);
+        assertFalse(sst.isConcurrentVoiceAndDataAllowed());
 
         doReturn(false).when(mPhone).isPhoneTypeGsm();
         doReturn(true).when(mPhone).isPhoneTypeCdma();
@@ -839,5 +844,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.triggerNITZupdate("15/06/20,00:00:00+0");
         waitForMs(100);
         verify(mAlarmManager, times(1)).setTime(anyLong());
+    }
+
+    @MediumTest
+    public void testIsRatLte() throws Exception {
+        assertTrue(sst.isRatLte(14));
+        assertTrue(sst.isRatLte(19));
+        assertFalse(sst.isRatLte(6));
     }
 }

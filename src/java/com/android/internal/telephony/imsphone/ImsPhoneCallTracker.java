@@ -62,6 +62,7 @@ import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsSuppServiceNotification;
 import com.android.ims.ImsUtInterface;
 import com.android.ims.internal.IImsVideoCallProvider;
+import com.android.ims.internal.ImsCallSession;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -219,6 +220,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mSwitchingFgAndBgCalls = false;
     private ImsCall mCallExpectedToResume = null;
     private boolean mAllowEmergencyVideoCalls = false;
+
+    private Object mAddParticipantLock = new Object();
+    private Message mAddPartResp;
 
     //***** Events
 
@@ -403,7 +407,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             mPendingMO = new ImsPhoneConnection(mPhone,
                     checkForTestEmergencyNumber(dialString), this, mForegroundCall,
-                    isEmergencyNumber);
+                    isEmergencyNumber, intentExtras);
             mPendingMO.setVideoState(videoState);
         }
         addConnection(mPendingMO);
@@ -429,6 +433,48 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.notifyPreciseCallStateChanged();
 
         return mPendingMO;
+    }
+
+    public void
+    addParticipant(String dialString, Message onComplete) throws CallStateException {
+        boolean isSuccess = false;
+        if (mForegroundCall != null) {
+            ImsCall imsCall = mForegroundCall.getImsCall();
+            if (imsCall == null) {
+                loge("addParticipant : No foreground ims call");
+            } else {
+                ImsCallSession imsCallSession = imsCall.getCallSession();
+                if (imsCallSession != null) {
+                    synchronized (mAddParticipantLock) {
+                        mAddPartResp = onComplete;
+                        String[] callees = new String[] { dialString };
+                        imsCallSession.inviteParticipants(callees);
+                        isSuccess = true;
+                    }
+                } else {
+                    loge("addParticipant : ImsCallSession does not exist");
+                }
+            }
+        } else {
+            loge("addParticipant : Foreground call does not exist");
+        }
+        if (!isSuccess && onComplete != null) {
+            sendAddParticipantResponse(false, onComplete);
+            mAddPartResp = null;
+        }
+    }
+
+    private void sendAddParticipantResponse(boolean success, Message onComplete) {
+        loge("sendAddParticipantResponse : success = " + success);
+        if (onComplete == null) return;
+
+        Exception ex = null;
+        if (!success) {
+            ex = new Exception("Add participant failed");
+        }
+
+        AsyncResult.forMessage(onComplete, null, ex);
+        onComplete.sendToTarget();
     }
 
     /**
@@ -474,8 +520,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return;
         }
 
-        if (conn.getAddress()== null || conn.getAddress().length() == 0
-                || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0) {
+        boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
+        boolean isCallPull = false;
+
+        if (intentExtras != null) {
+            isConferenceUri = intentExtras.getBoolean(
+                    TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+            isSkipSchemaParsing = intentExtras.getBoolean(
+                    TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
+        }
+
+
+        if (!isConferenceUri && !isSkipSchemaParsing
+                && (conn.getAddress()== null || conn.getAddress().length() == 0
+                || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0)) {
             // Phone number is invalid
             conn.setDisconnectCause(DisconnectCause.INVALID_NUMBER);
             sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
@@ -495,6 +554,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsCallProfile profile = mImsManager.createCallProfile(mServiceId,
                     serviceType, callType);
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
+            profile.setCallExtraBoolean(TelephonyProperties.EXTRAS_IS_CONFERENCE_URI,
+                    isConferenceUri);
 
             // Translate call subject intent-extra from Telecom-specific extra key to the
             // ImsCallProfile key.
@@ -505,9 +566,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                     android.telecom.TelecomManager.EXTRA_CALL_SUBJECT))
                     );
                 }
+                isCallPull = intentExtras.getBoolean(TelephonyProperties.EXTRA_IS_CALL_PULL, false);
 
                 // Pack the OEM-specific call extras.
                 profile.mCallExtras.putBundle(ImsCallProfile.EXTRA_OEM_EXTRAS, intentExtras);
+
+                profile.setCallExtraBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL, isCallPull);
 
                 // NOTE: Extras to be sent over the network are packed into the
                 // intentExtras individually, with uniquely defined keys.
@@ -930,6 +994,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (DBG) log("callEndCleanupHandOverCallIfAny, mHandoverCall.mConnections="
                     + mHandoverCall.mConnections);
             mHandoverCall.mConnections.clear();
+            mConnections.clear();
             mState = PhoneConstants.State.IDLE;
         }
     }
@@ -1168,6 +1233,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             case ImsReasonInfo.CODE_FDN_BLOCKED:
                 return DisconnectCause.FDN_BLOCKED;
+
+            case ImsReasonInfo.CODE_EMERGENCY_TEMP_FAILURE:
+                return DisconnectCause.EMERGENCY_TEMP_FAILURE;
+
+            case ImsReasonInfo.CODE_EMERGENCY_PERM_FAILURE:
+                return DisconnectCause.EMERGENCY_PERM_FAILURE;
+
             default:
         }
 
@@ -1644,6 +1716,24 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 conn.updateMultipartyState(isMultiParty);
             }
         }
+
+        public void onCallInviteParticipantsRequestDelivered(ImsCall call) {
+            if (DBG) log("invite participants delivered");
+            synchronized(mAddParticipantLock) {
+                sendAddParticipantResponse(true, mAddPartResp);
+                mAddPartResp = null;
+            }
+        }
+
+        @Override
+        public void onCallInviteParticipantsRequestFailed(ImsCall call,
+                ImsReasonInfo reasonInfo) {
+            if (DBG) log("invite participants failed.");
+            synchronized(mAddParticipantLock) {
+                sendAddParticipantResponse(false, mAddPartResp);
+                mAddPartResp = null;
+            }
+        }
     };
 
     /**
@@ -1814,7 +1904,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 for (ImsPhoneConnection connection : mConnections) {
                     connection.updateWifiState();
                 }
-
+                mPhone.getServiceState().setRilImsRadioTechnology(getRilImsRadioTechnology());
                 mPhone.onFeatureCapabilityChanged();
 
                 mEventLog.writeOnImsCapabilities(mImsFeatureEnabled);
@@ -2071,6 +2161,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public boolean isVideoCallEnabled() {
         return (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE]
                 || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI]);
+    }
+
+    public boolean isVideoWifiCallingEnabled() {
+        return mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI];
+    }
+
+    private int getRilImsRadioTechnology() {
+        int imsRadioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
+        if (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE]
+                || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE]) {
+            imsRadioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+        } else if (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI]
+                || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI]) {
+            imsRadioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+        }
+        return imsRadioTechnology;
     }
 
     @Override

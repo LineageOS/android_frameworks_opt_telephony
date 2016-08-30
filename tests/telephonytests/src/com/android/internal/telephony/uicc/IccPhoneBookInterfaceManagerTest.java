@@ -15,6 +15,7 @@
  */
 package com.android.internal.telephony.uicc;
 
+import android.content.ContentValues;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.AsyncResult;
@@ -25,6 +26,7 @@ import com.android.internal.telephony.TelephonyTest;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 import android.test.suitebuilder.annotation.SmallTest;
 import org.junit.After;
@@ -34,10 +36,16 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -49,6 +57,7 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
     private AdnRecord mAdnRecord;
     private IccPhoneBookInterfaceManager mIccPhoneBookInterfaceMgr;
     private List<AdnRecord> mAdnList = Arrays.asList(mAdnRecord);
+    private SimPhoneBookAdnRecordCache mSimPbCache;
 
     private class IccPhoneBookInterfaceManagerHandler extends HandlerThread {
 
@@ -59,6 +68,8 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
         @Override
         public void onLooperPrepared() {
             mIccPhoneBookInterfaceMgr = new IccPhoneBookInterfaceManager(mPhone);
+            mSimPbCache = new SimPhoneBookAdnRecordCache(
+                        mPhone.getContext(), mPhone.getPhoneId(), mPhone.mCi);
             setReady(true);
         }
     }
@@ -112,4 +123,66 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
         //verify the previous read is not got affected
         assertEquals(mAdnList, adnListResult);
     }
+
+    @Test
+    @SmallTest
+    public void testUpdateAdnRecord() {
+       doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message response = (Message) invocation.getArguments()[4];
+                //set result for update ADN EF
+                AsyncResult.forMessage(response).exception = null;
+                response.sendToTarget();
+                return null;
+            }
+        }).when(mAdnRecordCache).updateAdnBySearch(
+            anyInt(), (AdnRecord) anyObject(), (AdnRecord) anyObject(),
+            anyString(), (Message) anyObject());
+
+        ContentValues values = new ContentValues();
+        values.put("tag", "");
+        values.put("number", "");
+        values.put("emails", "");
+        values.put("anrs", "");
+        values.put("newTag", "test");
+        values.put("newNumber", "123456");
+        values.put("newEmails", "");
+        values.put("newAnrs", "");
+
+        boolean result = mIccPhoneBookInterfaceMgr.updateAdnRecordsWithContentValuesInEfBySearch(
+                IccConstants.EF_ADN, values , null);
+
+        assertTrue(result);
+    }
+
+    @Test
+    @SmallTest
+    public void testGetAdnCapacity() {
+        int[] capacityArray = {500, 0, 500, 0, 500, 0};
+
+        Message fetchCapacityDone = mSimPbCache.obtainMessage(
+                SimPhoneBookAdnRecordCache.EVENT_QUERY_ADN_RECORD_DONE);
+        AsyncResult.forMessage(fetchCapacityDone, capacityArray, null);
+        fetchCapacityDone.sendToTarget();
+
+        try {
+            final Field field =
+                IccPhoneBookInterfaceManager.class.getDeclaredField("mSimPbAdnCache");
+            field.setAccessible(true);
+            field.set(mIccPhoneBookInterfaceMgr, mSimPbCache);
+
+            Method method =
+                IccPhoneBookInterfaceManager.class.getDeclaredMethod("isSimPhoneBookEnabled");
+            method.setAccessible(true);
+            method.invoke(mIccPhoneBookInterfaceMgr);
+            when(method.invoke(mIccPhoneBookInterfaceMgr)).thenReturn(true);
+         }catch (Exception e) {
+            e.printStackTrace();
+         }
+
+        int[] capacity = mIccPhoneBookInterfaceMgr.getAdnRecordsCapacity();
+        assertArrayEquals(capacityArray, capacity);
+    }
+
 }

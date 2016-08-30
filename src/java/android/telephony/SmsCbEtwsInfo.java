@@ -193,6 +193,28 @@ public class SmsCbEtwsInfo implements Parcelable {
     }
 
     @Override
+    public int hashCode() {
+        int hash = mWarningType * 4;
+        hash += mEmergencyUserAlert ? ((hash * 8) + 7) : ((hash * 6) + 5) ;
+        hash += mActivatePopup ? ((hash * 12) + 15) : ((hash * 10) + 13);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (o == null || !(o instanceof SmsCbEtwsInfo)) {
+            return false;
+        }
+        SmsCbEtwsInfo other = (SmsCbEtwsInfo) o;
+        return mWarningType == other.mWarningType
+                && mEmergencyUserAlert == other.mEmergencyUserAlert
+                && mActivatePopup == other.mActivatePopup;
+    }
+
+    @Override
     public String toString() {
         return "SmsCbEtwsInfo{warningType=" + mWarningType + ", emergencyUserAlert="
                 + mEmergencyUserAlert + ", activatePopup=" + mActivatePopup + '}';

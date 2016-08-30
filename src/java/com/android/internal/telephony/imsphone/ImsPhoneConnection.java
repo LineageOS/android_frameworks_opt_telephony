@@ -41,6 +41,7 @@ import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 
 import com.android.ims.ImsCall;
@@ -183,18 +184,32 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is an MO call, created when dialing */
     public ImsPhoneConnection(Phone phone, String dialString, ImsPhoneCallTracker ct,
-            ImsPhoneCall parent, boolean isEmergency) {
+            ImsPhoneCall parent, boolean isEmergency, Bundle extras) {
         super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
         acquireWakeLock();
+        boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
+
+        if (extras != null) {
+            isConferenceUri = extras.getBoolean(
+                    TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+            isSkipSchemaParsing = extras.getBoolean(
+                    TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
+        }
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
 
         mDialString = dialString;
 
-        mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
-        mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
+        if (isConferenceUri || isSkipSchemaParsing) {
+            mAddress = dialString;
+            mPostDialString = "";
+        } else {
+            mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
+            mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
+        }
 
         //mIndex = -1;
 
@@ -226,6 +241,10 @@ public class ImsPhoneConnection extends Connection {
                 | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
 
         switch (localProfile.mCallType) {
+            case ImsCallProfile.CALL_TYPE_VOICE:
+                capabilities = addCapability(capabilities,
+                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+                break;
             case ImsCallProfile.CALL_TYPE_VT:
                 capabilities = addCapability(capabilities,
                         Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
@@ -245,6 +264,10 @@ public class ImsPhoneConnection extends Connection {
                 | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
 
         switch (remoteProfile.mCallType) {
+            case ImsCallProfile.CALL_TYPE_VOICE:
+                capabilities = addCapability(capabilities,
+                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
+                break;
             case ImsCallProfile.CALL_TYPE_VT:
                 capabilities = addCapability(capabilities,
                         Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
@@ -937,8 +960,9 @@ public class ImsPhoneConnection extends Connection {
 
     /**
      * Determines the {@link ImsPhoneConnection} audio quality based on the local and remote
-     * {@link ImsCallProfile}. If indicate a HQ audio call if the local stream profile
-     * indicates AMR_WB or EVRC_WB and there is no remote restrict cause.
+     * {@link ImsCallProfile}. Indicate a HD audio call if the local stream profile
+     * is AMR_WB, EVRC_WB, EVS_WB, EVS_SWB, EVS_FB and
+     * there is no remote restrict cause.
      *
      * @param localCallProfile The local call profile.
      * @param remoteCallProfile The remote call profile.
@@ -951,10 +975,18 @@ public class ImsPhoneConnection extends Connection {
             return AUDIO_QUALITY_STANDARD;
         }
 
-        boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
+        final boolean isEvsCodecHighDef = (localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_WB
+                || localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB
+                || localCallProfile.mMediaProfile.mAudioQuality
+                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_FB);
+
+        final boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
                         == ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB
                 || localCallProfile.mMediaProfile.mAudioQuality
-                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB)
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB
+                || isEvsCodecHighDef)
                 && remoteCallProfile.mRestrictCause == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
         return isHighDef ? AUDIO_QUALITY_HIGH_DEFINITION : AUDIO_QUALITY_STANDARD;
     }
@@ -992,4 +1024,3 @@ public class ImsPhoneConnection extends Connection {
         return mIsEmergency;
     }
 }
-

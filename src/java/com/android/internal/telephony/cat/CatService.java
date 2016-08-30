@@ -49,6 +49,8 @@ import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
 import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.HCI_CONNECTIVITY_EVENT;
 
 class RilMessage {
     int mId;
@@ -341,9 +343,13 @@ public class CatService extends Handler implements AppInterface {
             CatLog.d(this,"Event: " + eventVal);
             switch (eventVal) {
                 /* Currently android is supporting only the below events in SetupEventList
-                 * Language Selection.  */
+                 * Idle Screen Available,
+                 * Language Selection and
+                 * HCI Connectivity.
+                 */
                 case IDLE_SCREEN_AVAILABLE_EVENT:
                 case LANGUAGE_SELECTION_EVENT:
+                case HCI_CONNECTIVITY_EVENT:
                     break;
                 default:
                     flag = false;
@@ -387,9 +393,8 @@ public class CatService extends Handler implements AppInterface {
             case DISPLAY_TEXT:
                 break;
             case REFRESH:
-                // ME side only handles refresh commands which meant to remove IDLE
-                // MODE TEXT.
-                cmdParams.mCmdDet.typeOfCommand = CommandType.SET_UP_IDLE_MODE_TEXT.value();
+                //Stk app service displays alpha id to user if it is present, nothing to do here.
+                CatLog.d(this, "Pass Refresh to Stk app");
                 break;
             case SET_UP_IDLE_MODE_TEXT:
                 resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
@@ -500,6 +505,13 @@ public class CatService extends Handler implements AppInterface {
                     sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
                 }
                 break;
+            case ACTIVATE:
+                // TO DO: Retrieve the target of the ACTIVATE cmd from the cmd.
+                // Target : '01' = UICC-CFL interface according to TS 102 613 [39];
+                //          '00' and '02' to 'FF' = RFU (Reserved for Future Use).
+                resultCode = ResultCode.OK;
+                sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0 ,null);
+                break;
             default:
                 CatLog.d(this, "Unsupported command");
                 return;
@@ -528,6 +540,7 @@ public class CatService extends Handler implements AppInterface {
         mCurrntCmd = mMenuCmd;
         Intent intent = new Intent(AppInterface.CAT_SESSION_END_ACTION);
         intent.putExtra("SLOT_ID", mSlotId);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
@@ -727,7 +740,9 @@ public class CatService extends Handler implements AppInterface {
 
         /*
          * Currently the below events are supported:
-         * Language Selection Event.
+         * Idle Screen Available,
+         * Language Selection Event and
+         * HCI Connectivity.
          * Other event download commands should be encoded similar way
          */
         /* TODO: eventDownload should be extended for other Envelope Commands */
@@ -741,6 +756,9 @@ public class CatService extends Handler implements AppInterface {
                 buf.write(tag);
                 // Language length should be 2 byte
                 buf.write(0x02);
+                break;
+            case HCI_CONNECTIVITY_EVENT:
+                CatLog.d(this, " Sending HCI Connectivity event download to ICC");
                 break;
             default:
                 break;
@@ -868,6 +886,7 @@ public class CatService extends Handler implements AppInterface {
     private void  broadcastCardStateAndIccRefreshResp(CardState cardState,
             IccRefreshResponse iccRefreshState) {
         Intent intent = new Intent(AppInterface.CAT_ICC_STATUS_CHANGE);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         boolean cardPresent = (cardState == CardState.CARDSTATE_PRESENT);
 
         if (iccRefreshState != null) {
@@ -879,8 +898,9 @@ public class CatService extends Handler implements AppInterface {
 
         // This sends an intent with CARD_ABSENT (0 - false) /CARD_PRESENT (1 - true).
         intent.putExtra(AppInterface.CARD_STATUS, cardPresent);
+        intent.putExtra("SLOT_ID", mSlotId);
         CatLog.d(this, "Sending Card Status: "
-                + cardState + " " + "cardPresent: " + cardPresent);
+                + cardState + " " + "cardPresent: " + cardPresent +  "SLOT_ID: " +  mSlotId);
         mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
@@ -1003,6 +1023,13 @@ public class CatService extends Handler implements AppInterface {
                 }
                 break;
             case LAUNCH_BROWSER:
+                if (resMsg.mResCode == ResultCode.LAUNCH_BROWSER_ERROR) {
+                    // Additional info for Default URL unavailable.
+                    resMsg.setAdditionalInfo(0x04);
+                } else {
+                    resMsg.mIncludeAdditionalInfo = false;
+                    resMsg.mAdditionalInfo = 0;
+                }
                 break;
             // 3GPP TS.102.223: Open Channel alpha confirmation should not send TR
             case OPEN_CHANNEL:
@@ -1042,6 +1069,13 @@ public class CatService extends Handler implements AppInterface {
             }
             break;
         case NO_RESPONSE_FROM_USER:
+            // No need to send terminal response for SET UP CALL on user timeout,
+            // instead use dedicated API
+            if (type == CommandType.SET_UP_CALL) {
+                mCmdIf.handleCallSetupRequestFromSim(false, null);
+                mCurrntCmd = null;
+                return;
+            }
         case UICC_SESSION_TERM_BY_USER:
             resp = null;
             break;

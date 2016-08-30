@@ -28,6 +28,7 @@ import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
 import android.text.TextUtils;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.content.res.Resources;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -161,7 +162,6 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25;
     private static final int EVENT_GET_INFO_CPHS_DONE = 26;
     // private static final int EVENT_SET_MSISDN_DONE = 30; Defined in IccRecords as 30
-    private static final int EVENT_SIM_REFRESH = 31;
     private static final int EVENT_GET_CFIS_DONE = 32;
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
     private static final int EVENT_GET_GID1_DONE = 34;
@@ -207,7 +207,6 @@ public class SIMRecords extends IccRecords {
         mRecordsToLoad = 0;
 
         mCi.setOnSmsOnSim(this, EVENT_SMS_ON_SIM, null);
-        mCi.registerForIccRefresh(this, EVENT_SIM_REFRESH, null);
 
         // Start off by setting empty state
         resetRecords();
@@ -233,7 +232,6 @@ public class SIMRecords extends IccRecords {
     public void dispose() {
         if (DBG) log("Disposing SIMRecords this=" + this);
         //Unregister for all events
-        mCi.unregisterForIccRefresh(this);
         mCi.unSetOnSmsOnSim(this);
         mParentApp.unregisterForReady(this);
         mParentApp.unregisterForLocked(this);
@@ -489,7 +487,7 @@ public class SIMRecords extends IccRecords {
 
     public int getVoiceMessageCount() {
         boolean voiceMailWaiting = false;
-        int countVoiceMessages = 0;
+        int countVoiceMessages = DEFAULT_VOICE_MESSAGE_COUNT;
         if (mEfMWIS != null) {
             // Use this data if the EF[MWIS] exists and
             // has been loaded
@@ -499,7 +497,7 @@ public class SIMRecords extends IccRecords {
 
             if (voiceMailWaiting && countVoiceMessages == 0) {
                 // Unknown count = -1
-                countVoiceMessages = -1;
+                countVoiceMessages = UNKNOWN_VOICE_MESSAGE_COUNT;
             }
             if(DBG) log(" VoiceMessageCount from SIM MWIS = " + countVoiceMessages);
         } else if (mEfCPHS_MWI != null) {
@@ -509,7 +507,7 @@ public class SIMRecords extends IccRecords {
             // Refer CPHS4_2.WW6 B4.2.3
             if (indicator == 0xA) {
                 // Unknown count = -1
-                countVoiceMessages = -1;
+                countVoiceMessages = UNKNOWN_VOICE_MESSAGE_COUNT;
             } else if (indicator == 0x5) {
                 countVoiceMessages = 0;
             }
@@ -1168,14 +1166,6 @@ public class SIMRecords extends IccRecords {
                     ((Message) ar.userObj).sendToTarget();
                 }
                 break;
-            case EVENT_SIM_REFRESH:
-                isRecordLoadResponse = false;
-                ar = (AsyncResult)msg.obj;
-                if (DBG) log("Sim REFRESH with exception: " + ar.exception);
-                if (ar.exception == null) {
-                    handleSimRefresh((IccRefreshResponse)ar.result);
-                }
-                break;
             case EVENT_GET_CFIS_DONE:
                 isRecordLoadResponse = true;
 
@@ -1279,7 +1269,8 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    private void handleFileUpdate(int efid) {
+    @Override
+    protected void handleFileUpdate(int efid) {
         switch(efid) {
             case EF_MBDN:
                 mRecordsToLoad++;
@@ -1318,39 +1309,6 @@ public class SIMRecords extends IccRecords {
                 // TODO: Handle other cases, instead of fetching all.
                 mAdnCache.reset();
                 fetchSimRecords();
-                break;
-        }
-    }
-
-    private void handleSimRefresh(IccRefreshResponse refreshResponse){
-        if (refreshResponse == null) {
-            if (DBG) log("handleSimRefresh received without input");
-            return;
-        }
-
-        if (refreshResponse.aid != null &&
-                !refreshResponse.aid.equals(mParentApp.getAid())) {
-            // This is for different app. Ignore.
-            return;
-        }
-
-        switch (refreshResponse.refreshResult) {
-            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
-                if (DBG) log("handleSimRefresh with SIM_FILE_UPDATED");
-                handleFileUpdate(refreshResponse.efId);
-                break;
-            case IccRefreshResponse.REFRESH_RESULT_INIT:
-                if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
-                // need to reload all files (that we care about)
-                onIccRefreshInit();
-                break;
-            case IccRefreshResponse.REFRESH_RESULT_RESET:
-                // Refresh reset is handled by the UiccCard object.
-                if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
-                break;
-            default:
-                // unknown refresh operation
-                if (DBG) log("handleSimRefresh with unknown operation");
                 break;
         }
     }
@@ -1478,11 +1436,14 @@ public class SIMRecords extends IccRecords {
         if (!TextUtils.isEmpty(operator)) {
             log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                     operator + "'");
-            log("update icc_operator_numeric=" + operator);
             mTelephonyManager.setSimOperatorNumericForPhone(
                     mParentApp.getPhoneId(), operator);
             final SubscriptionController subController = SubscriptionController.getInstance();
-            subController.setMccMnc(operator, subController.getDefaultSubId());
+            int subId = subController.getSubIdUsingPhoneId(mParentApp.getPhoneId());
+            if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                subController.setMccMnc(operator, subId);
+                log("update icc_operator_numeric = " + operator + " subId = " + subId);
+            }
         } else {
             log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
         }
@@ -1633,6 +1594,7 @@ public class SIMRecords extends IccRecords {
         mRecordsToLoad++;
 
         loadEfLiAndEfPl();
+        mFh.getEFLinearRecordSize(EF_SMS, obtainMessage(EVENT_GET_SMS_RECORD_SIZE_DONE));
 
         // XXX should seek instead of examining them all
         if (false) { // XXX
@@ -1666,6 +1628,15 @@ public class SIMRecords extends IccRecords {
     @Override
     public int getDisplayRule(String plmn) {
         int rule;
+
+        CarrierConfigManager configLoader = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configLoader != null && configLoader.getConfig().getBoolean(
+                "config_spn_override_enabled") && !TextUtils.isEmpty(mSpn) &&
+                (mSpnDisplayCondition == -1)) {
+            if (DBG) log("Set mSpnDisplayCondition to 0 for SPN override");
+            mSpnDisplayCondition = 0;
+        }
 
         if (mParentApp != null && mParentApp.getUiccCard() != null &&
             mParentApp.getUiccCard().getOperatorBrandOverride() != null) {

@@ -34,6 +34,10 @@ public class SmsCbConstants {
     public static final int MESSAGE_ID_GSMA_ALLOCATED_CHANNEL_50
             = 0x0032;
 
+    /** Channel 60 required by Inida. ID 0~999 is allocated by GSMA */
+    public static final int MESSAGE_ID_GSMA_ALLOCATED_CHANNEL_60
+            = 0x003C;
+
     /** Channel 911 required by Taiwan NCC. ID 0~999 is allocated by GSMA */
     public static final int MESSAGE_ID_GSMA_ALLOCATED_CHANNEL_911
             = 0x038F; // 911
