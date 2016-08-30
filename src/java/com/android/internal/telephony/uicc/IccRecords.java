@@ -176,6 +176,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public void dispose() {
         mDestroyed.set(true);
+
+        // It is possible that there is another thread waiting for the response
+        // to requestIccSimAuthentication() in getIccSimChallengeResponse().
+        auth_rsp = null;
+        synchronized (mLock) {
+            mLock.notifyAll();
+        }
+
         mParentApp = null;
         mFh = null;
         mCi = null;
@@ -690,6 +698,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
         } catch(Exception e) {
             loge( "getIccSimChallengeResponse: "
                     + "Fail while trying to request Icc Sim Auth");
+            return null;
+        }
+
+        if (auth_rsp == null) {
+            loge("getIccSimChallengeResponse: No authentication response");
             return null;
         }
 
