@@ -31,6 +31,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import android.net.Uri;
+import android.platform.test.annotations.Postsubmit;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -68,6 +69,7 @@ public class ImsExternalCallTrackerTest {
         mTracker = new ImsExternalCallTracker(mImsPhone, mImsPullCall, mCallNotifier);
     }
 
+    @Postsubmit
     @Test
     public void testAddExternalCall() {
         List<ImsExternalCallState> dep = new ArrayList<>();
@@ -90,6 +92,7 @@ public class ImsExternalCallTrackerTest {
         assert(connection instanceof ImsExternalConnection);
     }
 
+    @Postsubmit
     @Test
     public void testRemoveExternalCall() {
         testAddExternalCall();
