@@ -112,6 +112,7 @@ public class DcTrackerTest extends TelephonyTest {
     SubscriptionInfo mSubscriptionInfo;
 
     private DcTracker mDct;
+    private DcTrackerTestHandler mDcTrackerTestHandler;
 
     private AlarmManager mAlarmManager;
 
@@ -333,7 +334,8 @@ public class DcTrackerTest extends TelephonyTest {
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         mBundle = mContextFixture.getCarrierConfigBundle();
 
-        new DcTrackerTestHandler(getClass().getSimpleName()).start();
+        mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
+        mDcTrackerTestHandler.start();
         waitUntilReady();
         waitForMs(600);
         logd("DcTrackerTest -Setup!");
@@ -344,6 +346,7 @@ public class DcTrackerTest extends TelephonyTest {
         logd("DcTrackerTest -tearDown");
         mDct.removeCallbacksAndMessages(null);
         mDct = null;
+        mDcTrackerTestHandler.quitSafely();
         super.tearDown();
     }
 

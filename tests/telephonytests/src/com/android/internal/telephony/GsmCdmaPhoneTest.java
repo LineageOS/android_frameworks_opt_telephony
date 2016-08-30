@@ -72,6 +72,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
+    private GsmCdmaPhoneTestHandler mGsmCdmaPhoneTestHandler;
 
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 1;
     private static final int EVENT_EMERGENCY_CALL_TOGGLE = 2;
@@ -114,7 +115,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
 
-        new GsmCdmaPhoneTestHandler(TAG).start();
+        mGsmCdmaPhoneTestHandler = new GsmCdmaPhoneTestHandler(TAG);
+        mGsmCdmaPhoneTestHandler.start();
         waitUntilReady();
         ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController).registerForIccChanged(eq(mPhoneUT), integerArgumentCaptor.capture(),
@@ -129,6 +131,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mPhoneUT.removeCallbacksAndMessages(null);
         mPhoneUT = null;
+        mGsmCdmaPhoneTestHandler.quitSafely();
         super.tearDown();
     }
 

@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verify;
 public class PhoneStateListenerTest extends TelephonyTest {
 
     private PhoneStateListener mPhoneStateListenerUT;
+    private PhoneStateListenerHandler mPhoneStateListenerHandler;
 
     private class PhoneStateListenerHandler extends HandlerThread {
         private PhoneStateListenerHandler(String name) {
@@ -52,12 +53,14 @@ public class PhoneStateListenerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         this.setUp(this.getClass().getSimpleName());
-        new PhoneStateListenerHandler(TAG).start();
+        mPhoneStateListenerHandler = new PhoneStateListenerHandler(TAG);
+        mPhoneStateListenerHandler.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
+        mPhoneStateListenerHandler.quitSafely();
         super.tearDown();
     }
 

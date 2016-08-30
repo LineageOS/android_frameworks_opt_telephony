@@ -44,6 +44,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     private String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
     /* Handler class initiated at the HandlerThread */
     private GsmCdmaCallTracker mCTUT;
+    private GsmCdmaCTHandlerThread mGsmCdmaCTHandlerThread;
     @Mock
     GsmCdmaCall mCall;
     @Mock
@@ -69,7 +70,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         mContextFixture.putStringArrayResource(com.android.internal.R.array.dial_string_replace,
                 new String[]{});
 
-        new GsmCdmaCTHandlerThread(TAG).start();
+        mGsmCdmaCTHandlerThread = new GsmCdmaCTHandlerThread(TAG);
+        mGsmCdmaCTHandlerThread.start();
 
         waitUntilReady();
         logd("GsmCdmaCallTracker initiated, waiting for Power on");
@@ -82,6 +84,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCTUT = null;
+        mGsmCdmaCTHandlerThread.quitSafely();
         super.tearDown();
     }
 

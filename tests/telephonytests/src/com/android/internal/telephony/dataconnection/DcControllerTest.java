@@ -60,6 +60,7 @@ public class DcControllerTest extends TelephonyTest {
     UpdateLinkPropertyResult mResult;
 
     private DcController mDcc;
+    private DcControllerTestHandler mDcControllerTestHandler;
 
     private class DcControllerTestHandler extends HandlerThread {
 
@@ -100,12 +101,14 @@ public class DcControllerTest extends TelephonyTest {
         mResult = new UpdateLinkPropertyResult(lp);
         doReturn(mResult).when(mDc).updateLinkProperty(any(DataCallResponse.class));
 
-        new DcControllerTestHandler(TAG).start();
+        mDcControllerTestHandler = new DcControllerTestHandler(TAG);
+        mDcControllerTestHandler.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
+        mDcControllerTestHandler.quitSafely();
         super.tearDown();
     }
 

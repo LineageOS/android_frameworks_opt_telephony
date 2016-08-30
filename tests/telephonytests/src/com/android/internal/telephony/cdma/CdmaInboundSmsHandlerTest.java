@@ -34,6 +34,7 @@ import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
+import com.android.internal.util.HexDump;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
@@ -67,6 +68,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     private SmsMessage mCdmaSmsMessage;
 
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
+    private CdmaInboundSmsHandlerTestHandler mCdmaInboundSmsHandlerTestHandler;
     private SmsEnvelope mSmsEnvelope = new SmsEnvelope();
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
     private FakeSmsContentProvider mContentProvider;
@@ -118,6 +120,16 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         mSmsMessage.mWrappedSmsMessage = mCdmaSmsMessage;
         doReturn(smsPdu).when(mCdmaSmsMessage).getPdu();
 
+        mInboundSmsTrackerCV.put("destination_port", 1 << 16);
+        mInboundSmsTrackerCV.put("pdu", HexDump.toHexString(smsPdu));
+        mInboundSmsTrackerCV.put("address", "1234567890");
+        mInboundSmsTrackerCV.put("reference_number", 1);
+        mInboundSmsTrackerCV.put("sequence", 1);
+        mInboundSmsTrackerCV.put("count", 1);
+        mInboundSmsTrackerCV.put("date", System.currentTimeMillis());
+        mInboundSmsTrackerCV.put("message_body", "This is the message body of a single-part " +
+                "message");
+
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
         doReturn(1).when(mInboundSmsTracker).getMessageCount();
@@ -131,7 +143,8 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         ((MockContentResolver)mContext.getContentResolver()).addProvider(
                 Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
 
-        new CdmaInboundSmsHandlerTestHandler(TAG).start();
+        mCdmaInboundSmsHandlerTestHandler = new CdmaInboundSmsHandlerTestHandler(TAG);
+        mCdmaInboundSmsHandlerTestHandler.start();
         waitUntilReady();
     }
 
@@ -146,6 +159,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         assertFalse(mCdmaInboundSmsHandler.getWakeLock().isHeld());
         mCdmaInboundSmsHandler = null;
         mContentProvider.shutdown();
+        mCdmaInboundSmsHandlerTestHandler.quitSafely();
         super.tearDown();
     }
 

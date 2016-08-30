@@ -67,7 +67,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private static final int FAKE_SUB_ID = 1;
     private static final String FAKE_PLMN = "123456";
 
-
+    private SubscriptionInfoUpdaterHandlerThread mSubscriptionInfoUpdaterHandlerThread;
     private IccRecords mIccRecord;
     @Mock
     private UserInfo mUserInfo;
@@ -130,12 +130,14 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 mContentProvider);
         mIccRecord = mIccCardProxy.getIccRecords();
 
-        new SubscriptionInfoUpdaterHandlerThread(TAG).start();
+        mSubscriptionInfoUpdaterHandlerThread = new SubscriptionInfoUpdaterHandlerThread(TAG);
+        mSubscriptionInfoUpdaterHandlerThread.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
+        mSubscriptionInfoUpdaterHandlerThread.quitSafely();
         super.tearDown();
     }
 
