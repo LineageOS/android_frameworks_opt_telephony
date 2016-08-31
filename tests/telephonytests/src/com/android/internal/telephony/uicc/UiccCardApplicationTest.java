@@ -110,6 +110,7 @@ public class UiccCardApplicationTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mTestHandlerThread.quitSafely();
         super.tearDown();
     }
 

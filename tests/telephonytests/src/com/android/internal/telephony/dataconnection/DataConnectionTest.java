@@ -70,6 +70,7 @@ public class DataConnectionTest extends TelephonyTest {
     DcFailBringUp mDcFailBringUp;
 
     private DataConnection mDc;
+    private DataConnectionTestHandler mDataConnectionTestHandler;
     private DcController mDcc;
 
     private ApnSetting mApn1 = new ApnSetting(
@@ -149,7 +150,8 @@ public class DataConnectionTest extends TelephonyTest {
 
         mDcp.mApnContext = mApnContext;
 
-        new DataConnectionTestHandler(getClass().getSimpleName()).start();
+        mDataConnectionTestHandler = new DataConnectionTestHandler(getClass().getSimpleName());
+        mDataConnectionTestHandler.start();
 
         waitUntilReady();
         logd("-Setup!");
@@ -160,6 +162,7 @@ public class DataConnectionTest extends TelephonyTest {
         logd("tearDown");
         mDc = null;
         mDcc = null;
+        mDataConnectionTestHandler.quitSafely();
         super.tearDown();
     }
 

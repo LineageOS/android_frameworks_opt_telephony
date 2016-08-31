@@ -1090,7 +1090,7 @@ public class DcTracker extends Handler {
 
     @Override
     protected void finalize() {
-        if(DBG) log("finalize");
+        if(DBG && mPhone != null) log("finalize");
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
