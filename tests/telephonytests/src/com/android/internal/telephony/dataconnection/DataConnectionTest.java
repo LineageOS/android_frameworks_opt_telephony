@@ -114,8 +114,6 @@ public class DataConnectionTest extends TelephonyTest {
             mDcc = DcController.makeDcc(mPhone, mDcTracker, h);
             mDc = DataConnection.makeDataConnection(mPhone, 0, mDcTracker, mDcTesterFailBringUpAll,
                     mDcc);
-
-            setReady(true);
         }
     }
 
@@ -153,7 +151,7 @@ public class DataConnectionTest extends TelephonyTest {
         mDataConnectionTestHandler = new DataConnectionTestHandler(getClass().getSimpleName());
         mDataConnectionTestHandler.start();
 
-        waitUntilReady();
+        waitForMs(200);
         logd("-Setup!");
     }
 
@@ -192,7 +190,7 @@ public class DataConnectionTest extends TelephonyTest {
         testSanity();
 
         mDc.sendMessage(DataConnection.EVENT_CONNECT, mCp);
-        waitForMs(100);
+        waitForMs(200);
 
         verify(mCT, times(1)).registerForVoiceCallStarted(any(Handler.class),
                 eq(DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED), eq(null));
@@ -281,25 +279,24 @@ public class DataConnectionTest extends TelephonyTest {
 
         testConnectEvent();
 
-        assertTrue(getNetworkInfo().isMetered());
         assertFalse(getCopyNetworkCapabilities().
                 hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
+        assertTrue(getNetworkInfo().isMetered());
     }
 
-    @Postsubmit
     @Test
     @SmallTest
     public void testNonMeteredCapability() throws Exception {
 
-        doReturn(1).when(mPhone).getSubId();
+        doReturn(2819).when(mPhone).getSubId();
         mContextFixture.getCarrierConfigBundle().
                 putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                         new String[] {"mms"});
 
         testConnectEvent();
 
-        assertFalse(getNetworkInfo().isMetered());
         assertTrue(getCopyNetworkCapabilities().
                 hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
+        assertFalse(getNetworkInfo().isMetered());
     }
 }
