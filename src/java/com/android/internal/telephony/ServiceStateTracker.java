@@ -969,10 +969,10 @@ public class ServiceStateTracker extends Handler {
                         if (states.length >= 3) {
                             try {
                                 if (states[1] != null && states[1].length() > 0) {
-                                    lac = Integer.parseInt(states[1], 16);
+                                    lac = (int)Long.parseLong(states[1], 16);
                                 }
                                 if (states[2] != null && states[2].length() > 0) {
-                                    cid = Integer.parseInt(states[2], 16);
+                                    cid = (int)Long.parseLong(states[2], 16);
                                 }
                             } catch (NumberFormatException ex) {
                                 Rlog.w(LOG_TAG, "error parsing location: " + ex);
@@ -1595,10 +1595,10 @@ public class ServiceStateTracker extends Handler {
                             regState = Integer.parseInt(states[0]);
                             if (states.length >= 3) {
                                 if (states[1] != null && states[1].length() > 0) {
-                                    lac = Integer.parseInt(states[1], 16);
+                                    lac = (int)Long.parseLong(states[1], 16);
                                 }
                                 if (states[2] != null && states[2].length() > 0) {
-                                    cid = Integer.parseInt(states[2], 16);
+                                    cid = (int)Long.parseLong(states[2], 16);
                                 }
 
                                 // states[3] (if present) is the current radio technology
@@ -1608,7 +1608,7 @@ public class ServiceStateTracker extends Handler {
                             }
                             if (states.length > 14) {
                                 if (states[14] != null && states[14].length() > 0) {
-                                    psc = Integer.parseInt(states[14], 16);
+                                    psc = (int)Long.parseLong(states[14], 16);
                                 }
                             }
                         } catch (NumberFormatException ex) {
