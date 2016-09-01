@@ -55,6 +55,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.util.ArrayMap;
+import android.util.Log;
 import android.util.Pair;
 
 import com.android.ims.ImsCall;
@@ -90,6 +91,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
  */
 public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     static final String LOG_TAG = "ImsPhoneCallTracker";
+    static final String VERBOSE_STATE_TAG = "IPCTState";
 
     public interface PhoneStateListener {
         void onPhoneStateChanged(PhoneConstants.State oldState, PhoneConstants.State newState);
@@ -98,14 +100,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final boolean DBG = true;
 
     // When true, dumps the state of ImsPhoneCallTracker after changes to foreground and background
-    // calls.  This is helpful for debugging.
-    private static final boolean VERBOSE_STATE_LOGGING = false; /* stopship if true */
-
-    /**
-     * Shared preferences key used to track whether the user has been notified of the fact that a
-     * video call has been handed over from WIFI to LTE.
-     */
-    public static final String NOTIFIED_HANDOVER_TO_LTE_KEY = "notified_handover_video_to_lte_key";
+    // calls.  This is helpful for debugging.  It is also possible to enable this at runtime by
+    // setting the IPCTState log tag to VERBOSE.
+    private static final boolean FORCE_VERBOSE_STATE_LOGGING = false; /* stopship if true */
+    private static final boolean VERBOSE_STATE_LOGGING = FORCE_VERBOSE_STATE_LOGGING ||
+            Rlog.isLoggable(VERBOSE_STATE_TAG, Log.VERBOSE);
 
     //Indices map to ImsConfig.FeatureConstants
     private boolean[] mImsFeatureEnabled = {false, false, false, false, false, false};
@@ -905,10 +904,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     updatePhoneState() {
         PhoneConstants.State oldState = mState;
 
+        boolean isPendingMOIdle = mPendingMO == null || !mPendingMO.getState().isAlive();
+
         if (mRingingCall.isRinging()) {
             mState = PhoneConstants.State.RINGING;
-        } else if (mPendingMO != null ||
-                !(mForegroundCall.isIdle() && mBackgroundCall.isIdle())) {
+        } else if (!isPendingMOIdle || !mForegroundCall.isIdle() || !mBackgroundCall.isIdle()) {
+            // There is a non-idle call, so we're off the hook.
             mState = PhoneConstants.State.OFFHOOK;
         } else {
             mState = PhoneConstants.State.IDLE;
@@ -922,7 +923,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     new AsyncResult(null, null, null));
         }
 
-        if (DBG) log("updatePhoneState oldState=" + oldState + ", newState=" + mState);
+        if (DBG) {
+            log("updatePhoneState pendingMo = " + (mPendingMO == null ? "null"
+                    : mPendingMO.getState()) + ", fg= " + mForegroundCall.getState() + "("
+                    + mForegroundCall.getConnections().size() + "), bg= " + mBackgroundCall
+                    .getState() + "(" + mBackgroundCall.getConnections().size() + ")");
+            log("updatePhoneState oldState=" + oldState + ", newState=" + mState);
+        }
 
         if (mState != oldState) {
             mPhone.notifyPhoneStateChanged();
@@ -1500,7 +1507,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onCallTerminated(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (DBG) log("onCallTerminated reasonCode=" + reasonInfo.getCode());
 
-            ImsPhoneCall.State oldState = mForegroundCall.getState();
             int cause = getDisconnectCauseFromReasonInfo(reasonInfo);
             ImsPhoneConnection conn = findConnection(imsCall);
             if (DBG) log("cause = " + cause + " conn = " + conn);
