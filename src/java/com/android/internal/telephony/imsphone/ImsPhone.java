@@ -626,6 +626,14 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
+        IccRecords r = getIccRecords();
+        if (r != null) {
+            setVoiceCallForwardingFlag(r, line, enable, number);
+        }
+    }
+
+    @Override
     public void setMute(boolean muted) {
         mCT.setMute(muted);
     }
