@@ -98,6 +98,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         try {
             mCTUT.dial(mDialString);
+            waitForMs(100);
         } catch(Exception ex) {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown"+ex.getMessage()+ex.getStackTrace());
