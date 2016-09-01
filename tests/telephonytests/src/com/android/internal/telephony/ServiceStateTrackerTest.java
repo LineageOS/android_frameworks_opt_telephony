@@ -334,7 +334,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         mSimulatedCommands.setSignalStrength(ss);
         mSimulatedCommands.notifySignalStrength();
-        waitForMs(200);
+        waitForMs(300);
         assertEquals(sst.getSignalStrength(), ss);
         assertEquals(sst.getSignalStrength().isGsm(), true);
 
