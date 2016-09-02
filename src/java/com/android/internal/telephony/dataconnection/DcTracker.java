@@ -2242,6 +2242,11 @@ public class DcTracker extends Handler {
             }
         }
 
+        if ((iaApnSetting == null) && (defaultApnSetting == null) &&
+                !allowInitialAttachForOperator()) {
+            log("Abort Initial attach");
+            return;
+        }
         // The priority of apn candidates from highest to lowest is:
         //   1) APN_TYPE_IA (Initial Attach)
         //   2) mPreferredApn, i.e. the current preferred apn
@@ -2272,6 +2277,10 @@ public class DcTracker extends Handler {
                     initialAttachApnSetting.protocol, initialAttachApnSetting.authType,
                     initialAttachApnSetting.user, initialAttachApnSetting.password, null);
         }
+    }
+
+    protected boolean allowInitialAttachForOperator() {
+        return true;
     }
 
     /**
