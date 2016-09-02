@@ -23,6 +23,7 @@ import android.os.IDeviceIdleController;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.telephony.Rlog;
 
 import com.android.ims.ImsManager;
@@ -55,19 +56,23 @@ public class TelephonyComponentFactory {
 
     public static TelephonyComponentFactory getInstance() {
         if (sInstance == null) {
-            String fullClsName = "com.qualcomm.qti.internal.telephony.QtiTelephonyComponentFactory";
-            String libPath = "/system/framework/qti-telephony-common.jar";
-
-            PathClassLoader classLoader = new PathClassLoader(libPath,
-                    ClassLoader.getSystemClassLoader());
-            Rlog.d(LOG_TAG, "classLoader = " + classLoader);
-
-            if (fullClsName == null || fullClsName.length() == 0) {
-                Rlog.d(LOG_TAG, "No customized TelephonyPlugin available, fallback to default");
-                fullClsName = "com.android.internal.telephony.TelephonyComponentFactory";
-            }
-            Class<?> cls = null;
             try {
+                String dir = "/system/framework/";
+                String jarName = SystemProperties.get("telephony_plugin_jar_name", "");
+                String fullClsName = SystemProperties.get("telephony_plugin_class_name", "");
+
+                String libPath = dir + jarName;
+                Rlog.d(LOG_TAG, "Extension = " +fullClsName + "@" + libPath);
+
+                PathClassLoader classLoader = new PathClassLoader(libPath,
+                        ClassLoader.getSystemClassLoader());
+                Rlog.d(LOG_TAG, "classLoader = " + classLoader);
+
+                if (fullClsName == null || fullClsName.length() == 0) {
+                    Rlog.d(LOG_TAG, "No customized TelephonyPlugin available, fallback to default");
+                    fullClsName = "com.android.internal.telephony.TelephonyComponentFactory";
+                }
+                Class<?> cls = null;
                 cls = Class.forName(fullClsName, false, classLoader);
                 Rlog.d(LOG_TAG, "cls = " + cls);
                 Constructor custMethod = cls.getConstructor();
