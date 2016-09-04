@@ -425,17 +425,12 @@ public class SubscriptionInfoUpdater extends Handler {
             ContentResolver contentResolver = mContext.getContentResolver();
 
             if (msisdn != null) {
-                ContentValues number = new ContentValues(1);
-                number.put(SubscriptionManager.NUMBER, msisdn);
-                contentResolver.update(SubscriptionManager.CONTENT_URI, number,
-                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
-                        + Long.toString(subId), null);
+                   SubscriptionController.getInstance().setDisplayNumber(msisdn, subId);
             }
 
             SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
             String nameToSet;
             String simCarrierName = tm.getSimOperatorName(subId);
-            ContentValues name = new ContentValues(1);
 
             if (subInfo != null && subInfo.getNameSource() !=
                     SubscriptionManager.NAME_SOURCE_USER_INPUT) {
@@ -444,11 +439,8 @@ public class SubscriptionInfoUpdater extends Handler {
                 } else {
                     nameToSet = "CARD " + Integer.toString(slotId + 1);
                 }
-                name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                 logd("sim name = " + nameToSet);
-                contentResolver.update(SubscriptionManager.CONTENT_URI, name,
-                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                        + "=" + Long.toString(subId), null);
+                SubscriptionController.getInstance().setDisplayName(nameToSet, subId);
             }
 
             /* Update preferred network type and network selection mode on SIM change.
