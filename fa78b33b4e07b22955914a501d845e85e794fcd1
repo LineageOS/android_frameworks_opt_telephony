@@ -16,6 +16,24 @@
       "revId": "fa78b33b4e07b22955914a501d845e85e794fcd1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_ab92314a",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccController.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2016-09-05T02:34:35Z",
+      "side": 1,
+      "message": "File a new patch if you want to change it. :)\n\nLet\u0027s not hold this up for weeks while debating it. It\u0027s good to go as is.",
+      "parentUuid": "1fa4df85_eb16e9f1",
+      "revId": "fa78b33b4e07b22955914a501d845e85e794fcd1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
