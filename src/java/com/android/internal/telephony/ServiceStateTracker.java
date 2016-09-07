@@ -2087,6 +2087,8 @@ public class ServiceStateTracker extends Handler {
     }
 
     protected void updateSpnDisplay() {
+        updateOperatorNameFromEri();
+
         String wfcVoiceSpnFormat = null;
         String wfcDataSpnFormat = null;
         if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()) {
@@ -2872,19 +2874,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (hasChanged) {
-            if ((mCi.getRadioState().isOn()) && (!mIsSubscriptionFromRuim)) {
-                String eriText;
-                // Now the Phone sees the new ServiceState so it can get the new ERI text
-                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
-                    eriText = mPhone.getCdmaEriText();
-                } else {
-                    // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used for
-                    // mRegistrationState 0,2,3 and 4
-                    eriText = mPhone.getContext().getText(
-                            com.android.internal.R.string.roamingTextSearching).toString();
-                }
-                mSS.setOperatorAlphaLong(eriText);
-            }
+            updateSpnDisplay();
 
             String operatorNumeric;
 
@@ -2933,7 +2923,6 @@ public class ServiceStateTracker extends Handler {
             tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
                     (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
 
-            updateSpnDisplay();
             // set roaming type
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
@@ -3110,49 +3099,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (hasChanged) {
-            boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) == null ? false :
-                    (mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null);
-            if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
-                    (!ServiceState.isLte(mSS.getRilVoiceRadioTechnology()) ||
-                            mPhone.getContext().getResources().getBoolean(com.android.internal.R.
-                                    bool.config_LTE_eri_for_network_name))) {
-                // Only when CDMA is in service, ERI will take effect
-                String eriText = mSS.getOperatorAlphaLong();
-                // Now the Phone sees the new ServiceState so it can get the new ERI text
-                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
-                    eriText = mPhone.getCdmaEriText();
-                } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
-                    eriText = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : null;
-                    if (TextUtils.isEmpty(eriText)) {
-                        // Sets operator alpha property by retrieving from
-                        // build-time system property
-                        eriText = SystemProperties.get("ro.cdma.home.operator.alpha");
-                    }
-                } else if (mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE) {
-                    // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
-                    // for mRegistrationState 0,2,3 and 4
-                    eriText = mPhone.getContext()
-                            .getText(com.android.internal.R.string.roamingTextSearching).toString();
-                }
-                mSS.setOperatorAlphaLong(eriText);
-            }
-
-            if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
-                    mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)
-                    && !ServiceState.isLte(mSS.getRilVoiceRadioTechnology())) {
-                // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
-                // one configured in SIM, use operator name from CSIM record. Note that ERI, SID,
-                // and NID are CDMA only, not applicable to LTE.
-                boolean showSpn =
-                        ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
-                int iconIndex = mSS.getCdmaEriIconIndex();
-
-                if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
-                        isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
-                        mIccRecords != null) {
-                    mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
-                }
-            }
+            updateSpnDisplay();
 
             String operatorNumeric;
 
@@ -3199,7 +3146,6 @@ public class ServiceStateTracker extends Handler {
             tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
                     (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
 
-            updateSpnDisplay();
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
@@ -3241,6 +3187,68 @@ public class ServiceStateTracker extends Handler {
 
         if (hasLocationChanged) {
             mPhone.notifyLocationChanged();
+        }
+    }
+
+    private void updateOperatorNameFromEri() {
+        if (mPhone.isPhoneTypeCdma()) {
+            if ((mCi.getRadioState().isOn()) && (!mIsSubscriptionFromRuim)) {
+                String eriText;
+                // Now the Phone sees the new ServiceState so it can get the new ERI text
+                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                    eriText = mPhone.getCdmaEriText();
+                } else {
+                    // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used for
+                    // mRegistrationState 0,2,3 and 4
+                    eriText = mPhone.getContext().getText(
+                            com.android.internal.R.string.roamingTextSearching).toString();
+                }
+                mSS.setOperatorAlphaLong(eriText);
+            }
+        } else if (mPhone.isPhoneTypeCdmaLte()) {
+            boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) != null &&
+                    mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null;
+            if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
+                    (!ServiceState.isLte(mSS.getRilVoiceRadioTechnology()) ||
+                            mPhone.getContext().getResources().getBoolean(com.android.internal.R.
+                                    bool.config_LTE_eri_for_network_name))) {
+                // Only when CDMA is in service, ERI will take effect
+                String eriText = mSS.getOperatorAlphaLong();
+                // Now the Phone sees the new ServiceState so it can get the new ERI text
+                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                    eriText = mPhone.getCdmaEriText();
+                } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
+                    eriText = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : null;
+                    if (TextUtils.isEmpty(eriText)) {
+                        // Sets operator alpha property by retrieving from
+                        // build-time system property
+                        eriText = SystemProperties.get("ro.cdma.home.operator.alpha");
+                    }
+                } else if (mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE) {
+                    // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
+                    // for mRegistrationState 0,2,3 and 4
+                    eriText = mPhone.getContext()
+                            .getText(com.android.internal.R.string.roamingTextSearching).toString();
+                }
+                mSS.setOperatorAlphaLong(eriText);
+            }
+
+            if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
+                    mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)
+                    && !ServiceState.isLte(mSS.getRilVoiceRadioTechnology())) {
+                // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
+                // one configured in SIM, use operator name from CSIM record. Note that ERI, SID,
+                // and NID are CDMA only, not applicable to LTE.
+                boolean showSpn =
+                        ((RuimRecords) mIccRecords).getCsimSpnDisplayCondition();
+                int iconIndex = mSS.getCdmaEriIconIndex();
+
+                if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
+                        isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
+                        mIccRecords != null) {
+                    mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
+                }
+            }
         }
     }
 
