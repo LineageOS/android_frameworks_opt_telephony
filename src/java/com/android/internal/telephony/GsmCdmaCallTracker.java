@@ -24,9 +24,11 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -466,9 +468,17 @@ public class GsmCdmaCallTracker extends CallTracker {
             mPendingMO = new GsmCdmaConnection(mPhone,
                     checkForTestEmergencyNumber(dialString), this, mForegroundCall,
                     mIsInEmergencyCall);
-            // Some network need a empty flash before sending the normal one
-            m3WayCallFlashDelay = mPhone.getContext().getResources()
-                    .getInteger(com.android.internal.R.integer.config_cdma_3waycall_flash_delay);
+            // Some networks need an empty flash before sending the normal one
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle bundle = configManager.getConfig();
+            if (bundle != null) {
+                m3WayCallFlashDelay =
+                        bundle.getInt(CarrierConfigManager.KEY_CDMA_3WAYCALL_FLASH_DELAY_INT);
+            } else {
+                // The default 3-way call flash delay is 0s
+                m3WayCallFlashDelay = 0;
+            }
             if (m3WayCallFlashDelay > 0) {
                 mCi.sendCDMAFeatureCode("", obtainMessage(EVENT_THREE_WAY_DIAL_BLANK_FLASH));
             } else {
