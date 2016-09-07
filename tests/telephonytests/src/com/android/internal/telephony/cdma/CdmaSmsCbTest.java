@@ -483,12 +483,11 @@ public class CdmaSmsCbTest extends AndroidTestCase {
 
     // VZW requirement is to discard message with unsupported charset. Verify that we return null
     // for this unsupported character set.
-    @Postsubmit
     @Test @SmallTest
     public void testCmasUnsupportedCharSet() throws Exception {
         SmsMessage msg = createCmasSmsMessage(SmsEnvelope.SERVICE_CATEGORY_CMAS_EXTREME_THREAT,
                 12345, BearerData.PRIORITY_EMERGENCY, BearerData.LANGUAGE_ENGLISH,
-                UserData.ENCODING_GSM_DCS, EXTREME_ALERT, -1, -1, -1, -1, -1);
+                0x1F, EXTREME_ALERT, -1, -1, -1, -1, -1);
 
         SmsCbMessage cbMessage = msg.parseBroadcastSms();
         assertNull("expected null for unsupported charset", cbMessage);

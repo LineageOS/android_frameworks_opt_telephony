@@ -432,7 +432,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
-        waitForMs(100);
+        waitForMs(200);
 
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
@@ -454,7 +454,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
-        waitForMs(100);
+        waitForMs(200);
 
         // verify that no new message posted to handler
         verify(mTestHandler, times(1)).sendMessageAtTime(any(Message.class), anyLong());
@@ -479,7 +479,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_HOME);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
-        waitForMs(100);
+        waitForMs(200);
 
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
@@ -518,7 +518,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
-        waitForMs(100);
+        waitForMs(200);
 
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
@@ -540,7 +540,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
-        waitForMs(100);
+        waitForMs(200);
 
         // verify that no new message posted to handler
         verify(mTestHandler, times(1)).sendMessageAtTime(any(Message.class), anyLong());
@@ -655,7 +655,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_UNKNOWN);
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
 
-        waitForMs(100);
+        waitForMs(200);
 
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
@@ -872,14 +872,14 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Mock sending incorrect nitz str from RIL
         mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0");
-        waitForMs(100);
+        waitForMs(200);
         // AlarmManger.setTime is triggered by SystemClock.setCurrentTimeMillis().
         // Verify system time is not set to incorrect NITZ time
         verify(mAlarmManager, times(0)).setTime(anyLong());
 
         // Mock sending correct nitz str from RIL
         mSimulatedCommands.triggerNITZupdate("15/06/20,00:00:00+0");
-        waitForMs(100);
+        waitForMs(200);
         verify(mAlarmManager, times(1)).setTime(anyLong());
     }
 }
