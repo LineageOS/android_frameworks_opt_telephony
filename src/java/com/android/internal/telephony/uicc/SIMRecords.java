@@ -1138,9 +1138,11 @@ public class SIMRecords extends IccRecords {
                                     onCphsCompleted));
                 } else {
                     if (ar.userObj != null) {
-                        Resources resource = Resources.getSystem();
-                        if (ar.exception != null && resource.getBoolean(com.android.internal.
-                                    R.bool.editable_voicemailnumber)) {
+                        CarrierConfigManager configLoader = (CarrierConfigManager)
+                                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                        if (ar.exception != null && configLoader != null &&
+                                configLoader.getConfig().getBoolean(
+                                CarrierConfigManager.KEY_EDITABLE_VOICEMAIL_NUMBER_BOOL)) {
                             // GsmCdmaPhone will store vm number on device
                             // when IccVmNotSupportedException occurred
                             AsyncResult.forMessage(((Message) ar.userObj)).exception
