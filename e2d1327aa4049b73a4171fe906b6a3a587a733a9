@@ -34,6 +34,24 @@
       "revId": "e2d1327aa4049b73a4171fe906b6a3a587a733a9",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_52beb865",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 3780,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2016-09-10T08:32:45Z",
+      "side": 1,
+      "message": "Which is why I\u0027m hesitant about changing it since I may break current devices. However, we\u0027re still in the midst of CM 14 bring-up, so \u0027breakage\u0027 may not be that big a problem.",
+      "parentUuid": "1fa4df85_9292f0f5",
+      "revId": "e2d1327aa4049b73a4171fe906b6a3a587a733a9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
