@@ -420,13 +420,15 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
         if (rilError != 0) b.putInt(DATA_KEY_RIL_ERROR, rilError);
         switch (rilRequest) {
             case RIL_REQUEST_SETUP_DATA_CALL:
-                DataCallResponse dataCall = (DataCallResponse)ret;
-                b.putInt(DATA_KEY_DATA_CALL_STATUS, dataCall.status);
-                b.putInt(DATA_KEY_DATA_CALL_RETRY, dataCall.suggestedRetryTime);
-                b.putInt(DATA_KEY_DATA_CALL_CID, dataCall.cid);
-                b.putInt(DATA_KEY_DATA_CALL_ACTIVE, dataCall.active);
-                b.putString(DATA_KEY_DATA_CALL_TYPE, dataCall.type);
-                b.putString(DATA_KEY_DATA_CALL_IFNAME, dataCall.ifname);
+                if (ret != null) {
+                    DataCallResponse dataCall = (DataCallResponse)ret;
+                    b.putInt(DATA_KEY_DATA_CALL_STATUS, dataCall.status);
+                    b.putInt(DATA_KEY_DATA_CALL_RETRY, dataCall.suggestedRetryTime);
+                    b.putInt(DATA_KEY_DATA_CALL_CID, dataCall.cid);
+                    b.putInt(DATA_KEY_DATA_CALL_ACTIVE, dataCall.active);
+                    b.putString(DATA_KEY_DATA_CALL_TYPE, dataCall.type);
+                    b.putString(DATA_KEY_DATA_CALL_IFNAME, dataCall.ifname);
+                }
                 writeEvent(TAG_RIL_RESPONSE, rilRequest, rilSerial, b);
                 break;
 
@@ -443,10 +445,12 @@ public class TelephonyEventLog extends ConnectivityMetricsLogger {
             case RIL_REQUEST_SEND_SMS_EXPECT_MORE:
             case RIL_REQUEST_CDMA_SEND_SMS:
             case RIL_REQUEST_IMS_SEND_SMS:
-                SmsResponse smsResponse = (SmsResponse)ret;
-                b.putInt(DATA_KEY_SMS_MESSAGE_REF, smsResponse.mMessageRef);
-                b.putString(DATA_KEY_SMS_ACK_PDU, smsResponse.mAckPdu);
-                b.putInt(DATA_KEY_SMS_ERROR_CODE, smsResponse.mErrorCode);
+                if (ret != null) {
+                    SmsResponse smsResponse = (SmsResponse)ret;
+                    b.putInt(DATA_KEY_SMS_MESSAGE_REF, smsResponse.mMessageRef);
+                    b.putString(DATA_KEY_SMS_ACK_PDU, smsResponse.mAckPdu);
+                    b.putInt(DATA_KEY_SMS_ERROR_CODE, smsResponse.mErrorCode);
+                }
                 writeEvent(TAG_RIL_RESPONSE, rilRequest, rilSerial, b);
                 break;
         }
