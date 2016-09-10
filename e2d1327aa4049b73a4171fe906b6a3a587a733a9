@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fa4df85_3238dc3b",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 3780,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2016-09-10T08:05:06Z",
+      "side": 1,
+      "message": "I\u0027m probably nitpicking, but this prop doesn\u0027t seem obvious to me that it is a prop for specifying old RIL features.\nA prop like \u0027ro.telephony.old_ril.config\u0027 seems better.",
+      "revId": "e2d1327aa4049b73a4171fe906b6a3a587a733a9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
