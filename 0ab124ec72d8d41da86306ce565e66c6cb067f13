@@ -22,6 +22,30 @@
       "revId": "0ab124ec72d8d41da86306ce565e66c6cb067f13",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_da307aeb",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 2114,
+      "author": {
+        "id": 15595
+      },
+      "writtenOn": "2016-09-11T14:18:05Z",
+      "side": 1,
+      "message": "I preferred doing it this way because it gives the stacktrace as well. That exception normally *shouldn\u0027t* happen, so if it does, I think it\u0027s helpful to have insight into the code path. \n\nOne of the things I struggled with when debugging this was figuring out the call hierarchy of when CarrierConfig got loaded... or in the previous case here, didn\u0027t. \n\nIf loading the CarrierConfig using this path gets broken in the future, it will save a lot of debugging trouble in pointing me (or others) in the right direction - but otherwise we\u0027ll never see it. I think that\u0027s preferable given the amount of things that break if the config doesn\u0027t get loaded. \n\nIt should also help devs that maintain Sprint variants of their phones, but don\u0027t have one themselves, as they\u0027d be able to get the backtrace from a user\u0027s provided log.",
+      "parentUuid": "1fa4df85_1fada430",
+      "range": {
+        "startLine": 2114,
+        "startChar": 24,
+        "endLine": 2114,
+        "endChar": 45
+      },
+      "revId": "0ab124ec72d8d41da86306ce565e66c6cb067f13",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
