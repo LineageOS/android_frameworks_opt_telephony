@@ -52,6 +52,24 @@
       "revId": "e2d1327aa4049b73a4171fe906b6a3a587a733a9",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_5f123c0b",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 3780,
+      "author": {
+        "id": 11221
+      },
+      "writtenOn": "2016-09-11T08:49:43Z",
+      "side": 1,
+      "message": "From my understanding this is meant to extract the features (props) out of \u0027ro.telephony.ril.config\u0027 and match them against the old_ril specific props like \u0027skipbrokendatacall\u0027 or \u0027icccardstatus\u0027 etc. If true, the specific code parts will do the necessary magic.\n\nKlte for example use the \u0027ro.telephony.ril.config\u0027 for a feature called: \u0027newDriverCallU,newDialCode\u0027 This isn\u0027t old_ril, is it?\n\nI\u0027d leave it as is.",
+      "parentUuid": "1fa4df85_52beb865",
+      "revId": "e2d1327aa4049b73a4171fe906b6a3a587a733a9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
