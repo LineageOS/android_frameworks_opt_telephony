@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fa4df85_1fada430",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 2114,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-09-11T13:33:47Z",
+      "side": 1,
+      "message": "Why not just pass the throwable.toString() instead of creating this new function?",
+      "range": {
+        "startLine": 2114,
+        "startChar": 24,
+        "endLine": 2114,
+        "endChar": 45
+      },
+      "revId": "0ab124ec72d8d41da86306ce565e66c6cb067f13",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
