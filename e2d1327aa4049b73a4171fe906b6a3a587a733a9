@@ -106,6 +106,24 @@
       "revId": "e2d1327aa4049b73a4171fe906b6a3a587a733a9",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_357e816b",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 3780,
+      "author": {
+        "id": 11221
+      },
+      "writtenOn": "2016-09-12T05:54:47Z",
+      "side": 1,
+      "message": "Sorry kltchneduos:\nhttps://github.com/CyanogenMod/android_device_samsung_kltechnduo/blob/cm-13.0/init/init_klte.cpp#L57\n\nand well some other definitions like:\nhttps://github.com/CyanogenMod/android_device_samsung_klteduos/blob/cm-13.0/init/init_klte.cpp",
+      "parentUuid": "1fa4df85_555a1d2a",
+      "revId": "e2d1327aa4049b73a4171fe906b6a3a587a733a9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
