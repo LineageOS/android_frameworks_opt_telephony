@@ -908,22 +908,18 @@ public class ImsPhoneConnection extends Connection implements
      * @param extras The ImsCallProfile extras.
      */
     private void updateWifiStateFromExtras(Bundle extras) {
-        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE)) {
-            // The RIL (sadly) sends us the EXTRA_CALL_RAT_TYPE as a string extra, rather than an
-            // integer extra, so we need to parse it.
-            int radioTechnology;
-            try {
-                radioTechnology = Integer.parseInt(extras.getString(
-                        ImsCallProfile.EXTRA_CALL_RAT_TYPE));
-            } catch (NumberFormatException nfe) {
-                radioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-            }
+        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE) ||
+                extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT)) {
 
             // We've received the extra indicating the radio technology, so we will continue to
             // prefer the radio technology received via this extra going forward.
             mIsWifiStateFromExtras = true;
 
-            boolean isWifi = radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            ImsCall call = getImsCall();
+            boolean isWifi = false;
+            if (call != null) {
+                isWifi = call.isWifiCall();
+            }
 
             // Report any changes
             if (isWifi() != isWifi) {
