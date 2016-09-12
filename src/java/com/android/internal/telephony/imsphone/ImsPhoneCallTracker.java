@@ -261,7 +261,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         try {
             mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
                     createIncomingCallPendingIntent(),
-                    mImsConnectionStateListener);
+                    mImsConnectionStateListener, mPhone.getPhoneId());
 
             mImsManager.setImsConfigListener(mImsConfigListener);
 
@@ -425,6 +425,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
                 pendingCallClirMode = clirMode;
                 mPendingCallVideoState = videoState;
+                mPendingIntentExtras = intentExtras;
                 pendingCallInEcm = true;
             }
         }

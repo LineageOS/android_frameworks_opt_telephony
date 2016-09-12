@@ -402,7 +402,9 @@ public class ImsPhoneConnection extends Connection {
     @Override
     public boolean onDisconnect(int cause) {
         Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
-        if (mCause != DisconnectCause.LOCAL) mCause = cause;
+        if ((mCause != DisconnectCause.LOCAL) || (cause == DisconnectCause.INCOMING_REJECTED)) {
+            mCause = cause;
+        }
         return onDisconnect();
     }
 
