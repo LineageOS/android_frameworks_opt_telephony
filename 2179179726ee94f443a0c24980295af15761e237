@@ -22,6 +22,30 @@
       "revId": "2179179726ee94f443a0c24980295af15761e237",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_b2d04221",
+        "filename": "Android.mk",
+        "patchSetId": 8
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2016-09-13T04:07:53Z",
+      "side": 1,
+      "message": "https://github.com/CyanogenMod/android_frameworks_opt_telephony/commit/b5e53945a31a8f4a3633624766ba7bb045e0c18a\n\nDunno if it\u0027s needed anymore. If not I can remove it.",
+      "parentUuid": "1fa4df85_b2e7e212",
+      "range": {
+        "startLine": 29,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 38
+      },
+      "revId": "2179179726ee94f443a0c24980295af15761e237",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
