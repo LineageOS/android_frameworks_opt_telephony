@@ -279,6 +279,8 @@ public final class SimPhoneBookAdnRecordCache extends Handler {
             case EVENT_INIT_ADN_DONE:
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception == null) {
+                    invalidateAdnCache();
+
                     Intent intent = new Intent(ACTION_ADN_INIT_DONE);
                     intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
                     SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
@@ -293,6 +295,10 @@ public final class SimPhoneBookAdnRecordCache extends Handler {
             case EVENT_QUERY_ADN_RECORD_DONE:
                 log("Querying ADN record done");
                 if (ar.exception != null) {
+                    synchronized (mLock) {
+                        mLock.notify();
+                    }
+
                     for (Message response : mAdnLoadingWaiters) {
                         sendErrorResponse(response, "Query adn record failed" + ar.exception);
                     }
