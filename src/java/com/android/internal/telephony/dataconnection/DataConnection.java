@@ -1480,6 +1480,10 @@ public class DataConnection extends StateMachine {
     }
     private DcActivatingState mActivatingState = new DcActivatingState();
 
+    public final boolean hasMessages(int what, Object object) {
+        return DataConnection.this.getHandler().hasMessages(what, object);
+    }
+
     /**
      * The state machine is connected, expecting an EVENT_DISCONNECT.
      */
@@ -1489,10 +1493,12 @@ public class DataConnection extends StateMachine {
 
             boolean createNetworkAgent = true;
             // If a disconnect is already pending, avoid notifying all of connected
-            if (hasMessages(EVENT_DISCONNECT) ||
-                    hasMessages(EVENT_DISCONNECT_ALL) ||
-                    hasDeferredMessages(EVENT_DISCONNECT) ||
-                    hasDeferredMessages(EVENT_DISCONNECT_ALL)) {
+            if (hasMessages(EVENT_DISCONNECT, mConnectionParams.mOnCompletedMsg.obj) ||
+                    hasMessages(EVENT_DISCONNECT_ALL, mConnectionParams.
+                    mOnCompletedMsg.obj) || hasDeferredMessages(EVENT_DISCONNECT,
+                    mConnectionParams.mOnCompletedMsg.obj) ||
+                    hasDeferredMessages(EVENT_DISCONNECT_ALL, mConnectionParams.
+                    mOnCompletedMsg.obj)) {
                 log("DcActiveState: skipping notifyAllOfConnected()");
                 createNetworkAgent = false;
             } else {
