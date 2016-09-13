@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fa4df85_b2e7e212",
+        "filename": "Android.mk",
+        "patchSetId": 8
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-09-13T03:44:48Z",
+      "side": 1,
+      "message": "Is this leftover?",
+      "range": {
+        "startLine": 29,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 38
+      },
+      "revId": "2179179726ee94f443a0c24980295af15761e237",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
