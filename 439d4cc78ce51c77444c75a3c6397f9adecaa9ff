@@ -63,6 +63,30 @@
       "revId": "439d4cc78ce51c77444c75a3c6397f9adecaa9ff",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_7eadb186",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2016-09-14T14:47:59Z",
+      "side": 1,
+      "message": "Hmm, I don\u0027t know. Haven\u0027t dealt with any multi sim devices.",
+      "parentUuid": "1fa4df85_23608632",
+      "range": {
+        "startLine": 666,
+        "startChar": 16,
+        "endLine": 678,
+        "endChar": 17
+      },
+      "revId": "439d4cc78ce51c77444c75a3c6397f9adecaa9ff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
