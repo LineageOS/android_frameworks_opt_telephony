@@ -16,17 +16,18 @@
 
 package com.android.internal.telephony.metrics;
 
-import android.os.SystemClock;
-
 import static com.android.internal.telephony.TelephonyProto.ImsCapabilities;
 import static com.android.internal.telephony.TelephonyProto.ImsConnectionState;
 import static com.android.internal.telephony.TelephonyProto.RilDataCall;
 import static com.android.internal.telephony.TelephonyProto.TelephonyEvent;
+import static com.android.internal.telephony.TelephonyProto.TelephonyEvent.ModemRestart;
 import static com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import static com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCall;
 import static com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
 import static com.android.internal.telephony.TelephonyProto.TelephonyServiceState;
 import static com.android.internal.telephony.TelephonyProto.TelephonySettings;
+
+import android.os.SystemClock;
 
 public class TelephonyEventBuilder {
     private final TelephonyEvent mEvent = new TelephonyEvent();
@@ -107,6 +108,12 @@ public class TelephonyEventBuilder {
     public TelephonyEventBuilder setNITZ(long timestamp) {
         mEvent.setType(TelephonyEvent.Type.NITZ_TIME);
         mEvent.setNitzTimestampMillis(timestamp);
+        return this;
+    }
+
+    public TelephonyEventBuilder setModemRestart(ModemRestart modemRestart) {
+        mEvent.setType(TelephonyEvent.Type.MODEM_RESTART);
+        mEvent.modemRestart = modemRestart;
         return this;
     }
 }

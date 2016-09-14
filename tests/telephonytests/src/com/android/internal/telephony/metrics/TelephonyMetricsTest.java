@@ -35,7 +35,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
-import android.support.test.filters.FlakyTest;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
@@ -164,6 +163,21 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertTrue(log.events[0].hasPhoneId());
         assertEquals(mPhone.getPhoneId(), log.events[0].getPhoneId());
         assertEquals(3, log.events[0].getDataStallAction());
+    }
+
+    // Test write modem restart event
+    @Test
+    @SmallTest
+    public void testModemRestartEvent() throws Exception {
+        mMetrics.writeModemRestartEvent(mPhone.getPhoneId(), "Test");
+        TelephonyLog log = buildProto();
+
+        assertEquals(1, log.events.length);
+        assertEquals(0, log.callSessions.length);
+        assertEquals(0, log.smsSessions.length);
+        assertTrue(log.events[0].hasPhoneId());
+        assertEquals(mPhone.getPhoneId(), log.events[0].getPhoneId());
+        assertEquals("Test", log.events[0].modemRestart.getReason());
     }
 
     // Test write on IMS call start
