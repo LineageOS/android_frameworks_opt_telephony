@@ -87,6 +87,30 @@
       "revId": "439d4cc78ce51c77444c75a3c6397f9adecaa9ff",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_bed1e9fd",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 11221
+      },
+      "writtenOn": "2016-09-14T15:43:30Z",
+      "side": 1,
+      "message": "Don\u0027t see much devices using it actually: \nhttps://github.com/search?q\u003dorg%3ACyanogenMod+qcomdsds\u0026ref\u003dsearchresults\u0026type\u003dCode\u0026utf8\u003d%E2%9C%93\n\nand sprout has it\u0027s own ril? Enlighten me if I\u0027m wrong.",
+      "parentUuid": "1fa4df85_7eadb186",
+      "range": {
+        "startLine": 666,
+        "startChar": 16,
+        "endLine": 678,
+        "endChar": 17
+      },
+      "revId": "439d4cc78ce51c77444c75a3c6397f9adecaa9ff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
