@@ -1475,7 +1475,8 @@ public class DataConnection extends StateMachine {
                                     + " delay=" + delay
                                     + " result=" + result
                                     + " result.isRestartRadioFail=" +
-                                    result.mFailCause.isRestartRadioFail()
+                                    result.mFailCause.isRestartRadioFail(mPhone.getContext(),
+                                            mPhone.getSubId())
                                     + " isPermanentFailure=" +
                                     mDct.isPermanentFailure(result.mFailCause);
                             if (DBG) log(str);
