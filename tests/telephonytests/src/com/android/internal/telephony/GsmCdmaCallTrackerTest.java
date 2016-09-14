@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import android.os.HandlerThread;
+import android.platform.test.annotations.Postsubmit;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -175,6 +176,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testMOCallPendingHangUp() {
