@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fa4df85_035d4a79",
+        "filename": "src/java/com/android/internal/telephony/BaseCommands.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 855,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-09-14T02:30:53Z",
+      "side": 1,
+      "message": "What\u0027s up with this change?",
+      "range": {
+        "startLine": 855,
+        "startChar": 4,
+        "endLine": 855,
+        "endChar": 87
+      },
+      "revId": "439d4cc78ce51c77444c75a3c6397f9adecaa9ff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fa4df85_23608632",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-09-14T02:30:53Z",
+      "side": 1,
+      "message": "Was anything actually using this?",
+      "range": {
+        "startLine": 666,
+        "startChar": 16,
+        "endLine": 678,
+        "endChar": 17
+      },
+      "revId": "439d4cc78ce51c77444c75a3c6397f9adecaa9ff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
