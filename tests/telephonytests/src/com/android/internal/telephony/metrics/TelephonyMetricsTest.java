@@ -16,6 +16,20 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.telephony.ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
+
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doReturn;
+
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
@@ -28,8 +42,8 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.TelephonyProto;
 import com.android.internal.telephony.TelephonyProto.ImsConnectionState;
-import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.TelephonyProto.RadioAccessTechnology;
+import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.CallState;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
@@ -47,18 +61,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
-
-import static android.telephony.ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
-import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
-import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.doReturn;
 
 public class TelephonyMetricsTest extends TelephonyTest {
 
@@ -151,6 +153,21 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertTrue(log.events[0].hasPhoneId());
         assertEquals(mPhone.getPhoneId(), log.events[0].getPhoneId());
         assertEquals(3, log.events[0].getDataStallAction());
+    }
+
+    // Test write modem restart event
+    @Test
+    @SmallTest
+    public void testModemRestartEvent() throws Exception {
+        mMetrics.writeModemRestartEvent(mPhone.getPhoneId(), "Test");
+        TelephonyLog log = buildProto();
+
+        assertEquals(1, log.events.length);
+        assertEquals(0, log.callSessions.length);
+        assertEquals(0, log.smsSessions.length);
+        assertTrue(log.events[0].hasPhoneId());
+        assertEquals(mPhone.getPhoneId(), log.events[0].getPhoneId());
+        assertEquals("Test", log.events[0].modemRestart.getReason());
     }
 
     // Test write on IMS call start

@@ -16,10 +16,10 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.RILConstants.*;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
 
-import android.app.ActivityThread;
+import static com.android.internal.telephony.RILConstants.*;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -38,11 +38,11 @@ import android.os.Parcel;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
-import android.os.WorkSource;
-import android.telephony.ClientRequestStats;
 import android.os.SystemProperties;
+import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
+import android.telephony.ClientRequestStats;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.PcoData;
@@ -60,7 +60,6 @@ import android.util.SparseArray;
 import android.view.Display;
 
 import com.android.internal.telephony.TelephonyProto.SmsSession;
-import com.android.internal.telephony.TelephonyProto.TelephonySettings;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -76,12 +75,6 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
-import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
-import com.android.internal.telephony.cdma.CdmaInformationRecords;
-import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
-import com.android.internal.telephony.dataconnection.DcFailCause;
-import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DataProfile;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -96,8 +89,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
-import static com.android.internal.telephony.RILConstants.*;
 
 /**
  * {@hide}
@@ -3245,6 +3236,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret =  responseString(p); break;
             case RIL_UNSOL_LCEDATA_RECV: ret = responseLceData(p); break;
             case RIL_UNSOL_PCO_DATA: ret = responsePcoData(p); break;
+            case RIL_UNSOL_MODEM_RESTART: ret = responseString(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -3690,6 +3682,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
                 mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
+                break;
+            case RIL_UNSOL_MODEM_RESTART:
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                mMetrics.writeModemRestartEvent(mInstanceId, (String) ret);
                 break;
         }
     }
@@ -4702,6 +4699,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: return "UNSOL_STK_CC_ALPHA_NOTIFY";
             case RIL_UNSOL_LCEDATA_RECV: return "UNSOL_LCE_INFO_RECV";
             case RIL_UNSOL_PCO_DATA: return "UNSOL_PCO_DATA";
+            case RIL_UNSOL_MODEM_RESTART: return "UNSOL_MODEM_RESTART";
             default: return "<unknown response>";
         }
     }

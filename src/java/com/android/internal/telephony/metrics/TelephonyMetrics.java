@@ -16,6 +16,27 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
+
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DIAL;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP;
+import static com.android.internal.telephony.RILConstants
+        .RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS_EXPECT_MORE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IP;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV6;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_PPP;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_UNKNOWN;
+
+import android.os.Build;
 import android.os.SystemClock;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -37,10 +58,12 @@ import com.android.internal.telephony.TelephonyProto.RilDataCall;
 import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent;
+import com.android.internal.telephony.TelephonyProto.TelephonyEvent.ModemRestart;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCall;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
-import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse.RilDataCallFailCause;
+import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse
+        .RilDataCallFailCause;
 import com.android.internal.telephony.TelephonyProto.TelephonyLog;
 import com.android.internal.telephony.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.TelephonyProto.TelephonySettings;
@@ -56,24 +79,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-
-import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DIAL;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS_EXPECT_MORE;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
-import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IP;
-import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
-import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV6;
-import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_PPP;
-import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_UNKNOWN;
 
 /**
  * Telephony metrics holds all metrics events and convert it into telephony proto buf.
@@ -1518,6 +1523,22 @@ public class TelephonyMetrics {
                 new CallSessionEventBuilder(
                         TelephonyCallSession.Event.Type.NITZ_TIME)
                         .setNITZ(timestamp));
+    }
+
+    /**
+     * Write Modem Restart event
+     *
+     * @param phoneId Phone id
+     * @param reason Reason for the modem reset.
+     */
+    public void writeModemRestartEvent(int phoneId, String reason) {
+        final ModemRestart modemRestart = new ModemRestart();
+        String basebandVersion = Build.getRadioVersion();
+        if (basebandVersion != null) modemRestart.setBasebandVersion(basebandVersion);
+        if (reason != null) modemRestart.setReason(reason);
+        TelephonyEvent event = new TelephonyEventBuilder(phoneId).setModemRestart(
+                modemRestart).build();
+        addTelephonyEvent(event);
     }
 
     //TODO: Expand the proto in the future
