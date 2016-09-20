@@ -152,9 +152,19 @@ public class GsmCdmaConnection extends Connection {
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
 
-        if (isPhoneTypeGsm()) {
+        boolean showOrigDialString = false;
+        if (phone != null) {
+            CarrierConfigManager configManager = (CarrierConfigManager)phone.getContext().
+                    getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle pb = configManager.getConfigForSubId(phone.getSubId());
+            if (pb != null) {
+                showOrigDialString = pb.getBoolean("config_show_orig_dial_string_for_cdma");
+            }
+        }
+        if (isPhoneTypeGsm() || showOrigDialString) {
             mDialString = dialString;
-        } else {
+        }
+        if (!isPhoneTypeGsm()) {
             Rlog.d(LOG_TAG, "[GsmCdmaConn] GsmCdmaConnection: dialString=" + maskDialString(dialString));
             dialString = formatDialString(dialString);
             Rlog.d(LOG_TAG,
