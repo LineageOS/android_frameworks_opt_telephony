@@ -52,6 +52,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -74,6 +75,9 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_SIM_LOCKED = 5;
     private static final int EVENT_SIM_IO_ERROR = 6;
     private static final int EVENT_SIM_UNKNOWN = 7;
+    private static final int EVENT_UPDATE_INSERTED_SIM_COUNT = 8;
+
+    private static final int DELAY_MILLIS = 500;
 
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     /**
@@ -101,6 +105,8 @@ public class SubscriptionInfoUpdater extends Handler {
 
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
     public static final String CURR_SUBID = "curr_subid";
+    // Key used to determine if the number of sims in the device has changed
+    private static final String PREF_LAST_SEEN_SIM_COUNT = "previous_update_sim_count";
 
     private static Phone[] mPhone;
     private static Context mContext = null;
@@ -114,6 +120,9 @@ public class SubscriptionInfoUpdater extends Handler {
     // The current foreground user ID.
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
+    private boolean mIsShutdown;
+    private int mCurrentSimCount = 0;
+    private BitSet mLockedSims = new BitSet(PROJECT_SIM_NUM);
 
     public SubscriptionInfoUpdater(Context context, Phone[] phone, CommandsInterface[] ci) {
         logd("Constructor invoked");
@@ -123,10 +132,12 @@ public class SubscriptionInfoUpdater extends Handler {
         mSubscriptionManager = SubscriptionManager.from(mContext);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        mIsShutdown = false;
 
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_USER_UNLOCKED);
+        intentFilter.addAction(Intent.ACTION_SHUTDOWN);
         mContext.registerReceiver(sReceiver, intentFilter);
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
@@ -199,6 +210,11 @@ public class SubscriptionInfoUpdater extends Handler {
                 return;
             }
 
+            if (action.equals(Intent.ACTION_SHUTDOWN)) {
+                mIsShutdown = true;
+                return;
+            }
+
             if (!action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED) &&
                     !action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
                 return;
@@ -235,6 +251,16 @@ public class SubscriptionInfoUpdater extends Handler {
                     logd("Ignoring simStatus: " + simStatus);
                 }
             }
+
+            if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
+                mLockedSims.set(slotId);
+                update(slotId);
+            } else if (IccCardConstants.INTENT_VALUE_ICC_READY.equals(simStatus)
+                    || IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
+                mLockedSims.clear(slotId);
+                update(slotId);
+            }
+
             logd("[Receiver]-");
         }
     };
@@ -294,9 +320,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     logd("Query IccId fail: " + ar.exception);
                 }
                 logd("sIccId[" + slotId + "] = " + mIccId[slotId]);
-                if (isAllIccIdQueryDone()) {
-                    updateSubscriptionInfoByIccId();
-                }
+                update(slotId);
                 broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED,
                                          uObj.reason);
                 if (!ICCID_STRING_FOR_NO_SIM.equals(mIccId[slotId])) {
@@ -339,6 +363,14 @@ public class SubscriptionInfoUpdater extends Handler {
                 handleSimAbsentOrError(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
                 break;
 
+            case EVENT_UPDATE_INSERTED_SIM_COUNT:
+                logd("EVENT_UPDATE_INSERTED_SIM_COUNT: locked sims: " + mLockedSims.cardinality());
+                if (isAllIccIdQueryDone() && !hasMessages(EVENT_UPDATE_INSERTED_SIM_COUNT)) {
+                    updateSubscriptionInfoByIccId();
+                    logd("update inserted sim count, current sim count: " + mCurrentSimCount);
+                }
+                break;
+
             default:
                 logd("Unknown msg:" + msg.what);
         }
@@ -360,7 +392,6 @@ public class SubscriptionInfoUpdater extends Handler {
             mIccId[slotId] = null;
         }
 
-
         IccFileHandler fileHandler = mPhone[slotId].getIccCard() == null ? null :
                 mPhone[slotId].getIccCard().getIccFileHandler();
 
@@ -378,6 +409,14 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         } else {
             logd("sFh[" + slotId + "] is null, ignore");
+        }
+        update(slotId);
+    }
+
+    private void update(int slotId) {
+        sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId), DELAY_MILLIS);
+        if (isAllIccIdQueryDone()) {
+            updateSubscriptionInfoByIccId();
         }
     }
 
@@ -397,10 +436,7 @@ public class SubscriptionInfoUpdater extends Handler {
             return;
         }
         mIccId[slotId] = records.getIccId();
-
-        if (isAllIccIdQueryDone()) {
-            updateSubscriptionInfoByIccId();
-        }
+        update(slotId);
 
         int subId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
         int[] subIds = SubscriptionController.getInstance().getSubId(slotId);
@@ -520,9 +556,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("SIM" + (slotId + 1) + " hot plug out or error");
         }
         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-        if (isAllIccIdQueryDone()) {
-            updateSubscriptionInfoByIccId();
-        }
+        update(slotId);
         updateCarrierServices(slotId, simState);
     }
 
@@ -533,7 +567,11 @@ public class SubscriptionInfoUpdater extends Handler {
     synchronized protected void updateSubscriptionInfoByIccId() {
         logd("updateSubscriptionInfoByIccId:+ Start");
 
-        mSubscriptionManager.clearSubscriptionInfo();
+        // only update external state if we have no pending updates pending
+        boolean update = !hasMessages(EVENT_UPDATE_INSERTED_SIM_COUNT);
+        if (update) {
+            mSubscriptionManager.clearSubscriptionInfo();
+        }
 
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             mInsertSimState[i] = SIM_NOT_CHANGE;
@@ -547,6 +585,7 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
         logd("insertedSimCount = " + insertedSimCount);
+        mCurrentSimCount = insertedSimCount;
 
         int index = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
@@ -607,13 +646,13 @@ public class SubscriptionInfoUpdater extends Handler {
             if (mInsertSimState[i] == SIM_NOT_INSERT) {
                 logd("updateSubscriptionInfoByIccId: No SIM inserted in slot " + i + " this time");
             } else {
-                if (mInsertSimState[i] > 0) {
+                if (mInsertSimState[i] > 0 && update) {
                     //some special SIMs may have the same IccIds, add suffix to distinguish them
                     //FIXME: addSubInfoRecord can return an error.
                     mSubscriptionManager.addSubscriptionInfoRecord(mIccId[i]
                             + Integer.toString(mInsertSimState[i]), i);
                     logd("SUB" + (i + 1) + " has invalid IccId");
-                } else /*if (sInsertSimState[i] != SIM_NOT_INSERT)*/ {
+                } else if (update)/*if (sInsertSimState[i] != SIM_NOT_INSERT)*/ {
                     mSubscriptionManager.addSubscriptionInfoRecord(mIccId[i], i);
                 }
                 if (isNewSim(mIccId[i], oldIccId)) {
@@ -664,12 +703,66 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        // Ensure the modems are mapped correctly
-        mSubscriptionManager.setDefaultDataSubId(
-                mSubscriptionManager.getDefaultDataSubscriptionId());
+        if (update && !mIsShutdown && mLockedSims.cardinality() == 0) {
+            final int previousUpdateSimCount = previousUpdateSimCount();
+            if (previousUpdateSimCount != insertedSimCount) {
+                logd("number of sims changed, resetting sms prompt, old sim count: "
+                        + previousUpdateSimCount);
+                if (insertedSimCount == 1 && PROJECT_SIM_NUM > 1) {
+                    // 1 sim, msim device: clear stale defaults (doesn't clear inactive subs)
+                    mSubscriptionManager.clearDefaultsForInactiveSubIds();
 
-        SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+                    // then disable sms prompt (sms app will default to inserted sim)
+                    PhoneFactory.setSMSPromptEnabled(false); // can't prompt for 1 sim
+
+                    // finally, disable data if this single sim isn't our our selected data sim previously
+                    int realStoredDataSub = Settings.Global.getInt(mContext.getContentResolver(),
+                            Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
+                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+                    if (realStoredDataSub != SubscriptionManager.INVALID_SUBSCRIPTION_ID &&
+                            realStoredDataSub != SubscriptionManager.getDefaultDataSubscriptionId()) {
+                        logd("switching data off; real stored sub: " + realStoredDataSub
+                                + ", and we think the default sub id is now: "
+                                + SubscriptionManager.getDefaultDataSubscriptionId());
+                        PhoneFactory.getDefaultPhone().setDataEnabled(false);
+                    }
+                } else if (insertedSimCount > 1) {
+                    // we now have multiple sims, maybe enable the SMS prompt if no valid
+                    // sub is ready to handle SMS
+                    PhoneFactory.setSMSPromptEnabled(!SubscriptionManager.isValidSubscriptionId(
+                            SubscriptionManager.getDefaultSmsSubscriptionId()));
+                }
+                setPreviousUpdateSimCount(insertedSimCount);
+            }
+            // Ensure the modems are mapped correctly
+            // will not override MSIM settings with 1 sim in the device.
+            mSubscriptionManager.setDefaultDataSubId(SubscriptionManager.getDefaultDataSubscriptionId());
+            SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+        } else if (update && !mIsShutdown) {
+            // we have locked sims, need to update so we can unlock them
+            SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+        }
         logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
+    }
+
+    private int previousUpdateSimCount() {
+        return PreferenceManager.getDefaultSharedPreferences(mContext)
+                .getInt(PREF_LAST_SEEN_SIM_COUNT, 0);
+    }
+
+    private void setPreviousUpdateSimCount(int simCount) {
+        PreferenceManager.getDefaultSharedPreferences(mContext)
+                .edit()
+                .putInt(PREF_LAST_SEEN_SIM_COUNT, simCount)
+                .apply();
+    }
+
+    protected int getInsertedSimCount() {
+        if (!isAllIccIdQueryDone()) {
+            return 0;
+        }
+        return mCurrentSimCount;
     }
 
     private boolean isNewSim(String iccId, String[] oldIccId) {
