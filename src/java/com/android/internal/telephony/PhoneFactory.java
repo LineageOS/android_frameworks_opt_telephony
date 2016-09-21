@@ -366,14 +366,6 @@ public class PhoneFactory {
        return prompt;
     }
 
-    /* Sets User SMS Prompt property,  enable or not */
-    public static void setSMSPromptEnabled(boolean enabled) {
-        int value = (enabled == false) ? 0 : 1;
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_SMS_PROMPT, value);
-        Rlog.d(LOG_TAG, "setSMSPromptOption to " + enabled);
-    }
-
     /**
      * Makes a {@link ImsPhone} object.
      * @return the {@code ImsPhone} object or null if the exception occured
@@ -512,9 +504,5 @@ public class PhoneFactory {
             pw.flush();
         }
         pw.decreaseIndent();
-    }
-
-    public static SubscriptionInfoUpdater getSubscriptionInfoUpdater() {
-        return sSubInfoRecordUpdater;
     }
 }
