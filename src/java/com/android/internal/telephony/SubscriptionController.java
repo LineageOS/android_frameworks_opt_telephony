@@ -186,14 +186,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean isSubInfoReady() {
-        final SubscriptionInfoUpdater subUpdater = PhoneFactory.getSubscriptionInfoUpdater();
-        return subUpdater != null && sSlotIdxToSubId.size() == subUpdater.getInsertedSimCount();
-    }
-
-    private boolean isSingleSimActiveOnMSIM() {
-        final SubscriptionInfoUpdater subUpdater = PhoneFactory.getSubscriptionInfoUpdater();
-        return subUpdater != null && subUpdater.getInsertedSimCount() == 1
-                && getActiveSubInfoCountMax() > 1;
+        return sSlotIdxToSubId.size() > 0;
     }
 
     private SubscriptionController(Phone phone) {
@@ -687,7 +680,7 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getActiveSubInfoCountMax() {
         // FIXME: This valid now but change to use TelephonyDevController in the future
-        return TelephonyManager.getDefault().getSimCount();
+        return mTelephonyManager.getSimCount();
     }
 
     /**
@@ -778,28 +771,22 @@ public class SubscriptionController extends ISub.Stub {
                             // may not be true, for instance with multiple subs per slot.
                             // But is true at the moment.
                             sSlotIdxToSubId.put(slotId, subId);
-                            int simCount = PhoneFactory.getSubscriptionInfoUpdater()
-                                    .getInsertedSimCount();
+                            int subIdCountMax = getActiveSubInfoCountMax();
                             int defaultSubId = getDefaultSubId();
                             if (DBG) {
                                 logdl("[addSubInfoRecord]"
                                         + " sSlotIdxToSubId.size=" + sSlotIdxToSubId.size()
                                         + " slotId=" + slotId + " subId=" + subId
-                                        + " defaultSubId=" + defaultSubId + " simCount=" + simCount);
-                            }
-
-                            if (!isSubInfoReady()) {
-                                continue;
+                                        + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
                             }
 
                             // Set the default sub if not set or if single sim device
                             if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                    || simCount == 1 || (!isActiveSubId(defaultSubId))) {
+                                    || subIdCountMax == 1 || (!isActiveSubId(defaultSubId))) {
                                 setDefaultFallbackSubId(subId);
                             }
                             // If single sim device, set this subscription as the default for everything
-                            if (simCount == 1
-                                    && TelephonyManager.getDefault().getSimCount() == 1) {
+                            if (subIdCountMax == 1) {
                                 if (DBG) {
                                     logdl("[addSubInfoRecord] one sim set defaults to subId=" + subId);
                                 }
@@ -1388,10 +1375,6 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public int getDefaultSmsSubId() {
-        if (isSingleSimActiveOnMSIM()) {
-            if (VDBG) logd("[getDefaultSmsSubId] overridden to current single active sim");
-            return mDefaultFallbackSubId;
-        }
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
@@ -1423,10 +1406,6 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public int getDefaultVoiceSubId() {
-        if (isSingleSimActiveOnMSIM()) {
-            if (VDBG) logd("[getDefaultVoiceSubId] overridden to current single active sim");
-            return mDefaultFallbackSubId;
-        }
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
@@ -1436,10 +1415,6 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public int getDefaultDataSubId() {
-        if (isSingleSimActiveOnMSIM()) {
-            if (VDBG) logd("[getDefaultDataSubId] overridden to current single active sim");
-            return mDefaultFallbackSubId;
-        }
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
@@ -1492,10 +1467,8 @@ public class SubscriptionController extends ISub.Stub {
         // FIXME is this still needed?
         updateAllDataConnectionTrackers();
 
-        if (!isSingleSimActiveOnMSIM()) {
-            Settings.Global.putInt(mContext.getContentResolver(),
-                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
-        }
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
         broadcastDefaultDataSubIdChanged(subId);
     }
 
@@ -1530,7 +1503,7 @@ public class SubscriptionController extends ISub.Stub {
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
             int phoneId = getPhoneId(subId);
             if (phoneId >= 0 && (phoneId < mTelephonyManager.getPhoneCount()
-                    || isSingleSimActiveOnMSIM())) {
+                    || mTelephonyManager.getSimCount() == 1)) {
                 if (DBG) logdl("[setDefaultFallbackSubId] set mDefaultFallbackSubId=" + subId);
                 mDefaultFallbackSubId = subId;
                 // Update MCC MNC device configuration information
