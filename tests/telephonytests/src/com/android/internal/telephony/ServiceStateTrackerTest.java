@@ -28,6 +28,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.SystemClock;
 import android.os.UserHandle;
+import android.platform.test.annotations.Postsubmit;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
@@ -312,6 +313,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertFalse(sst.isImsRegistered());
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testSignalStrength() {
