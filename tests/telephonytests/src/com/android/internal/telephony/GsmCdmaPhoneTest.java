@@ -107,7 +107,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
         //wait for voice RAT to be updated
-        waitForMs(50);
+        waitForMs(100);
         assertEquals(PhoneConstants.PHONE_TYPE_CDMA, mPhoneUT.getPhoneType());
     }
 
