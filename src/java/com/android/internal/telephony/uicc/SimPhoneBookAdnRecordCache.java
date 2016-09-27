@@ -195,6 +195,18 @@ public final class SimPhoneBookAdnRecordCache extends Handler {
     public void updateSimPbAdnBySearch(AdnRecord oldAdn, AdnRecord newAdn, Message response) {
         ArrayList<AdnRecord> oldAdnList = mSimPbRecords;
 
+        synchronized (mLock) {
+            if (!mSimPbRecords.isEmpty()) {
+                log("ADN cache has already filled in");
+                if (mRefreshAdnCache) {
+                    mRefreshAdnCache = false;
+                    refreshAdnCache();
+                }
+            } else {
+                queryAdnRecord();
+            }
+        }
+
         if (oldAdnList == null) {
             sendErrorResponse(response, "Sim PhoneBook Adn list not exist");
             return;
