@@ -15,7 +15,10 @@
  */
 package com.android.internal.telephony.dataconnection;
 
+import android.content.Context;
 import android.content.res.Resources;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import java.util.HashMap;
 
 /**
@@ -117,8 +120,6 @@ public enum DcFailCause {
     LOST_CONNECTION(0x10004),
     RESET_BY_FRAMEWORK(0x10005);
 
-    private final boolean mRestartRadioOnRegularDeactivation = Resources.getSystem().getBoolean(
-            com.android.internal.R.bool.config_restart_radio_on_pdp_fail_regular_deactivation);
     private final int mErrorCode;
     private static final HashMap<Integer, DcFailCause> sErrorCodeToFailCauseMap;
     static {
@@ -136,9 +137,27 @@ public enum DcFailCause {
         return mErrorCode;
     }
 
-    /** Radio has failed such that the radio should be restarted */
-    public boolean isRestartRadioFail() {
-        return (this == REGULAR_DEACTIVATION && mRestartRadioOnRegularDeactivation);
+    /**
+     * Returns whether or not the radio has failed and also needs to be restarted.
+     * By default, we do not restart radio on REGULAR_DEACTIVATION.
+     *
+     * @param context device context
+     * @param subId subscription id
+     * @return true if the radio has failed and the carrier requres restart, otherwise false
+     */
+    public boolean isRestartRadioFail(Context context, int subId) {
+        if (this == REGULAR_DEACTIVATION) {
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager != null) {
+                PersistableBundle b = configManager.getConfigForSubId(subId);
+                if (b != null) {
+                    return b.getBoolean(CarrierConfigManager.
+                            KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL);
+                }
+            }
+        }
+        return false;
     }
 
     public boolean isPermanentFail() {
