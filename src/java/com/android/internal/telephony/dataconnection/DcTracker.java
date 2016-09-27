@@ -3008,7 +3008,8 @@ public class DcTracker extends Handler {
             intent.putExtra(APN_TYPE_KEY, apnContext.getApnType());
             notifyCarrierAppWithIntent(intent);
 
-            if (cause.isRestartRadioFail() || apnContext.restartOnError(cause.getErrorCode())) {
+            if (cause.isRestartRadioFail(mPhone.getContext(), mPhone.getSubId()) ||
+                    apnContext.restartOnError(cause.getErrorCode())) {
                 if (DBG) log("Modem restarted.");
                 sendRestartRadio();
             }
