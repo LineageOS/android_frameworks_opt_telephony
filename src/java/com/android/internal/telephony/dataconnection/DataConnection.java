@@ -1556,6 +1556,24 @@ public class DataConnection extends StateMachine {
         @Override public void enter() {
             if (DBG) log("DcActiveState: enter dc=" + DataConnection.this);
 
+            // verify and get updated information in case these things
+            // are obsolete
+            {
+                ServiceState ss = mPhone.getServiceState();
+                final int networkType = ss.getDataNetworkType();
+                if (mNetworkInfo.getSubtype() != networkType) {
+                    log("DcActiveState with incorrect subtype (" + mNetworkInfo.getSubtype() +
+                            ", " + networkType + "), updating.");
+                }
+                mNetworkInfo.setSubtype(networkType, TelephonyManager.getNetworkTypeName(networkType));
+                final boolean roaming = ss.getDataRoaming();
+                if (roaming != mNetworkInfo.isRoaming()) {
+                    log("DcActiveState with incorrect roaming (" + mNetworkInfo.isRoaming() +
+                            ", " + roaming +"), updating.");
+                }
+                mNetworkInfo.setRoaming(roaming);
+            }
+
             boolean createNetworkAgent = true;
             // If a disconnect is already pending, avoid notifying all of connected
             if (hasMessages(EVENT_DISCONNECT) ||
