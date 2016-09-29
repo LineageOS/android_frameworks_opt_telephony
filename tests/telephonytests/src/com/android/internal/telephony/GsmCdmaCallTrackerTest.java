@@ -17,6 +17,8 @@ package com.android.internal.telephony;
 
 import android.os.HandlerThread;
 import android.os.SystemProperties;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -69,8 +71,6 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         super.setUp(this.getClass().getSimpleName());
         mSimulatedCommands.setRadioPower(true, null);
         mPhone.mCi = this.mSimulatedCommands;
-        mContextFixture.putStringArrayResource(com.android.internal.R.array.dial_string_replace,
-                new String[]{});
 
         new GsmCdmaCTHandlerThread(TAG).start();
 
