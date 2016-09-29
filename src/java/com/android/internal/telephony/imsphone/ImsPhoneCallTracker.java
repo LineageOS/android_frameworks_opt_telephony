@@ -776,8 +776,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             // Swap the ImsCalls pointed to by the foreground and background ImsPhoneCalls.
             // If hold or resume later fails, we will swap them back.
+            boolean switchingWithWaitingCall = mBackgroundCall.getImsCall() == null &&
+                    mRingingCall != null &&
+                    mRingingCall.getState() == ImsPhoneCall.State.WAITING;
+
             mSwitchingFgAndBgCalls = true;
-            mCallExpectedToResume = mBackgroundCall.getImsCall();
+            if (switchingWithWaitingCall) {
+                mCallExpectedToResume = mRingingCall.getImsCall();
+            } else {
+                mCallExpectedToResume = mBackgroundCall.getImsCall();
+            }
             mForegroundCall.switchWith(mBackgroundCall);
 
             // Hold the foreground call; once the foreground call is held, the background call will
@@ -788,6 +796,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 // If there is no background call to resume, then don't expect there to be a switch.
                 if (mCallExpectedToResume == null) {
+                    log("mCallExpectedToResume is null");
                     mSwitchingFgAndBgCalls = false;
                 }
             } catch (ImsException e) {
@@ -1446,6 +1455,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onCallStarted(ImsCall imsCall) {
             if (DBG) log("onCallStarted");
 
+            if (mSwitchingFgAndBgCalls) {
+                // If we put a call on hold to answer an incoming call, we should reset the
+                // variables that keep track of the switch here.
+                if (mCallExpectedToResume != null && mCallExpectedToResume == imsCall) {
+                    if (DBG) log("onCallStarted: starting a call as a result of a switch.");
+                    mSwitchingFgAndBgCalls = false;
+                    mCallExpectedToResume = null;
+                }
+            }
+
             mPendingMO = null;
             processCallStateChange(imsCall, ImsPhoneCall.State.ACTIVE,
                     DisconnectCause.NOT_DISCONNECTED);
@@ -1482,6 +1501,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallStartFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (DBG) log("onCallStartFailed reasonCode=" + reasonInfo.getCode());
+
+            if (mSwitchingFgAndBgCalls) {
+                // If we put a call on hold to answer an incoming call, we should reset the
+                // variables that keep track of the switch here.
+                if (mCallExpectedToResume != null && mCallExpectedToResume == imsCall) {
+                    if (DBG) log("onCallStarted: starting a call as a result of a switch.");
+                    mSwitchingFgAndBgCalls = false;
+                    mCallExpectedToResume = null;
+                }
+            }
 
             if (mPendingMO != null) {
                 // To initiate dialing circuit-switched call
@@ -1591,7 +1620,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
                 // This call terminated in the midst of a switch after the other call was held, so
                 // resume it back to ACTIVE state since the switch failed.
-                if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING) {
+                log("onCallTerminated: foreground call in state " + mForegroundCall.getState() +
+                        " and ringing call in state " + (mRingingCall == null ? "null" :
+                        mRingingCall.getState().toString()));
+
+                if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING ||
+                        mRingingCall.getState() == ImsPhoneCall.State.WAITING) {
                     sendEmptyMessage(EVENT_RESUME_BACKGROUND);
                     mSwitchingFgAndBgCalls = false;
                     mCallExpectedToResume = null;
