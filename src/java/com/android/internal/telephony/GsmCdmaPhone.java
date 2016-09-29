@@ -74,6 +74,7 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.test.SimulatedRadioControl;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -276,6 +277,7 @@ public class GsmCdmaPhone extends Phone {
         mMeid = null;
 
         mPrecisePhoneType = precisePhoneType;
+        logd("Precise phone type " + mPrecisePhoneType);
 
         TelephonyManager tm = TelephonyManager.from(mContext);
         if (isPhoneTypeGsm()) {
@@ -302,7 +304,7 @@ public class GsmCdmaPhone extends Phone {
             logd("init: operatorAlpha='" + operatorAlpha
                     + "' operatorNumeric='" + operatorNumeric + "'");
             if (mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP) ==
-                    null || isPhoneTypeCdmaLte()) {
+                    null || isPhoneTypeCdmaLte() || isPhoneTypeCdma()) {
                 if (!TextUtils.isEmpty(operatorAlpha)) {
                     logd("init: set 'gsm.sim.operator.alpha' to operator='" + operatorAlpha + "'");
                     tm.setSimOperatorNameForPhone(mPhoneId, operatorAlpha);
@@ -681,7 +683,7 @@ public class GsmCdmaPhone extends Phone {
         if (getUnitTestMode()) {
             return;
         }
-        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte() || isPhoneTypeCdma()) {
             TelephonyManager.setTelephonyProperty(mPhoneId, property, value);
         } else {
             super.setSystemProperty(property, value);
@@ -1571,7 +1573,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public String getSystemProperty(String property, String defValue) {
-        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte() || isPhoneTypeCdma()) {
             if (getUnitTestMode()) {
                 return null;
             }
@@ -2399,7 +2401,7 @@ public class GsmCdmaPhone extends Phone {
         if (mSimRecords != null) {
             mSimRecords.unregisterForRecordsLoaded(this);
         }
-        if (isPhoneTypeCdmaLte()) {
+        if (isPhoneTypeCdmaLte() || isPhoneTypeCdma()) {
             newUiccApplication = mUiccController.getUiccCardApplication(mPhoneId,
                     UiccController.APP_FAM_3GPP);
             SIMRecords newSimRecords = null;
@@ -2461,7 +2463,7 @@ public class GsmCdmaPhone extends Phone {
      */
     @Override
     public boolean updateCurrentCarrierInProvider() {
-        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte() || isPhoneTypeCdma()) {
             long currentDds = SubscriptionManager.getDefaultDataSubscriptionId();
             String operatorNumeric = getOperatorNumeric();
 
@@ -2735,7 +2737,7 @@ public class GsmCdmaPhone extends Phone {
             mIsPhoneInEcmState = true;
             // notify change
             sendEmergencyCallbackModeChange();
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
+            super.setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
@@ -2769,7 +2771,7 @@ public class GsmCdmaPhone extends Phone {
 
             if (mIsPhoneInEcmState) {
                 mIsPhoneInEcmState = false;
-                setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+                super.setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
             }
             // send an Intent
             sendEmergencyCallbackModeChange();
@@ -3146,7 +3148,13 @@ public class GsmCdmaPhone extends Phone {
                 + (ServiceState.isGsm(newVoiceRadioTech) ? "GSM" : "CDMA"));
 
         if (ServiceState.isCdma(newVoiceRadioTech)) {
-            switchPhoneType(PhoneConstants.PHONE_TYPE_CDMA_LTE);
+            UiccCardApplication cdmaApplication =
+                    mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP2);
+            if (cdmaApplication != null && cdmaApplication.getType() == AppType.APPTYPE_RUIM) {
+                switchPhoneType(PhoneConstants.PHONE_TYPE_CDMA);
+            } else {
+                switchPhoneType(PhoneConstants.PHONE_TYPE_CDMA_LTE);
+            }
         } else if (ServiceState.isGsm(newVoiceRadioTech)) {
             switchPhoneType(PhoneConstants.PHONE_TYPE_GSM);
         } else {
@@ -3266,8 +3274,16 @@ public class GsmCdmaPhone extends Phone {
             if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
                 operatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
             } else if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_RUIM_SIM) {
-                curIccRecords = mSimRecords;
-                if (curIccRecords != null) {
+                UiccCardApplication uiccCardApplication = mUiccApplication.get();
+                if (uiccCardApplication != null
+                        && uiccCardApplication.getType() == AppType.APPTYPE_RUIM) {
+                    logd("Legacy RUIM app present");
+                    curIccRecords = mIccRecords.get();
+                } else {
+                    // Use sim-records for SimApp, USimApp, CSimApp and ISimApp.
+                    curIccRecords = mSimRecords;
+                }
+                if (curIccRecords != null && curIccRecords == mSimRecords) {
                     operatorNumeric = curIccRecords.getOperatorNumeric();
                 } else {
                     curIccRecords = mIccRecords.get();
@@ -3377,4 +3393,22 @@ public class GsmCdmaPhone extends Phone {
         return result;
     }
 
+    @Override
+    public int getLteOnCdmaMode() {
+        int currentConfig = super.getLteOnCdmaMode();
+        int lteOnCdmaModeDynamicValue = currentConfig;
+
+        UiccCardApplication cdmaApplication =
+                    mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP2);
+        if (cdmaApplication != null && cdmaApplication.getType() == AppType.APPTYPE_RUIM) {
+            //Legacy RUIM cards don't support LTE.
+            lteOnCdmaModeDynamicValue = RILConstants.LTE_ON_CDMA_FALSE;
+
+            //Override only if static configuration is TRUE.
+            if (currentConfig == RILConstants.LTE_ON_CDMA_TRUE) {
+                return lteOnCdmaModeDynamicValue;
+            }
+        }
+        return currentConfig;
+    }
 }

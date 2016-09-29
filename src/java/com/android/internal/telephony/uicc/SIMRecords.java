@@ -1478,6 +1478,31 @@ public class SIMRecords extends IccRecords {
         } else {
             setSpnFromConfig(getOperatorNumeric());
         }
+        setDisplayName();
+    }
+
+    private void setDisplayName() {
+        SubscriptionManager subManager = SubscriptionManager.from(mContext);
+        int[] subId = subManager.getSubId(mParentApp.getPhoneId());
+
+        if ((subId == null) || subId.length <= 0) {
+            log("subId not valid for Phone " + mParentApp.getPhoneId());
+            return;
+        }
+
+        SubscriptionInfo subInfo = subManager.getActiveSubscriptionInfo(subId[0]);
+        if (subInfo != null && subInfo.getNameSource() !=
+                    SubscriptionManager.NAME_SOURCE_USER_INPUT) {
+            CharSequence oldSubName = subInfo.getDisplayName();
+            String newCarrierName = mTelephonyManager.getSimOperatorName(subId[0]);
+
+            if (!TextUtils.isEmpty(newCarrierName) && !newCarrierName.equals(oldSubName)) {
+                log("sim name[" + mParentApp.getPhoneId() + "] = " + newCarrierName);
+                SubscriptionController.getInstance().setDisplayName(newCarrierName, subId[0]);
+            }
+        } else {
+            log("SUB[" + mParentApp.getPhoneId() + "] " + subId[0] + " SubInfo not created yet");
+        }
     }
 
     private void setSpnFromConfig(String carrier) {

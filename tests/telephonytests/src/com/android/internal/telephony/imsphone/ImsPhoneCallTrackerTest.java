@@ -156,7 +156,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 return mServiceId;
             }
         }).when(mImsManager).open(anyInt(), (PendingIntent) any(),
-                (ImsConnectionStateListener) any());
+                (ImsConnectionStateListener) any(), anyInt());
 
         doAnswer(new Answer<ImsCall>() {
             @Override

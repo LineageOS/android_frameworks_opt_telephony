@@ -82,11 +82,8 @@ public class PhoneFactory {
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
 
-    //property to get max data run time
-    private static final String OVERRIDE_MODEM_DUAL_DATA_CAP_PROP = "persist.radio.msim.data.cap";
     // TODO - make this a dynamic property read from the modem
-    public static final int MAX_ACTIVE_PHONES = SystemProperties.getInt(
-            OVERRIDE_MODEM_DUAL_DATA_CAP_PROP, 1);
+    public static final int MAX_ACTIVE_PHONES = 1;
 
     //***** Class Methods
 
