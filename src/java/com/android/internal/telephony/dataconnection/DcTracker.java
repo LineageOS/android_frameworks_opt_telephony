@@ -81,8 +81,8 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.TelephonyEventLog;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.ArrayUtils;
@@ -125,7 +125,6 @@ public class DcTracker extends Handler {
     // All data enabling/disabling related settings
     private final DataEnabledSettings mDataEnabledSettings = new DataEnabledSettings();
 
-    private final TelephonyEventLog mTelephonyEventLog;
 
     /**
      * After detecting a potential connection problem, this is the max number
@@ -722,8 +721,6 @@ public class DcTracker extends Handler {
 
         mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         registerSettingsObserver();
-
-        mTelephonyEventLog = new TelephonyEventLog(mPhone.getPhoneId());
     }
 
     @VisibleForTesting
@@ -735,7 +732,6 @@ public class DcTracker extends Handler {
         mDataConnectionTracker = null;
         mProvisionActionName = null;
         mSettingsObserver = new SettingsObserver(null, this);
-        mTelephonyEventLog = new TelephonyEventLog(0);
     }
 
     public void registerServiceStateTrackerEvents() {
@@ -4608,7 +4604,7 @@ public class DcTracker extends Handler {
         if (getOverallState() == DctConstants.State.CONNECTED) {
             // Go through a series of recovery steps, each action transitions to the next action
             final int recoveryAction = getRecoveryAction();
-            mTelephonyEventLog.writeDataStallEvent(recoveryAction);
+            TelephonyMetrics.getInstance().writeDataStallEvent(mPhone.getPhoneId(), recoveryAction);
             switch (recoveryAction) {
             case RecoveryAction.GET_DATA_CALL_LIST:
                 EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,

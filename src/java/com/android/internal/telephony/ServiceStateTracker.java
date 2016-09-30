@@ -84,6 +84,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
@@ -106,7 +107,6 @@ public class ServiceStateTracker extends Handler {
     private UiccController mUiccController = null;
     private UiccCardApplication mUiccApplcation = null;
     private IccRecords mIccRecords = null;
-    private TelephonyEventLog mEventLog;
 
     private boolean mVoiceCapable;
 
@@ -545,7 +545,6 @@ public class ServiceStateTracker extends Handler {
         filter.addAction(ACTION_RADIO_OFF);
         context.registerReceiver(mIntentReceiver, filter);
 
-        mEventLog = new TelephonyEventLog(mPhone.getPhoneId());
         mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
 
         updatePhoneType();
@@ -2762,7 +2761,7 @@ public class ServiceStateTracker extends Handler {
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
 
-            mEventLog.writeServiceStateChanged(mSS);
+            TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
         if (hasGprsAttached || hasGprsDetached || hasRegistered || hasDeregistered) {
@@ -4061,6 +4060,8 @@ public class ServiceStateTracker extends Handler {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         intent.putExtra("time", time);
         mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+
+        TelephonyMetrics.getInstance().writeNITZEvent(mPhone.getPhoneId(), time);
     }
 
     private void revertToNitzTime() {
