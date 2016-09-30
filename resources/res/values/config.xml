@@ -78,4 +78,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <!-- control to enable or disable call transfer feature -->
     <bool name="config_enable_calltransfer_over_ims">false</bool>
+
+    <!-- pre-defined apps -->
+    <!-- value should be in the format "com.package.name/com.package.name.MmsPushReceiver" -->
+    <string name="default_wap_push_handler"></string>
 </resources>
