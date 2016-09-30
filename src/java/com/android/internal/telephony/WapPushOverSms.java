@@ -44,8 +44,10 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
+import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.internal.telephony.ConfigResourceUtil;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.google.android.mms.MmsException;
 import com.google.android.mms.pdu.DeliveryInd;
@@ -292,9 +294,18 @@ public class WapPushOverSms implements ServiceConnection {
             intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
 
+            // Direct the intent to only the default WAP Push app. If none declared:
             // Direct the intent to only the default MMS app. If we can't find a default MMS app
             // then sent it to all broadcast receivers.
-            ComponentName componentName = SmsApplication.getDefaultMmsApplication(mContext, true);
+            ComponentName componentName = null;
+            String fqcn = new ConfigResourceUtil().getStringValue(mContext, "default_wap_push_handler");
+            if (!TextUtils.isEmpty(fqcn)) {
+                componentName = ComponentName.unflattenFromString(fqcn);
+            }
+            if (componentName == null) {
+                componentName = SmsApplication.getDefaultMmsApplication(mContext, true);
+            }
+
             Bundle options = null;
             if (componentName != null) {
                 // Deliver MMS message only to this receiver
