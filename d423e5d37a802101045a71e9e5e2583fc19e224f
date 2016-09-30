@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff2e2bb8_08aceb8a",
+        "filename": "src/java/com/android/internal/telephony/WapPushOverSms.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2016-09-30T15:36:43Z",
+      "side": 1,
+      "message": "just to be safe, check that parsed.length \u003d\u003d 2.",
+      "revId": "d423e5d37a802101045a71e9e5e2583fc19e224f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff2e2bb8_e8a8a778",
+        "filename": "src/java/com/android/internal/telephony/WapPushOverSms.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2016-09-30T15:36:43Z",
+      "side": 1,
+      "message": "brackets.",
+      "revId": "d423e5d37a802101045a71e9e5e2583fc19e224f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
