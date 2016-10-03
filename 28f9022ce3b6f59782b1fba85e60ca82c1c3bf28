@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff2e2bb8_eccf1455",
+        "filename": "src/java/com/android/internal/telephony/WapPushOverSms.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-10-03T11:08:24Z",
+      "side": 1,
+      "message": "The standard separator for activities is \"/\". Use that instead of #.",
+      "revId": "28f9022ce3b6f59782b1fba85e60ca82c1c3bf28",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
