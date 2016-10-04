@@ -114,21 +114,24 @@ public class IccCardStatus {
         .append(",num_apps=").append(mApplications.length)
         .append(",gsm_id=").append(mGsmUmtsSubscriptionAppIndex);
         if (mGsmUmtsSubscriptionAppIndex >=0
-                && mGsmUmtsSubscriptionAppIndex <CARD_MAX_APPS) {
+                && mGsmUmtsSubscriptionAppIndex <CARD_MAX_APPS
+                && mApplications.length > 0) {
             app = mApplications[mGsmUmtsSubscriptionAppIndex];
             sb.append(app == null ? "null" : app);
         }
 
         sb.append(",cdma_id=").append(mCdmaSubscriptionAppIndex);
         if (mCdmaSubscriptionAppIndex >=0
-                && mCdmaSubscriptionAppIndex <CARD_MAX_APPS) {
+                && mCdmaSubscriptionAppIndex <CARD_MAX_APPS
+                && mApplications.length > 0) {
             app = mApplications[mCdmaSubscriptionAppIndex];
             sb.append(app == null ? "null" : app);
         }
 
         sb.append(",ims_id=").append(mImsSubscriptionAppIndex);
         if (mImsSubscriptionAppIndex >=0
-                && mImsSubscriptionAppIndex <CARD_MAX_APPS) {
+                && mImsSubscriptionAppIndex <CARD_MAX_APPS
+                && mApplications.length > 0) {
             app = mApplications[mImsSubscriptionAppIndex];
             sb.append(app == null ? "null" : app);
         }
