@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff2e2bb8_78273eb8",
+        "filename": "src/java/com/android/internal/telephony/InboundSmsHandler.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2016-10-04T11:48:32Z",
+      "side": 1,
+      "message": "Check that it\u0027s empty instead,\n\nnew String(\"\") !\u003d new String(\"\");",
+      "revId": "427f7b9bc66d063257b90d9365d25c2c79a3d33c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
