@@ -2289,8 +2289,20 @@ public class DcTracker extends Handler {
      * @return true if only single DataConnection is allowed
      */
     private boolean isOnlySingleDcAllowed(int rilRadioTech) {
-        int[] singleDcRats = mPhone.getContext().getResources().getIntArray(
-                com.android.internal.R.array.config_onlySingleDcAllowed);
+        // Default single dc rats with no knowledge of carrier
+        int[] singleDcRats = null;
+        // get the carrier specific value, if it exists, from CarrierConfigManager
+        // generally configManager and bundle should not be null, but if they are it should be okay
+        // to leave singleDcRats null as well
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            PersistableBundle bundle = configManager.getConfig();
+            if (bundle != null) {
+                singleDcRats = bundle.getIntArray(
+                        CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY);
+            }
+        }
         boolean onlySingleDcAllowed = false;
         if (Build.IS_DEBUGGABLE &&
                 SystemProperties.getBoolean("persist.telephony.test.singleDc", false)) {
