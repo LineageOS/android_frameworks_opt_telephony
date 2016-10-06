@@ -231,8 +231,8 @@ public class ImsPhone extends ImsPhoneBase {
         updateDataServiceState();
 
         mDefaultPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
-        // Force update roaming state
-        updateRoamingState(getCurrentRoaming());
+        // Force initial roaming state update later, on EVENT_CARRIER_CONFIG_CHANGED.
+        // Settings provider or CarrierConfig may not be loaded now.
     }
 
     //todo: get rid of this function. It is not needed since parentPhone obj never changes
