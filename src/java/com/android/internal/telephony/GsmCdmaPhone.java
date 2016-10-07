@@ -191,6 +191,7 @@ public class GsmCdmaPhone extends Phone {
     private int mRilVersion;
     private boolean mBroadcastEmergencyCallStateChanges = false;
 
+    private int mCdmaRoamingType = CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT;
     // Constructors
 
     public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
@@ -220,7 +221,10 @@ public class GsmCdmaPhone extends Phone {
         public void onReceive(Context context, Intent intent) {
             Rlog.d(LOG_TAG, "mBroadcastReceiver: action " + intent.getAction());
             if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
+                int phoneId = intent.getIntExtra(PhoneConstants.PHONE_KEY, mPhoneId);
+                if (phoneId == mPhoneId) {
+                    sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
+                }
             }
         }
     };
@@ -2130,7 +2134,8 @@ public class GsmCdmaPhone extends Phone {
                 // Changing the cdma roaming settings based carrier config.
                 if (b != null) {
                     int config_cdma_roaming_mode = b.getInt(
-                            CarrierConfigManager.KEY_CDMA_ROAMING_MODE_INT);
+                            CarrierConfigManager.KEY_CDMA_ROAMING_MODE_INT,
+                            CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT);
                     int current_cdma_roaming_mode =
                             Settings.Global.getInt(getContext().getContentResolver(),
                             Settings.Global.CDMA_ROAMING_MODE,
@@ -2144,16 +2149,23 @@ public class GsmCdmaPhone extends Phone {
                         case CarrierConfigManager.CDMA_ROAMING_MODE_ANY:
                             logd("cdma_roaming_mode is going to changed to "
                                     + config_cdma_roaming_mode);
-                            setCdmaRoamingPreference(config_cdma_roaming_mode,
-                                    obtainMessage(EVENT_SET_ROAMING_PREFERENCE_DONE));
+                            logd("mCdmaRoamingType is "+mCdmaRoamingType);
+                            if (isPhoneTypeCdma() && mCdmaRoamingType != config_cdma_roaming_mode) {
+                                mCdmaRoamingType = config_cdma_roaming_mode;
+                                setCdmaRoamingPreference(config_cdma_roaming_mode,
+                                        obtainMessage(EVENT_SET_ROAMING_PREFERENCE_DONE));
+                            }
                             break;
 
                         // When carrier's setting is turn off, change the cdma_roaming_mode to the
                         // previous user's setting
                         case CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT:
-                            if (current_cdma_roaming_mode != config_cdma_roaming_mode) {
+                            if (isPhoneTypeCdma() &&
+                                    current_cdma_roaming_mode != config_cdma_roaming_mode &&
+                                    mCdmaRoamingType != current_cdma_roaming_mode) {
                                 logd("cdma_roaming_mode is going to changed to "
                                         + current_cdma_roaming_mode);
+                                mCdmaRoamingType = current_cdma_roaming_mode;
                                 setCdmaRoamingPreference(current_cdma_roaming_mode,
                                         obtainMessage(EVENT_SET_ROAMING_PREFERENCE_DONE));
                             }

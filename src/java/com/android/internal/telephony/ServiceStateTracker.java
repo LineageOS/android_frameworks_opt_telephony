@@ -2110,8 +2110,9 @@ public class ServiceStateTracker extends Handler {
             String plmn = null;
             boolean showPlmn = false;
             int rule = (iccRecords != null) ? iccRecords.getDisplayRule(mSS.getOperatorNumeric()) : 0;
-            if (mSS.getVoiceRegState() == ServiceState.STATE_OUT_OF_SERVICE
-                    || mSS.getVoiceRegState() == ServiceState.STATE_EMERGENCY_ONLY) {
+            int combinedRegState = getCombinedRegState();
+            if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE
+                    || combinedRegState == ServiceState.STATE_EMERGENCY_ONLY) {
                 showPlmn = true;
                 if (mEmergencyOnly) {
                     // No service but emergency call allowed
@@ -2124,7 +2125,7 @@ public class ServiceStateTracker extends Handler {
                 }
                 if (DBG) log("updateSpnDisplay: radio is on but out " +
                         "of service, set plmn='" + plmn + "'");
-            } else if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+            } else if (combinedRegState == ServiceState.STATE_IN_SERVICE) {
                 // In either home or roaming service
                 plmn = mSS.getOperatorAlphaLong();
                 showPlmn = !TextUtils.isEmpty(plmn) &&
@@ -2241,6 +2242,15 @@ public class ServiceStateTracker extends Handler {
             if (subIds != null && subIds.length > 0) {
                 subId = subIds[0];
             }
+
+            int combinedRegState = getCombinedRegState();
+            if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE) {
+                plmn = Resources.getSystem().getText(com.android.internal.
+                    R.string.lockscreen_carrier_default).toString();
+                if (DBG) log("updateSpnDisplay: radio is on but out " +
+                    "of service, set plmn='" + plmn + "'");
+            }
+
 
             if (mSubId != subId || !TextUtils.equals(plmn, mCurPlmn)) {
                 // Allow A blank plmn, "" to set showPlmn to true. Previously, we
@@ -4869,7 +4879,21 @@ public class ServiceStateTracker extends Handler {
         return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_NONROAMING_NETWORKS_STRING_ARRAY);
     }
 
-    /** Check if the device is shutting down. */
+   /**
+     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed
+     */
+    protected int getCombinedRegState() {
+        int regState = mSS.getVoiceRegState();
+        int dataRegState = mSS.getDataRegState();
+        if ((regState == ServiceState.STATE_OUT_OF_SERVICE)
+                && (dataRegState == ServiceState.STATE_IN_SERVICE)) {
+                    log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
+                     regState = dataRegState;
+        }
+        return regState;
+    }
+
+  /** Check if the device is shutting down. */
     public boolean isDeviceShuttingDown() {
         return mDeviceShuttingDown;
     }
