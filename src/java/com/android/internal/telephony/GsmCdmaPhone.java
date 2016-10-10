@@ -185,8 +185,6 @@ public class GsmCdmaPhone extends Phone {
 
     private int mRilVersion;
     private boolean mBroadcastEmergencyCallStateChanges = false;
-    // flag to indicate if emergency call end broadcast should be sent
-    boolean mSendEmergencyCallEnd = true;
 
     // Constructors
 
@@ -639,24 +637,11 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void sendEmergencyCallStateChange(boolean callActive) {
         if (mBroadcastEmergencyCallStateChanges) {
-            if (callActive &&
-                    getServiceState().getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
-                // if emergency call is started while on iwlan, do not send the start or end
-                // broadcast
-                mSendEmergencyCallEnd = false;
-                if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: not sending call start " +
-                        "intent as voice tech is IWLAN");
-            } else if (callActive || mSendEmergencyCallEnd) {
-                Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
-                intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
-                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-                ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
-                if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange");
-            } else {
-                if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: not sending call end " +
-                        "intent as start was not sent");
-                mSendEmergencyCallEnd = true;
-            }
+            Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
+            intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
+            ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+            if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: callActive " + callActive);
         }
     }
 
