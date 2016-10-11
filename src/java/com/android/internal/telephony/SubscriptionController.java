@@ -275,15 +275,13 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.CARRIER_NAME));
         int nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.NAME_SOURCE));
-        int iconTint = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.COLOR));
+        int iconTint = getIconTint(cursor);
         String number = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.NUMBER));
         int dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.DATA_ROAMING));
         // Get the blank bitmap for this SubInfoRecord
-        Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
-                com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
+        Bitmap iconBitmap = getIconBitmap(cursor);
         int mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.MCC));
         int mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
@@ -325,6 +323,28 @@ public class SubscriptionController extends ISub.Stub {
             return "";
         }
         return mTelephonyManager.getSimCountryIsoForPhone(phoneId);
+    }
+
+    /**
+     * Return iconBitmap for SubInfoRecord
+     * @param cursor
+     * @return the iconBitmap
+     */
+    protected Bitmap getIconBitmap(Cursor cursor) {
+        Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
+                com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
+        return iconBitmap;
+    }
+
+    /**
+     * Return iconTint for SubInfoRecord
+     * @param cursor
+     * @return the iconTint
+     */
+    protected int getIconTint(Cursor cursor) {
+        int iconTint = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.COLOR));
+        return iconTint;
     }
 
     /**
