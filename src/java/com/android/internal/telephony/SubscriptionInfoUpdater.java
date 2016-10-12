@@ -609,6 +609,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("[updateSubIdForNV]+ updating");
             updateSubscriptionInfoByIccId(slotId, true /* updateEmbeddedSubs */);
         }
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
     protected synchronized void updateSubscriptionInfoByIccId(int slotIndex,
