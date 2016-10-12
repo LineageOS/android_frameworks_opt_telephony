@@ -545,6 +545,8 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("[updateSubIdForNV]+ updating");
             updateSubscriptionInfoByIccId();
         }
+        broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
     /**
