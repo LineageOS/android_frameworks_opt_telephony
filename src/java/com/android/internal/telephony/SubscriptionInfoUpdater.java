@@ -607,6 +607,8 @@ public class SubscriptionInfoUpdater extends Handler {
         mIccId[slotId] = ICCID_STRING_FOR_NV;
         logd("[updateSubIdForNV]+ scheduled");
         update(slotId);
+        broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
     /**
