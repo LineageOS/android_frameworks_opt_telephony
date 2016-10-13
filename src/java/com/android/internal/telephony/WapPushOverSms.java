@@ -307,7 +307,7 @@ public class WapPushOverSms implements ServiceConnection {
             // then sent it to all broadcast receivers.
             ComponentName componentName = null;
             String fqcn = new ConfigResourceUtil().getStringValue(mContext, "default_wap_push_handler");
-            if (!TextUtils.isEmpty(fqcn)) {
+            if (!mimeType.equals(WspTypeDecoder.CONTENT_TYPE_B_MMS) && !TextUtils.isEmpty(fqcn)) {
                 componentName = ComponentName.unflattenFromString(fqcn);
             }
             if (componentName == null) {
