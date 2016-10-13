@@ -101,7 +101,7 @@ public class ServiceStateTracker extends Handler {
     private static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
 
     private CommandsInterface mCi;
-    private UiccController mUiccController = null;
+    protected UiccController mUiccController = null;
     private UiccCardApplication mUiccApplcation = null;
     private IccRecords mIccRecords = null;
     private TelephonyEventLog mEventLog;
@@ -109,7 +109,7 @@ public class ServiceStateTracker extends Handler {
     private boolean mVoiceCapable;
 
     public ServiceState mSS;
-    private ServiceState mNewSS;
+    protected ServiceState mNewSS;
 
     private static final long LAST_CELL_INFO_LIST_MAX_AGE_MS = 2000;
     private long mLastCellInfoListTime;
