@@ -344,7 +344,7 @@ public class DcSwitchStateMachine extends StateMachine {
                     if (DBG) {
                         log("AttachedState: EVENT_DATA_DETACHED");
                     }
-                    transitionTo(mAttachingState);
+                    transitionTo(mIdleState);
                     retVal = HANDLED;
                     break;
                 }
