@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.WorkSource;
+import android.os.ResultReceiver;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.CarrierConfigManager;
@@ -448,6 +449,14 @@ public interface PhoneInternalInterface {
      * @return true if MMI command is executed.
      */
     boolean handlePinMmi(String dialString);
+
+    /**
+     * Handles USSD commands
+     *
+     * @param ussdRequest the USSD command to be executed.
+     * @param wrappedCallback receives the callback result.
+     */
+    boolean handleUssdRequest(String ussdRequest, ResultReceiver wrappedCallback);
 
     /**
      * Handles in-call MMI commands. While in a call, or while receiving a

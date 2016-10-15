@@ -136,6 +136,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     State mState = State.PENDING;
     CharSequence mMessage;
     private boolean mIsSsInfo = false;
+    private ResultReceiver mCallbackReceiver;
 
 
     //***** Class Variables
@@ -183,9 +184,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      *
      * Please see flow chart in TS 22.030 6.5.3.2
      */
+    public static GsmMmiCode newFromDialString(String dialString, GsmCdmaPhone phone,
+            UiccCardApplication app) {
+        return newFromDialString(dialString, phone, app, null);
+    }
 
-    public static GsmMmiCode
-    newFromDialString(String dialString, GsmCdmaPhone phone, UiccCardApplication app) {
+    public static GsmMmiCode newFromDialString(String dialString, GsmCdmaPhone phone,
+            UiccCardApplication app, ResultReceiver wrappedCallback) {
         Matcher m;
         GsmMmiCode ret = null;
 
@@ -202,6 +207,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             ret.mSic = makeEmptyNull(m.group(MATCH_GROUP_SIC));
             ret.mPwd = makeEmptyNull(m.group(MATCH_GROUP_PWD_CONFIRM));
             ret.mDialingNumber = makeEmptyNull(m.group(MATCH_GROUP_DIALING_NUMBER));
+            ret.mCallbackReceiver = wrappedCallback;
             // According to TS 22.030 6.5.2 "Structure of the MMI",
             // the dialing number should not ending with #.
             // The dialing number ending # is treated as unique USSD,
@@ -622,6 +628,11 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return mPoundString == null
                     && mDialingNumber != null && mDialingNumber.length() <= 2;
 
+    }
+
+    @Override
+    public String getDialString() {
+        return mPoundString;
     }
 
     static private boolean
@@ -1062,7 +1073,6 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         // response does not complete this MMI code...we wait for
         // an unsolicited USSD "Notify" or "Request".
         // The matching up of this is done in GsmCdmaPhone.
-
         mPhone.mCi.sendUSSD(ussdMessage,
             obtainMessage(EVENT_USSD_COMPLETE, this));
     }
@@ -1585,6 +1595,10 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             }
         }
         return sb;
+    }
+
+    public ResultReceiver getUssdCallbackReceiver() {
+        return this.mCallbackReceiver;
     }
 
     /***
