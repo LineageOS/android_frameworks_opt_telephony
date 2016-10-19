@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
+import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
@@ -122,9 +123,9 @@ public class SmsNumberUtilsTest extends TelephonyTest {
 
         ((MockContentResolver) mContextFixture.getTestDouble().getContentResolver())
                 .addProvider(HbpcdLookup.MccIdd.CONTENT_URI.getAuthority(), mHbpcdContentProvider);
-        mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_sms_convert_destination_number_support,
-                new String[]{"true"});
+        mContextFixture.getCarrierConfigBundle().
+                putBoolean(CarrierConfigManager.KEY_SMS_REQUIRES_DESTINATION_NUMBER_CONVERSION_BOOL,
+                        true);
 
         logd("SmsNumberUtilsTest -Setup!");
     }
