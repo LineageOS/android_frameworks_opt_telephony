@@ -269,6 +269,8 @@ public class TelephonyMetrics {
                 return "IMS_CALL_HANDOVER_FAILED";
             case TelephonyCallSession.Event.Type.PHONE_STATE_CHANGED:
                 return "PHONE_STATE_CHANGED";
+            case TelephonyCallSession.Event.Type.NITZ_TIME:
+                return "NITZ_TIME";
             default:
                 return Integer.toString(event);
         }
@@ -325,7 +327,12 @@ public class TelephonyMetrics {
 
                 if (event.hasType()) {
                     pw.print("T=");
-                    pw.print(telephonyEventToString(event.getType()));
+                    if (event.getType() == TelephonyEvent.Type.RIL_SERVICE_STATE_CHANGED) {
+                        pw.print(telephonyEventToString(event.getType())
+                                + "(" + event.serviceState.getDataRat() + ")");
+                    } else {
+                        pw.print(telephonyEventToString(event.getType()));
+                    }
                 }
                 pw.println("");
             }
@@ -347,7 +354,12 @@ public class TelephonyMetrics {
             for (TelephonyCallSession.Event event : callSession.events) {
                 pw.print(event.getDelay());
                 pw.print(" T=");
-                pw.println(callSessionEventToString(event.getType()));
+                if (event.getType() == TelephonyCallSession.Event.Type.RIL_SERVICE_STATE_CHANGED) {
+                    pw.println(callSessionEventToString(event.getType())
+                            + "(" + event.serviceState.getDataRat() + ")");
+                } else {
+                    pw.println(callSessionEventToString(event.getType()));
+                }
             }
             pw.decreaseIndent();
         }
