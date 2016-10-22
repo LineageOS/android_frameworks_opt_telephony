@@ -1056,6 +1056,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         if(siToServiceClass(mSib) == (SERVICE_CLASS_PACKET
                                     + SERVICE_CLASS_DATA_SYNC)) {
                             mPhone.setVideoCallForwardingPreference(cffEnabled);
+                            mPhone.notifyCallForwardingIndicator();
                         } else {
                             mPhone.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
                         }
