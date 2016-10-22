@@ -309,6 +309,8 @@ enum RadioAccessTechnology {
   RAT_TD_SCDMA = 17;
 
   RAT_IWLAN = 18;
+
+  RAT_LTE_CA = 19;
 }
 
 // The information about IMS errors
@@ -785,14 +787,19 @@ message TelephonyEvent {
   // RIL error code
   optional RilErrno error = 9;
 
+  // Setup data call request
   optional RilSetupDataCall setup_data_call = 10;
 
+  // Setup data call response
   optional RilSetupDataCallResponse setup_data_call_response = 11;
 
+  // Deactivate data call request
   optional RilDeactivateDataCall deactivate_data_call = 12;
 
+  // Data call stall recovery action
   optional int32 data_stall_action = 13;
 
+  // Modem restart event
   optional ModemRestart modem_restart = 14;
 
   // NITZ time in milliseconds

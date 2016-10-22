@@ -2971,6 +2971,8 @@ public class ServiceStateTracker extends Handler {
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
+
+            TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
         if (hasCdmaDataConnectionAttached || hasCdmaDataConnectionDetached || hasRegistered) {
@@ -3205,6 +3207,8 @@ public class ServiceStateTracker extends Handler {
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
+
+            TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
         if (hasCdmaDataConnectionAttached || has4gHandoff || hasCdmaDataConnectionDetached ||
