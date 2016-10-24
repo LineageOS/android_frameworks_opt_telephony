@@ -31,9 +31,16 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_ALL;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_DEFAULT;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_HIPRI;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_IA;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_MMS;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_SUPL;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
+
 
 public class ApnSettingTest extends TelephonyTest {
 
@@ -52,6 +59,14 @@ public class ApnSettingTest extends TelephonyTest {
     }
 
     private ApnSetting createApnSetting(String[] apnTypes) {
+        return createApnSettingInternal(apnTypes, true);
+    }
+
+    private ApnSetting createDisabledApnSetting(String[] apnTypes) {
+        return createApnSettingInternal(apnTypes, false);
+    }
+
+    private ApnSetting createApnSettingInternal(String[] apnTypes, boolean carrierEnabled) {
         return new ApnSetting(
                 2163,                   // id
                 "44010",                // numeric
@@ -68,7 +83,7 @@ public class ApnSettingTest extends TelephonyTest {
                 apnTypes,               // types
                 "IP",                   // protocol
                 "IP",                   // roaming_protocol
-                true,                   // carrier_enabled
+                carrierEnabled,         // carrier_enabled
                 0,                      // bearer
                 0,                      // bearer_bitmask
                 0,                      // profile_id
@@ -494,5 +509,65 @@ public class ApnSettingTest extends TelephonyTest {
                 new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_DUN}).
                 isMetered(mContext, 4, isRoaming));
 
+    }
+
+    @Test
+    @SmallTest
+    public void testCanHandleType() throws Exception {
+        String types[] = {"mms"};
+
+        // empty string replaced with ALL ('*') when loaded to db
+        assertFalse(createApnSetting(new String[]{}).
+                canHandleType(APN_TYPE_MMS));
+
+        assertTrue(createApnSetting(new String[]{APN_TYPE_ALL}).
+                canHandleType(APN_TYPE_MMS));
+
+        assertFalse(createApnSetting(new String[]{APN_TYPE_DEFAULT}).
+                canHandleType(APN_TYPE_MMS));
+
+        assertTrue(createApnSetting(new String[]{"DEfAULT"}).
+                canHandleType("defAult"));
+
+        // Hipri is asymmetric
+        assertTrue(createApnSetting(new String[]{APN_TYPE_DEFAULT}).
+                canHandleType(APN_TYPE_HIPRI));
+        assertFalse(createApnSetting(new String[]{APN_TYPE_HIPRI}).
+                canHandleType(APN_TYPE_DEFAULT));
+
+
+        assertTrue(createApnSetting(new String[]{APN_TYPE_DEFAULT, APN_TYPE_MMS}).
+                canHandleType(APN_TYPE_DEFAULT));
+
+        assertTrue(createApnSetting(new String[]{APN_TYPE_DEFAULT, APN_TYPE_MMS}).
+                canHandleType(APN_TYPE_MMS));
+
+        assertFalse(createApnSetting(new String[]{APN_TYPE_DEFAULT, APN_TYPE_MMS}).
+                canHandleType(APN_TYPE_SUPL));
+
+        // special IA case - doesn't match wildcards
+        assertFalse(createApnSetting(new String[]{APN_TYPE_DEFAULT, APN_TYPE_MMS}).
+                canHandleType(APN_TYPE_IA));
+        assertFalse(createApnSetting(new String[]{APN_TYPE_ALL}).
+                canHandleType(APN_TYPE_IA));
+        assertFalse(createApnSetting(new String[]{APN_TYPE_ALL}).
+                canHandleType("iA"));
+        assertTrue(createApnSetting(new String[]{APN_TYPE_DEFAULT, APN_TYPE_MMS, APN_TYPE_IA}).
+                canHandleType(APN_TYPE_IA));
+
+        // check carrier disabled
+        assertFalse(createDisabledApnSetting(new String[]{APN_TYPE_ALL}).
+                canHandleType(APN_TYPE_MMS));
+        assertFalse(createDisabledApnSetting(new String[]{"DEfAULT"}).
+                canHandleType("defAult"));
+        assertFalse(createDisabledApnSetting(new String[]{APN_TYPE_DEFAULT}).
+                canHandleType(APN_TYPE_HIPRI));
+        assertFalse(createDisabledApnSetting(new String[]{APN_TYPE_DEFAULT, APN_TYPE_MMS}).
+                canHandleType(APN_TYPE_DEFAULT));
+        assertFalse(createDisabledApnSetting(new String[]{APN_TYPE_DEFAULT, APN_TYPE_MMS}).
+                canHandleType(APN_TYPE_MMS));
+        assertFalse(createDisabledApnSetting(new String[]
+                {APN_TYPE_DEFAULT, APN_TYPE_MMS, APN_TYPE_IA}).
+                canHandleType(APN_TYPE_IA));
     }
 }
