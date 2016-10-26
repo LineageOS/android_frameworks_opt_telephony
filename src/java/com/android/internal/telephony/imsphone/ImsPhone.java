@@ -1453,10 +1453,6 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.isVideoCallEnabled();
     }
 
-    public boolean isVideoWifiCallingEnabled() {
-        return mCT.isVideoWifiCallingEnabled();
-    }
-
     @Override
     public Phone getDefaultPhone() {
         return mDefaultPhone;

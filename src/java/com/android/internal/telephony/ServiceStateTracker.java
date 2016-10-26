@@ -1202,7 +1202,6 @@ public class ServiceStateTracker extends Handler {
             case EVENT_IMS_CAPABILITY_CHANGED:
                 if (DBG) log("EVENT_IMS_CAPABILITY_CHANGED");
                 updateSpnDisplay();
-                updateRilImsRadioTechnology();
                 break;
 
             //CDMA
@@ -2461,18 +2460,6 @@ public class ServiceStateTracker extends Handler {
         return mCi.getRadioState() == CommandsInterface.RadioState.RADIO_ON;
     }
 
-    private void updateRilImsRadioTechnology() {
-        int imsRadioTechnology = mPhone.getImsPhone() != null ?
-                mPhone.getImsPhone().getServiceState().getRilImsRadioTechnology() :
-                ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-        if (imsRadioTechnology != mSS.getRilImsRadioTechnology()) {
-            Rlog.i(LOG_TAG, "updateRilImsRadioTechnology : Old ims RAT: " +
-                    mSS.getRilImsRadioTechnology() + " new ims RAT: " + imsRadioTechnology);
-            mSS.setRilImsRadioTechnology(imsRadioTechnology);
-            mPhone.notifyServiceStateChanged(mSS);
-        }
-    }
-
     /**
      * A complete "service state" from our perspective is
      * composed of a handful of separate requests to the radio.
@@ -2655,8 +2642,6 @@ public class ServiceStateTracker extends Handler {
             }
         }
 
-        // Ims call capable rat will be filled as part of service state changed.
-        mNewSS.setRilImsRadioTechnology(mSS.getRilImsRadioTechnology());
         // swap mSS and mNewSS to put new state in mSS
         ServiceState tss = mSS;
         mSS = mNewSS;
@@ -2887,8 +2872,6 @@ public class ServiceStateTracker extends Handler {
                     mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
-        // Ims call capable rat will be filled as part of service state changed.
-        mNewSS.setRilImsRadioTechnology(mSS.getRilImsRadioTechnology());
         ServiceState tss;
         tss = mSS;
         mSS = mNewSS;

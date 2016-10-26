@@ -3272,20 +3272,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Determines if video wifi calling enabled for the phone
-     *
-     * @return {@code true} if video wifi calling is enabled, {@code false} otherwise.
-     */
-     public boolean isVideoWifiCallingEnabled() {
-         Phone imsPhone = mImsPhone;
-         if ((imsPhone != null)
-                 && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            return imsPhone.isVideoWifiCallingEnabled();
-         }
-         return false;
-     }
-
-    /**
      * Returns the status of Link Capacity Estimation (LCE) service.
      */
     public int getLceStatus() {
