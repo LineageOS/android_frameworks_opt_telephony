@@ -2605,8 +2605,6 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
 
-        boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
-
         boolean hasCssIndicatorChanged = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
 
         TelephonyManager tm =

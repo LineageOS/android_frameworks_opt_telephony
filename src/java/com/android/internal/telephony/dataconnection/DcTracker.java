@@ -1688,12 +1688,11 @@ public class DcTracker extends Handler {
                 ApnSetting apnSetting = apnContext.getApnSetting();
                 if (apnSetting != null && apnSetting.isMetered(mPhone.getContext(),
                         mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())) {
-                        if (apnContext.isDisconnected() == false) didDisconnect = true;
-                        if (DBG) log("clean up metered ApnContext Type: " +
-                                apnContext.getApnType());
-                        apnContext.setReason(reason);
-                        cleanUpConnection(tearDown, apnContext);
-                    }
+                    if (apnContext.isDisconnected() == false) didDisconnect = true;
+                    if (DBG) log("clean up metered ApnContext Type: " +
+                            apnContext.getApnType());
+                    apnContext.setReason(reason);
+                    cleanUpConnection(tearDown, apnContext);
                 }
             } else {
                 // TODO - only do cleanup if not disconnected
@@ -4243,7 +4242,7 @@ public class DcTracker extends Handler {
          if (DBG) log("setDataAllowed: enable=" + enable);
          isCleanupRequired.set(!enable);
          mPhone.mCi.setDataAllowed(enable, response);
-         mInternalDataEnabled = enable;
+         mDataEnabledSettings.setInternalDataEnabled(enable);
     }
 
     protected void log(String s) {
