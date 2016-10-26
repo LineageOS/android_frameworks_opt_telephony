@@ -65,6 +65,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
         mGsmDispatcher = new GsmSMSDispatcher(phone, usageMonitor, this, mGsmInboundSmsHandler);
         SmsBroadcastUndelivered.initialize(phone.getContext(),
             mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+        InboundSmsHandler.registerNewMessageNotificationActionHandler(phone.getContext());
 
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
