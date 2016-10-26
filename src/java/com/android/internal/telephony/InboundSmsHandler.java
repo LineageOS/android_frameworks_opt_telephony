@@ -34,6 +34,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -208,6 +209,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     private final int DELETE_PERMANENTLY = 1;
     // Only mark deleted, but keep in db for message de-duping
     private final int MARK_DELETED = 2;
+
+    private static String ACTION_OPEN_SMS_APP =
+        "com.android.internal.telephony.OPEN_DEFAULT_SMS_APP";
 
     /**
      * Create a new SMS broadcast helper.
@@ -877,8 +881,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             return;
         }
         log("Show new message notification.");
-        Intent intent = Intent.makeMainSelectorActivity(
-            Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING);
+        PendingIntent intent = PendingIntent.getBroadcast(
+            mContext,
+            0,
+            new Intent(ACTION_OPEN_SMS_APP),
+            PendingIntent.FLAG_ONE_SHOT);
         Notification.Builder mBuilder = new Notification.Builder(mContext)
                 .setSmallIcon(com.android.internal.R.drawable.sym_action_chat)
                 .setAutoCancel(true)
@@ -886,7 +893,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setContentTitle(mContext.getString(R.string.new_sms_notification_title))
                 .setContentText(mContext.getString(R.string.new_sms_notification_content))
-                .setContentIntent(PendingIntent.getActivity(mContext, 1, intent, 0));
+                .setContentIntent(intent);
         NotificationManager mNotificationManager =
             (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(
@@ -1595,5 +1602,29 @@ public abstract class InboundSmsHandler extends StateMachine {
     @VisibleForTesting
     public int getWakeLockTimeout() {
         return WAKELOCK_TIMEOUT;
+    }
+
+    /**
+     * Handler for the broadcast sent when the new message notification is clicked. It launches the
+     * default SMS app.
+     */
+    private static class NewMessageNotificationActionReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_OPEN_SMS_APP.equals(intent.getAction())) {
+                context.startActivity(context.getPackageManager().getLaunchIntentForPackage(
+                    Telephony.Sms.getDefaultSmsPackage(context)));
+            }
+        }
+    }
+
+    /**
+     * Registers the broadcast receiver to launch the default SMS app when the user clicks the
+     * new message notification.
+     */
+    static void registerNewMessageNotificationActionHandler(Context context) {
+        IntentFilter userFilter = new IntentFilter();
+        userFilter.addAction(ACTION_OPEN_SMS_APP);
+        context.registerReceiver(new NewMessageNotificationActionReceiver(), userFilter);
     }
 }
