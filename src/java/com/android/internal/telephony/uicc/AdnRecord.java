@@ -198,8 +198,8 @@ public class AdnRecord implements Parcelable {
 
     @Override
     public String toString() {
-        return "ADN Record '" + mAlphaTag + "' '" + mNumber + " " + mEmails + " "
-                + mAdditionalNumbers + "'";
+        return "ADN Record '" + mAlphaTag + "' '" + Rlog.pii(LOG_TAG, mNumber) + " "
+                + Rlog.pii(LOG_TAG, mEmails) + " " + Rlog.pii(LOG_TAG, mAdditionalNumbers) + "'";
     }
 
     public boolean isEmpty() {

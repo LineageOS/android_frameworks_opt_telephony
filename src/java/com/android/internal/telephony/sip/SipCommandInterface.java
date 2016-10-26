@@ -19,6 +19,7 @@ package com.android.internal.telephony.sip;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
+import android.service.carrier.CarrierIdentifier;
 
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
@@ -26,6 +27,8 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+
+import java.util.List;
 
 /**
  * SIP doesn't need CommandsInterface. The class does nothing but made to work
@@ -607,6 +610,14 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getModemActivityInfo(Message result) {
+    }
+
+    @Override
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result) {
+    }
+
+    @Override
+    public void getAllowedCarriers(Message result) {
     }
 
 }

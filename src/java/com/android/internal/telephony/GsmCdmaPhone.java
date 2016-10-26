@@ -190,6 +190,8 @@ public class GsmCdmaPhone extends Phone {
 
     private int mRilVersion;
     private boolean mBroadcastEmergencyCallStateChanges = false;
+    // flag to indicate if emergency call end broadcast should be sent
+    boolean mSendEmergencyCallEnd = true;
 
     // Constructors
 
@@ -271,8 +273,6 @@ public class GsmCdmaPhone extends Phone {
     private void initRatSpecific(int precisePhoneType) {
         mPendingMMIs.clear();
         mIccPhoneBookIntManager.updateIccRecords(null);
-        //todo: maybe not needed?? should the count also be updated on sim_state_absent?
-        mVmCount = 0;
         mEsn = null;
         mMeid = null;
 
@@ -644,11 +644,24 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void sendEmergencyCallStateChange(boolean callActive) {
         if (mBroadcastEmergencyCallStateChanges) {
-            Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
-            intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
-            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-            ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
-            if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange");
+            if (callActive &&
+                    getServiceState().getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
+                // if emergency call is started while on iwlan, do not send the start or end
+                // broadcast
+                mSendEmergencyCallEnd = false;
+                if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: not sending call start " +
+                        "intent as voice tech is IWLAN");
+            } else if (callActive || mSendEmergencyCallEnd) {
+                Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
+                intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
+                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
+                ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+                if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange");
+            } else {
+                if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: not sending call end " +
+                        "intent as start was not sent");
+                mSendEmergencyCallEnd = true;
+            }
         }
     }
 
@@ -1385,6 +1398,12 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             return mImei;
         } else {
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            boolean force_imei = configManager.getConfigForSubId(getSubId())
+                    .getBoolean(CarrierConfigManager.KEY_FORCE_IMEI_BOOL);
+            if (force_imei) return mImei;
+
             String id = getMeid();
             if ((id == null) || id.matches("^0*$")) {
                 loge("getDeviceId(): MEID is not initialized use ESN");
@@ -2121,7 +2140,8 @@ public class GsmCdmaPhone extends Phone {
                 if (b != null) {
                     boolean broadcastEmergencyCallStateChanges = b.getBoolean(
                             CarrierConfigManager.KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL);
-                    logd("broadcastEmergencyCallStateChanges =" + broadcastEmergencyCallStateChanges);
+                    logd("broadcastEmergencyCallStateChanges = " +
+                            broadcastEmergencyCallStateChanges);
                     setBroadcastEmergencyCallStateChanges(broadcastEmergencyCallStateChanges);
                 } else {
                     loge("didn't get broadcastEmergencyCallStateChanges from carrier config");
@@ -2734,10 +2754,10 @@ public class GsmCdmaPhone extends Phone {
         }
         // if phone is not in Ecm mode, and it's changed to Ecm mode
         if (mIsPhoneInEcmState == false) {
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
             mIsPhoneInEcmState = true;
             // notify change
             sendEmergencyCallbackModeChange();
-            super.setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
@@ -2764,15 +2784,16 @@ public class GsmCdmaPhone extends Phone {
         }
         // if exiting ecm success
         if (ar.exception == null) {
+            if (mIsPhoneInEcmState) {
+                setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+                mIsPhoneInEcmState = false;
+            }
+
             // release wakeLock
             if (mWakeLock.isHeld()) {
                 mWakeLock.release();
             }
 
-            if (mIsPhoneInEcmState) {
-                mIsPhoneInEcmState = false;
-                super.setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-            }
             // send an Intent
             sendEmergencyCallbackModeChange();
             // Re-initiate data connection
@@ -3046,7 +3067,7 @@ public class GsmCdmaPhone extends Phone {
         logd("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech);
 
         // Check for a voice over lte replacement
-        if (getServiceStateTracker().isRatLte(newVoiceRadioTech)
+        if (ServiceState.isLte(newVoiceRadioTech)
                 || (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
             CarrierConfigManager configMgr = (CarrierConfigManager)
                     getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -3203,7 +3224,7 @@ public class GsmCdmaPhone extends Phone {
         pw.println(" mIccPhoneBookIntManager=" + mIccPhoneBookIntManager);
         if (VDBG) pw.println(" mImei=" + mImei);
         if (VDBG) pw.println(" mImeiSv=" + mImeiSv);
-        pw.println(" mVmNumber=" + mVmNumber);
+        if (VDBG) pw.println(" mVmNumber=" + mVmNumber);
         pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mCdmaSubscriptionSource=" + mCdmaSubscriptionSource);
         pw.println(" mEriManager=" + mEriManager);

@@ -124,10 +124,17 @@ public final class MccTable {
             return null;
         }
 
+        final String country = entry.mIso;
+
+        // Choose English as the default language for India.
+        if ("in".equals(country)) {
+            return "en";
+        }
+
         // Ask CLDR for the language this country uses...
-        Locale likelyLocale = ICU.addLikelySubtags(new Locale("und", entry.mIso));
+        Locale likelyLocale = ICU.addLikelySubtags(new Locale("und", country));
         String likelyLanguage = likelyLocale.getLanguage();
-        Slog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): country " + entry.mIso + " uses " +
+        Slog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): country " + country + " uses " +
                likelyLanguage);
         return likelyLanguage;
     }
@@ -226,6 +233,8 @@ public final class MccTable {
     private static final Map<Locale, Locale> FALLBACKS = new HashMap<Locale, Locale>();
 
     static {
+        // If we have English (without a country) explicitly prioritize en_US. http://b/28998094
+        FALLBACKS.put(Locale.ENGLISH, Locale.US);
         FALLBACKS.put(Locale.CANADA, Locale.US);
     }
 

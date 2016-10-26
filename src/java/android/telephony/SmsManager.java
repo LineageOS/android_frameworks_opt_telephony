@@ -31,9 +31,9 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
 
+import com.android.internal.telephony.IMms;
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.SmsRawData;
-import com.android.internal.telephony.IMms;
 import com.android.internal.telephony.uicc.IccConstants;
 
 import java.util.ArrayList;
@@ -245,6 +245,14 @@ public final class SmsManager {
      */
     public static final String MMS_CONFIG_SUPPORT_HTTP_CHARSET_HEADER =
             CarrierConfigManager.KEY_MMS_SUPPORT_HTTP_CHARSET_HEADER_BOOL;
+    /**
+     * If true, add "Connection: close" header to MMS HTTP requests so the connection
+     * is immediately closed (disabling keep-alive). (Boolean type)
+     * @hide
+     */
+    public static final String MMS_CONFIG_CLOSE_CONNECTION =
+            CarrierConfigManager.KEY_MMS_CLOSE_CONNECTION_BOOL;
+
     /*
      * Forwarded constants from SimDialogActivity.
      */
@@ -336,11 +344,14 @@ public final class SmsManager {
      * A variant of {@link SmsManager#sendTextMessage} that allows self to be the caller. This is
      * for internal use only.
      *
+     * @param persistMessage whether to persist the sent message in the SMS app. the caller must be
+     * the Phone process if set to false.
+     *
      * @hide
      */
     public void sendTextMessageWithSelfPermissions(
             String destinationAddress, String scAddress, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, boolean persistMessage) {
         android.util.SeempLog.record_str(75, destinationAddress);
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
@@ -355,7 +366,7 @@ public final class SmsManager {
             iccISms.sendTextForSubscriberWithSelfPermissions(getSubscriptionId(),
                     ActivityThread.currentPackageName(),
                     destinationAddress,
-                    scAddress, text, sentIntent, deliveryIntent);
+                    scAddress, text, sentIntent, deliveryIntent, persistMessage);
         } catch (RemoteException ex) {
             // ignore it
         }
@@ -1808,6 +1819,8 @@ public final class SmsManager {
                 config.getBoolean(MMS_CONFIG_MMS_READ_REPORT_ENABLED));
         filtered.putBoolean(MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED,
                 config.getBoolean(MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED));
+        filtered.putBoolean(MMS_CONFIG_CLOSE_CONNECTION,
+                config.getBoolean(MMS_CONFIG_CLOSE_CONNECTION));
         filtered.putInt(MMS_CONFIG_MAX_MESSAGE_SIZE, config.getInt(MMS_CONFIG_MAX_MESSAGE_SIZE));
         filtered.putInt(MMS_CONFIG_MAX_IMAGE_WIDTH, config.getInt(MMS_CONFIG_MAX_IMAGE_WIDTH));
         filtered.putInt(MMS_CONFIG_MAX_IMAGE_HEIGHT, config.getInt(MMS_CONFIG_MAX_IMAGE_HEIGHT));

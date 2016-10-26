@@ -26,6 +26,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.DataConnectionRealTimeInfo;
@@ -990,6 +991,14 @@ public class PhoneMock extends Phone {
     }
 
     public void getModemActivityInfo(Message response)  {
+        throw new RuntimeException("not implemented");
+    }
+
+    public void setAllowedCarriers(List<CarrierIdentifier> carrierList, Message response) {
+        throw new RuntimeException("not implemented");
+    }
+
+    public void getAllowedCarriers(Message response) {
         throw new RuntimeException("not implemented");
     }
 

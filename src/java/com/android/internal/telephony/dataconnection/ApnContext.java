@@ -38,6 +38,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -228,7 +229,7 @@ public class ApnContext {
      * @return The delay in milliseconds
      */
     public long getDelayForNextApn(boolean failFastEnabled) {
-        return mRetryManager.getDelayForNextApn(failFastEnabled);
+        return mRetryManager.getDelayForNextApn(failFastEnabled || isFastRetryReason());
     }
 
     /**
@@ -337,6 +338,15 @@ public class ApnContext {
                                 || (mState == DctConstants.State.FAILED));
     }
 
+    /**
+     * Check if apn reason is fast retry reason which should apply shorter delay between apn re-try.
+     * @return True if it is fast retry reason, otherwise false.
+     */
+    private boolean isFastRetryReason() {
+        return Phone.REASON_NW_TYPE_CHANGED.equals(mReason) ||
+                Phone.REASON_APN_CHANGED.equals(mReason);
+    }
+
     /** Check if the data call is in connected or connecting state.
      * @return True if the data call is in connected or connecting state
      */
@@ -388,8 +398,9 @@ public class ApnContext {
         }
     }
 
-    private final ArrayList<LocalLog> mLocalLogs = new ArrayList<LocalLog>();
-    private final ArrayDeque<LocalLog> mHistoryLogs = new ArrayDeque<LocalLog>();
+    private final ArrayList<LocalLog> mLocalLogs = new ArrayList<>();
+    private final ArrayList<NetworkRequest> mNetworkRequests = new ArrayList<>();
+    private final ArrayDeque<LocalLog> mHistoryLogs = new ArrayDeque<>();
     private final static int MAX_HISTORY_LOG_COUNT = 4;
 
     public void requestLog(String str) {
@@ -400,39 +411,60 @@ public class ApnContext {
         }
     }
 
-    public void incRefCount(LocalLog log) {
+    public void requestNetwork(NetworkRequest networkRequest, LocalLog log) {
         synchronized (mRefCountLock) {
-            if (mLocalLogs.contains(log)) {
-                log.log("ApnContext.incRefCount has duplicate add - " + mRefCount);
+            if (mLocalLogs.contains(log) || mNetworkRequests.contains(networkRequest)) {
+                log.log("ApnContext.requestNetwork has duplicate add - " + mNetworkRequests.size());
             } else {
                 mLocalLogs.add(log);
-                log.log("ApnContext.incRefCount - " + mRefCount);
-            }
-            if (mRefCount++ == 0) {
+                mNetworkRequests.add(networkRequest);
                 mDcTracker.setEnabled(apnIdForApnName(mApnType), true);
             }
         }
     }
 
-    public void decRefCount(LocalLog log) {
+    public void releaseNetwork(NetworkRequest networkRequest, LocalLog log) {
         synchronized (mRefCountLock) {
-            if (mLocalLogs.remove(log)) {
-                log.log("ApnContext.decRefCount - " + mRefCount);
-                mHistoryLogs.addFirst(log);
-                while (mHistoryLogs.size() > MAX_HISTORY_LOG_COUNT) {
-                    mHistoryLogs.removeLast();
-                }
+            if (mLocalLogs.contains(log) == false) {
+                log.log("ApnContext.releaseNetwork can't find this log");
             } else {
-                log.log("ApnContext.decRefCount didn't find log - " + mRefCount);
+                mLocalLogs.remove(log);
             }
-            if (mRefCount-- == 1) {
-                mDcTracker.setEnabled(apnIdForApnName(mApnType), false);
-            }
-            if (mRefCount < 0) {
-                log.log("ApnContext.decRefCount went to " + mRefCount);
-                mRefCount = 0;
+            if (mNetworkRequests.contains(networkRequest) == false) {
+                log.log("ApnContext.releaseNetwork can't find this request ("
+                        + networkRequest + ")");
+            } else {
+                mNetworkRequests.remove(networkRequest);
+                log.log("ApnContext.releaseNetwork left with " + mNetworkRequests.size() +
+                        " requests.");
+                if (mNetworkRequests.size() == 0) {
+                    mDcTracker.setEnabled(apnIdForApnName(mApnType), false);
+                }
             }
         }
+    }
+
+    public List<NetworkRequest> getNetworkRequests() {
+        synchronized (mRefCountLock) {
+            return new ArrayList<NetworkRequest>(mNetworkRequests);
+        }
+    }
+
+    public boolean hasNoRestrictedRequests(boolean excludeDun) {
+        synchronized (mRefCountLock) {
+            for (NetworkRequest nr : mNetworkRequests) {
+                if (excludeDun &&
+                        nr.networkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_DUN)) {
+                    continue;
+                }
+                if (nr.networkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) == false) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private final SparseIntArray mRetriesLeftPerErrorCode = new SparseIntArray();
@@ -505,7 +537,7 @@ public class ApnContext {
     }
 
     public long getInterApnDelay(boolean failFastEnabled) {
-        return mRetryManager.getInterApnDelay(failFastEnabled);
+        return mRetryManager.getInterApnDelay(failFastEnabled || isFastRetryReason());
     }
 
     public static int apnIdForType(int networkType) {
@@ -677,6 +709,14 @@ public class ApnContext {
         final IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         synchronized (mRefCountLock) {
             pw.println(toString());
+            if (mNetworkRequests.size() > 0) {
+                pw.println("NetworkRequests:");
+                pw.increaseIndent();
+                for (NetworkRequest nr : mNetworkRequests) {
+                    pw.println(nr);
+                }
+                pw.decreaseIndent();
+            }
             pw.increaseIndent();
             for (LocalLog l : mLocalLogs) {
                 l.dump(fd, pw, args);

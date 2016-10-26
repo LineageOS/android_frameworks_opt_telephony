@@ -144,11 +144,11 @@ public class UiccSmsController extends ISms.Stub {
 
     public void sendTextForSubscriberWithSelfPermissions(int subId, String callingPackage,
             String destAddr, String scAddr, String text, PendingIntent sentIntent,
-            PendingIntent deliveryIntent) {
+            PendingIntent deliveryIntent, boolean persistMessage) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendTextWithSelfPermissions(callingPackage, destAddr, scAddr, text,
-                    sentIntent, deliveryIntent);
+                    sentIntent, deliveryIntent, persistMessage);
         } else {
             Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
                           " Subscription: " + subId);

@@ -24,6 +24,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -128,7 +129,6 @@ public class ImsPhone extends ImsPhoneBase {
     // Instance Variables
     Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
-    ImsMultiEndpoint mImsMultiEndpoint;
     ImsExternalCallTracker mExternalCallTracker;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
@@ -159,6 +159,17 @@ public class ImsPhone extends ImsPhoneBase {
         }
     };
 
+    private Uri[] mCurrentSubscriberUris;
+
+    protected void setCurrentSubscriberUris(Uri[] currentSubscriberUris) {
+        this.mCurrentSubscriberUris = currentSubscriberUris;
+    }
+
+    @Override
+    public Uri[] getCurrentSubscriberUris() {
+        return mCurrentSubscriberUris;
+    }
+
     // Create Cf (Call forward) so that dialling number &
     // mIsCfu (true if reason is call forward unconditional)
     // mOnComplete (Message object passed by client) can be packed &
@@ -186,16 +197,15 @@ public class ImsPhone extends ImsPhoneBase {
         super("ImsPhone", context, notifier, unitTestMode);
 
         mDefaultPhone = defaultPhone;
-        mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+        // The ImsExternalCallTracker needs to be defined before the ImsPhoneCallTracker, as the
+        // ImsPhoneCallTracker uses a thread to spool up the ImsManager.  Part of this involves
+        // setting the multiendpoint listener on the external call tracker.  So we need to ensure
+        // the external call tracker is available first to avoid potential timing issues.
         mExternalCallTracker =
-                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this, mCT);
-        try {
-            mImsMultiEndpoint = mCT.getMultiEndpointInterface();
-            mImsMultiEndpoint.setExternalCallStateListener(
-                    mExternalCallTracker.getExternalCallStateListener());
-        } catch (ImsException e) {
-            Rlog.i(LOG_TAG, "ImsMultiEndpointInterface is not available.");
-        }
+                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this);
+        mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+        mCT.registerPhoneStateListener(mExternalCallTracker);
+        mExternalCallTracker.setCallPuller(mCT);
 
         mSS.setStateOff();
 
@@ -225,6 +235,8 @@ public class ImsPhone extends ImsPhoneBase {
         // Nothing to dispose in Phone
         //super.dispose();
         mPendingMMIs.clear();
+        mExternalCallTracker.tearDown();
+        mCT.unregisterPhoneStateListener(mExternalCallTracker);
         mCT.dispose();
 
         //Force all referenced classes to unregister their former registered events
@@ -1348,10 +1360,10 @@ public class ImsPhone extends ImsPhoneBase {
         }
         // if phone is not in Ecm mode, and it's changed to Ecm mode
         if (mIsPhoneInEcmState == false) {
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
             mIsPhoneInEcmState = true;
             // notify change
             sendEmergencyCallbackModeChange();
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
@@ -1368,6 +1380,12 @@ public class ImsPhone extends ImsPhoneBase {
             Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode: mIsPhoneInEcmState = "
                     + mIsPhoneInEcmState);
         }
+
+        if (mIsPhoneInEcmState) {
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+            mIsPhoneInEcmState = false;
+        }
+
         // Remove pending exit Ecm runnable, if any
         removeCallbacks(mExitEcmRunnable);
 
@@ -1380,10 +1398,6 @@ public class ImsPhone extends ImsPhoneBase {
             mWakeLock.release();
         }
 
-        if (mIsPhoneInEcmState) {
-            mIsPhoneInEcmState = false;
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-        }
         // send an Intent
         sendEmergencyCallbackModeChange();
     }
@@ -1625,6 +1639,11 @@ public class ImsPhone extends ImsPhoneBase {
     @VisibleForTesting
     public PowerManager.WakeLock getWakeLock() {
         return mWakeLock;
+    }
+
+    @Override
+    public long getVtDataUsage() {
+        return mCT.getVtDataUsage();
     }
 
     @Override

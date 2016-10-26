@@ -34,6 +34,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * {@hide}
  */
 public abstract class Connection {
+
     public interface PostDialListener {
         void onPostDialWait();
         void onPostDialChar(char c);
@@ -97,6 +98,9 @@ public abstract class Connection {
         public void onConferenceMergedFailed();
         public void onExtrasChanged(Bundle extras);
         public void onExitedEcmMode();
+        public void onCallPullFailed(Connection externalConnection);
+        public void onHandoverToWifiFailed();
+        public void onConnectionEvent(String event, Bundle extras);
     }
 
     /**
@@ -126,6 +130,12 @@ public abstract class Connection {
         public void onExtrasChanged(Bundle extras) {}
         @Override
         public void onExitedEcmMode() {}
+        @Override
+        public void onCallPullFailed(Connection externalConnection) {}
+        @Override
+        public void onHandoverToWifiFailed() {}
+        @Override
+        public void onConnectionEvent(String event, Bundle extras) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -184,6 +194,21 @@ public abstract class Connection {
     public Call.State mPreHandoverState = Call.State.IDLE;
     private Bundle mExtras;
     private int mPhoneType;
+    private boolean mAnsweringDisconnectsActiveCall;
+    private boolean mAllowAddCallDuringVideoCall;
+
+    /**
+     * Used to indicate that this originated from pulling a {@link android.telecom.Connection} with
+     * {@link android.telecom.Connection#PROPERTY_IS_EXTERNAL_CALL}.
+     */
+    private boolean mIsPulledCall = false;
+
+    /**
+     * Where {@link #mIsPulledCall} is {@code true}, contains the dialog Id of the external call
+     * which is being pulled (e.g.
+     * {@link com.android.internal.telephony.imsphone.ImsExternalConnection#getCallId()}).
+     */
+    private int mPulledDialogId;
 
     protected Connection(int phoneType) {
         mPhoneType = phoneType;
@@ -637,6 +662,13 @@ public abstract class Connection {
     }
 
     /**
+     * @return {@code} true if the connection has the specified capabilities.
+     */
+    public boolean hasCapabilities(int connectionCapabilities) {
+        return (mConnectionCapabilities & connectionCapabilities) == connectionCapabilities;
+    }
+
+    /**
      * Applies a capability to a capabilities bit-mask.
      *
      * @param capabilities The capabilities bit-mask.
@@ -756,11 +788,12 @@ public abstract class Connection {
      * listeners.
      */
     public void setConnectionExtras(Bundle extras) {
-        if(extras != null) {
+        if (extras != null) {
             mExtras = new Bundle(extras);
         } else {
             mExtras = null;
         }
+
         for (Listener l : mListeners) {
             l.onExtrasChanged(mExtras);
         }
@@ -771,7 +804,65 @@ public abstract class Connection {
      * @return the connection extras.
      */
     public Bundle getConnectionExtras() {
-        return mExtras;
+        return mExtras == null ? null : new Bundle(mExtras);
+    }
+
+    /**
+     * @return {@code true} if answering the call will cause the current active call to be
+     *      disconnected, {@code false} otherwise.
+     */
+    public boolean isActiveCallDisconnectedOnAnswer() {
+        return mAnsweringDisconnectsActiveCall;
+    }
+
+    /**
+     * Sets whether answering this call will cause the active call to be disconnected.
+     * <p>
+     * Should only be set {@code true} if there is an active call and this call is ringing.
+     *
+     * @param answeringDisconnectsActiveCall {@code true} if answering the call will call the active
+     *      call to be disconnected.
+     */
+    public void setActiveCallDisconnectedOnAnswer(boolean answeringDisconnectsActiveCall) {
+        mAnsweringDisconnectsActiveCall = answeringDisconnectsActiveCall;
+    }
+
+    public boolean shouldAllowAddCallDuringVideoCall() {
+        return mAllowAddCallDuringVideoCall;
+    }
+
+    public void setAllowAddCallDuringVideoCall(boolean allowAddCallDuringVideoCall) {
+        mAllowAddCallDuringVideoCall = allowAddCallDuringVideoCall;
+    }
+
+    /**
+     * Sets whether the connection is the result of an external call which was pulled to the local
+     * device.
+     *
+     * @param isPulledCall {@code true} if this connection is the result of pulling an external call
+     *      to the local device.
+     */
+    public void setIsPulledCall(boolean isPulledCall) {
+        mIsPulledCall = isPulledCall;
+    }
+
+    public boolean isPulledCall() {
+        return mIsPulledCall;
+    }
+
+    /**
+     * For an external call which is being pulled (e.g. {@link #isPulledCall()} is {@code true}),
+     * sets the dialog Id for the external call.  Used to handle failures to pull a call so that the
+     * pulled call can be reconciled with its original external connection.
+     *
+     * @param pulledDialogId The dialog id associated with a pulled call.
+     */
+    public void setPulledDialogId(int pulledDialogId) {
+        mPulledDialogId = pulledDialogId;
+    }
+
+    public int getPulledDialogId() {
+        return mPulledDialogId;
     }
 
     /**
@@ -847,6 +938,38 @@ public abstract class Connection {
     }
 
     /**
+     * Notifies the connection that a call to {@link #pullExternalCall()} has failed to pull the
+     * call to the local device.
+     *
+     * @param externalConnection The original
+     *      {@link com.android.internal.telephony.imsphone.ImsExternalConnection} from which the
+     *      pull was initiated.
+     */
+    public void onCallPullFailed(Connection externalConnection) {
+        for (Listener l : mListeners) {
+            l.onCallPullFailed(externalConnection);
+        }
+    }
+
+    /**
+     * Notifies the connection that there was a failure while handing over to WIFI.
+     */
+    public void onHandoverToWifiFailed() {
+        for (Listener l : mListeners) {
+            l.onHandoverToWifiFailed();
+        }
+    }
+
+    /**
+     * Notifies the connection of a connection event.
+     */
+    public void onConnectionEvent(String event, Bundle extras) {
+        for (Listener l : mListeners) {
+            l.onConnectionEvent(event, extras);
+        }
+    }
+
+    /**
      * Notifies this Connection of a request to disconnect a participant of the conference managed
      * by the connection.
      *
@@ -890,6 +1013,8 @@ public abstract class Connection {
         StringBuilder str = new StringBuilder(128);
 
         str.append(" callId: " + getTelecomCallId());
+        str.append(" isExternal: " + (((mConnectionCapabilities & Capability.IS_EXTERNAL_CONNECTION)
+                == Capability.IS_EXTERNAL_CONNECTION) ? "Y" : "N"));
         if (Rlog.isLoggable(LOG_TAG, Log.DEBUG)) {
             str.append("addr: " + getAddress())
                     .append(" pres.: " + getNumberPresentation())

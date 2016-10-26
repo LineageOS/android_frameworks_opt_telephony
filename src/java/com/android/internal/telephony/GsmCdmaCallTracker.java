@@ -189,6 +189,14 @@ public class GsmCdmaCallTracker extends CallTracker {
                 gsmCdmaConnection.dispose();
             }
         }
+
+        if (mPendingMO != null) {
+            mPendingMO.dispose();
+        }
+
+        mConnections = null;
+        mPendingMO = null;
+        mState = PhoneConstants.State.IDLE;
     }
 
     @Override
@@ -294,9 +302,10 @@ public class GsmCdmaCallTracker extends CallTracker {
             //we should have failed in !canDial() above before we get here
             throw new CallStateException("cannot dial in current state");
         }
-
+        boolean isEmergencyCall = PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(),
+                dialString);
         mPendingMO = new GsmCdmaConnection(mPhone, checkForTestEmergencyNumber(dialString),
-                this, mForegroundCall);
+                this, mForegroundCall, isEmergencyCall);
         mHangupPendingMO = false;
 
         if ( mPendingMO.getAddress() == null || mPendingMO.getAddress().length() == 0
@@ -407,7 +416,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
 
         mPendingMO = new GsmCdmaConnection(mPhone, checkForTestEmergencyNumber(dialString),
-                this, mForegroundCall);
+                this, mForegroundCall, isEmergencyCall);
         mHangupPendingMO = false;
 
         if ( mPendingMO.getAddress() == null || mPendingMO.getAddress().length() == 0
@@ -450,12 +459,13 @@ public class GsmCdmaCallTracker extends CallTracker {
     //CDMA
     private Connection dialThreeWay(String dialString) {
         if (!mForegroundCall.isIdle()) {
-            // Check data call
+            // Check data call and possibly set mIsInEmergencyCall
             disableDataCallInEmergencyCall(dialString);
 
             // Attach the new connection to foregroundCall
             mPendingMO = new GsmCdmaConnection(mPhone,
-                    checkForTestEmergencyNumber(dialString), this, mForegroundCall);
+                    checkForTestEmergencyNumber(dialString), this, mForegroundCall,
+                    mIsInEmergencyCall);
             // Some network need a empty flash before sending the normal one
             m3WayCallFlashDelay = mPhone.getContext().getResources()
                     .getInteger(com.android.internal.R.integer.config_cdma_3waycall_flash_delay);
@@ -1067,8 +1077,8 @@ public class GsmCdmaCallTracker extends CallTracker {
             mPhone.notifyPreciseCallStateChanged();
         }
 
-        /* If all handover connections are mapped during this poll process clean it up */
-        if(handoverConnectionsSize > 0 && mHandoverConnections.size() == 0) {
+        // If all handover connections are mapped during this poll process clean it up
+        if (handoverConnectionsSize > 0 && mHandoverConnections.size() == 0) {
             Phone imsPhone = mPhone.getImsPhone();
             if (imsPhone != null) {
                 imsPhone.callEndCleanupHandOverCallIfAny();
