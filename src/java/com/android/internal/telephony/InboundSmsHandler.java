@@ -868,8 +868,10 @@ public abstract class InboundSmsHandler extends StateMachine {
                 if (!tracker.is3gpp2()) {
                     SmsMessage msg = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
                     pdu = msg.getUserData();
-                    if (TextUtils.isEmpty(address)) {
+                    if (address == "") {
                        address = msg.getOriginatingAddress();
+                    } else if(address == ""){
+                       address = tracker.getAddress();
                     }
                 }
                 output.write(pdu, 0, pdu.length);
