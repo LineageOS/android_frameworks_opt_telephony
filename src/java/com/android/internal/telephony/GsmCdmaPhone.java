@@ -1289,23 +1289,14 @@ public class GsmCdmaPhone extends Phone {
         }
 
         if (TextUtils.isEmpty(number)) {
-            String[] listArray = getContext().getResources()
-                .getStringArray(com.android.internal.R.array.config_default_vm_number);
-            if (listArray != null && listArray.length > 0) {
-                for (int i=0; i<listArray.length; i++) {
-                    if (!TextUtils.isEmpty(listArray[i])) {
-                        String[] defaultVMNumberArray = listArray[i].split(";");
-                        if (defaultVMNumberArray != null && defaultVMNumberArray.length > 0) {
-                            if (defaultVMNumberArray.length == 1) {
-                                number = defaultVMNumberArray[0];
-                            } else if (defaultVMNumberArray.length == 2 &&
-                                    !TextUtils.isEmpty(defaultVMNumberArray[1]) &&
-                                    isMatchGid(defaultVMNumberArray[1])) {
-                                number = defaultVMNumberArray[0];
-                                break;
-                            }
-                        }
-                    }
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle b = configManager.getConfig();
+            if (b != null) {
+                String defaultVmNumber =
+                        b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING);
+                if (!TextUtils.isEmpty(defaultVmNumber)) {
+                    number = defaultVmNumber;
                 }
             }
         }

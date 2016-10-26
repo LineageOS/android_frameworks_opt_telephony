@@ -344,9 +344,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(null, mPhoneUT.getVoiceMailNumber());
 
         // voicemail number from config
-        mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_default_vm_number,
-                new String[]{voiceMailNumber});
+        mContextFixture.getCarrierConfigBundle().
+                putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING, voiceMailNumber);
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
 
         // voicemail number that is explicitly set
@@ -376,9 +375,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // voicemail number from config
         voiceMailNumber = "1234567891";
-        mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_default_vm_number,
-                new String[]{voiceMailNumber});
+        mContextFixture.getCarrierConfigBundle().
+                putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING, voiceMailNumber);
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
 
         // voicemail number from sharedPreference
