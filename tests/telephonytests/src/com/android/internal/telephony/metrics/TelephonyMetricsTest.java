@@ -193,6 +193,27 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(ImsCommand.IMS_CMD_START, log.callSessions[0].events[0].getImsCommand());
     }
 
+    // Test write on IMS call received
+    @Test
+    @SmallTest
+    public void testWriteOnImsCallReceive() throws Exception {
+        mMetrics.writeOnImsCallReceive(mPhone.getPhoneId(), mImsCallSession);
+        mMetrics.writePhoneState(mPhone.getPhoneId(), PhoneConstants.State.IDLE);
+        TelephonyLog log = buildProto();
+
+        assertEquals(0, log.events.length);
+        assertEquals(1, log.callSessions.length);
+        assertEquals(0, log.smsSessions.length);
+        assertTrue(log.callSessions[0].hasPhoneId());
+        assertEquals(mPhone.getPhoneId(), log.callSessions[0].getPhoneId());
+        assertTrue(log.callSessions[0].hasEventsDropped());
+        assertFalse(log.callSessions[0].getEventsDropped());
+        assertTrue(log.callSessions[0].hasStartTimeMinutes());
+        assertEquals(1, log.callSessions[0].events.length);
+        assertTrue(log.callSessions[0].events[0].hasCallIndex());
+        assertEquals(123, log.callSessions[0].events[0].getCallIndex());
+    }
+
     // Test write ims call state
     @Test
     @SmallTest
@@ -219,6 +240,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteImsSetFeatureValue() throws Exception {
         mMetrics.writeOnImsCallStart(mPhone.getPhoneId(), mImsCallSession);
+        mMetrics.writeImsSetFeatureValue(mPhone.getPhoneId(),
+                ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE, 0, 1, 0);
         mMetrics.writeImsSetFeatureValue(mPhone.getPhoneId(),
                 ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE, 0, 1, 0);
         mMetrics.writePhoneState(mPhone.getPhoneId(), PhoneConstants.State.IDLE);
@@ -298,6 +321,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteOnImsConnectionState() throws Exception {
         mMetrics.writeOnImsCallStart(mPhone.getPhoneId(), mImsCallSession);
+        mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
+                ImsConnectionState.State.CONNECTED, mImsReasonInfo);
         mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
                 ImsConnectionState.State.CONNECTED, mImsReasonInfo);
         mMetrics.writePhoneState(mPhone.getPhoneId(), PhoneConstants.State.IDLE);
@@ -542,6 +567,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteServiceStateChanged() throws Exception {
         mMetrics.writeServiceStateChanged(mPhone.getPhoneId(), mServiceState);
+        mMetrics.writeServiceStateChanged(mPhone.getPhoneId(), mServiceState);
         TelephonyLog log = buildProto();
 
         assertEquals(1, log.events.length);
@@ -628,5 +654,43 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         byte[] decodedString = Base64.decode(encodedString, Base64.DEFAULT);
         assertArrayEquals(TelephonyProto.TelephonyLog.toByteArray(log), decodedString);
+    }
+
+    // Test write ims capabilities changed
+    @Test
+    @SmallTest
+    public void testWriteOnImsCapabilities() throws Exception {
+        boolean[] caps1 = new boolean[]{true, false, true, false, true, false};
+        mMetrics.writeOnImsCapabilities(mPhone.getPhoneId(), caps1);
+        boolean[] caps2 = new boolean[]{true, false, true, false, true, false};
+        // The duplicate one should be filtered out.
+        mMetrics.writeOnImsCapabilities(mPhone.getPhoneId(), caps2);
+        boolean[] caps3 = new boolean[]{false, true, false, true, false, true};
+        mMetrics.writeOnImsCapabilities(mPhone.getPhoneId(), caps3);
+        TelephonyLog log = buildProto();
+
+        assertEquals(2, log.events.length);
+        assertEquals(0, log.callSessions.length);
+        assertEquals(0, log.smsSessions.length);
+
+        TelephonyEvent event = log.events[0];
+        assertTrue(event.hasType());
+        assertEquals(TelephonyEvent.Type.IMS_CAPABILITIES_CHANGED, event.getType());
+        assertEquals(caps1[0], event.imsCapabilities.getVoiceOverLte());
+        assertEquals(caps1[1], event.imsCapabilities.getVideoOverLte());
+        assertEquals(caps1[2], event.imsCapabilities.getVoiceOverWifi());
+        assertEquals(caps1[3], event.imsCapabilities.getVideoOverWifi());
+        assertEquals(caps1[4], event.imsCapabilities.getUtOverLte());
+        assertEquals(caps1[5], event.imsCapabilities.getUtOverWifi());
+
+        event = log.events[1];
+        assertTrue(event.hasType());
+        assertEquals(TelephonyEvent.Type.IMS_CAPABILITIES_CHANGED, event.getType());
+        assertEquals(caps3[0], event.imsCapabilities.getVoiceOverLte());
+        assertEquals(caps3[1], event.imsCapabilities.getVideoOverLte());
+        assertEquals(caps3[2], event.imsCapabilities.getVoiceOverWifi());
+        assertEquals(caps3[3], event.imsCapabilities.getVideoOverWifi());
+        assertEquals(caps3[4], event.imsCapabilities.getUtOverLte());
+        assertEquals(caps3[5], event.imsCapabilities.getUtOverWifi());
     }
 }

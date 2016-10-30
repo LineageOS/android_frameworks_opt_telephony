@@ -77,6 +77,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
@@ -139,6 +140,11 @@ public class TelephonyMetrics {
      * session
      */
     private final SparseArray<ImsConnectionState> mLastImsConnectionState = new SparseArray<>();
+
+    /**
+     * Last settings state. This is for deduping same settings event logged.
+     */
+    private final SparseArray<TelephonySettings> mLastSettings = new SparseArray<>();
 
     /** The start system time of the TelephonyLog in milliseconds*/
     private long mStartSystemTimeMs;
@@ -781,6 +787,13 @@ public class TelephonyMetrics {
         TelephonyEvent event = new TelephonyEventBuilder(phoneId)
                 .setServiceState(toServiceStateProto(serviceState)).build();
 
+        // If service state doesn't change, we don't log the event.
+        if (mLastServiceState.get(phoneId) != null &&
+                Arrays.equals(TelephonyServiceState.toByteArray(mLastServiceState.get(phoneId)),
+                        TelephonyServiceState.toByteArray(event.serviceState))) {
+            return;
+        }
+
         mLastServiceState.put(phoneId, event.serviceState);
         addTelephonyEvent(event);
 
@@ -832,6 +845,15 @@ public class TelephonyMetrics {
                 break;
         }
 
+        // If the settings don't change, we don't log the event.
+        if (mLastSettings.get(phoneId) != null &&
+                Arrays.equals(TelephonySettings.toByteArray(mLastSettings.get(phoneId)),
+                        TelephonySettings.toByteArray(s))) {
+            return;
+        }
+
+        mLastSettings.put(phoneId, s);
+
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setSettings(s).build();
         addTelephonyEvent(event);
 
@@ -852,6 +874,16 @@ public class TelephonyMetrics {
     public void writeSetPreferredNetworkType(int phoneId, int networkType) {
         TelephonySettings s = new TelephonySettings();
         s.setPreferredNetworkMode(networkType);
+
+        // If the settings don't change, we don't log the event.
+        if (mLastSettings.get(phoneId) != null &&
+                Arrays.equals(TelephonySettings.toByteArray(mLastSettings.get(phoneId)),
+                        TelephonySettings.toByteArray(s))) {
+            return;
+        }
+
+        mLastSettings.put(phoneId, s);
+
         addTelephonyEvent(new TelephonyEventBuilder(phoneId).setSettings(s).build());
     }
 
@@ -866,7 +898,6 @@ public class TelephonyMetrics {
                                                        ImsReasonInfo reasonInfo) {
         ImsConnectionState imsState = new ImsConnectionState();
         imsState.setState(state);
-        mLastImsConnectionState.put(phoneId, imsState);
 
         if (reasonInfo != null) {
             TelephonyProto.ImsReasonInfo ri = new TelephonyProto.ImsReasonInfo();
@@ -880,6 +911,15 @@ public class TelephonyMetrics {
 
             imsState.reasonInfo = ri;
         }
+
+        // If the connection state does not change, do not log it.
+        if (mLastImsConnectionState.get(phoneId) != null &&
+                Arrays.equals(ImsConnectionState.toByteArray(mLastImsConnectionState.get(phoneId)),
+                        ImsConnectionState.toByteArray(imsState))) {
+            return;
+        }
+
+        mLastImsConnectionState.put(phoneId, imsState);
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId)
                 .setImsConnectionState(imsState).build();
@@ -912,6 +952,14 @@ public class TelephonyMetrics {
         cap.setUtOverWifi(capabilities[5]);
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setImsCapabilities(cap).build();
+
+        // If the capabilities don't change, we don't log the event.
+        if (mLastImsCapabilities.get(phoneId) != null &&
+                Arrays.equals(ImsCapabilities.toByteArray(mLastImsCapabilities.get(phoneId)),
+                ImsCapabilities.toByteArray(cap))) {
+            return;
+        }
+
         mLastImsCapabilities.put(phoneId, cap);
         addTelephonyEvent(event);
 
@@ -1395,7 +1443,11 @@ public class TelephonyMetrics {
      * @param session IMS call session
      */
     public void writeOnImsCallReceive(int phoneId, ImsCallSession session) {
-        writeOnImsCallStart(phoneId, session);
+        InProgressCallSession callSession = startNewCallSessionIfNeeded(phoneId);
+
+        callSession.addEvent(
+                new CallSessionEventBuilder(TelephonyCallSession.Event.Type.IMS_CALL_RECEIVE)
+                        .setCallIndex(getCallId(session)));
     }
 
     /**
