@@ -51,6 +51,8 @@ public class SIMRecords extends IccRecords {
 
     private static final boolean CRASH_RIL = false;
 
+    private static final boolean VDBG = false;
+
     // ***** Instance Variables
 
     VoiceMailConstants mVmConfig;
@@ -166,6 +168,11 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_CSP_CPHS_DONE = 33 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_GID1_DONE = 34 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_GID2_DONE = 36 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_PLMN_W_ACT_DONE = 37 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_OPLMN_W_ACT_DONE = 38 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_HPLMN_W_ACT_DONE = 39 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_EHPLMN_DONE = 40 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_FPLMN_DONE = 41 + SIM_RECORD_EVENT_BASE;
 
     // TODO: Possibly move these to IccRecords.java
     private static final int SYSTEM_EVENT_BASE = 0x100;
@@ -268,6 +275,11 @@ public class SIMRecords extends IccRecords {
         mPnnHomeName = null;
         mGid1 = null;
         mGid2 = null;
+        mPlmnActRecords = null;
+        mOplmnActRecords = null;
+        mHplmnActRecords = null;
+        mFplmns = null;
+        mEhplmns = null;
 
         mAdnCache.reset();
 
@@ -1246,6 +1258,76 @@ public class SIMRecords extends IccRecords {
 
                 break;
 
+            case EVENT_GET_PLMN_W_ACT_DONE:
+                isRecordLoadResponse = true;
+                ar = (AsyncResult) msg.obj;
+                data = (byte[]) ar.result;
+
+                if (ar.exception != null || data == null) {
+                    loge("Failed getting User PLMN with Access Tech Records: " + ar.exception);
+                    break;
+                } else {
+                    log("Received a PlmnActRecord, raw=" + IccUtils.bytesToHexString(data));
+                    mPlmnActRecords = PlmnActRecord.getRecords(data);
+                    if (VDBG) log("PlmnActRecords=" + Arrays.toString(mPlmnActRecords));
+                }
+                break;
+
+            case EVENT_GET_OPLMN_W_ACT_DONE:
+                isRecordLoadResponse = true;
+                ar = (AsyncResult) msg.obj;
+                data = (byte[]) ar.result;
+
+                if (ar.exception != null || data == null) {
+                    loge("Failed getting Operator PLMN with Access Tech Records: "
+                            + ar.exception);
+                    break;
+                } else {
+                    log("Received a PlmnActRecord, raw=" + IccUtils.bytesToHexString(data));
+                    mOplmnActRecords = PlmnActRecord.getRecords(data);
+                    if (VDBG) log("OplmnActRecord[]=" + Arrays.toString(mOplmnActRecords));
+                }
+                break;
+
+            case EVENT_GET_HPLMN_W_ACT_DONE:
+                isRecordLoadResponse = true;
+                ar = (AsyncResult) msg.obj;
+                data = (byte[]) ar.result;
+
+                if (ar.exception != null || data == null) {
+                    loge("Failed getting Home PLMN with Access Tech Records: " + ar.exception);
+                    break;
+                } else {
+                    log("Received a PlmnActRecord, raw=" + IccUtils.bytesToHexString(data));
+                    mHplmnActRecords = PlmnActRecord.getRecords(data);
+                    log("HplmnActRecord[]=" + Arrays.toString(mHplmnActRecords));
+                }
+                break;
+
+            case EVENT_GET_EHPLMN_DONE:
+                isRecordLoadResponse = true;
+                ar = (AsyncResult) msg.obj;
+                data = (byte[]) ar.result;
+                if (ar.exception != null || data == null) {
+                    loge("Failed getting Equivalent Home PLMNs: " + ar.exception);
+                    break;
+                } else {
+                    mEhplmns = parseBcdPlmnList(data, "Equivalent Home");
+                }
+                break;
+
+            case EVENT_GET_FPLMN_DONE:
+                isRecordLoadResponse = true;
+                ar = (AsyncResult) msg.obj;
+                data = (byte[]) ar.result;
+                if (ar.exception != null || data == null) {
+                    loge("Failed getting Forbidden PLMNs: " + ar.exception);
+                    break;
+                } else {
+                    mFplmns = parseBcdPlmnList(data, "Forbidden");
+                }
+                break;
+
             case EVENT_CARRIER_CONFIG_CHANGED:
                 handleCarrierNameOverride();
                 break;
@@ -1640,6 +1722,21 @@ public class SIMRecords extends IccRecords {
         mFh.loadEFTransparent(EF_GID2, obtainMessage(EVENT_GET_GID2_DONE));
         mRecordsToLoad++;
 
+        mFh.loadEFTransparent(EF_PLMN_W_ACT, obtainMessage(EVENT_GET_PLMN_W_ACT_DONE));
+        mRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_OPLMN_W_ACT, obtainMessage(EVENT_GET_OPLMN_W_ACT_DONE));
+        mRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_HPLMN_W_ACT, obtainMessage(EVENT_GET_HPLMN_W_ACT_DONE));
+        mRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_EHPLMN, obtainMessage(EVENT_GET_EHPLMN_DONE));
+        mRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_FPLMN, obtainMessage(EVENT_GET_FPLMN_DONE));
+        mRecordsToLoad++;
+
         loadEfLiAndEfPl();
 
         // XXX should seek instead of examining them all
@@ -1916,6 +2013,25 @@ public class SIMRecords extends IccRecords {
     }
 
     /**
+     * convert a byte array of packed plmns to an array of strings
+     */
+    private String[] parseBcdPlmnList(byte[] data, String description) {
+        final int packedBcdPlmnLenBytes = 3;
+        log("Received " + description + " PLMNs, raw=" + IccUtils.bytesToHexString(data));
+        if (data.length == 0 || (data.length % packedBcdPlmnLenBytes) != 0) {
+            loge("Received invalid " + description + " PLMN list");
+            return null;
+        }
+        int numPlmns = data.length / packedBcdPlmnLenBytes;
+        String[] ret = new String[numPlmns];
+        for (int i = 0; i < numPlmns; i++) {
+            ret[i] = IccUtils.bcdPlmnToString(data, i * packedBcdPlmnLenBytes);
+        }
+        if (VDBG) logv(description + " PLMNs: " + Arrays.toString(ret));
+        return ret;
+    }
+
+    /**
      * check to see if Mailbox Number is allocated and activated in CPHS SST
      */
     private boolean isCphsMailboxEnabled() {
@@ -2012,6 +2128,11 @@ public class SIMRecords extends IccRecords {
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
         pw.println(" mGid2=" + mGid2);
+        pw.println(" mPlmnActRecords[]=" + Arrays.toString(mPlmnActRecords));
+        pw.println(" mOplmnActRecords[]=" + Arrays.toString(mOplmnActRecords));
+        pw.println(" mHplmnActRecords[]=" + Arrays.toString(mHplmnActRecords));
+        pw.println(" mFplmns[]=" + Arrays.toString(mFplmns));
+        pw.println(" mEhplmns[]=" + Arrays.toString(mEhplmns));
         pw.flush();
     }
 }
