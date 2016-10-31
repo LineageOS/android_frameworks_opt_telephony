@@ -88,6 +88,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mGid2;
     protected String mPrefLang;
 
+    protected PlmnActRecord[] mHplmnActRecords;
+    protected PlmnActRecord[] mOplmnActRecords;
+    protected PlmnActRecord[] mPlmnActRecords;
+
+    protected String[] mEhplmns;
+    protected String[] mFplmns;
+
     private final Object mLock = new Object();
 
     // ***** Constants
