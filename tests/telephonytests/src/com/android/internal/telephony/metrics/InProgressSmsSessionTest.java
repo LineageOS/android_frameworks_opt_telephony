@@ -68,7 +68,7 @@ public class InProgressSmsSessionTest extends TelephonyTest {
         }
 
         assertTrue(mSmsSession.isEventsDropped());
-        assertEquals(6, mSmsSession.events.getFirst().getRilRequestId());
+        assertEquals(6, mSmsSession.events.getFirst().rilRequestId);
     }
 
     // Test dropped event scenario

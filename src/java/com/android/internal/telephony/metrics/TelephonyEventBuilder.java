@@ -41,78 +41,78 @@ public class TelephonyEventBuilder {
     }
 
     public TelephonyEventBuilder(long timestamp, int phoneId) {
-        mEvent.setTimestampMillis(timestamp);
-        mEvent.setPhoneId(phoneId);
+        mEvent.timestampMillis = timestamp;
+        mEvent.phoneId = phoneId;
     }
 
     public TelephonyEventBuilder setSettings(TelephonySettings settings) {
-        mEvent.setType(TelephonyEvent.Type.SETTINGS_CHANGED);
+        mEvent.type = TelephonyEvent.Type.SETTINGS_CHANGED;
         mEvent.settings = settings;
         return this;
     }
 
     public TelephonyEventBuilder setServiceState(TelephonyServiceState state) {
-        mEvent.setType(TelephonyEvent.Type.RIL_SERVICE_STATE_CHANGED);
+        mEvent.type = TelephonyEvent.Type.RIL_SERVICE_STATE_CHANGED;
         mEvent.serviceState = state;
         return this;
     }
 
     public TelephonyEventBuilder setImsConnectionState(ImsConnectionState state) {
-        mEvent.setType(TelephonyEvent.Type.IMS_CONNECTION_STATE_CHANGED);
+        mEvent.type = TelephonyEvent.Type.IMS_CONNECTION_STATE_CHANGED;
         mEvent.imsConnectionState = state;
         return this;
     }
 
     public TelephonyEventBuilder setImsCapabilities(ImsCapabilities capabilities) {
-        mEvent.setType(TelephonyEvent.Type.IMS_CAPABILITIES_CHANGED);
+        mEvent.type = TelephonyEvent.Type.IMS_CAPABILITIES_CHANGED;
         mEvent.imsCapabilities = capabilities;
         return this;
     }
 
     public TelephonyEventBuilder setDataStallRecoveryAction(int action) {
-        mEvent.setType(TelephonyEvent.Type.DATA_STALL_ACTION);
-        mEvent.setDataStallAction(action);
+        mEvent.type = TelephonyEvent.Type.DATA_STALL_ACTION;
+        mEvent.dataStallAction = action;
         return this;
     }
 
     public TelephonyEventBuilder setSetupDataCall(RilSetupDataCall request) {
-        mEvent.setType(TelephonyEvent.Type.DATA_CALL_SETUP);
+        mEvent.type = TelephonyEvent.Type.DATA_CALL_SETUP;
         mEvent.setupDataCall = request;
         return this;
     }
 
     public TelephonyEventBuilder setSetupDataCallResponse(RilSetupDataCallResponse rsp) {
-        mEvent.setType(TelephonyEvent.Type.DATA_CALL_SETUP_RESPONSE);
+        mEvent.type = TelephonyEvent.Type.DATA_CALL_SETUP_RESPONSE;
         mEvent.setupDataCallResponse = rsp;
         return this;
     }
 
     public TelephonyEventBuilder setDeactivateDataCall(RilDeactivateDataCall request) {
-        mEvent.setType(TelephonyEvent.Type.DATA_CALL_DEACTIVATE);
+        mEvent.type = TelephonyEvent.Type.DATA_CALL_DEACTIVATE;
         mEvent.deactivateDataCall = request;
         return this;
     }
 
     public TelephonyEventBuilder setDeactivateDataCallResponse(int errno) {
-        mEvent.setType(TelephonyEvent.Type.DATA_CALL_DEACTIVATE_RESPONSE);
-        mEvent.setError(errno);
+        mEvent.type = TelephonyEvent.Type.DATA_CALL_DEACTIVATE_RESPONSE;
+        mEvent.error = errno;
         return this;
     }
 
     public TelephonyEventBuilder setDataCalls(RilDataCall[] dataCalls) {
-        mEvent.setType(TelephonyEvent.Type.DATA_CALL_LIST_CHANGED);
+        mEvent.type = TelephonyEvent.Type.DATA_CALL_LIST_CHANGED;
         mEvent.dataCalls = dataCalls;
         return this;
     }
 
     public TelephonyEventBuilder setNITZ(long timestamp) {
-        mEvent.setType(TelephonyEvent.Type.NITZ_TIME);
-        mEvent.setNitzTimestampMillis(timestamp);
+        mEvent.type = TelephonyEvent.Type.NITZ_TIME;
+        mEvent.nitzTimestampMillis = timestamp;
         return this;
     }
 
     public TelephonyEventBuilder setModemRestart(ModemRestart modemRestart) {
-        mEvent.setType(TelephonyEvent.Type.MODEM_RESTART);
+        mEvent.type = TelephonyEvent.Type.MODEM_RESTART;
         mEvent.modemRestart = modemRestart;
         return this;
     }

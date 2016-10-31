@@ -31,26 +31,26 @@ public class SmsSessionEventBuilder {
     }
 
     public SmsSessionEventBuilder(int type) {
-        mEvent.setType(type);
+        mEvent.type = type;
     }
 
     public SmsSessionEventBuilder setDelay(int delay) {
-        mEvent.setDelay(delay);
+        mEvent.delay = delay;
         return this;
     }
 
     public SmsSessionEventBuilder setTech(int tech) {
-        mEvent.setTech(tech);
+        mEvent.tech = tech;
         return this;
     }
 
     public SmsSessionEventBuilder setErrorCode(int code) {
-        mEvent.setErrorCode(code);
+        mEvent.errorCode = code;
         return this;
     }
 
     public SmsSessionEventBuilder setRilErrno(int errno) {
-        mEvent.setError(errno);
+        mEvent.error = errno;
         return this;
     }
 
@@ -80,12 +80,12 @@ public class SmsSessionEventBuilder {
     }
 
     public SmsSessionEventBuilder setRilRequestId(int id) {
-        mEvent.setRilRequestId(id);
+        mEvent.rilRequestId = id;
         return this;
     }
 
     public SmsSessionEventBuilder setFormat(int format) {
-        mEvent.setFormat(format);
+        mEvent.format = format;
         return this;
     }
 }

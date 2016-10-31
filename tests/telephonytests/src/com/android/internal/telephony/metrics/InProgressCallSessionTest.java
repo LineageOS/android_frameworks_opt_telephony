@@ -72,6 +72,6 @@ public class InProgressCallSessionTest extends TelephonyTest {
         }
 
         assertTrue(mCallSession.isEventsDropped());
-        assertEquals(2, mCallSession.events.getFirst().getRilRequestId());
+        assertEquals(2, mCallSession.events.getFirst().rilRequestId);
     }
 }
