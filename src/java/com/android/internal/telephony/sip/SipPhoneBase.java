@@ -21,6 +21,7 @@ import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.ResultReceiver;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
@@ -236,6 +237,11 @@ abstract class SipPhoneBase extends Phone {
 
     @Override
     public boolean handlePinMmi(String dialString) {
+        return false;
+    }
+
+    @Override
+    public boolean handleUssdRequest(String dialString, ResultReceiver wrappedCallback) {
         return false;
     }
 
