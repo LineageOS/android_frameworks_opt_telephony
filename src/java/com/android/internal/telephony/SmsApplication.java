@@ -546,8 +546,8 @@ public final class SmsApplication {
             AppOpsManager appOps = (AppOpsManager)context.getSystemService(Context.APP_OPS_SERVICE);
             if (oldPackageName != null) {
                 try {
-                    PackageInfo info = packageManager.getPackageInfo(oldPackageName,
-                            PackageManager.GET_UNINSTALLED_PACKAGES);
+                    PackageInfo info = packageManager.getPackageInfoAsUser(oldPackageName,
+                            0, userId);
                     appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
                             oldPackageName, AppOpsManager.MODE_IGNORED);
                 } catch (NameNotFoundException e) {
