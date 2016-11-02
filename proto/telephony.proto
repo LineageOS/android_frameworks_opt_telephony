@@ -95,13 +95,13 @@ message TelephonyHistogram {
 // Telephony related user settings
 message TelephonySettings {
 
-  // NETWORK_MODE_* See ril.h RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE
+  // NETWORK_MODE_* See ril.h PREF_NET_TYPE_XXXX
   enum RilNetworkMode {
 
     // Mode is unknown.
     NETWORK_MODE_UNKNOWN = 0;
 
-    // GSM/WCDMA (WCDMA preferred)
+    // GSM/WCDMA (WCDMA preferred). Note the following values are all off by 1.
     NETWORK_MODE_WCDMA_PREF = 1;
 
     // GSM only
@@ -236,6 +236,9 @@ message TelephonyServiceState {
   // Roaming type
   enum RoamingType {
 
+    // Unknown. The default value. Different from ROAMING_TYPE_UNKNOWN.
+    UNKNOWN = -1;
+
     // In home network
     ROAMING_TYPE_NOT_ROAMING = 0;
 
@@ -257,21 +260,26 @@ message TelephonyServiceState {
   optional TelephonyOperator data_operator = 2;
 
   // Current voice network roaming type
-  optional RoamingType voice_roaming_type = 3;
+  optional RoamingType voice_roaming_type = 3 [default = UNKNOWN];
 
   // Current data network roaming type
-  optional RoamingType data_roaming_type = 4;
+  optional RoamingType data_roaming_type = 4 [default = UNKNOWN];
 
   // Current voice radio technology
-  optional RadioAccessTechnology voice_rat = 5;
+  optional RadioAccessTechnology voice_rat = 5 [default = UNKNOWN];
 
   // Current data radio technology
-  optional RadioAccessTechnology data_rat = 6;
+  optional RadioAccessTechnology data_rat = 6 [default = UNKNOWN];
 }
 
 // Radio access families
 enum RadioAccessTechnology {
 
+  // This is the default value. Different from RAT_UNKNOWN.
+  UNKNOWN = -1;
+
+  // Airplane mode, out of service, or when the modem cannot determine
+  // the RAT.
   RAT_UNKNOWN = 0;
 
   RAT_GPRS = 1;
@@ -377,6 +385,7 @@ enum RilErrno {
   // type is unknown.
   RIL_E_UNKNOWN = 0;
 
+  // Note the following values are all off by 1.
   RIL_E_SUCCESS = 1;
 
   // If radio did not start or is resetting
@@ -458,8 +467,12 @@ enum RilErrno {
   // SS request modified to different SS request
   RIL_E_SS_MODIFIED_TO_SS = 28;
 
-  // LCE service not supported(36 in RILConstants.java)
-  RIL_E_LCE_NOT_SUPPORTED = 36;
+  // LCE service not supported(36 in RILConstants.java. This is a mistake.
+  // The value should be off by 1 ideally.)
+  RIL_E_LCE_NOT_SUPPORTED = 36 [deprecated=true];
+
+  // LCE service not supported
+  RIL_E_LCE_NOT_SUPPORTED_NEW = 37;
 }
 
 // PDP_type values in TS 27.007 section 10.1.1.
@@ -561,7 +574,7 @@ message TelephonyEvent {
     }
 
     // Radio technology to use
-    optional RadioAccessTechnology rat = 1;
+    optional RadioAccessTechnology rat = 1 [default = UNKNOWN];
 
     // optional RIL_DataProfile
     optional RilDataProfile data_profile = 2;
@@ -576,8 +589,7 @@ message TelephonyEvent {
   // RIL response to RilSetupDataCall
   message RilSetupDataCallResponse {
 
-    // Copy of enum RIL_DataCallFailCause defined at
-    // https://cs.corp.google.com/android/hardware/ril/include/telephony/ril.h
+    // Copy of enum RIL_DataCallFailCause defined at ril.h
     enum RilDataCallFailCause {
 
       // Failure reason is unknown.
@@ -1090,10 +1102,10 @@ message TelephonyCallSession {
     optional ImsReasonInfo reason_info = 18;
 
     // Original access technology
-    optional RadioAccessTechnology src_access_tech = 19;
+    optional RadioAccessTechnology src_access_tech = 19 [default = UNKNOWN];
 
     // New access technology
-    optional RadioAccessTechnology target_access_tech = 20;
+    optional RadioAccessTechnology target_access_tech = 20 [default = UNKNOWN];
 
     // NITZ time in milliseconds
     optional int64 nitz_timestamp_millis = 21;

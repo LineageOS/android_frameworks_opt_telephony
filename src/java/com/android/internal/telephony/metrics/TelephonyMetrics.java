@@ -866,7 +866,7 @@ public class TelephonyMetrics {
      */
     public void writeSetPreferredNetworkType(int phoneId, int networkType) {
         TelephonySettings s = new TelephonySettings();
-        s.preferredNetworkMode = networkType;
+        s.preferredNetworkMode = networkType + 1;
 
         // If the settings don't change, we don't log the event.
         if (mLastSettings.get(phoneId) != null &&
@@ -1232,7 +1232,7 @@ public class TelephonyMetrics {
                     TelephonyCallSession.Event.Type.RIL_RESPONSE)
                     .setRilRequest(toCallSessionRilRequest(rilRequest))
                     .setRilRequestId(rilSerial)
-                    .setRilError(rilError));
+                    .setRilError(rilError + 1));
         }
     }
 
@@ -1260,7 +1260,7 @@ public class TelephonyMetrics {
             smsSession.addEvent(new SmsSessionEventBuilder(
                     SmsSession.Event.Type.SMS_SEND_RESULT)
                     .setErrorCode(errorCode)
-                    .setRilErrno(rilError)
+                    .setRilErrno(rilError + 1)
                     .setRilRequestId(rilSerial)
             );
 

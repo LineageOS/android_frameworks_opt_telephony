@@ -414,12 +414,12 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         assertEquals(SmsSession.Event.Type.SMS_SEND_RESULT, events[2].type);
         assertEquals(1, events[2].rilRequestId);
-        assertEquals(0, events[2].error);
+        assertEquals(1, events[2].error);
         assertEquals(123, events[2].errorCode);
 
         assertEquals(SmsSession.Event.Type.SMS_SEND_RESULT, events[3].type);
         assertEquals(4, events[3].rilRequestId);
-        assertEquals(0, events[3].error);
+        assertEquals(1, events[3].error);
         assertEquals(456, events[3].errorCode);
     }
 
