@@ -352,10 +352,12 @@ public class ApnSetting {
 
     public boolean canHandleType(String type) {
         if (!carrierEnabled) return false;
+        boolean wildcardable = true;
+        if (PhoneConstants.APN_TYPE_IA.equalsIgnoreCase(type)) wildcardable = false;
         for (String t : types) {
             // DEFAULT handles all, and HIPRI is handled by DEFAULT
             if (t.equalsIgnoreCase(type) ||
-                    t.equalsIgnoreCase(PhoneConstants.APN_TYPE_ALL) ||
+                    (wildcardable && t.equalsIgnoreCase(PhoneConstants.APN_TYPE_ALL)) ||
                     (t.equalsIgnoreCase(PhoneConstants.APN_TYPE_DEFAULT) &&
                     type.equalsIgnoreCase(PhoneConstants.APN_TYPE_HIPRI))) {
                 return true;
