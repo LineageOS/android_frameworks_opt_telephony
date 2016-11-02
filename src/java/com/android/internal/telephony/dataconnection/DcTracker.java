@@ -2126,15 +2126,15 @@ public class DcTracker extends Handler {
 
         log("setInitialApn: E mPreferredApn=" + mPreferredApn);
 
-        if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
+        if (mPreferredApn != null && mPreferredApn.canHandleType(PhoneConstants.APN_TYPE_IA)) {
+              iaApnSetting = mPreferredApn;
+        } else if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
             firstApnSetting = mAllApnSettings.get(0);
             log("setInitialApn: firstApnSetting=" + firstApnSetting);
 
             // Search for Initial APN setting and the first apn that can handle default
             for (ApnSetting apn : mAllApnSettings) {
-                // Can't use apn.canHandleType(), as that returns true for APNs that have no type.
-                if (ArrayUtils.contains(apn.types, PhoneConstants.APN_TYPE_IA) &&
-                        apn.carrierEnabled) {
+                if (apn.canHandleType(PhoneConstants.APN_TYPE_IA)) {
                     // The Initial Attach APN is highest priority so use it if there is one
                     log("setInitialApn: iaApnSetting=" + apn);
                     iaApnSetting = apn;
