@@ -104,7 +104,9 @@ import com.android.internal.telephony.uicc.IccRecords;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -136,6 +138,8 @@ public class ImsPhone extends ImsPhoneBase {
     ImsPhoneCallTracker mCT;
     ImsExternalCallTracker mExternalCallTracker;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
+    private final Deque<ImsPhoneMmiCode> mMMIQueue =
+            new ArrayDeque<ImsPhoneMmiCode>(USSD_MAX_QUEUE);
 
     private ServiceState mSS = new ServiceState();
 
@@ -376,15 +380,34 @@ public class ImsPhone extends ImsPhoneBase {
         return true;
     }
 
+    private synchronized boolean isMmiQueueFull() {
+        return (mMMIQueue.size() >= USSD_MAX_QUEUE - 1);
+    }
+
+    private void sendUssdResponse(String ussdRequest, CharSequence message, int returnCode,
+                                   ResultReceiver wrappedCallback) {
+        UssdResponse response = new UssdResponse(ussdRequest, message);
+        Bundle returnData = new Bundle();
+        returnData.putParcelable(TelephonyManager.USSD_RESPONSE, response);
+        wrappedCallback.send(returnCode, returnData);
+
+    }
+
     @Override
     public boolean handleUssdRequest(String ussdRequest, ResultReceiver wrappedCallback) {
-        try {
-           dialInternal(ussdRequest, VideoProfile.STATE_AUDIO_ONLY, null, wrappedCallback);
-           return true;
-        } catch (Exception e) {
-           Rlog.d(LOG_TAG, "exception" + e);
-           return false;
+        if (isMmiQueueFull()) {
+            //todo: replace the generic failure with specific error code.
+            sendUssdResponse(ussdRequest, null, TelephonyManager.USSD_RETURN_FAILURE,
+                    wrappedCallback );
+            return true;
         }
+        try {
+            dialInternal(ussdRequest, VideoProfile.STATE_AUDIO_ONLY, null, wrappedCallback);
+        } catch (Exception e) {
+            Rlog.d(LOG_TAG, "exception" + e);
+            return false;
+        }
+        return true;
     }
 
     private boolean handleCallWaitingIncallSupplementaryService(
@@ -552,6 +575,16 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);
     }
 
+    protected synchronized boolean addToMMIQueue(ImsPhoneMmiCode mmi) {
+        if (mPendingMMIs.size() >= 1) {
+            mMMIQueue.offerLast(mmi);
+            return true;
+        }
+        mPendingMMIs.add(mmi);
+        mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
+        return false;
+    }
+
     @Override
     public Connection
     dial(String dialString, int videoState) throws CallStateException {
@@ -602,12 +635,22 @@ public class ImsPhone extends ImsPhoneBase {
             // try to initiate dialing with default phone
             throw new CallStateException(CS_FALLBACK);
         } else {
-            mPendingMMIs.add(mmi);
-            mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
-            mmi.processCode();
+            return dialInternal(mmi);
+        }
+    }
 
+    protected Connection dialInternal(ImsPhoneMmiCode mmi) {
+        if (addToMMIQueue(mmi)) {
             return null;
         }
+        try {
+            mmi.processCode();
+        } catch (CallStateException e) {
+            //do nothing
+        }
+
+        // FIXME should this return null or something else?
+        return null;
     }
 
     @Override
@@ -1028,17 +1071,25 @@ public class ImsPhone extends ImsPhoneBase {
             } else {
                 found.onUssdFinished(ussdMessage, isUssdRequest);
             }
-        } else { // pending USSD not found
-            // The network may initiate its own USSD request
+        } else if (!isUssdError && ussdMessage != null) {
+                // pending USSD not found
+                // The network may initiate its own USSD request
 
-            // ignore everything that isnt a Notify or a Request
-            // also, discard if there is no message to present
-            if (!isUssdError && ussdMessage != null) {
+                // ignore everything that isnt a Notify or a Request
+                // also, discard if there is no message to present
                 ImsPhoneMmiCode mmi;
                 mmi = ImsPhoneMmiCode.newNetworkInitiatedUssd(ussdMessage,
                         isUssdRequest,
                         this);
                 onNetworkInitiatedUssd(mmi);
+        } else {
+            if (mMMIQueue.peek() != null) {
+                try {
+
+                    dialInternal(mMMIQueue.remove());
+                } catch (Exception e) {
+                    Rlog.d(LOG_TAG,"Exception:" + e);
+                }
             }
         }
     }
@@ -1057,12 +1108,10 @@ public class ImsPhone extends ImsPhoneBase {
         if (mPendingMMIs.remove(mmi) || mmi.isUssdRequest()) {
             ResultReceiver receiverCallback = mmi.getUssdCallbackReceiver();
             if (receiverCallback != null) {
-                UssdResponse response = new UssdResponse(mmi.getDialString(), mmi.getMessage());
-                Bundle returnData = new Bundle();
-                returnData.putParcelable(TelephonyManager.USSD_RESPONSE, response);
                 int returnCode = (mmi.getState() ==  MmiCode.State.COMPLETE) ?
                         TelephonyManager.USSD_RETURN_SUCCESS : TelephonyManager.USSD_RETURN_FAILURE;
-                receiverCallback.send(returnCode, returnData);
+                sendUssdResponse(mmi.getDialString(), mmi.getMessage(), returnCode,
+                        receiverCallback );
             } else {
                 mMmiCompleteRegistrants.notifyRegistrants(
                     new AsyncResult(null, mmi, null));

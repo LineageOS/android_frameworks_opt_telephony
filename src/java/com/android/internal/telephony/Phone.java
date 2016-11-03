@@ -93,6 +93,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     protected final static Object lockForRadioTechnologyChange = new Object();
 
+    protected final int USSD_MAX_QUEUE = 10;
+
     private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
