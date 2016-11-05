@@ -263,35 +263,45 @@ public class SubscriptionController extends ISub.Stub {
      * @return the query result of desired SubInfoRecord
      */
     private SubscriptionInfo getSubInfoRecord(Cursor cursor) {
-        int id = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
-        String iccId = cursor.getString(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.ICC_ID));
-        int simSlotIndex = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.SIM_SLOT_INDEX));
-        String displayName = cursor.getString(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.DISPLAY_NAME));
-        String carrierName = cursor.getString(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.CARRIER_NAME));
-        int nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.NAME_SOURCE));
-        int iconTint = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.COLOR));
-        String number = cursor.getString(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.NUMBER));
-        int dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.DATA_ROAMING));
-        // Get the blank bitmap for this SubInfoRecord
-        Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
-                com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
-        int mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.MCC));
-        int mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.MNC));
-        // FIXME: consider stick this into database too
-        String countryIso = getSubscriptionCountryIso(id);
-        int userNwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.USER_NETWORK_MODE));
+            int id, simSlotIndex, nameSource, iconTint, dataRoaming, mcc, mnc, userNwMode;
+            String iccId, displayName, carrierName, number, countryIso;
+            Bitmap iconBitmap;
+
+        try {
+            id = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
+            iccId = cursor.getString(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.ICC_ID));
+            simSlotIndex = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.SIM_SLOT_INDEX));
+            displayName = cursor.getString(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.DISPLAY_NAME));
+            carrierName = cursor.getString(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.CARRIER_NAME));
+            nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.NAME_SOURCE));
+            iconTint = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.COLOR));
+            number = cursor.getString(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.NUMBER));
+            dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.DATA_ROAMING));
+            // Get the blank bitmap for this SubInfoRecord
+            iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
+                    com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
+            mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.MCC));
+            mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.MNC));
+            // FIXME: consider stick this into database too
+            countryIso = getSubscriptionCountryIso(id);
+
+            userNwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.USER_NETWORK_MODE));
+        } catch (IllegalArgumentException e) {
+            loge("[getSubInfoRecord] failed getting details for SubInfoRecord: " + e);
+            return null;
+        }
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
