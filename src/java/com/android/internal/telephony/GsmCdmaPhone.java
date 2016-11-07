@@ -290,7 +290,7 @@ public class GsmCdmaPhone extends Phone {
             tm.setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_GSM);
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         } else {
-            mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+            handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
             // This is needed to handle phone process crashes
             String inEcm = SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
             mIsPhoneInEcmState = inEcm.equals("true");
@@ -2021,7 +2021,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.getVoiceRadioTechnology(obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
 
         if (!isPhoneTypeGsm()) {
-            mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+            handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
         }
 
         // If this is on APM off, SIM may already be loaded. Send setPreferredNetworkType
@@ -2211,7 +2211,7 @@ public class GsmCdmaPhone extends Phone {
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
                 logd("EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED");
-                mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+                handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
                 break;
 
             case EVENT_REGISTERED_TO_NETWORK:
@@ -2312,6 +2312,10 @@ public class GsmCdmaPhone extends Phone {
                     AsyncResult.forMessage(cfu.mOnComplete, ar.result, ar.exception);
                     cfu.mOnComplete.sendToTarget();
                 }
+                break;
+
+            case EVENT_NV_READY:
+                Rlog.d(LOG_TAG, "Event EVENT_NV_READY Received");
                 break;
 
             case EVENT_SET_VM_NUMBER_DONE:
@@ -2515,6 +2519,22 @@ public class GsmCdmaPhone extends Phone {
             return false;
         } else {
             return true;
+        }
+    }
+
+    //CDMA
+    /**
+     * Handles the call to get the subscription source
+     *
+     * @param newSubscriptionSource holds the new CDMA subscription source value
+     */
+    private void handleCdmaSubscriptionSource(int newSubscriptionSource) {
+        if (newSubscriptionSource != mCdmaSubscriptionSource) {
+            mCdmaSubscriptionSource = newSubscriptionSource;
+            if (newSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
+                // NV is ready when subscription source is NV
+                sendMessage(obtainMessage(EVENT_NV_READY));
+            }
         }
     }
 
