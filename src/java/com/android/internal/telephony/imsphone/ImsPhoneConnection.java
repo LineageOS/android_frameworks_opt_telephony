@@ -191,6 +191,11 @@ public class ImsPhoneConnection extends Connection implements
                 (mIsIncoming? ImsPhoneCall.State.INCOMING: ImsPhoneCall.State.DIALING));
 
         fetchDtmfToneDelay(phone);
+
+        if (phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
+            setAudioModeIsVoip(true);
+        }
     }
 
     /** This is an MO call, created when dialing */
@@ -222,6 +227,11 @@ public class ImsPhoneConnection extends Connection implements
         mIsEmergency = isEmergency;
 
         fetchDtmfToneDelay(phone);
+
+        if (phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
+            setAudioModeIsVoip(true);
+        }
     }
 
     public void dispose() {
