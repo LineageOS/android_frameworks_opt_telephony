@@ -2853,6 +2853,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Return if UT capability of ImsPhone is enabled or not
      */
     public boolean isUtEnabled() {
+        if (mImsPhone != null) {
+            return mImsPhone.isUtEnabled();
+        }
         return false;
     }
 
