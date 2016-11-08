@@ -124,9 +124,6 @@ public class GsmCdmaPhone extends Phone {
     // mEriFileLoadedRegistrants are informed after the ERI text has been loaded
     private final RegistrantList mEriFileLoadedRegistrants = new RegistrantList();
     // mEcmExitRespRegistrant is informed after the phone has been exited
-    //the emergency callback mode
-    //keep track of if phone is in emergency callback mode
-    private boolean mIsPhoneInEcmState;
     private Registrant mEcmExitRespRegistrant;
     private String mEsn;
     private String mMeid;
@@ -279,8 +276,7 @@ public class GsmCdmaPhone extends Phone {
         } else {
             mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
             // This is needed to handle phone process crashes
-            String inEcm = SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-            mIsPhoneInEcmState = inEcm.equals("true");
+            mIsPhoneInEcmState = getInEcmMode();
             if (mIsPhoneInEcmState) {
                 // Send a message which will invoke handleExitEmergencyCallbackMode
                 mCi.exitEmergencyCallbackMode(
