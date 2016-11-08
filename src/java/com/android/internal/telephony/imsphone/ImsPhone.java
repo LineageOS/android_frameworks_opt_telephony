@@ -136,7 +136,6 @@ public class ImsPhone extends ImsPhoneBase {
     private String mLastDialString;
 
     private WakeLock mWakeLock;
-    private boolean mIsPhoneInEcmState;
 
     // mEcmExitRespRegistrant is informed after the phone has been exited the emergency
     // callback mode keep track of if phone is in emergency callback mode
@@ -201,8 +200,7 @@ public class ImsPhone extends ImsPhoneBase {
 
         // This is needed to handle phone process crashes
         // Same property is used for both CDMA & IMS phone.
-        mIsPhoneInEcmState = SystemProperties.getBoolean(
-                TelephonyProperties.PROPERTY_INECM_MODE, false);
+        mIsPhoneInEcmState = getInEcmMode();
 
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
@@ -1253,11 +1251,6 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public boolean isInEmergencyCall() {
         return mCT.isInEmergencyCall();
-    }
-
-    @Override
-    public boolean isInEcm() {
-        return mIsPhoneInEcmState;
     }
 
     private void sendEmergencyCallbackModeChange() {
