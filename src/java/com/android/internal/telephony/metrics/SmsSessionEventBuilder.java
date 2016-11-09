@@ -16,12 +16,12 @@
 
 package com.android.internal.telephony.metrics;
 
-import com.android.internal.telephony.TelephonyProto.ImsCapabilities;
-import com.android.internal.telephony.TelephonyProto.ImsConnectionState;
-import com.android.internal.telephony.TelephonyProto.RilDataCall;
-import com.android.internal.telephony.TelephonyProto.SmsSession;
-import com.android.internal.telephony.TelephonyProto.TelephonyServiceState;
-import com.android.internal.telephony.TelephonyProto.TelephonySettings;
+import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
+import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
+import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
+import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 
 public class SmsSessionEventBuilder {
     SmsSession.Event mEvent = new SmsSession.Event();
