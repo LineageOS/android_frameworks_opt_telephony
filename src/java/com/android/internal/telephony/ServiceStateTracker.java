@@ -4639,6 +4639,21 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    private void dumpCellInfoList(PrintWriter pw) {
+        pw.print(" mLastCellInfoList={");
+        if(mLastCellInfoList != null) {
+            boolean first = true;
+            for(CellInfo info : mLastCellInfoList) {
+               if(first == false) {
+                   pw.print(",");
+               }
+               first = false;
+               pw.print(info.toString());
+            }
+        }
+        pw.println("}");
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ServiceStateTracker:");
         pw.println(" mSubId=" + mSubId);
@@ -4658,6 +4673,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mCellLoc=" + mCellLoc);
         pw.println(" mNewCellLoc=" + mNewCellLoc);
         pw.println(" mLastCellInfoListTime=" + mLastCellInfoListTime);
+        dumpCellInfoList(pw);
+        pw.flush();
         pw.println(" mPreferredNetworkType=" + mPreferredNetworkType);
         pw.println(" mMaxDataCalls=" + mMaxDataCalls);
         pw.println(" mNewMaxDataCalls=" + mNewMaxDataCalls);
