@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.app.ActivityManagerNative;
+import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.Context;
 import android.content.res.Configuration;
@@ -211,7 +211,7 @@ public final class MccTable {
 
                     if (updateConfig) {
                         Slog.d(LOG_TAG, "updateMccMncConfiguration updateConfig config=" + config);
-                        ActivityManagerNative.getDefault().updateConfiguration(config);
+                        ActivityManager.getService().updateConfiguration(config);
                     } else {
                         Slog.d(LOG_TAG, "updateMccMncConfiguration nothing to update");
                     }

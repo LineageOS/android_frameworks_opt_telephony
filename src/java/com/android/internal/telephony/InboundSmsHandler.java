@@ -20,7 +20,7 @@ import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SK
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
 import android.app.Activity;
-import android.app.ActivityManagerNative;
+import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
 import android.app.Notification;
@@ -1025,7 +1025,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             // Get a list of currently started users.
             int[] users = null;
             try {
-                users = ActivityManagerNative.getDefault().getRunningUserIds();
+                users = ActivityManager.getService().getRunningUserIds();
             } catch (RemoteException re) {
             }
             if (users == null) {

@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.app.ActivityManagerNative;
+import android.app.ActivityManager;
 import android.app.UserSwitchObserver;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -140,7 +140,7 @@ public class SubscriptionInfoUpdater extends Handler {
         // -Whenever we switch to a new user
         mCurrentlyActiveUserId = 0;
         try {
-            ActivityManagerNative.getDefault().registerUserSwitchObserver(new UserSwitchObserver() {
+            ActivityManager.getService().registerUserSwitchObserver(new UserSwitchObserver() {
                 @Override
                 public void onUserSwitching(int newUserId, IRemoteCallback reply)
                         throws RemoteException {
@@ -157,7 +157,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     }
                 }
             }, LOG_TAG);
-            mCurrentlyActiveUserId = ActivityManagerNative.getDefault().getCurrentUser().id;
+            mCurrentlyActiveUserId = ActivityManager.getService().getCurrentUser().id;
         } catch (RemoteException e) {
             logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
         }
@@ -182,8 +182,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     iterator.remove();
                     logd("Broadcasting intent ACTION_SIM_STATE_CHANGED for mCardIndex: " +
                             pair.getKey());
-                    ActivityManagerNative.broadcastStickyIntent(i, READ_PHONE_STATE,
-                            UserHandle.USER_ALL);
+                    ActivityManager.broadcastStickyIntent(i, UserHandle.USER_ALL);
                 }
                 logd("[Receiver]-");
                 return;
@@ -671,7 +670,7 @@ public class SubscriptionInfoUpdater extends Handler {
         SubscriptionManager.putPhoneIdAndSubIdExtra(i, slotId);
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
              " for mCardIndex: " + slotId);
-        ActivityManagerNative.broadcastStickyIntent(i, READ_PHONE_STATE, UserHandle.USER_ALL);
+        ActivityManager.broadcastStickyIntent(i, UserHandle.USER_ALL);
         rebroadcastIntentsOnUnlock.put(slotId, i);
     }
 
