@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 
-import android.app.ActivityManagerNative;
+import android.app.ActivityManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -172,7 +172,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
         // unmock ActivityManager to be able to register receiver, create real PendingIntent and
         // receive TEST_INTENT
         restoreInstance(Singleton.class, "mInstance", mIActivityManagerSingleton);
-        restoreInstance(ActivityManagerNative.class, "gDefault", null);
+        restoreInstance(ActivityManager.class, "IActivityManagerSingleton", null);
 
         Context realContext = TestApplication.getAppContext();
         realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT));
