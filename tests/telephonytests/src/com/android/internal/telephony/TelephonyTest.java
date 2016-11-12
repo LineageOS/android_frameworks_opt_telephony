@@ -26,7 +26,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 
-import android.app.ActivityManagerNative;
+import android.app.ActivityManager;
 import android.app.IActivityManager;
 import android.content.Context;
 import android.content.IIntentSender;
@@ -289,7 +289,8 @@ public abstract class TelephonyTest {
         replaceInstance(ImsManager.class, "sImsManagerInstances", null, mImsManagerInstances);
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
-        replaceInstance(ActivityManagerNative.class, "gDefault", null, mIActivityManagerSingleton);
+        replaceInstance(ActivityManager.class, "IActivityManagerSingleton", null,
+                mIActivityManagerSingleton);
         replaceInstance(CdmaSubscriptionSourceManager.class,
                 "mCdmaSubscriptionSourceChangedRegistrants", mCdmaSSM, mRegistrantList);
         replaceInstance(SimulatedCommandsVerifier.class, "sInstance", null,
