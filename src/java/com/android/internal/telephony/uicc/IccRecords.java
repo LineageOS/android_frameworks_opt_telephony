@@ -25,7 +25,6 @@ import android.os.RegistrantList;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -34,7 +33,9 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * {@hide}
@@ -96,6 +97,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String[] mFplmns;
 
     private final Object mLock = new Object();
+
+    //Arbitrary offset for the Handler
+    protected static final int HANDLER_ACTION_BASE = 0x12E500;
+    protected static final int HANDLER_ACTION_NONE = HANDLER_ACTION_BASE + 0;
+    protected static final int HANDLER_ACTION_SEND_RESPONSE = HANDLER_ACTION_BASE + 1;
+    protected static AtomicInteger sNextRequestId = new AtomicInteger(1);
+    protected final HashMap<Integer, Message> mPendingResponses = new HashMap<>();
 
     // ***** Constants
 
@@ -202,6 +210,28 @@ public abstract class IccRecords extends Handler implements IccConstants {
     //***** Public Methods
     public AdnRecordCache getAdnCache() {
         return mAdnCache;
+    }
+
+    /**
+     * Adds a message to the pending requests list by generating a unique
+     * (integer) hash key and returning it. The message should never be null.
+     */
+    public int storePendingResponseMessage(Message msg) {
+        int key = sNextRequestId.getAndIncrement();
+        synchronized (mPendingResponses) {
+            mPendingResponses.put(key, msg);
+        }
+        return key;
+    }
+
+    /**
+     * Returns the pending request, if any or null
+     */
+    public Message retrievePendingResponseMessage(Integer key) {
+        Message m;
+        synchronized (mPendingResponses) {
+            return mPendingResponses.remove(key);
+        }
     }
 
     /**
