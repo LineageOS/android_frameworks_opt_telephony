@@ -50,6 +50,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
 
@@ -244,7 +245,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private int mCallRingDelay;
     private boolean mIsVoiceCapable = true;
     private final AppSmsManager mAppSmsManager;
-
+    private SimActivationTracker mSimActivationTracker;
     // Keep track of whether or not the phone is in Emergency Callback Mode for Phone and
     // subclasses
     protected boolean mIsPhoneInEcmState = false;
@@ -517,6 +518,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCarrierSignalAgent = mTelephonyComponentFactory.makeCarrierSignalAgent(this);
         mCarrierActionAgent = mTelephonyComponentFactory.makeCarrierActionAgent(this);
+        mSimActivationTracker = mTelephonyComponentFactory.makeSimActivationTracker(this);
         if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {
             mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         }
@@ -1543,6 +1545,32 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Update voice activation state
+     */
+    public void setVoiceActivationState(int state) {
+        mSimActivationTracker.setVoiceActivationState(state);
+    }
+    /**
+     * Update data activation state
+     */
+    public void setDataActivationState(int state) {
+        mSimActivationTracker.setDataActivationState(state);
+    }
+
+    /**
+     * Returns voice activation state
+     */
+    public int getVoiceActivationState() {
+        return mSimActivationTracker.getVoiceActivationState();
+    }
+    /**
+     * Returns data activation state
+     */
+    public int getDataActivationState() {
+        return mSimActivationTracker.getDataActivationState();
+    }
+
+    /**
      * Update voice mail count related fields and notify listeners
      */
     public void updateVoiceMail() {
@@ -2072,6 +2100,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void notifyOtaspChanged(int otaspMode) {
         mNotifier.notifyOtaspChanged(this, otaspMode);
+    }
+
+    public void notifyVoiceActivationStateChanged(int state) {
+        mNotifier.notifyVoiceActivationStateChanged(this, state);
+    }
+
+    public void notifyDataActivationStateChanged(int state) {
+        mNotifier.notifyDataActivationStateChanged(this, state);
     }
 
     public void notifySignalStrength() {
@@ -3519,6 +3555,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (getCallTracker() != null) {
             try {
                 getCallTracker().dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (mSimActivationTracker != null) {
+            try {
+                mSimActivationTracker.dump(fd, pw, args);
             } catch (Exception e) {
                 e.printStackTrace();
             }

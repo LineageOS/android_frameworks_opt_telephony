@@ -61,6 +61,10 @@ public class TelephonyComponentFactory {
         return new ServiceStateTracker(phone, ci);
     }
 
+    public SimActivationTracker makeSimActivationTracker(Phone phone) {
+        return new SimActivationTracker(phone);
+    }
+
     public DcTracker makeDcTracker(Phone phone) {
         return new DcTracker(phone);
     }
