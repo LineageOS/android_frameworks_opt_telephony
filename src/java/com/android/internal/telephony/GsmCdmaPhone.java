@@ -142,6 +142,7 @@ public class GsmCdmaPhone extends Phone {
     };
     public static final String PROPERTY_CDMA_HOME_OPERATOR_NUMERIC =
             "ro.cdma.home.operator.numeric";
+    private static final String DUMMY_NV_ICC_SERIAL = "DUMMY_NV_ICC_SERIAL";
 
     //CDMALTE
     /** PHONE_TYPE_CDMA_LTE in addition to RuimRecords needs access to SIMRecords and
@@ -726,6 +727,9 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public String getIccSerialNumber() {
+        if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
+            return DUMMY_NV_ICC_SERIAL;
+        }
         IccRecords r = mIccRecords.get();
         if (!isPhoneTypeGsm() && r == null) {
             // to get ICCID form SIMRecords because it is on MF.
@@ -736,6 +740,9 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public String getFullIccSerialNumber() {
+        if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
+            return DUMMY_NV_ICC_SERIAL;
+        }
         IccRecords r = mIccRecords.get();
         if (!isPhoneTypeGsm() && r == null) {
             // to get ICCID form SIMRecords because it is on MF.
