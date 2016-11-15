@@ -278,6 +278,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mSwitchingFgAndBgCalls = false;
     private ImsCall mCallExpectedToResume = null;
     private boolean mAllowEmergencyVideoCalls = false;
+    private boolean mIgnoreDataEnabledChangedForVideoCalls = false;
 
     /**
      * Listeners to changes in the phone state.  Intended for use by other interested IMS components
@@ -600,6 +601,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 CarrierConfigManager.KEY_SUPPORT_DOWNGRADE_VT_TO_AUDIO_BOOL);
         mNotifyHandoverVideoFromWifiToLTE = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
+        mIgnoreDataEnabledChangedForVideoCalls = carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_IGNORE_DATA_ENABLED_CHANGED_FOR_VIDEO_CALLS);
 
         String[] mappings = carrierConfig
                 .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
@@ -2815,7 +2818,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private void onDataEnabledChanged(boolean enabled, int reason) {
 
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
+
         ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId()).setDataEnabled(enabled);
+
+        if (mIgnoreDataEnabledChangedForVideoCalls) {
+            log("Ignore data " + ((enabled) ? "enabled" : "disabled") + " due to carrier policy.");
+            return;
+        }
 
         if (!enabled) {
             int reasonCode;
