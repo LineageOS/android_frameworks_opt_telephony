@@ -352,7 +352,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(mInboundSmsTrackerCVPart2).when(mInboundSmsTrackerPart2).getContentValues();
     }
 
-    @Postsubmit
     @Test
     @MediumTest
     public void testMultiPartSms() {
@@ -575,7 +574,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
     }
 
-    @Postsubmit
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {

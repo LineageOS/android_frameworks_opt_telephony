@@ -176,7 +176,6 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     }
 
-    @Postsubmit
     @Test
     @MediumTest
     public void testMOCallPendingHangUp() {
