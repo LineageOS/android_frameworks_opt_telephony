@@ -17,7 +17,7 @@
 package com.android.internal.telephony.imsphone;
 
 import android.app.Activity;
-import android.app.ActivityManagerNative;
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -1381,7 +1381,7 @@ public class ImsPhone extends ImsPhoneBase {
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, mIsPhoneInEcmState);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-        ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
         if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallbackModeChange");
     }
 

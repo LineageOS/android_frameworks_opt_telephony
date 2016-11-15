@@ -18,7 +18,7 @@ package com.android.internal.telephony.uicc;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
 
-import android.app.ActivityManagerNative;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
@@ -486,8 +486,7 @@ public class IccCardProxy extends Handler implements IccCard {
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
             log("broadcastIccStateChangedIntent intent ACTION_SIM_STATE_CHANGED value=" + value
                 + " reason=" + reason + " for mPhoneId=" + mPhoneId);
-            ActivityManagerNative.broadcastStickyIntent(intent, READ_PHONE_STATE,
-                    UserHandle.USER_ALL);
+            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
         }
     }
 
@@ -506,7 +505,7 @@ public class IccCardProxy extends Handler implements IccCard {
             intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
             intent.putExtra(PhoneConstants.PHONE_KEY, mPhoneId);  // SubId may not be valid.
             log("Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED" + " for mPhoneId : " + mPhoneId);
-            ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
         }
     }
 
