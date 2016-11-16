@@ -2170,16 +2170,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mPhone.notifyForVideoCapabilityChanged(isVideoCallEnabled());
                 }
 
-                // TODO: Use the ImsCallSession or ImsCallProfile to tell the initial Wifi state and
-                // {@link ImsCallSession.Listener#callSessionHandover} to listen for changes to
-                // wifi capability caused by a handover.
                 if (DBG) log("onFeatureCapabilityChanged: isVolteEnabled=" + isVolteEnabled()
                             + ", isVideoCallEnabled=" + isVideoCallEnabled()
                             + ", isVowifiEnabled=" + isVowifiEnabled()
                             + ", isUtEnabled=" + isUtEnabled());
-                for (ImsPhoneConnection connection : mConnections) {
-                    connection.updateWifiState();
-                }
 
                 mPhone.onFeatureCapabilityChanged();
 
