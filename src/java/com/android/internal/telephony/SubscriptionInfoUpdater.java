@@ -364,7 +364,7 @@ public class SubscriptionInfoUpdater extends Handler {
             case EVENT_UPDATE_INSERTED_SIM_COUNT:
                 logd("EVENT_UPDATE_INSERTED_SIM_COUNT: locked sims: " + mLockedSims.cardinality());
                 if (isAllIccIdQueryDone() && !hasMessages(EVENT_UPDATE_INSERTED_SIM_COUNT)) {
-                    updateSubscriptionInfoByIccId();
+                    updateSubscriptionInfoByIccIdInternal(false);
                     logd("update inserted sim count, current sim count: " + mCurrentSimCount);
                 }
                 break;
@@ -414,7 +414,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private void update(int slotId) {
         sendMessageDelayed(obtainMessage(EVENT_UPDATE_INSERTED_SIM_COUNT, slotId), DELAY_MILLIS);
         if (isAllIccIdQueryDone()) {
-            updateSubscriptionInfoByIccId();
+            updateSubscriptionInfoByIccIdInternal(false);
         }
     }
 
@@ -618,10 +618,14 @@ public class SubscriptionInfoUpdater extends Handler {
      * only what the current list contains.
      */
     synchronized protected void updateSubscriptionInfoByIccId() {
+        updateSubscriptionInfoByIccIdInternal(true);
+    }
+
+    synchronized private void updateSubscriptionInfoByIccIdInternal(boolean forceUpdate) {
         logd("updateSubscriptionInfoByIccId:+ Start");
 
         // only update external state if we have no pending updates pending
-        boolean update = !hasMessages(EVENT_UPDATE_INSERTED_SIM_COUNT);
+        boolean update = !hasMessages(EVENT_UPDATE_INSERTED_SIM_COUNT) || forceUpdate;
         if (update) {
             mSubscriptionManager.clearSubscriptionInfo();
         }
