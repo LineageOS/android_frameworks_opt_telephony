@@ -2631,6 +2631,16 @@ public class DcTracker extends Handler {
         // TODO change our retry manager to use the appropriate numbers for the new APN
         if (DBG) log("onEnableApn: apnContext=" + apnContext + " call applyNewState");
         applyNewState(apnContext, enabled == DctConstants.ENABLED, apnContext.getDependencyMet());
+
+        if ((enabled == DctConstants.DISABLED) &&
+            isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology()) &&
+            !isHigherPriorityApnContextActive(apnContext)) {
+
+            if(DBG) log("onEnableApn: isOnlySingleDcAllowed true & higher priority APN disabled");
+            // If the highest priority APN is disabled and only single
+            // data call is allowed, try to setup data call on other connectable APN.
+            setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+        }
     }
 
     // TODO: We shouldnt need this.
