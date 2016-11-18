@@ -75,6 +75,7 @@ import android.view.WindowManager;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CarrierActionAgent;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.GsmCdmaPhone;
@@ -807,6 +808,9 @@ public class DcTracker extends Handler {
      //   SubscriptionManager.registerForDdsSwitch(this,
      //          DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS, null);
         mPhone.mCi.registerForPcoData(this, DctConstants.EVENT_PCO_DATA_RECEIVED, null);
+        mPhone.getCarrierActionAgent().registerForCarrierAction(
+                CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED, this,
+                DctConstants.EVENT_SET_CARRIER_DATA_ENABLED, null, false);
     }
 
     public void dispose() {
@@ -861,6 +865,8 @@ public class DcTracker extends Handler {
         unregisterServiceStateTrackerEvents();
         //SubscriptionManager.unregisterForDdsSwitch(this);
         mPhone.mCi.unregisterForPcoData(this);
+        mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
+                CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED);
     }
 
     /**
@@ -2405,17 +2411,16 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
     }
 
-    public void setApnsEnabledByCarrier(boolean enabled) {
-        Message msg = obtainMessage(DctConstants.EVENT_SET_CARRIER_DATA_ENABLED);
-        msg.arg1 = (enabled ? DctConstants.ENABLED : DctConstants.DISABLED);
-        sendMessage(msg);
-    }
-
     /**
      * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
      */
-    private void onSetCarrierDataEnabled(boolean enabled) {
+    private void onSetCarrierDataEnabled(AsyncResult ar) {
+        if (ar.exception != null) {
+            Rlog.e(LOG_TAG, "CarrierDataEnable exception: " + ar.exception);
+            return;
+        }
         synchronized (mDataEnabledSettings) {
+            boolean enabled = (boolean) ar.result;
             if (enabled != mDataEnabledSettings.isCarrierDataEnabled()) {
                 if (DBG) {
                     log("carrier Action: set metered apns enabled: " + enabled);
@@ -2439,17 +2444,6 @@ public class DcTracker extends Handler {
                 }
             }
         }
-    }
-
-    /**
-     * Action set from carrier signalling broadcast receivers to enable/disable radio
-     */
-    public void carrierActionSetRadioEnabled(boolean enabled) {
-        if (DBG) {
-            log("carrier Action: set radio enabled: " + enabled);
-        }
-        final ServiceStateTracker sst = mPhone.getServiceStateTracker();
-        sst.setRadioPowerFromCarrier(enabled);
     }
 
     private void onSimNotReady() {
@@ -3157,9 +3151,8 @@ public class DcTracker extends Handler {
         if (!TextUtils.isEmpty(redirectUrl)) {
             Intent intent = new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED);
             intent.putExtra(TelephonyIntents.EXTRA_REDIRECTION_URL_KEY, redirectUrl);
-            if(mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent)) {
-                log("Notify carrier signal receivers with redirectUrl: " + redirectUrl);
-            }
+            mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
+            log("Notify carrier signal receivers with redirectUrl: " + redirectUrl);
         }
     }
 
@@ -4053,7 +4046,7 @@ public class DcTracker extends Handler {
                 break;
             }
             case DctConstants.EVENT_SET_CARRIER_DATA_ENABLED:
-                onSetCarrierDataEnabled(msg.arg1 == DctConstants.ENABLED);
+                onSetCarrierDataEnabled((AsyncResult) msg.obj);
                 break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
@@ -4121,7 +4114,6 @@ public class DcTracker extends Handler {
                     final ServiceStateTracker sst = mPhone.getServiceStateTracker();
                     sst.setRadioPowerFromCarrier(true);
                     mDataEnabledSettings.setCarrierDataEnabled(true);
-                    mPhone.getCarrierSignalAgent().reset();
                 }
             } else {
                 onSimNotReady();

@@ -32,14 +32,11 @@ import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
@@ -51,12 +48,10 @@ import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
-import android.telephony.CellInfoCdma;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
 import android.telephony.CellLocation;
-import android.telephony.CellSignalStrengthLte;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -71,16 +66,6 @@ import android.util.LocalLog;
 import android.util.Pair;
 import android.util.TimeUtils;
 
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
@@ -93,6 +78,17 @@ import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.IndentingPrintWriter;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicInteger;
+import static com.android.internal.telephony.CarrierActionAgent.CARRIER_ACTION_SET_RADIO_ENABLED;
 
 /**
  * {@hide}
@@ -213,6 +209,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_IMS_CAPABILITY_CHANGED            = 48;
     protected static final int EVENT_ALL_DATA_DISCONNECTED             = 49;
     protected static final int EVENT_PHONE_TYPE_SWITCHED               = 50;
+    protected static final int EVENT_RADIO_POWER_FROM_CARRIER          = 51;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -543,6 +540,8 @@ public class ServiceStateTracker extends Handler {
                 Settings.Global.getUriFor(Settings.Global.AUTO_TIME_ZONE), true,
                 mAutoTimeZoneObserver);
         setSignalStrengthDefaultValues();
+        mPhone.getCarrierActionAgent().registerForCarrierAction(CARRIER_ACTION_SET_RADIO_ENABLED,
+                this, EVENT_RADIO_POWER_FROM_CARRIER, null, false);
 
         // Monitor locale change
         Context context = mPhone.getContext();
@@ -665,6 +664,8 @@ public class ServiceStateTracker extends Handler {
         mSubscriptionManager
             .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mCi.unregisterForImsNetworkStateChanged(this);
+        mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
+                CARRIER_ACTION_SET_RADIO_ENABLED);
     }
 
     public boolean getDesiredPowerState() {
@@ -1351,6 +1352,15 @@ public class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     ints = (int[]) ar.result;
                     mPrlVersion = Integer.toString(ints[0]);
+                }
+                break;
+
+            case EVENT_RADIO_POWER_FROM_CARRIER:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    boolean enable = (boolean) ar.result;
+                    if (DBG) log("EVENT_RADIO_POWER_FROM_CARRIER: " + enable);
+                    setRadioPowerFromCarrier(enable);
                 }
                 break;
 
