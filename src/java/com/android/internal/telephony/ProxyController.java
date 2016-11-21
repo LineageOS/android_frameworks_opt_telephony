@@ -509,6 +509,9 @@ public class ProxyController {
             // Increment the sessionId as we are completing the transaction below
             // so we don't want it completed when the FINISH phase is done.
             mRadioCapabilitySessionId = mUniqueIdGenerator.getAndIncrement();
+
+            // Reset the status counter as existing session failed
+            mRadioAccessFamilyStatusCounter = 0;
             // send FINISH request with fail status and then uniqueDifferentId
             mTransactionFailed = true;
             issueFinish(mRadioCapabilitySessionId);
