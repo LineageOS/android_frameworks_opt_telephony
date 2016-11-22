@@ -283,6 +283,7 @@ public class ServiceStateTracker extends Handler {
     private final LocalLog mAttachLog = new LocalLog(10);
     private final LocalLog mPhoneTypeLog = new LocalLog(10);
     private final LocalLog mRatLog = new LocalLog(20);
+    private final LocalLog mRadioPowerLog = new LocalLog(20);
 
     private class SstSubscriptionsChangedListener extends OnSubscriptionsChangedListener {
         public final AtomicInteger mPreviousSubId =
@@ -527,6 +528,9 @@ public class ServiceStateTracker extends Handler {
         int enableCellularOnBoot = Settings.Global.getInt(mCr,
                 Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
         mDesiredPowerState = (enableCellularOnBoot > 0) && ! (airplaneMode > 0);
+        mRadioPowerLog.log("init : airplane mode = " + airplaneMode + " enableCellularOnBoot = " +
+                enableCellularOnBoot);
+
 
         mCr.registerContentObserver(
                 Settings.Global.getUriFor(Settings.Global.AUTO_TIME), true,
@@ -2311,12 +2315,14 @@ public class ServiceStateTracker extends Handler {
 
     protected void setPowerStateToDesired() {
         if (DBG) {
-            log("mDeviceShuttingDown=" + mDeviceShuttingDown +
+            String tmpLog = "mDeviceShuttingDown=" + mDeviceShuttingDown +
                     ", mDesiredPowerState=" + mDesiredPowerState +
                     ", getRadioState=" + mCi.getRadioState() +
                     ", mPowerOffDelayNeed=" + mPowerOffDelayNeed +
                     ", mAlarmSwitch=" + mAlarmSwitch +
-                    ", mRadioDisabledByCarrier=" + mRadioDisabledByCarrier);
+                    ", mRadioDisabledByCarrier=" + mRadioDisabledByCarrier;
+            log(tmpLog);
+            mRadioPowerLog.log(tmpLog);
         }
 
         if (mPhone.isPhoneTypeGsm() && mAlarmSwitch) {
@@ -4747,6 +4753,11 @@ public class ServiceStateTracker extends Handler {
         ipw.println(" Rat Change Log:");
         ipw.increaseIndent();
         mRatLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
+
+        ipw.println(" Radio power Log:");
+        ipw.increaseIndent();
+        mRadioPowerLog.dump(fd, ipw, args);
         ipw.decreaseIndent();
     }
 

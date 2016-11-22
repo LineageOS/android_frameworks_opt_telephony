@@ -1029,6 +1029,7 @@ public class DcTracker extends Handler {
         public void onReceive(Context context, Intent intent) {
             // Turning back on the radio can take time on the order of a minute, so show user a
             // spinner so they know something is going on.
+            log("onReceive : ProvisionNotificationBroadcastReceiver");
             mProvisioningSpinner = new ProgressDialog(context);
             mProvisioningSpinner.setTitle(mNetworkOperator);
             mProvisioningSpinner.setMessage(
