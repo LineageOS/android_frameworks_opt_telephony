@@ -2385,6 +2385,10 @@ public class DcTracker extends Handler {
                     // Tear down all metered apns
                     cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
                 } else {
+                    // Re-evauluate Otasp state
+                    int otaspState = mPhone.getServiceStateTracker().getOtasp();
+                    mPhone.notifyOtaspChanged(otaspState);
+
                     teardownRestrictedMeteredConnections();
                     setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
                 }
