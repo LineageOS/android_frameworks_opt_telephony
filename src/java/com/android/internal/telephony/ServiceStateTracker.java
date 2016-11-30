@@ -2229,7 +2229,6 @@ public class ServiceStateTracker extends Handler {
                             "subId='%d'", showPlmn, plmn, showSpn, spn, dataSpn, subId));
                 }
                 Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
                 intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
                 intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
                 intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, dataSpn);
@@ -2287,7 +2286,6 @@ public class ServiceStateTracker extends Handler {
                             " showPlmn='%b' plmn='%s' subId='%d'", showPlmn, plmn, subId));
                 }
                 Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
                 intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, false);
                 intent.putExtra(TelephonyIntents.EXTRA_SPN, "");
                 intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
