@@ -2114,7 +2114,7 @@ public class ServiceStateTracker extends Handler {
                         "of service, set plmn='" + plmn + "'");
             } else if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
                 // In either home or roaming service
-                plmn = mSS.getOperatorAlphaLong();
+                plmn = mSS.getOperatorAlpha();
                 showPlmn = !TextUtils.isEmpty(plmn) &&
                         ((rule & SIMRecords.SPN_RULE_SHOW_PLMN)
                                 == SIMRecords.SPN_RULE_SHOW_PLMN);
@@ -2218,7 +2218,7 @@ public class ServiceStateTracker extends Handler {
             mCurPlmn = plmn;
         } else {
             // mOperatorAlphaLong contains the ERI text
-            String plmn = mSS.getOperatorAlphaLong();
+            String plmn = mSS.getOperatorAlpha();
             boolean showPlmn = false;
 
             showPlmn = plmn != null;
@@ -2618,7 +2618,7 @@ public class ServiceStateTracker extends Handler {
 
             updateSpnDisplay();
 
-            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlphaLong());
+            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
 
             String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
             operatorNumeric = mSS.getOperatorNumeric();
@@ -2840,7 +2840,7 @@ public class ServiceStateTracker extends Handler {
 
             String operatorNumeric;
 
-            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlphaLong());
+            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
 
             String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
             operatorNumeric = mSS.getOperatorNumeric();
@@ -3063,7 +3063,7 @@ public class ServiceStateTracker extends Handler {
                             mPhone.getContext().getResources().getBoolean(com.android.internal.R.
                                     bool.config_LTE_eri_for_network_name))) {
                 // Only when CDMA is in service, ERI will take effect
-                String eriText = mSS.getOperatorAlphaLong();
+                String eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
@@ -3102,7 +3102,7 @@ public class ServiceStateTracker extends Handler {
 
             String operatorNumeric;
 
-            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlphaLong());
+            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
 
             String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
             operatorNumeric = mSS.getOperatorNumeric();

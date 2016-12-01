@@ -131,6 +131,10 @@ public class ServiceStateTest extends TestCase {
         assertEquals("long", ss.getDataOperatorAlphaLong());
         assertEquals("short", ss.getDataOperatorAlphaShort());
         assertEquals("numeric", ss.getDataOperatorNumeric());
+        assertEquals("long", ss.getOperatorAlpha());
+
+        ss.setOperatorName("", "short", "");
+        assertEquals("short", ss.getOperatorAlpha());
     }
 
     @SmallTest
