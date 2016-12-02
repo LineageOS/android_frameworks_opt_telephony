@@ -165,7 +165,8 @@ public class GsmCdmaConnection extends Connection {
         }
         if (isPhoneTypeGsm()) {
             mDialString = dialString;
-        } else {
+        }
+        if (!isPhoneTypeGsm()) {
             Rlog.d(LOG_TAG, "[GsmCdmaConn] GsmCdmaConnection: dialString=" +
                     maskDialString(dialString));
             if (showOrigDialString) {
