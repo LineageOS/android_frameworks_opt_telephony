@@ -359,9 +359,6 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         // verify getCurrentCalls is called on init
         verify(mSimulatedCommandsVerifier).getCurrentCalls(any(Message.class));
 
-        // update phone type
-        mCTUT.updatePhoneType();
-
         // update phone type (call the function on same thread as the call tracker)
         Handler updatePhoneTypeHandler = new Handler(mCTUT.getLooper()) {
             @Override

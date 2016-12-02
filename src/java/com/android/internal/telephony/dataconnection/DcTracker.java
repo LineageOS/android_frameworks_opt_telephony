@@ -4257,13 +4257,6 @@ public class DcTracker extends Handler {
         return true;
     }
 
-    public void setDataAllowed(boolean enable, Message response) {
-         if (DBG) log("setDataAllowed: enable=" + enable);
-         isCleanupRequired.set(!enable);
-         mPhone.mCi.setDataAllowed(enable, response);
-         mDataEnabledSettings.setInternalDataEnabled(enable);
-    }
-
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "]" + s);
     }
