@@ -20,15 +20,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.Rlog;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
 import android.text.TextUtils;
-import android.telephony.Rlog;
-import android.content.res.Resources;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
@@ -138,36 +138,42 @@ public class SIMRecords extends IccRecords {
     private static final int CFIS_ADN_EXTENSION_ID_OFFSET = 15;
 
     // ***** Event Constants
-    private static final int EVENT_GET_IMSI_DONE = 3;
-    private static final int EVENT_GET_ICCID_DONE = 4;
-    private static final int EVENT_GET_MBI_DONE = 5;
-    private static final int EVENT_GET_MBDN_DONE = 6;
-    private static final int EVENT_GET_MWIS_DONE = 7;
-    private static final int EVENT_GET_VOICE_MAIL_INDICATOR_CPHS_DONE = 8;
-    protected static final int EVENT_GET_AD_DONE = 9; // Admin data on SIM
-    protected static final int EVENT_GET_MSISDN_DONE = 10;
-    private static final int EVENT_GET_CPHS_MAILBOX_DONE = 11;
-    private static final int EVENT_GET_SPN_DONE = 12;
-    private static final int EVENT_GET_SPDI_DONE = 13;
-    private static final int EVENT_UPDATE_DONE = 14;
-    private static final int EVENT_GET_PNN_DONE = 15;
-    protected static final int EVENT_GET_SST_DONE = 17;
-    private static final int EVENT_GET_ALL_SMS_DONE = 18;
-    private static final int EVENT_MARK_SMS_READ_DONE = 19;
-    private static final int EVENT_SET_MBDN_DONE = 20;
-    private static final int EVENT_SMS_ON_SIM = 21;
-    private static final int EVENT_GET_SMS_DONE = 22;
-    private static final int EVENT_GET_CFF_DONE = 24;
-    private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25;
-    private static final int EVENT_GET_INFO_CPHS_DONE = 26;
-    // private static final int EVENT_SET_MSISDN_DONE = 30; Defined in IccRecords as 30
-    private static final int EVENT_SIM_REFRESH = 31;
-    private static final int EVENT_GET_CFIS_DONE = 32;
-    private static final int EVENT_GET_CSP_CPHS_DONE = 33;
-    private static final int EVENT_GET_GID1_DONE = 34;
-    private static final int EVENT_APP_LOCKED = 35;
-    private static final int EVENT_GET_GID2_DONE = 36;
-    private static final int EVENT_CARRIER_CONFIG_CHANGED = 37;
+    private static final int SIM_RECORD_EVENT_BASE = 0x00;
+    private static final int EVENT_GET_IMSI_DONE = 3 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_ICCID_DONE = 4 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_MBI_DONE = 5 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_MBDN_DONE = 6 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_MWIS_DONE = 7 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_VOICE_MAIL_INDICATOR_CPHS_DONE = 8 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_AD_DONE = 9 + SIM_RECORD_EVENT_BASE; // Admin data on SIM
+    private static final int EVENT_GET_MSISDN_DONE = 10 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_CPHS_MAILBOX_DONE = 11 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_SPN_DONE = 12 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_SPDI_DONE = 13 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_UPDATE_DONE = 14 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_PNN_DONE = 15 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_SST_DONE = 17 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_ALL_SMS_DONE = 18 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_MARK_SMS_READ_DONE = 19 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_SET_MBDN_DONE = 20 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_SMS_ON_SIM = 21 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_SMS_DONE = 22 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_CFF_DONE = 24 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_INFO_CPHS_DONE = 26 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_SET_MSISDN_DONE = 30 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_CFIS_DONE = 32 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_CSP_CPHS_DONE = 33 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_GID1_DONE = 34 + SIM_RECORD_EVENT_BASE;
+    private static final int EVENT_GET_GID2_DONE = 36 + SIM_RECORD_EVENT_BASE;
+
+    // TODO: Possibly move these to IccRecords.java
+    private static final int SYSTEM_EVENT_BASE = 0x100;
+    private static final int EVENT_CARRIER_CONFIG_CHANGED = 1 + SYSTEM_EVENT_BASE;
+    private static final int EVENT_APP_LOCKED = 2 + SYSTEM_EVENT_BASE;
+    private static final int EVENT_SIM_REFRESH = 3 + SYSTEM_EVENT_BASE;
+
+
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
 
