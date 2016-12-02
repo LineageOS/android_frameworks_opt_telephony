@@ -82,6 +82,21 @@ public interface IccConstants {
     static final int EF_PCSCF = 0x6F09;
     static final int EF_PSI = 0x6FE5;
 
+    //PLMN Selection Information w/ Access Technology TS 131.102
+    static final int EF_PLMN_W_ACT = 0x6F60;
+    static final int EF_OPLMN_W_ACT = 0x6F61;
+    static final int EF_HPLMN_W_ACT = 0x6F62;
+
+    //Equivalent Home and Forbidden PLMN Lists TS 131.102
+    static final int EF_EHPLMN = 0x6FD9;
+    static final int EF_FPLMN = 0x6F7B;
+
+    // Last Roaming Selection Indicator
+    static final int EF_LRPLMNSI = 0x6FDC;
+
+    //Search interval for higher priority PLMNs
+    static final int EF_HPPLMN = 0x6F31;
+
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;
     // SMS record length from C.S0023 3.4.27
