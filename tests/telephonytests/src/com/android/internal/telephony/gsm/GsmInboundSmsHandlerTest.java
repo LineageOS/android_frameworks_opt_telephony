@@ -31,7 +31,6 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.test.AssertionFailedError;
-import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 
