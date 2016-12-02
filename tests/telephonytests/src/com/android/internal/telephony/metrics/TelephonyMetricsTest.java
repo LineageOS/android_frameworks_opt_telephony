@@ -38,8 +38,12 @@ import com.android.ims.ImsConfig;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.internal.ImsCallSession;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsResponse;
+import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.RadioAccessTechnology;
@@ -47,13 +51,11 @@ import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.CallState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.RilCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyLog;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState.RoamingType;
-import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.dataconnection.DataCallResponse;
 
 import org.junit.After;
 import org.junit.Before;
@@ -72,6 +74,9 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
     @Mock
     private ServiceState mServiceState;
+
+    @Mock
+    private GsmCdmaConnection mConnection;
 
     private TelephonyMetrics mMetrics;
 
@@ -449,8 +454,10 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteRilDialHangup() throws Exception {
-        mMetrics.writeRilDial(mPhone.getPhoneId(), 1, 2, mUusInfo);
-        mMetrics.writeRilHangup(mPhone.getPhoneId(), 2, 3);
+        doReturn(Call.State.DIALING).when(mConnection).getState();
+        mMetrics.writeRilDial(mPhone.getPhoneId(), mConnection, 2, mUusInfo);
+        doReturn(Call.State.DISCONNECTED).when(mConnection).getState();
+        mMetrics.writeRilHangup(mPhone.getPhoneId(), mConnection, 3);
         mMetrics.writePhoneState(mPhone.getPhoneId(), PhoneConstants.State.IDLE);
         TelephonyLog log = buildProto();
 
@@ -466,16 +473,14 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         assertEquals(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_DIAL,
                 events[0].rilRequest);
-
-        assertEquals(1, events[0].rilRequestId);
-
-
-        assertEquals(TelephonyCallSession.Event.Type.RIL_REQUEST, events[1].type);
+        RilCall[] calls = events[0].calls;
+        assertEquals(CallState.CALL_DIALING, calls[0].state);
 
         assertEquals(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_HANGUP,
                 events[1].rilRequest);
-
-        assertEquals(3, events[1].callIndex);
+        calls = events[1].calls;
+        assertEquals(3, calls[0].index);
+        assertEquals(CallState.CALL_DISCONNECTED, calls[0].state);
     }
 
     // Test write RIL setup data call
@@ -490,7 +495,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(1, log.events.length);
         assertEquals(0, log.callSessions.length);
         assertEquals(0, log.smsSessions.length);
-        
+
         assertFalse(log.eventsDropped);
 
 
