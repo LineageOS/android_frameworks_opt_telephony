@@ -1018,6 +1018,13 @@ message TelephonyCallSession {
       optional CallState state = 2;
 
       optional Type type = 3;
+
+      // For possible values for a call end reason check
+      // frameworks/base/telephony/java/android/telephony/DisconnectCause.java
+      optional int32 call_end_reason = 4;
+
+      // This field is true for Conference Calls
+      optional bool is_multiparty = 5;
     }
 
     // Single Radio Voice Call Continuity(SRVCC) progress state
