@@ -134,7 +134,6 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
     /**
      * Test that phone active changes cause the DcTracker to get poked.
      */
-    @Postsubmit
     @SmallTest
     public void testActive() throws Exception {
         mTestName = "testActive";

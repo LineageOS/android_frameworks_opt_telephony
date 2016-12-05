@@ -316,7 +316,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertFalse(sst.isImsRegistered());
     }
 
-    @Postsubmit
     @Test
     @MediumTest
     public void testSignalStrength() {
