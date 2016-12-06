@@ -341,7 +341,7 @@ public class UiccController extends Handler {
         }
 
         // The card status could have changed. Get the latest state.
-        mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
+        mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, index));
     }
 
     private boolean isValidCardIndex(int index) {
