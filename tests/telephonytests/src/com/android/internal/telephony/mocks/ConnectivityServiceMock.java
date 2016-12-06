@@ -72,6 +72,7 @@ import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.UidRange;
 import android.net.Uri;
+import android.net.wifi.WifiDevice;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
@@ -633,6 +634,10 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     public int setUsbTethering(boolean enable) {
+        throw new RuntimeException("not implemented");
+    }
+
+    public List<WifiDevice> getTetherConnectedSta() {
         throw new RuntimeException("not implemented");
     }
 
