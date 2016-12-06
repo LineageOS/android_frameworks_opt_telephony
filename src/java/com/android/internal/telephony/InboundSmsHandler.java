@@ -42,7 +42,6 @@ import android.content.pm.UserInfo;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
-import android.os.storage.StorageManager;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Build;
@@ -54,6 +53,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.os.storage.StorageManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
@@ -1094,7 +1094,8 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
-     * Creates and dispatches the intent to the default SMS app or the appropriate port.
+     * Creates and dispatches the intent to the default SMS app, appropriate port or via the {@link
+     * AppSmsManager}.
      *
      * @param pdus message pdus
      * @param format the message format, typically "3gpp" or "3gpp2"
@@ -1102,7 +1103,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param resultReceiver the receiver handling the delivery result
      */
     private void dispatchSmsDeliveryIntent(byte[][] pdus, String format, int destPort,
-            BroadcastReceiver resultReceiver) {
+            SmsBroadcastReceiver resultReceiver) {
         Intent intent = new Intent();
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", format);
@@ -1136,10 +1137,16 @@ public abstract class InboundSmsHandler extends StateMachine {
             intent.setData(uri);
             intent.setComponent(null);
         }
-
-        Bundle options = handleSmsWhitelisting(intent.getComponent());
-        dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM);
+        // Handle app specific sms messages.
+        AppSmsManager appManager = mPhone.getAppSmsManager();
+        if (appManager.handleSmsReceivedIntent(intent)) {
+            // The AppSmsManager handled this intent, we're done.
+            dropSms(resultReceiver);
+        } else {
+            Bundle options = handleSmsWhitelisting(intent.getComponent());
+            dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
+                    AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM);
+        }
     }
 
     /**
@@ -1286,8 +1293,10 @@ public abstract class InboundSmsHandler extends StateMachine {
                 intent.setComponent(null);
                 // All running users will be notified of the received sms.
                 Bundle options = handleSmsWhitelisting(null);
+
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, options, this, UserHandle.ALL);
+                        AppOpsManager.OP_RECEIVE_SMS,
+                        options, this, UserHandle.ALL);
             } else if (action.equals(Intents.WAP_PUSH_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);

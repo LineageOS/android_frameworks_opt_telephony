@@ -241,6 +241,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private boolean mIsVoiceCapable = true;
     /* Used for communicate between configured CarrierSignalling receivers */
     private CarrierSignalAgent mCarrierSignalAgent;
+    private final AppSmsManager mAppSmsManager;
 
     // Keep track of whether or not the phone is in Emergency Callback Mode for Phone and
     // subclasses
@@ -447,6 +448,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCarrierSignalAgent = new CarrierSignalAgent(this);
         mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
         mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
+        mAppSmsManager = telephonyComponentFactory.makeAppSmsManager(context);
 
         if (Build.IS_DEBUGGABLE) {
             mTelephonyTester = new TelephonyTester(this);
@@ -3378,6 +3380,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public Uri[] getCurrentSubscriberUris() {
         return null;
+    }
+
+    public AppSmsManager getAppSmsManager() {
+        return mAppSmsManager;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

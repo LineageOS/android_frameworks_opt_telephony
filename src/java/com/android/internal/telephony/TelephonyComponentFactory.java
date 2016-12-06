@@ -20,17 +20,14 @@ import android.content.Context;
 import android.database.Cursor;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
-import android.os.PowerManager;
 import android.os.ServiceManager;
 
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.imsphone.ImsPullCall;
 import com.android.internal.telephony.uicc.IccCardProxy;
 
 /**
@@ -121,6 +118,13 @@ public class TelephonyComponentFactory {
     public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone) {
 
         return new ImsExternalCallTracker(imsPhone);
+    }
+
+    /**
+     * Create an AppSmsManager for per-app SMS message.
+     */
+    public AppSmsManager makeAppSmsManager(Context context) {
+        return new AppSmsManager(context);
     }
 
     public CdmaSubscriptionSourceManager

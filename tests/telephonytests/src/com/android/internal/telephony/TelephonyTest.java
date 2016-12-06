@@ -43,13 +43,12 @@ import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyManager;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.util.Log;
 import android.util.Singleton;
-import android.util.SparseArray;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
@@ -61,7 +60,6 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
@@ -175,6 +173,8 @@ public abstract class TelephonyTest {
     protected CarrierSignalAgent mCarrierSignalAgent;
     @Mock
     protected ImsExternalCallTracker mImsExternalCallTracker;
+    @Mock
+    protected AppSmsManager mAppSmsManager;
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
@@ -346,6 +346,8 @@ public abstract class TelephonyTest {
                 .getIDeviceIdleController();
         doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory).
                 makeImsExternalCallTracker(any(ImsPhone.class));
+        doReturn(mAppSmsManager).when(mTelephonyComponentFactory)
+                .makeAppSmsManager(any(Context.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
@@ -360,6 +362,7 @@ public abstract class TelephonyTest {
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
+        doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
         mPhone.mEriManager = mEriManager;
 
         //mUiccController

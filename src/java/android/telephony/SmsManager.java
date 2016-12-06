@@ -1592,6 +1592,33 @@ public final class SmsManager {
     }
 
     /**
+     * Create a single use app specific incoming SMS request for the the calling package.
+     *
+     * This method returns a token that if included in a subsequent incoming SMS message will cause
+     * {@code intent} to be sent with the SMS data.
+     *
+     * The token is only good for one use, after an SMS has been received containing the token all
+     * subsequent SMS messages with the token will be routed as normal.
+     *
+     * An app can only have one request at a time, if the app already has a request pending it will
+     * be replaced with a new request.
+     *
+     * @return Token to include in an SMS message. The token will be 11 characters long.
+     * @see android.provider.Telephony.Sms.Intents#getMessagesFromIntent
+     */
+    public String createAppSpecificSmsToken(PendingIntent intent) {
+        try {
+            ISms iccSms = getISmsServiceOrThrow();
+            return iccSms.createAppSpecificSmsToken(getSubscriptionId(),
+                    ActivityThread.currentPackageName(), intent);
+
+        } catch (RemoteException ex) {
+            ex.rethrowFromSystemServer();
+            return null;
+        }
+    }
+
+    /**
      * Filters a bundle to only contain MMS config variables.
      *
      * This is for use with bundles returned by {@link CarrierConfigManager} which contain MMS
