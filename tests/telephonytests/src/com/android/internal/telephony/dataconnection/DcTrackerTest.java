@@ -31,10 +31,13 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.platform.test.annotations.Postsubmit;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -53,6 +56,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -72,6 +77,7 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -103,12 +109,17 @@ public class DcTrackerTest extends TelephonyTest {
     IBinder mBinder;
     @Mock
     NetworkRequest mNetworkRequest;
+    @Mock
+    SubscriptionInfo mSubscriptionInfo;
 
     private DcTracker mDct;
+    private DcTrackerTestHandler mDcTrackerTestHandler;
 
     private AlarmManager mAlarmManager;
 
     private PersistableBundle mBundle;
+
+    private SubscriptionManager.OnSubscriptionsChangedListener mOnSubscriptionsChangedListener;
 
     private final ApnSettingContentProvider mApnSettingContentProvider =
             new ApnSettingContentProvider();
@@ -299,6 +310,19 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(true).when(mSimRecords).getRecordsLoaded();
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
         doReturn(true).when(mSST).getDesiredPowerState();
+        doReturn(true).when(mSST).getPowerStateFromCarrier();
+        doAnswer(
+                new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation) throws Throwable {
+                        mOnSubscriptionsChangedListener =
+                                (SubscriptionManager.OnSubscriptionsChangedListener)
+                                        invocation.getArguments()[0];
+                        return null;
+                    }
+                }
+        ).when(mSubscriptionManager).addOnSubscriptionsChangedListener(any());
+        doReturn(mSubscriptionInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
 
         doReturn(1).when(mIsub).getDefaultDataSubId();
         doReturn(mIsub).when(mBinder).queryLocalInterface(anyString());
@@ -311,7 +335,8 @@ public class DcTrackerTest extends TelephonyTest {
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         mBundle = mContextFixture.getCarrierConfigBundle();
 
-        new DcTrackerTestHandler(getClass().getSimpleName()).start();
+        mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
+        mDcTrackerTestHandler.start();
         waitUntilReady();
         waitForMs(600);
         logd("DcTrackerTest -Setup!");
@@ -322,6 +347,7 @@ public class DcTrackerTest extends TelephonyTest {
         logd("DcTrackerTest -tearDown");
         mDct.removeCallbacksAndMessages(null);
         mDct = null;
+        mDcTrackerTestHandler.quitSafely();
         super.tearDown();
     }
 
@@ -630,6 +656,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testDataCallOnUserDisableRoaming() throws Exception {
@@ -714,9 +741,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(intArgumentCaptor.getValue(), null));
         waitForMs(200);
 
-        NetworkCapabilities nc = new NetworkCapabilities();
-        nc.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        NetworkRequest nr = new NetworkRequest(nc, 0, 0);
+        NetworkRequest nr = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build();
         LocalLog l = new LocalLog(100);
         mDct.requestNetwork(nr, l);
         waitForMs(200);
@@ -738,5 +764,53 @@ public class DcTrackerTest extends TelephonyTest {
         failureReason.clearAllReasons();
         allowed = isDataAllowed(failureReason);
         assertFalse(failureReason.getDataAllowFailReason(), allowed);
+    }
+
+    // Test for API carrierActionSetMeteredApnsEnabled.
+    @Postsubmit
+    @Test
+    @MediumTest
+    public void testCarrierActionSetMeteredApnsEnabled() throws Exception {
+        //step 1: setup two DataCalls one for Internet and IMS
+        //step 2: set data is enabled
+        //step 3: cold sim is detected
+        //step 4: all data connection is torn down
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
+
+        boolean dataEnabled = mDct.getDataEnabled();
+        mDct.setDataEnabled(true);
+
+        mDct.setEnabled(5, true);
+        mDct.setEnabled(0, true);
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(2), eq(FAKE_APN3),
+                eq(""), eq(""), eq(3), eq("IP"), any(Message.class));
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN1),
+                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+
+        mDct.setApnsEnabledByCarrier(false);
+        waitForMs(100);
+
+        // Validate all metered data connections have been torn down
+        verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(anyInt(), anyInt(),
+                any(Message.class));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+        assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
+
+        // Reset settings at the end of test
+        mDct.setDataEnabled(dataEnabled);
+        waitForMs(200);
     }
 }

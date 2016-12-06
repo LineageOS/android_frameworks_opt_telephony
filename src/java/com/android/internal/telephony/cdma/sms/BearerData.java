@@ -435,7 +435,7 @@ public final class BearerData {
         builder.append(", readAckReq=" + readAckReq);
         builder.append(", reportReq=" + reportReq);
         builder.append(", numberOfMessages=" + numberOfMessages);
-        builder.append(", callbackNumber=" + callbackNumber);
+        builder.append(", callbackNumber=" + Rlog.pii(LOG_TAG, callbackNumber));
         builder.append(", depositIndex=" + depositIndex);
         builder.append(", hasUserDataHeader=" + hasUserDataHeader);
         builder.append(", userData=" + userData);

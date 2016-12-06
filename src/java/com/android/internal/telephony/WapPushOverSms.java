@@ -27,6 +27,7 @@ import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
@@ -39,6 +40,7 @@ import android.os.IDeviceIdleController;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
@@ -76,6 +78,46 @@ public class WapPushOverSms implements ServiceConnection {
     /** Assigned from ServiceConnection callback on main threaad. */
     private volatile IWapPushManager mWapPushManager;
 
+    /** Broadcast receiver that binds to WapPushManager when the user unlocks the phone for the
+     *  first time after reboot and the credential-encrypted storage is available.
+     */
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(final Context context, Intent intent) {
+            Rlog.d(TAG, "Received broadcast " + intent.getAction());
+            if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
+                new BindServiceThread(mContext).start();
+            }
+        }
+    };
+
+    private class BindServiceThread extends Thread {
+        private final Context context;
+
+        private BindServiceThread(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public void run() {
+            bindWapPushManagerService(context);
+        }
+    }
+
+    private void bindWapPushManagerService(Context context) {
+        Intent intent = new Intent(IWapPushManager.class.getName());
+        ComponentName comp = intent.resolveSystemService(context.getPackageManager(), 0);
+        intent.setComponent(comp);
+        if (comp == null || !context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
+            Rlog.e(TAG, "bindService() for wappush manager failed");
+        } else {
+            synchronized (this) {
+                mWapPushManagerPackage = comp.getPackageName();
+            }
+            if (DBG) Rlog.v(TAG, "bindService() for wappush manager succeeded");
+        }
+    }
+
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         mWapPushManager = IWapPushManager.Stub.asInterface(service);
@@ -91,14 +133,15 @@ public class WapPushOverSms implements ServiceConnection {
     public WapPushOverSms(Context context) {
         mContext = context;
         mDeviceIdleController = TelephonyComponentFactory.getInstance().getIDeviceIdleController();
-        Intent intent = new Intent(IWapPushManager.class.getName());
-        ComponentName comp = intent.resolveSystemService(context.getPackageManager(), 0);
-        intent.setComponent(comp);
-        if (comp == null || !context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
-            Rlog.e(TAG, "bindService() for wappush manager failed");
+
+        UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+
+        if (userManager.isUserUnlocked()) {
+            bindWapPushManagerService(mContext);
         } else {
-            mWapPushManagerPackage = comp.getPackageName();
-            if (DBG) Rlog.v(TAG, "bindService() for wappush manager succeeded");
+            IntentFilter userFilter = new IntentFilter();
+            userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
+            context.registerReceiver(mBroadcastReceiver, userFilter);
         }
     }
 
@@ -305,8 +348,10 @@ public class WapPushOverSms implements ServiceConnection {
                 if (wapPushMan == null) {
                     if (DBG) Rlog.w(TAG, "wap push manager not found!");
                 } else {
-                    mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
-                            mWapPushManagerPackage, 0, "mms-mgr");
+                    synchronized (this) {
+                        mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
+                                mWapPushManagerPackage, 0, "mms-mgr");
+                    }
 
                     Intent intent = new Intent();
                     intent.putExtra("transactionId", result.transactionId);

@@ -392,6 +392,11 @@ public class IccCardProxy extends Handler implements IccCard {
             return;
         }
 
+        if (mUiccCard.getCardState() == CardState.CARDSTATE_RESTRICTED) {
+            setExternalState(State.CARD_RESTRICTED);
+            return;
+        }
+
         if (mUiccApplication == null) {
             setExternalState(State.NOT_READY);
             return;
@@ -589,6 +594,7 @@ public class IccCardProxy extends Handler implements IccCard {
             case NOT_READY: return IccCardConstants.INTENT_VALUE_ICC_NOT_READY;
             case PERM_DISABLED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
             case CARD_IO_ERROR: return IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR;
+            case CARD_RESTRICTED: return IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED;
             default: return IccCardConstants.INTENT_VALUE_ICC_UNKNOWN;
         }
     }
@@ -604,6 +610,7 @@ public class IccCardProxy extends Handler implements IccCard {
             case NETWORK_LOCKED: return IccCardConstants.INTENT_VALUE_LOCKED_NETWORK;
             case PERM_DISABLED: return IccCardConstants.INTENT_VALUE_ABSENT_ON_PERM_DISABLED;
             case CARD_IO_ERROR: return IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR;
+            case CARD_RESTRICTED: return IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED;
             default: return null;
        }
     }

@@ -24,6 +24,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -39,9 +40,10 @@ import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.ServiceState;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.ims.ImsCallForwardInfo;
@@ -118,6 +120,8 @@ public class ImsPhone extends ImsPhoneBase {
     private static final int EVENT_SET_CLIR_DONE                     = EVENT_LAST + 5;
     private static final int EVENT_GET_CLIR_DONE                     = EVENT_LAST + 6;
     private static final int EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED  = EVENT_LAST + 7;
+    private static final int EVENT_SERVICE_STATE_CHANGED             = EVENT_LAST + 8;
+    private static final int EVENT_VOICE_CALL_ENDED                  = EVENT_LAST + 9;
 
     static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
     static final int CANCEL_ECM_TIMER  = 1; // cancel Ecm timer
@@ -128,7 +132,6 @@ public class ImsPhone extends ImsPhoneBase {
     // Instance Variables
     Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
-    ImsMultiEndpoint mImsMultiEndpoint;
     ImsExternalCallTracker mExternalCallTracker;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
@@ -148,6 +151,8 @@ public class ImsPhone extends ImsPhoneBase {
 
     private boolean mImsRegistered = false;
 
+    private boolean mRoaming = false;
+
     // List of Registrants to send supplementary service notifications to.
     private RegistrantList mSsnRegistrants = new RegistrantList();
 
@@ -158,6 +163,17 @@ public class ImsPhone extends ImsPhoneBase {
             exitEmergencyCallbackMode();
         }
     };
+
+    private Uri[] mCurrentSubscriberUris;
+
+    protected void setCurrentSubscriberUris(Uri[] currentSubscriberUris) {
+        this.mCurrentSubscriberUris = currentSubscriberUris;
+    }
+
+    @Override
+    public Uri[] getCurrentSubscriberUris() {
+        return mCurrentSubscriberUris;
+    }
 
     // Create Cf (Call forward) so that dialling number &
     // mIsCfu (true if reason is call forward unconditional)
@@ -186,16 +202,15 @@ public class ImsPhone extends ImsPhoneBase {
         super("ImsPhone", context, notifier, unitTestMode);
 
         mDefaultPhone = defaultPhone;
-        mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+        // The ImsExternalCallTracker needs to be defined before the ImsPhoneCallTracker, as the
+        // ImsPhoneCallTracker uses a thread to spool up the ImsManager.  Part of this involves
+        // setting the multiendpoint listener on the external call tracker.  So we need to ensure
+        // the external call tracker is available first to avoid potential timing issues.
         mExternalCallTracker =
-                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this, mCT);
-        try {
-            mImsMultiEndpoint = mCT.getMultiEndpointInterface();
-            mImsMultiEndpoint.setExternalCallStateListener(
-                    mExternalCallTracker.getExternalCallStateListener());
-        } catch (ImsException e) {
-            Rlog.i(LOG_TAG, "ImsMultiEndpointInterface is not available.");
-        }
+                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this);
+        mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+        mCT.registerPhoneStateListener(mExternalCallTracker);
+        mExternalCallTracker.setCallPuller(mCT);
 
         mSS.setStateOff();
 
@@ -216,6 +231,10 @@ public class ImsPhone extends ImsPhoneBase {
                             EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
         }
         updateDataServiceState();
+
+        mDefaultPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
+        // Force initial roaming state update later, on EVENT_CARRIER_CONFIG_CHANGED.
+        // Settings provider or CarrierConfig may not be loaded now.
     }
 
     //todo: get rid of this function. It is not needed since parentPhone obj never changes
@@ -225,12 +244,16 @@ public class ImsPhone extends ImsPhoneBase {
         // Nothing to dispose in Phone
         //super.dispose();
         mPendingMMIs.clear();
+        mExternalCallTracker.tearDown();
+        mCT.unregisterPhoneStateListener(mExternalCallTracker);
+        mCT.unregisterForVoiceCallEnded(this);
         mCT.dispose();
 
         //Force all referenced classes to unregister their former registered events
         if (mDefaultPhone != null && mDefaultPhone.getServiceStateTracker() != null) {
             mDefaultPhone.getServiceStateTracker().
                     unregisterForDataRegStateOrRatChanged(this);
+            mDefaultPhone.unregisterForServiceStateChanged(this);
         }
     }
 
@@ -1277,6 +1300,26 @@ public class ImsPhone extends ImsPhoneBase {
                 updateDataServiceState();
                 break;
 
+            case EVENT_SERVICE_STATE_CHANGED:
+                if (VDBG) Rlog.d(LOG_TAG, "EVENT_SERVICE_STATE_CHANGED");
+                ar = (AsyncResult) msg.obj;
+                ServiceState newServiceState = (ServiceState) ar.result;
+                // only update if roaming status changed
+                if (mRoaming != newServiceState.getRoaming()) {
+                    if (DBG) Rlog.d(LOG_TAG, "Roaming state changed");
+                    updateRoamingState(newServiceState.getRoaming());
+                }
+                break;
+            case EVENT_VOICE_CALL_ENDED:
+                if (DBG) Rlog.d(LOG_TAG, "Voice call ended. Handle pending updateRoamingState.");
+                mCT.unregisterForVoiceCallEnded(this);
+                // only update if roaming status changed
+                boolean newRoaming = getCurrentRoaming();
+                if (mRoaming != newRoaming) {
+                    updateRoamingState(newRoaming);
+                }
+                break;
+
             default:
                 super.handleMessage(msg);
                 break;
@@ -1349,10 +1392,10 @@ public class ImsPhone extends ImsPhoneBase {
         }
         // if phone is not in Ecm mode, and it's changed to Ecm mode
         if (mIsPhoneInEcmState == false) {
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
             mIsPhoneInEcmState = true;
             // notify change
             sendEmergencyCallbackModeChange();
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
@@ -1369,6 +1412,12 @@ public class ImsPhone extends ImsPhoneBase {
             Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode: mIsPhoneInEcmState = "
                     + mIsPhoneInEcmState);
         }
+
+        if (mIsPhoneInEcmState) {
+            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+            mIsPhoneInEcmState = false;
+        }
+
         // Remove pending exit Ecm runnable, if any
         removeCallbacks(mExitEcmRunnable);
 
@@ -1381,10 +1430,6 @@ public class ImsPhone extends ImsPhoneBase {
             mWakeLock.release();
         }
 
-        if (mIsPhoneInEcmState) {
-            mIsPhoneInEcmState = false;
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-        }
         // send an Intent
         sendEmergencyCallbackModeChange();
     }
@@ -1634,6 +1679,30 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public long getVtDataUsage() {
+        return mCT.getVtDataUsage();
+    }
+
+    private void updateRoamingState(boolean newRoaming) {
+        if (mCT.getState() == PhoneConstants.State.IDLE) {
+            if (DBG) Rlog.d(LOG_TAG, "updateRoamingState now: " + newRoaming);
+            mRoaming = newRoaming;
+            ImsManager.setWfcMode(mContext,
+                    ImsManager.getWfcMode(mContext, newRoaming), newRoaming);
+        } else {
+            if (DBG) Rlog.d(LOG_TAG, "updateRoamingState postponed: " + newRoaming);
+            mCT.registerForVoiceCallEnded(this,
+                    EVENT_VOICE_CALL_ENDED, null);
+        }
+    }
+
+    private boolean getCurrentRoaming() {
+        TelephonyManager tm = (TelephonyManager) mContext
+                .getSystemService(Context.TELEPHONY_SERVICE);
+        return tm.isNetworkRoaming();
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ImsPhone extends:");
         super.dump(fd, pw, args);
@@ -1649,6 +1718,7 @@ public class ImsPhone extends ImsPhoneBase {
         pw.println("  mEcmExitRespRegistrant = " + mEcmExitRespRegistrant);
         pw.println("  mSilentRedialRegistrants = " + mSilentRedialRegistrants);
         pw.println("  mImsRegistered = " + mImsRegistered);
+        pw.println("  mRoaming = " + mRoaming);
         pw.println("  mSsnRegistrants = " + mSsnRegistrants);
         pw.flush();
     }

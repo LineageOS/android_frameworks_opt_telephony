@@ -46,7 +46,7 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     private SmsMessage mGsmSmsMessage;
 
     private GsmCellBroadcastHandler mGsmCellBroadcastHandler;
-
+    private GsmCellBroadcastHandlerTestHandler mGsmCellBroadcastHandlerTestHandler;
 
     private class GsmCellBroadcastHandlerTestHandler extends HandlerThread {
 
@@ -70,13 +70,16 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
 
-        new GsmCellBroadcastHandlerTestHandler(getClass().getSimpleName()).start();
+        mGsmCellBroadcastHandlerTestHandler =
+                new GsmCellBroadcastHandlerTestHandler(getClass().getSimpleName());
+        mGsmCellBroadcastHandlerTestHandler.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
         mGsmCellBroadcastHandler = null;
+        mGsmCellBroadcastHandlerTestHandler.quitSafely();
         super.tearDown();
     }
 
