@@ -40,7 +40,7 @@ import android.telephony.Rlog;
 import android.util.EventLog;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
-import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -87,8 +87,6 @@ public class GsmCdmaCallTracker extends CallTracker {
     private boolean mDesiredMute = false;    // false = mute off
 
     public PhoneConstants.State mState = PhoneConstants.State.IDLE;
-
-    private TelephonyEventLog mEventLog;
 
     // Following member variables are for CDMA only
     private RegistrantList mCallWaitingRegistrants = new RegistrantList();
@@ -152,8 +150,6 @@ public class GsmCdmaCallTracker extends CallTracker {
         mPhone.getContext().registerReceiver(mEcmExitReceiver, filter);
 
         updatePhoneType(true);
-
-        mEventLog = new TelephonyEventLog(mPhone.getPhoneId());
     }
 
     public void updatePhoneType() {
@@ -719,7 +715,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
         if (mState != oldState) {
             mPhone.notifyPhoneStateChanged();
-            mEventLog.writePhoneState(mState);
+            TelephonyMetrics.getInstance().writePhoneState(mPhone.getPhoneId(), mState);
         }
     }
 

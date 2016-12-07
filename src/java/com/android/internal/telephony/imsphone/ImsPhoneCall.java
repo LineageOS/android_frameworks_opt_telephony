@@ -191,6 +191,10 @@ public class ImsPhoneCall extends Call {
 
             if (hasOnlyDisconnectedConnections) {
                 mState = State.DISCONNECTED;
+                if (VDBG) {
+                    Rlog.v(LOG_TAG, "connectionDisconnected : " + mCallContext + " state = " +
+                            mState);
+                }
                 return true;
             }
         }
@@ -228,6 +232,9 @@ public class ImsPhoneCall extends Call {
             cn.onHangupLocal();
         }
         mState = State.DISCONNECTING;
+        if (VDBG) {
+            Rlog.v(LOG_TAG, "onHangupLocal : " + mCallContext + " state = " + mState);
+        }
     }
 
     /*package*/ ImsPhoneConnection
@@ -300,8 +307,8 @@ public class ImsPhoneCall extends Call {
     }
 
     public boolean update (ImsPhoneConnection conn, ImsCall imsCall, State state) {
-        State newState = state;
         boolean changed = false;
+        State oldState = mState;
 
         //ImsCall.Listener.onCallProgressing can be invoked several times
         //and ringback tone mode can be changed during the call setup procedure
@@ -320,11 +327,15 @@ public class ImsPhoneCall extends Call {
             }
         }
 
-        if ((newState != mState) && (state != State.DISCONNECTED)) {
-            mState = newState;
+        if ((state != mState) && (state != State.DISCONNECTED)) {
+            mState = state;
             changed = true;
         } else if (state == State.DISCONNECTED) {
             changed = true;
+        }
+
+        if (VDBG) {
+            Rlog.v(LOG_TAG, "update : " + mCallContext + " state: " + oldState + " --> " + mState);
         }
 
         return changed;

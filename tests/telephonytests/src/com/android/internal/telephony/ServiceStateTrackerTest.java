@@ -28,6 +28,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.SystemClock;
 import android.os.UserHandle;
+import android.platform.test.annotations.Postsubmit;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
@@ -139,6 +140,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         sst = null;
+        mSSTTestHandler.quitSafely();
         super.tearDown();
     }
 
@@ -186,7 +188,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
-    public void testNoRilTrafficAfterSetRadioPower() {
+    public void testRilTrafficAfterSetRadioPower() {
         sst.setRadioPower(true);
         final int getOperatorCallCount = mSimulatedCommands.getGetOperatorCallCount();
         final int getDataRegistrationStateCallCount =
@@ -201,12 +203,14 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.pollState();
         waitForMs(250);
 
-        assertEquals(getOperatorCallCount, mSimulatedCommands.getGetOperatorCallCount());
-        assertEquals(getDataRegistrationStateCallCount,
+        // This test was meant to be for *no* ril traffic. However, RADIO_STATE_CHANGED is
+        // considered a modem triggered action and that causes a pollState() to be done
+        assertEquals(getOperatorCallCount + 1, mSimulatedCommands.getGetOperatorCallCount());
+        assertEquals(getDataRegistrationStateCallCount + 1,
                 mSimulatedCommands.getGetDataRegistrationStateCallCount());
-        assertEquals(getVoiceRegistrationStateCallCount,
+        assertEquals(getVoiceRegistrationStateCallCount + 1,
                 mSimulatedCommands.getGetVoiceRegistrationStateCallCount());
-        assertEquals(getNetworkSelectionModeCallCount,
+        assertEquals(getNetworkSelectionModeCallCount + 1,
                 mSimulatedCommands.getGetNetworkSelectionModeCallCount());
 
         // Note that if the poll is triggered by a network change notification
@@ -214,12 +218,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.notifyVoiceNetworkStateChanged();
         waitForMs(250);
 
-        assertEquals(getOperatorCallCount + 1 , mSimulatedCommands.getGetOperatorCallCount());
-        assertEquals(getDataRegistrationStateCallCount + 1,
+        assertEquals(getOperatorCallCount + 2 , mSimulatedCommands.getGetOperatorCallCount());
+        assertEquals(getDataRegistrationStateCallCount + 2,
                 mSimulatedCommands.getGetDataRegistrationStateCallCount());
-        assertEquals(getVoiceRegistrationStateCallCount + 1,
+        assertEquals(getVoiceRegistrationStateCallCount + 2,
                 mSimulatedCommands.getGetVoiceRegistrationStateCallCount());
-        assertEquals(getNetworkSelectionModeCallCount + 1,
+        assertEquals(getNetworkSelectionModeCallCount + 2,
                 mSimulatedCommands.getGetNetworkSelectionModeCallCount());
     }
 
@@ -293,7 +297,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @MediumTest
     public void testImsRegState() {
         // Simulate IMS registered
-        mSimulatedCommands.setImsRegistrationState(new int[]{1});
+        mSimulatedCommands.setImsRegistrationState(new int[]{1, PhoneConstants.PHONE_TYPE_GSM});
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_IMS_STATE_CHANGED, null));
         waitForMs(200);
@@ -301,7 +305,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertTrue(sst.isImsRegistered());
 
         // Simulate IMS unregistered
-        mSimulatedCommands.setImsRegistrationState(new int[]{0});
+        mSimulatedCommands.setImsRegistrationState(new int[]{0, PhoneConstants.PHONE_TYPE_GSM});
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_IMS_STATE_CHANGED, null));
         waitForMs(200);
@@ -309,6 +313,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertFalse(sst.isImsRegistered());
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testSignalStrength() {
@@ -331,7 +336,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         mSimulatedCommands.setSignalStrength(ss);
         mSimulatedCommands.notifySignalStrength();
-        waitForMs(200);
+        waitForMs(300);
         assertEquals(sst.getSignalStrength(), ss);
         assertEquals(sst.getSignalStrength().isGsm(), true);
 

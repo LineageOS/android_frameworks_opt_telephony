@@ -41,6 +41,7 @@ import static org.mockito.Mockito.*;
 public class SmsStorageMonitorTest extends TelephonyTest {
 
     private SmsStorageMonitor mSmsStorageMonitor;
+    private SmsStorageMonitorTestHandler mSmsStorageMonitorTestHandler;
 
     private class SmsStorageMonitorTestHandler extends HandlerThread {
 
@@ -58,13 +59,15 @@ public class SmsStorageMonitorTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        new SmsStorageMonitorTestHandler(TAG).start();
+        mSmsStorageMonitorTestHandler = new SmsStorageMonitorTestHandler(TAG);
+        mSmsStorageMonitorTestHandler.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
         mSmsStorageMonitor = null;
+        mSmsStorageMonitorTestHandler.quitSafely();
         super.tearDown();
     }
 

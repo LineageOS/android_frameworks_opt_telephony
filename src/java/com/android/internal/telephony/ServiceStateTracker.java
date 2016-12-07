@@ -66,6 +66,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
+import android.util.LocalLog;
 import android.util.Pair;
 import android.util.TimeUtils;
 
@@ -83,12 +84,14 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.util.IndentingPrintWriter;
 
 /**
  * {@hide}
@@ -104,7 +107,6 @@ public class ServiceStateTracker extends Handler {
     private UiccController mUiccController = null;
     private UiccCardApplication mUiccApplcation = null;
     private IccRecords mIccRecords = null;
-    private TelephonyEventLog mEventLog;
 
     private boolean mVoiceCapable;
 
@@ -277,6 +279,11 @@ public class ServiceStateTracker extends Handler {
 
 
     private final RatRatcheter mRatRatcheter;
+
+    private final LocalLog mRoamingLog = new LocalLog(10);
+    private final LocalLog mAttachLog = new LocalLog(10);
+    private final LocalLog mPhoneTypeLog = new LocalLog(10);
+    private final LocalLog mRatLog = new LocalLog(20);
 
     private class SstSubscriptionsChangedListener extends OnSubscriptionsChangedListener {
         public final AtomicInteger mPreviousSubId =
@@ -539,7 +546,6 @@ public class ServiceStateTracker extends Handler {
         filter.addAction(ACTION_RADIO_OFF);
         context.registerReceiver(mIntentReceiver, filter);
 
-        mEventLog = new TelephonyEventLog(mPhone.getPhoneId());
         mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
 
         updatePhoneType();
@@ -613,6 +619,15 @@ public class ServiceStateTracker extends Handler {
         // strength information displayed on the UI.
         mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
         sendMessage(obtainMessage(EVENT_PHONE_TYPE_SWITCHED));
+
+        logPhoneTypeChange();
+
+        // Tell everybody that we've thrown away state and are starting over with
+        // empty, detached ServiceStates.
+        mVoiceRoamingOffRegistrants.notifyRegistrants();
+        mDataRoamingOffRegistrants.notifyRegistrants();
+        mDetachedRegistrants.notifyRegistrants();
+        notifyDataRegStateRilRadioTechnologyChanged();
     }
 
     @VisibleForTesting
@@ -2395,6 +2410,22 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    private void logRoamingChange() {
+        mRoamingLog.log(mSS.toString());
+    }
+
+    private void logAttachChange() {
+        mAttachLog.log(mSS.toString());
+    }
+
+    private void logPhoneTypeChange() {
+        mPhoneTypeLog.log(Integer.toString(mPhone.getPhoneType()));
+    }
+
+    private void logRatChange() {
+        mRatLog.log(mSS.toString());
+    }
+
     protected void log(String s) {
         Rlog.d(LOG_TAG, s);
     }
@@ -2751,7 +2782,11 @@ public class ServiceStateTracker extends Handler {
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
 
-            mEventLog.writeServiceStateChanged(mSS);
+            TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
+        }
+
+        if (hasGprsAttached || hasGprsDetached || hasRegistered || hasDeregistered) {
+            logAttachChange();
         }
 
         if (hasGprsAttached) {
@@ -2760,6 +2795,10 @@ public class ServiceStateTracker extends Handler {
 
         if (hasGprsDetached) {
             mDetachedRegistrants.notifyRegistrants();
+        }
+
+        if (hasRilDataRadioTechnologyChanged || hasRilVoiceRadioTechnologyChanged) {
+            logRatChange();
         }
 
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
@@ -2771,6 +2810,10 @@ public class ServiceStateTracker extends Handler {
             } else {
                 mPhone.notifyDataConnection(null);
             }
+        }
+
+        if (hasVoiceRoamingOn || hasVoiceRoamingOff || hasDataRoamingOn || hasDataRoamingOff) {
+            logRoamingChange();
         }
 
         if (hasVoiceRoamingOn) {
@@ -2952,6 +2995,12 @@ public class ServiceStateTracker extends Handler {
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
+
+            TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
+        }
+
+        if (hasCdmaDataConnectionAttached || hasCdmaDataConnectionDetached || hasRegistered) {
+            logAttachChange();
         }
 
         if (hasCdmaDataConnectionAttached) {
@@ -2960,6 +3009,10 @@ public class ServiceStateTracker extends Handler {
 
         if (hasCdmaDataConnectionDetached) {
             mDetachedRegistrants.notifyRegistrants();
+        }
+
+        if (hasRilDataRadioTechnologyChanged || hasRilVoiceRadioTechnologyChanged) {
+            logRatChange();
         }
 
         if (hasCdmaDataConnectionChanged || hasRilDataRadioTechnologyChanged) {
@@ -2978,6 +3031,10 @@ public class ServiceStateTracker extends Handler {
 
         if (hasVoiceRoamingOff) {
             mVoiceRoamingOffRegistrants.notifyRegistrants();
+        }
+
+        if (hasVoiceRoamingOn || hasVoiceRoamingOff || hasDataRoamingOn || hasDataRoamingOff) {
+            logRoamingChange();
         }
 
         if (hasDataRoamingOn) {
@@ -3174,6 +3231,13 @@ public class ServiceStateTracker extends Handler {
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
+
+            TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
+        }
+
+        if (hasCdmaDataConnectionAttached || has4gHandoff || hasCdmaDataConnectionDetached ||
+                hasRegistered || hasDeregistered) {
+            logAttachChange();
         }
 
         if (hasCdmaDataConnectionAttached || has4gHandoff) {
@@ -3184,6 +3248,10 @@ public class ServiceStateTracker extends Handler {
             mDetachedRegistrants.notifyRegistrants();
         }
 
+        if (hasDataRadioTechnologyChanged || hasVoiceRadioTechnologyChanged) {
+            logRatChange();
+        }
+
         if ((hasCdmaDataConnectionChanged || hasDataRadioTechnologyChanged)) {
             notifyDataRegStateRilRadioTechnologyChanged();
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
@@ -3192,6 +3260,10 @@ public class ServiceStateTracker extends Handler {
             } else {
                 mPhone.notifyDataConnection(null);
             }
+        }
+
+        if (hasVoiceRoamingOn || hasVoiceRoamingOff || hasDataRoamingOn || hasDataRoamingOff) {
+            logRoamingChange();
         }
 
         if (hasVoiceRoamingOn) {
@@ -4017,6 +4089,8 @@ public class ServiceStateTracker extends Handler {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         intent.putExtra("time", time);
         mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+
+        TelephonyMetrics.getInstance().writeNITZEvent(mPhone.getPhoneId(), time);
     }
 
     private void revertToNitzTime() {
@@ -4663,7 +4737,26 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
         pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
 
+        pw.println(" Roaming Log:");
+        IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
+        ipw.increaseIndent();
+        mRoamingLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
 
+        ipw.println(" Attach Log:");
+        ipw.increaseIndent();
+        mAttachLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
+
+        ipw.println(" Phone Change Log:");
+        ipw.increaseIndent();
+        mPhoneTypeLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
+
+        ipw.println(" Rat Change Log:");
+        ipw.increaseIndent();
+        mRatLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
     }
 
     public boolean isImsRegistered() {

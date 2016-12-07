@@ -54,6 +54,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     private SMSDispatcher.SmsTracker mTracker;
 
     private ImsSMSDispatcher mImsSmsDispatcher;
+    private ImsSmsDispatcherTestHandler mImsSmsDispatcherTestHandler;
     private boolean mReceivedTestIntent = false;
     private Object mLock = new Object();
     private static final String TEST_INTENT = "com.android.internal.telephony.TEST_INTENT";
@@ -88,13 +89,15 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         setupMockPackagePermissionChecks();
 
-        new ImsSmsDispatcherTestHandler(getClass().getSimpleName()).start();
+        mImsSmsDispatcherTestHandler = new ImsSmsDispatcherTestHandler(getClass().getSimpleName());
+        mImsSmsDispatcherTestHandler.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
         mImsSmsDispatcher = null;
+        mImsSmsDispatcherTestHandler.quitSafely();
         super.tearDown();
     }
 

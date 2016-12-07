@@ -29,6 +29,7 @@ import android.os.HandlerThread;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.platform.test.annotations.Postsubmit;
 import android.provider.Telephony;
 import android.test.AssertionFailedError;
 import android.test.mock.MockContentProvider;
@@ -77,6 +78,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
+    private GsmInboundSmsHandlerTestHandler mGsmInboundSmsHandlerTestHandler;
 
     private FakeSmsContentProvider mContentProvider;
     private static final String RAW_TABLE_NAME = "raw";
@@ -159,7 +161,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         ((MockContentResolver)mContext.getContentResolver()).addProvider(
                 Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
 
-        new GsmInboundSmsHandlerTestHandler(TAG).start();
+        mGsmInboundSmsHandlerTestHandler = new GsmInboundSmsHandlerTestHandler(TAG);
+        mGsmInboundSmsHandlerTestHandler.start();
         waitUntilReady();
     }
 
@@ -174,6 +177,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertFalse(mGsmInboundSmsHandler.getWakeLock().isHeld());
         mGsmInboundSmsHandler = null;
         mContentProvider.shutdown();
+        mGsmInboundSmsHandlerTestHandler.quitSafely();
         super.tearDown();
     }
 
@@ -385,6 +389,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(mInboundSmsTrackerCVPart2).when(mInboundSmsTrackerPart2).getContentValues();
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testMultiPartSms() {
@@ -607,6 +612,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {

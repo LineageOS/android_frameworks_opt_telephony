@@ -28,6 +28,7 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
+import android.platform.test.annotations.Postsubmit;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -90,6 +91,7 @@ public class ImsPhoneTest extends TelephonyTest {
     ImsUtInterface mImsUtInterface;
 
     private ImsPhone mImsPhoneUT;
+    private ImsPhoneTestHandler mImsPhoneTestHandler;
     private boolean mDoesRilSendMultipleCallRing;
     private static final int EVENT_SUPP_SERVICE_NOTIFICATION = 1;
     private static final int EVENT_SUPP_SERVICE_FAILED = 2;
@@ -122,7 +124,8 @@ public class ImsPhoneTest extends TelephonyTest {
 
         mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
 
-        new ImsPhoneTestHandler(TAG).start();
+        mImsPhoneTestHandler = new ImsPhoneTestHandler(TAG);
+        mImsPhoneTestHandler.start();
         waitUntilReady();
 
         mDoesRilSendMultipleCallRing = SystemProperties.getBoolean(
@@ -142,6 +145,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
+        mImsPhoneTestHandler.quitSafely();
         super.tearDown();
     }
 
@@ -457,6 +461,7 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
+    @Postsubmit
     @Test
     @SmallTest
     public void testCallForwardingOption() throws Exception {
@@ -582,6 +587,7 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(false, mImsPhoneUT.getWakeLock().isHeld());
     }
 
+    @Postsubmit
     @Test
     @SmallTest
     public void testProcessDisconnectReason() throws Exception {

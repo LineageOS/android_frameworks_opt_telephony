@@ -87,6 +87,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.ArrayUtils;
@@ -128,6 +129,7 @@ public class DcTracker extends Handler {
 
     // All data enabling/disabling related settings
     private final DataEnabledSettings mDataEnabledSettings = new DataEnabledSettings();
+
 
     /**
      * After detecting a potential connection problem, this is the max number
@@ -918,6 +920,17 @@ public class DcTracker extends Handler {
                 if (apnContext.isConnectedOrConnecting() &&
                         apnContext.getApnSetting().isMetered(mPhone.getContext(),
                         mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())) {
+
+                    final DcAsyncChannel dataConnectionAc = apnContext.getDcAc();
+                    if (dataConnectionAc != null) {
+                        final NetworkCapabilities nc =
+                                dataConnectionAc.getNetworkCapabilitiesSync();
+                        if (nc != null && nc.hasCapability(NetworkCapabilities.
+                              NET_CAPABILITY_NOT_RESTRICTED)) {
+                            if (DBG) log("not tearing down unrestricted metered net:" + apnContext);
+                            continue;
+                        }
+                    }
                     if (DBG) log("tearing down restricted metered net: " + apnContext);
                     apnContext.setReason(Phone.REASON_DATA_ENABLED);
                     cleanUpConnection(true, apnContext);
@@ -1082,7 +1095,7 @@ public class DcTracker extends Handler {
 
     @Override
     protected void finalize() {
-        if(DBG) log("finalize");
+        if(DBG && mPhone != null) log("finalize");
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
@@ -4683,7 +4696,8 @@ public class DcTracker extends Handler {
     private void doRecovery() {
         if (getOverallState() == DctConstants.State.CONNECTED) {
             // Go through a series of recovery steps, each action transitions to the next action
-            int recoveryAction = getRecoveryAction();
+            final int recoveryAction = getRecoveryAction();
+            TelephonyMetrics.getInstance().writeDataStallEvent(mPhone.getPhoneId(), recoveryAction);
             switch (recoveryAction) {
             case RecoveryAction.GET_DATA_CALL_LIST:
                 EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,

@@ -61,6 +61,7 @@ import static org.mockito.Mockito.verify;
 
 public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;
+    private ImsCTHandlerThread mImsCTHandlerThread;
     private ImsConnectionStateListener mImsConnectionStateListener;
     private ImsCall.Listener mImsCallListener;
     private ImsCall mImsCall;
@@ -177,7 +178,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }).when(mImsManager).makeCall(eq(mServiceId), eq(mImsCallProfile), (String []) any(),
                 (ImsCall.Listener) any());
 
-        new ImsCTHandlerThread(this.getClass().getSimpleName()).start();
+        mImsCTHandlerThread = new ImsCTHandlerThread(this.getClass().getSimpleName());
+        mImsCTHandlerThread.start();
 
         waitUntilReady();
         logd("ImsPhoneCallTracker initiated");
@@ -188,6 +190,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCTUT = null;
+        mImsCTHandlerThread.quitSafely();
         super.tearDown();
     }
 

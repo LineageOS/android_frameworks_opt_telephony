@@ -147,8 +147,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerEmpty() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "2000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:2000"});
 
         RetryManager rm = new RetryManager(mPhone, "default");
 
@@ -168,8 +168,9 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerOneApnNoRetry() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "");
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
@@ -190,13 +191,13 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerOneApnTwoRetries() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "2000,3000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"supl:2000,3000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "supl");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -244,8 +245,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerTwoApnsOneRetry() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "2000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"others:2000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
@@ -282,14 +283,14 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerTwoApnsTwoRetries() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "2000,5000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"dun:2000,5000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
         waitingApns.add(new ApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "dun");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -324,14 +325,14 @@ public class RetryManagerTest extends TelephonyTest {
     }
 
     /**
-     * Test the basic retry scenario where two mms (non-default) APNs with two retries configured.
+     * Test the basic retry scenario where two mms APNs with two retries configured.
      */
     @Test
     @SmallTest
     public void testRetryManagerTwoMmsApnsTwoRetries() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_OTHERS_STRING,
-                "3000,6000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"mms:      3000,6000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
@@ -378,14 +379,14 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerApnPermanentFailed() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000,7000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"fota:1000,4000,7000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting apn = new ApnSetting(mApn1);
         waitingApns.add(apn);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "fota");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -411,8 +412,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerApnPermanentFailedWithTwoApns() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000,7000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"xyz  :   1000,4000,7000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = new ApnSetting(mApn1);
@@ -420,7 +421,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "xyz");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -468,8 +469,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerApnPermanentFailedWithThreeApns() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:2000:2000,3000:3000", "ims:1000,4000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = new ApnSetting(mApn1);
@@ -479,7 +480,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn2);
         waitingApns.add(myApn3);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "ims");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -527,8 +528,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerApnPermanentFailedAll() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000,7000,9000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:1000,4000,7000,9000", "mms:1234,4123"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = new ApnSetting(mApn1);
@@ -582,8 +583,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerDelayWithRandomization() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "default_randomization=1000,3000:2000,6000:3000,10000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:default_randomization=1000,3000:2000,6000:3000,10000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
@@ -619,8 +620,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerRetryForever() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "max_retries=infinite,1000,2000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:max_retries=infinite,1000,2000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
@@ -677,14 +678,14 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerExplicitMaxRetry() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "max_retries=4,1000,2000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"hipri:  max_retries=4,1000,2000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(new ApnSetting(mApn1));
         waitingApns.add(new ApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "hipri");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -745,8 +746,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerFailFast() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,5000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:1000,5000"});
 
         mBundle.putLong(CarrierConfigManager.KEY_CARRIER_DATA_CALL_APN_DELAY_FASTER_LONG, 2000);
 
@@ -795,8 +796,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerApnPermanentFailedAllAndThenReset() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000,7000,9000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"dun:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = new ApnSetting(mApn1);
@@ -804,7 +805,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "dun");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -848,8 +849,8 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.clear();
         waitingApns.add(myApn3);
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "3000,8000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"dun:3000,8000"});
 
         rm.setWaitingApns(waitingApns);
 
@@ -876,8 +877,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerModemSuggestedRetryOnce() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000,7000,9000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"others:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = new ApnSetting(mApn1);
@@ -885,7 +886,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, "mms");
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -932,8 +933,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerModemSuggestedNoRetry() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000,7000,9000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"default:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = new ApnSetting(mApn1);
@@ -975,8 +976,8 @@ public class RetryManagerTest extends TelephonyTest {
     @SmallTest
     public void testRetryManagerModemSuggestedRetryTooManyTimes() throws Exception {
 
-        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                "1000,4000,7000,9000");
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"mms:2000,3000", "default:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = new ApnSetting(mApn1);

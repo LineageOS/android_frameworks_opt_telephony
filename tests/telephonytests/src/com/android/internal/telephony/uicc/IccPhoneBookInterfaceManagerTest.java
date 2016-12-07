@@ -56,6 +56,7 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
     @Mock
     private AdnRecord mAdnRecord;
     private IccPhoneBookInterfaceManager mIccPhoneBookInterfaceMgr;
+    private IccPhoneBookInterfaceManagerHandler mIccPhoneBookInterfaceManagerHandler;
     private List<AdnRecord> mAdnList = Arrays.asList(mAdnRecord);
     private SimPhoneBookAdnRecordCache mSimPbCache;
 
@@ -92,12 +93,14 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
             }
         }).when(mAdnRecordCache).requestLoadAllAdnLike(anyInt(), anyInt(), (Message) anyObject());
 
-        new IccPhoneBookInterfaceManagerHandler(TAG).start();
+        mIccPhoneBookInterfaceManagerHandler = new IccPhoneBookInterfaceManagerHandler(TAG);
+        mIccPhoneBookInterfaceManagerHandler.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
+        mIccPhoneBookInterfaceManagerHandler.quitSafely();
         super.tearDown();
     }
     @Test

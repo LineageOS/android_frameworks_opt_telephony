@@ -40,9 +40,10 @@ import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.ServiceState;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.ims.ImsCallForwardInfo;
@@ -119,6 +120,8 @@ public class ImsPhone extends ImsPhoneBase {
     private static final int EVENT_SET_CLIR_DONE                     = EVENT_LAST + 5;
     private static final int EVENT_GET_CLIR_DONE                     = EVENT_LAST + 6;
     private static final int EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED  = EVENT_LAST + 7;
+    private static final int EVENT_SERVICE_STATE_CHANGED             = EVENT_LAST + 8;
+    private static final int EVENT_VOICE_CALL_ENDED                  = EVENT_LAST + 9;
 
     static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
     static final int CANCEL_ECM_TIMER  = 1; // cancel Ecm timer
@@ -147,6 +150,8 @@ public class ImsPhone extends ImsPhoneBase {
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
 
     private boolean mImsRegistered = false;
+
+    private boolean mRoaming = false;
 
     // List of Registrants to send supplementary service notifications to.
     private RegistrantList mSsnRegistrants = new RegistrantList();
@@ -226,6 +231,10 @@ public class ImsPhone extends ImsPhoneBase {
                             EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
         }
         updateDataServiceState();
+
+        mDefaultPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
+        // Force initial roaming state update later, on EVENT_CARRIER_CONFIG_CHANGED.
+        // Settings provider or CarrierConfig may not be loaded now.
     }
 
     //todo: get rid of this function. It is not needed since parentPhone obj never changes
@@ -237,12 +246,14 @@ public class ImsPhone extends ImsPhoneBase {
         mPendingMMIs.clear();
         mExternalCallTracker.tearDown();
         mCT.unregisterPhoneStateListener(mExternalCallTracker);
+        mCT.unregisterForVoiceCallEnded(this);
         mCT.dispose();
 
         //Force all referenced classes to unregister their former registered events
         if (mDefaultPhone != null && mDefaultPhone.getServiceStateTracker() != null) {
             mDefaultPhone.getServiceStateTracker().
                     unregisterForDataRegStateOrRatChanged(this);
+            mDefaultPhone.unregisterForServiceStateChanged(this);
         }
     }
 
@@ -1288,6 +1299,26 @@ public class ImsPhone extends ImsPhoneBase {
                 updateDataServiceState();
                 break;
 
+            case EVENT_SERVICE_STATE_CHANGED:
+                if (VDBG) Rlog.d(LOG_TAG, "EVENT_SERVICE_STATE_CHANGED");
+                ar = (AsyncResult) msg.obj;
+                ServiceState newServiceState = (ServiceState) ar.result;
+                // only update if roaming status changed
+                if (mRoaming != newServiceState.getRoaming()) {
+                    if (DBG) Rlog.d(LOG_TAG, "Roaming state changed");
+                    updateRoamingState(newServiceState.getRoaming());
+                }
+                break;
+            case EVENT_VOICE_CALL_ENDED:
+                if (DBG) Rlog.d(LOG_TAG, "Voice call ended. Handle pending updateRoamingState.");
+                mCT.unregisterForVoiceCallEnded(this);
+                // only update if roaming status changed
+                boolean newRoaming = getCurrentRoaming();
+                if (mRoaming != newRoaming) {
+                    updateRoamingState(newRoaming);
+                }
+                break;
+
             default:
                 super.handleMessage(msg);
                 break;
@@ -1642,6 +1673,25 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.getVtDataUsage();
     }
 
+    private void updateRoamingState(boolean newRoaming) {
+        if (mCT.getState() == PhoneConstants.State.IDLE) {
+            if (DBG) Rlog.d(LOG_TAG, "updateRoamingState now: " + newRoaming);
+            mRoaming = newRoaming;
+            ImsManager.setWfcMode(mContext,
+                    ImsManager.getWfcMode(mContext, newRoaming), newRoaming);
+        } else {
+            if (DBG) Rlog.d(LOG_TAG, "updateRoamingState postponed: " + newRoaming);
+            mCT.registerForVoiceCallEnded(this,
+                    EVENT_VOICE_CALL_ENDED, null);
+        }
+    }
+
+    private boolean getCurrentRoaming() {
+        TelephonyManager tm = (TelephonyManager) mContext
+                .getSystemService(Context.TELEPHONY_SERVICE);
+        return tm.isNetworkRoaming();
+    }
+
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ImsPhone extends:");
@@ -1658,6 +1708,7 @@ public class ImsPhone extends ImsPhoneBase {
         pw.println("  mEcmExitRespRegistrant = " + mEcmExitRespRegistrant);
         pw.println("  mSilentRedialRegistrants = " + mSilentRedialRegistrants);
         pw.println("  mImsRegistered = " + mImsRegistered);
+        pw.println("  mRoaming = " + mRoaming);
         pw.println("  mSsnRegistrants = " + mSsnRegistrants);
         pw.flush();
     }

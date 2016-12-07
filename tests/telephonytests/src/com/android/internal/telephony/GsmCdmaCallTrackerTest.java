@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import android.os.HandlerThread;
+import android.platform.test.annotations.Postsubmit;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -44,6 +45,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     private String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
     /* Handler class initiated at the HandlerThread */
     private GsmCdmaCallTracker mCTUT;
+    private GsmCdmaCTHandlerThread mGsmCdmaCTHandlerThread;
     @Mock
     GsmCdmaCall mCall;
     @Mock
@@ -69,7 +71,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         mContextFixture.putStringArrayResource(com.android.internal.R.array.dial_string_replace,
                 new String[]{});
 
-        new GsmCdmaCTHandlerThread(TAG).start();
+        mGsmCdmaCTHandlerThread = new GsmCdmaCTHandlerThread(TAG);
+        mGsmCdmaCTHandlerThread.start();
 
         waitUntilReady();
         logd("GsmCdmaCallTracker initiated, waiting for Power on");
@@ -82,6 +85,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCTUT = null;
+        mGsmCdmaCTHandlerThread.quitSafely();
         super.tearDown();
     }
 
@@ -95,6 +99,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         try {
             mCTUT.dial(mDialString);
+            waitForMs(100);
         } catch(Exception ex) {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown"+ex.getMessage()+ex.getStackTrace());
@@ -171,6 +176,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testMOCallPendingHangUp() {

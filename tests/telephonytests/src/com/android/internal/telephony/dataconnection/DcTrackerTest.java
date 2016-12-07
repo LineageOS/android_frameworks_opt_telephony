@@ -31,6 +31,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.platform.test.annotations.Postsubmit;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
@@ -112,6 +113,7 @@ public class DcTrackerTest extends TelephonyTest {
     SubscriptionInfo mSubscriptionInfo;
 
     private DcTracker mDct;
+    private DcTrackerTestHandler mDcTrackerTestHandler;
 
     private AlarmManager mAlarmManager;
 
@@ -333,7 +335,8 @@ public class DcTrackerTest extends TelephonyTest {
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         mBundle = mContextFixture.getCarrierConfigBundle();
 
-        new DcTrackerTestHandler(getClass().getSimpleName()).start();
+        mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
+        mDcTrackerTestHandler.start();
         waitUntilReady();
         waitForMs(600);
         logd("DcTrackerTest -Setup!");
@@ -344,6 +347,7 @@ public class DcTrackerTest extends TelephonyTest {
         logd("DcTrackerTest -tearDown");
         mDct.removeCallbacksAndMessages(null);
         mDct = null;
+        mDcTrackerTestHandler.quitSafely();
         super.tearDown();
     }
 
@@ -652,6 +656,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
+    @Postsubmit
     @Test
     @MediumTest
     public void testDataCallOnUserDisableRoaming() throws Exception {
@@ -762,6 +767,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     // Test for API carrierActionSetMeteredApnsEnabled.
+    @Postsubmit
     @Test
     @MediumTest
     public void testCarrierActionSetMeteredApnsEnabled() throws Exception {
