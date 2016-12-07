@@ -31,6 +31,8 @@ public interface ImsPullCall {
      *
      * @param number The phone number of the call to be pulled.
      * @param videoState The video state of the call to be pulled.
+     * @param dialogId The {@link ImsExternalConnection#getCallId()} dialog Id associated with the
+     *                 call to be pulled.
      */
-    void pullExternalCall(String number, int videoState);
+    void pullExternalCall(String number, int videoState, int dialogId);
 }

@@ -57,7 +57,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     @Test @SmallTest
     public void testFormatDialString(){
         connection = new GsmCdmaConnection(mPhone, String.format(
-                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
+                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null,
+                false /*isEmergencyCall*/);
        /* case 1: If PAUSE/WAIT sequence at the end, ignore them */
         String formattedDialStr = connection.formatDialString(
                 String.format("+1 (700).555-41NN1234%c", PhoneNumberUtils.PAUSE));
@@ -72,7 +73,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     @Test @SmallTest
     public void testSanityGSM() {
         connection = new GsmCdmaConnection(mPhone, String.format(
-                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
+                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null,
+                false /*isEmergencyCall*/);
         logd("Testing initial state of GsmCdmaConnection");
         assertEquals(GsmCdmaCall.State.IDLE, connection.getState());
         assertEquals(Connection.PostDialState.NOT_STARTED, connection.getPostDialState());
@@ -89,7 +91,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     public void testSanityCDMA() {
         doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
         connection = new GsmCdmaConnection(mPhone, String.format(
-                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
+                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null,
+                false /*isEmergencyCall*/);
         logd("Testing initial state of GsmCdmaConnection");
         assertEquals(GsmCdmaCall.State.IDLE, connection.getState());
         assertEquals(Connection.PostDialState.NOT_STARTED, connection.getPostDialState());
@@ -106,7 +109,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     @Test @SmallTest
     public void testConnectionStateUpdate() {
         connection = new GsmCdmaConnection(mPhone, String.format(
-                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
+                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null,
+                false /*isEmergencyCall*/);
         logd("Update the connection state from idle to active");
         mDC.state = DriverCall.State.ACTIVE;
         connection.update(mDC);
@@ -123,7 +127,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     public void testCDMAPostDialPause() {
         doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
         connection = new GsmCdmaConnection(mPhone, String.format(
-                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
+                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null,
+                false /*isEmergencyCall*/);
         logd("Mock connection state from alerting to active ");
         mDC.state = DriverCall.State.ALERTING;
         connection.update(mDC);
@@ -139,7 +144,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     @Test @MediumTest
     public void testGSMPostDialPause() {
         connection = new GsmCdmaConnection(mPhone, String.format(
-                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
+                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null,
+                false /*isEmergencyCall*/);
         logd("Mock connection state from alerting to active ");
         mDC.state = DriverCall.State.ALERTING;
         connection.update(mDC);
@@ -157,7 +163,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     public void testPostDialWait() {
         doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
         connection = new GsmCdmaConnection(mPhone,
-                String.format("+1 (700).555-41NN%c1234", PhoneNumberUtils.WAIT),mCT,null);
+                String.format("+1 (700).555-41NN%c1234", PhoneNumberUtils.WAIT),mCT,null,
+                false /*isEmergencyCall*/);
         logd("Mock connection state transition from alerting to active ");
         mDC.state = DriverCall.State.ALERTING;
         connection.update(mDC);
@@ -173,7 +180,8 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     @Test @SmallTest
     public void testHangUpConnection() {
         connection = new GsmCdmaConnection(mPhone, String.format(
-                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
+                "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null,
+                false /*isEmergencyCall*/);
         mDC.state = DriverCall.State.ACTIVE;
         connection.update(mDC);
         logd("Hangup the connection locally");

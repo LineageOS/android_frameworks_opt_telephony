@@ -25,8 +25,10 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SmsConstants;
+import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
+import com.android.internal.telephony.VisualVoicemailSmsFilter;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
@@ -95,6 +97,16 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         SmsMessage sms = (SmsMessage) smsb;
 
         if (sms.isTypeZero()) {
+            // Some carriers will send visual voicemail SMS as type zero.
+            int destPort = -1;
+            SmsHeader smsHeader = sms.getUserDataHeader();
+            if (smsHeader != null && smsHeader.portAddrs != null) {
+                // The message was sent to a port.
+                destPort = smsHeader.portAddrs.destPort;
+            }
+            VisualVoicemailSmsFilter
+                    .filter(mContext, new byte[][]{sms.getPdu()}, SmsConstants.FORMAT_3GPP,
+                            destPort, mPhone.getSubId());
             // As per 3GPP TS 23.040 9.2.3.9, Type Zero messages should not be
             // Displayed/Stored/Notified. They should only be acknowledged.
             log("Received short message type 0, Don't display or store it. Send Ack");

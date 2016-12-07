@@ -347,7 +347,8 @@ public class SIMRecords extends IccRecords {
         mNewMsisdn = number;
         mNewMsisdnTag = alphaTag;
 
-        if(DBG) log("Set MSISDN: " + mNewMsisdnTag + " " + /*mNewMsisdn*/ "xxxxxxx");
+        if(DBG) log("Set MSISDN: " + mNewMsisdnTag + " " + /*mNewMsisdn*/
+                Rlog.pii(LOG_TAG, mNewMsisdn));
 
         AdnRecord adn = new AdnRecord(mNewMsisdnTag, mNewMsisdn);
 
@@ -539,7 +540,7 @@ public class SIMRecords extends IccRecords {
 
         try {
             if (validEfCfis(mEfCfis)) {
-                // lsb is of byte 1 is voice status
+                // lsb is of byte f1 is voice status
                 if (enable) {
                     mEfCfis[1] |= 1;
                 } else {
@@ -552,7 +553,7 @@ public class SIMRecords extends IccRecords {
                 // Update dialNumber if not empty and CFU is enabled.
                 // Spec reference for EF_CFIS contents, TS 51.011 section 10.3.46.
                 if (enable && !TextUtils.isEmpty(dialNumber)) {
-                    log("EF_CFIS: updating cf number, " + dialNumber);
+                    logv("EF_CFIS: updating cf number, " + Rlog.pii(LOG_TAG, dialNumber));
                     byte[] bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(dialNumber);
 
                     System.arraycopy(bcdNumber, 0, mEfCfis, CFIS_TON_NPI_OFFSET, bcdNumber.length);
@@ -670,7 +671,7 @@ public class SIMRecords extends IccRecords {
                 }
 
                 log("IMSI: mMncLength=" + mMncLength);
-                log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxx");
+                log("IMSI: " + mImsi.substring(0, 6) + Rlog.pii(LOG_TAG, mImsi.substring(6)));
 
                 if (((mMncLength == UNKNOWN) || (mMncLength == 2)) &&
                         ((mImsi != null) && (mImsi.length() >= 6))) {
@@ -813,7 +814,7 @@ public class SIMRecords extends IccRecords {
                 mMsisdn = adn.getNumber();
                 mMsisdnTag = adn.getAlphaTag();
 
-                log("MSISDN: " + /*mMsisdn*/ "xxxxxxx");
+                log("MSISDN: " + /*mMsisdn*/ Rlog.pii(LOG_TAG, mMsisdn));
             break;
 
             case EVENT_SET_MSISDN_DONE:
@@ -1291,6 +1292,7 @@ public class SIMRecords extends IccRecords {
             case EF_FDN:
                 if (DBG) log("SIM Refresh called for EF_FDN");
                 mParentApp.queryFdn();
+                mAdnCache.reset();
                 break;
             case EF_MSISDN:
                 mRecordsToLoad++;

@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -74,7 +75,7 @@ public final class SmsApplication {
         /**
          * Name of this SMS app for display.
          */
-        public String mApplicationName;
+        private String mApplicationName;
 
         /**
          * Package name for this SMS app.
@@ -125,16 +126,32 @@ public final class SmsApplication {
                     && mRespondViaMessageClass != null && mSendToClass != null);
         }
 
-        public SmsApplicationData(String applicationName, String packageName, int uid) {
-            mApplicationName = applicationName;
+        public SmsApplicationData(String packageName, int uid) {
             mPackageName = packageName;
             mUid = uid;
         }
 
+        public String getApplicationName(Context context) {
+            if (mApplicationName == null) {
+                PackageManager pm = context.getPackageManager();
+                ApplicationInfo appInfo;
+                try {
+                    appInfo = pm.getApplicationInfoAsUser(mPackageName, 0,
+                            UserHandle.getUserId(mUid));
+                } catch (NameNotFoundException e) {
+                    return null;
+                }
+                if (appInfo != null) {
+                    CharSequence label  = pm.getApplicationLabel(appInfo);
+                    mApplicationName = (label == null) ? null : label.toString();
+                }
+            }
+            return mApplicationName;
+        }
+
         @Override
         public String toString() {
-            return "mApplicationName: " + mApplicationName +
-                    " mPackageName: " + mPackageName +
+            return " mPackageName: " + mPackageName +
                     " mSmsReceiverClass: " + mSmsReceiverClass +
                     " mMmsReceiverClass: " + mMmsReceiverClass +
                     " mRespondViaMessageClass: " + mRespondViaMessageClass +
@@ -217,9 +234,8 @@ public final class SmsApplication {
             }
             final String packageName = activityInfo.packageName;
             if (!receivers.containsKey(packageName)) {
-                final String applicationName = resolveInfo.loadLabel(packageManager).toString();
-                final SmsApplicationData smsApplicationData = new SmsApplicationData(
-                        applicationName, packageName, activityInfo.applicationInfo.uid);
+                final SmsApplicationData smsApplicationData = new SmsApplicationData(packageName,
+                        activityInfo.applicationInfo.uid);
                 smsApplicationData.mSmsReceiverClass = activityInfo.name;
                 receivers.put(packageName, smsApplicationData);
             }

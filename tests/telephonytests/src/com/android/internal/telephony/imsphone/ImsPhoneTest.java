@@ -18,6 +18,7 @@ package com.android.internal.telephony.imsphone;
 
 import android.app.Activity;
 import android.app.IApplicationThread;
+import android.content.BroadcastReceiver;
 import android.content.IIntentReceiver;
 import android.content.Intent;
 import android.os.AsyncResult;
@@ -25,11 +26,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.SystemProperties;
+import android.platform.test.annotations.Postsubmit;
+import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsEcbmStateListener;
+import com.android.ims.ImsManager;
+import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsStreamMediaProfile;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
@@ -64,6 +70,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
@@ -84,6 +91,7 @@ public class ImsPhoneTest extends TelephonyTest {
     ImsUtInterface mImsUtInterface;
 
     private ImsPhone mImsPhoneUT;
+    private ImsPhoneTestHandler mImsPhoneTestHandler;
     private boolean mDoesRilSendMultipleCallRing;
     private static final int EVENT_SUPP_SERVICE_NOTIFICATION = 1;
     private static final int EVENT_SUPP_SERVICE_FAILED = 2;
@@ -116,7 +124,8 @@ public class ImsPhoneTest extends TelephonyTest {
 
         mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
 
-        new ImsPhoneTestHandler(TAG).start();
+        mImsPhoneTestHandler = new ImsPhoneTestHandler(TAG);
+        mImsPhoneTestHandler.start();
         waitUntilReady();
 
         mDoesRilSendMultipleCallRing = SystemProperties.getBoolean(
@@ -136,6 +145,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
+        mImsPhoneTestHandler.quitSafely();
         super.tearDown();
     }
 
@@ -451,6 +461,7 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
+    @Postsubmit
     @Test
     @SmallTest
     public void testCallForwardingOption() throws Exception {
@@ -574,5 +585,44 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // verify wakeLock released
         assertEquals(false, mImsPhoneUT.getWakeLock().isHeld());
+    }
+
+    @Postsubmit
+    @Test
+    @SmallTest
+    public void testProcessDisconnectReason() throws Exception {
+        // set up CarrierConfig
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putStringArray(CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY,
+                new String[]{"REG09|0"});
+
+        // set up overlays
+        String title = "title";
+        String messageAlert = "Alert!";
+        String messageNotification = "Notification!";
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.wfcOperatorErrorAlertMessages,
+                new String[]{messageAlert});
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.wfcOperatorErrorNotificationMessages,
+                new String[]{messageNotification});
+        mContextFixture.putResource(com.android.internal.R.string.wfcRegErrorTitle, title);
+
+        mImsPhoneUT.processDisconnectReason(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 0, "REG09"));
+
+        // TODO: Verify that WFC has been turned off (can't do it right now because
+        // setWfcSetting is static).
+        //verify(mImsManager).setWfcSetting(any(), eq(false));
+
+        ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext).sendOrderedBroadcast(
+                intent.capture(), anyString(), any(BroadcastReceiver.class), any(),
+                eq(Activity.RESULT_OK), anyString(), any());
+        assertEquals(ImsManager.ACTION_IMS_REGISTRATION_ERROR, intent.getValue().getAction());
+        assertEquals(title, intent.getValue().getStringExtra(Phone.EXTRA_KEY_ALERT_TITLE));
+        assertEquals(messageAlert, intent.getValue().getStringExtra(Phone.EXTRA_KEY_ALERT_MESSAGE));
+        assertEquals(messageNotification,
+                intent.getValue().getStringExtra(Phone.EXTRA_KEY_NOTIFICATION_MESSAGE));
     }
 }

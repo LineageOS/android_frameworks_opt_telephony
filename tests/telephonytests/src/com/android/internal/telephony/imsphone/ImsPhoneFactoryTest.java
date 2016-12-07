@@ -35,6 +35,7 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
     @Mock
     private PhoneNotifier mPhoneNotifer;
     private ImsPhone mImsPhoneUT;
+    private ImsPhoneFactoryHandler mImsPhoneFactoryHandler;
 
     private class ImsPhoneFactoryHandler extends HandlerThread {
 
@@ -51,13 +52,15 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
-        new ImsPhoneFactoryHandler(this.getClass().getSimpleName()).start();
+        mImsPhoneFactoryHandler = new ImsPhoneFactoryHandler(this.getClass().getSimpleName());
+        mImsPhoneFactoryHandler.start();
 
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
+        mImsPhoneFactoryHandler.quitSafely();
         super.tearDown();
     }
 

@@ -57,6 +57,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     private ISub.Stub mISubStub;
 
     private GsmSMSDispatcher mGsmSmsDispatcher;
+    private GsmSmsDispatcherTestHandler mGsmSmsDispatcherTestHandler;
 
     private class GsmSmsDispatcherTestHandler extends HandlerThread {
 
@@ -81,13 +82,15 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         // in the cache, a real instance is used.
         mServiceManagerMockedServices.put("isub", mISubStub);
 
-        new GsmSmsDispatcherTestHandler(getClass().getSimpleName()).start();
+        mGsmSmsDispatcherTestHandler = new GsmSmsDispatcherTestHandler(getClass().getSimpleName());
+        mGsmSmsDispatcherTestHandler.start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
         mGsmSmsDispatcher = null;
+        mGsmSmsDispatcherTestHandler.quitSafely();
         super.tearDown();
     }
 

@@ -242,7 +242,26 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     public void testSetWifi() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertFalse(mConnectionUT.isWifi());
+        // ImsCall.isWifiCall is tested elsewhere
+        doReturn(true).when(mImsCall).isWifiCall();
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
+        assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
+        assertTrue(mConnectionUT.isWifi());
+        //keep using the wifi state from extra, not update
+        assertFalse(mConnectionUT.updateWifiState());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetWifi2() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.isWifi());
+        // ImsCall.isWifiCall is tested elsewhere
+        doReturn(true).when(mImsCall).isWifiCall();
+        // Tests to make sure that the EXTRA_CALL_RAT_TYPE_ALT string is set correctly for newer
+        // devices.
+        mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT,
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertTrue(mConnectionUT.isWifi());

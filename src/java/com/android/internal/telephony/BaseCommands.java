@@ -74,6 +74,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mHardwareConfigChangeRegistrants = new RegistrantList();
     protected RegistrantList mPhoneRadioCapabilityChangedRegistrants =
             new RegistrantList();
+    protected RegistrantList mPcoDataRegistrants = new RegistrantList();
     protected RegistrantList mAdnInitDoneRegistrants = new RegistrantList();
     protected RegistrantList mAdnRecordsInfoRegistrants = new RegistrantList();
 
@@ -908,6 +909,16 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void registerForPcoData(Handler h, int what, Object obj) {
+        mPcoDataRegistrants.add(new Registrant(h, what, obj));
+    }
+
+    @Override
+    public void unregisterForPcoData(Handler h) {
+        mPcoDataRegistrants.remove(h);
+    }
+
+    @Override
     public void registerForAdnInitDone(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mAdnInitDoneRegistrants.add(r);
@@ -956,5 +967,4 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void updateAdnRecord(SimPhoneBookAdnRecord adnRecordInfo, Message result) {
     }
-
 }

@@ -27,7 +27,7 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
-import android.telecom.Log;
+import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -37,6 +37,7 @@ import android.text.TextUtils;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsStreamMediaProfile;
+import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -52,7 +53,9 @@ import java.util.Objects;
 /**
  * {@hide}
  */
-public class ImsPhoneConnection extends Connection {
+public class ImsPhoneConnection extends Connection implements
+        ImsVideoCallProviderWrapper.ImsVideoProviderWrapperCallback {
+
     private static final String LOG_TAG = "ImsPhoneConnection";
     private static final boolean DBG = true;
 
@@ -88,6 +91,15 @@ public class ImsPhoneConnection extends Connection {
     private int mDtmfToneDelay = 0;
 
     private boolean mIsEmergency = false;
+
+    /**
+     * Used to indicate that video state changes detected by
+     * {@link #updateMediaCapabilities(ImsCall)} should be ignored.  When a video state change from
+     * unpaused to paused occurs, we set this flag and then update the existing video state when
+     * new {@link #onReceiveSessionModifyResponse(int, VideoProfile, VideoProfile)} callbacks come
+     * in.  When the video un-pauses we continue receiving the video state updates.
+     */
+    private boolean mShouldIgnoreVideoStateChanges = false;
 
     /**
      * Used to indicate whether the wifi state is based on
@@ -236,9 +248,9 @@ public class ImsPhoneConnection extends Connection {
     }
 
     private static int applyLocalCallCapabilities(ImsCallProfile localProfile, int capabilities) {
+        Rlog.w(LOG_TAG, "applyLocalCallCapabilities - localProfile = "+localProfile);
         capabilities = removeCapability(capabilities,
-                Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL
-                | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+                Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
 
         switch (localProfile.mCallType) {
             case ImsCallProfile.CALL_TYPE_VOICE:
@@ -246,22 +258,19 @@ public class ImsPhoneConnection extends Connection {
                         Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
                 break;
             case ImsCallProfile.CALL_TYPE_VT:
-                capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
-                break;
+                // Fall-through
             case ImsCallProfile.CALL_TYPE_VIDEO_N_VOICE:
                 capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL
-                        | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+                        Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
                 break;
         }
         return capabilities;
     }
 
     private static int applyRemoteCallCapabilities(ImsCallProfile remoteProfile, int capabilities) {
+        Rlog.w(LOG_TAG, "applyRemoteCallCapabilities - remoteProfile = "+remoteProfile);
         capabilities = removeCapability(capabilities,
-                Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL
-                | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
+                Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
 
         switch (remoteProfile.mCallType) {
             case ImsCallProfile.CALL_TYPE_VOICE:
@@ -269,13 +278,10 @@ public class ImsPhoneConnection extends Connection {
                         Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
                 break;
             case ImsCallProfile.CALL_TYPE_VT:
-                capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
-                break;
+                // fall-through
             case ImsCallProfile.CALL_TYPE_VIDEO_N_VOICE:
                 capabilities = addCapability(capabilities,
-                        Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL
-                        | Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE);
+                        Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
                 break;
         }
         return capabilities;
@@ -402,7 +408,7 @@ public class ImsPhoneConnection extends Connection {
     @Override
     public boolean onDisconnect(int cause) {
         Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
-        if ((mCause != DisconnectCause.LOCAL) || (cause == DisconnectCause.INCOMING_REJECTED)) {
+        if (mCause != DisconnectCause.LOCAL || cause == DisconnectCause.INCOMING_REJECTED) {
             mCause = cause;
         }
         return onDisconnect();
@@ -765,7 +771,7 @@ public class ImsPhoneConnection extends Connection {
             int namep = ImsCallProfile.OIRToPresentation(
                     callProfile.getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
             if (Phone.DEBUG_PHONE) {
-                Rlog.d(LOG_TAG, "address = " +  address + " name = " + name +
+                Rlog.d(LOG_TAG, "address = " + Rlog.pii(LOG_TAG, address) + " name = " + name +
                         " nump = " + nump + " namep = " + namep);
             }
             if(equalsHandlesNulls(mAddress, address)) {
@@ -817,14 +823,53 @@ public class ImsPhoneConnection extends Connection {
                         .getVideoStateFromImsCallProfile(negotiatedCallProfile);
 
                 if (oldVideoState != newVideoState) {
-                    setVideoState(newVideoState);
-                    changed = true;
+                    // The video state has changed.  See also code in onReceiveSessionModifyResponse
+                    // below.  When the video enters a paused state, subsequent changes to the video
+                    // state will not be reported by the modem.  In onReceiveSessionModifyResponse
+                    // we will be updating the current video state while paused to include any
+                    // changes the modem reports via the video provider.  When the video enters an
+                    // unpaused state, we will resume passing the video states from the modem as is.
+                    if (VideoProfile.isPaused(oldVideoState) &&
+                            !VideoProfile.isPaused(newVideoState)) {
+                        // Video entered un-paused state; recognize updates from now on; we want to
+                        // ensure that the new un-paused state is propagated to Telecom, so change
+                        // this now.
+                        mShouldIgnoreVideoStateChanges = false;
+                    }
+
+                    if (!mShouldIgnoreVideoStateChanges) {
+                        setVideoState(newVideoState);
+                        changed = true;
+                    } else {
+                        Rlog.d(LOG_TAG, "updateMediaCapabilities - ignoring video state change " +
+                                "due to paused state.");
+                    }
+
+                    if (!VideoProfile.isPaused(oldVideoState) &&
+                            VideoProfile.isPaused(newVideoState)) {
+                        // Video entered pause state; ignore updates until un-paused.  We do this
+                        // after setVideoState is called above to ensure Telecom is notified that
+                        // the device has entered paused state.
+                        mShouldIgnoreVideoStateChanges = true;
+                    }
                 }
             }
 
             // Check for a change in the capabilities for the call and update
             // {@link ImsPhoneConnection} with this information.
             int capabilities = getConnectionCapabilities();
+
+            // Use carrier config to determine if downgrading directly to audio-only is supported.
+            if (mOwner.isCarrierDowngradeOfVtCallSupported()) {
+                capabilities = addCapability(capabilities,
+                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE |
+                                Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+            } else {
+                capabilities = removeCapability(capabilities,
+                        Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE |
+                                Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL);
+            }
+
             // Get the current local call capabilities which might be voice or video or both.
             ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
             Rlog.v(LOG_TAG, "update localCallProfile=" + localCallProfile);
@@ -886,22 +931,18 @@ public class ImsPhoneConnection extends Connection {
      * @param extras The ImsCallProfile extras.
      */
     private void updateWifiStateFromExtras(Bundle extras) {
-        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE)) {
-            // The RIL (sadly) sends us the EXTRA_CALL_RAT_TYPE as a string extra, rather than an
-            // integer extra, so we need to parse it.
-            int radioTechnology;
-            try {
-                radioTechnology = Integer.parseInt(extras.getString(
-                        ImsCallProfile.EXTRA_CALL_RAT_TYPE));
-            } catch (NumberFormatException nfe) {
-                radioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-            }
+        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE) ||
+                extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT)) {
 
             // We've received the extra indicating the radio technology, so we will continue to
             // prefer the radio technology received via this extra going forward.
             mIsWifiStateFromExtras = true;
 
-            boolean isWifi = radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            ImsCall call = getImsCall();
+            boolean isWifi = false;
+            if (call != null) {
+                isWifi = call.isWifiCall();
+            }
 
             // Report any changes
             if (isWifi() != isWifi) {
@@ -978,11 +1019,11 @@ public class ImsPhoneConnection extends Connection {
         }
 
         final boolean isEvsCodecHighDef = (localCallProfile.mMediaProfile.mAudioQuality
-                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_WB
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_WB
                 || localCallProfile.mMediaProfile.mAudioQuality
-                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB
                 || localCallProfile.mMediaProfile.mAudioQuality
-                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_FB);
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVS_FB);
 
         final boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
                         == ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB
@@ -1007,7 +1048,7 @@ public class ImsPhoneConnection extends Connection {
         sb.append(" telecomCallID: ");
         sb.append(getTelecomCallId());
         sb.append(" address: ");
-        sb.append(Log.pii(getAddress()));
+        sb.append(Rlog.pii(LOG_TAG, getAddress()));
         sb.append(" ImsCall: ");
         if (mImsCall == null) {
             sb.append("null");
@@ -1024,5 +1065,49 @@ public class ImsPhoneConnection extends Connection {
      */
     protected boolean isEmergency() {
         return mIsEmergency;
+    }
+
+    /**
+     * Handles notifications from the {@link ImsVideoCallProviderWrapper} of session modification
+     * responses received.
+     *
+     * @param status The status of the original request.
+     * @param requestProfile The requested video profile.
+     * @param responseProfile The response upon video profile.
+     */
+    @Override
+    public void onReceiveSessionModifyResponse(int status, VideoProfile requestProfile,
+            VideoProfile responseProfile) {
+        if (status == android.telecom.Connection.VideoProvider.SESSION_MODIFY_REQUEST_SUCCESS &&
+                mShouldIgnoreVideoStateChanges) {
+            int currentVideoState = getVideoState();
+            int newVideoState = responseProfile.getVideoState();
+
+            // If the current video state is paused, the modem will not send us any changes to
+            // the TX and RX bits of the video state.  Until the video is un-paused we will
+            // "fake out" the video state by applying the changes that the modem reports via a
+            // response.
+
+            // First, find out whether there was a change to the TX or RX bits:
+            int changedBits = currentVideoState ^ newVideoState;
+            changedBits &= VideoProfile.STATE_BIDIRECTIONAL;
+            if (changedBits == 0) {
+                // No applicable change, bail out.
+                return;
+            }
+
+            // Turn off any existing bits that changed.
+            currentVideoState &= ~(changedBits & currentVideoState);
+            // Turn on any new bits that turned on.
+            currentVideoState |= changedBits & newVideoState;
+
+            Rlog.d(LOG_TAG, "onReceiveSessionModifyResponse : received " +
+                    VideoProfile.videoStateToString(requestProfile.getVideoState()) +
+                    " / " +
+                    VideoProfile.videoStateToString(responseProfile.getVideoState()) +
+                    " while paused ; sending new videoState = " +
+                    VideoProfile.videoStateToString(currentVideoState));
+            setVideoState(currentVideoState);
+        }
     }
 }
