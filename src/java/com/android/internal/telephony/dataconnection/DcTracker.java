@@ -612,6 +612,15 @@ public class DcTracker extends Handler {
     private boolean mMeteredApnDisabled = false;
 
     /**
+     * int to remember whether has setDataProfiles and with roaming or not.
+     * 0: default, has never set data profile
+     * 1: has set data profile with home protocol
+     * 2: has set data profile with roaming protocol
+     * This is not needed once RIL command is updated to support both home and roaming protocol.
+     */
+    private int mSetDataProfileStatus = 0;
+
+    /**
      * Handles changes to the APN db.
      */
     private class ApnChangeObserver extends ContentObserver {
@@ -2752,6 +2761,10 @@ public class DcTracker extends Handler {
 
         if (!mDataEnabledSettings.isUserDataEnabled()) return;
 
+        // Note onRoamingOff will be called immediately when DcTracker registerForDataRoamingOff,
+        // and will be called again if SST calls mDataRoamingOffRegistrants.notify().
+        setDataProfilesAsNeeded();
+
         if (getDataOnRoamingEnabled() == false) {
             notifyOffApnsOfAvailability(Phone.REASON_ROAMING_OFF);
             setupDataOnConnectableApns(Phone.REASON_ROAMING_OFF);
@@ -3284,27 +3297,29 @@ public class DcTracker extends Handler {
     }
 
     private void setDataProfilesAsNeeded() {
-        if (DBG) log("setDataProfilesAsNeeded");
+        if (DBG) log("setDataProfilesAsNeeded mSetDataProfileStatus: " + mSetDataProfileStatus);
         if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
             ArrayList<DataProfile> dps = new ArrayList<DataProfile>();
+            // Note getDataRoaming is also false if data not registered
+            boolean isRoaming = mPhone.getServiceState().getDataRoaming();
+            // If has set profile with home, and isRoaming is also false, no need to resend
+            // Also skip if has set profile with roaming and isRoaming is true.
+            if ((mSetDataProfileStatus == 1 && !isRoaming) ||
+                (mSetDataProfileStatus == 2 && isRoaming)) {
+                return;
+            }
             for (ApnSetting apn : mAllApnSettings) {
                 if (apn.modemCognitive) {
-                    DataProfile dp = new DataProfile(apn,
-                            mPhone.getServiceState().getDataRoaming());
-                    boolean isDup = false;
-                    for(DataProfile dpIn : dps) {
-                        if (dp.equals(dpIn)) {
-                            isDup = true;
-                            break;
-                        }
-                    }
-                    if (!isDup) {
+                    DataProfile dp = new DataProfile(apn, isRoaming);
+                    // ArrayList.contains will call object.equals
+                    if (!dps.contains(dp)) {
                         dps.add(dp);
                     }
                 }
             }
             if(dps.size() > 0) {
                 mPhone.mCi.setDataProfile(dps.toArray(new DataProfile[0]), null);
+                mSetDataProfileStatus = isRoaming ? 2 : 1;
             }
         }
     }
@@ -4219,6 +4234,7 @@ public class DcTracker extends Handler {
         pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
+        pw.println(" mSetDataProfileStatus=" + mSetDataProfileStatus);
         pw.flush();
         pw.println(" ***************************************");
         DcController dcc = mDcc;
