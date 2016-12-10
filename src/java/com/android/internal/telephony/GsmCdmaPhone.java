@@ -1859,6 +1859,19 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
+    public boolean supports3gppCallForwardingWhileRoaming() {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configManager.getConfig();
+        if (b != null) {
+            return b.getBoolean(
+                    CarrierConfigManager.KEY_SUPPORT_3GPP_CALL_FORWARDING_WHILE_ROAMING_BOOL, true);
+        } else {
+            // Default value set in CarrierConfigManager
+            return true;
+        }
+    }
+
     private void onNetworkInitiatedUssd(MmiCode mmi) {
         mMmiCompleteRegistrants.notifyRegistrants(
             new AsyncResult(null, mmi, null));
