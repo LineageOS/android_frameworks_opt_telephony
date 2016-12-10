@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f681702_e639ac3f",
+        "filename": "Android.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2016-12-10T23:54:44Z",
+      "side": 1,
+      "message": "Don\u0027t some methods need require telephony-ext?",
+      "revId": "ce220264fc34960813f2ad76692eb368466f83f1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
