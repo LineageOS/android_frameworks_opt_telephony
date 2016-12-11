@@ -16,6 +16,24 @@
       "revId": "ce220264fc34960813f2ad76692eb368466f83f1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f681702_5155bcc5",
+        "filename": "Android.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2016-12-11T05:25:03Z",
+      "side": 1,
+      "message": "No, the patch requiring it was reverted here: https://github.com/CyanogenMod/android_frameworks_opt_telephony/commit/3ec6a0cfcb664d8c39e8b2150c66f9a537a8a042\n\nThere\u0027s no files left importing org.codeaurora.internal.IExtTelephony",
+      "parentUuid": "5f681702_e639ac3f",
+      "revId": "ce220264fc34960813f2ad76692eb368466f83f1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
