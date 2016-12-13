@@ -3676,7 +3676,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mLceInfoRegistrant.notifyRegistrant(new AsyncResult(null, ret, null));
                 }
                 break;
-          case RIL_UNSOL_RESPONSE_ADN_INIT_DONE:
+            case RIL_UNSOL_RESPONSE_ADN_INIT_DONE:
                 if (RILJ_LOGD) unsljLog(response);
 
                 if (mAdnInitDoneRegistrants != null) {
@@ -3684,13 +3684,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                             new AsyncResult(null, ret, null));
                 }
                 break;
-          case RIL_UNSOL_RESPONSE_ADN_RECORDS:
+            case RIL_UNSOL_RESPONSE_ADN_RECORDS:
                 if (RILJ_LOGD) unsljLog(response);
 
                 if (mAdnRecordsInfoRegistrants != null) {
                     mAdnRecordsInfoRegistrants.notifyRegistrants(
                                             new AsyncResult(null, ret, null));
                 }
+		break;
             case RIL_UNSOL_PCO_DATA:
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
