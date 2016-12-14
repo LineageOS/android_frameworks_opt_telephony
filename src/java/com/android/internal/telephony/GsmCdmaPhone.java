@@ -2685,7 +2685,7 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             return false;
         } else {
-            return mSST.getOtasp() != ServiceStateTracker.OTASP_NOT_NEEDED;
+            return mSST.getOtasp() != TelephonyManager.OTASP_NOT_NEEDED;
         }
     }
 
