@@ -23,6 +23,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -35,6 +36,7 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.service.carrier.CarrierIdentifier;
 import android.telecom.VideoProfile;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
@@ -113,6 +115,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
                     mImsServiceReady = false;
                     updateImsPhone();
+                } else if (intent.getAction().equals(ImsConfig.ACTION_IMS_CONFIG_CHANGED)) {
+                    int item = intent.getIntExtra(ImsConfig.EXTRA_CHANGED_ITEM, -1);
+                    String value = intent.getStringExtra(ImsConfig.EXTRA_NEW_VALUE);
+                    ImsManager.onProvisionedValueChanged(context, item, value);
                 }
             }
         }
@@ -183,7 +189,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // Carrier's CDMA prefer mode setting
     protected static final int EVENT_SET_ROAMING_PREFERENCE_DONE    = 44;
 
-    protected static final int EVENT_LAST                           = EVENT_CARRIER_CONFIG_CHANGED;
+    protected static final int EVENT_LAST                       = EVENT_SET_ROAMING_PREFERENCE_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -234,6 +240,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private int mCallRingContinueToken;
     private int mCallRingDelay;
     private boolean mIsVoiceCapable = true;
+    /* Used for communicate between configured CarrierSignalling receivers */
+    private CarrierSignalAgent mCarrierSignalAgent;
 
     // Variable to cache the video capability. When RAT changes, we lose this info and are unable
     // to recover from the state. We cache it and notify listeners when they register.
@@ -268,7 +276,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
     public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
     public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
-    protected static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
+    public static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
 
     private final RegistrantList mPreciseCallStateRegistrants
             = new RegistrantList();
@@ -433,6 +441,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mContext = context;
         mLooper = Looper.myLooper();
         mCi = ci;
+        mCarrierSignalAgent = new CarrierSignalAgent(this);
         mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
         mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
 
@@ -520,6 +529,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             IntentFilter filter = new IntentFilter();
             filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
             filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+            filter.addAction(ImsConfig.ACTION_IMS_CONFIG_CHANGED);
             mContext.registerReceiver(mImsIntentReceiver, filter);
 
             // Monitor IMS service - but first poll to see if already up (could miss
@@ -1781,6 +1791,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         editor.apply();
     }
 
+    public CarrierSignalAgent getCarrierSignalAgent() {
+        return mCarrierSignalAgent;
+    }
+
     /**
      *  Query the CDMA roaming preference setting
      *
@@ -2707,6 +2721,25 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 (mDcTracker.isDataPossible(apnType)));
     }
 
+
+    /**
+     * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
+     */
+    public void carrierActionSetMeteredApnsEnabled(boolean enabled) {
+        if(mDcTracker != null) {
+            mDcTracker.setApnsEnabledByCarrier(enabled);
+        }
+    }
+
+    /**
+     * Action set from carrier signalling broadcast receivers to enable/disable radio
+     */
+    public void carrierActionSetRadioEnabled(boolean enabled) {
+        if(mDcTracker != null) {
+            mDcTracker.carrierActionSetRadioEnabled(enabled);
+        }
+    }
+
     /**
      * Notify registrants of a new ringing Connection.
      * Subclasses of Phone probably want to replace this with a
@@ -3268,6 +3301,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Set allowed carriers
+     */
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response) {
+        mCi.setAllowedCarriers(carriers, response);
+    }
+
+    /**
+     * Get allowed carriers
+     */
+    public void getAllowedCarriers(Message response) {
+        mCi.getAllowedCarriers(response);
+    }
+
+    /**
      * Returns the locale based on the carrier properties (such as {@code ro.carrier}) and
      * SIM preferences.
      */
@@ -3298,6 +3345,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void unregisterForAllDataDisconnected(Handler h) {
         mDcTracker.unregisterForAllDataDisconnected(h);
+    }
+
+    public void registerForDataEnabledChanged(Handler h, int what, Object obj) {
+        mDcTracker.registerForDataEnabledChanged(h, what, obj);
+    }
+
+    public void unregisterForDataEnabledChanged(Handler h) {
+        mDcTracker.unregisterForDataEnabledChanged(h);
     }
 
     public IccSmsInterfaceManager getIccSmsInterfaceManager(){
@@ -3377,6 +3432,28 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected boolean shallDialOnCircuitSwitch(Bundle extras) {
             return (extras != null && extras.getInt(QtiCallConstants.EXTRA_CALL_DOMAIN,
                     QtiCallConstants.DOMAIN_AUTOMATIC) == QtiCallConstants.DOMAIN_CS);
+    }
+
+    public long getVtDataUsage() {
+        if (mImsPhone == null) return 0;
+        return mImsPhone.getVtDataUsage();
+    }
+
+    /**
+     * Policy control of data connection. Usually used when we hit data limit.
+     * @param enabled True if enabling the data, otherwise disabling.
+     */
+    public void setPolicyDataEnabled(boolean enabled) {
+        mDcTracker.setPolicyDataEnabled(enabled);
+    }
+
+    /**
+     * SIP URIs aliased to the current subscriber given by the IMS implementation.
+     * Applicable only on IMS; used in absence of line1number.
+     * @return array of SIP URIs aliased to the current subscriber
+     */
+    public Uri[] getCurrentSubscriberUris() {
+        return null;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

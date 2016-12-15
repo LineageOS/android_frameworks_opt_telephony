@@ -44,6 +44,7 @@ import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.util.Log;
@@ -57,6 +58,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.mocks.TelephonyRegistryMock;
@@ -169,8 +171,14 @@ public abstract class TelephonyTest {
     protected EriManager mEriManager;
     @Mock
     protected IBinder mConnMetLoggerBinder;
+    @Mock
+    protected CarrierSignalAgent mCarrierSignalAgent;
+    @Mock
+    protected ImsExternalCallTracker mImsExternalCallTracker;
 
     protected TelephonyManager mTelephonyManager;
+    protected SubscriptionManager mSubscriptionManager;
+    protected PackageManager mPackageManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
@@ -299,6 +307,9 @@ public abstract class TelephonyTest {
         mPhone.mCi = mSimulatedCommands;
         mCT.mCi = mSimulatedCommands;
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        mSubscriptionManager = (SubscriptionManager) mContext.getSystemService(
+                Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        mPackageManager = mContext.getPackageManager();
 
         replaceInstance(TelephonyManager.class, "sInstance", null,
                 mContext.getSystemService(Context.TELEPHONY_SERVICE));
@@ -332,6 +343,8 @@ public abstract class TelephonyTest {
                         anyInt(), any(Object.class));
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
                 .getIDeviceIdleController();
+        doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory).
+                makeImsExternalCallTracker(any(ImsPhone.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
@@ -340,10 +353,12 @@ public abstract class TelephonyTest {
         doReturn(mIccCardProxy).when(mPhone).getIccCard();
         doReturn(mServiceState).when(mPhone).getServiceState();
         doReturn(mServiceState).when(mImsPhone).getServiceState();
+        doReturn(mPhone).when(mImsPhone).getDefaultPhone();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
+        doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
         mPhone.mEriManager = mEriManager;
 
         //mUiccController
@@ -443,8 +458,7 @@ public abstract class TelephonyTest {
     }
 
     protected void setupMockPackagePermissionChecks() throws Exception {
-        PackageManager mockPackageManager = mContext.getPackageManager();
-        doReturn(new String[]{TAG}).when(mockPackageManager).getPackagesForUid(anyInt());
-        doReturn(mPackageInfo).when(mockPackageManager).getPackageInfo(eq(TAG), anyInt());
+        doReturn(new String[]{TAG}).when(mPackageManager).getPackagesForUid(anyInt());
+        doReturn(mPackageInfo).when(mPackageManager).getPackageInfo(eq(TAG), anyInt());
     }
 }

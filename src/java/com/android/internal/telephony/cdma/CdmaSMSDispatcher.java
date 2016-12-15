@@ -27,11 +27,13 @@ import android.provider.Telephony.Sms;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
@@ -254,6 +256,14 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
         byte[] pdu = (byte[]) tracker.getData().get("pdu");
+
+        int currentDataNetwork = mPhone.getServiceState().getDataNetworkType();
+        boolean imsSmsDisabled = (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD
+                    || (ServiceState.isLte(currentDataNetwork)
+                    && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()))
+                    && mPhone.getServiceState().getVoiceNetworkType()
+                    == TelephonyManager.NETWORK_TYPE_1xRTT
+                    && ((GsmCdmaPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
 
         // sms over cdma is used:
         //   if sms over IMS is not supported AND

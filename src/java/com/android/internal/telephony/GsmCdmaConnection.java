@@ -71,6 +71,8 @@ public class GsmCdmaConnection extends Connection {
 
     private PowerManager.WakeLock mPartialWakeLock;
 
+    private boolean mIsEmergencyCall = false;
+
     // The cached delay to be used between DTMF tones fetched from carrier config.
     private int mDtmfToneDelay = 0;
 
@@ -116,7 +118,7 @@ public class GsmCdmaConnection extends Connection {
 
     //***** Constructors
 
-    /** This is probably an MT call that we first saw in a CLCC response */
+    /** This is probably an MT call that we first saw in a CLCC response or a hand over. */
     public GsmCdmaConnection (GsmCdmaPhone phone, DriverCall dc, GsmCdmaCallTracker ct, int index) {
         super(phone.getPhoneType());
         createWakeLock(phone.getContext());
@@ -126,7 +128,7 @@ public class GsmCdmaConnection extends Connection {
         mHandler = new MyHandler(mOwner.getLooper());
 
         mAddress = dc.number;
-
+        mIsEmergencyCall = PhoneNumberUtils.isLocalEmergencyNumber(phone.getContext(), mAddress);
         mIsIncoming = dc.isMT;
         mCreateTime = System.currentTimeMillis();
         mCnapName = dc.name;
@@ -144,7 +146,7 @@ public class GsmCdmaConnection extends Connection {
 
     /** This is an MO call, created when dialing */
     public GsmCdmaConnection (GsmCdmaPhone phone, String dialString, GsmCdmaCallTracker ct,
-                              GsmCdmaCall parent) {
+                              GsmCdmaCall parent, boolean isEmergencyCall) {
         super(phone.getPhoneType());
         createWakeLock(phone.getContext());
         acquireWakeLock();
@@ -161,17 +163,22 @@ public class GsmCdmaConnection extends Connection {
                 showOrigDialString = pb.getBoolean("config_show_orig_dial_string_for_cdma");
             }
         }
-        if (isPhoneTypeGsm() || showOrigDialString) {
+        if (isPhoneTypeGsm()) {
             mDialString = dialString;
-        }
-        if (!isPhoneTypeGsm()) {
-            Rlog.d(LOG_TAG, "[GsmCdmaConn] GsmCdmaConnection: dialString=" + maskDialString(dialString));
+        } else {
+            Rlog.d(LOG_TAG, "[GsmCdmaConn] GsmCdmaConnection: dialString=" +
+                    maskDialString(dialString));
+            if (showOrigDialString) {
+                mDialString = dialString;
+            }
             dialString = formatDialString(dialString);
             Rlog.d(LOG_TAG,
-                    "[GsmCdmaConn] GsmCdmaConnection:formated dialString=" + maskDialString(dialString));
+                    "[GsmCdmaConn] GsmCdmaConnection:formated dialString=" +
+                            maskDialString(dialString));
         }
 
         mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
+        mIsEmergencyCall = isEmergencyCall;
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
         mIndex = -1;
@@ -225,6 +232,9 @@ public class GsmCdmaConnection extends Connection {
 
     public void dispose() {
         clearPostDialListeners();
+        if (mParent != null) {
+            mParent.detach(this);
+        }
         releaseAllWakeLocks();
     }
 
@@ -631,45 +641,49 @@ public class GsmCdmaConnection extends Connection {
                 int serviceState = phone.getServiceState().getState();
                 UiccCardApplication cardApp = phone.getUiccCardApplication();
                 AppState uiccAppState = (cardApp != null) ? cardApp.getState() :
-                                                            AppState.APPSTATE_UNKNOWN;
+                        AppState.APPSTATE_UNKNOWN;
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
-                } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
-                        || serviceState == ServiceState.STATE_EMERGENCY_ONLY ) {
-                    return DisconnectCause.OUT_OF_SERVICE;
-                } else {
-                    if (isPhoneTypeGsm()) {
-                        if (uiccAppState != AppState.APPSTATE_READY) {
+                }
+                if (!mIsEmergencyCall) {
+                    // Only send OUT_OF_SERVICE if it is not an emergency call. We can still
+                    // technically be in STATE_OUT_OF_SERVICE or STATE_EMERGENCY_ONLY during
+                    // an emergency call and when it ends, we do not want to mistakenly generate
+                    // an OUT_OF_SERVICE disconnect cause during normal call ending.
+                    if ((serviceState == ServiceState.STATE_OUT_OF_SERVICE
+                            || serviceState == ServiceState.STATE_EMERGENCY_ONLY)) {
+                        return DisconnectCause.OUT_OF_SERVICE;
+                    }
+                    // If we are placing an emergency call and the SIM is currently PIN/PUK
+                    // locked the AppState will always not be equal to APPSTATE_READY.
+                    if (uiccAppState != AppState.APPSTATE_READY) {
+                        if (isPhoneTypeGsm()) {
                             return DisconnectCause.ICC_ERROR;
-                        } else if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
-                            if (phone.mSST.mRestrictedState.isCsRestricted()) {
-                                return DisconnectCause.CS_RESTRICTED;
-                            } else if (phone.mSST.mRestrictedState.isCsEmergencyRestricted()) {
-                                return DisconnectCause.CS_RESTRICTED_EMERGENCY;
-                            } else if (phone.mSST.mRestrictedState.isCsNormalRestricted()) {
-                                return DisconnectCause.CS_RESTRICTED_NORMAL;
-                            } else {
-                                return DisconnectCause.ERROR_UNSPECIFIED;
+                        } else { // CDMA
+                            if (phone.mCdmaSubscriptionSource ==
+                                    CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM) {
+                                return DisconnectCause.ICC_ERROR;
                             }
-                        } else if (causeCode == CallFailCause.NORMAL_CLEARING) {
-                            return DisconnectCause.NORMAL;
-                        } else {
-                            // If nothing else matches, report unknown call drop reason
-                            // to app, not NORMAL call end.
-                            return DisconnectCause.ERROR_UNSPECIFIED;
-                        }
-                    } else {
-                        if (phone.mCdmaSubscriptionSource ==
-                                CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
-                                && uiccAppState != AppState.APPSTATE_READY) {
-                            return DisconnectCause.ICC_ERROR;
-                        } else if (causeCode==CallFailCause.NORMAL_CLEARING) {
-                            return DisconnectCause.NORMAL;
-                        } else {
-                            return DisconnectCause.ERROR_UNSPECIFIED;
                         }
                     }
                 }
+                if (isPhoneTypeGsm()) {
+                    if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
+                        if (phone.mSST.mRestrictedState.isCsRestricted()) {
+                            return DisconnectCause.CS_RESTRICTED;
+                        } else if (phone.mSST.mRestrictedState.isCsEmergencyRestricted()) {
+                            return DisconnectCause.CS_RESTRICTED_EMERGENCY;
+                        } else if (phone.mSST.mRestrictedState.isCsNormalRestricted()) {
+                            return DisconnectCause.CS_RESTRICTED_NORMAL;
+                        }
+                    }
+                }
+                if (causeCode == CallFailCause.NORMAL_CLEARING) {
+                    return DisconnectCause.NORMAL;
+                }
+                // If nothing else matches, report unknown call drop reason
+                // to app, not NORMAL call end.
+                return DisconnectCause.ERROR_UNSPECIFIED;
         }
     }
 

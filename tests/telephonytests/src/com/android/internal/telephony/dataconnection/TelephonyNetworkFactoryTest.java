@@ -33,6 +33,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.platform.test.annotations.Postsubmit;
 import android.net.ConnectivityManager;
 import android.net.IConnectivityManager;
 import android.net.NetworkCapabilities;
@@ -133,6 +134,7 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
     /**
      * Test that phone active changes cause the DcTracker to get poked.
      */
+    @Postsubmit
     @SmallTest
     public void testActive() throws Exception {
         mTestName = "testActive";

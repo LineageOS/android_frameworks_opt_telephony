@@ -205,9 +205,9 @@ public class IccPhoneBookInterfaceManager {
 
 
         if (DBG) logd("updateAdnRecordsInEfBySearch: efid=0x" +
-                Integer.toHexString(efid).toUpperCase() +
-                " ("+ oldTag + "," + oldPhoneNumber + ")"+ "==>" +
-                " ("+ newTag + "," + newPhoneNumber + ")"+ " pin2=" + pin2);
+                Integer.toHexString(efid).toUpperCase() + " ("+ Rlog.pii(LOG_TAG, oldTag) + "," +
+                Rlog.pii(LOG_TAG, oldPhoneNumber) + ")" + "==>" + " ("+ Rlog.pii(LOG_TAG, newTag) +
+                "," + Rlog.pii(LOG_TAG, newPhoneNumber) + ")"+ " pin2=" + Rlog.pii(LOG_TAG, pin2));
 
         efid = updateEfForIccType(efid);
 
@@ -328,9 +328,9 @@ public class IccPhoneBookInterfaceManager {
         }
 
         if (DBG) logd("updateAdnRecordsInEfByIndex: efid=0x" +
-                Integer.toHexString(efid).toUpperCase() +
-                " Index=" + index + " ==> " +
-                "("+ newTag + "," + newPhoneNumber + ")"+ " pin2=" + pin2);
+                Integer.toHexString(efid).toUpperCase() + " Index=" + index + " ==> " + "(" +
+                Rlog.pii(LOG_TAG, newTag) + "," + Rlog.pii(LOG_TAG, newPhoneNumber) + ")" +
+                " pin2=" + Rlog.pii(LOG_TAG, pin2));
         synchronized(mLock) {
             checkThread();
             mSuccess = false;

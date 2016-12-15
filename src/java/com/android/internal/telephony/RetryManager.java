@@ -40,7 +40,7 @@ import java.util.Random;
  * The other configure method allows a series to be declared using
  * a string.
  *<p>
- * The format of the configuration string is a series of parameters
+ * The format of the configuration string is the apn type followed by a series of parameters
  * separated by a comma. There are two name value pair parameters plus a series
  * of delay times. The units of of these delay times is unspecified.
  * The name value pairs which may be specified are:
@@ -49,6 +49,9 @@ import java.util.Random;
  *<li>default_randomizationTime=<value>
  *</ul>
  *<p>
+ * apn type specifies the APN type that the retry pattern will apply for. "others" is for all other
+ * APN types not specified in the config.
+ *
  * max_retries is the number of times that incrementRetryCount
  * maybe called before isRetryNeeded will return false. if value
  * is infinite then isRetryNeeded will always return true.
@@ -63,20 +66,20 @@ import java.util.Random;
  *<p>
  * Examples:
  * <ul>
- * <li>3 retries with no randomization value which means its 0:
- * <ul><li><code>"1000, 2000, 3000"</code></ul>
+ * <li>3 retries for mms with no randomization value which means its 0:
+ * <ul><li><code>"mms:1000, 2000, 3000"</code></ul>
  *
- * <li>10 retries with a 500 default randomization value for each and
+ * <li>10 retries for default APN with a 500 default randomization value for each and
  * the 4..10 retries all using 3000 as the delay:
- * <ul><li><code>"max_retries=10, default_randomization=500, 1000, 2000, 3000"</code></ul>
+ * <ul><li><code>"default:max_retries=10, default_randomization=500, 1000, 2000, 3000"</code></ul>
  *
- * <li>4 retries with a 100 as the default randomization value for the first 2 values and
- * the other two having specified values of 500:
- * <ul><li><code>"default_randomization=100, 1000, 2000, 4000:500, 5000:500"</code></ul>
+ * <li>4 retries for supl APN with a 100 as the default randomization value for the first 2 values
+ * and the other two having specified values of 500:
+ * <ul><li><code>"supl:default_randomization=100, 1000, 2000, 4000:500, 5000:500"</code></ul>
  *
- * <li>Infinite number of retries with the first one at 1000, the second at 2000 all
- * others will be at 3000.
- * <ul><li><code>"max_retries=infinite,1000,2000,3000</code></ul>
+ * <li>Infinite number of retries for all other APNs with the first one at 1000, the second at 2000
+ * all others will be at 3000.
+ * <ul><li><code>"others:max_retries=infinite,1000,2000,3000</code></ul>
  * </ul>
  *
  * {@hide}
@@ -87,24 +90,20 @@ public class RetryManager {
     public static final boolean VDBG = false; // STOPSHIP if true
 
     /**
-     * The default retry configuration for default type APN. See above for the syntax.
+     * The default retry configuration for APNs. See above for the syntax.
      */
-    private static final String DEFAULT_DATA_RETRY_CONFIG = "default_randomization=2000,"
-            + "5000,10000,20000,40000,80000:5000,160000:5000,"
-            + "320000:5000,640000:5000,1280000:5000,1800000:5000";
+    private static final String DEFAULT_DATA_RETRY_CONFIG = "max_retries=3, 5000, 5000, 5000";
 
     /**
-     * Retry configuration for networks other than default type, for example, mms. See above
-     * for the syntax.
+     * The APN type used for all other APNs retry configuration.
      */
-    private static final String OTHERS_DATA_RETRY_CONFIG =
-            "max_retries=3, 5000, 5000, 5000";
+    private static final String OTHERS_APN_TYPE = "others";
 
     /**
      * The default value (in milliseconds) for delay between APN trying (mInterApnDelay)
      * within the same round
      */
-    private static final long DEFAULT_INTER_APN_DELAY = 20000;
+    private static final long DEFAULT_INTER_APN_DELAY = 3000;
 
     /**
      * The default value (in milliseconds) for delay between APN trying (mFailFastInterApnDelay)
@@ -313,10 +312,11 @@ public class RetryManager {
 
     /**
      * Configure the retry manager
-     * @param forDefault True if the APN support default type
      */
-    private void configureRetry(boolean forDefault) {
-        String configString = "";
+    private void configureRetry() {
+        String configString = null;
+        String otherConfigString = null;
+
         try {
             if (Build.IS_DEBUGGABLE) {
                 // Using system properties is easier for testing from command line.
@@ -338,22 +338,48 @@ public class RetryManager {
                     CarrierConfigManager.KEY_CARRIER_DATA_CALL_APN_DELAY_FASTER_LONG,
                     DEFAULT_INTER_APN_DELAY_FOR_PROVISIONING);
 
-            if (forDefault) {
-                configString = b.getString(
-                        CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
-                        DEFAULT_DATA_RETRY_CONFIG);
+            // Load all retry patterns for all different APNs.
+            String[] allConfigStrings = b.getStringArray(
+                    CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS);
+            if (allConfigStrings != null) {
+                for (String s : allConfigStrings) {
+                    if (!TextUtils.isEmpty(s)) {
+                        String splitStr[] = s.split(":", 2);
+                        if (splitStr.length == 2) {
+                            String apnType = splitStr[0].trim();
+                            // Check if this retry pattern is for the APN we want.
+                            if (apnType.equals(mApnType)) {
+                                // Extract the config string. Note that an empty string is valid
+                                // here, meaning no retry for the specified APN.
+                                configString = splitStr[1];
+                                break;
+                            } else if (apnType.equals(OTHERS_APN_TYPE)) {
+                                // Extract the config string. Note that an empty string is valid
+                                // here, meaning no retry for all other APNs.
+                                otherConfigString = splitStr[1];
+                            }
+                        }
+                    }
+                }
             }
-            else {
-                configString = b.getString(
-                        CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_OTHERS_STRING,
-                        OTHERS_DATA_RETRY_CONFIG);
+
+            if (configString == null) {
+                if (otherConfigString != null) {
+                    configString = otherConfigString;
+                } else {
+                    // We should never reach here. If we reach here, it must be a configuration
+                    // error bug.
+                    log("Invalid APN retry configuration!. Use the default one now.");
+                    configString = DEFAULT_DATA_RETRY_CONFIG;
+                }
             }
         } catch (NullPointerException ex) {
+            // We should never reach here unless there is a bug
             log("Failed to read configuration! Use the hardcoded default value.");
 
             mInterApnDelay = DEFAULT_INTER_APN_DELAY;
             mFailFastInterApnDelay = DEFAULT_INTER_APN_DELAY_FOR_PROVISIONING;
-            configString = (forDefault) ? DEFAULT_DATA_RETRY_CONFIG : OTHERS_DATA_RETRY_CONFIG;
+            configString = DEFAULT_DATA_RETRY_CONFIG;
         }
 
         if (VDBG) {
@@ -586,7 +612,7 @@ public class RetryManager {
         mWaitingApns = waitingApns;
 
         // Since we replace the entire waiting APN list, we need to re-config this retry manager.
-        configureRetry(mApnType.equals(PhoneConstants.APN_TYPE_DEFAULT));
+        configureRetry();
 
         for (ApnSetting apn : mWaitingApns) {
             apn.permanentFailed = false;

@@ -25,6 +25,9 @@ import com.android.internal.telephony.uicc.SimPhoneBookAdnRecord;
 
 import android.os.Message;
 import android.os.Handler;
+import android.service.carrier.CarrierIdentifier;
+
+import java.util.List;
 
 
 /**
@@ -2035,6 +2038,38 @@ public interface CommandsInterface {
      * @param result Callback message contains the modem activity information
      */
     public void getModemActivityInfo(Message result);
+
+    /**
+     * Set allowed carriers
+     *
+     * @param carriers Allowed carriers
+     * @param result Callback message contains the number of carriers set successfully
+     */
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result);
+
+    /**
+     * Get allowed carriers
+     *
+     * @param result Callback message contains the allowed carriers
+     */
+    public void getAllowedCarriers(Message result);
+
+    /**
+     * Register for unsolicited PCO data.  This information is carrier-specific,
+     * opaque binary blobs destined for carrier apps for interpretation.
+     *
+     * @param h Handler for notificaiton message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForPcoData(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for PCO data.
+     *
+     * @param h handler to be removed
+     */
+    public void unregisterForPcoData(Handler h);
 
     /**
      * Request the ADN record of all activated UICC applications

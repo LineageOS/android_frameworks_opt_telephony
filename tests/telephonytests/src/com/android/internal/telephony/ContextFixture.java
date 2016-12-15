@@ -303,6 +303,40 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendOrderedBroadcast(Intent intent, String receiverPermission) {
+            logd("sendOrderedBroadcast called for " + intent.getAction());
+            sendBroadcast(intent);
+        }
+
+        @Override
+        public void sendOrderedBroadcast(Intent intent, String receiverPermission,
+                BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
+                String initialData, Bundle initialExtras) {
+            sendOrderedBroadcast(intent, receiverPermission);
+            if (resultReceiver != null) {
+                synchronized (mOrderedBroadcastReceivers) {
+                    mOrderedBroadcastReceivers.put(intent, resultReceiver);
+                }
+            }
+        }
+
+        @Override
+        public void sendOrderedBroadcast(Intent intent, String receiverPermission, Bundle options,
+                BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
+                String initialData, Bundle initialExtras) {
+            sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler,
+                    initialCode, initialData, initialExtras);
+        }
+
+        @Override
+        public void sendOrderedBroadcast(Intent intent, String receiverPermission, int appOp,
+                BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
+                String initialData, Bundle initialExtras) {
+            sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler,
+                    initialCode, initialData, initialExtras);
+        }
+
+        @Override
         public void sendBroadcastAsUser(Intent intent, UserHandle user) {
             sendBroadcast(intent);
         }
@@ -404,18 +438,6 @@ public class ContextFixture implements TestFixture<Context> {
         public String getPackageName() {
             return "com.android.internal.telephony";
         }
-
-        public boolean testMethod() {
-            return true;
-        }
-
-        public boolean testMethod1() {
-            return true;
-        }
-
-        public boolean testMethod2() {
-            return true;
-        }
     }
 
     private final Multimap<String, ComponentName> mComponentNamesByAction =
@@ -488,6 +510,8 @@ public class ContextFixture implements TestFixture<Context> {
         }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), anyInt());
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
+        //doReturn(mBundle).when(mCarrierConfigManager).getConfig(anyInt());
+        doReturn(mBundle).when(mCarrierConfigManager).getConfig();
 
         mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();

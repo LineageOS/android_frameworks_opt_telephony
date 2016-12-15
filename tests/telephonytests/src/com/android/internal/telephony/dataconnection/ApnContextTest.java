@@ -16,7 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
+import android.net.NetworkRequest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.LocalLog;
 
@@ -136,16 +138,18 @@ public class ApnContextTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testRefCount() throws Exception {
+    public void testNetworkRequest() throws Exception {
         LocalLog log = new LocalLog(3);
-        mApnContext.incRefCount(log);
+        NetworkRequest nr = new NetworkRequest.Builder().build();
+        mApnContext.requestNetwork(nr, log);
+
         verify(mDcTracker, times(1)).setEnabled(eq(DctConstants.APN_DEFAULT_ID), eq(true));
-        mApnContext.incRefCount(log);
+        mApnContext.requestNetwork(nr, log);
         verify(mDcTracker, times(1)).setEnabled(eq(DctConstants.APN_DEFAULT_ID), eq(true));
 
-        mApnContext.decRefCount(log);
-        verify(mDcTracker, never()).setEnabled(eq(DctConstants.APN_DEFAULT_ID), eq(false));
-        mApnContext.decRefCount(log);
+        mApnContext.releaseNetwork(nr, log);
+        verify(mDcTracker, times(1)).setEnabled(eq(DctConstants.APN_DEFAULT_ID), eq(false));
+        mApnContext.releaseNetwork(nr, log);
         verify(mDcTracker, times(1)).setEnabled(eq(DctConstants.APN_DEFAULT_ID), eq(false));
     }
 
