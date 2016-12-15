@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f681702_850edc8a",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 3679,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2016-12-15T06:45:12Z",
+      "side": 1,
+      "message": "dont change this",
+      "revId": "25f36ac978f2cd88283ab5002399db7ed2fd301e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f681702_651100ad",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 3687,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2016-12-15T06:45:12Z",
+      "side": 1,
+      "message": "dont change this",
+      "revId": "25f36ac978f2cd88283ab5002399db7ed2fd301e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f681702_c5273412",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 3694,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2016-12-15T06:45:12Z",
+      "side": 1,
+      "message": "use spaces instead of tabs",
+      "revId": "25f36ac978f2cd88283ab5002399db7ed2fd301e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
