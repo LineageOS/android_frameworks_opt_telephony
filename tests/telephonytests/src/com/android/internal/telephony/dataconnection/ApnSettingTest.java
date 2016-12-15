@@ -28,11 +28,14 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.fail;
 import static org.junit.Assert.assertEquals;
 
 public class ApnSettingTest extends TelephonyTest {
@@ -494,5 +497,42 @@ public class ApnSettingTest extends TelephonyTest {
                 new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_DUN}).
                 isMetered(mContext, 4, isRoaming));
 
+    }
+
+    @Test
+    @SmallTest
+    public void testEquals() throws Exception {
+        final int dummyInt = 1;
+        final String dummyString = "dummy";
+        final String[] dummyStringArr = new String[] {"dummy"};
+        // base apn
+        ApnSetting baseApn = createApnSetting(new String[] {"mms", "default"});
+        Field[] fields = ApnSetting.class.getDeclaredFields();
+        for (Field f : fields) {
+            int modifiers = f.getModifiers();
+            if (Modifier.isStatic(modifiers) || !Modifier.isFinal(modifiers)) {
+                continue;
+            }
+            f.setAccessible(true);
+            ApnSetting testApn = null;
+            if (int.class.equals(f.getType())) {
+                testApn = new ApnSetting(baseApn);
+                f.setInt(testApn, dummyInt + f.getInt(testApn));
+            } else if (boolean.class.equals(f.getType())) {
+                testApn = new ApnSetting(baseApn);
+                f.setBoolean(testApn, !f.getBoolean(testApn));
+            } else if (String.class.equals(f.getType())) {
+                testApn = new ApnSetting(baseApn);
+                f.set(testApn, dummyString);
+            } else if (String[].class.equals(f.getType())) {
+                testApn = new ApnSetting(baseApn);
+                f.set(testApn, dummyStringArr);
+            } else {
+                fail("Unsupported field:" + f.getName());
+            }
+            if (testApn != null) {
+                assertFalse(f.getName() + " is NOT checked", testApn.equals(baseApn));
+            }
+        }
     }
 }
