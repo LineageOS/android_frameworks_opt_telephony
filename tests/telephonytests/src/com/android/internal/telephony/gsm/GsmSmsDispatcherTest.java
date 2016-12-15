@@ -28,6 +28,7 @@ import android.location.CountryDetector;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.platform.test.annotations.Postsubmit;
 import android.provider.Telephony;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -119,6 +120,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         assertEquals(0, mFakeBlockedNumberContentProvider.mNumEmergencyContactNotifications);
     }
 
+    @Postsubmit
     @Test @MediumTest
     public void testSendSmsToEmergencyNumber_notifiesBlockedNumberProvider() throws Exception {
         setupMockPackagePermissionChecks();

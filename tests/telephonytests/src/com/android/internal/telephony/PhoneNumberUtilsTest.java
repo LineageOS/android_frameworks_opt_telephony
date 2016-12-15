@@ -562,6 +562,7 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
                 PhoneNumberUtils.formatNumber("011861088880000", "", "GB"));
     }
 
+    @Postsubmit
     @SmallTest
     public void testIsEmergencyNumber() {
         // There are two parallel sets of tests here: one for the
