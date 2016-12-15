@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f681702_a5acb835",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1474,
+      "author": {
+        "id": 11690
+      },
+      "writtenOn": "2016-12-15T12:12:18Z",
+      "side": 1,
+      "message": "I am not sure if it\u0027s the right way to implement it.",
+      "range": {
+        "startLine": 1474,
+        "startChar": 28,
+        "endLine": 1474,
+        "endChar": 57
+      },
+      "revId": "3f6fc32f3e821b2bfc22318db6bf6da2bf3d9026",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
