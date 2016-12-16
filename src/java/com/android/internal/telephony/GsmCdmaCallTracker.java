@@ -1259,7 +1259,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         int count = call.mConnections.size();
         for (int i = 0; i < count; i++) {
             GsmCdmaConnection cn = (GsmCdmaConnection)call.mConnections.get(i);
-            if (cn.getGsmCdmaIndex() == index) {
+            if (!cn.mDisconnected && cn.getGsmCdmaIndex() == index) {
                 mCi.hangupConnection(index, obtainCompleteMessage());
                 return;
             }
@@ -1273,7 +1273,9 @@ public class GsmCdmaCallTracker extends CallTracker {
             int count = call.mConnections.size();
             for (int i = 0; i < count; i++) {
                 GsmCdmaConnection cn = (GsmCdmaConnection)call.mConnections.get(i);
-                mCi.hangupConnection(cn.getGsmCdmaIndex(), obtainCompleteMessage());
+                if (!cn.mDisconnected) {
+                    mCi.hangupConnection(cn.getGsmCdmaIndex(), obtainCompleteMessage());
+                }
             }
         } catch (CallStateException ex) {
             Rlog.e(LOG_TAG, "hangupConnectionByIndex caught " + ex);
@@ -1285,7 +1287,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         int count = call.mConnections.size();
         for (int i = 0; i < count; i++) {
             GsmCdmaConnection cn = (GsmCdmaConnection)call.mConnections.get(i);
-            if (cn.getGsmCdmaIndex() == index) {
+            if (!cn.mDisconnected && cn.getGsmCdmaIndex() == index) {
                 return cn;
             }
         }
