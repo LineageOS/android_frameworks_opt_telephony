@@ -16,29 +16,33 @@
 
 package com.android.internal.telephony;
 
-import android.hardware.radio.V1_0.IRadioResponse;
-import android.hardware.radio.V1_0.RadioResponseInfo;
-import android.hardware.radio.V1_0.RadioResponseType;
-import android.hardware.radio.V1_0.CardStatus;
-import android.hardware.radio.V1_0.VoiceRegStateResult;
-import android.hardware.radio.V1_0.DataRegStateResult;
-import android.hardware.radio.V1_0.AppStatus;
-import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.ActivityStatsInfo;
+import android.hardware.radio.V1_0.AppStatus;
+import android.hardware.radio.V1_0.CardStatus;
+import android.hardware.radio.V1_0.CarrierRestrictions;
+import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
+import android.hardware.radio.V1_0.DataRegStateResult;
+import android.hardware.radio.V1_0.GsmBroadcastSmsConfigInfo;
+import android.hardware.radio.V1_0.IRadioResponse;
+import android.hardware.radio.V1_0.LastCallFailCauseInfo;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.LceStatusInfo;
-import android.hardware.radio.V1_0.SendSmsResult;
-import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
-import android.hardware.radio.V1_0.GsmBroadcastSmsConfigInfo;
-import android.hardware.radio.V1_0.LastCallFailCauseInfo;
 import android.hardware.radio.V1_0.NeighboringCell;
+import android.hardware.radio.V1_0.RadioError;
+import android.hardware.radio.V1_0.RadioResponseInfo;
+import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
+import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.os.AsyncResult;
 import android.os.Message;
-import android.telephony.Rlog;
-import com.android.internal.telephony.uicc.*;
+import android.telephony.PhoneNumberUtils;
+
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccUtils;
+
 import java.util.ArrayList;
-import static com.android.internal.telephony.RILConstants.*;
+import java.util.Collections;
 
 public class RadioResponse extends IRadioResponse.Stub {
     RIL mRil;
@@ -60,47 +64,96 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     * Response function for IRadio.getIccCardStatus()
+     * Acknowldege the receipt of radio request sent to the vendor. This must be sent only for
+     * radio request which take long time to respond.
+     * For more details, refer https://source.android.com/devices/tech/connect/ril.html
+     *
+     * @param serial Serial no. of the request whose acknowledgement is sent.
+     */
+    public void acknowledgeRequest(int serial) {
+        mRil.processRequestAck(serial);
+    }
+
+    /**
      * @param responseInfo Response info struct containing response type, serial no. & error
      * @param cardStatus ICC card status as defined by CardStatus in types.hal
      */
     public void getIccCardStatusResponse(RadioResponseInfo responseInfo, CardStatus cardStatus) {
-        mRil.riljLog("getIccCardStatusResponse: serial " + responseInfo.serial +
-                " cardStatus.cardState " + cardStatus.cardState);
-        RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            Object ret = null;
-            if (responseInfo.error == 0) {
-                mRil.riljLog("getIccCardStatusResponse: rr.mResult != null");
-                ret = responseIccCardStatus(cardStatus);
-                sendMessageResponse(rr.mResult, ret);
-            }
-            mRil.processResponseDone(rr, responseInfo, ret);
-        } else {
-            mRil.riljLog("getIccCardStatusResponse: rr == null");
-        }
+        responseIccCardStatus(responseInfo, cardStatus);
     }
 
-    public void supplyIccPinForAppResponse(RadioResponseInfo responseInfo, int var2) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
+     */
+    public void supplyIccPinForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
+        responseInts(responseInfo, remainingAttempts);
+    }
 
-    public void supplyIccPukForAppResponse(RadioResponseInfo responseInfo, int var2) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
+     */
+    public void supplyIccPukForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
+        responseInts(responseInfo, remainingAttempts);
+    }
 
-    public void supplyIccPin2ForAppResponse(RadioResponseInfo responseInfo, int var2) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
+     */
+    public void supplyIccPin2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
+        responseInts(responseInfo, remainingAttempts);
+    }
 
-    public void supplyIccPuk2ForAppResponse(RadioResponseInfo responseInfo, int var2) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
+     */
+    public void supplyIccPuk2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
+        responseInts(responseInfo, remainingAttempts);
+    }
 
-    public void changeIccPinForAppResponse(RadioResponseInfo responseInfo, int var2) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
+     */
+    public void changeIccPinForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
+        responseInts(responseInfo, remainingAttempts);
+    }
 
-    public void changeIccPin2ForAppResponse(RadioResponseInfo responseInfo, int var2) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
+     */
+    public void changeIccPin2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
+        responseInts(responseInfo, remainingAttempts);
+    }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param retriesRemaining Number of retries remaining, must be equal to -1 if unknown.
+     */
     public void supplyNetworkDepersonalizationResponse(RadioResponseInfo responseInfo,
-                                                       int var2) {}
+                                                       int retriesRemaining) {
+        responseInts(responseInfo, retriesRemaining);
+    }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     * @param calls Current call list
+     */
     public void getCurrentCallsResponse(RadioResponseInfo responseInfo,
-                                        ArrayList<android.hardware.radio.V1_0.Call> var2) {}
+                                        ArrayList<android.hardware.radio.V1_0.Call> calls) {
+        responseCurrentCalls(responseInfo, calls);
+    }
 
-    public void dialResponse(RadioResponseInfo responseInfo) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. & error
+     */
+    public void dialResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
 
     public void getIMSIForAppResponse(RadioResponseInfo responseInfo, String var2) {}
 
@@ -388,40 +441,160 @@ public class RadioResponse extends IRadioResponse.Stub {
                                            boolean var2,
                                            CarrierRestrictions var3) {}
 
-    public void acknowledgeRequest(int var1) {}
+    private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
+        RILRequest rr = mRil.processResponse(responseInfo);
 
-    private Object
-    responseIccCardStatus(CardStatus cardStatus) {
-        IccCardApplicationStatus appStatus;
+        if (rr != null) {
+            Object ret = null;
+            if (responseInfo.error == RadioError.NONE) {
+                IccCardStatus iccCardStatus = new IccCardStatus();
+                iccCardStatus.setCardState(cardStatus.cardState);
+                iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
+                iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
+                iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
+                iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
+                int numApplications = cardStatus.applications.size();
 
-        IccCardStatus iccCardStatus = new IccCardStatus();
-        iccCardStatus.setCardState(cardStatus.cardState);
-        iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
-        iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
-        iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
-        iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
-        int numApplications = cardStatus.applications.size();
-
-        // limit to maximum allowed applications
-        if (numApplications > com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS) {
-            numApplications = com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS;
+                // limit to maximum allowed applications
+                if (numApplications
+                        > com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS) {
+                    numApplications =
+                            com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS;
+                }
+                iccCardStatus.mApplications = new IccCardApplicationStatus[numApplications];
+                for (int i = 0; i < numApplications; i++) {
+                    AppStatus rilAppStatus = cardStatus.applications.get(i);
+                    IccCardApplicationStatus appStatus = new IccCardApplicationStatus();
+                    appStatus.app_type       = appStatus.AppTypeFromRILInt(rilAppStatus.appType);
+                    appStatus.app_state      = appStatus.AppStateFromRILInt(rilAppStatus.appState);
+                    appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(
+                            rilAppStatus.persoSubstate);
+                    appStatus.aid            = rilAppStatus.aidPtr;
+                    appStatus.app_label      = rilAppStatus.appLabelPtr;
+                    appStatus.pin1_replaced  = rilAppStatus.pin1Replaced;
+                    appStatus.pin1           = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
+                    appStatus.pin2           = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
+                    iccCardStatus.mApplications[i] = appStatus;
+                }
+                mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
+                ret = iccCardStatus;
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
         }
-        iccCardStatus.mApplications = new IccCardApplicationStatus[numApplications];
-        for (int i = 0 ; i < numApplications ; i++) {
-            AppStatus rilAppStatus = cardStatus.applications.get(i);
-            appStatus = new IccCardApplicationStatus();
-            appStatus.app_type       = appStatus.AppTypeFromRILInt(rilAppStatus.appType);
-            appStatus.app_state      = appStatus.AppStateFromRILInt(rilAppStatus.appState);
-            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(
-                    rilAppStatus.persoSubstate);
-            appStatus.aid            = rilAppStatus.aidPtr;
-            appStatus.app_label      = rilAppStatus.appLabelPtr;
-            appStatus.pin1_replaced  = rilAppStatus.pin1Replaced;
-            appStatus.pin1           = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
-            appStatus.pin2           = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
-            iccCardStatus.mApplications[i] = appStatus;
-        }
-        mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
-        return iccCardStatus;
     }
+
+    private void responseInts(RadioResponseInfo responseInfo, int ...var) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            Object ret = null;
+            if (responseInfo.error == RadioError.NONE) {
+                int[] response = new int[var.length];
+                for (int i = 0; i < var.length; i++) {
+                    response[i] = var[i];
+                }
+                ret = response;
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responseCurrentCalls(RadioResponseInfo responseInfo,
+                                      ArrayList<android.hardware.radio.V1_0.Call> calls) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            Object ret = null;
+            if (responseInfo.error == RadioError.NONE) {
+                int num;
+                ArrayList<DriverCall> dcCalls;
+                DriverCall dc;
+
+                num = calls.size();
+                dcCalls = new ArrayList<DriverCall>(num);
+
+                for (int i = 0; i < num; i++) {
+                    dc = new DriverCall();
+                    // TODO: change name of function stateFromCLCC() in DriverCall.java to name
+                    // clarifying what is CLCC
+                    dc.state = DriverCall.stateFromCLCC((int) (calls.get(i).state));
+                    dc.index = calls.get(i).index;
+                    dc.TOA = calls.get(i).toa;
+                    dc.isMpty = calls.get(i).isMpty;
+                    dc.isMT = calls.get(i).isMT;
+                    dc.als = calls.get(i).als;
+                    dc.isVoice = calls.get(i).isVoice;
+                    dc.isVoicePrivacy = calls.get(i).isVoicePrivacy;
+                    dc.number = calls.get(i).number;
+                    dc.numberPresentation =
+                            DriverCall.presentationFromCLIP(
+                                    (int) (calls.get(i).numberPresentation));
+                    dc.name = calls.get(i).name;
+                    dc.namePresentation =
+                            DriverCall.presentationFromCLIP((int) (calls.get(i).namePresentation));
+                    if (calls.get(i).uusInfo.size() == 1) {
+                        dc.uusInfo = new UUSInfo();
+                        dc.uusInfo.setType(calls.get(i).uusInfo.get(0).uusType);
+                        dc.uusInfo.setDcs(calls.get(i).uusInfo.get(0).uusDcs);
+                        if (calls.get(i).uusInfo.get(0).uusData != null) {
+                            byte[] userData = calls.get(i).uusInfo.get(0).uusData.getBytes();
+                            dc.uusInfo.setUserData(userData);
+                        } else {
+                            mRil.riljLog("responseCurrentCalls: uusInfo data is null");
+                        }
+
+                        mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
+                                dc.uusInfo.getType(), dc.uusInfo.getDcs(),
+                                dc.uusInfo.getUserData().length));
+                        mRil.riljLogv("Incoming UUS : data (hex): "
+                                + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
+                    } else {
+                        mRil.riljLogv("Incoming UUS : NOT present!");
+                    }
+
+                    // Make sure there's a leading + on addresses with a TOA of 145
+                    dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
+
+                    dcCalls.add(dc);
+
+                    if (dc.isVoicePrivacy) {
+                        mRil.mVoicePrivacyOnRegistrants.notifyRegistrants();
+                        mRil.riljLog("InCall VoicePrivacy is enabled");
+                    } else {
+                        mRil.mVoicePrivacyOffRegistrants.notifyRegistrants();
+                        mRil.riljLog("InCall VoicePrivacy is disabled");
+                    }
+                }
+
+                Collections.sort(dcCalls);
+
+                if ((num == 0) && mRil.mTestingEmergencyCall.getAndSet(false)) {
+                    if (mRil.mEmergencyCallbackModeRegistrant != null) {
+                        mRil.riljLog("responseCurrentCalls: call ended, testing emergency call,"
+                                + " notify ECM Registrants");
+                        mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
+                    }
+                }
+
+                ret = dcCalls;
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responseVoid(RadioResponseInfo responseInfo) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            Object ret = null;
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
 }

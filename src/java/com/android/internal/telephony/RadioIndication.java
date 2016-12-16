@@ -16,21 +16,20 @@
 
 package com.android.internal.telephony;
 
-import android.hardware.radio.V1_0.IRadioIndication;
-import android.hardware.radio.V1_0.RadioIndicationType;
-import android.hardware.radio.V1_0.SetupDataCallResult;
-import android.hardware.radio.V1_0.SuppSvcNotification;
-import android.hardware.radio.V1_0.SimRefreshResult;
+import android.hardware.radio.V1_0.CdmaCallWaiting;
 import android.hardware.radio.V1_0.CdmaSignalInfoRecord;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
-import android.hardware.radio.V1_0.CdmaCallWaiting;
-import android.hardware.radio.V1_0.StkCcUnsolSsResult;
+import android.hardware.radio.V1_0.IRadioIndication;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.PcoDataInfo;
-import android.os.Message;
+import android.hardware.radio.V1_0.SetupDataCallResult;
+import android.hardware.radio.V1_0.SimRefreshResult;
+import android.hardware.radio.V1_0.StkCcUnsolSsResult;
+import android.hardware.radio.V1_0.SuppSvcNotification;
+
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED;
 
 import java.util.ArrayList;
-import static com.android.internal.telephony.RILConstants.*;
 
 public class RadioIndication extends IRadioIndication.Stub {
     RIL mRil;
@@ -47,7 +46,8 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void radioStateChanged(int indicationType, int radioState) {
         mRil.processIndication(indicationType);
         CommandsInterface.RadioState newState = getRadioStateFromInt(radioState);
-        mRil.riljLog("radioStateChanged: " + newState.toString());
+        mRil.unsljLogMore(RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: "
+                + newState.toString());
         mRil.setRadioState(newState);
     }
 
