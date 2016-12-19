@@ -27,6 +27,7 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
+import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.UusInfo;
 import android.net.ConnectivityManager;
 import android.net.LocalSocket;
@@ -2590,7 +2591,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     void processIndication(int indicationType) {
         if (indicationType == RadioIndicationType.UNSOLICITED_ACK_EXP) {
             sendAck();
-            if (RIL.RILJ_LOGD) riljLog("Unsol response received; Sending ack to ril.cpp");
+            if (RILJ_LOGD) riljLog("Unsol response received; Sending ack to ril.cpp");
         } else {
             // ack is not expected to be sent back. Nothing is required to be done here.
         }
@@ -2683,8 +2684,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     /**
      * This is a helper function to be called at the end of all RadioResponse callbacks.
-     * It takes care of logging, decrementing wakelock if needed, and releases the request from
-     * memory pool.
+     * It takes care of sending error response, logging, decrementing wakelock if needed, and
+     * releases the request from memory pool.
      * @param rr RILRequest for which response callback was called
      * @param responseInfo RadioResponseInfo received in the callback
      * @param ret object to be returned to request sender
@@ -3282,6 +3283,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return s;
     }
 
+    void writeMetricsNewSms(int tech, int format) {
+        mMetrics.writeRilNewSms(mInstanceId, tech, format);
+    }
+
+    void writeMetricsCallRing(char[] response) {
+        mMetrics.writeRilCallRing(mInstanceId, response);
+    }
+
     private void
     processUnsolicited (Parcel p, int type) {
         int response;
@@ -3303,33 +3312,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
 
         try {switch(response) {
-/*
- cat libs/telephony/ril_unsol_commands.h \
- | egrep "^ *{RIL_" \
- | sed -re 's/\{([^,]+),[^,]+,([^}]+).+/case \1: \2(rr, p); break;/'
-*/
-
-            case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: ret =  responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED: ret =  responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED: ret =  responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_NEW_SMS: ret =  responseString(p); break;
-            case RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT: ret =  responseString(p); break;
-            case RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM: ret =  responseInts(p); break;
-            case RIL_UNSOL_ON_USSD: ret =  responseStrings(p); break;
-            case RIL_UNSOL_NITZ_TIME_RECEIVED: ret =  responseString(p); break;
             case RIL_UNSOL_SIGNAL_STRENGTH: ret = responseSignalStrength(p); break;
-            case RIL_UNSOL_DATA_CALL_LIST_CHANGED: ret = responseDataCallList(p);break;
-            case RIL_UNSOL_SUPP_SVC_NOTIFICATION: ret = responseSuppServiceNotification(p); break;
-            case RIL_UNSOL_STK_SESSION_END: ret = responseVoid(p); break;
-            case RIL_UNSOL_STK_PROACTIVE_COMMAND: ret = responseString(p); break;
-            case RIL_UNSOL_STK_EVENT_NOTIFY: ret = responseString(p); break;
-            case RIL_UNSOL_STK_CALL_SETUP: ret = responseInts(p); break;
-            case RIL_UNSOL_SIM_SMS_STORAGE_FULL: ret =  responseVoid(p); break;
-            case RIL_UNSOL_SIM_REFRESH: ret =  responseSimRefresh(p); break;
-            case RIL_UNSOL_CALL_RING: ret =  responseCallRing(p); break;
             case RIL_UNSOL_RESTRICTED_STATE_CHANGED: ret = responseInts(p); break;
-            case RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED:  ret =  responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_CDMA_NEW_SMS:  ret =  responseCdmaSms(p); break;
             case RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS:  ret =  responseRaw(p); break;
             case RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL:  ret =  responseVoid(p); break;
             case RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE: ret = responseVoid(p); break;
@@ -3372,103 +3356,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 mImsNetworkStateChangedRegistrants
                     .notifyRegistrants(new AsyncResult(null, null, null));
             break;
-            case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED:
-                if (RILJ_LOGD) unsljLog(response);
-
-                mCallStateRegistrants
-                    .notifyRegistrants(new AsyncResult(null, null, null));
-            break;
-            case RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED:
-                if (RILJ_LOGD) unsljLog(response);
-
-                mVoiceNetworkStateRegistrants
-                    .notifyRegistrants(new AsyncResult(null, null, null));
-            break;
-            case RIL_UNSOL_RESPONSE_NEW_SMS: {
-                if (RILJ_LOGD) unsljLog(response);
-
-                mMetrics.writeRilNewSms(mInstanceId, SmsSession.Event.Tech.SMS_GSM,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP);
-
-                // FIXME this should move up a layer
-                String a[] = new String[2];
-
-                a[1] = (String)ret;
-
-                SmsMessage sms;
-
-                sms = SmsMessage.newFromCMT(a);
-                if (mGsmSmsRegistrant != null) {
-                    mGsmSmsRegistrant
-                        .notifyRegistrant(new AsyncResult(null, sms, null));
-                }
-            break;
-            }
-            case RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mSmsStatusRegistrant != null) {
-                    mSmsStatusRegistrant.notifyRegistrant(
-                            new AsyncResult(null, ret, null));
-                }
-            break;
-            case RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                int[] smsIndex = (int[])ret;
-
-                if(smsIndex.length == 1) {
-                    if (mSmsOnSimRegistrant != null) {
-                        mSmsOnSimRegistrant.
-                                notifyRegistrant(new AsyncResult(null, smsIndex, null));
-                    }
-                } else {
-                    if (RILJ_LOGD) riljLog(" NEW_SMS_ON_SIM ERROR with wrong length "
-                            + smsIndex.length);
-                }
-            break;
-            case RIL_UNSOL_ON_USSD:
-                String[] resp = (String[])ret;
-
-                if (resp.length < 2) {
-                    resp = new String[2];
-                    resp[0] = ((String[])ret)[0];
-                    resp[1] = null;
-                }
-                if (RILJ_LOGD) unsljLogMore(response, resp[0]);
-                if (mUSSDRegistrant != null) {
-                    mUSSDRegistrant.notifyRegistrant(
-                        new AsyncResult (null, resp, null));
-                }
-            break;
-            case RIL_UNSOL_NITZ_TIME_RECEIVED:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                // has bonus long containing milliseconds since boot that the NITZ
-                // time was received
-                long nitzReceiveTime = p.readLong();
-
-                Object[] result = new Object[2];
-
-                result[0] = ret;
-                result[1] = Long.valueOf(nitzReceiveTime);
-
-                boolean ignoreNitz = SystemProperties.getBoolean(
-                        TelephonyProperties.PROPERTY_IGNORE_NITZ, false);
-
-                if (ignoreNitz) {
-                    if (RILJ_LOGD) riljLog("ignoring UNSOL_NITZ_TIME_RECEIVED");
-                } else {
-                    if (mNITZTimeRegistrant != null) {
-
-                        mNITZTimeRegistrant
-                            .notifyRegistrant(new AsyncResult (null, result, null));
-                    }
-                    // in case NITZ time registrant isn't registered yet, or a new registrant
-                    // registers later
-                    mLastNITZTimeInfo = result;
-                }
-            break;
 
             case RIL_UNSOL_SIGNAL_STRENGTH:
                 // Note this is set to "verbose" because it happens
@@ -3477,82 +3364,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                 if (mSignalStrengthRegistrant != null) {
                     mSignalStrengthRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-            break;
-            case RIL_UNSOL_DATA_CALL_LIST_CHANGED:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                mDataNetworkStateRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
-            break;
-
-            case RIL_UNSOL_SUPP_SVC_NOTIFICATION:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mSsnRegistrant != null) {
-                    mSsnRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_STK_SESSION_END:
-                if (RILJ_LOGD) unsljLog(response);
-
-                if (mCatSessionEndRegistrant != null) {
-                    mCatSessionEndRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_STK_PROACTIVE_COMMAND:
-                if (RILJ_LOGD) unsljLog(response);
-
-                if (mCatProCmdRegistrant != null) {
-                    mCatProCmdRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_STK_EVENT_NOTIFY:
-                if (RILJ_LOGD) unsljLog(response);
-
-                if (mCatEventRegistrant != null) {
-                    mCatEventRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_STK_CALL_SETUP:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mCatCallSetUpRegistrant != null) {
-                    mCatCallSetUpRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_SIM_SMS_STORAGE_FULL:
-                if (RILJ_LOGD) unsljLog(response);
-
-                if (mIccSmsFullRegistrant != null) {
-                    mIccSmsFullRegistrant.notifyRegistrant();
-                }
-                break;
-
-            case RIL_UNSOL_SIM_REFRESH:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mIccRefreshRegistrants != null) {
-                    mIccRefreshRegistrants.notifyRegistrants(
-                            new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_CALL_RING:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mRingRegistrant != null) {
-                    mRingRegistrant.notifyRegistrant(
                             new AsyncResult (null, ret, null));
                 }
                 break;
@@ -3562,28 +3373,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (mRestrictedStateRegistrant != null) {
                     mRestrictedStateRegistrant.notifyRegistrant(
                                         new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED:
-                if (RILJ_LOGD) unsljLog(response);
-
-                if (mIccStatusChangedRegistrants != null) {
-                    mIccStatusChangedRegistrants.notifyRegistrants();
-                }
-                break;
-
-            case RIL_UNSOL_RESPONSE_CDMA_NEW_SMS:
-                if (RILJ_LOGD) unsljLog(response);
-
-                mMetrics.writeRilNewSms(mInstanceId, SmsSession.Event.Tech.SMS_CDMA,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP2);
-
-                SmsMessage sms = (SmsMessage) ret;
-
-                if (mCdmaSmsRegistrant != null) {
-                    mCdmaSmsRegistrant
-                        .notifyRegistrant(new AsyncResult(null, sms, null));
                 }
                 break;
 
@@ -3875,14 +3664,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         notification.number = p.readString();
 
         return notification;
-    }
-
-    private Object
-    responseCdmaSms(Parcel p) {
-        SmsMessage sms;
-        sms = SmsMessage.newFromParcel(p);
-
-        return sms;
     }
 
     private Object
@@ -4267,20 +4048,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         notification.numberPlan = p.readInt();
 
         return notification;
-    }
-
-    private Object
-    responseCallRing(Parcel p){
-        char response[] = new char[4];
-
-        response[0] = (char) p.readInt();    // isPresent
-        response[1] = (char) p.readInt();    // signalType
-        response[2] = (char) p.readInt();    // alertPitch
-        response[3] = (char) p.readInt();    // signal
-
-        mMetrics.writeRilCallRing(mInstanceId, response);
-
-        return response;
     }
 
     private void
@@ -5343,5 +5110,60 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
         }
         send(rr);
+    }
+
+    public static byte[] arrayListToPrimitiveArray(ArrayList<Byte> bytes) {
+        byte[] ret = new byte[bytes.size()];
+        for (int i = 0; i < ret.length; i++) {
+            ret[i] = bytes.get(i);
+        }
+        return ret;
+    }
+
+    static ArrayList<DataCallResponse> convertHalDcList(ArrayList<SetupDataCallResult> dcList) {
+        ArrayList<DataCallResponse> dcResponseList;
+        int num = 0;
+        if (dcList != null) {
+            num = dcList.size();
+        }
+        dcResponseList = new ArrayList<>(num);
+        for (int i = 0; i < num; i++) {
+            DataCallResponse dcResponse = new DataCallResponse();
+            SetupDataCallResult dc = dcList.get(i);
+            // todo: get rid of this version field?
+            // todo: create a DataCallResponse constructor that takes in these fields to make sure
+            // no fields are missing
+            dcResponse.version = 11;
+            dcResponse.status = dc.status;
+            dcResponse.suggestedRetryTime = dc.suggestedRetryTime;
+            dcResponse.cid = dc.cid;
+            dcResponse.active = dc.active;
+            dcResponse.type = dc.type;
+            dcResponse.ifname = dc.ifname;
+            if ((dcResponse.status == DcFailCause.NONE.getErrorCode()) &&
+                    TextUtils.isEmpty(dcResponse.ifname)) {
+                throw new RuntimeException("getDataCallResponse, no ifname");
+            }
+            String addresses = dc.addresses;
+            if (!TextUtils.isEmpty(addresses)) {
+                dcResponse.addresses = addresses.split(" ");
+            }
+            String dnses = dc.dnses;
+            if (!TextUtils.isEmpty(dnses)) {
+                dcResponse.dnses = dnses.split(" ");
+            }
+            String gateways = dc.gateways;
+            if (!TextUtils.isEmpty(gateways)) {
+                dcResponse.gateways = gateways.split(" ");
+            }
+            String pcscf = dc.pcscf;
+            if (!TextUtils.isEmpty(pcscf)) {
+                dcResponse.pcscf = pcscf.split(" ");
+            }
+            dcResponse.mtu = dc.mtu;
+
+            dcResponseList.add(dcResponse);
+        }
+        return dcResponseList;
     }
 }
