@@ -156,6 +156,7 @@ public class ServiceStateTracker extends Handler {
     protected RegistrantList mDetachedRegistrants = new RegistrantList();
     private RegistrantList mDataRegStateOrRatChangedRegistrants = new RegistrantList();
     private RegistrantList mNetworkAttachedRegistrants = new RegistrantList();
+    private RegistrantList mNetworkDetachedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
 
@@ -424,6 +425,8 @@ public class ServiceStateTracker extends Handler {
     private boolean mStartedGprsRegCheck;
     /** Already sent the event-log for no gprs register. */
     private boolean mReportedGprsNoReg;
+
+    private CarrierServiceStateTracker mCSST;
     /**
      * The Notification object given to the NotificationManager.
      */
@@ -553,6 +556,17 @@ public class ServiceStateTracker extends Handler {
         mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
 
         updatePhoneType();
+
+        mCSST = new CarrierServiceStateTracker(phone, this);
+
+        registerForNetworkAttached(mCSST,
+                CarrierServiceStateTracker.CARRIER_EVENT_VOICE_REGISTRATION, null);
+        registerForNetworkDetached(mCSST,
+                CarrierServiceStateTracker.CARRIER_EVENT_VOICE_DEREGISTRATION, null);
+        registerForDataConnectionAttached(mCSST,
+                CarrierServiceStateTracker.CARRIER_EVENT_DATA_REGISTRATION, null);
+        registerForDataConnectionDetached(mCSST,
+                CarrierServiceStateTracker.CARRIER_EVENT_DATA_DEREGISTRATION, null);
     }
 
     @VisibleForTesting
@@ -2693,6 +2707,10 @@ public class ServiceStateTracker extends Handler {
             mNitzUpdatedTime = false;
         }
 
+        if (hasDeregistered) {
+            mNetworkDetachedRegistrants.notifyRegistrants();
+        }
+
         if (hasChanged) {
             String operatorNumeric;
 
@@ -2847,6 +2865,10 @@ public class ServiceStateTracker extends Handler {
                 mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
                         && mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
 
+        boolean hasDeregistered =
+                mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
+                        && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
+
         boolean hasCdmaDataConnectionAttached =
                 mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE
                         && mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
@@ -2919,6 +2941,10 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRegistered) {
             mNetworkAttachedRegistrants.notifyRegistrants();
+        }
+
+        if (hasDeregistered) {
+            mNetworkDetachedRegistrants.notifyRegistrants();
         }
 
         if (hasChanged) {
@@ -3158,6 +3184,10 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRegistered) {
             mNetworkAttachedRegistrants.notifyRegistrants();
+        }
+
+        if (hasDeregistered) {
+            mNetworkDetachedRegistrants.notifyRegistrants();
         }
 
         if (hasChanged) {
@@ -4274,8 +4304,28 @@ public class ServiceStateTracker extends Handler {
             r.notifyRegistrant();
         }
     }
+
     public void unregisterForNetworkAttached(Handler h) {
         mNetworkAttachedRegistrants.remove(h);
+    }
+
+    /**
+     * Registration point for transition into network detached.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj in Message.obj
+     */
+    public void registerForNetworkDetached(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+
+        mNetworkDetachedRegistrants.add(r);
+        if (mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE) {
+            r.notifyRegistrant();
+        }
+    }
+
+    public void unregisterForNetworkDetached(Handler h) {
+        mNetworkDetachedRegistrants.remove(h);
     }
 
     /**
