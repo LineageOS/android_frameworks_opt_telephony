@@ -32,7 +32,6 @@ import android.text.TextUtils;
 import android.telephony.Rlog;
 
 import static com.android.internal.telephony.CommandsInterface.*;
-import com.android.internal.telephony.gsm.SsData;
 
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -1238,6 +1237,17 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 } else if (err == CommandException.Error.FDN_CHECK_FAILURE) {
                     Rlog.i(LOG_TAG, "FDN_CHECK_FAILURE");
                     sb.append(mContext.getText(com.android.internal.R.string.mmiFdnError));
+                } else if (err == CommandException.Error.MODEM_ERR) {
+                    // Some carriers do not allow changing call forwarding settings while roaming
+                    // and will return an error from the modem.
+                    if (isServiceCodeCallForwarding(mSc)
+                            && mPhone.getServiceState().getVoiceRoaming()
+                            && !mPhone.supports3gppCallForwardingWhileRoaming()) {
+                        sb.append(mContext.getText(
+                                com.android.internal.R.string.mmiErrorWhileRoaming));
+                    } else {
+                        sb.append(getErrorMessage(ar));
+                    }
                 } else {
                     sb.append(getErrorMessage(ar));
                 }
