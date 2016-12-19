@@ -312,6 +312,14 @@ public class DcTracker extends Handler {
                     log("WIFI_STATE_CHANGED_ACTION: enabled=" + enabled
                             + " mIsWifiConnected=" + mIsWifiConnected);
                 }
+            } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                CarrierConfigManager configMgr = (CarrierConfigManager)
+                        mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                if (configMgr != null) {
+                    PersistableBundle cfg = configMgr.getConfigForSubId(mPhone.getSubId());
+                    if (cfg != null) mAllowUserEditTetherApn =
+                            cfg.getBoolean(CarrierConfigManager.KEY_EDITABLE_TETHER_APN_BOOL);
+                }
             } else {
                 if (DBG) log("onReceive: Unknown action=" + action);
             }
@@ -614,6 +622,22 @@ public class DcTracker extends Handler {
     private boolean mMeteredApnDisabled = false;
 
     /**
+     * int to remember whether has setDataProfiles and with roaming or not.
+     * 0: default, has never set data profile
+     * 1: has set data profile with home protocol
+     * 2: has set data profile with roaming protocol
+     * This is not needed once RIL command is updated to support both home and roaming protocol.
+     */
+    private int mSetDataProfileStatus = 0;
+
+    /**
+     * Whether carrier allow user edited tether APN. Updated by carrier config
+     * KEY_EDITABLE_TETHER_APN_BOOL
+     * If true, APN with dun type from database will be used, see fetchDunApn for details.
+     */
+    private boolean mAllowUserEditTetherApn = false;
+
+    /**
      * Handles changes to the APN db.
      */
     private class ApnChangeObserver extends ContentObserver {
@@ -681,6 +705,7 @@ public class DcTracker extends Handler {
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
+        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
 
         // TODO - redundent with update call below?
         mDataEnabledSettings.setUserDataEnabled(getDataEnabled());
@@ -1821,50 +1846,56 @@ public class DcTracker extends Handler {
             return null;
         }
         int bearer = mPhone.getServiceState().getRilDataRadioTechnology();
-        ApnSetting retDunSetting = null;
-        String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
-        List<ApnSetting> dunSettings = ApnSetting.arrayFromString(apnData);
         IccRecords r = mIccRecords.get();
-        for (ApnSetting dunSetting : dunSettings) {
-            String operator = (r != null) ? r.getOperatorNumeric() : "";
+        String operator = (r != null) ? r.getOperatorNumeric() : "";
+        ArrayList<ApnSetting> dunCandidates = new ArrayList<ApnSetting>();
+        ApnSetting retDunSetting = null;
+
+        // Places to look for tether APN in order: TETHER_DUN_APN setting, APN database if
+        // carrier allows it, and config_tether_apndata resource.
+        String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
+        if (!TextUtils.isEmpty(apnData)) {
+            dunCandidates.addAll(ApnSetting.arrayFromString(apnData));
+            if (VDBG) log("fetchDunApn: dunCandidates from Setting: " + dunCandidates);
+        } else if (mAllowUserEditTetherApn) {
+            for (ApnSetting apn : mAllApnSettings) {
+                if (apn.canHandleType(PhoneConstants.APN_TYPE_DUN)) {
+                    dunCandidates.add(apn);
+                }
+            }
+            if (VDBG) log("fetchDunApn: dunCandidates from database: " + dunCandidates);
+        }
+        // If TETHER_DUN_APN isn't set or
+        // mAllowUserEditTetherApn is true but APN database doesn't have dun APN,
+        // try the resource as last resort.
+        if (dunCandidates.isEmpty()) {
+            String[] apnArrayData = mPhone.getContext().getResources()
+                .getStringArray(R.array.config_tether_apndata);
+            for (String apnString : apnArrayData) {
+                ApnSetting apn = ApnSetting.fromString(apnString);
+                // apn may be null if apnString isn't valid or has error parsing
+                if (apn != null) dunCandidates.add(apn);
+            }
+            if (VDBG) log("fetchDunApn: dunCandidates from resource: " + dunCandidates);
+        }
+
+        for (ApnSetting dunSetting : dunCandidates) {
             if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
             if (dunSetting.numeric.equals(operator)) {
                 if (dunSetting.hasMvnoParams()) {
                     if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
                             dunSetting.mvnoMatchData)) {
-                        if (VDBG) {
-                            log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
-                        }
-                        return dunSetting;
-                    }
-                } else if (mMvnoMatched == false) {
-                    if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
-                    return dunSetting;
-                }
-            }
-        }
-
-        Context c = mPhone.getContext();
-        String[] apnArrayData = c.getResources().getStringArray(R.array.config_tether_apndata);
-        for (String apn : apnArrayData) {
-            ApnSetting dunSetting = ApnSetting.fromString(apn);
-            if (dunSetting != null) {
-                if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
-                if (dunSetting.hasMvnoParams()) {
-                    if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
-                            dunSetting.mvnoMatchData)) {
-                        if (VDBG) {
-                            log("fetchDunApn: config_tether_apndata mvno dunSetting=" + dunSetting);
-                        }
-                        return dunSetting;
+                        retDunSetting = dunSetting;
+                        break;
                     }
                 } else if (mMvnoMatched == false) {
                     retDunSetting = dunSetting;
+                    break;
                 }
             }
         }
 
-        if (VDBG) log("fetchDunApn: config_tether_apndata dunSetting=" + retDunSetting);
+        if (VDBG) log("fetchDunApn: dunSetting=" + retDunSetting);
         return retDunSetting;
     }
 
