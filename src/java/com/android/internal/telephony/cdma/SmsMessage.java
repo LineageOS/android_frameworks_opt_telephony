@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.os.Parcel;
 import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
@@ -127,7 +128,7 @@ public class SmsMessage extends SmsMessageBase {
      *  Create a "raw" CDMA SmsMessage from a Parcel that was forged in ril.cpp.
      *  Note: Only primitive fields are set.
      */
-    public static SmsMessage newFromParcel(Parcel p) {
+    public static SmsMessage newFromRil(CdmaSmsMessage cdmaSmsMessage) {
         // Note: Parcel.readByte actually reads one Int and masks to byte
         SmsMessage msg = new SmsMessage();
         SmsEnvelope env = new SmsEnvelope();
@@ -139,9 +140,9 @@ public class SmsMessage extends SmsMessageBase {
         int addressDigitMode;
 
         //currently not supported by the modem-lib: env.mMessageType
-        env.teleService = p.readInt(); //p_cur->uTeleserviceID
+        env.teleService = cdmaSmsMessage.teleserviceId;
 
-        if (0 != p.readByte()) { //p_cur->bIsServicePresent
+        if (cdmaSmsMessage.isServicePresent) {
             env.messageType = SmsEnvelope.MESSAGE_TYPE_BROADCAST;
         }
         else {
@@ -152,20 +153,19 @@ public class SmsMessage extends SmsMessageBase {
                 env.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
             }
         }
-        env.serviceCategory = p.readInt(); //p_cur->uServicecategory
+        env.serviceCategory = cdmaSmsMessage.serviceCategory;
 
         // address
-        addressDigitMode = p.readInt();
-        addr.digitMode = (byte) (0xFF & addressDigitMode); //p_cur->sAddress.digit_mode
-        addr.numberMode = (byte) (0xFF & p.readInt()); //p_cur->sAddress.number_mode
-        addr.ton = p.readInt(); //p_cur->sAddress.number_type
-        addr.numberPlan = (byte) (0xFF & p.readInt()); //p_cur->sAddress.number_plan
-        count = p.readByte(); //p_cur->sAddress.number_of_digits
+        addressDigitMode = cdmaSmsMessage.address.digitMode;
+        addr.digitMode = (byte) (0xFF & addressDigitMode);
+        addr.numberMode = (byte) (0xFF & cdmaSmsMessage.address.numberMode);
+        addr.ton = cdmaSmsMessage.address.numberType;
+        addr.numberPlan = (byte) (0xFF & cdmaSmsMessage.address.numberPlan);
+        count = (byte) cdmaSmsMessage.address.digits.size();
         addr.numberOfDigits = count;
         data = new byte[count];
-        //p_cur->sAddress.digits[digitCount]
         for (int index=0; index < count; index++) {
-            data[index] = p.readByte();
+            data[index] = cdmaSmsMessage.address.digits.get(index);
 
             // convert the value if it is 4-bit DTMF to 8 bit
             if (addressDigitMode == CdmaSmsAddress.DIGIT_MODE_4BIT_DTMF) {
@@ -175,9 +175,9 @@ public class SmsMessage extends SmsMessageBase {
 
         addr.origBytes = data;
 
-        subaddr.type = p.readInt(); // p_cur->sSubAddress.subaddressType
-        subaddr.odd = p.readByte();     // p_cur->sSubAddress.odd
-        count = p.readByte();           // p_cur->sSubAddress.number_of_digits
+        subaddr.type = cdmaSmsMessage.subAddress.subaddressType;
+        subaddr.odd = (byte) (cdmaSmsMessage.subAddress.odd ? 1 : 0);
+        count = (byte) cdmaSmsMessage.subAddress.digits.size();
 
         if (count < 0) {
             count = 0;
@@ -188,7 +188,7 @@ public class SmsMessage extends SmsMessageBase {
         data = new byte[count];
 
         for (int index = 0; index < count; ++index) {
-            data[index] = p.readByte();
+            data[index] = cdmaSmsMessage.subAddress.digits.get(index);
         }
 
         subaddr.origBytes = data;
@@ -201,14 +201,14 @@ public class SmsMessage extends SmsMessageBase {
         */
 
         // bearer data
-        countInt = p.readInt(); //p_cur->uBearerDataLen
+        countInt = cdmaSmsMessage.bearerData.size();
         if (countInt < 0) {
             countInt = 0;
         }
 
         data = new byte[countInt];
         for (int index=0; index < countInt; index++) {
-            data[index] = p.readByte();
+            data[index] = cdmaSmsMessage.bearerData.get(index);
         }
         // BD gets further decoded when accessed in SMSDispatcher
         env.bearerData = data;

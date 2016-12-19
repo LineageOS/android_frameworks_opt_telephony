@@ -19,6 +19,7 @@ package android.telephony;
 import android.os.Binder;
 import android.os.Parcel;
 import android.content.res.Resources;
+import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
@@ -221,10 +222,10 @@ public class SmsMessage {
      *
      * {@hide}
      */
-    public static SmsMessage newFromCMT(String[] lines) {
+    public static SmsMessage newFromCMT(byte[] pdu) {
         // received SMS in 3GPP format
         SmsMessageBase wrappedMessage =
-                com.android.internal.telephony.gsm.SmsMessage.newFromCMT(lines);
+                com.android.internal.telephony.gsm.SmsMessage.newFromCMT(pdu);
 
         if (wrappedMessage != null) {
             return new SmsMessage(wrappedMessage);
@@ -235,10 +236,10 @@ public class SmsMessage {
     }
 
     /** @hide */
-    public static SmsMessage newFromParcel(Parcel p) {
+    public static SmsMessage newCdmaSmsFromRil(CdmaSmsMessage msg) {
         // received SMS in 3GPP2 format
         SmsMessageBase wrappedMessage =
-                com.android.internal.telephony.cdma.SmsMessage.newFromParcel(p);
+                com.android.internal.telephony.cdma.SmsMessage.newFromRil(msg);
 
         return new SmsMessage(wrappedMessage);
     }
