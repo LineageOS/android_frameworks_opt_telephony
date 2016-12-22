@@ -653,6 +653,90 @@ public class ProxyController {
         return modemUuid;
     }
 
+    //VENDOR_EDIT flexmap for eu version
+    /**@hide*/
+    public boolean euSetRadioCapability(RadioAccessFamily[] rafs) {
+            if (rafs.length != mPhones.length) {
+                throw new RuntimeException("Length of input rafs must equal to total phone count");
+            }
+            // Check if there is any ongoing transaction and throw an exception if there
+            // is one as this is a programming error.
+            synchronized (mSetRadioAccessFamilyStatus) {
+                for (int i = 0; i < mPhones.length; i++) {
+                    if (mSetRadioAccessFamilyStatus[i] != SET_RC_STATUS_IDLE) {
+                        // TODO: The right behaviour is to cancel previous request and send this.
+                        loge("euSetRadioCapability: Phone[" + i + "] is not idle. Rejecting request.");
+                        return false;
+                    }
+                }
+            }
+
+            // Proceed with flex map only if both phones have valid RAF/modemUuid values.
+            // Sometimes due to phone object switch existing phone RAF values disposed which can
+            // cause both phoens to link same modemUuid.
+            for (int i = 0; i < mPhones.length; i++) {
+                int raf = mPhones[i].getRadioAccessFamily();
+                String modemUuid = mPhones[i].getModemUuId();
+                if ((raf == RadioAccessFamily.RAF_UNKNOWN) ||
+                         (modemUuid == null) || (modemUuid.length() == 0)) {
+                    logd("euSetRadioCapability: invalid RAF = " + raf + " or modemUuid = " +
+                             modemUuid + " for phone = " + i);
+                    return false;
+                }
+            }
+
+            // Clear to be sure we're in the initial state
+            clearTransaction();
+
+            // Keep a wake lock until we finish radio capability changed
+            mWakeLock.acquire();
+
+            return euDoSetRadioCapabilities(rafs);
+        }
+
+    private boolean euDoSetRadioCapabilities(RadioAccessFamily[] rafs) {
+        mRadioCapabilitySessionId = mUniqueIdGenerator.getAndIncrement();
+
+        // Start timer to make sure all phones respond within a specific time interval.
+        // Will send FINISH if a timeout occurs.
+        Message msg = mHandler.obtainMessage(EVENT_TIMEOUT, mRadioCapabilitySessionId, 0);
+        mHandler.sendMessageDelayed(msg, SET_RC_TIMEOUT_WAITING_MSEC);
+
+        synchronized (mSetRadioAccessFamilyStatus) {
+            logd("euDoSetRadioCapabilities: new request session id=" + mRadioCapabilitySessionId);
+            resetRadioAccessFamilyStatusCounter();
+            for (int i = 0; i < rafs.length; i++) {
+                int phoneId = rafs[i].getPhoneId();
+                logd("euDoSetRadioCapabilities: phoneId=" + phoneId + " status=STARTING");
+                mSetRadioAccessFamilyStatus[phoneId] = SET_RC_STATUS_STARTING;
+                mOldRadioAccessFamily[phoneId] = mPhones[phoneId].getRadioAccessFamily();
+                int requestedRaf = rafs[i].getRadioAccessFamily();
+
+                mNewRadioAccessFamily[phoneId] = requestedRaf;
+
+                mCurrentLogicalModemIds[phoneId] = mPhones[phoneId].getModemUuId();
+                // get the logical mode corresponds to new raf requested and pass the
+                // swap the sub info
+                mNewLogicalModemIds[1-phoneId] = mPhones[phoneId].getModemUuId();
+                logd("euDoSetRadioCapabilities: mOldRadioAccessFamily[" + phoneId + "]="
+                        + mOldRadioAccessFamily[phoneId]);
+                logd("euDoSetRadioCapabilities: mNewRadioAccessFamily[" + phoneId + "]="
+                        + mNewRadioAccessFamily[phoneId]);
+                sendRadioCapabilityRequest(
+                        phoneId,
+                        mRadioCapabilitySessionId,
+                        RadioCapability.RC_PHASE_START,
+                        mOldRadioAccessFamily[phoneId],
+                        mCurrentLogicalModemIds[phoneId],
+                        RadioCapability.RC_STATUS_NONE,
+                        EVENT_START_RC_RESPONSE);
+            }
+        }
+
+        return true;
+    }
+    //VENDOR_EDIT end
+
     private void logd(String string) {
         Rlog.d(LOG_TAG, string);
     }

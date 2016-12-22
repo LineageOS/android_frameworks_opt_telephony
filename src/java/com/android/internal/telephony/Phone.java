@@ -3616,4 +3616,42 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             pw.println("++++++++++++++++++++++++++++++++");
         }
     }
+    /** @hide */
+    /** @hide */
+    public void setFactoryModeModemGPIO (int status, int num, Message response) {
+
+    }
+    /** @hide */
+    public boolean is_test_card()
+    {
+        if(mIccRecords != null)
+        {
+            IccRecords mRecords = mIccRecords.get();
+            if(mRecords != null)
+            {
+                return mRecords.is_test_card();
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+ //zhouhanxin@oneplus.cn 2016-10-18 for sim managerment begin.
+    private RegistrantList mPhoneObejectSwitchRegistrants = new RegistrantList();
+    private final Object mLock = new Object();
+    /*@hide*/
+    public void registerForPhoneObjectSwitch(Handler h, int what, Object obj) {
+        synchronized (mLock) {
+            Registrant r = new Registrant (h, what, obj);
+
+            mPhoneObejectSwitchRegistrants.add(r);
+        }
+    }
+
+ //zhouhanxin@oneplus.cn 2016-10-18 for sim managerment end
 }
