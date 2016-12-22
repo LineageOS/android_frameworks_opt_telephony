@@ -30,13 +30,12 @@ import android.os.SystemProperties;
 import android.telephony.CellLocation;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
-import java.util.Iterator;
-import android.telephony.Rlog;
 import android.util.EventLog;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
@@ -44,8 +43,9 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * {@hide}
@@ -1249,7 +1249,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         int count = call.mConnections.size();
         for (int i = 0; i < count; i++) {
             GsmCdmaConnection cn = (GsmCdmaConnection)call.mConnections.get(i);
-            if (cn.getGsmCdmaIndex() == index) {
+            if (!cn.mDisconnected && cn.getGsmCdmaIndex() == index) {
                 mCi.hangupConnection(index, obtainCompleteMessage());
                 return;
             }
@@ -1263,7 +1263,9 @@ public class GsmCdmaCallTracker extends CallTracker {
             int count = call.mConnections.size();
             for (int i = 0; i < count; i++) {
                 GsmCdmaConnection cn = (GsmCdmaConnection)call.mConnections.get(i);
-                mCi.hangupConnection(cn.getGsmCdmaIndex(), obtainCompleteMessage());
+                if (!cn.mDisconnected) {
+                    mCi.hangupConnection(cn.getGsmCdmaIndex(), obtainCompleteMessage());
+                }
             }
         } catch (CallStateException ex) {
             Rlog.e(LOG_TAG, "hangupConnectionByIndex caught " + ex);
@@ -1275,7 +1277,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         int count = call.mConnections.size();
         for (int i = 0; i < count; i++) {
             GsmCdmaConnection cn = (GsmCdmaConnection)call.mConnections.get(i);
-            if (cn.getGsmCdmaIndex() == index) {
+            if (!cn.mDisconnected && cn.getGsmCdmaIndex() == index) {
                 return cn;
             }
         }
