@@ -100,6 +100,8 @@ public class ImsPhoneConnection extends Connection implements
      */
     private boolean mShouldIgnoreVideoStateChanges = false;
 
+    private ImsVideoCallProviderWrapper mImsVideoCallProviderWrapper;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -1006,6 +1008,15 @@ public class ImsPhoneConnection extends Connection implements
         return sb.toString();
     }
 
+    @Override
+    public void setVideoProvider(android.telecom.Connection.VideoProvider videoProvider) {
+        super.setVideoProvider(videoProvider);
+
+        if (videoProvider instanceof ImsVideoCallProviderWrapper) {
+            mImsVideoCallProviderWrapper = (ImsVideoCallProviderWrapper) videoProvider;
+        }
+    }
+
     /**
      * Indicates whether current phone connection is emergency or not
      * @return boolean: true if emergency, false otherwise
@@ -1056,5 +1067,47 @@ public class ImsPhoneConnection extends Connection implements
                     VideoProfile.videoStateToString(currentVideoState));
             setVideoState(currentVideoState);
         }
+    }
+
+    /**
+     * Issues a request to pause the video using {@link VideoProfile#STATE_PAUSED} from a source
+     * other than the InCall UI.
+     *
+     * @param source The source of the pause request.
+     */
+    public void pauseVideo(int source) {
+        if (mImsVideoCallProviderWrapper == null) {
+            return;
+        }
+
+        mImsVideoCallProviderWrapper.pauseVideo(getVideoState(), source);
+    }
+
+    /**
+     * Issues a request to resume the video using {@link VideoProfile#STATE_PAUSED} from a source
+     * other than the InCall UI.
+     *
+     * @param source The source of the resume request.
+     */
+    public void resumeVideo(int source) {
+        if (mImsVideoCallProviderWrapper == null) {
+            return;
+        }
+
+        mImsVideoCallProviderWrapper.resumeVideo(getVideoState(), source);
+    }
+
+    /**
+     * Determines if a specified source has issued a pause request.
+     *
+     * @param source The source.
+     * @return {@code true} if the source issued a pause request, {@code false} otherwise.
+     */
+    public boolean wasVideoPausedFromSource(int source) {
+        if (mImsVideoCallProviderWrapper == null) {
+            return false;
+        }
+
+        return mImsVideoCallProviderWrapper.wasVideoPausedFromSource(source);
     }
 }
