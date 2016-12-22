@@ -246,7 +246,6 @@ public class ApnSettingTest extends TelephonyTest {
                 new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_CBS}).
                 isMetered(mContext, 1, isRoaming));
 
-        //reuse the cached result for subId 1
         assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_DEFAULT,
                 mContext, 1, isRoaming));
         assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_MMS,
@@ -262,6 +261,15 @@ public class ApnSettingTest extends TelephonyTest {
         assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_IA,
                 mContext, 1, isRoaming));
         assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_HIPRI,
+                mContext, 1, isRoaming));
+
+        // Carrier config settings changes.
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_DEFAULT,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_MMS,
                 mContext, 1, isRoaming));
     }
 
@@ -303,6 +311,17 @@ public class ApnSettingTest extends TelephonyTest {
         assertFalse(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_CBS}).
                 isMetered(mContext, 1, isRoaming));
+
+        // Carrier config settings changes.
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_FOTA});
+
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_DEFAULT,
+                mContext, 1, isRoaming));
+        assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_MMS,
+                mContext, 1, isRoaming));
+        assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_FOTA,
+                mContext, 1, isRoaming));
     }
 
     @Test
@@ -383,7 +402,6 @@ public class ApnSettingTest extends TelephonyTest {
                 new String[]{PhoneConstants.APN_TYPE_IMS}).
                 isMetered(mContext, 2, isRoaming));
 
-        //reuse the cached result for subId 2
         assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_SUPL,
                 mContext, 2, isRoaming));
         assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_CBS,
