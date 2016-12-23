@@ -3029,7 +3029,8 @@ public class ServiceStateTracker extends Handler {
             if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
                     (!ServiceState.isLte(mSS.getRilVoiceRadioTechnology()) ||
                             mPhone.getContext().getResources().getBoolean(com.android.internal.R.
-                                    bool.config_LTE_eri_for_network_name))) {
+                                    bool.config_LTE_eri_for_network_name)) &&
+                                    (!mIsSubscriptionFromRuim)) {
                 // Only when CDMA is in service, ERI will take effect
                 String eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
