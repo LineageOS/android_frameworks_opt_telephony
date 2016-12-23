@@ -16,15 +16,21 @@
 package com.android.internal.telephony;
 
 import android.annotation.Nullable;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.provider.VoicemailContract;
+import android.telecom.PhoneAccountHandle;
 import android.telephony.SmsMessage;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.VisualVoicemailSms;
 import android.telephony.VisualVoicemailSmsFilterSettings;
 import android.util.ArrayMap;
 import android.util.Log;
+
 import com.android.internal.telephony.VisualVoicemailSmsParser.WrappedMessageData;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,14 +41,18 @@ public class VisualVoicemailSmsFilter {
 
     private static final String TAG = "VvmSmsFilter";
 
-    private static final String SYSTEM_VVM_CLIENT_PACKAGE = "com.android.phone";
+    private static final String TELEPHONY_SERVICE_PACKAGE = "com.android.phone";
+
+    private static final ComponentName PSTN_CONNECTION_SERVICE_COMPONENT =
+            new ComponentName("com.android.phone",
+                    "com.android.services.telephony.TelephonyConnectionService");
 
     private static Map<String, List<Pattern>> sPatterns;
 
     /**
      * Attempt to parse the incoming SMS as a visual voicemail SMS. If the parsing succeeded, A
-     * {@link VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED} intent will be sent to the visual
-     * voicemail client, and the SMS should be dropped.
+     * {@link VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED} intent will be sent to telephony
+     * service, and the SMS will be dropped.
      *
      * <p>The accepted format for a visual voicemail SMS is a generalization of the OMTP format:
      *
@@ -50,8 +60,7 @@ public class VisualVoicemailSmsFilter {
      *
      * Additionally, if the SMS does not match the format, but matches the regex specified by the
      * carrier in {@link com.android.internal.R.array.config_vvmSmsFilterRegexes}, the SMS will
-     * still be dropped and a {@link VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED} with {@link
-     * VoicemailContract#EXTRA_VOICEMAIL_SMS_MESSAGE_BODY} will be sent.
+     * still be dropped and a {@link VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED} will be sent.
      *
      * @return true if the SMS has been parsed to be a visual voicemail SMS and should be dropped
      */
@@ -60,15 +69,18 @@ public class VisualVoicemailSmsFilter {
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 
-        // TODO: select client package.
-        String vvmClientPackage = SYSTEM_VVM_CLIENT_PACKAGE;
-
         VisualVoicemailSmsFilterSettings settings =
-                telephonyManager.getVisualVoicemailSmsFilterSettings(vvmClientPackage, subId);
+                telephonyManager.getActiveVisualVoicemailSmsFilterSettings(subId);
         if (settings == null) {
             return false;
         }
         // TODO: filter base on originating number and destination port.
+
+        PhoneAccountHandle phoneAccountHandle = phoneAccountHandleFromSubId(context, subId);
+        if (phoneAccountHandle == null) {
+            Log.e(TAG, "Unable to convert subId " + subId + " to PhoneAccountHandle");
+            return false;
+        }
 
         String messageBody = getFullMessage(pdus, format);
 
@@ -80,7 +92,7 @@ public class VisualVoicemailSmsFilter {
             WrappedMessageData messageData = VisualVoicemailSmsParser
                 .parseAlternativeFormat(asciiMessage);
             if (messageData != null) {
-                sendVvmSmsBroadcast(context, vvmClientPackage, subId, messageData, null);
+                sendVvmSmsBroadcast(context, phoneAccountHandle, messageData, null);
             }
             // Confidence for what the message actually is is low. Don't remove the message and let
             // system decide. Usually because it is not parsable it will be dropped.
@@ -90,7 +102,7 @@ public class VisualVoicemailSmsFilter {
         WrappedMessageData messageData = VisualVoicemailSmsParser
             .parse(clientPrefix, messageBody);
         if (messageData != null) {
-            sendVvmSmsBroadcast(context, vvmClientPackage, subId, messageData, null);
+            sendVvmSmsBroadcast(context, phoneAccountHandle, messageData, null);
             return true;
         }
 
@@ -106,7 +118,7 @@ public class VisualVoicemailSmsFilter {
             if (pattern.matcher(messageBody).matches()) {
                 Log.w(TAG, "Incoming SMS matches pattern " + pattern + " but has illegal format, "
                     + "still dropping as VVM SMS");
-                sendVvmSmsBroadcast(context, vvmClientPackage, subId, null, messageBody);
+                sendVvmSmsBroadcast(context, phoneAccountHandle, null, messageBody);
                 return true;
             }
         }
@@ -133,19 +145,21 @@ public class VisualVoicemailSmsFilter {
         }
     }
 
-    private static void sendVvmSmsBroadcast(Context context, String vvmClientPackage, int subId,
+    private static void sendVvmSmsBroadcast(Context context, PhoneAccountHandle phoneAccountHandle,
         @Nullable WrappedMessageData messageData, @Nullable String messageBody) {
         Log.i(TAG, "VVM SMS received");
         Intent intent = new Intent(VoicemailContract.ACTION_VOICEMAIL_SMS_RECEIVED);
+        VisualVoicemailSms.Builder builder = new VisualVoicemailSms.Builder();
         if (messageData != null) {
-            intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_PREFIX, messageData.prefix);
-            intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_FIELDS, messageData.fields);
+            builder.setPrefix(messageData.prefix);
+            builder.setFields(messageData.fields);
         }
         if (messageBody != null) {
-            intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_MESSAGE_BODY, messageBody);
+            builder.setMessageBody(messageBody);
         }
-        intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS_SUBID, subId);
-        intent.setPackage(vvmClientPackage);
+        builder.setPhoneAccountHandle(phoneAccountHandle);
+        intent.putExtra(VoicemailContract.EXTRA_VOICEMAIL_SMS, builder.build());
+        intent.setPackage(TELEPHONY_SERVICE_PACKAGE);
         context.sendBroadcast(intent);
     }
 
@@ -176,5 +190,18 @@ public class VisualVoicemailSmsFilter {
             builder.append(new String(pdu, StandardCharsets.US_ASCII));
         }
         return builder.toString();
+    }
+
+    @Nullable
+    private static PhoneAccountHandle phoneAccountHandleFromSubId(Context context, int subId) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            return null;
+        }
+        int phoneId = SubscriptionManager.getPhoneId(subId);
+        if (phoneId == SubscriptionManager.INVALID_PHONE_INDEX) {
+            return null;
+        }
+        return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
+                PhoneFactory.getPhone(phoneId).getFullIccSerialNumber());
     }
 }
