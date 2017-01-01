@@ -1514,7 +1514,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean needsSim2gsmOnly() {
-        if (sCommandsInterfaces[0] instanceof RIL) {
+        if (sCommandsInterfaces != null && sCommandsInterfaces[0] instanceof RIL) {
             return ((RIL) sCommandsInterfaces[0]).needsOldRilFeature("sim2gsmonly");
         }
         return false;
