@@ -52,6 +52,7 @@ public interface CallFailCause {
     int ACM_LIMIT_EXCEEDED = 68;
     int CALL_BARRED        = 240;
     int FDN_BLOCKED        = 241;
+    int IMEI_NOT_ACCEPTED  = 243;
 
     // Stk Call Control
     int DIAL_MODIFIED_TO_USSD = 244;
