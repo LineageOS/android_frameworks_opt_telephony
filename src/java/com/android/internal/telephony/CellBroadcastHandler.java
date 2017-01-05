@@ -19,13 +19,14 @@ package com.android.internal.telephony;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AppOpsManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Message;
 import android.os.UserHandle;
 import android.provider.Telephony;
-import android.telephony.SubscriptionManager;
 import android.telephony.SmsCbMessage;
+import android.telephony.SubscriptionManager;
 
 /**
  * Dispatch new Cell Broadcasts to receivers. Acquires a private wakelock until the broadcast
@@ -90,9 +91,22 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             receiverPermission = Manifest.permission.RECEIVE_SMS;
             appOp = AppOpsManager.OP_RECEIVE_SMS;
         }
+        // explicitly send it to the default cell broadcast receiver only.
+        intent.setComponent(getDefaultCellBroadcastReceiverApp(mContext));
         intent.putExtra("message", message);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission, appOp,
                 mReceiver, getHandler(), Activity.RESULT_OK, null, null);
+    }
+
+    /**
+     * Get the default cell broadcast receiver component name.
+     * @param context Device context
+     * @return Component name of the default cell broadcast receiver
+     */
+    public static ComponentName getDefaultCellBroadcastReceiverApp(Context context) {
+        String defaultCellBroadcastReceiver = context.getResources().getString(
+                com.android.internal.R.string.config_defaultCellBroadcastReceiverComponent);
+        return ComponentName.unflattenFromString(defaultCellBroadcastReceiver);
     }
 }
