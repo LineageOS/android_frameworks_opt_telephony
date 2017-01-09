@@ -30,8 +30,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.telephony.cdma.CdmaSmsCbProgramResults;
 
+import com.android.internal.telephony.CellBroadcastHandler;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.WakeLockStateMachine;
 import com.android.internal.telephony.cdma.sms.BearerData;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
@@ -103,6 +103,7 @@ public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachin
         }
 
         Intent intent = new Intent(Intents.SMS_SERVICE_CATEGORY_PROGRAM_DATA_RECEIVED_ACTION);
+        intent.setComponent(CellBroadcastHandler.getDefaultCellBroadcastReceiverApp(mContext));
         intent.putExtra("sender", sms.getOriginatingAddress());
         intent.putParcelableArrayListExtra("program_data", programDataList);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
