@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_8a49aa8d",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2571,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2017-01-09T04:26:43Z",
+      "side": 1,
+      "message": "Wait, this switches it to private, that\u0027s the opposite of what this commit message says you are trying to do.",
+      "range": {
+        "startLine": 2571,
+        "startChar": 4,
+        "endLine": 2571,
+        "endChar": 11
+      },
+      "revId": "1600a8a2703fa635aa1d0e9b0229bba8c4c17394",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
