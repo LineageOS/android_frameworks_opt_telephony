@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.cat;
 
+import android.content.ComponentName;
+
 /**
  * Interface for communication between STK App and CAT Telephony
  *
@@ -47,6 +49,11 @@ public interface AppInterface {
 
     // Permission required by STK command receiver
     public static final String STK_PERMISSION = "android.permission.RECEIVE_STK_COMMANDS";
+
+    // Only forwards cat broadcast to the system default stk app
+    public static ComponentName getDefaultSTKApplication() {
+        return ComponentName.unflattenFromString("com.android.stk/.StkCmdReceiver");
+    }
 
     /*
      * Callback function from app to telephony to pass a result code and user's
