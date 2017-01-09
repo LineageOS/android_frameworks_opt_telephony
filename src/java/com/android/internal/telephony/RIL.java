@@ -2568,7 +2568,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return state;
     }
 
-    protected void switchToRadioState(RadioState newState) {
+    private void switchToRadioState(RadioState newState) {
         setRadioState(newState);
     }
 
