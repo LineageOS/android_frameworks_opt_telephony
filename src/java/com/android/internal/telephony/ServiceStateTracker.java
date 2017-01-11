@@ -4131,7 +4131,8 @@ public class ServiceStateTracker extends Handler {
      *
      * @param notifyType is one state of PS/CS_*_ENABLE/DISABLE
      */
-    private void setNotification(int notifyType) {
+    @VisibleForTesting
+    public void setNotification(int notifyType) {
         if (DBG) log("setNotification: create notification " + notifyType);
 
         // Needed because sprout RIL sends these when they shouldn't?
