@@ -2102,4 +2102,12 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void unregisterForPcoData(Handler h) {
     }
+
+    @VisibleForTesting
+    public void triggerRestrictedStateChanged(int restrictedState) {
+        if (mRestrictedStateRegistrant != null) {
+            mRestrictedStateRegistrant.notifyRegistrant(
+                    new AsyncResult(null, new int[]{restrictedState}, null));
+        }
+    }
 }

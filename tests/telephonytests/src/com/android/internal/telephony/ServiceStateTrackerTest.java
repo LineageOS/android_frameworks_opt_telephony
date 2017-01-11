@@ -65,6 +65,7 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -778,6 +779,70 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
         assertEquals(EVENT_PS_RESTRICT_DISABLED, messageArgumentCaptor.getValue().what);
+    }
+
+    @Test
+    @MediumTest
+    public void testOnRestrictedStateChanged() throws Exception {
+        ServiceStateTracker spySst = spy(sst);
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        doReturn(IccCardApplicationStatus.AppState.APPSTATE_READY).when(
+                mUiccCardApplication3gpp).getState();
+        spySst.updatePhoneType();
+
+        // Combination of restricted state and expected notification type.
+        final int CS_ALL[] = {RILConstants.RIL_RESTRICTED_STATE_CS_ALL,
+                ServiceStateTracker.CS_ENABLED};
+        final int CS_NOR[] = {RILConstants.RIL_RESTRICTED_STATE_CS_NORMAL,
+                ServiceStateTracker.CS_NORMAL_ENABLED};
+        final int CS_EME[] = {RILConstants.RIL_RESTRICTED_STATE_CS_EMERGENCY,
+                ServiceStateTracker.CS_EMERGENCY_ENABLED};
+        final int CS_NON[] = {RILConstants.RIL_RESTRICTED_STATE_NONE,
+                ServiceStateTracker.CS_DISABLED};
+        final int PS_ALL[] = {RILConstants.RIL_RESTRICTED_STATE_PS_ALL,
+                ServiceStateTracker.PS_ENABLED};
+        final int PS_NON[] = {RILConstants.RIL_RESTRICTED_STATE_NONE,
+                ServiceStateTracker.PS_DISABLED};
+
+        int notifyCount = 0;
+        // cs not restricted -> cs emergency/normal restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_ALL);
+        // cs emergency/normal restricted -> cs normal restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_NOR);
+        // cs normal restricted -> cs emergency restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_EME);
+        // cs emergency restricted -> cs not restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_NON);
+        // cs not restricted -> cs normal restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_NOR);
+        // cs normal restricted -> cs emergency/normal restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_ALL);
+        // cs emergency/normal restricted -> cs emergency restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_EME);
+        // cs emergency restricted -> cs emergency/normal restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_ALL);
+        // cs emergency/normal restricted -> cs not restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_NON);
+        // cs not restricted -> cs emergency restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_EME);
+        // cs emergency restricted -> cs normal restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_NOR);
+        // cs normal restricted -> cs not restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, CS_NON);
+
+        // ps not restricted -> ps restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, PS_ALL);
+        // ps restricted -> ps not restricted
+        internalCheckForRestrictedStateChange(spySst, ++notifyCount, PS_NON);
+    }
+
+    private void internalCheckForRestrictedStateChange(ServiceStateTracker serviceStateTracker,
+                int times, int[] restrictedState) {
+        mSimulatedCommands.triggerRestrictedStateChanged(restrictedState[0]);
+        waitForMs(100);
+        ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(serviceStateTracker, times(times)).setNotification(intArgumentCaptor.capture());
+        assertEquals(intArgumentCaptor.getValue().intValue(), restrictedState[1]);
     }
 
     @Test
