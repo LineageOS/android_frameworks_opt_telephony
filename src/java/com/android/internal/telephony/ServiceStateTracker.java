@@ -3708,7 +3708,7 @@ public class ServiceStateTracker extends Handler {
              * and we only need to notify when state is changed.
              */
             if (mRestrictedState.isCsRestricted()) {
-                if (!newRs.isCsRestricted()) {
+                if (!newRs.isAnyCsRestricted()) {
                     // remove all restriction
                     setNotification(CS_DISABLED);
                 } else if (!newRs.isCsNormalRestricted()) {
@@ -3720,7 +3720,7 @@ public class ServiceStateTracker extends Handler {
                 }
             } else if (mRestrictedState.isCsEmergencyRestricted() &&
                     !mRestrictedState.isCsNormalRestricted()) {
-                if (!newRs.isCsRestricted()) {
+                if (!newRs.isAnyCsRestricted()) {
                     // remove all restriction
                     setNotification(CS_DISABLED);
                 } else if (newRs.isCsRestricted()) {
@@ -3732,7 +3732,7 @@ public class ServiceStateTracker extends Handler {
                 }
             } else if (!mRestrictedState.isCsEmergencyRestricted() &&
                     mRestrictedState.isCsNormalRestricted()) {
-                if (!newRs.isCsRestricted()) {
+                if (!newRs.isAnyCsRestricted()) {
                     // remove all restriction
                     setNotification(CS_DISABLED);
                 } else if (newRs.isCsRestricted()) {
