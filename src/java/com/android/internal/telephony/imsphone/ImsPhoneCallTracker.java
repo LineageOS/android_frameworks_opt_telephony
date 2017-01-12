@@ -412,7 +412,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         clearDisconnected();
         mPhone.getContext().unregisterReceiver(mReceiver);
-        mPhone.unregisterForDataEnabledChanged(this);
+        mPhone.getDefaultPhone().unregisterForDataEnabledChanged(this);
         removeMessages(EVENT_GET_IMS_SERVICE);
     }
 
