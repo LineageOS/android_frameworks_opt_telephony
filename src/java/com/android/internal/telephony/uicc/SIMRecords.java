@@ -1070,15 +1070,14 @@ public class SIMRecords extends IccRecords {
 
                 ar = (AsyncResult)msg.obj;
 
-                int[] index = (int[])ar.result;
+                Integer index = (Integer)ar.result;
 
-                if (ar.exception != null || index.length != 1) {
+                if (ar.exception != null || index == null) {
                     loge("Error on SMS_ON_SIM with exp "
-                            + ar.exception + " length " + index.length);
+                            + ar.exception + " index " + index);
                 } else {
-                    log("READ EF_SMS RECORD index=" + index[0]);
-                    mFh.loadEFLinearFixed(EF_SMS,index[0],
-                            obtainMessage(EVENT_GET_SMS_DONE));
+                    log("READ EF_SMS RECORD index=" + index);
+                    mFh.loadEFLinearFixed(EF_SMS, index, obtainMessage(EVENT_GET_SMS_DONE));
                 }
                 break;
 
