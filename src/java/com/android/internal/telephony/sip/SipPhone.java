@@ -33,6 +33,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
 import android.telephony.Rlog;
+import android.util.EventLog;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -841,6 +842,18 @@ public class SipPhone extends SipPhoneBase {
         void acceptCall() throws CallStateException {
             try {
                 mSipAudioCall.answerCall(TIMEOUT_ANSWER_CALL);
+            } catch (IllegalStateException e) {
+                // Call could not be answered due to an invalid audio-codec offered by the caller.  We
+                // will reject the call to stop it from ringing.
+                log("acceptCall, IllegalStateException: " + e);
+                EventLog.writeEvent(0x534e4554, "31752213", -1, "Invalid codec.");
+                hangup();
+            } catch (IllegalArgumentException e) {
+                // Call could not be answered due to an error parsing the SDP.  We will reject the call
+                // to stop it from ringing.
+                log("acceptCall, IllegalArgumentException: " + e);
+                EventLog.writeEvent(0x534e4554, "31752213", -1, "Invalid SDP.");
+                hangup();
             } catch (SipException e) {
                 throw new CallStateException("acceptCall(): " + e);
             }
