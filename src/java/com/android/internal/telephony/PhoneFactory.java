@@ -236,8 +236,9 @@ public class PhoneFactory {
                 for (int i = 0; i < numPhones; i++) {
                     sPhones[i].startMonitoringImsService();
                     // Get users NW type, let it override if its not the default NW mode (-1)
-                    int userNwType = SubscriptionController.getInstance().getUserNwMode(
-                            sPhones[i].getSubId());
+                    int userNwType = Settings.Global.getInt(context.getContentResolver(),
+                            Settings.Global.PREFERRED_NETWORK_MODE + sPhones[i].getSubId(),
+                            SubscriptionManager.DEFAULT_NW_MODE);
                     if (userNwType != SubscriptionManager.DEFAULT_NW_MODE
                             && userNwType != networkModes[i]) {
                         sPhones[i].setPreferredNetworkType(userNwType, null);
@@ -344,14 +345,6 @@ public class PhoneFactory {
         int networkType = android.provider.Settings.Global.getInt(context.getContentResolver(),
                 android.provider.Settings.Global.PREFERRED_NETWORK_MODE + phoneSubId,
                 RILConstants.PREFERRED_NETWORK_MODE);
-
-        // Get users NW type, let it override if its not the default NW mode (-1)
-        int userNwType = SubscriptionController.getInstance().getUserNwMode(phoneSubId);
-        if (userNwType != SubscriptionManager.DEFAULT_NW_MODE && userNwType != networkType) {
-            Rlog.d(LOG_TAG, "calculatePreferredNetworkType: overriding for usernw mode " +
-                    "phoneSubId = " + phoneSubId + " networkType = " + networkType);
-            networkType = userNwType;
-        }
         Rlog.d(LOG_TAG, "calculatePreferredNetworkType: phoneSubId = " + phoneSubId +
                 " networkType = " + networkType);
         return networkType;
