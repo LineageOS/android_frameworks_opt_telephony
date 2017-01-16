@@ -294,16 +294,13 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.MNC));
         // FIXME: consider stick this into database too
         String countryIso = getSubscriptionCountryIso(id);
-        int userNwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.USER_NETWORK_MODE));
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccIdToPrint + " simSlotIndex:"
                     + simSlotIndex + " displayName:" + displayName + " nameSource:" + nameSource
                     + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
-                    + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso
-                    + " userNwMode:" + userNwMode);
+                    + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -313,7 +310,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc,
-                countryIso, userNwMode);
+                countryIso);
     }
 
     /**
@@ -1788,26 +1785,6 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
                         "=" + Integer.toString(subId), null);
         Binder.restoreCallingIdentity(token);
-    }
-
-    /* {@hide} */
-    public void setUserNwMode(int subId, int nwMode) {
-        logd("setUserNwMode, nwMode: " + nwMode + " subId: " + subId);
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.USER_NETWORK_MODE, nwMode);
-        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                value, BaseColumns._ID + "=" + Integer.toString(subId), null);
-    }
-
-    /* {@hide} */
-    public int getUserNwMode(int subId) {
-        SubscriptionInfo subInfo = getActiveSubscriptionInfo(subId, mContext.getOpPackageName());
-        if (subInfo != null)  {
-            return subInfo.mUserNwMode;
-        } else {
-            loge("getUserNwMode: invalid subId = " + subId);
-            return SubscriptionManager.DEFAULT_NW_MODE;
-        }
     }
 
     /**

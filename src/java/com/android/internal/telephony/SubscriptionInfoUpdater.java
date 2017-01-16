@@ -541,12 +541,6 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        // Get users NW type, let it override if its not the default NW mode (-1)
-        int userNwType = SubscriptionController.getInstance().getUserNwMode(subId);
-        if (userNwType != SubscriptionManager.DEFAULT_NW_MODE && userNwType != networkType) {
-            networkType = userNwType;
-        }
-
         if (needsSim2gsmOnly()) {
             int networkType2 = Phone.NT_MODE_GSM_ONLY; // Hardcoded due to modem limitation
             int slotId1 = SubscriptionManager.DEFAULT_SIM_SLOT_INDEX;
