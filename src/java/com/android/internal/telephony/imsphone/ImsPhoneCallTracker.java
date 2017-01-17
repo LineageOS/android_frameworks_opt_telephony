@@ -2271,7 +2271,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 for (ImsPhoneConnection connection : mConnections) {
                     connection.updateWifiState();
                 }
-                mPhone.getServiceState().setRilImsRadioTechnology(getRilImsRadioTechnology());
+
                 mPhone.onFeatureCapabilityChanged();
 
                 mMetrics.writeOnImsCapabilities(
@@ -2602,22 +2602,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public boolean isVideoCallEnabled() {
         return (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE]
                 || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI]);
-    }
-
-    public boolean isVideoWifiCallingEnabled() {
-        return mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI];
-    }
-
-    private int getRilImsRadioTechnology() {
-        int imsRadioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-        if (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE]
-                || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE]) {
-            imsRadioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
-        } else if (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI]
-                || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI]) {
-            imsRadioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
-        }
-        return imsRadioTechnology;
     }
 
     @Override
