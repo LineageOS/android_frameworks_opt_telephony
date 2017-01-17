@@ -11,7 +11,8 @@ LOCAL_JAVA_LIBRARIES := android.test.runner telephony-common ims-common services
 LOCAL_STATIC_JAVA_LIBRARIES := guava \
                                mockito-target \
                                android-support-test \
-                               platform-test-annotations
+                               platform-test-annotations \
+                               legacy-android-test
 
 LOCAL_PACKAGE_NAME := FrameworksTelephonyTests
 
