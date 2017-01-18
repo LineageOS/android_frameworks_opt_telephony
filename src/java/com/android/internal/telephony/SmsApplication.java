@@ -45,7 +45,7 @@ import android.util.Log;
 
 import com.android.internal.content.PackageMonitor;
 import com.android.internal.logging.MetricsLogger;
-import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
+import com.android.internal.logging.MetricsProto.MetricsEvent;
 
 import java.util.Collection;
 import java.util.HashMap;
