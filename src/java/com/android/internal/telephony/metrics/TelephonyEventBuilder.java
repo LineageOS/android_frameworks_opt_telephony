@@ -18,15 +18,15 @@ package com.android.internal.telephony.metrics;
 
 import android.os.SystemClock;
 
-import static com.android.internal.telephony.TelephonyProto.ImsCapabilities;
-import static com.android.internal.telephony.TelephonyProto.ImsConnectionState;
-import static com.android.internal.telephony.TelephonyProto.RilDataCall;
-import static com.android.internal.telephony.TelephonyProto.TelephonyEvent;
-import static com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
-import static com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCall;
-import static com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
-import static com.android.internal.telephony.TelephonyProto.TelephonyServiceState;
-import static com.android.internal.telephony.TelephonyProto.TelephonySettings;
+import static com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
+import static com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
+import static com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
+import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
+import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
+import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCall;
+import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
+import static com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
+import static com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 
 public class TelephonyEventBuilder {
     private final TelephonyEvent mEvent = new TelephonyEvent();
