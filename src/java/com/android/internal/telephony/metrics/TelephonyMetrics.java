@@ -30,24 +30,24 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
+import com.android.internal.telephony.TelephonyProto;
+import com.android.internal.telephony.TelephonyProto.ImsCapabilities;
+import com.android.internal.telephony.TelephonyProto.ImsConnectionState;
+import com.android.internal.telephony.TelephonyProto.RilDataCall;
+import com.android.internal.telephony.TelephonyProto.SmsSession;
+import com.android.internal.telephony.TelephonyProto.TelephonyCallSession;
+import com.android.internal.telephony.TelephonyProto.TelephonyEvent;
+import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
+import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCall;
+import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
+import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse.RilDataCallFailCause;
+import com.android.internal.telephony.TelephonyProto.TelephonyLog;
+import com.android.internal.telephony.TelephonyProto.TelephonyServiceState;
+import com.android.internal.telephony.TelephonyProto.TelephonySettings;
+import com.android.internal.telephony.TelephonyProto.TimeInterval;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
-import com.android.internal.telephony.nano.TelephonyProto;
-import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
-import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
-import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
-import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCall;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse.RilDataCallFailCause;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyLog;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
-import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -69,11 +69,11 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_S
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS_EXPECT_MORE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
-import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IP;
-import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
-import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV6;
-import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_PPP;
-import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNKNOWN;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IP;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV6;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_PPP;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_UNKNOWN;
 
 /**
  * Telephony metrics holds all metrics events and convert it into telephony proto buf.
