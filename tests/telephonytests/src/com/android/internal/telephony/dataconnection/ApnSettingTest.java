@@ -529,7 +529,6 @@ public class ApnSettingTest extends TelephonyTest {
         assertTrue(createApnSetting(
                 new String[]{PhoneConstants.APN_TYPE_IA, PhoneConstants.APN_TYPE_DUN}).
                 isMetered(mContext, 4, isRoaming));
-
     }
 
     @Test
