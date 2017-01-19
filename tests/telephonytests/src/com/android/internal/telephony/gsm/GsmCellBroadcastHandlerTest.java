@@ -16,6 +16,12 @@
 
 package com.android.internal.telephony.gsm;
 
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
+
 import android.content.Intent;
 import android.os.HandlerThread;
 import android.provider.Telephony;
@@ -30,12 +36,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.anyBoolean;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
 
 public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     @Mock
@@ -85,6 +85,9 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testBroadcastSms() {
+        mContextFixture.putResource(
+                com.android.internal.R.string.config_defaultCellBroadcastReceiverComponent,
+                "fake.cellbroadcastreceiver.component");
         mSimulatedCommands.notifyGsmBroadcastSms(new byte[] {
                 (byte)0xc0, //geographical scope
                 (byte)0x01, //serial number
