@@ -21,11 +21,14 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyHistogram;
 import android.util.Base64;
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.internal.ImsCallSession;
+import com.android.internal.telephony.Call;
+import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
@@ -36,6 +39,9 @@ import com.android.internal.telephony.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.TelephonyProto.RilDataCall;
 import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession;
+import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.RilCall;
+import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.RilCall.Type.*;
+import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.CallState.*;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent.RilSetupDataCall;
@@ -58,6 +64,7 @@ import java.util.Deque;
 import java.util.List;
 
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
+
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
@@ -1012,22 +1019,106 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write CS call list event
+     *
+     * @param phoneId    Phone id
+     * @param connections Array of GsmCdmaConnection objects
+     */
+    public void writeRilCallList(int phoneId, ArrayList<GsmCdmaConnection> connections) {
+        if (VDBG) {
+            Rlog.v(TAG, "Logging CallList Changed Connections Size = " + connections.size());
+        }
+        InProgressCallSession callSession = startNewCallSessionIfNeeded(phoneId);
+        if (callSession == null) {
+            Rlog.e(TAG, "writeRilCallList: Call session is missing");
+        } else {
+            RilCall[] calls = convertConnectionsToRilCalls(connections);
+            callSession.addEvent(
+                    new CallSessionEventBuilder(
+                            TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED)
+                            .setRilCalls(calls)
+            );
+            if (VDBG)  Rlog.v(TAG, "Logged Call list changed");
+        }
+    }
+
+    private RilCall[] convertConnectionsToRilCalls(ArrayList<GsmCdmaConnection> mConnections) {
+        RilCall[] calls = new RilCall[mConnections.size()];
+        for (int i = 0; i < mConnections.size(); i++) {
+            calls[i] = new RilCall();
+            calls[i].setIndex(i);
+            convertConnectionToRilCall(mConnections.get(i), calls[i]);
+        }
+        return calls;
+    }
+
+    private void convertConnectionToRilCall(GsmCdmaConnection conn, RilCall call) {
+        if (conn.isIncoming()) {
+            call.setType(TelephonyCallSession.Event.RilCall.Type.MT);
+        } else {
+            call.setType(TelephonyCallSession.Event.RilCall.Type.MO);
+        }
+        switch (conn.getState()) {
+            case IDLE:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_IDLE);
+                break;
+            case ACTIVE:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_ACTIVE);
+                break;
+            case HOLDING:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_HOLDING);
+                break;
+            case DIALING:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_DIALING);
+                break;
+            case ALERTING:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_ALERTING);
+                break;
+            case INCOMING:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_INCOMING);
+                break;
+            case WAITING:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_WAITING);
+                break;
+            case DISCONNECTED:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_DISCONNECTED);
+                break;
+            case DISCONNECTING:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_DISCONNECTING);
+                break;
+            default:
+                call.setState(TelephonyCallSession.Event.CallState.CALL_UNKNOWN);
+                break;
+        }
+        call.setCallEndReason(conn.getDisconnectCause());
+        call.setIsMultiparty(conn.isMultiparty());
+    }
+
+    /**
      * Write dial event
      *
      * @param phoneId Phone id
-     * @param rilSerial RIL request serial number
+     * @param conn Connection object created to track this call
      * @param clirMode CLIR (Calling Line Identification Restriction) mode
      * @param uusInfo User-to-User signaling Info
      */
-    public void writeRilDial(int phoneId, int rilSerial, int clirMode, UUSInfo uusInfo) {
+    public void writeRilDial(int phoneId, GsmCdmaConnection conn, int clirMode, UUSInfo uusInfo) {
 
         InProgressCallSession callSession = startNewCallSessionIfNeeded(phoneId);
-
-        callSession.addEvent(callSession.startElapsedTimeMs,
-                new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
-                        .setRilRequest(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_DIAL)
-                        .setRilRequestId(rilSerial)
-        );
+        if (VDBG) Rlog.v(TAG, "Logging Dial Connection = " + conn);
+        if (callSession == null) {
+            Rlog.e(TAG, "writeRilDial: Call session is missing");
+        } else {
+            RilCall[] calls = new RilCall[1];
+            calls[0] = new RilCall();
+            calls[0].setIndex(-1);
+            convertConnectionToRilCall(conn, calls[0]);
+            callSession.addEvent(callSession.startElapsedTimeMs,
+                    new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
+                            .setRilRequest(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_DIAL)
+                            .setRilCalls(calls));
+            if (VDBG) Rlog.v(TAG, "Logged Dial event");
+        }
     }
 
     /**
@@ -1047,19 +1138,23 @@ public class TelephonyMetrics {
      * Write call hangup event
      *
      * @param phoneId Phone id
-     * @param rilSerial RIL request serial number
+     * @param conn Connection object associated with the call that is being hung-up
      * @param callId Call id
      */
-    public void writeRilHangup(int phoneId, int rilSerial, int callId) {
+    public void writeRilHangup(int phoneId, GsmCdmaConnection conn, int callId) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
-            Rlog.e(TAG, "Call session is missing");
+            Rlog.e(TAG, "writeRilHangup: Call session is missing");
         } else {
+            RilCall[] calls = new RilCall[1];
+            calls[0] = new RilCall();
+            calls[0].setIndex(callId);
+            convertConnectionToRilCall(conn, calls[0]);
             callSession.addEvent(
                     new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
                             .setRilRequest(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_HANGUP)
-                            .setRilRequestId(rilSerial)
-                            .setCallIndex(callId));
+                            .setRilCalls(calls));
+            if (VDBG) Rlog.v(TAG, "Logged Hangup event");
         }
     }
 
@@ -1072,7 +1167,7 @@ public class TelephonyMetrics {
     public void writeRilAnswer(int phoneId, int rilSerial) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
-            Rlog.e(TAG, "Call session is missing");
+            Rlog.e(TAG, "writeRilAnswer: Call session is missing");
         } else {
             callSession.addEvent(
                     new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
@@ -1090,7 +1185,7 @@ public class TelephonyMetrics {
     public void writeRilSrvcc(int phoneId, int rilSrvccState) {
         InProgressCallSession callSession =  mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
-            Rlog.e(TAG, "Call session is missing");
+            Rlog.e(TAG, "writeRilSrvcc: Call session is missing");
         } else {
             callSession.addEvent(
                     new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_CALL_SRVCC)
@@ -1180,7 +1275,7 @@ public class TelephonyMetrics {
                                               int rilRequest) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
-            Rlog.e(TAG, "Call session is missing");
+            Rlog.e(TAG, "writeOnCallSolicitedResponse: Call session is missing");
         } else {
             callSession.addEvent(new CallSessionEventBuilder(
                     TelephonyCallSession.Event.Type.RIL_RESPONSE)
@@ -1295,7 +1390,7 @@ public class TelephonyMetrics {
 
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
-            Rlog.e(TAG, "Call session is missing");
+            Rlog.e(TAG, "writePhoneState: Call session is missing");
         } else {
             if (state == TelephonyCallSession.Event.PhoneState.STATE_IDLE) {
                 finishCallSession(callSession);
