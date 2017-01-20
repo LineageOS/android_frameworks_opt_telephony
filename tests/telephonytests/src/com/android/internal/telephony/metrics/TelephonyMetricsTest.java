@@ -24,6 +24,7 @@ import com.android.ims.ImsConfig;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.internal.ImsCallSession;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.TelephonyProto;
@@ -33,6 +34,7 @@ import com.android.internal.telephony.TelephonyProto.RadioAccessTechnology;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.CallState;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
+import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.RilCall;
 import com.android.internal.telephony.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.TelephonyProto.TelephonyLog;
 import com.android.internal.telephony.TelephonyProto.TelephonyServiceState;
@@ -70,6 +72,9 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
     @Mock
     private ServiceState mServiceState;
+
+    @Mock
+    private GsmCdmaConnection mConnection;
 
     private TelephonyMetrics mMetrics;
 
@@ -460,8 +465,10 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteRilDialHangup() throws Exception {
-        mMetrics.writeRilDial(mPhone.getPhoneId(), 1, 2, mUusInfo);
-        mMetrics.writeRilHangup(mPhone.getPhoneId(), 2, 3);
+        doReturn(Call.State.DIALING).when(mConnection).getState();
+        mMetrics.writeRilDial(mPhone.getPhoneId(), mConnection, 2, mUusInfo);
+        doReturn(Call.State.DISCONNECTED).when(mConnection).getState();
+        mMetrics.writeRilHangup(mPhone.getPhoneId(), mConnection, 3);
         mMetrics.writePhoneState(mPhone.getPhoneId(), PhoneConstants.State.IDLE);
         TelephonyLog log = buildProto();
 
@@ -479,16 +486,18 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertTrue(events[0].hasRilRequest());
         assertEquals(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_DIAL,
                 events[0].getRilRequest());
-        assertTrue(events[0].hasRilRequestId());
-        assertEquals(1, events[0].getRilRequestId());
+        RilCall[] calls = events[0].calls;
+        assertEquals(CallState.CALL_DIALING, calls[0].getState());
 
         assertTrue(events[1].hasType());
         assertEquals(TelephonyCallSession.Event.Type.RIL_REQUEST, events[1].getType());
         assertTrue(events[1].hasRilRequest());
         assertEquals(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_HANGUP,
                 events[1].getRilRequest());
-        assertTrue(events[1].hasCallIndex());
-        assertEquals(3, events[1].getCallIndex());
+        calls = events[1].calls;
+        assertTrue(calls[0].hasIndex());
+        assertEquals(3, calls[0].getIndex());
+        assertEquals(CallState.CALL_DISCONNECTED, calls[0].getState());
     }
 
     // Test write RIL setup data call
