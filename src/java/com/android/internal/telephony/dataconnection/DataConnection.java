@@ -25,6 +25,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -1604,7 +1605,8 @@ public class DataConnection extends StateMachine {
 
             final NetworkMisc misc = new NetworkMisc();
             final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
-            if(carrierSignalAgent.hasRegisteredCarrierSignalReceivers()) {
+            if (carrierSignalAgent.hasRegisteredReceivers(TelephonyIntents
+                    .ACTION_CARRIER_SIGNAL_REDIRECTED)) {
                 // carrierSignal Receivers will place the carrier-specific provisioning notification
                 misc.provisioningNotificationDisabled = true;
             }
