@@ -831,4 +831,44 @@ public abstract class IccRecords extends Handler implements IccConstants {
         }
         pw.flush();
     }
+
+    protected RegistrantList mTestCardRegistrants = new RegistrantList();
+
+    /** @hide */
+    public boolean is_test_card() {
+        return false;
+    }
+
+    /** @hide */
+    public void registerForTestCard(Handler h, int what, Object obj) {
+        if (mDestroyed.get()) {
+            return;
+        }
+
+        Registrant r = new Registrant(h, what, obj);
+        mTestCardRegistrants.add(r);
+
+        if (is_test_card()) {
+            r.notifyRegistrant(new AsyncResult(null, null, null));
+        }
+    }
+
+    /** @hide */
+    public void unregisterForTestCard(Handler h) {
+        mTestCardRegistrants.remove(h);
+    }
+
+    protected RegistrantList mRecordsDisposeRegistrants = new RegistrantList();
+    /** @hide */
+    public void registerForRecordsDispose(Handler h, int what, Object obj) {
+        if (mDestroyed.get()) {
+            return;
+        }
+        Registrant r = new Registrant(h, what, obj);
+        mRecordsDisposeRegistrants.add(r);
+    }
+    /** @hide */
+    public void unregisterForRecordsDispose(Handler h) {
+        mRecordsDisposeRegistrants.remove(h);
+    }
 }
