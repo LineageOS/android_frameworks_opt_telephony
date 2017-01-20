@@ -172,6 +172,8 @@ public abstract class TelephonyTest {
     @Mock
     protected CarrierSignalAgent mCarrierSignalAgent;
     @Mock
+    protected CarrierActionAgent mCarrierActionAgent;
+    @Mock
     protected ImsExternalCallTracker mImsExternalCallTracker;
     @Mock
     protected AppSmsManager mAppSmsManager;
@@ -362,6 +364,7 @@ public abstract class TelephonyTest {
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
+        doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();
         doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
         mPhone.mEriManager = mEriManager;
 
