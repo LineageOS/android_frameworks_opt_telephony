@@ -99,6 +99,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.android.internal.telephony.RILConstants.*;
+import static com.android.internal.util.Preconditions.checkNotNull;
 
 /**
  * {@hide}
@@ -4875,6 +4876,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response) {
+        checkNotNull(carriers, "Allowed carriers list cannot be null.");
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_ALLOWED_CARRIERS, response,
                 mRILDefaultWorkSource);
         rr.mParcel.writeInt(carriers.size()); /* len_allowed_carriers */
