@@ -174,6 +174,8 @@ public abstract class TelephonyTest {
     @Mock
     protected CarrierSignalAgent mCarrierSignalAgent;
     @Mock
+    protected CarrierActionAgent mCarrierActionAgent;
+    @Mock
     protected ImsExternalCallTracker mImsExternalCallTracker;
 
     protected TelephonyManager mTelephonyManager;
@@ -343,8 +345,12 @@ public abstract class TelephonyTest {
                         anyInt(), any(Object.class));
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
                 .getIDeviceIdleController();
-        doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory).
-                makeImsExternalCallTracker(any(ImsPhone.class));
+        doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory)
+                .makeImsExternalCallTracker(any(ImsPhone.class));
+        doReturn(mCarrierSignalAgent).when(mTelephonyComponentFactory)
+                .makeCarrierActionAgent(any(Phone.class));
+        doReturn(mCarrierActionAgent).when(mTelephonyComponentFactory)
+                .makeCarrierActionAgent(any(Phone.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
@@ -359,6 +365,7 @@ public abstract class TelephonyTest {
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
+        doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();
         mPhone.mEriManager = mEriManager;
 
         //mUiccController

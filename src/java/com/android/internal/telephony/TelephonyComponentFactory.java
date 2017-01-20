@@ -68,6 +68,14 @@ public class TelephonyComponentFactory {
         return new DcTracker(phone);
     }
 
+    public CarrierSignalAgent makeCarrierSignalAgent(Phone phone) {
+        return new CarrierSignalAgent(phone);
+    }
+
+    public CarrierActionAgent makeCarrierActionAgent(Phone phone) {
+        return new CarrierActionAgent(phone);
+    }
+
     public IccPhoneBookInterfaceManager makeIccPhoneBookInterfaceManager(Phone phone) {
         return new IccPhoneBookInterfaceManager(phone);
     }
