@@ -87,6 +87,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
 import static com.android.internal.telephony.RILConstants.*;
+import static com.android.internal.util.Preconditions.checkNotNull;
 
 /**
  * {@hide}
@@ -5167,6 +5168,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response) {
+        checkNotNull(carriers, "Allowed carriers list cannot be null.");
+
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_ALLOWED_CARRIERS, response);
         rr.mParcel.writeInt(carriers.size()); /* len_allowed_carriers */
         rr.mParcel.writeInt(0); /* len_excluded_carriers */ /* TODO: add excluded carriers */
