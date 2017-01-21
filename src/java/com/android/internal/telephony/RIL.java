@@ -56,13 +56,11 @@ import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
-import android.telephony.PcoData;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
-import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
@@ -70,14 +68,12 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.Display;
 
-import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
-import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
@@ -1209,8 +1205,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             rr.onError(RADIO_NOT_AVAILABLE, null);
             rr.release();
         }
-
-        mMetrics.writeRilDial(mInstanceId, rr.mSerial, clirMode, uusInfo);
     }
 
     public void setUiccSubscription(int slotId, int appIndex, int subId,
@@ -1329,8 +1323,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " +
                 gsmIndex);
 
-        mMetrics.writeRilHangup(mInstanceId, rr.mSerial, gsmIndex);
-
         rr.mParcel.writeInt(1);
         rr.mParcel.writeInt(gsmIndex);
 
@@ -1345,8 +1337,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-        mMetrics.writeRilHangup(mInstanceId, rr.mSerial, -1);
-
         send(rr);
     }
 
@@ -1358,8 +1348,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND,
                                         result, mRILDefaultWorkSource);
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-        mMetrics.writeRilHangup(mInstanceId, rr.mSerial, -1);
 
         send(rr);
     }

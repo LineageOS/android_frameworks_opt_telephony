@@ -21,6 +21,7 @@ import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.ImsReasonInfo;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.RilCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 
@@ -122,6 +123,11 @@ public class CallSessionEventBuilder {
 
     public CallSessionEventBuilder setNITZ(long timestamp) {
         mEvent.nitzTimestampMillis = timestamp;
+        return this;
+    }
+
+    public CallSessionEventBuilder setRilCalls(RilCall[] rilCalls) {
+        mEvent.calls = rilCalls;
         return this;
     }
 }
