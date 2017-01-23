@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package java.android.telephony;
+package android.telephony;
 
-import android.telephony.SmsMessage;
 import android.test.suitebuilder.annotation.SmallTest;
+
 import com.android.internal.telephony.SmsConstants;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 
 public class SmsMessageTest {
     @Test @SmallTest
