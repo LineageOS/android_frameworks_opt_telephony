@@ -36,6 +36,7 @@ import android.util.LocalLog;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
+import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
@@ -78,6 +79,7 @@ public class PhoneFactory {
     static private PhoneSwitcher sPhoneSwitcher;
     static private SubscriptionMonitor sSubscriptionMonitor;
     static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
+    static private ImsResolver sImsResolver;
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
 
@@ -228,6 +230,11 @@ public class PhoneFactory {
                             sPhoneSwitcher, sc, sSubscriptionMonitor, Looper.myLooper(),
                             sContext, i, sPhones[i].mDcTracker);
                 }
+                String defaultImsPackage = sContext.getResources().getString(
+                        com.android.internal.R.string.config_ims_package);
+                Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
+                sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones);
+                sImsResolver.populateCacheAndStartBind();
             }
         }
     }
@@ -273,6 +280,10 @@ public class PhoneFactory {
             }
             return sPhones;
         }
+    }
+
+    public static ImsResolver getImsResolver() {
+        return sImsResolver;
     }
 
     /**
