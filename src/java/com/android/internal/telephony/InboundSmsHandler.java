@@ -36,13 +36,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.IPackageManager;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.content.pm.UserInfo;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
-import android.os.storage.StorageManager;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Build;
@@ -54,13 +51,10 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.os.storage.StorageManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
-import android.service.carrier.ICarrierMessagingCallback;
-import android.service.carrier.ICarrierMessagingService;
-import android.service.carrier.MessagePdu;
-import android.telephony.CarrierMessagingServiceManager;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
@@ -70,14 +64,11 @@ import android.text.TextUtils;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.uicc.UiccCard;
-import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -927,42 +918,15 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     private boolean filterSms(byte[][] pdus, int destPort,
         InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked) {
-        List<String> carrierPackages = null;
-        UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
-        if (card != null) {
-            carrierPackages = card.getCarrierPackageNamesForIntent(
-                    mContext.getPackageManager(),
-                    new Intent(CarrierMessagingService.SERVICE_INTERFACE));
-        } else {
-            loge("UiccCard not initialized.");
-        }
-
-        if (carrierPackages != null && carrierPackages.size() == 1) {
-            log("Found carrier package.");
-            CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
-                    tracker.getFormat(), resultReceiver);
-            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter,
-                    userUnlocked);
-            smsFilter.filterSms(carrierPackages.get(0), smsFilterCallback);
+        CarrierServicesSmsFilterCallback filterCallback =
+                new CarrierServicesSmsFilterCallback(
+                        pdus, destPort, tracker.getFormat(), resultReceiver, userUnlocked);
+        CarrierServicesSmsFilter carrierServicesFilter = new CarrierServicesSmsFilter(
+                mContext, mPhone.getPhoneId(), mPhone.getSubId(), pdus, destPort,
+                tracker.getFormat(), filterCallback, getName());
+        if (carrierServicesFilter.filter()) {
             return true;
         }
-
-        // It is possible that carrier app is not present as a CarrierPackage, but instead as a
-        // system app
-        List<String> systemPackages =
-                getSystemAppForIntent(new Intent(CarrierMessagingService.SERVICE_INTERFACE));
-
-        if (systemPackages != null && systemPackages.size() == 1) {
-            log("Found system package.");
-            CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
-                    tracker.getFormat(), resultReceiver);
-            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter,
-                    userUnlocked);
-            smsFilter.filterSms(systemPackages.get(0), smsFilterCallback);
-            return true;
-        }
-        logv("Unable to find carrier package: " + carrierPackages
-                + ", nor systemPackages: " + systemPackages);
 
         if (VisualVoicemailSmsFilter.filter(
                 mContext, pdus, tracker.getFormat(), destPort, mPhone.getSubId())) {
@@ -972,27 +936,6 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         return false;
-    }
-
-    private List<String> getSystemAppForIntent(Intent intent) {
-        List<String> packages = new ArrayList<String>();
-        PackageManager packageManager = mContext.getPackageManager();
-        List<ResolveInfo> receivers = packageManager.queryIntentServices(intent, 0);
-        String carrierFilterSmsPerm = "android.permission.CARRIER_FILTER_SMS";
-
-        for (ResolveInfo info : receivers) {
-            if (info.serviceInfo == null) {
-                loge("Can't get service information from " + info);
-                continue;
-            }
-            String packageName = info.serviceInfo.packageName;
-                if (packageManager.checkPermission(carrierFilterSmsPerm, packageName) ==
-                        packageManager.PERMISSION_GRANTED) {
-                    packages.add(packageName);
-                    if (DBG) log("getSystemAppForIntent: added package "+ packageName);
-                }
-        }
-        return packages;
     }
 
     /**
@@ -1339,130 +1282,52 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
-     * Asynchronously binds to the carrier messaging service, and filters out the message if
-     * instructed to do so by the carrier messaging service. A new instance must be used for every
-     * message.
+     * Callback that handles filtering results by carrier services.
      */
-    private final class CarrierSmsFilter extends CarrierMessagingServiceManager {
+    private final class CarrierServicesSmsFilterCallback implements
+            CarrierServicesSmsFilter.CarrierServicesSmsFilterCallbackInterface {
         private final byte[][] mPdus;
         private final int mDestPort;
         private final String mSmsFormat;
         private final SmsBroadcastReceiver mSmsBroadcastReceiver;
-        // Instantiated in filterSms.
-        private volatile CarrierSmsFilterCallback mSmsFilterCallback;
+        private final boolean mUserUnlocked;
 
-        CarrierSmsFilter(byte[][] pdus, int destPort, String smsFormat,
-                SmsBroadcastReceiver smsBroadcastReceiver) {
+        CarrierServicesSmsFilterCallback(byte[][] pdus, int destPort, String smsFormat,
+                         SmsBroadcastReceiver smsBroadcastReceiver,  boolean userUnlocked) {
             mPdus = pdus;
             mDestPort = destPort;
             mSmsFormat = smsFormat;
             mSmsBroadcastReceiver = smsBroadcastReceiver;
-        }
-
-        /**
-         * Attempts to bind to a {@link ICarrierMessagingService}. Filtering is initiated
-         * asynchronously once the service is ready using {@link #onServiceReady}.
-         */
-        void filterSms(String carrierPackageName, CarrierSmsFilterCallback smsFilterCallback) {
-            mSmsFilterCallback = smsFilterCallback;
-            if (!bindToCarrierMessagingService(mContext, carrierPackageName)) {
-                loge("bindService() for carrier messaging service failed");
-                smsFilterCallback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
-            } else {
-                logv("bindService() for carrier messaging service succeeded");
-            }
-        }
-
-        /**
-         * Invokes the {@code carrierMessagingService} to filter messages. The filtering result is
-         * delivered to {@code smsFilterCallback}.
-         */
-        @Override
-        protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
-            try {
-                carrierMessagingService.filterSms(
-                        new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
-                        mPhone.getSubId(), mSmsFilterCallback);
-            } catch (RemoteException e) {
-                loge("Exception filtering the SMS: " + e);
-                mSmsFilterCallback.onFilterComplete(
-                    CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
-            }
-        }
-    }
-
-    /**
-     * A callback used to notify the platform of the carrier messaging app filtering result. Once
-     * the result is ready, the carrier messaging service connection is disposed.
-     */
-    private final class CarrierSmsFilterCallback extends ICarrierMessagingCallback.Stub {
-        private final CarrierSmsFilter mSmsFilter;
-        private final boolean mUserUnlocked;
-
-        CarrierSmsFilterCallback(CarrierSmsFilter smsFilter, boolean userUnlocked) {
-            mSmsFilter = smsFilter;
             mUserUnlocked = userUnlocked;
         }
 
-        /**
-         * This method should be called only once.
-         */
         @Override
         public void onFilterComplete(int result) {
-            mSmsFilter.disposeConnection(mContext);
-            // Calling identity was the CarrierMessagingService in this callback, change it back to
-            // ours. This is required for dropSms() and VisualVoicemailSmsFilter.filter().
-            long token = Binder.clearCallingIdentity();
-            try {
-                logv("onFilterComplete: result is " + result);
-                if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
-                    if (VisualVoicemailSmsFilter.filter(mContext, mSmsFilter.mPdus,
-                            mSmsFilter.mSmsFormat, mSmsFilter.mDestPort, mPhone.getSubId())) {
-                        log("Visual voicemail SMS dropped");
-                        dropSms(mSmsFilter.mSmsBroadcastReceiver);
-                        return;
-                    }
-
-                    if (mUserUnlocked) {
-                        dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
-                                mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
-                    } else {
-                        // Don't do anything further, leave the message in the raw table if the
-                        // credential-encrypted storage is still locked and show the new message
-                        // notification if the message is visible to the user.
-                        if (!isSkipNotifyFlagSet(result)) {
-                            showNewMessageNotification();
-                        }
-                        sendMessage(EVENT_BROADCAST_COMPLETE);
-                    }
-                } else {
-                    // Drop this SMS.
-                    dropSms(mSmsFilter.mSmsBroadcastReceiver);
+            logv("onFilterComplete: result is " + result);
+            if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
+                if (VisualVoicemailSmsFilter.filter(mContext, mPdus,
+                        mSmsFormat, mDestPort, mPhone.getSubId())) {
+                    log("Visual voicemail SMS dropped");
+                    dropSms(mSmsBroadcastReceiver);
+                    return;
                 }
-            } finally {
-                // return back to the CarrierMessagingService, restore the calling identity.
-                Binder.restoreCallingIdentity(token);
+
+                if (mUserUnlocked) {
+                    dispatchSmsDeliveryIntent(
+                            mPdus, mSmsFormat, mDestPort, mSmsBroadcastReceiver);
+                } else {
+                    // Don't do anything further, leave the message in the raw table if the
+                    // credential-encrypted storage is still locked and show the new message
+                    // notification if the message is visible to the user.
+                    if (!isSkipNotifyFlagSet(result)) {
+                        showNewMessageNotification();
+                    }
+                    sendMessage(EVENT_BROADCAST_COMPLETE);
+                }
+            } else {
+                // Drop this SMS.
+                dropSms(mSmsBroadcastReceiver);
             }
-        }
-
-        @Override
-        public void onSendSmsComplete(int result, int messageRef) {
-            loge("Unexpected onSendSmsComplete call with result: " + result);
-        }
-
-        @Override
-        public void onSendMultipartSmsComplete(int result, int[] messageRefs) {
-            loge("Unexpected onSendMultipartSmsComplete call with result: " + result);
-        }
-
-        @Override
-        public void onSendMmsComplete(int result, byte[] sendConfPdu) {
-            loge("Unexpected onSendMmsComplete call with result: " + result);
-        }
-
-        @Override
-        public void onDownloadMmsComplete(int result) {
-            loge("Unexpected onDownloadMmsComplete call with result: " + result);
         }
     }
 
