@@ -43,11 +43,13 @@ import android.os.AsyncResult;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.HwBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
@@ -93,6 +95,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.android.internal.telephony.RILConstants.*;
 import static com.android.internal.util.Preconditions.checkNotNull;
@@ -349,6 +352,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int EVENT_SEND_ACK             = 3;
     static final int EVENT_ACK_WAKE_LOCK_TIMEOUT    = 4;
     static final int EVENT_BLOCKING_RESPONSE_TIMEOUT = 5;
+    static final int EVENT_RADIO_PROXY_DEAD     = 6;
 
     //***** Constants
 
@@ -363,6 +367,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final String[] SOCKET_NAME_RIL = {"rild", "rild2", "rild3"};
 
     static final int SOCKET_OPEN_RETRY_MILLIS = 4 * 1000;
+    static final int IRADIO_GET_SERVICE_DELAY_MILLIS = 3 * 1000;
 
     // The number of the required config values for broadcast SMS stored in the C struct
     // RIL_CDMA_BroadcastServiceInfo
@@ -769,33 +774,85 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    RadioResponse mRadioResponse;
+    RadioIndication mRadioIndication;
+    volatile IRadio mRadioProxy = null;
+    final AtomicLong mRadioProxyCookie = new AtomicLong(0);
+    final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
+    final RilHandler mRilHandler;
 
+    class RilHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            riljLog("handleMessage: msg.what = " + msg.what + " cookie = " + msg.obj +
+                    " mRadioProxyCookie = " + mRadioProxyCookie.get());
+            if (msg.what == EVENT_RADIO_PROXY_DEAD && (long) msg.obj == mRadioProxyCookie.get()) {
+                resetProxyAndRequestList();
+
+                // todo: rild should be back up since message was sent with a delay. this is a hack.
+                getRadioProxy();
+            }
+        }
+    }
+
+    final class RadioProxyDeathRecipient implements HwBinder.DeathRecipient {
+        @Override
+        public void serviceDied(long cookie) {
+            // Deal with service going away
+            riljLog("serviceDied");
+            // todo: temp hack to send delayed message so that rild is back up by then
+            //mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, cookie));
+            mRilHandler.sendMessageDelayed(
+                    mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, cookie),
+                    IRADIO_GET_SERVICE_DELAY_MILLIS);
+        }
+    }
+
+    private void resetProxyAndRequestList() {
+        mRadioProxy = null;
+        RILRequest.resetSerial();
+        // Clear request list on close
+        clearRequestList(RADIO_NOT_AVAILABLE, false);
+
+        // todo: need to get service right away so setResponseFunctions() can be called for
+        // unsolicited indications. getService() is not a blocking call, so it doesn't help to call
+        // it here. Current hack is to call getService() on death notification after a delay.
+    }
+
+    private void handleRadioProxyExceptionForRR(String caller, Exception e, RILRequest rr) {
+        riljLoge(caller, e);
+        rr.onError(RADIO_NOT_AVAILABLE, null);
+        decrementWakeLock(rr);
+        rr.release();
+
+        resetProxyAndRequestList();
+    }
+
+    private IRadio getRadioProxy() {
+        if (mRadioProxy != null) {
+            return mRadioProxy;
+        }
+        try {
+            mRadioProxy = IRadio.getService(
+                    SOCKET_NAME_RIL[mInstanceId == null ? 0 : mInstanceId]);
+            if (mRadioProxy != null) {
+                mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
+                        mRadioProxyCookie.incrementAndGet());
+                mRadioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
+            } else {
+                riljLoge("getRadioProxy: radioProxy == null");
+            }
+        } catch (RemoteException | RuntimeException e) {
+            mRadioProxy = null;
+            riljLoge("setResponseFunctions", e);
+        }
+        return mRadioProxy;
+    }
 
     //***** Constructors
 
     public RIL(Context context, int preferredNetworkType, int cdmaSubscription) {
         this(context, preferredNetworkType, cdmaSubscription, null);
-    }
-
-
-
-    RadioResponse mRadioResponse;
-    RadioIndication mRadioIndication;
-
-    private IRadio getRadioProxy() {
-        IRadio radioProxy = null;
-        try {
-            radioProxy = IRadio.getService(SOCKET_NAME_RIL[mInstanceId == null ? 0 : mInstanceId]);
-            if (radioProxy != null) {
-                // todo(b/31632518): should not need to be called every time
-                radioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
-            } else {
-                riljLoge("getRadioProxy: radioProxy == null");
-            }
-        } catch (Exception e) {
-            riljLoge("getRadioProxy: exception", e);
-        }
-        return radioProxy;
     }
 
     public RIL(Context context, int preferredNetworkType,
@@ -814,6 +871,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         mRadioResponse = new RadioResponse(this);
         mRadioIndication = new RadioIndication(this);
+        mRilHandler = new RilHandler();
+        mRadioProxyDeathRecipient = new RadioProxyDeathRecipient();
         // set radio callback; needed to set RadioIndication callback
         getRadioProxy();
 
@@ -919,11 +978,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             addRequest(rr);
             try {
                 radioProxy.getIccCardStatus(rr.mSerial);
-            } catch (Exception e) {
-                riljLoge("getIccCardStatus", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("getIccCardStatus", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -949,11 +1005,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 radioProxy.supplyIccPinForApp(rr.mSerial,
                         pin != null ? pin : "",
                         aid != null ? aid : "");
-            } catch (Exception e) {
-                riljLoge("supplyIccPinForApp", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("supplyIccPinForApp", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -980,11 +1033,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         puk != null ? puk : "",
                         newPin != null ? newPin : "",
                         aid != null ? aid : "");
-            } catch (Exception e) {
-                riljLoge("supplyIccPukForApp", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("supplyIccPukForApp", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -1011,11 +1061,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 radioProxy.supplyIccPin2ForApp(rr.mSerial,
                         pin != null ? pin : "",
                         aid != null ? aid : "");
-            } catch (Exception e) {
-                riljLoge("supplyIccPin2ForApp", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("supplyIccPin2ForApp", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -1043,11 +1090,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         puk != null ? puk : "",
                         newPin2 != null ? newPin2 : "",
                         aid != null ? aid : "");
-            } catch (Exception e) {
-                riljLoge("supplyIccPuk2ForApp", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("supplyIccPuk2ForApp", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -1075,11 +1119,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         oldPin != null ? oldPin : "",
                         newPin != null ? newPin : "",
                         aid != null ? aid : "");
-            } catch (Exception e) {
-                riljLoge("changeIccPinForApp", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("changeIccPinForApp", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -1107,11 +1148,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         oldPin2 != null ? oldPin2 : "",
                         newPin2 != null ? newPin2 : "",
                         aid != null ? aid : "");
-            } catch (Exception e) {
-                riljLoge("changeIccPin2ForApp", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("changeIccPin2ForApp", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -1132,11 +1170,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.supplyNetworkDepersonalization(rr.mSerial,
                         netpin != null ? netpin : "");
-            } catch (Exception e) {
-                riljLoge("supplyNetworkDepersonalization", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("supplyNetworkDepersonalization", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -1156,11 +1191,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             addRequest(rr);
             try {
                 radioProxy.getCurrentCalls(rr.mSerial);
-            } catch (Exception e) {
-                riljLoge("getCurrentCalls", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("getCurrentCalls", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -1195,11 +1227,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             addRequest(rr);
             try {
                 radioProxy.dial(rr.mSerial, dialInfo);
-            } catch (Exception e) {
-                riljLoge("dial", e);
-                rr.onError(RADIO_NOT_AVAILABLE, null);
-                decrementWakeLock(rr);
-                rr.release();
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR("dial", e, rr);
             }
         } else {
             rr.onError(RADIO_NOT_AVAILABLE, null);
@@ -2792,8 +2821,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         if (radioProxy != null) {
             try {
                 radioProxy.responseAcknowledgement();
-            } catch (Exception e) {
-                riljLoge("sendAck: exception : " + e);
+            } catch (RemoteException | RuntimeException e) {
+                resetProxyAndRequestList();
+                riljLoge("sendAck", e);
             }
         } else {
             Rlog.e(RILJ_LOG_TAG, "Error trying to send ack, radioProxy = null");
