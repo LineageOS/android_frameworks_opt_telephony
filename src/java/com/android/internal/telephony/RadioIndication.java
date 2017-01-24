@@ -49,6 +49,8 @@ import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
 
+import java.util.ArrayList;
+
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_CALL_WAITING;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_INFO_REC;
@@ -94,8 +96,6 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOT
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
-
-import java.util.ArrayList;
 
 public class RadioIndication extends IRadioIndication.Stub {
     RIL mRil;
@@ -434,7 +434,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         notification.signalType = callWaitingRecord.signalInfoRecord.signalType;
         notification.alertPitch = callWaitingRecord.signalInfoRecord.alertPitch;
         notification.signal = callWaitingRecord.signalInfoRecord.signal;
-        notification.numberType = callWaitingRecord.numbertype;
+        notification.numberType = callWaitingRecord.numberType;
         notification.numberPlan = callWaitingRecord.numberPlan;
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_CALL_WAITING, notification);

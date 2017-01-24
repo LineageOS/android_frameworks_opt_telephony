@@ -5096,7 +5096,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     CellInfoCdma cellInfoCdma = record.cdma.get(0);
                     p.writeInt(cellInfoCdma.cellIdentityCdma.networkId);
                     p.writeInt(cellInfoCdma.cellIdentityCdma.systemId);
-                    p.writeInt(cellInfoCdma.cellIdentityCdma.basestationId);
+                    p.writeInt(cellInfoCdma.cellIdentityCdma.baseStationId);
                     p.writeInt(cellInfoCdma.cellIdentityCdma.longitude);
                     p.writeInt(cellInfoCdma.cellIdentityCdma.latitude);
                     p.writeInt(cellInfoCdma.signalStrengthCdma.dbm);
