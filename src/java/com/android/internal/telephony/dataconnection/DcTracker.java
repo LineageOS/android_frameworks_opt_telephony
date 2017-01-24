@@ -98,12 +98,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -793,7 +791,7 @@ public class DcTracker extends Handler {
         mPhone.mCi.registerForAvailable(this, DctConstants.EVENT_RADIO_AVAILABLE, null);
         mPhone.mCi.registerForOffOrNotAvailable(this,
                 DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-        mPhone.mCi.registerForDataNetworkStateChanged(this,
+        mPhone.mCi.registerForDataCallListChanged(this,
                 DctConstants.EVENT_DATA_STATE_CHANGED, null);
         // Note, this is fragile - the Phone is now presenting a merged picture
         // of PS (volte) & CS and by diving into its internals you're just seeing
@@ -859,7 +857,7 @@ public class DcTracker extends Handler {
             r.unregisterForRecordsLoaded(this);
             mIccRecords.set(null);
         }
-        mPhone.mCi.unregisterForDataNetworkStateChanged(this);
+        mPhone.mCi.unregisterForDataCallListChanged(this);
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         unregisterServiceStateTrackerEvents();

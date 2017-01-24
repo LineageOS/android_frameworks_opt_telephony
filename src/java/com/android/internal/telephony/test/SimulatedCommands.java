@@ -2025,8 +2025,8 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @VisibleForTesting
-    public void notifyVoiceNetworkStateChanged() {
-        mVoiceNetworkStateRegistrants.notifyRegistrants();
+    public void notifyNetworkStateChanged() {
+        mNetworkStateRegistrants.notifyRegistrants();
     }
 
     @VisibleForTesting
