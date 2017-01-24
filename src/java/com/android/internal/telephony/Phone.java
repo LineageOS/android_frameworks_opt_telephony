@@ -1792,6 +1792,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * @return true, if the device is in a state where both voice and data
+     * are supported simultaneously. This can change based on location or network condition.
+     */
+    public boolean isConcurrentVoiceAndDataAllowed() {
+        ServiceStateTracker sst = getServiceStateTracker();
+        return sst == null ? false : sst.isConcurrentVoiceAndDataAllowed();
+    }
+
+    /**
      *  Requests to set the CDMA roaming preference
      * @param cdmaRoamingType one of  CDMA_RM_*
      * @param response is callback message
