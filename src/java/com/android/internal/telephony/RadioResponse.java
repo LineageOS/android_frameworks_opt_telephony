@@ -64,7 +64,7 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     * Acknowldege the receipt of radio request sent to the vendor. This must be sent only for
+     * Acknowledge the receipt of radio request sent to the vendor. This must be sent only for
      * radio request which take long time to respond.
      * For more details, refer https://source.android.com/devices/tech/connect/ril.html
      *
@@ -440,6 +440,10 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void getAllowedCarriersResponse(RadioResponseInfo responseInfo,
                                            boolean var2,
                                            CarrierRestrictions var3) {}
+
+    public void sendDeviceStateResponse(RadioResponseInfo responseInfo) {}
+
+    public void setIndicationFilterResponse(RadioResponseInfo responseInfo) {}
 
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
         RILRequest rr = mRil.processResponse(responseInfo);
