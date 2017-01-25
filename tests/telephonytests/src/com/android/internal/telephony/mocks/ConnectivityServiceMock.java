@@ -608,6 +608,10 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
         throw new RuntimeException("not implemented");
     }
 
+    public int getMultipathPreference(Network network) {
+        throw new RuntimeException("not implemented");
+    }
+
     public int tether(String iface) {
         throw new RuntimeException("not implemented");
     }
