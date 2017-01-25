@@ -42,6 +42,7 @@ import android.telephony.SmsMessage;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
+import com.android.internal.telephony.cdma.SmsMessageConverter;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -364,7 +365,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         // todo: conversion from CdmaSmsMessage to SmsMessage should be contained in this class so
         // that usage of auto-generated HAL classes is limited to this file
-        SmsMessage sms = SmsMessage.newCdmaSmsFromRil(msg);
+        SmsMessage sms = SmsMessageConverter.newSmsMessageFromCdmaSmsMessage(msg);
         if (mRil.mCdmaSmsRegistrant != null) {
             mRil.mCdmaSmsRegistrant.notifyRegistrant(new AsyncResult(null, sms, null));
         }
