@@ -138,6 +138,13 @@ public class PhoneFactory {
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
                 int numPhones = TelephonyManager.getDefault().getPhoneCount();
+                // Start ImsResolver and bind to ImsServices.
+                String defaultImsPackage = sContext.getResources().getString(
+                        com.android.internal.R.string.config_ims_package);
+                Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
+                sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones);
+                sImsResolver.populateCacheAndStartBind();
+
                 int[] networkModes = new int[numPhones];
                 sPhones = new Phone[numPhones];
                 sCommandsInterfaces = new RIL[numPhones];
@@ -205,8 +212,9 @@ public class PhoneFactory {
                 SubscriptionController.getInstance().updatePhonesAvailability(sPhones);
 
                 // Start monitoring after defaults have been made.
-                // Default phone must be ready before ImsPhone is created
-                // because ImsService might need it when it is being opened.
+                // Default phone must be ready before ImsPhone is created because ImsService might
+                // need it when it is being opened. This should initialize multiple ImsPhones for
+                // ImsResolver implementations of ImsService.
                 for (int i = 0; i < numPhones; i++) {
                     sPhones[i].startMonitoringImsService();
                 }
@@ -230,11 +238,6 @@ public class PhoneFactory {
                             sPhoneSwitcher, sc, sSubscriptionMonitor, Looper.myLooper(),
                             sContext, i, sPhones[i].mDcTracker);
                 }
-                String defaultImsPackage = sContext.getResources().getString(
-                        com.android.internal.R.string.config_ims_package);
-                Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
-                sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones);
-                sImsResolver.populateCacheAndStartBind();
             }
         }
     }
