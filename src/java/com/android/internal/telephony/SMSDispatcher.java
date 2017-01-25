@@ -15,6 +15,15 @@
  */
 
 package com.android.internal.telephony;
+
+import static android.Manifest.permission.SEND_SMS_NO_CONFIRMATION;
+import static android.telephony.SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE;
+import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+import static android.telephony.SmsManager.RESULT_ERROR_LIMIT_EXCEEDED;
+import static android.telephony.SmsManager.RESULT_ERROR_NO_SERVICE;
+import static android.telephony.SmsManager.RESULT_ERROR_NULL_PDU;
+import static android.telephony.SmsManager.RESULT_ERROR_RADIO_OFF;
+
 import android.annotation.Nullable;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -74,14 +83,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static android.Manifest.permission.SEND_SMS_NO_CONFIRMATION;
-import static android.telephony.SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE;
-import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
-import static android.telephony.SmsManager.RESULT_ERROR_LIMIT_EXCEEDED;
-import static android.telephony.SmsManager.RESULT_ERROR_NO_SERVICE;
-import static android.telephony.SmsManager.RESULT_ERROR_NULL_PDU;
-import static android.telephony.SmsManager.RESULT_ERROR_RADIO_OFF;
 
 public abstract class SMSDispatcher extends Handler {
     static final String TAG = "SMSDispatcher";    // accessed from inner class
@@ -1734,6 +1735,7 @@ public abstract class SMSDispatcher extends Handler {
 
         List<String> carrierPackages = card.getCarrierPackageNamesForIntent(
             mContext.getPackageManager(), new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+        // TODO: Add Check for IMS app if there are no carrier packages.
         return (carrierPackages != null && carrierPackages.size() == 1) ?
                 carrierPackages.get(0) : null;
     }
