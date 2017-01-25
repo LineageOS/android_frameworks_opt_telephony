@@ -348,7 +348,7 @@ public abstract class TelephonyTest {
         doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory)
                 .makeImsExternalCallTracker(any(ImsPhone.class));
         doReturn(mCarrierSignalAgent).when(mTelephonyComponentFactory)
-                .makeCarrierActionAgent(any(Phone.class));
+                .makeCarrierSignalAgent(any(Phone.class));
         doReturn(mCarrierActionAgent).when(mTelephonyComponentFactory)
                 .makeCarrierActionAgent(any(Phone.class));
 
