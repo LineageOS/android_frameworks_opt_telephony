@@ -18,7 +18,8 @@ package com.android.internal.telephony;
 
 import android.annotation.TargetApi;
 import android.os.Build;
-import android.util.Log;
+import android.telephony.Rlog;
+
 import com.android.internal.annotations.VisibleForTesting;
 
 @TargetApi(8)
@@ -59,7 +60,7 @@ public class RilWakelockInfo {
             if(Build.IS_DEBUGGABLE) {
                 IllegalArgumentException e = new IllegalArgumentException(
                     "concurrentRequests should always be greater than 0.");
-                Log.wtf(LOG_TAG, e);
+                Rlog.e(LOG_TAG, e.toString());
                 throw e;
             } else {
                 concurrentRequests = 1;
