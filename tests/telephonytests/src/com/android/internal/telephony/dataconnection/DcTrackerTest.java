@@ -27,6 +27,7 @@ import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.Uri;
+import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
@@ -798,7 +799,9 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
 
-        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SET_CARRIER_DATA_ENABLED, false));
+        Message msg = mDct.obtainMessage(DctConstants.EVENT_SET_CARRIER_DATA_ENABLED);
+        AsyncResult.forMessage(msg).result = false;
+        mDct.sendMessage(msg);
 
         waitForMs(100);
 
