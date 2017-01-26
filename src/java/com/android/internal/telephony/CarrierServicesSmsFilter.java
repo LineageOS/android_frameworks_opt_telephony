@@ -35,6 +35,7 @@ import com.android.internal.telephony.uicc.UiccController;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Filters incoming SMS with carrier services.
@@ -75,6 +76,20 @@ public class CarrierServicesSmsFilter {
      * @return {@code true} if the SMS was handled by carrier services.
      */
     boolean filter() {
+        Optional<String> carrierAppForFiltering = getCarrierAppPackageForFiltering();
+        List<String> smsFilterPackages = new ArrayList<>();
+        if (carrierAppForFiltering.isPresent()) {
+            smsFilterPackages.add(carrierAppForFiltering.get());
+        }
+        FilterAggregator filterAggregator = new FilterAggregator(smsFilterPackages.size());
+        for (String smsFilterPackage : smsFilterPackages) {
+            filterWithPackage(smsFilterPackage, filterAggregator);
+        }
+        boolean handled = smsFilterPackages.size() > 0;
+        return handled;
+    }
+
+    private Optional<String> getCarrierAppPackageForFiltering() {
         List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard(mPhoneId);
         if (card != null) {
@@ -86,8 +101,7 @@ public class CarrierServicesSmsFilter {
         }
         if (carrierPackages != null && carrierPackages.size() == 1) {
             log("Found carrier package.");
-            filterWithCarrierApp(carrierPackages.get(0));
-            return true;
+            return Optional.of(carrierPackages.get(0));
         }
 
         // It is possible that carrier app is not present as a CarrierPackage, but instead as a
@@ -97,19 +111,18 @@ public class CarrierServicesSmsFilter {
 
         if (systemPackages != null && systemPackages.size() == 1) {
             log("Found system package.");
-            filterWithCarrierApp(systemPackages.get(0));
-            return true;
+            return Optional.of(systemPackages.get(0));
         }
         logv("Unable to find carrier package: " + carrierPackages
                 + ", nor systemPackages: " + systemPackages);
-        return false;
+        return Optional.empty();
     }
 
-    private void filterWithCarrierApp(String carrierPackageName) {
+    private void filterWithPackage(String packageName, FilterAggregator filterAggregator) {
         CarrierSmsFilter smsFilter = new CarrierSmsFilter(mPdus, mDestPort, mPduFormat);
         CarrierSmsFilterCallback smsFilterCallback =
-                new CarrierSmsFilterCallback(mCarrierServicesSmsFilterCallback, smsFilter);
-        smsFilter.filterSms(carrierPackageName, smsFilterCallback);
+                new CarrierSmsFilterCallback(filterAggregator, smsFilter);
+        smsFilter.filterSms(packageName, smsFilterCallback);
     }
 
     private List<String> getSystemAppForIntent(Intent intent) {
@@ -151,7 +164,6 @@ public class CarrierServicesSmsFilter {
     interface CarrierServicesSmsFilterCallbackInterface {
         void onFilterComplete(int result);
     }
-
 
     /**
      * Asynchronously binds to the carrier messaging service, and filters out the message if
@@ -208,13 +220,12 @@ public class CarrierServicesSmsFilter {
      * the result is ready, the carrier messaging service connection is disposed.
      */
     private final class CarrierSmsFilterCallback extends ICarrierMessagingCallback.Stub {
-        private final CarrierServicesSmsFilterCallbackInterface mCarrierServicesSmsFilterCallback;
+        private final FilterAggregator mFilterAggregator;
         private final CarrierMessagingServiceManager mCarrierMessagingServiceManager;
 
-        CarrierSmsFilterCallback(
-                CarrierServicesSmsFilterCallbackInterface carrierServicesSmsFilterCallback,
-                CarrierMessagingServiceManager carrierMessagingServiceManager) {
-            mCarrierServicesSmsFilterCallback = carrierServicesSmsFilterCallback;
+        CarrierSmsFilterCallback(FilterAggregator filterAggregator,
+                                 CarrierMessagingServiceManager carrierMessagingServiceManager) {
+            mFilterAggregator = filterAggregator;
             mCarrierMessagingServiceManager = carrierMessagingServiceManager;
         }
 
@@ -224,15 +235,7 @@ public class CarrierServicesSmsFilter {
         @Override
         public void onFilterComplete(int result) {
             mCarrierMessagingServiceManager.disposeConnection(mContext);
-            // Calling identity was the CarrierMessagingService in this callback, change it back to
-            // ours. This is required for dropSms() and VisualVoicemailSmsFilter.filter().
-            long token = Binder.clearCallingIdentity();
-            try {
-                mCarrierServicesSmsFilterCallback.onFilterComplete(result);
-            } finally {
-                // return back to the CarrierMessagingService, restore the calling identity.
-                Binder.restoreCallingIdentity(token);
-            }
+            mFilterAggregator.onFilterComplete(result);
         }
 
         @Override
@@ -253,6 +256,39 @@ public class CarrierServicesSmsFilter {
         @Override
         public void onDownloadMmsComplete(int result) {
             loge("Unexpected onDownloadMmsComplete call with result: " + result);
+        }
+    }
+
+    private final class FilterAggregator {
+        private final Object mFilterLock = new Object();
+        private int mNumPendingFilters;
+        private int mFilterResult;
+
+        FilterAggregator(int numFilters) {
+            mNumPendingFilters = numFilters;
+            mFilterResult = CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT;
+        }
+
+        void onFilterComplete(int result) {
+            synchronized (mFilterLock) {
+                mNumPendingFilters--;
+                combine(result);
+                if (mNumPendingFilters == 0) {
+                    // Calling identity was the CarrierMessagingService in this callback, change it
+                    // back to ours.
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        mCarrierServicesSmsFilterCallback.onFilterComplete(mFilterResult);
+                    } finally {
+                        // return back to the CarrierMessagingService, restore the calling identity.
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            }
+        }
+
+        private void combine(int result) {
+            mFilterResult = mFilterResult | result;
         }
     }
 }
