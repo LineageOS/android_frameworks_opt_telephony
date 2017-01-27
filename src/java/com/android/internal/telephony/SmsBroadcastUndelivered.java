@@ -60,7 +60,8 @@ public class SmsBroadcastUndelivered {
             "count",
             "address",
             "_id",
-            "message_body"
+            "message_body",
+            "display_originating_addr"
     };
 
     private static SmsBroadcastUndelivered instance;
