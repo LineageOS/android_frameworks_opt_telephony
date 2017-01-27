@@ -62,7 +62,8 @@ public class FakeSmsContentProvider extends MockContentProvider {
                     SubscriptionManager.INVALID_SUBSCRIPTION_ID + ", " +
                     "pdu TEXT," + // the raw PDU for this part
                     "deleted INTEGER DEFAULT 0," + // bool to indicate if row is deleted
-                    "message_body TEXT);"); // message body
+                    "message_body TEXT," + // message body
+                    "display_originating_addr TEXT);");// display address
         }
 
         @Override
