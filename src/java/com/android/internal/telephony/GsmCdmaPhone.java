@@ -2784,6 +2784,20 @@ public class GsmCdmaPhone extends Phone {
     //CDMA
     private void handleExitEmergencyCallbackMode(Message msg) {
         AsyncResult ar = (AsyncResult)msg.obj;
+
+	if (isPhoneTypeGsm()  && mImsPhone == null){
+            // prevent erroneous calls by public methods from outside
+            Rlog.e(LOG_TAG, "handleExitEmergencyCallbackMode called for GSM phone. ar.exception= "
+                    + ar.exception);
+
+            removeCallbacks(mExitEcmRunnable);
+            if (mWakeLock.isHeld()) {
+                mWakeLock.release();
+            }
+
+            return;
+	}
+
         if (DBG) {
             Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode,ar.exception , mIsPhoneInEcmState "
                     + ar.exception + mIsPhoneInEcmState);
