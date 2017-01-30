@@ -16,12 +16,14 @@
 
 package com.android.internal.telephony;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
-
-import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import android.app.AlarmManager;
 import android.app.AppOpsManager;
@@ -63,6 +65,13 @@ import android.test.mock.MockContentResolver;
 import android.test.mock.MockContext;
 import android.util.Log;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
+
+import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -71,15 +80,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 /**
  * Controls a test {@link Context} as would be provided by the Android framework to an
@@ -181,8 +181,12 @@ public class ContextFixture implements TestFixture<Context> {
             }
             IInterface service = mServiceByComponentName.get(serviceIntent.getComponent());
             if (service == null) {
-                throw new RuntimeException("ServiceConnection not found: "
-                        + serviceIntent.getComponent());
+                service = mServiceByPackageName.get(serviceIntent.getPackage());
+            }
+            if (service == null) {
+                throw new RuntimeException(
+                        String.format("ServiceConnection not found for component: %s, package: %s",
+                                serviceIntent.getComponent(), serviceIntent.getPackage()));
             }
             mServiceByServiceConnection.put(connection, service);
             connection.onServiceConnected(serviceIntent.getComponent(), service.asBinder());
@@ -444,6 +448,8 @@ public class ContextFixture implements TestFixture<Context> {
             ArrayListMultimap.create();
     private final Map<ComponentName, IInterface> mServiceByComponentName =
             new HashMap<ComponentName, IInterface>();
+    private final Map<String, IInterface> mServiceByPackageName =
+            new HashMap<String, IInterface>();
     private final Map<ComponentName, ServiceInfo> mServiceInfoByComponentName =
             new HashMap<ComponentName, ServiceInfo>();
     private final Map<IInterface, ComponentName> mComponentNameByService =
@@ -553,9 +559,11 @@ public class ContextFixture implements TestFixture<Context> {
         return mBundle;
     }
 
-    private void addService(String action, ComponentName name, IInterface service) {
+    public void addService(String action, ComponentName name, String packageName,
+                           IInterface service, ServiceInfo serviceInfo) {
         mComponentNamesByAction.put(action, name);
-        mServiceByComponentName.put(name, service);
+        mServiceInfoByComponentName.put(name, serviceInfo);
+        mServiceByPackageName.put(packageName, service);
         mComponentNameByService.put(service, name);
     }
 
