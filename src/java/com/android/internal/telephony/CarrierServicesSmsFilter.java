@@ -29,6 +29,7 @@ import android.service.carrier.MessagePdu;
 import android.telephony.CarrierMessagingServiceManager;
 import android.telephony.Rlog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 
@@ -53,7 +54,8 @@ public class CarrierServicesSmsFilter {
     private final CarrierServicesSmsFilterCallbackInterface mCarrierServicesSmsFilterCallback;
     private final String mLogTag;
 
-    CarrierServicesSmsFilter(
+    @VisibleForTesting
+    public CarrierServicesSmsFilter(
             Context context,
             int phoneId,
             int subId,
@@ -75,7 +77,8 @@ public class CarrierServicesSmsFilter {
     /**
      * @return {@code true} if the SMS was handled by carrier services.
      */
-    boolean filter() {
+    @VisibleForTesting
+    public boolean filter() {
         Optional<String> carrierAppForFiltering = getCarrierAppPackageForFiltering();
         List<String> smsFilterPackages = new ArrayList<>();
         if (carrierAppForFiltering.isPresent()) {
@@ -161,7 +164,8 @@ public class CarrierServicesSmsFilter {
     /**
      * Result of filtering SMS is returned in this callback.
      */
-    interface CarrierServicesSmsFilterCallbackInterface {
+    @VisibleForTesting
+    public interface CarrierServicesSmsFilterCallbackInterface {
         void onFilterComplete(int result);
     }
 
