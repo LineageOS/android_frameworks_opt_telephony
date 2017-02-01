@@ -332,15 +332,14 @@ public class ImsServiceController {
     private void grantPermissionsToService() {
         Log.i(LOG_TAG, "Granting Runtime permissions to:" + getComponentName());
         String[] pkgToGrant = {mComponentName.getPackageName()};
-        // Uncommented once changes to PackageManager go in (ims_resolver_3_3)
-//        try {
-//            if (mPackageManager != null) {
-//                mPackageManager.grantDefaultPermissionsToEnabledImsServices(pkgToGrant,
-//                        mContext.getUserId());
-//            }
-//        } catch (RemoteException e) {
-//            Log.w(LOG_TAG, "Unable to grant permissions, binder died.");
-//        }
+        try {
+            if (mPackageManager != null) {
+                mPackageManager.grantDefaultPermissionsToEnabledImsServices(pkgToGrant,
+                        mContext.getUserId());
+            }
+        } catch (RemoteException e) {
+            Log.w(LOG_TAG, "Unable to grant permissions, binder died.");
+        }
     }
 
     private void sendImsFeatureCreatedCallback(int slot, int feature) {
