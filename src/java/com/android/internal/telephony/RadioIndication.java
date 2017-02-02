@@ -26,8 +26,38 @@ import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SimRefreshResult;
 import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
+import android.os.AsyncResult;
+import android.os.SystemProperties;
+import android.telephony.SignalStrength;
+import android.telephony.SmsMessage;
+import android.text.TextUtils;
 
+import com.android.internal.telephony.dataconnection.DataCallResponse;
+import com.android.internal.telephony.dataconnection.DcFailCause;
+import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.TelephonyProto.SmsSession;
+import com.android.internal.telephony.uicc.IccRefreshResponse;
+
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CDMA_NEW_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CALL_SETUP;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_EVENT_NOTIFY;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_PROACTIVE_COMMAND;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_SESSION_END;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
 
 import java.util.ArrayList;
 
@@ -45,106 +75,316 @@ public class RadioIndication extends IRadioIndication.Stub {
      */
     public void radioStateChanged(int indicationType, int radioState) {
         mRil.processIndication(indicationType);
+
         CommandsInterface.RadioState newState = getRadioStateFromInt(radioState);
-        mRil.unsljLogMore(RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: "
-                + newState.toString());
+        if (RIL.RILJ_LOGD) {
+            mRil.unsljLogMore(RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: " +
+                    newState);
+        }
+
         mRil.setRadioState(newState);
     }
 
-    public void callStateChanged(int var1) {}
+    public void callStateChanged(int indicationType) {
+        mRil.processIndication(indicationType);
 
-    public void voiceNetworkStateChanged(int var1) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED);
 
-    public void newSms(int var1, ArrayList<Byte> var2) {}
+        mRil.mCallStateRegistrants.notifyRegistrants();
+    }
 
-    public void newSmsStatusReport(int var1, ArrayList<Byte> var2) {}
+    public void voiceNetworkStateChanged(int indicationType) {
+        mRil.processIndication(indicationType);
 
-    public void newSmsOnSim(int var1, int var2) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED);
 
-    public void onUssd(int var1, int var2, String var3) {}
+        mRil.mVoiceNetworkStateRegistrants.notifyRegistrants();
+    }
 
-    public void nitzTimeReceived(int var1, String var2, long var3) {}
+    public void newSms(int indicationType, ArrayList<Byte> pdu) {
+        mRil.processIndication(indicationType);
 
-    public void currentSignalStrength(int var1,
-                                      android.hardware.radio.V1_0.SignalStrength var2) {}
+        byte[] pduArray = RIL.arrayListToPrimitiveArray(pdu);
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
 
-    public void dataCallListChanged(int var1, ArrayList<SetupDataCallResult> var2) {}
+        mRil.writeMetricsNewSms(SmsSession.Event.Tech.SMS_GSM,
+                SmsSession.Event.Format.SMS_FORMAT_3GPP);
 
-    public void suppSvcNotify(int var1, SuppSvcNotification var2) {}
+        SmsMessage sms = SmsMessage.newFromCMT(pduArray);
+        if (mRil.mGsmSmsRegistrant != null) {
+            mRil.mGsmSmsRegistrant.notifyRegistrant(new AsyncResult(null, sms, null));
+        }
+    }
 
-    public void stkSessionEnd(int var1) {}
+    public void newSmsStatusReport(int indicationType, ArrayList<Byte> pdu) {
+        mRil.processIndication(indicationType);
 
-    public void stkProactiveCommand(int var1, String var2) {}
+        byte[] pduArray = RIL.arrayListToPrimitiveArray(pdu);
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT);
 
-    public void stkEventNotify(int var1, String var2) {}
+        if (mRil.mSmsStatusRegistrant != null) {
+            mRil.mSmsStatusRegistrant.notifyRegistrant(new AsyncResult(null, pduArray, null));
+        }
+    }
 
-    public void stkCallSetup(int var1, long var2) {}
+    public void newSmsOnSim(int indicationType, int recordNumber) {
+        mRil.processIndication(indicationType);
 
-    public void simSmsStorageFull(int var1) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM);
 
-    public void simRefresh(int var1, SimRefreshResult var2) {}
+        if (mRil.mSmsOnSimRegistrant != null) {
+            mRil.mSmsOnSimRegistrant.notifyRegistrant(new AsyncResult(null, recordNumber, null));
+        }
+    }
 
-    public void callRing(int var1, boolean var2, CdmaSignalInfoRecord var3) {}
+    public void onUssd(int indicationType, int ussdModeType, String msg) {
+        mRil.processIndication(indicationType);
 
-    public void simStatusChanged(int var1) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
 
-    public void cdmaNewSms(int var1, CdmaSmsMessage var2) {}
+        // todo: Clean this up with a parcelable class for better self-documentation
+        String[] resp = new String[2];
+        resp[0] = "" + ussdModeType;
+        resp[1] = msg;
+        if (mRil.mUSSDRegistrant != null) {
+            mRil.mUSSDRegistrant.notifyRegistrant(new AsyncResult (null, resp, null));
+        }
+    }
 
-    public void newBroadcastSms(int var1, ArrayList<Byte> var2) {}
+    public void nitzTimeReceived(int indicationType, String nitzTime, long receivedTime) {
+        mRil.processIndication(indicationType);
 
-    public void cdmaRuimSmsStorageFull(int var1) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NITZ_TIME_RECEIVED, nitzTime);
 
-    public void restrictedStateChanged(int var1, int var2) {}
+        // todo: Clean this up with a parcelable class for better self-documentation
+        Object[] result = new Object[2];
+        result[0] = nitzTime;
+        result[1] = receivedTime;
 
-    public void enterEmergencyCallbackMode(int var1) {}
+        boolean ignoreNitz = SystemProperties.getBoolean(
+                TelephonyProperties.PROPERTY_IGNORE_NITZ, false);
 
-    public void cdmaCallWaiting(int var1, CdmaCallWaiting var2) {}
+        if (ignoreNitz) {
+            if (RIL.RILJ_LOGD) mRil.riljLog("ignoring UNSOL_NITZ_TIME_RECEIVED");
+        } else {
+            if (mRil.mNITZTimeRegistrant != null) {
+                mRil.mNITZTimeRegistrant.notifyRegistrant(new AsyncResult (null, result, null));
+            }
+            // in case NITZ time registrant isn't registered yet, or a new registrant
+            // registers later
+            mRil.mLastNITZTimeInfo = result;
+        }
+    }
 
-    public void cdmaOtaProvisionStatus(int var1, int var2) {}
+    public void currentSignalStrength(int indicationType,
+                                      android.hardware.radio.V1_0.SignalStrength signalStrength) {
+        mRil.processIndication(indicationType);
 
-    public void cdmaInfoRec(int var1,
+        /*
+        SignalStrength ss = SignalStrength.makeSignalStrengthFromHalObject(signalStrength);
+        // Note this is set to "verbose" because it happens frequently
+        if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
+
+        if (mRil.mSignalStrengthRegistrant != null) {
+            mRil.mSignalStrengthRegistrant.notifyRegistrant(new AsyncResult (null, ss, null));
+        } */
+    }
+
+    public void dataCallListChanged(int indicationType, ArrayList<SetupDataCallResult> dcList) {
+        mRil.processIndication(indicationType);
+
+        ArrayList<DataCallResponse> response = RIL.convertHalDcList(dcList);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, response);
+
+        mRil.mDataNetworkStateRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    public void suppSvcNotify(int indicationType, SuppSvcNotification suppSvcNotification) {
+        mRil.processIndication(indicationType);
+
+        SuppServiceNotification notification = new SuppServiceNotification();
+        notification.notificationType = suppSvcNotification.isMT ? 1 : 0;
+        notification.code = suppSvcNotification.code;
+        notification.index = suppSvcNotification.index;
+        notification.type = suppSvcNotification.type;
+        notification.number = suppSvcNotification.number;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SUPP_SVC_NOTIFICATION, notification);
+
+        if (mRil.mSsnRegistrant != null) {
+            mRil.mSsnRegistrant.notifyRegistrant(new AsyncResult (null, notification, null));
+        }
+    }
+
+    public void stkSessionEnd(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_SESSION_END);
+
+        if (mRil.mCatSessionEndRegistrant != null) {
+            mRil.mCatSessionEndRegistrant.notifyRegistrant(new AsyncResult (null, null, null));
+        }
+    }
+
+    public void stkProactiveCommand(int indicationType, String cmd) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_PROACTIVE_COMMAND);
+
+        if (mRil.mCatProCmdRegistrant != null) {
+            mRil.mCatProCmdRegistrant.notifyRegistrant(new AsyncResult (null, cmd, null));
+        }
+    }
+
+    public void stkEventNotify(int indicationType, String cmd) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_EVENT_NOTIFY);
+
+        if (mRil.mCatEventRegistrant != null) {
+            mRil.mCatEventRegistrant.notifyRegistrant(new AsyncResult (null, cmd, null));
+        }
+    }
+
+    public void stkCallSetup(int indicationType, long timeout) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_STK_CALL_SETUP, timeout);
+
+        if (mRil.mCatCallSetUpRegistrant != null) {
+            mRil.mCatCallSetUpRegistrant.notifyRegistrant(new AsyncResult (null, timeout, null));
+        }
+    }
+
+    public void simSmsStorageFull(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_SIM_SMS_STORAGE_FULL);
+
+        if (mRil.mIccSmsFullRegistrant != null) {
+            mRil.mIccSmsFullRegistrant.notifyRegistrant();
+        }
+    }
+
+    public void simRefresh(int indicationType, SimRefreshResult refreshResult) {
+        mRil.processIndication(indicationType);
+
+        IccRefreshResponse response = new IccRefreshResponse();
+        response.refreshResult = refreshResult.type;
+        response.efId = refreshResult.efId;
+        response.aid = refreshResult.aid;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SIM_REFRESH, response);
+
+        if (mRil.mIccRefreshRegistrants != null) {
+            mRil.mIccRefreshRegistrants.notifyRegistrants(new AsyncResult (null, response, null));
+        }
+    }
+
+    public void callRing(int indicationType, boolean isGsm, CdmaSignalInfoRecord record) {
+        mRil.processIndication(indicationType);
+
+        char response[] = null;
+
+        // Ignore record for gsm
+        if (!isGsm) {
+            // todo: Clean this up with a parcelable class for better self-documentation
+            response = new char[4];
+            response[0] = (char) (record.isPresent ? 1 : 0);
+            response[1] = (char) record.signalType;
+            response[2] = (char) record.alertPitch;
+            response[3] = (char) record.signal;
+            mRil.writeMetricsCallRing(response);
+        }
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CALL_RING, response);
+
+        if (mRil.mRingRegistrant != null) {
+            mRil.mRingRegistrant.notifyRegistrant(new AsyncResult (null, response, null));
+        }
+    }
+
+    public void simStatusChanged(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED);
+
+        if (mRil.mIccStatusChangedRegistrants != null) {
+            mRil.mIccStatusChangedRegistrants.notifyRegistrants();
+        }
+    }
+
+    public void cdmaNewSms(int indicationType, CdmaSmsMessage msg) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
+
+        mRil.writeMetricsNewSms(SmsSession.Event.Tech.SMS_CDMA,
+                SmsSession.Event.Format.SMS_FORMAT_3GPP2);
+
+        // todo: conversion from CdmaSmsMessage to SmsMessage should be contained in this class so
+        // that usage of auto-generated HAL classes is limited to this file
+        SmsMessage sms = SmsMessage.newCdmaSmsFromRil(msg);
+        if (mRil.mCdmaSmsRegistrant != null) {
+            mRil.mCdmaSmsRegistrant.notifyRegistrant(new AsyncResult(null, sms, null));
+        }
+    }
+
+    public void newBroadcastSms(int indicationType, ArrayList<Byte> var2) {}
+
+    public void cdmaRuimSmsStorageFull(int indicationType) {}
+
+    public void restrictedStateChanged(int indicationType, int var2) {}
+
+    public void enterEmergencyCallbackMode(int indicationType) {}
+
+    public void cdmaCallWaiting(int indicationType, CdmaCallWaiting var2) {}
+
+    public void cdmaOtaProvisionStatus(int indicationType, int var2) {}
+
+    public void cdmaInfoRec(int indicationType,
                             android.hardware.radio.V1_0.CdmaInformationRecords var2) {}
 
-    public void oemHookRaw(int var1, ArrayList<Byte> var2) {}
+    public void oemHookRaw(int indicationType, ArrayList<Byte> var2) {}
 
-    public void indicateRingbackTone(int var1, boolean var2) {}
+    public void indicateRingbackTone(int indicationType, boolean var2) {}
 
-    public void resendIncallMute(int var1) {}
+    public void resendIncallMute(int indicationType) {}
 
-    public void cdmaSubscriptionSourceChanged(int var1, int var2) {}
+    public void cdmaSubscriptionSourceChanged(int indicationType, int var2) {}
 
-    public void cdmaPrlChanged(int var1, int var2) {}
+    public void cdmaPrlChanged(int indicationType, int var2) {}
 
-    public void exitEmergencyCallbackMode(int var1) {}
+    public void exitEmergencyCallbackMode(int indicationType) {}
 
-    public void rilConnected(int var1) {}
+    public void rilConnected(int indicationType) {}
 
-    public void voiceRadioTechChanged(int var1, int var2) {}
+    public void voiceRadioTechChanged(int indicationType, int var2) {}
 
-    public void cellInfoList(int var1, ArrayList<android.hardware.radio.V1_0.CellInfo> var2) {}
+    public void cellInfoList(int indicationType, ArrayList<android.hardware.radio.V1_0.CellInfo> var2) {}
 
-    public void imsNetworkStateChanged(int var1) {}
+    public void imsNetworkStateChanged(int indicationType) {}
 
-    public void subscriptionStatusChanged(int var1, boolean var2) {}
+    public void subscriptionStatusChanged(int indicationType, boolean var2) {}
 
-    public void srvccStateNotify(int var1, int var2) {}
+    public void srvccStateNotify(int indicationType, int var2) {}
 
     public void hardwareConfigChanged(
-            int var1,
+            int indicationType,
             ArrayList<android.hardware.radio.V1_0.HardwareConfig> var2) {}
 
-    public void radioCapabilityIndication(int var1,
+    public void radioCapabilityIndication(int indicationType,
                                           android.hardware.radio.V1_0.RadioCapability var2) {}
 
-    public void onSupplementaryServiceIndication(int var1, StkCcUnsolSsResult var2) {}
+    public void onSupplementaryServiceIndication(int indicationType, StkCcUnsolSsResult var2) {}
 
-    public void stkCallControlAlphaNotify(int var1, String var2) {}
+    public void stkCallControlAlphaNotify(int indicationType, String var2) {}
 
-    public void lceData(int var1, LceDataInfo var2) {}
+    public void lceData(int indicationType, LceDataInfo var2) {}
 
-    public void pcoData(int var1, PcoDataInfo var2) {}
+    public void pcoData(int indicationType, PcoDataInfo var2) {}
 
-    public void modemReset(int var1, String var2) {}
+    public void modemReset(int indicationType, String var2) {}
 
     private CommandsInterface.RadioState getRadioStateFromInt(int stateInt) {
         CommandsInterface.RadioState state;
