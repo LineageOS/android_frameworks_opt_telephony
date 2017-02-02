@@ -28,6 +28,7 @@ import android.os.AsyncResult;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.HwBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
@@ -52,6 +53,11 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.Display;
+
+import android.hardware.radio.V1_0.IRadio;
+import android.hardware.radio.V1_0.RadioIndicationType;
+import android.hardware.radio.V1_0.RadioResponseInfo;
+import android.hardware.radio.V1_0.RadioResponseType;
 
 import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.TelephonyProto.TelephonySettings;
@@ -445,7 +451,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             return;
                         }
                     } catch (IOException ex) {
-                        Rlog.e(RILJ_LOG_TAG, "IOException", ex);
+                        riljLoge("IOException ", ex);
                         req = findAndRemoveRequestFromList(rr.mSerial);
                         // make sure this request has not already been handled,
                         // eg, if RILReceiver cleared the list.
@@ -456,7 +462,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             return;
                         }
                     } catch (RuntimeException exc) {
-                        Rlog.e(RILJ_LOG_TAG, "Uncaught exception ", exc);
+                        riljLoge("Uncaught exception ", exc);
                         req = findAndRemoveRequestFromList(rr.mSerial);
                         // make sure this request has not already been handled,
                         // eg, if RILReceiver cleared the list.
@@ -652,14 +658,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     // or after the 8th time
 
                     if (retryCount == 8) {
-                        Rlog.e (RILJ_LOG_TAG,
-                            "Couldn't find '" + rilSocket
-                            + "' socket after " + retryCount
-                            + " times, continuing to retry silently");
+                        riljLoge("Couldn't find '" + rilSocket + "' socket after " + retryCount +
+                                " times, continuing to retry silently");
                     } else if (retryCount >= 0 && retryCount < 8) {
-                        Rlog.i (RILJ_LOG_TAG,
-                            "Couldn't find '" + rilSocket
-                            + "' socket; retrying after timeout");
+                        Rlog.i (RILJ_LOG_TAG, "Couldn't find '" + rilSocket +
+                                "' socket; retrying after timeout");
                     }
 
                     try {
@@ -704,8 +707,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     Rlog.i(RILJ_LOG_TAG, "'" + rilSocket + "' socket closed",
                           ex);
                 } catch (Throwable tr) {
-                    Rlog.e(RILJ_LOG_TAG, "Uncaught exception read length=" + length +
-                        "Exception:" + tr.toString());
+                    riljLoge("Uncaught exception read length=" + length + "Exception:" +
+                            tr.toString());
                 }
 
                 Rlog.i(RILJ_LOG_TAG, "(" + mInstanceId + ") Disconnected from '" + rilSocket
@@ -740,6 +743,28 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         this(context, preferredNetworkType, cdmaSubscription, null);
     }
 
+
+
+    RadioResponse mRadioResponse;
+    RadioIndication mRadioIndication;
+
+    private IRadio getRadioProxy() {
+        IRadio radioProxy = null;
+        try {
+            radioProxy = IRadio.getService(SOCKET_NAME_RIL[mInstanceId == null ? 0 : mInstanceId]);
+            if (radioProxy != null) {
+                riljLog("getRadioProxy: radioProxy != null; calling setResponseFunctions()");
+                // todo(b/31632518): should not need to be called every time
+                radioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
+            } else {
+                riljLoge("getRadioProxy: radioProxy == null");
+            }
+        } catch (Exception e) {
+            riljLoge("getRadioProxy: exception", e);
+        }
+        return radioProxy;
+    }
+
     public RIL(Context context, int preferredNetworkType,
             int cdmaSubscription, Integer instanceId) {
         super(context);
@@ -753,6 +778,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         mPreferredNetworkType = preferredNetworkType;
         mPhoneType = RILConstants.NO_PHONE;
         mInstanceId = instanceId;
+
+        riljLog("RIL: creating mRadioResponse on initialization");
+        mRadioResponse = new RadioResponse(this);
+        mRadioIndication = new RadioIndication(this);
+        // set radio callback; needed to set RadioIndication callback
+        getRadioProxy();
 
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_LOG_TAG);
@@ -832,16 +863,35 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    private void addRequest(RILRequest rr) {
+        acquireWakeLock(rr, FOR_WAKELOCK);
+        synchronized (mRequestList) {
+            mRequestList.append(rr.mSerial, rr);
+        }
+    }
+
     @Override
     public void
     getIccCardStatus(Message result) {
-        //Note: This RIL request has not been renamed to ICC,
-        //       but this request is also valid for SIM and RUIM
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_SIM_STATUS, result);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-        send(rr);
+        IRadio radioProxy = getRadioProxy();
+        if (radioProxy != null) {
+            addRequest(rr);
+            try {
+                radioProxy.getIccCardStatus(rr.mSerial);
+            } catch (Exception e) {
+                riljLoge("getIccCardStatus", e);
+                rr.onError(RADIO_NOT_AVAILABLE, null);
+                decrementWakeLock(rr);
+                rr.release();
+            }
+        } else {
+            rr.onError(RADIO_NOT_AVAILABLE, null);
+            rr.release();
+        }
     }
 
     public void setUiccSubscription(int slotId, int appIndex, int subId,
@@ -2436,26 +2486,101 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         // In case screen state was lost (due to process crash),
         // this ensures that the RIL knows the correct screen state.
         updateScreenState(false);
-   }
-
-    private RadioState getRadioStateFromInt(int stateInt) {
-        RadioState state;
-
-        /* RIL_RadioState ril.h */
-        switch(stateInt) {
-            case 0: state = RadioState.RADIO_OFF; break;
-            case 1: state = RadioState.RADIO_UNAVAILABLE; break;
-            case 10: state = RadioState.RADIO_ON; break;
-
-            default:
-                throw new RuntimeException(
-                            "Unrecognized RIL_RadioState: " + stateInt);
-        }
-        return state;
     }
 
-    private void switchToRadioState(RadioState newState) {
-        setRadioState(newState);
+    /**
+     * This is a helper function to be called when a RadioIndication callback is called.
+     * It takes care of acquiring wakelock and sending ack if needed.
+     * @param indicationType RadioIndicationType received
+     */
+    void processIndication(int indicationType) {
+        if (indicationType == RadioIndicationType.UNSOLICITED_ACK_EXP) {
+            sendAck();
+            if (RIL.RILJ_LOGD) riljLog("Unsol response received; Sending ack to ril.cpp");
+        } else {
+            // ack sent for UNSOLICITED_ACK_EXP; nothing to do for UNSOLICITED
+        }
+    }
+
+    /**
+     * This is a helper function to be called when a RadioResponse callback is called.
+     * It takes care of acks, wakelocks, and finds and returns RILRequest corresponding to the
+     * response if one is found.
+     * @param responseInfo RadioResponseInfo received in response callback
+     * @return RILRequest corresponding to the response
+     */
+    RILRequest processResponse(RadioResponseInfo responseInfo) {
+        int serial = responseInfo.serial;
+        int error = responseInfo.error;
+        int type = responseInfo.type;
+
+        RILRequest rr;
+
+        if (type == RadioResponseType.SOLICITED_ACK) {
+            synchronized (mRequestList) {
+                rr = mRequestList.get(serial);
+            }
+            if (rr == null) {
+                Rlog.w(RIL.RILJ_LOG_TAG, "processResponse: Unexpected solicited ack response! " +
+                        "sn: " + serial);
+            } else {
+                decrementWakeLock(rr);
+                if (RIL.RILJ_LOGD) {
+                    riljLog(rr.serialString() + " Ack < " + RIL.requestToString(rr.mRequest));
+                }
+            }
+        } else {
+            rr = findAndRemoveRequestFromList(serial);
+
+            if (rr == null) {
+                Rlog.w(RIL.RILJ_LOG_TAG, "processResponse: Unexpected response! sn: " + serial +
+                        " error: " + error);
+                return null;
+            }
+
+            if (type == RadioResponseType.SOLICITED_ACK_EXP) {
+                sendAck();
+                if (RIL.RILJ_LOGD) {
+                    riljLog("Response received for " + rr.serialString() + " " +
+                            RIL.requestToString(rr.mRequest) + " Sending ack to ril.cpp");
+                }
+            } else {
+                // ack sent for SOLICITED_ACK_EXP above; nothing to do for SOLICITED
+            }
+        }
+
+        return rr;
+    }
+
+    /**
+     * This is a helper function to be called at the end of all RadioResponse callbacks.
+     * It takes care of logging, decrementing wakelock if needed, and releases the request from
+     * memory pool.
+     * @param rr RILRequest for which response callback was called
+     * @param responseInfo RadioResponseInfo received in the callback
+     * @param ret object to be returned to request sender
+     */
+    void processResponseDone(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
+        mMetrics.writeOnRilSolicitedResponse(mInstanceId, rr.mSerial, responseInfo.error,
+                rr.mRequest, ret);
+        if (rr != null) {
+            if (responseInfo.type == RadioResponseType.SOLICITED) {
+                decrementWakeLock(rr);
+            }
+            rr.release();
+        }
+    }
+
+    /**
+     * Function to send ack and acquire related wakelock
+     */
+    private void sendAck() {
+        // todo: use IRadio.sendAck() instead when it's available
+        Message msg;
+        RILRequest rr = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
+        msg = mSender.obtainMessage(RIL.EVENT_SEND_ACK, rr);
+        acquireWakeLock(rr, RIL.FOR_ACK_WAKELOCK);
+        msg.sendToTarget();
     }
 
     /**
@@ -2703,7 +2828,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
  | egrep "^ *{RIL_" \
  | sed -re 's/\{([^,]+),[^,]+,([^}]+).+/case \1: ret = \2(p); break;/'
              */
-            case RIL_REQUEST_GET_SIM_STATUS: ret =  responseIccCardStatus(p); break;
             case RIL_REQUEST_ENTER_SIM_PIN: ret =  responseInts(p); break;
             case RIL_REQUEST_ENTER_SIM_PUK: ret =  responseInts(p); break;
             case RIL_REQUEST_ENTER_SIM_PIN2: ret =  responseInts(p); break;
@@ -3120,19 +3244,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 throw new RuntimeException("Unrecognized unsol response: " + response);
             //break; (implied)
         }} catch (Throwable tr) {
-            Rlog.e(RILJ_LOG_TAG, "Exception processing unsol response: " + response +
-                "Exception:" + tr.toString());
+            riljLoge("Exception processing unsol response: " + response + "Exception:" +
+                    tr.toString());
             return;
         }
 
         switch(response) {
-            case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
-                /* has bonus radio state int */
-                RadioState newState = getRadioStateFromInt(p.readInt());
-                if (RILJ_LOGD) unsljLogMore(response, newState.toString());
-
-                switchToRadioState(newState);
-            break;
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
                 if (RILJ_LOGD) unsljLog(response);
 
@@ -3403,7 +3520,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 try {
                     listInfoRecs = (ArrayList<CdmaInformationRecords>)ret;
                 } catch (ClassCastException e) {
-                    Rlog.e(RILJ_LOG_TAG, "Unexpected exception casting to listInfoRecs", e);
+                    riljLoge("Unexpected exception casting to listInfoRecs", e);
                     break;
                 }
 
@@ -3731,38 +3848,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         return new IccIoResult(sw1, sw2, (s != null)
                 ? android.util.Base64.decode(s, android.util.Base64.DEFAULT) : (byte[]) null);
-    }
-
-    private Object
-    responseIccCardStatus(Parcel p) {
-        IccCardApplicationStatus appStatus;
-
-        IccCardStatus cardStatus = new IccCardStatus();
-        cardStatus.setCardState(p.readInt());
-        cardStatus.setUniversalPinState(p.readInt());
-        cardStatus.mGsmUmtsSubscriptionAppIndex = p.readInt();
-        cardStatus.mCdmaSubscriptionAppIndex = p.readInt();
-        cardStatus.mImsSubscriptionAppIndex = p.readInt();
-        int numApplications = p.readInt();
-
-        // limit to maximum allowed applications
-        if (numApplications > IccCardStatus.CARD_MAX_APPS) {
-            numApplications = IccCardStatus.CARD_MAX_APPS;
-        }
-        cardStatus.mApplications = new IccCardApplicationStatus[numApplications];
-        for (int i = 0 ; i < numApplications ; i++) {
-            appStatus = new IccCardApplicationStatus();
-            appStatus.app_type       = appStatus.AppTypeFromRILInt(p.readInt());
-            appStatus.app_state      = appStatus.AppStateFromRILInt(p.readInt());
-            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(p.readInt());
-            appStatus.aid            = p.readString();
-            appStatus.app_label      = p.readString();
-            appStatus.pin1_replaced  = p.readInt();
-            appStatus.pin1           = appStatus.PinStateFromRILInt(p.readInt());
-            appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
-            cardStatus.mApplications[i] = appStatus;
-        }
-        return cardStatus;
     }
 
     private Object
@@ -4576,29 +4661,39 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    private void riljLog(String msg) {
+    void riljLog(String msg) {
         Rlog.d(RILJ_LOG_TAG, msg
                 + (mInstanceId != null ? (" [SUB" + mInstanceId + "]") : ""));
     }
 
-    private void riljLogv(String msg) {
+    void riljLoge(String msg) {
+        Rlog.e(RILJ_LOG_TAG, msg
+                + (mInstanceId != null ? (" [SUB" + mInstanceId + "]") : ""));
+    }
+
+    void riljLoge(String msg, Exception e) {
+        Rlog.e(RILJ_LOG_TAG, msg
+                + (mInstanceId != null ? (" [SUB" + mInstanceId + "]") : ""), e);
+    }
+
+    void riljLogv(String msg) {
         Rlog.v(RILJ_LOG_TAG, msg
                 + (mInstanceId != null ? (" [SUB" + mInstanceId + "]") : ""));
     }
 
-    private void unsljLog(int response) {
+    void unsljLog(int response) {
         riljLog("[UNSL]< " + responseToString(response));
     }
 
-    private void unsljLogMore(int response, String more) {
+    void unsljLogMore(int response, String more) {
         riljLog("[UNSL]< " + responseToString(response) + " " + more);
     }
 
-    private void unsljLogRet(int response, Object ret) {
+    void unsljLogRet(int response, Object ret) {
         riljLog("[UNSL]< " + responseToString(response) + " " + retToString(response, ret));
     }
 
-    private void unsljLogvRet(int response, Object ret) {
+    void unsljLogvRet(int response, Object ret) {
         riljLogv("[UNSL]< " + responseToString(response) + " " + retToString(response, ret));
     }
 
