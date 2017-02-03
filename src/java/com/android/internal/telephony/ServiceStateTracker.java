@@ -3646,9 +3646,8 @@ public class ServiceStateTracker extends Handler {
 
         if (DBG) log("onRestrictedStateChanged: E rs "+ mRestrictedState);
 
-        if (ar.exception == null) {
-            int[] ints = (int[])ar.result;
-            int state = ints[0];
+        if (ar.exception == null && ar.result != null) {
+            int state = (int)ar.result;
 
             newRs.setCsEmergencyRestricted(
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_EMERGENCY) != 0) ||

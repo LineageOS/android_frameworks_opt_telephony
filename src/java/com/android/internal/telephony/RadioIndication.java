@@ -17,8 +17,13 @@
 package com.android.internal.telephony;
 
 import android.hardware.radio.V1_0.CdmaCallWaiting;
+import android.hardware.radio.V1_0.CdmaInformationRecord;
+import android.hardware.radio.V1_0.CdmaLineControlInfoRecord;
+import android.hardware.radio.V1_0.CdmaNumberInfoRecord;
+import android.hardware.radio.V1_0.CdmaRedirectingNumberInfoRecord;
 import android.hardware.radio.V1_0.CdmaSignalInfoRecord;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
+import android.hardware.radio.V1_0.CdmaT53AudioControlInfoRecord;
 import android.hardware.radio.V1_0.IRadioIndication;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.PcoDataInfo;
@@ -32,24 +37,34 @@ import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
+import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_CALL_WAITING;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_INFO_REC;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_OTA_PROVISION_STATUS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CDMA_NEW_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
@@ -276,9 +291,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SIM_REFRESH, response);
 
-        if (mRil.mIccRefreshRegistrants != null) {
-            mRil.mIccRefreshRegistrants.notifyRegistrants(new AsyncResult (null, response, null));
-        }
+        mRil.mIccRefreshRegistrants.notifyRegistrants(new AsyncResult (null, response, null));
     }
 
     public void callRing(int indicationType, boolean isGsm, CdmaSignalInfoRecord record) {
@@ -309,9 +322,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED);
 
-        if (mRil.mIccStatusChangedRegistrants != null) {
-            mRil.mIccStatusChangedRegistrants.notifyRegistrants();
-        }
+        mRil.mIccStatusChangedRegistrants.notifyRegistrants();
     }
 
     public void cdmaNewSms(int indicationType, CdmaSmsMessage msg) {
@@ -330,20 +341,179 @@ public class RadioIndication extends IRadioIndication.Stub {
         }
     }
 
-    public void newBroadcastSms(int indicationType, ArrayList<Byte> var2) {}
+    public void newBroadcastSms(int indicationType, ArrayList<Byte> data) {
+        mRil.processIndication(indicationType);
 
-    public void cdmaRuimSmsStorageFull(int indicationType) {}
+        byte response[] = RIL.arrayListToPrimitiveArray(data);
+        if (RIL.RILJ_LOGD) {
+            mRil.unsljLogvRet(RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS,
+                    IccUtils.bytesToHexString(response));
+        }
 
-    public void restrictedStateChanged(int indicationType, int var2) {}
+        if (mRil.mGsmBroadcastSmsRegistrant != null) {
+            mRil.mGsmBroadcastSmsRegistrant.notifyRegistrant(new AsyncResult(null, response, null));
+        }
+    }
 
-    public void enterEmergencyCallbackMode(int indicationType) {}
+    public void cdmaRuimSmsStorageFull(int indicationType) {
+        mRil.processIndication(indicationType);
 
-    public void cdmaCallWaiting(int indicationType, CdmaCallWaiting var2) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL);
 
-    public void cdmaOtaProvisionStatus(int indicationType, int var2) {}
+        if (mRil.mIccSmsFullRegistrant != null) {
+            mRil.mIccSmsFullRegistrant.notifyRegistrant();
+        }
+    }
+
+    public void restrictedStateChanged(int indicationType, int state) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogvRet(RIL_UNSOL_RESTRICTED_STATE_CHANGED, state);
+
+        if (mRil.mRestrictedStateRegistrant != null) {
+            mRil.mRestrictedStateRegistrant.notifyRegistrant(new AsyncResult (null, state, null));
+        }
+    }
+
+    public void enterEmergencyCallbackMode(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE);
+
+        if (mRil.mEmergencyCallbackModeRegistrant != null) {
+            mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
+        }
+    }
+
+    public void cdmaCallWaiting(int indicationType, CdmaCallWaiting callWaitingRecord) {
+        mRil.processIndication(indicationType);
+
+        // todo: create a CdmaCallWaitingNotification constructor that takes in these fields to make
+        // sure no fields are missing
+        CdmaCallWaitingNotification notification = new CdmaCallWaitingNotification();
+        notification.number = callWaitingRecord.number;
+        notification.numberPresentation = CdmaCallWaitingNotification.presentationFromCLIP(
+                callWaitingRecord.numberPresentation);
+        notification.name = callWaitingRecord.name;
+        notification.namePresentation = notification.numberPresentation;
+        notification.isPresent = callWaitingRecord.signalInfoRecord.isPresent ? 1 : 0;
+        notification.signalType = callWaitingRecord.signalInfoRecord.signalType;
+        notification.alertPitch = callWaitingRecord.signalInfoRecord.alertPitch;
+        notification.signal = callWaitingRecord.signalInfoRecord.signal;
+        notification.numberType = callWaitingRecord.numberType;
+        notification.numberPlan = callWaitingRecord.numberPlan;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_CALL_WAITING, notification);
+
+        mRil.mCallWaitingInfoRegistrants.notifyRegistrants(
+                new AsyncResult (null, notification, null));
+    }
+
+    public void cdmaOtaProvisionStatus(int indicationType, int status) {
+        mRil.processIndication(indicationType);
+
+        int response[] = new int[1];
+        response[0] = status;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_OTA_PROVISION_STATUS, response);
+
+        mRil.mOtaProvisionRegistrants.notifyRegistrants(new AsyncResult (null, response, null));
+    }
 
     public void cdmaInfoRec(int indicationType,
-                            android.hardware.radio.V1_0.CdmaInformationRecords var2) {}
+                            android.hardware.radio.V1_0.CdmaInformationRecords records) {
+        mRil.processIndication(indicationType);
+
+        int numberOfInfoRecs = records.infoRec.size();
+        for (int i = 0; i < numberOfInfoRecs; i++) {
+            CdmaInformationRecord record = records.infoRec.get(i);
+            int id = record.name;
+            CdmaInformationRecords cdmaInformationRecords;
+            switch (id) {
+                case CdmaInformationRecords.RIL_CDMA_DISPLAY_INFO_REC:
+                case CdmaInformationRecords.RIL_CDMA_EXTENDED_DISPLAY_INFO_REC:
+                    CdmaInformationRecords.CdmaDisplayInfoRec cdmaDisplayInfoRec =
+                            new CdmaInformationRecords.CdmaDisplayInfoRec(id,
+                            record.display.get(0).alphaBuf);
+                    cdmaInformationRecords = new CdmaInformationRecords(cdmaDisplayInfoRec);
+                    break;
+
+                case CdmaInformationRecords.RIL_CDMA_CALLED_PARTY_NUMBER_INFO_REC:
+                case CdmaInformationRecords.RIL_CDMA_CALLING_PARTY_NUMBER_INFO_REC:
+                case CdmaInformationRecords.RIL_CDMA_CONNECTED_NUMBER_INFO_REC:
+                    CdmaNumberInfoRecord numInfoRecord = record.number.get(0);
+                    CdmaInformationRecords.CdmaNumberInfoRec cdmaNumberInfoRec =
+                            new CdmaInformationRecords.CdmaNumberInfoRec(id,
+                            numInfoRecord.number,
+                            numInfoRecord.numberType,
+                            numInfoRecord.numberPlan,
+                            numInfoRecord.pi,
+                            numInfoRecord.si);
+                    cdmaInformationRecords = new CdmaInformationRecords(cdmaNumberInfoRec);
+                    break;
+
+                case CdmaInformationRecords.RIL_CDMA_SIGNAL_INFO_REC:
+                    CdmaSignalInfoRecord signalInfoRecord = record.signal.get(0);
+                    CdmaInformationRecords.CdmaSignalInfoRec cdmaSignalInfoRec =
+                            new CdmaInformationRecords.CdmaSignalInfoRec(
+                            signalInfoRecord.isPresent ? 1 : 0,
+                            signalInfoRecord.signalType,
+                            signalInfoRecord.alertPitch,
+                            signalInfoRecord.signal);
+                    cdmaInformationRecords = new CdmaInformationRecords(cdmaSignalInfoRec);
+                    break;
+
+                case CdmaInformationRecords.RIL_CDMA_REDIRECTING_NUMBER_INFO_REC:
+                    CdmaRedirectingNumberInfoRecord redirectingNumberInfoRecord =
+                            record.redir.get(0);
+                    CdmaInformationRecords.CdmaRedirectingNumberInfoRec
+                            cdmaRedirectingNumberInfoRec =
+                            new CdmaInformationRecords.CdmaRedirectingNumberInfoRec(
+                            redirectingNumberInfoRecord.redirectingNumber.number,
+                            redirectingNumberInfoRecord.redirectingNumber.numberType,
+                            redirectingNumberInfoRecord.redirectingNumber.numberPlan,
+                            redirectingNumberInfoRecord.redirectingNumber.pi,
+                            redirectingNumberInfoRecord.redirectingNumber.si,
+                            redirectingNumberInfoRecord.redirectingReason);
+                    cdmaInformationRecords = new CdmaInformationRecords(
+                            cdmaRedirectingNumberInfoRec);
+                    break;
+
+                case CdmaInformationRecords.RIL_CDMA_LINE_CONTROL_INFO_REC:
+                    CdmaLineControlInfoRecord lineControlInfoRecord = record.lineCtrl.get(0);
+                    CdmaInformationRecords.CdmaLineControlInfoRec cdmaLineControlInfoRec =
+                            new CdmaInformationRecords.CdmaLineControlInfoRec(
+                            lineControlInfoRecord.lineCtrlPolarityIncluded,
+                            lineControlInfoRecord.lineCtrlToggle,
+                            lineControlInfoRecord.lineCtrlReverse,
+                            lineControlInfoRecord.lineCtrlPowerDenial);
+                    cdmaInformationRecords = new CdmaInformationRecords(cdmaLineControlInfoRec);
+                    break;
+
+                case CdmaInformationRecords.RIL_CDMA_T53_CLIR_INFO_REC:
+                    CdmaInformationRecords.CdmaT53ClirInfoRec cdmaT53ClirInfoRec =
+                            new CdmaInformationRecords.CdmaT53ClirInfoRec(record.clir.get(0).cause);
+                    cdmaInformationRecords = new CdmaInformationRecords(cdmaT53ClirInfoRec);
+                    break;
+
+                case CdmaInformationRecords.RIL_CDMA_T53_AUDIO_CONTROL_INFO_REC:
+                    CdmaT53AudioControlInfoRecord audioControlInfoRecord = record.audioCtrl.get(0);
+                    CdmaInformationRecords.CdmaT53AudioControlInfoRec cdmaT53AudioControlInfoRec =
+                            new CdmaInformationRecords.CdmaT53AudioControlInfoRec(
+                            audioControlInfoRecord.upLink,
+                            audioControlInfoRecord.downLink);
+                    cdmaInformationRecords = new CdmaInformationRecords(cdmaT53AudioControlInfoRec);
+                    break;
+
+                default:
+                    throw new RuntimeException("RIL_UNSOL_CDMA_INFO_REC: unsupported record. Got "
+                            + CdmaInformationRecords.idToString(id) + " ");
+            }
+
+            if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_INFO_REC, cdmaInformationRecords);
+            mRil.notifyRegistrantsCdmaInfoRec(cdmaInformationRecords);
+        }
+    }
 
     public void oemHookRaw(int indicationType, ArrayList<Byte> var2) {}
 
