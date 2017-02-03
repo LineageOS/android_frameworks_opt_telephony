@@ -98,12 +98,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -3458,20 +3456,22 @@ public class DcTracker extends Handler {
 
     // Check if neither mention DUN and are substantially similar
     private boolean apnsSimilar(ApnSetting first, ApnSetting second) {
-        return (first.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
-                second.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
-                Objects.equals(first.apn, second.apn) &&
-                !apnTypeSameAny(first, second) &&
-                xorEquals(first.proxy, second.proxy) &&
-                xorEquals(first.port, second.port) &&
-                first.carrierEnabled == second.carrierEnabled &&
-                first.bearerBitmask == second.bearerBitmask &&
-                first.profileId == second.profileId &&
-                Objects.equals(first.mvnoType, second.mvnoType) &&
-                Objects.equals(first.mvnoMatchData, second.mvnoMatchData) &&
-                xorEquals(first.mmsc, second.mmsc) &&
-                xorEquals(first.mmsProxy, second.mmsProxy) &&
-                xorEquals(first.mmsPort, second.mmsPort));
+        return (!first.canHandleType(PhoneConstants.APN_TYPE_DUN)
+                && !second.canHandleType(PhoneConstants.APN_TYPE_DUN)
+                && Objects.equals(first.apn, second.apn)
+                && !apnTypeSameAny(first, second)
+                && xorEquals(first.proxy, second.proxy)
+                && xorEquals(first.port, second.port)
+                && xorEquals(first.protocol, second.protocol)
+                && xorEquals(first.roamingProtocol, second.roamingProtocol)
+                && first.carrierEnabled == second.carrierEnabled
+                && first.bearerBitmask == second.bearerBitmask
+                && first.profileId == second.profileId
+                && Objects.equals(first.mvnoType, second.mvnoType)
+                && Objects.equals(first.mvnoMatchData, second.mvnoMatchData)
+                && xorEquals(first.mmsc, second.mmsc)
+                && xorEquals(first.mmsProxy, second.mmsProxy)
+                && xorEquals(first.mmsPort, second.mmsPort));
     }
 
     // equal or one is not specified
