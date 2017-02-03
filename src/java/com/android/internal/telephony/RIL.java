@@ -3305,12 +3305,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         try {switch(response) {
             case RIL_UNSOL_SIGNAL_STRENGTH: ret = responseSignalStrength(p); break;
-            case RIL_UNSOL_RESTRICTED_STATE_CHANGED: ret = responseInts(p); break;
-            case RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS:  ret =  responseRaw(p); break;
-            case RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL:  ret =  responseVoid(p); break;
-            case RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE: ret = responseVoid(p); break;
-            case RIL_UNSOL_CDMA_CALL_WAITING: ret = responseCdmaCallWaiting(p); break;
-            case RIL_UNSOL_CDMA_OTA_PROVISION_STATUS: ret = responseInts(p); break;
             case RIL_UNSOL_CDMA_INFO_REC: ret = responseCdmaInformationRecord(p); break;
             case RIL_UNSOL_OEM_HOOK_RAW: ret = responseRaw(p); break;
             case RIL_UNSOL_RINGBACK_TONE: ret = responseInts(p); break;
@@ -3357,57 +3351,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (mSignalStrengthRegistrant != null) {
                     mSignalStrengthRegistrant.notifyRegistrant(
                             new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_RESTRICTED_STATE_CHANGED:
-                if (RILJ_LOGD) unsljLogvRet(response, ret);
-                if (mRestrictedStateRegistrant != null) {
-                    mRestrictedStateRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS:
-                if (RILJ_LOGD) unsljLogvRet(response, IccUtils.bytesToHexString((byte[])ret));
-
-                if (mGsmBroadcastSmsRegistrant != null) {
-                    mGsmBroadcastSmsRegistrant
-                        .notifyRegistrant(new AsyncResult(null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL:
-                if (RILJ_LOGD) unsljLog(response);
-
-                if (mIccSmsFullRegistrant != null) {
-                    mIccSmsFullRegistrant.notifyRegistrant();
-                }
-                break;
-
-            case RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE:
-                if (RILJ_LOGD) unsljLog(response);
-
-                if (mEmergencyCallbackModeRegistrant != null) {
-                    mEmergencyCallbackModeRegistrant.notifyRegistrant();
-                }
-                break;
-
-            case RIL_UNSOL_CDMA_CALL_WAITING:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mCallWaitingInfoRegistrants != null) {
-                    mCallWaitingInfoRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_CDMA_OTA_PROVISION_STATUS:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mOtaProvisionRegistrants != null) {
-                    mOtaProvisionRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, ret, null));
                 }
                 break;
 
@@ -4023,26 +3966,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
-    private Object
-    responseCdmaCallWaiting(Parcel p) {
-        CdmaCallWaitingNotification notification = new CdmaCallWaitingNotification();
-
-        notification.number = p.readString();
-        notification.numberPresentation =
-                CdmaCallWaitingNotification.presentationFromCLIP(p.readInt());
-        notification.name = p.readString();
-        notification.namePresentation = notification.numberPresentation;
-        notification.isPresent = p.readInt();
-        notification.signalType = p.readInt();
-        notification.alertPitch = p.readInt();
-        notification.signal = p.readInt();
-        notification.numberType = p.readInt();
-        notification.numberPlan = p.readInt();
-
-        return notification;
-    }
-
-    private void
+    void
     notifyRegistrantsCdmaInfoRec(CdmaInformationRecords infoRec) {
         int response = RIL_UNSOL_CDMA_INFO_REC;
         if (infoRec.record instanceof CdmaInformationRecords.CdmaDisplayInfoRec) {
