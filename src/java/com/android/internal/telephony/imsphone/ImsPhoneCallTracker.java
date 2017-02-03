@@ -66,6 +66,7 @@ import com.android.ims.ImsUtInterface;
 import com.android.ims.internal.IImsVideoCallProvider;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.ims.internal.VideoPauseTracker;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -607,12 +608,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
 
                 try {
-                    int fromCode = Integer.parseInt(values[0]);
+                    Integer fromCode;
+                    if (values[0].equals("*")) {
+                        fromCode = null;
+                    } else {
+                        fromCode = Integer.parseInt(values[0]);
+                    }
                     String message = values[1];
                     int toCode = Integer.parseInt(values[2]);
 
-                    mImsReasonCodeMap.put(new Pair<>(fromCode, message), toCode);
-                    log("Loaded ImsReasonInfo mapping : fromCode = " + fromCode + " ; message = " +
+                    addReasonCodeRemapping(fromCode, message, toCode);
+                    log("Loaded ImsReasonInfo mapping : fromCode = " +
+                            fromCode == null ? "any" : fromCode + " ; message = " +
                             message + " ; toCode = " + toCode);
                 } catch (NumberFormatException nfe) {
                     loge("Invalid ImsReasonInfo mapping found: " + mapping);
@@ -1347,6 +1354,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     /**
+     * Adds a reason code remapping, for test purposes.
+     *
+     * @param fromCode The from code, or {@code null} if all.
+     * @param message The message to map.
+     * @param toCode The code to remap to.
+     */
+    @VisibleForTesting
+    public void addReasonCodeRemapping(Integer fromCode, String message, Integer toCode) {
+        mImsReasonCodeMap.put(new Pair<>(fromCode, message), toCode);
+    }
+
+    /**
      * Returns the {@link ImsReasonInfo#getCode()}, potentially remapping to a new value based on
      * the {@link ImsReasonInfo#getCode()} and {@link ImsReasonInfo#getExtraMessage()}.
      *
@@ -1355,16 +1374,25 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @param reasonInfo The {@link ImsReasonInfo}.
      * @return The remapped code.
      */
-    private int maybeRemapReasonCode(ImsReasonInfo reasonInfo) {
+    @VisibleForTesting
+    public int maybeRemapReasonCode(ImsReasonInfo reasonInfo) {
         int code = reasonInfo.getCode();
 
         Pair<Integer, String> toCheck = new Pair<>(code, reasonInfo.getExtraMessage());
-
+        Pair<Integer, String> wildcardToCheck = new Pair<>(null, reasonInfo.getExtraMessage());
         if (mImsReasonCodeMap.containsKey(toCheck)) {
             int toCode = mImsReasonCodeMap.get(toCheck);
 
             log("maybeRemapReasonCode : fromCode = " + reasonInfo.getCode() + " ; message = "
                     + reasonInfo.getExtraMessage() + " ; toCode = " + toCode);
+            return toCode;
+        } else if (mImsReasonCodeMap.containsKey(wildcardToCheck)) {
+            // Handle the case where a wildcard is specified for the fromCode; in this case we will
+            // match without caring about the fromCode.
+            int toCode = mImsReasonCodeMap.get(wildcardToCheck);
+
+            log("maybeRemapReasonCode : fromCode(wildcard) = " + reasonInfo.getCode() +
+                    " ; message = " + reasonInfo.getExtraMessage() + " ; toCode = " + toCode);
             return toCode;
         }
         return code;
@@ -1447,6 +1475,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             case ImsReasonInfo.CODE_DATA_LIMIT_REACHED:
                 return DisconnectCause.DATA_LIMIT_REACHED;
+
+            case ImsReasonInfo.CODE_WIFI_LOST:
+                return DisconnectCause.WIFI_LOST;
             default:
         }
 
