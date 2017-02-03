@@ -16,17 +16,16 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
-import com.android.internal.telephony.dataconnection.DataProfile;
-import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
-import com.android.internal.telephony.RadioCapability;
-import com.android.internal.telephony.uicc.IccCardStatus;
-
-import android.os.Message;
 import android.os.Handler;
+import android.os.Message;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.ClientRequestStats;
+
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.dataconnection.DataProfile;
+import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.uicc.IccCardStatus;
 
 import java.util.List;
 
@@ -192,10 +191,14 @@ public interface CommandsInterface {
 
     void registerForCallStateChanged(Handler h, int what, Object obj);
     void unregisterForCallStateChanged(Handler h);
-    void registerForVoiceNetworkStateChanged(Handler h, int what, Object obj);
-    void unregisterForVoiceNetworkStateChanged(Handler h);
-    void registerForDataNetworkStateChanged(Handler h, int what, Object obj);
-    void unregisterForDataNetworkStateChanged(Handler h);
+    /** Register for network state changed event */
+    void registerForNetworkStateChanged(Handler h, int what, Object obj);
+    /** Unregister from network state changed event */
+    void unregisterForNetworkStateChanged(Handler h);
+    /** Register for data call list changed event */
+    void registerForDataCallListChanged(Handler h, int what, Object obj);
+    /** Unregister from data call list changed event */
+    void unregisterForDataCallListChanged(Handler h);
 
     /** InCall voice privacy notifications */
     void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj);

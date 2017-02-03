@@ -144,22 +144,22 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void registerForVoiceNetworkStateChanged(Handler h, int what, Object obj) {
+    public void registerForNetworkStateChanged(Handler h, int what, Object obj) {
 
     }
 
     @Override
-    public void unregisterForVoiceNetworkStateChanged(Handler h) {
+    public void unregisterForNetworkStateChanged(Handler h) {
 
     }
 
     @Override
-    public void registerForDataNetworkStateChanged(Handler h, int what, Object obj) {
+    public void registerForDataCallListChanged(Handler h, int what, Object obj) {
 
     }
 
     @Override
-    public void unregisterForDataNetworkStateChanged(Handler h) {
+    public void unregisterForDataCallListChanged(Handler h) {
 
     }
 
