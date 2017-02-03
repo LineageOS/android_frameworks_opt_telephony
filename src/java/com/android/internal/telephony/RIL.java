@@ -1162,8 +1162,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             rr.onError(RADIO_NOT_AVAILABLE, null);
             rr.release();
         }
-
-        mMetrics.writeRilDial(mInstanceId, rr.mSerial, clirMode, uusInfo);
     }
 
     public void setUiccSubscription(int slotId, int appIndex, int subId,
