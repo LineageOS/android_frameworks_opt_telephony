@@ -45,6 +45,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -79,6 +80,11 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         @Override
         public void onLooperPrepared() {
             mCTUT = new ImsPhoneCallTracker(mImsPhone);
+            mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
+            mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
+                    ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+            mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
+                    ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
             setReady(true);
         }
     }
@@ -411,5 +417,20 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mCTUT.sendDtmf(PhoneNumberUtils.WAIT, null);
         //verify trigger sendDtmf to mImsSecondCall
         verify(mSecondImsCall, times(1)).sendDtmf(eq(PhoneNumberUtils.WAIT), (Message) isNull());
+    }
+
+    @Test
+    @SmallTest
+    public void testReasonCodeRemap() {
+        assertEquals(ImsReasonInfo.CODE_WIFI_LOST, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(1, 1, "Wifi signal lost.")));
+        assertEquals(ImsReasonInfo.CODE_WIFI_LOST, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(200, 1, "Wifi signal lost.")));
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE,
+                mCTUT.maybeRemapReasonCode(new ImsReasonInfo(501, 1, "Call answered elsewhere.")));
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE,
+                mCTUT.maybeRemapReasonCode(new ImsReasonInfo(510, 1, "Call answered elsewhere.")));
+        assertEquals(90210, mCTUT.maybeRemapReasonCode(new ImsReasonInfo(90210, 1,
+                "Call answered elsewhere.")));
     }
 }
