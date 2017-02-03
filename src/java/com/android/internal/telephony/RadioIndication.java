@@ -24,23 +24,26 @@ import android.hardware.radio.V1_0.CdmaRedirectingNumberInfoRecord;
 import android.hardware.radio.V1_0.CdmaSignalInfoRecord;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.hardware.radio.V1_0.CdmaT53AudioControlInfoRecord;
+import android.hardware.radio.V1_0.CfData;
 import android.hardware.radio.V1_0.IRadioIndication;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.PcoDataInfo;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SimRefreshResult;
+import android.hardware.radio.V1_0.SsInfoData;
 import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.os.AsyncResult;
 import android.os.SystemProperties;
+import android.telephony.CellInfo;
+import android.telephony.PcoData;
 import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
-import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DcFailCause;
+import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
@@ -51,12 +54,22 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_CALL_WA
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_INFO_REC;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_OTA_PROVISION_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LIST;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_HARDWARE_CONFIG_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_OEM_HOOK_RAW;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RADIO_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESEND_INCALL_MUTE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CDMA_NEW_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM;
@@ -65,14 +78,21 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_RAD
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SRVCC_STATE_NOTIFY;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CALL_SETUP;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_EVENT_NOTIFY;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_PROACTIVE_COMMAND;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_SESSION_END;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
 
 import java.util.ArrayList;
 
@@ -195,14 +215,27 @@ public class RadioIndication extends IRadioIndication.Stub {
                                       android.hardware.radio.V1_0.SignalStrength signalStrength) {
         mRil.processIndication(indicationType);
 
-        /*
-        SignalStrength ss = SignalStrength.makeSignalStrengthFromHalObject(signalStrength);
+        SignalStrength ss = new SignalStrength(signalStrength.gw.signalStrength,
+                signalStrength.gw.bitErrorRate,
+                signalStrength.cdma.dbm,
+                signalStrength.cdma.ecio,
+                signalStrength.evdo.dbm,
+                signalStrength.evdo.ecio,
+                signalStrength.evdo.signalNoiseRatio,
+                signalStrength.lte.signalStrength,
+                signalStrength.lte.rsrp,
+                signalStrength.lte.rsrq,
+                signalStrength.lte.rssnr,
+                signalStrength.lte.cqi,
+                signalStrength.tdScdma.rscp,
+                false /* gsmFlag - don't care; will be changed by SST */);
+
         // Note this is set to "verbose" because it happens frequently
         if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
         if (mRil.mSignalStrengthRegistrant != null) {
             mRil.mSignalStrengthRegistrant.notifyRegistrant(new AsyncResult (null, ss, null));
-        } */
+        }
     }
 
     public void dataCallListChanged(int indicationType, ArrayList<SetupDataCallResult> dcList) {
@@ -515,46 +548,248 @@ public class RadioIndication extends IRadioIndication.Stub {
         }
     }
 
-    public void oemHookRaw(int indicationType, ArrayList<Byte> var2) {}
+    public void oemHookRaw(int indicationType, ArrayList<Byte> data) {
+        mRil.processIndication(indicationType);
 
-    public void indicateRingbackTone(int indicationType, boolean var2) {}
+        byte response[] = RIL.arrayListToPrimitiveArray(data);
+        if (RIL.RILJ_LOGD) {
+            mRil.unsljLogvRet(RIL_UNSOL_OEM_HOOK_RAW,
+                    IccUtils.bytesToHexString(response));
+        }
 
-    public void resendIncallMute(int indicationType) {}
+        if (mRil.mUnsolOemHookRawRegistrant != null) {
+            mRil.mUnsolOemHookRawRegistrant.notifyRegistrant(new AsyncResult(null, response, null));
+        }
+    }
 
-    public void cdmaSubscriptionSourceChanged(int indicationType, int var2) {}
+    public void indicateRingbackTone(int indicationType, boolean start) {
+        mRil.processIndication(indicationType);
 
-    public void cdmaPrlChanged(int indicationType, int var2) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLogvRet(RIL_UNSOL_RINGBACK_TONE, start);
 
-    public void exitEmergencyCallbackMode(int indicationType) {}
+        mRil.mRingbackToneRegistrants.notifyRegistrants(new AsyncResult(null, start, null));
+    }
 
-    public void rilConnected(int indicationType) {}
+    public void resendIncallMute(int indicationType) {
+        mRil.processIndication(indicationType);
 
-    public void voiceRadioTechChanged(int indicationType, int var2) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESEND_INCALL_MUTE);
 
-    public void cellInfoList(int indicationType, ArrayList<android.hardware.radio.V1_0.CellInfo> var2) {}
+        mRil.mResendIncallMuteRegistrants.notifyRegistrants();
+    }
 
-    public void imsNetworkStateChanged(int indicationType) {}
+    public void cdmaSubscriptionSourceChanged(int indicationType, int cdmaSource) {
+        mRil.processIndication(indicationType);
 
-    public void subscriptionStatusChanged(int indicationType, boolean var2) {}
+        int response[] = new int[1];
+        response[0] = cdmaSource;
 
-    public void srvccStateNotify(int indicationType, int var2) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED, response);
+
+        mRil.mCdmaSubscriptionChangedRegistrants.notifyRegistrants(
+                new AsyncResult (null, response, null));
+    }
+
+    public void cdmaPrlChanged(int indicationType, int version) {
+        mRil.processIndication(indicationType);
+
+        int response[] = new int[1];
+        response[0] = version;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOl_CDMA_PRL_CHANGED, response);
+
+        mRil.mCdmaPrlChangedRegistrants.notifyRegistrants(
+                new AsyncResult (null, response, null));
+    }
+
+    public void exitEmergencyCallbackMode(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE);
+
+        mRil.mExitEmergencyCallbackModeRegistrants.notifyRegistrants();
+    }
+
+    public void rilConnected(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RIL_CONNECTED);
+
+        // Initial conditions
+        mRil.setRadioPower(false, null);
+        mRil.setCdmaSubscriptionSource(mRil.mCdmaSubscription, null);
+        mRil.setCellInfoListRate();
+        // todo: this should not require a version number now. Setting it to latest RIL version for
+        // now.
+        mRil.notifyRegistrantsRilConnectionChanged(15);
+        // When modem crashes, if user turns the screen off before RIL reconnects, screen
+        // state cannot be sent to modem. Resend the display state here so that modem
+        // has the correct state (to stop signal strength reporting, etc).
+        mRil.updateScreenState(true);
+    }
+
+    public void voiceRadioTechChanged(int indicationType, int rat) {
+        mRil.processIndication(indicationType);
+
+        int response[] = new int[1];
+        response[0] = rat;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_VOICE_RADIO_TECH_CHANGED, response);
+
+        mRil.mVoiceRadioTechChangedRegistrants.notifyRegistrants(
+                new AsyncResult (null, response, null));
+    }
+
+    public void cellInfoList(int indicationType,
+                             ArrayList<android.hardware.radio.V1_0.CellInfo> records) {
+        mRil.processIndication(indicationType);
+
+        ArrayList<CellInfo> response = RIL.responseCellInfoList(records);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
+
+        mRil.mRilCellInfoListRegistrants.notifyRegistrants(new AsyncResult (null, response, null));
+    }
+
+    public void imsNetworkStateChanged(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED);
+
+        mRil.mImsNetworkStateChangedRegistrants.notifyRegistrants();
+    }
+
+    public void subscriptionStatusChanged(int indicationType, boolean activate) {
+        mRil.processIndication(indicationType);
+
+        int response[] = new int[1];
+        response[0] = activate ? 1 : 0;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED, response);
+
+        mRil.mSubscriptionStatusRegistrants.notifyRegistrants(
+                new AsyncResult (null, response, null));
+    }
+
+    public void srvccStateNotify(int indicationType, int state) {
+        mRil.processIndication(indicationType);
+
+        int response[] = new int[1];
+        response[0] = state;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SRVCC_STATE_NOTIFY, response);
+
+        mRil.writeMetricsSrvcc(state);
+
+        mRil.mSrvccStateRegistrants.notifyRegistrants(
+                new AsyncResult (null, response, null));
+    }
 
     public void hardwareConfigChanged(
             int indicationType,
-            ArrayList<android.hardware.radio.V1_0.HardwareConfig> var2) {}
+            ArrayList<android.hardware.radio.V1_0.HardwareConfig> configs) {
+        mRil.processIndication(indicationType);
+
+        ArrayList<HardwareConfig> response = RIL.convertHalHwConfigList(configs, mRil);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_HARDWARE_CONFIG_CHANGED, response);
+
+        mRil.mHardwareConfigChangeRegistrants.notifyRegistrants(
+                new AsyncResult (null, response, null));
+    }
 
     public void radioCapabilityIndication(int indicationType,
-                                          android.hardware.radio.V1_0.RadioCapability var2) {}
+                                          android.hardware.radio.V1_0.RadioCapability rc) {
+        mRil.processIndication(indicationType);
 
-    public void onSupplementaryServiceIndication(int indicationType, StkCcUnsolSsResult var2) {}
+        RadioCapability response = RIL.convertHalRadioCapability(rc, mRil);
 
-    public void stkCallControlAlphaNotify(int indicationType, String var2) {}
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_RADIO_CAPABILITY, response);
 
-    public void lceData(int indicationType, LceDataInfo var2) {}
+        mRil.mPhoneRadioCapabilityChangedRegistrants.notifyRegistrants(
+                new AsyncResult (null, response, null));
+    }
 
-    public void pcoData(int indicationType, PcoDataInfo var2) {}
+    public void onSupplementaryServiceIndication(int indicationType, StkCcUnsolSsResult ss) {
+        mRil.processIndication(indicationType);
 
-    public void modemReset(int indicationType, String var2) {}
+        int num;
+        SsData ssData = new SsData();
+
+        ssData.serviceType = ssData.ServiceTypeFromRILInt(ss.serviceType);
+        ssData.requestType = ssData.RequestTypeFromRILInt(ss.requestType);
+        ssData.teleserviceType = ssData.TeleserviceTypeFromRILInt(ss.teleserviceType);
+        ssData.serviceClass = ss.serviceClass; // This is service class sent in the SS request.
+        ssData.result = ss.result; // This is the result of the SS request.
+
+        if (ssData.serviceType.isTypeCF() &&
+                ssData.requestType.isTypeInterrogation()) {
+            CfData cfData = ss.cfData.get(0);
+            num = cfData.cfInfo.size();
+            ssData.cfInfo = new CallForwardInfo[num];
+
+            for (int i = 0; i < num; i++) {
+                android.hardware.radio.V1_0.CallForwardInfo cfInfo = cfData.cfInfo.get(i);
+                ssData.cfInfo[i] = new CallForwardInfo();
+
+                ssData.cfInfo[i].status = cfInfo.status;
+                ssData.cfInfo[i].reason = cfInfo.reason;
+                ssData.cfInfo[i].serviceClass = cfInfo.serviceClass;
+                ssData.cfInfo[i].toa = cfInfo.toa;
+                ssData.cfInfo[i].number = cfInfo.number;
+                ssData.cfInfo[i].timeSeconds = cfInfo.timeSeconds;
+
+                mRil.riljLog("[SS Data] CF Info " + i + " : " +  ssData.cfInfo[i]);
+            }
+        } else {
+            SsInfoData ssInfo = ss.ssInfo.get(0);
+            num = ssInfo.ssInfo.size();
+            ssData.ssInfo = new int[num];
+            for (int i = 0; i < num; i++) {
+                ssData.ssInfo[i] = ssInfo.ssInfo.get(i);
+                mRil.riljLog("[SS Data] SS Info " + i + " : " +  ssData.ssInfo[i]);
+            }
+        }
+    }
+
+    public void stkCallControlAlphaNotify(int indicationType, String alpha) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_STK_CC_ALPHA_NOTIFY, alpha);
+
+        if (mRil.mCatCcAlphaRegistrant != null) {
+            mRil.mCatCcAlphaRegistrant.notifyRegistrant(new AsyncResult (null, alpha, null));
+        }
+    }
+
+    public void lceData(int indicationType, LceDataInfo lce) {
+        mRil.processIndication(indicationType);
+
+        ArrayList<Integer> response = RIL.convertHalLceData(lce, mRil);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
+
+        if (mRil.mLceInfoRegistrant != null) {
+            mRil.mLceInfoRegistrant.notifyRegistrant(new AsyncResult(null, response, null));
+        }
+    }
+
+    public void pcoData(int indicationType, PcoDataInfo pco) {
+        mRil.processIndication(indicationType);
+
+        PcoData response = new PcoData(pco.cid,
+                pco.bearerProto,
+                pco.pcoId,
+                RIL.arrayListToPrimitiveArray(pco.contents));
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PCO_DATA, response);
+
+        mRil.mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    public void modemReset(int indicationType, String reason) {
+        mRil.processIndication(indicationType);
+    }
 
     private CommandsInterface.RadioState getRadioStateFromInt(int stateInt) {
         CommandsInterface.RadioState state;

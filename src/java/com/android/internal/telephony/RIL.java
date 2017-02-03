@@ -21,8 +21,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
+import android.hardware.radio.V1_0.CellInfoCdma;
+import android.hardware.radio.V1_0.CellInfoGsm;
+import android.hardware.radio.V1_0.CellInfoLte;
+import android.hardware.radio.V1_0.CellInfoType;
+import android.hardware.radio.V1_0.CellInfoWcdma;
 import android.hardware.radio.V1_0.Dial;
+import android.hardware.radio.V1_0.HardwareConfigModem;
 import android.hardware.radio.V1_0.IRadio;
+import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
 import android.hardware.radio.V1_0.RadioResponseInfo;
@@ -2541,9 +2548,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     /**
      * Update the screen state. Send screen state ON if the default display is ON or the device
      * is plugged.
-     * @param forceUpdate. If it is true, update screen state without compare to oldState.
+     * @param forceUpdate If it is true, update screen state without compare to oldState.
      */
-    private void updateScreenState(boolean forceUpdate) {
+    void updateScreenState(boolean forceUpdate) {
         final int oldState = mRadioScreenState;
         mRadioScreenState = (mDefaultDisplayState == Display.STATE_ON || mIsDevicePlugged)
                 ? RADIO_SCREEN_ON : RADIO_SCREEN_OFF;
@@ -2839,9 +2846,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         type = p.readInt();
 
-        if (type == RESPONSE_UNSOLICITED || type == RESPONSE_UNSOLICITED_ACK_EXP) {
-            processUnsolicited (p, type);
-        } else if (type == RESPONSE_SOLICITED || type == RESPONSE_SOLICITED_ACK_EXP) {
+        if (type == RESPONSE_SOLICITED || type == RESPONSE_SOLICITED_ACK_EXP) {
             RILRequest rr = processSolicited (p, type);
             if (rr != null) {
                 if (type == RESPONSE_SOLICITED) {
@@ -3283,242 +3288,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         mMetrics.writeRilCallRing(mInstanceId, response);
     }
 
-    private void
-    processUnsolicited (Parcel p, int type) {
-        int response;
-        Object ret;
-
-        response = p.readInt();
-
-        // Follow new symantics of sending an Ack starting from RIL version 13
-        if (getRilVersion() >= 13 && type == RESPONSE_UNSOLICITED_ACK_EXP) {
-            Message msg;
-            RILRequest rr = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
-            msg = mSender.obtainMessage(EVENT_SEND_ACK, rr);
-            acquireWakeLock(rr, FOR_ACK_WAKELOCK);
-            msg.sendToTarget();
-            if (RILJ_LOGD) {
-                riljLog("Unsol response received for " + responseToString(response) +
-                        " Sending ack to ril.cpp");
-            }
-        }
-
-        try {switch(response) {
-            case RIL_UNSOL_SIGNAL_STRENGTH: ret = responseSignalStrength(p); break;
-            case RIL_UNSOL_CDMA_INFO_REC: ret = responseCdmaInformationRecord(p); break;
-            case RIL_UNSOL_OEM_HOOK_RAW: ret = responseRaw(p); break;
-            case RIL_UNSOL_RINGBACK_TONE: ret = responseInts(p); break;
-            case RIL_UNSOL_RESEND_INCALL_MUTE: ret = responseVoid(p); break;
-            case RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED: ret = responseInts(p); break;
-            case RIL_UNSOl_CDMA_PRL_CHANGED: ret = responseInts(p); break;
-            case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE: ret = responseVoid(p); break;
-            case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
-            case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: ret =  responseInts(p); break;
-            case RIL_UNSOL_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: ret =  responseVoid(p); break;
-            case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: ret =  responseInts(p); break;
-            case RIL_UNSOL_SRVCC_STATE_NOTIFY: ret = responseInts(p); break;
-            case RIL_UNSOL_HARDWARE_CONFIG_CHANGED: ret = responseHardwareConfig(p); break;
-            case RIL_UNSOL_RADIO_CAPABILITY:
-                    ret = responseRadioCapability(p); break;
-            case RIL_UNSOL_ON_SS: ret =  responseSsData(p); break;
-            case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret =  responseString(p); break;
-            case RIL_UNSOL_LCEDATA_RECV: ret = responseLceData(p); break;
-            case RIL_UNSOL_PCO_DATA: ret = responsePcoData(p); break;
-
-            default:
-                throw new RuntimeException("Unrecognized unsol response: " + response);
-            //break; (implied)
-        }} catch (Throwable tr) {
-            riljLoge("Exception processing unsol response: " + response + "Exception:" +
-                    tr.toString());
-            return;
-        }
-
-        switch(response) {
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
-                if (RILJ_LOGD) unsljLog(response);
-
-                mImsNetworkStateChangedRegistrants
-                    .notifyRegistrants(new AsyncResult(null, null, null));
-            break;
-
-            case RIL_UNSOL_SIGNAL_STRENGTH:
-                // Note this is set to "verbose" because it happens
-                // frequently
-                if (RILJ_LOGV) unsljLogvRet(response, ret);
-
-                if (mSignalStrengthRegistrant != null) {
-                    mSignalStrengthRegistrant.notifyRegistrant(
-                            new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_CDMA_INFO_REC:
-                ArrayList<CdmaInformationRecords> listInfoRecs;
-
-                try {
-                    listInfoRecs = (ArrayList<CdmaInformationRecords>)ret;
-                } catch (ClassCastException e) {
-                    riljLoge("Unexpected exception casting to listInfoRecs", e);
-                    break;
-                }
-
-                for (CdmaInformationRecords rec : listInfoRecs) {
-                    if (RILJ_LOGD) unsljLogRet(response, rec);
-                    notifyRegistrantsCdmaInfoRec(rec);
-                }
-                break;
-
-            case RIL_UNSOL_OEM_HOOK_RAW:
-                if (RILJ_LOGD) unsljLogvRet(response, IccUtils.bytesToHexString((byte[]) ret));
-                if (mUnsolOemHookRawRegistrant != null) {
-                    mUnsolOemHookRawRegistrant.notifyRegistrant(new AsyncResult(null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_RINGBACK_TONE:
-                if (RILJ_LOGD) unsljLogvRet(response, ret);
-                if (mRingbackToneRegistrants != null) {
-                    boolean playtone = (((int[])ret)[0] == 1);
-                    mRingbackToneRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, playtone, null));
-                }
-                break;
-
-            case RIL_UNSOL_RESEND_INCALL_MUTE:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mResendIncallMuteRegistrants != null) {
-                    mResendIncallMuteRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mVoiceRadioTechChangedRegistrants != null) {
-                    mVoiceRadioTechChangedRegistrants.notifyRegistrants(
-                            new AsyncResult(null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mCdmaSubscriptionChangedRegistrants != null) {
-                    mCdmaSubscriptionChangedRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOl_CDMA_PRL_CHANGED:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mCdmaPrlChangedRegistrants != null) {
-                    mCdmaPrlChangedRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-
-            case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mExitEmergencyCallbackModeRegistrants != null) {
-                    mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, null, null));
-                }
-                break;
-
-            case RIL_UNSOL_RIL_CONNECTED: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                // Initial conditions
-                setRadioPower(false, null);
-                setCdmaSubscriptionSource(mCdmaSubscription, null);
-                setCellInfoListRate(Integer.MAX_VALUE, null);
-                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
-                // When modem crashes, if user turns the screen off before RIL reconnects, screen
-                // state cannot be sent to modem. Resend the display state here so that modem
-                // has the correct state (to stop signal strength reporting, etc).
-                updateScreenState(true);
-                break;
-            }
-            case RIL_UNSOL_CELL_INFO_LIST: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mRilCellInfoListRegistrants != null) {
-                    mRilCellInfoListRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-            }
-            case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mSubscriptionStatusRegistrants != null) {
-                    mSubscriptionStatusRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-            }
-            case RIL_UNSOL_SRVCC_STATE_NOTIFY: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                mMetrics.writeRilSrvcc(mInstanceId, ((int[])ret)[0]);
-
-                if (mSrvccStateRegistrants != null) {
-                    mSrvccStateRegistrants
-                            .notifyRegistrants(new AsyncResult(null, ret, null));
-                }
-                break;
-            }
-            case RIL_UNSOL_HARDWARE_CONFIG_CHANGED:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mHardwareConfigChangeRegistrants != null) {
-                    mHardwareConfigChangeRegistrants.notifyRegistrants(
-                                             new AsyncResult (null, ret, null));
-                }
-                break;
-            case RIL_UNSOL_RADIO_CAPABILITY:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mPhoneRadioCapabilityChangedRegistrants != null) {
-                    mPhoneRadioCapabilityChangedRegistrants.notifyRegistrants(
-                            new AsyncResult(null, ret, null));
-                 }
-                 break;
-            case RIL_UNSOL_ON_SS:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mSsRegistrant != null) {
-                    mSsRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-            case RIL_UNSOL_STK_CC_ALPHA_NOTIFY:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mCatCcAlphaRegistrant != null) {
-                    mCatCcAlphaRegistrant.notifyRegistrant(
-                                        new AsyncResult (null, ret, null));
-                }
-                break;
-            case RIL_UNSOL_LCEDATA_RECV:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mLceInfoRegistrant != null) {
-                    mLceInfoRegistrant.notifyRegistrant(new AsyncResult(null, ret, null));
-                }
-                break;
-            case RIL_UNSOL_PCO_DATA:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
-                break;
-        }
+    void writeMetricsSrvcc(int state) {
+        mMetrics.writeRilSrvcc(mInstanceId, state);
     }
 
     /**
@@ -3526,7 +3297,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      *
      * @param rilVer is the version of the ril or -1 if disconnected.
      */
-    private void notifyRegistrantsRilConnectionChanged(int rilVer) {
+    void notifyRegistrantsRilConnectionChanged(int rilVer) {
         mRilVersion = rilVer;
         if (mRilConnectedRegistrants != null) {
             mRilConnectedRegistrants.notifyRegistrants(
@@ -4165,10 +3936,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return retVal;
     }
 
-    private Object responsePcoData(Parcel p) {
-        return new PcoData(p);
-    }
-
 
     static String
     requestToString(int request) {
@@ -4417,45 +4184,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     void unsljLogvRet(int response, Object ret) {
         riljLogv("[UNSL]< " + responseToString(response) + " " + retToString(response, ret));
-    }
-
-    private Object
-    responseSsData(Parcel p) {
-        int num;
-        SsData ssData = new SsData();
-
-        ssData.serviceType = ssData.ServiceTypeFromRILInt(p.readInt());
-        ssData.requestType = ssData.RequestTypeFromRILInt(p.readInt());
-        ssData.teleserviceType = ssData.TeleserviceTypeFromRILInt(p.readInt());
-        ssData.serviceClass = p.readInt(); // This is service class sent in the SS request.
-        ssData.result = p.readInt(); // This is the result of the SS request.
-        num = p.readInt();
-
-        if (ssData.serviceType.isTypeCF() &&
-            ssData.requestType.isTypeInterrogation()) {
-            ssData.cfInfo = new CallForwardInfo[num];
-
-            for (int i = 0; i < num; i++) {
-                ssData.cfInfo[i] = new CallForwardInfo();
-
-                ssData.cfInfo[i].status = p.readInt();
-                ssData.cfInfo[i].reason = p.readInt();
-                ssData.cfInfo[i].serviceClass = p.readInt();
-                ssData.cfInfo[i].toa = p.readInt();
-                ssData.cfInfo[i].number = p.readString();
-                ssData.cfInfo[i].timeSeconds = p.readInt();
-
-                riljLog("[SS Data] CF Info " + i + " : " +  ssData.cfInfo[i]);
-            }
-        } else {
-            ssData.ssInfo = new int[num];
-            for (int i = 0; i < num; i++) {
-                ssData.ssInfo[i] = p.readInt();
-                riljLog("[SS Data] SS Info " + i + " : " +  ssData.ssInfo[i]);
-            }
-        }
-
-        return ssData;
     }
 
 
@@ -4709,6 +4437,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
         send(rr);
+    }
+
+    void setCellInfoListRate() {
+        setCellInfoListRate(Integer.MAX_VALUE, null);
     }
 
     public void setInitialAttachApn(String apn, String protocol, int authType, String username,
@@ -5037,15 +4769,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     static ArrayList<DataCallResponse> convertHalDcList(ArrayList<SetupDataCallResult> dcList) {
-        ArrayList<DataCallResponse> dcResponseList;
-        int num = 0;
-        if (dcList != null) {
-            num = dcList.size();
-        }
-        dcResponseList = new ArrayList<>(num);
-        for (int i = 0; i < num; i++) {
+        ArrayList<DataCallResponse> dcResponseList = new ArrayList<>(dcList.size());
+        for (SetupDataCallResult dc : dcList) {
             DataCallResponse dcResponse = new DataCallResponse();
-            SetupDataCallResult dc = dcList.get(i);
             // todo: get rid of this version field?
             // todo: create a DataCallResponse constructor that takes in these fields to make sure
             // no fields are missing
@@ -5081,5 +4807,159 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             dcResponseList.add(dcResponse);
         }
         return dcResponseList;
+    }
+
+    static ArrayList<HardwareConfig> convertHalHwConfigList(
+            ArrayList<android.hardware.radio.V1_0.HardwareConfig> hwListRil,
+            RIL ril) {
+        int num;
+        ArrayList<HardwareConfig> response;
+        HardwareConfig hw;
+
+        num = hwListRil.size();
+        response = new ArrayList<HardwareConfig>(num);
+
+        if (RILJ_LOGV) {
+            ril.riljLog("convertHalHwConfigList: num=" + num);
+        }
+        for (android.hardware.radio.V1_0.HardwareConfig hwRil : hwListRil) {
+            int type = hwRil.type;
+            switch(type) {
+                case HardwareConfig.DEV_HARDWARE_TYPE_MODEM: {
+                    hw = new HardwareConfig(type);
+                    HardwareConfigModem hwModem = hwRil.modem.get(0);
+                    hw.assignModem(hwRil.uuid, hwRil.state, hwModem.rilModel, hwModem.rat,
+                            hwModem.maxVoice, hwModem.maxData, hwModem.maxStandby);
+                    break;
+                }
+                case HardwareConfig.DEV_HARDWARE_TYPE_SIM: {
+                    hw = new HardwareConfig(type);
+                    hw.assignSim(hwRil.uuid, hwRil.state, hwRil.sim.get(0).modemUuid);
+                    break;
+                }
+                default: {
+                    throw new RuntimeException(
+                            "RIL_REQUEST_GET_HARDWARE_CONFIG invalid hardward type:" + type);
+                }
+            }
+
+            response.add(hw);
+        }
+
+        return response;
+    }
+
+    static RadioCapability convertHalRadioCapability(
+            android.hardware.radio.V1_0.RadioCapability rcRil, RIL ril) {
+        int session = rcRil.session;
+        int phase = rcRil.phase;
+        int rat = rcRil.raf;
+        String logicModemUuid = rcRil.logicalModemUuid;
+        int status = rcRil.status;
+
+        ril.riljLog("convertHalRadioCapability: session=" + session +
+                ", phase=" + phase +
+                ", rat=" + rat +
+                ", logicModemUuid=" + logicModemUuid +
+                ", status=" + status);
+        RadioCapability rc = new RadioCapability(
+                ril.mInstanceId, session, phase, rat, logicModemUuid, status);
+        return rc;
+    }
+
+    static ArrayList<Integer> convertHalLceData(LceDataInfo lce, RIL ril) {
+        final ArrayList<Integer> capacityResponse = new ArrayList<Integer>();
+        final int capacityDownKbps = lce.lastHopCapacityKbps;
+        final int confidenceLevel = lce.confidenceLevel;
+        final int lceSuspended = lce.lceSuspended ? 1 : 0;
+
+        ril.riljLog("LCE capacity information received:" +
+                " capacity=" + capacityDownKbps +
+                " confidence=" + confidenceLevel +
+                " lceSuspended=" + lceSuspended);
+
+        capacityResponse.add(capacityDownKbps);
+        capacityResponse.add(confidenceLevel);
+        capacityResponse.add(lceSuspended);
+        return capacityResponse;
+    }
+
+    static ArrayList<CellInfo> responseCellInfoList(
+            ArrayList<android.hardware.radio.V1_0.CellInfo> records) {
+        ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
+
+        for (android.hardware.radio.V1_0.CellInfo record : records) {
+            // first convert RIL CellInfo to Parcel
+            Parcel p = Parcel.obtain();
+            p.writeInt(record.cellInfoType);
+            p.writeInt(record.registered ? 1 : 0);
+            p.writeInt(record.timeStampType);
+            p.writeLong(record.timeStamp);
+            switch (record.cellInfoType) {
+                case CellInfoType.GSM: {
+                    CellInfoGsm cellInfoGsm = record.gsm.get(0);
+                    p.writeInt(Integer.parseInt(cellInfoGsm.cellIdentityGsm.mcc));
+                    p.writeInt(Integer.parseInt(cellInfoGsm.cellIdentityGsm.mnc));
+                    p.writeInt(cellInfoGsm.cellIdentityGsm.lac);
+                    p.writeInt(cellInfoGsm.cellIdentityGsm.cid);
+                    p.writeInt(cellInfoGsm.cellIdentityGsm.arfcn);
+                    p.writeInt(cellInfoGsm.cellIdentityGsm.bsic);
+                    p.writeInt(cellInfoGsm.signalStrengthGsm.signalStrength);
+                    p.writeInt(cellInfoGsm.signalStrengthGsm.bitErrorRate);
+                    p.writeInt(cellInfoGsm.signalStrengthGsm.timingAdvance);
+                    break;
+                }
+
+                case CellInfoType.CDMA: {
+                    CellInfoCdma cellInfoCdma = record.cdma.get(0);
+                    p.writeInt(cellInfoCdma.cellIdentityCdma.networkId);
+                    p.writeInt(cellInfoCdma.cellIdentityCdma.systemId);
+                    p.writeInt(cellInfoCdma.cellIdentityCdma.baseStationId);
+                    p.writeInt(cellInfoCdma.cellIdentityCdma.longitude);
+                    p.writeInt(cellInfoCdma.cellIdentityCdma.latitude);
+                    p.writeInt(cellInfoCdma.signalStrengthCdma.dbm);
+                    p.writeInt(cellInfoCdma.signalStrengthCdma.ecio);
+                    p.writeInt(cellInfoCdma.signalStrengthEvdo.dbm);
+                    p.writeInt(cellInfoCdma.signalStrengthEvdo.ecio);
+                    p.writeInt(cellInfoCdma.signalStrengthEvdo.signalNoiseRatio);
+                    break;
+                }
+
+                case CellInfoType.LTE: {
+                    CellInfoLte cellInfoLte = record.lte.get(0);
+                    p.writeInt(Integer.parseInt(cellInfoLte.cellIdentityLte.mcc));
+                    p.writeInt(Integer.parseInt(cellInfoLte.cellIdentityLte.mnc));
+                    p.writeInt(cellInfoLte.cellIdentityLte.ci);
+                    p.writeInt(cellInfoLte.cellIdentityLte.pci);
+                    p.writeInt(cellInfoLte.cellIdentityLte.tac);
+                    p.writeInt(cellInfoLte.cellIdentityLte.earfcn);
+                    p.writeInt(cellInfoLte.signalStrengthLte.signalStrength);
+                    p.writeInt(cellInfoLte.signalStrengthLte.rsrp);
+                    p.writeInt(cellInfoLte.signalStrengthLte.rsrq);
+                    p.writeInt(cellInfoLte.signalStrengthLte.rssnr);
+                    p.writeInt(cellInfoLte.signalStrengthLte.cqi);
+                    p.writeInt(cellInfoLte.signalStrengthLte.timingAdvance);
+                    break;
+                }
+
+                case CellInfoType.WCDMA: {
+                    CellInfoWcdma cellInfoWcdma = record.wcdma.get(0);
+                    p.writeInt(Integer.parseInt(cellInfoWcdma.cellIdentityWcdma.mcc));
+                    p.writeInt(Integer.parseInt(cellInfoWcdma.cellIdentityWcdma.mnc));
+                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.lac);
+                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.cid);
+                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.psc);
+                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.uarfcn);
+                    p.writeInt(cellInfoWcdma.signalStrengthWcdma.signalStrength);
+                    p.writeInt(cellInfoWcdma.signalStrengthWcdma.bitErrorRate);
+                    break;
+                }
+            }
+
+            CellInfo InfoRec = CellInfo.CREATOR.createFromParcel(p);
+            response.add(InfoRec);
+        }
+
+        return response;
     }
 }
