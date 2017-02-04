@@ -129,8 +129,8 @@ public class UiccController extends Handler {
             // available.
             // Else wait for radio to be on. This is needed for the scenario when SIM is locked --
             // to avoid overlap of CryptKeeper and SIM unlock screen.
-            if ((DECRYPT_STATE.equals(SystemProperties.get("vold.decrypt")) ||
-                    StorageManager.isFileEncryptedNativeOrEmulated() &&
+            if (((DECRYPT_STATE.equals(SystemProperties.get("vold.decrypt")) ||
+                    StorageManager.isFileEncryptedNativeOrEmulated()) &&
                     mCis[i].getRilVersion() >= 9) || radioApmSimNotPwdn) {
                 mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
             } else {
