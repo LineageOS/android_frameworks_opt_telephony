@@ -1263,7 +1263,6 @@ public class SIMRecords extends IccRecords {
                 break;
 
             case EVENT_GET_PLMN_W_ACT_DONE:
-                isRecordLoadResponse = true;
                 ar = (AsyncResult) msg.obj;
                 data = (byte[]) ar.result;
 
@@ -1278,7 +1277,6 @@ public class SIMRecords extends IccRecords {
                 break;
 
             case EVENT_GET_OPLMN_W_ACT_DONE:
-                isRecordLoadResponse = true;
                 ar = (AsyncResult) msg.obj;
                 data = (byte[]) ar.result;
 
@@ -1294,7 +1292,6 @@ public class SIMRecords extends IccRecords {
                 break;
 
             case EVENT_GET_HPLMN_W_ACT_DONE:
-                isRecordLoadResponse = true;
                 ar = (AsyncResult) msg.obj;
                 data = (byte[]) ar.result;
 
@@ -1309,7 +1306,6 @@ public class SIMRecords extends IccRecords {
                 break;
 
             case EVENT_GET_EHPLMN_DONE:
-                isRecordLoadResponse = true;
                 ar = (AsyncResult) msg.obj;
                 data = (byte[]) ar.result;
                 if (ar.exception != null || data == null) {
@@ -1727,16 +1723,12 @@ public class SIMRecords extends IccRecords {
         mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_PLMN_W_ACT, obtainMessage(EVENT_GET_PLMN_W_ACT_DONE));
-        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_OPLMN_W_ACT, obtainMessage(EVENT_GET_OPLMN_W_ACT_DONE));
-        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_HPLMN_W_ACT, obtainMessage(EVENT_GET_HPLMN_W_ACT_DONE));
-        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_EHPLMN, obtainMessage(EVENT_GET_EHPLMN_DONE));
-        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_FPLMN, obtainMessage(EVENT_GET_FPLMN_DONE));
         mRecordsToLoad++;
