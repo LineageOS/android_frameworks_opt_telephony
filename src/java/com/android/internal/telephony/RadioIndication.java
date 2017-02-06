@@ -16,6 +16,51 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_CALL_WAITING;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_INFO_REC;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_OTA_PROVISION_STATUS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LIST;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_HARDWARE_CONFIG_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_OEM_HOOK_RAW;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RADIO_CAPABILITY;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESEND_INCALL_MUTE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CDMA_NEW_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SRVCC_STATE_NOTIFY;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CALL_SETUP;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_EVENT_NOTIFY;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_PROACTIVE_COMMAND;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_SESSION_END;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
+
 import android.hardware.radio.V1_0.CdmaCallWaiting;
 import android.hardware.radio.V1_0.CdmaInformationRecord;
 import android.hardware.radio.V1_0.CdmaLineControlInfoRecord;
@@ -40,59 +85,14 @@ import android.telephony.PcoData;
 import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
 
+import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
-
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_CALL_WAITING;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_INFO_REC;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_OTA_PROVISION_STATUS;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LIST;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_HARDWARE_CONFIG_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_OEM_HOOK_RAW;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RADIO_CAPABILITY;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESEND_INCALL_MUTE;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CDMA_NEW_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SRVCC_STATE_NOTIFY;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CALL_SETUP;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_EVENT_NOTIFY;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_PROACTIVE_COMMAND;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_SESSION_END;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
 
 import java.util.ArrayList;
 
@@ -128,12 +128,16 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.mCallStateRegistrants.notifyRegistrants();
     }
 
-    public void voiceNetworkStateChanged(int indicationType) {
+    /**
+     * Indicates when either voice or data network state changed
+     * @param indicationType RadioIndicationType
+     */
+    public void networkStateChanged(int indicationType) {
         mRil.processIndication(indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED);
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED);
 
-        mRil.mVoiceNetworkStateRegistrants.notifyRegistrants();
+        mRil.mNetworkStateRegistrants.notifyRegistrants();
     }
 
     public void newSms(int indicationType, ArrayList<Byte> pdu) {
@@ -244,7 +248,8 @@ public class RadioIndication extends IRadioIndication.Stub {
         ArrayList<DataCallResponse> response = RIL.convertHalDcList(dcList);
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, response);
 
-        mRil.mDataNetworkStateRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+        mRil.mDataCallListChangedRegistrants.notifyRegistrants(
+                new AsyncResult(null, response, null));
     }
 
     public void suppSvcNotify(int indicationType, SuppSvcNotification suppSvcNotification) {
