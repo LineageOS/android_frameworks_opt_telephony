@@ -25,6 +25,8 @@ import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.net.Uri;
@@ -35,6 +37,7 @@ import android.os.Message;
 import android.os.Process;
 import android.os.UserManager;
 import android.provider.Telephony;
+import android.service.carrier.CarrierMessagingService;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
@@ -465,7 +468,7 @@ public class IccSmsInterfaceManager {
      *  the same time an SMS received from radio is acknowledged back.
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
-        enforceCarrierPrivilege();
+        enforceCarrierOrCarrierImsPrivilege();
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("pdu: " + pdu +
                 "\n format=" + format +
@@ -507,8 +510,8 @@ public class IccSmsInterfaceManager {
                 Manifest.permission.SEND_SMS,
                 "Sending SMS message");
         if (!persistMessageForNonDefaultSmsApp) {
-            // Only allow carrier app to skip auto message persistence.
-            enforceCarrierPrivilege();
+            // Only allow carrier app or carrier ims to skip auto message persistence.
+            enforceCarrierOrCarrierImsPrivilege();
         }
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             int i = 0;
@@ -1113,6 +1116,24 @@ public class IccSmsInterfaceManager {
                     TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
             throw new SecurityException("No Carrier Privilege.");
         }
+    }
+
+    private void enforceCarrierOrCarrierImsPrivilege() {
+        int callingUid = Binder.getCallingUid();
+        String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
+                new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+        try {
+            if (carrierImsPackage != null
+                    && callingUid == mContext.getPackageManager().getPackageUid(
+                            carrierImsPackage, 0)) {
+              return;
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            if (Rlog.isLoggable("SMS", Log.DEBUG)) {
+                log("Cannot find configured carrier ims package");
+            }
+        }
+        enforceCarrierPrivilege();
     }
 
     private void enforceCarrierOrPhonePrivilege() {
