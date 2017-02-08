@@ -954,8 +954,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 new CarrierServicesSmsFilterCallback(
                         pdus, destPort, tracker.getFormat(), resultReceiver, userUnlocked);
         CarrierServicesSmsFilter carrierServicesFilter = new CarrierServicesSmsFilter(
-                mContext, mPhone.getPhoneId(), mPhone.getSubId(), pdus, destPort,
-                tracker.getFormat(), filterCallback, getName());
+                mContext, mPhone, pdus, destPort, tracker.getFormat(), filterCallback, getName());
         if (carrierServicesFilter.filter()) {
             return true;
         }

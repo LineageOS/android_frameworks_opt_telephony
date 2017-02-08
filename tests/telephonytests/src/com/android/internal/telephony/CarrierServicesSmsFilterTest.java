@@ -72,7 +72,7 @@ public class CarrierServicesSmsFilterTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mCarrierServicesSmsFilterUT = new CarrierServicesSmsFilter(
-                mContext, mPhone.getPhoneId(), mPhone.getSubId(), new byte[][]{SMS_PDU},
+                mContext, mPhone, new byte[][]{SMS_PDU},
                 0, null, mFilterCallback, getClass().getSimpleName());
     }
 

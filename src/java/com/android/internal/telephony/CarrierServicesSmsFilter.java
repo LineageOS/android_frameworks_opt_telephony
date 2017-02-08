@@ -46,8 +46,7 @@ public class CarrierServicesSmsFilter {
     protected static final boolean DBG = true;
 
     private final Context mContext;
-    private final int mPhoneId;
-    private final int mSubId;
+    private final Phone mPhone;
     private final byte[][] mPdus;
     private final int mDestPort;
     private final String mPduFormat;
@@ -57,16 +56,14 @@ public class CarrierServicesSmsFilter {
     @VisibleForTesting
     public CarrierServicesSmsFilter(
             Context context,
-            int phoneId,
-            int subId,
+            Phone phone,
             byte[][] pdus,
             int destPort,
             String pduFormat,
             CarrierServicesSmsFilterCallbackInterface carrierServicesSmsFilterCallback,
             String logTag) {
         mContext = context;
-        mPhoneId = phoneId;
-        mSubId = subId;
+        mPhone = phone;
         mPdus = pdus;
         mDestPort = destPort;
         mPduFormat = pduFormat;
@@ -84,6 +81,11 @@ public class CarrierServicesSmsFilter {
         if (carrierAppForFiltering.isPresent()) {
             smsFilterPackages.add(carrierAppForFiltering.get());
         }
+        String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
+                new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+        if (carrierImsPackage != null) {
+            smsFilterPackages.add(carrierImsPackage);
+        }
         FilterAggregator filterAggregator = new FilterAggregator(smsFilterPackages.size());
         for (String smsFilterPackage : smsFilterPackages) {
             filterWithPackage(smsFilterPackage, filterAggregator);
@@ -94,7 +96,7 @@ public class CarrierServicesSmsFilter {
 
     private Optional<String> getCarrierAppPackageForFiltering() {
         List<String> carrierPackages = null;
-        UiccCard card = UiccController.getInstance().getUiccCard(mPhoneId);
+        UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
         if (card != null) {
             carrierPackages = card.getCarrierPackageNamesForIntent(
                     mContext.getPackageManager(),
@@ -209,8 +211,8 @@ public class CarrierServicesSmsFilter {
         protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
             try {
                 carrierMessagingService.filterSms(
-                        new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort, mSubId,
-                        mSmsFilterCallback);
+                        new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
+                        mPhone.getSubId(), mSmsFilterCallback);
             } catch (RemoteException e) {
                 loge("Exception filtering the SMS: " + e);
                 mSmsFilterCallback.onFilterComplete(
