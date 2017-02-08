@@ -213,8 +213,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_DATA_ENABLED_CHANGED = 23;
     private static final int EVENT_GET_IMS_SERVICE = 24;
     private static final int EVENT_CHECK_FOR_WIFI_HANDOVER = 25;
+    private static final int EVENT_CLEAR_DISCONNECTING_CONN = 26;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
+
+    // The number of milliseconds the CallTracker will wait before manually disconnecting the
+    // connection due to the modem not responding.
+    private static final int TIMEOUT_CLEAR_DISCONNECTING_CONN = 5000;
 
     // The number of times we will try to connect to the ImsService before giving up.
     private static final int NUM_IMS_SERVICE_RETRIES = 10;
@@ -1104,6 +1109,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         ImsCall imsCall = call.getImsCall();
+        // Get first connection that is associated with imsCall.
+        ImsPhoneConnection imsPhoneConnection = call.getFirstConnection();
         boolean rejectCall = false;
 
         if (call == mRingingCall) {
@@ -1130,6 +1137,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         call.onHangupLocal();
+        // Schedule a cleaning event for the ImsPhoneCall. If the modem has not responded in
+        // TIMEOUT_CLEAR_DISCONNECTING_CONN milliseconds, manually disconnect the connection.
+        if (!hasMessages(EVENT_CLEAR_DISCONNECTING_CONN, imsPhoneConnection)) {
+            sendMessageDelayed(obtainMessage(EVENT_CLEAR_DISCONNECTING_CONN, imsPhoneConnection),
+                    TIMEOUT_CLEAR_DISCONNECTING_CONN);
+        }
 
         try {
             if (imsCall != null) {
@@ -2436,6 +2449,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         if (conn != null) {
                             conn.onHandoverToWifiFailed();
                         }
+                    }
+                }
+                break;
+            case EVENT_CLEAR_DISCONNECTING_CONN:
+                if (msg.obj instanceof ImsPhoneConnection) {
+                    ImsPhoneConnection imsPhoneConnection = (ImsPhoneConnection) msg.obj;
+                    removeMessages(EVENT_CLEAR_DISCONNECTING_CONN, imsPhoneConnection);
+
+                    // We have timed out waiting for the modem while disconnecting this connection.
+                    // Manually disconnect to avoid tracking an invalid call.
+                    if (imsPhoneConnection != null && imsPhoneConnection.isDisconnecting()) {
+                        Rlog.e(LOG_TAG, "No response from modem. Manually disconnecting: " +
+                                imsPhoneConnection);
+                        imsPhoneConnection.onDisconnect();
                     }
                 }
                 break;
