@@ -1382,20 +1382,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void getSignalStrength(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_SIGNAL_STRENGTH, result,
-                    mRILDefaultWorkSource);
+    public void
+    getSignalStrength (Message result) {
+        RILRequest rr
+                = RILRequest.obtain(RIL_REQUEST_SIGNAL_STRENGTH, result, mRILDefaultWorkSource);
 
-            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-            try {
-                radioProxy.getSignalStrength(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getSignalStrength", e);
-            }
-        }
+        send(rr);
     }
 
     @Override
@@ -1541,34 +1535,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setupDataCall(int radioTechnology, int profile, String apn,
-                              String user, String password, int authType, String protocol,
-                              Message result) {
-        /* todo: hidlize
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_SETUP_DATA_CALL, result,
-                    mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> "
-                        + requestToString(rr.mRequest) + " radioTechnology = " + radioTechnology
-                        + " profile = " + profile + " apn = " + apn + " user = " + user
-                        + " password = " + password + " authType = " + authType + " protocol = "
-                        + protocol);
-            }
-
-            try {
-                radioProxy.setupDataCall(rr.mSerial, radioTechnology + 2, profile,
-                        convertNullToEmptyString(apn), convertNullToEmptyString(user),
-                        convertNullToEmptyString(password), authType,
-                        convertNullToEmptyString(protocol));
-                mMetrics.writeRilSetupDataCall(mPhoneId, rr.mSerial,
-                        radioTechnology, profile, apn, authType, protocol);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setupDataCall", e);
-            }
-        } */
+    public void
+    setupDataCall(int radioTechnology, int profile, String apn,
+                  String user, String password, int authType, String protocol,
+                  Message result) {
         RILRequest rr
                 = RILRequest.obtain(RIL_REQUEST_SETUP_DATA_CALL, result, mRILDefaultWorkSource);
 
@@ -2175,19 +2145,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getDataCallList(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_DATA_CALL_LIST, result,
-                    mRILDefaultWorkSource);
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_DATA_CALL_LIST, result,
+                mRILDefaultWorkSource);
 
-            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-            try {
-                radioProxy.getDataCallList(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getDataCallList", e);
-            }
-        }
+        send(rr);
     }
 
     @Override
@@ -3154,21 +3117,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getCellInfoList(Message result, WorkSource workSource) {
         workSource = getDeafultWorkSourceIfInvalid(workSource);
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_CELL_INFO_LIST, result,
-                    workSource);
 
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-            }
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_CELL_INFO_LIST, result, workSource);
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-            try {
-                radioProxy.getCellInfoList(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getCellInfoList", e);
-            }
-        }
+        send(rr);
     }
 
     @Override
@@ -3563,20 +3516,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void
     getHardwareConfig (Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_HARDWARE_CONFIG, result,
-                    mRILDefaultWorkSource);
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_HARDWARE_CONFIG, result,
+                mRILDefaultWorkSource);
 
-            // Do not log function args for privacy
-            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-            try {
-                radioProxy.getHardwareConfig(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getHardwareConfig", e);
-            }
-        }
+        send(rr);
     }
 
     @Override
@@ -3680,50 +3625,32 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getRadioCapability(Message response) {
-        IRadio radioProxy = getRadioProxy(response);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_RADIO_CAPABILITY, response,
-                    mRILDefaultWorkSource);
+        RILRequest rr = RILRequest.obtain(
+                RIL_REQUEST_GET_RADIO_CAPABILITY, response, mRILDefaultWorkSource);
 
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-            }
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-            try {
-                radioProxy.getRadioCapability(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getRadioCapability", e);
-            }
-        }
+        send(rr);
     }
 
     @Override
     public void setRadioCapability(RadioCapability rc, Message response) {
-        IRadio radioProxy = getRadioProxy(response);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_SET_RADIO_CAPABILITY, response,
-                    mRILDefaultWorkSource);
+        RILRequest rr = RILRequest.obtain(
+                RIL_REQUEST_SET_RADIO_CAPABILITY, response, mRILDefaultWorkSource);
 
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + " RadioCapability = " + rc.toString());
-            }
+        rr.mParcel.writeInt(rc.getVersion());
+        rr.mParcel.writeInt(rc.getSession());
+        rr.mParcel.writeInt(rc.getPhase());
+        rr.mParcel.writeInt(rc.getRadioAccessFamily());
+        rr.mParcel.writeString(rc.getLogicalModemUuid());
+        rr.mParcel.writeInt(rc.getStatus());
 
-            android.hardware.radio.V1_0.RadioCapability halRc =
-                    new android.hardware.radio.V1_0.RadioCapability();
-
-            halRc.session = rc.getSession();
-            halRc.phase = rc.getPhase();
-            halRc.raf = rc.getRadioAccessFamily();
-            halRc.logicalModemUuid = convertNullToEmptyString(rc.getLogicalModemUuid());
-            halRc.status = rc.getStatus();
-
-            try {
-                radioProxy.setRadioCapability(rr.mSerial, halRc);
-            } catch (Exception e) {
-                handleRadioProxyExceptionForRR(rr, "setRadioCapability", e);
-            }
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                    + " " + rc.toString());
         }
+
+        send(rr);
     }
 
     @Override
@@ -3767,21 +3694,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void pullLceData(Message response) {
-        IRadio radioProxy = getRadioProxy(response);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_PULL_LCEDATA, response,
-                    mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-            }
-
-            try {
-                radioProxy.pullLceData(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "pullLceData", e);
-            }
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_PULL_LCEDATA, response,
+                mRILDefaultWorkSource);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
         }
+        send(rr);
     }
 
     @Override
@@ -4053,24 +3971,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         int error = responseInfo.error;
         int type = responseInfo.type;
 
-        RILRequest rr = null;
-
-        if (type == RadioResponseType.SOLICITED_ACK) {
-            synchronized (mRequestList) {
-                rr = mRequestList.get(serial);
-            }
-            if (rr == null) {
-                Rlog.w(RILJ_LOG_TAG, "Unexpected solicited ack response! sn: " + serial);
-            } else {
-                decrementWakeLock(rr);
-                if (RILJ_LOGD) {
-                    riljLog(rr.serialString() + " Ack < " + requestToString(rr.mRequest));
-                }
-            }
-            return rr;
-        }
-
-        rr = findAndRemoveRequestFromList(serial);
+        RILRequest rr = findAndRemoveRequestFromList(serial);
         if (rr == null) {
             Rlog.e(RIL.RILJ_LOG_TAG, "processResponse: Unexpected response! serial: " + serial
                     + " error: " + error);
@@ -4463,6 +4364,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }
         }
 
+
         Object ret = null;
 
         if (error == 0 || p.dataAvail() > 0) {
@@ -4473,15 +4375,25 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     // will be using same code as unsolicited ril commands which will be done in
                     // separate CL. Other RIL commands below are deprecated and require framework
                     // code to be modified to remove them completely.
+                    case RIL_REQUEST_SIGNAL_STRENGTH: ret =  responseSignalStrength(p); break;
                     case RIL_REQUEST_SETUP_DATA_CALL: ret =  responseSetupDataCall(p); break;
                     case RIL_REQUEST_GET_IMEI: ret =  responseString(p); break;
                     case RIL_REQUEST_GET_IMEISV: ret =  responseString(p); break;
                     case RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE: ret =  responseInts(p); break;
+                    case RIL_REQUEST_DATA_CALL_LIST: ret =  responseDataCallList(p); break;
                     case RIL_REQUEST_RESET_RADIO: ret =  responseVoid(p); break;
                     case RIL_REQUEST_OEM_HOOK_RAW: ret =  responseRaw(p); break;
+                    case RIL_REQUEST_STK_GET_PROFILE: ret =  responseString(p); break;
+                    case RIL_REQUEST_STK_SET_PROFILE: ret =  responseVoid(p); break;
+                    case RIL_REQUEST_CDMA_VALIDATE_AND_WRITE_AKEY: ret =  responseVoid(p); break;
                     case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING: ret = responseVoid(p); break;
+                    case RIL_REQUEST_GET_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
                     case RIL_REQUEST_SET_INITIAL_ATTACH_APN: ret = responseVoid(p); break;
                     case RIL_REQUEST_SET_DATA_PROFILE: ret = responseVoid(p); break;
+                    case RIL_REQUEST_GET_HARDWARE_CONFIG: ret = responseHardwareConfig(p); break;
+                    case RIL_REQUEST_GET_RADIO_CAPABILITY: ret =  responseRadioCapability(p); break;
+                    case RIL_REQUEST_SET_RADIO_CAPABILITY: ret =  responseRadioCapability(p); break;
+                    case RIL_REQUEST_PULL_LCEDATA: ret = responseLceData(p); break;
                     default:
                         throw new RuntimeException("Unrecognized solicited response: "
                                 + rr.mRequest);
@@ -4560,7 +4472,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
-    RadioCapability makeStaticRadioCapability() {
+    private RadioCapability makeStaticRadioCapability() {
         // default to UNKNOWN so we fail fast.
         int raf = RadioAccessFamily.RAF_UNKNOWN;
 
@@ -5531,47 +5443,42 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return ret;
     }
 
-    static DataCallResponse convertHalDc(SetupDataCallResult dc) {
-        DataCallResponse dcResponse = new DataCallResponse();
-        // todo: get rid of this version field?
-        // todo: create a DataCallResponse constructor that takes in these fields to make sure
-        // no fields are missing
-        dcResponse.version = 11;
-        dcResponse.status = dc.status;
-        dcResponse.suggestedRetryTime = dc.suggestedRetryTime;
-        dcResponse.cid = dc.cid;
-        dcResponse.active = dc.active;
-        dcResponse.type = dc.type;
-        dcResponse.ifname = dc.ifname;
-        if ((dcResponse.status == DcFailCause.NONE.getErrorCode()) &&
-                TextUtils.isEmpty(dcResponse.ifname)) {
-            throw new RuntimeException("getDataCallResponse, no ifname");
-        }
-        String addresses = dc.addresses;
-        if (!TextUtils.isEmpty(addresses)) {
-            dcResponse.addresses = addresses.split(" ");
-        }
-        String dnses = dc.dnses;
-        if (!TextUtils.isEmpty(dnses)) {
-            dcResponse.dnses = dnses.split(" ");
-        }
-        String gateways = dc.gateways;
-        if (!TextUtils.isEmpty(gateways)) {
-            dcResponse.gateways = gateways.split(" ");
-        }
-        String pcscf = dc.pcscf;
-        if (!TextUtils.isEmpty(pcscf)) {
-            dcResponse.pcscf = pcscf.split(" ");
-        }
-        dcResponse.mtu = dc.mtu;
-
-        return dcResponse;
-    }
-
     static ArrayList<DataCallResponse> convertHalDcList(ArrayList<SetupDataCallResult> dcList) {
         ArrayList<DataCallResponse> dcResponseList = new ArrayList<>(dcList.size());
         for (SetupDataCallResult dc : dcList) {
-            DataCallResponse dcResponse = convertHalDc(dc);
+            DataCallResponse dcResponse = new DataCallResponse();
+            // todo: get rid of this version field?
+            // todo: create a DataCallResponse constructor that takes in these fields to make sure
+            // no fields are missing
+            dcResponse.version = 11;
+            dcResponse.status = dc.status;
+            dcResponse.suggestedRetryTime = dc.suggestedRetryTime;
+            dcResponse.cid = dc.cid;
+            dcResponse.active = dc.active;
+            dcResponse.type = dc.type;
+            dcResponse.ifname = dc.ifname;
+            if ((dcResponse.status == DcFailCause.NONE.getErrorCode()) &&
+                    TextUtils.isEmpty(dcResponse.ifname)) {
+                throw new RuntimeException("getDataCallResponse, no ifname");
+            }
+            String addresses = dc.addresses;
+            if (!TextUtils.isEmpty(addresses)) {
+                dcResponse.addresses = addresses.split(" ");
+            }
+            String dnses = dc.dnses;
+            if (!TextUtils.isEmpty(dnses)) {
+                dcResponse.dnses = dnses.split(" ");
+            }
+            String gateways = dc.gateways;
+            if (!TextUtils.isEmpty(gateways)) {
+                dcResponse.gateways = gateways.split(" ");
+            }
+            String pcscf = dc.pcscf;
+            if (!TextUtils.isEmpty(pcscf)) {
+                dcResponse.pcscf = pcscf.split(" ");
+            }
+            dcResponse.mtu = dc.mtu;
+
             dcResponseList.add(dcResponse);
         }
         return dcResponseList;
@@ -5652,7 +5559,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return capacityResponse;
     }
 
-    static ArrayList<CellInfo> convertHalCellInfoList(
+    static ArrayList<CellInfo> responseCellInfoList(
             ArrayList<android.hardware.radio.V1_0.CellInfo> records) {
         ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
 
@@ -5731,23 +5638,5 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
 
         return response;
-    }
-
-    static SignalStrength convertHalSignalStrength(
-            android.hardware.radio.V1_0.SignalStrength signalStrength) {
-        return new SignalStrength(signalStrength.gw.signalStrength,
-                signalStrength.gw.bitErrorRate,
-                signalStrength.cdma.dbm,
-                signalStrength.cdma.ecio,
-                signalStrength.evdo.dbm,
-                signalStrength.evdo.ecio,
-                signalStrength.evdo.signalNoiseRatio,
-                signalStrength.lte.signalStrength,
-                signalStrength.lte.rsrp,
-                signalStrength.lte.rsrq,
-                signalStrength.lte.rssnr,
-                signalStrength.lte.cqi,
-                signalStrength.tdScdma.rscp,
-                false /* gsmFlag - don't care; will be changed by SST */);
     }
 }
