@@ -1735,9 +1735,13 @@ public abstract class SMSDispatcher extends Handler {
 
         List<String> carrierPackages = card.getCarrierPackageNamesForIntent(
             mContext.getPackageManager(), new Intent(CarrierMessagingService.SERVICE_INTERFACE));
-        // TODO: Add Check for IMS app if there are no carrier packages.
-        return (carrierPackages != null && carrierPackages.size() == 1) ?
-                carrierPackages.get(0) : null;
+        if (carrierPackages != null && carrierPackages.size() == 1) {
+            return carrierPackages.get(0);
+        }
+        // If there is no carrier package which implements CarrierMessagingService, then lookup if
+        // for a carrierImsPackage that implements CarrierMessagingService.
+        return CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
+                new Intent(CarrierMessagingService.SERVICE_INTERFACE));
     }
 
     protected int getSubId() {
