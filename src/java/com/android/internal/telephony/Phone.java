@@ -34,6 +34,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.service.carrier.CarrierIdentifier;
@@ -41,6 +42,8 @@ import android.telecom.VideoProfile;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
+import android.telephony.CellLocation;
+import android.telephony.ClientRequestStats;
 import android.telephony.PhoneStateListener;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -1163,6 +1166,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.getNetworkSelectionMode(message);
     }
 
+    public List<ClientRequestStats> getClientRequestStats() {
+        return mCi.getClientRequestStats();
+    }
+
     /**
      * Manually selects a network. <code>response</code> is
      * dispatched when this is complete.  <code>response.obj</code> will be
@@ -1584,11 +1591,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * @param workSource calling WorkSource
      * @return all available cell information or null if none.
      */
-    public List<CellInfo> getAllCellInfo() {
-        List<CellInfo> cellInfoList = getServiceStateTracker().getAllCellInfo();
+    public List<CellInfo> getAllCellInfo(WorkSource workSource) {
+        List<CellInfo> cellInfoList = getServiceStateTracker().getAllCellInfo(workSource);
         return privatizeCellInfoList(cellInfoList);
+    }
+
+    public CellLocation getCellLocation() {
+        return getCellLocation(null);
     }
 
     /**
@@ -1633,9 +1645,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * A onCellInfoChanged.
      *
      * @param rateInMillis the rate
+     * @param workSource calling WorkSource
      */
-    public void setCellInfoListRate(int rateInMillis) {
-        mCi.setCellInfoListRate(rateInMillis, null);
+    public void setCellInfoListRate(int rateInMillis, WorkSource workSource) {
+        mCi.setCellInfoListRate(rateInMillis, null, workSource);
     }
 
     /**

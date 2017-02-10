@@ -35,6 +35,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -407,9 +408,9 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public CellLocation getCellLocation() {
+    public CellLocation getCellLocation(WorkSource workSource) {
         if (isPhoneTypeGsm()) {
-            return mSST.getCellLocation();
+            return mSST.getCellLocation(workSource);
         } else {
             CdmaCellLocation loc = (CdmaCellLocation)mSST.mCellLoc;
 
@@ -1723,9 +1724,9 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void getNeighboringCids(Message response) {
+    public void getNeighboringCids(Message response, WorkSource workSource) {
         if (isPhoneTypeGsm()) {
-            mCi.getNeighboringCids(response);
+            mCi.getNeighboringCids(response, workSource);
         } else {
             /*
              * This is currently not implemented.  At least as of June
