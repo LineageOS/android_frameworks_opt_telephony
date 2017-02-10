@@ -220,21 +220,7 @@ public class RadioIndication extends IRadioIndication.Stub {
                                       android.hardware.radio.V1_0.SignalStrength signalStrength) {
         mRil.processIndication(indicationType);
 
-        SignalStrength ss = new SignalStrength(signalStrength.gw.signalStrength,
-                signalStrength.gw.bitErrorRate,
-                signalStrength.cdma.dbm,
-                signalStrength.cdma.ecio,
-                signalStrength.evdo.dbm,
-                signalStrength.evdo.ecio,
-                signalStrength.evdo.signalNoiseRatio,
-                signalStrength.lte.signalStrength,
-                signalStrength.lte.rsrp,
-                signalStrength.lte.rsrq,
-                signalStrength.lte.rssnr,
-                signalStrength.lte.cqi,
-                signalStrength.tdScdma.rscp,
-                false /* gsmFlag - don't care; will be changed by SST */);
-
+        SignalStrength ss = RIL.convertHalSignalStrength(signalStrength);
         // Note this is set to "verbose" because it happens frequently
         if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
@@ -650,7 +636,7 @@ public class RadioIndication extends IRadioIndication.Stub {
                              ArrayList<android.hardware.radio.V1_0.CellInfo> records) {
         mRil.processIndication(indicationType);
 
-        ArrayList<CellInfo> response = RIL.responseCellInfoList(records);
+        ArrayList<CellInfo> response = RIL.convertHalCellInfoList(records);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
 
