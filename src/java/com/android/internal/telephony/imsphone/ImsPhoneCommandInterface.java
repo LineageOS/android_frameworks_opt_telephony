@@ -425,10 +425,6 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
-    public void getNeighboringCids(Message response) {
-    }
-
-    @Override
     public void setLocationUpdates(boolean enable, Message response) {
     }
 
@@ -552,14 +548,6 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
 
     @Override
     public void getVoiceRadioTechnology(Message result) {
-    }
-
-    @Override
-    public void getCellInfoList(Message result) {
-    }
-
-    @Override
-    public void setCellInfoListRate(int rateInMillis, Message response) {
     }
 
     @Override

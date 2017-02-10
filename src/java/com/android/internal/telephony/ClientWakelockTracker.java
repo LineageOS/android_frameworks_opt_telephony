@@ -108,6 +108,17 @@ public class ClientWakelockTracker {
         }
     }
 
+    public boolean isClientActive(String clientId) {
+        ClientWakelockAccountant client = getClientWakelockAccountant(clientId);
+        synchronized (mActiveClients) {
+            if (mActiveClients.contains(client)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void dumpClientRequestTracker() {
         Rlog.d(RIL.RILJ_LOG_TAG, "-------mClients---------------");
         synchronized (mClients) {

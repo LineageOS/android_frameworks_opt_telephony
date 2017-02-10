@@ -18,7 +18,9 @@ package com.android.internal.telephony;
 
 import android.os.Handler;
 import android.os.Message;
+import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.ClientRequestStats;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
@@ -1387,8 +1389,9 @@ public interface CommandsInterface {
      * Query neighboring cell ids
      *
      * @param response s callback message to cell ids
+     * @param workSource calling WorkSource
      */
-    void getNeighboringCids(Message response);
+    default void getNeighboringCids(Message response, WorkSource workSource){}
 
     /**
      * Request to enable/disable network state change notifications when
@@ -1730,8 +1733,9 @@ public interface CommandsInterface {
      * AsyncResult.result is a of Collection<CellInfo>
      *
      * @param result is sent back to handler and result.obj is a AsyncResult
+     * @param workSource calling WorkSource
      */
-    void getCellInfoList(Message result);
+    default void getCellInfoList(Message result, WorkSource workSource) {}
 
     /**
      * Sets the minimum time in milli-seconds between when RIL_UNSOL_CELL_INFO_LIST
@@ -1747,8 +1751,9 @@ public interface CommandsInterface {
      * @param response.obj is AsyncResult ar when sent to associated handler
      *                        ar.exception carries exception on failure or null on success
      *                        otherwise the error.
+     * @param workSource calling WorkSource
      */
-    void setCellInfoListRate(int rateInMillis, Message response);
+    default void setCellInfoListRate(int rateInMillis, Message response, WorkSource workSource){}
 
     /**
      * Fires when RIL_UNSOL_CELL_INFO_LIST is received from the RIL.
@@ -2055,4 +2060,8 @@ public interface CommandsInterface {
      * @param h handler to be removed
      */
     public void unregisterForPcoData(Handler h);
+
+    default public List<ClientRequestStats> getClientRequestStats() {
+        return null;
+    }
 }
