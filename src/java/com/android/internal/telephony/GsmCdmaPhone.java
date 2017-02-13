@@ -1935,12 +1935,7 @@ public class GsmCdmaPhone extends Phone {
     private void handleRadioAvailable() {
         mCi.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));
 
-        if (isPhoneTypeGsm()) {
-            mCi.getIMEI(obtainMessage(EVENT_GET_IMEI_DONE));
-            mCi.getIMEISV(obtainMessage(EVENT_GET_IMEISV_DONE));
-        } else {
-            mCi.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
-        }
+        mCi.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
         mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
         startLceAfterRadioIsAvailable();
     }
