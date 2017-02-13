@@ -1086,26 +1086,15 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setupDataCall(int radioTechnology, int profile,
-            String apn, String user, String password, int authType,
-            String protocol, Message result) {
-        SimulatedCommandsVerifier.getInstance().setupDataCall(radioTechnology, profile, apn, user,
-                password, authType, protocol, result);
+    public void setupDataCall(int radioTechnology, DataProfile dataProfile, boolean isRoaming,
+                              boolean allowRoaming, Message result) {
+
+        SimulatedCommandsVerifier.getInstance().setupDataCall(radioTechnology, dataProfile,
+                isRoaming, allowRoaming, result);
 
         if (mDcResponse == null) {
-            mDcResponse = new DataCallResponse();
-            mDcResponse.version = 11;
-            mDcResponse.status = 0;
-            mDcResponse.suggestedRetryTime = -1;
-            mDcResponse.cid = 1;
-            mDcResponse.active = 2;
-            mDcResponse.type = "IP";
-            mDcResponse.ifname = "rmnet_data7";
-            mDcResponse.mtu = 1440;
-            mDcResponse.addresses = new String[]{"12.34.56.78"};
-            mDcResponse.dnses = new String[]{"98.76.54.32"};
-            mDcResponse.gateways = new String[]{"11.22.33.44"};
-            mDcResponse.pcscf = new String[]{};
+            mDcResponse = new DataCallResponse(0, -1, 1, 2, "IP", "rmnet_data7",
+                    "12.34.56.78", "98.76.54.32", "11.22.33.44", "", 1440);
         }
 
         if (mDcSuccess) {
@@ -1837,12 +1826,11 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
-            String password, Message result) {
+    public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result) {
     }
 
     @Override
-    public void setDataProfile(DataProfile[] dps, Message result) {
+    public void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result) {
     }
 
     public void setImsRegistrationState(int[] regState) {
