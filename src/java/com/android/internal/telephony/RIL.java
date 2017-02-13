@@ -3070,12 +3070,19 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void reportStkServiceIsRunning(Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING, result,
-                mRILDefaultWorkSource);
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING, result,
+                    mRILDefaultWorkSource);
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-        send(rr);
+            try {
+                radioProxy.reportStkServiceIsRunning(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "reportStkServiceIsRunning", e);
+            }
+        }
     }
 
     @Override
@@ -3891,20 +3898,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getIMEI(Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_IMEI, result, mRILDefaultWorkSource);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-        send(rr);
+        throw new RuntimeException("getIMEI not expected to be called");
     }
 
     @Override
     public void getIMEISV(Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_IMEISV, result, mRILDefaultWorkSource);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-        send(rr);
+        throw new RuntimeException("getIMEISV not expected to be called");
     }
 
     /**
@@ -3913,7 +3912,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     @Deprecated
     @Override
     public void getLastPdpFailCause(Message result) {
-        getLastDataCallFailCause(result);
+        throw new RuntimeException("getLastPdpFailCause not expected to be called");
     }
 
     /**
@@ -3921,12 +3920,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void getLastDataCallFailCause(Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE, result,
-                mRILDefaultWorkSource);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-        send(rr);
+        throw new RuntimeException("getLastDataCallFailCause not expected to be called");
     }
 
     /**
@@ -3951,11 +3945,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void resetRadio(Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_RESET_RADIO, result, mRILDefaultWorkSource);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-        send(rr);
+        throw new RuntimeException("resetRadio not expected to be called");
     }
 
     /**
@@ -4476,12 +4466,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     // separate CL. Other RIL commands below are deprecated and require framework
                     // code to be modified to remove them completely.
                     case RIL_REQUEST_SETUP_DATA_CALL: ret =  responseSetupDataCall(p); break;
-                    case RIL_REQUEST_GET_IMEI: ret =  responseString(p); break;
-                    case RIL_REQUEST_GET_IMEISV: ret =  responseString(p); break;
-                    case RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE: ret =  responseInts(p); break;
-                    case RIL_REQUEST_RESET_RADIO: ret =  responseVoid(p); break;
                     case RIL_REQUEST_OEM_HOOK_RAW: ret =  responseRaw(p); break;
-                    case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING: ret = responseVoid(p); break;
                     case RIL_REQUEST_SET_INITIAL_ATTACH_APN: ret = responseVoid(p); break;
                     case RIL_REQUEST_SET_DATA_PROFILE: ret = responseVoid(p); break;
                     default:
@@ -5719,6 +5704,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     p.writeInt(cellInfoWcdma.signalStrengthWcdma.bitErrorRate);
                     break;
                 }
+
+                default:
+                    throw new RuntimeException("unexpected cellinfotype: " + record.cellInfoType);
             }
 
             p.setDataPosition(0);

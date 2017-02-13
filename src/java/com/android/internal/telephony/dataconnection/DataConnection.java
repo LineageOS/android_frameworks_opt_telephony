@@ -709,8 +709,6 @@ public class DataConnection extends StateMachine {
                     == CommandException.Error.RADIO_NOT_AVAILABLE) {
                 result = DataCallResponse.SetupResult.ERR_BadCommand;
                 result.mFailCause = DcFailCause.RADIO_NOT_AVAILABLE;
-            } else if ((response == null) || (response.version < 4)) {
-                result = DataCallResponse.SetupResult.ERR_GetLastErrorFromRil;
             } else {
                 result = DataCallResponse.SetupResult.ERR_RilError;
                 result.mFailCause = DcFailCause.fromInt(response.status);
@@ -1457,11 +1455,6 @@ public class DataConnection extends StateMachine {
                             // The addresses given from the RIL are bad
                             tearDownData(cp);
                             transitionTo(mDisconnectingErrorCreatingConnection);
-                            break;
-                        case ERR_GetLastErrorFromRil:
-                            // Request failed and this is an old RIL
-                            mPhone.mCi.getLastDataCallFailCause(
-                                    obtainMessage(EVENT_GET_LAST_FAIL_DONE, cp));
                             break;
                         case ERR_RilError:
 
