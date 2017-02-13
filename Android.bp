@@ -66,6 +66,7 @@ java_library {
         "android.hardware.radio.deprecated-V1.0-java-shallow",
         "telephony-protos",
         "ecc-protos-lite",
+        "ims-ext-common",
     ],
 
     product_variables: {
