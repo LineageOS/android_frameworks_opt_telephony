@@ -124,11 +124,19 @@ public class ImsRttTextHandler extends Handler {
                     return;
                 }
                 mRttTextStream = (Connection.RttTextStream) msg.obj;
+                if (mRttTextStream == null) {
+                    Rlog.e(LOG_TAG, "RTT text stream is null");
+                    return;
+                }
                 mReaderThread = new InCallReaderThread(mRttTextStream);
                 mReaderThread.start();
                 break;
             case SEND_TO_INCALL:
                 String messageToIncall = (String) msg.obj;
+                if (mRttTextStream == null) {
+                    Rlog.e(LOG_TAG, "RTT text stream is null");
+                    return;
+                }
                 try {
                     mRttTextStream.write(messageToIncall);
                 } catch (IOException e) {
