@@ -383,7 +383,7 @@ public class GsmCdmaPhone extends Phone {
     @Override
     protected void finalize() {
         if(DBG) logd("GsmCdmaPhone finalized");
-        if (mWakeLock.isHeld()) {
+        if (mWakeLock != null && mWakeLock.isHeld()) {
             Rlog.e(LOG_TAG, "UNEXPECTED; mWakeLock is held when finalizing.");
             mWakeLock.release();
         }
