@@ -20,10 +20,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
-import android.os.PowerManager;
 import android.os.ServiceManager;
 
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -62,6 +60,10 @@ public class TelephonyComponentFactory {
 
     public ServiceStateTracker makeServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         return new ServiceStateTracker(phone, ci);
+    }
+
+    public SimActivationTracker makeSimActivationTracker(Phone phone) {
+        return new SimActivationTracker(phone);
     }
 
     public DcTracker makeDcTracker(Phone phone) {

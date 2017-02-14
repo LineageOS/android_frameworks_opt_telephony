@@ -311,4 +311,10 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     public void notifyCarrierNetworkChange(boolean active) {
         throw new RuntimeException("Not implemented");
     }
+
+    @Override
+    public void notifySimActivationStateChangedForPhoneId(int phoneId, int subId,
+                                                          int activationType, int state) {
+        throw new RuntimeException("Not implemented");
+    }
 }
