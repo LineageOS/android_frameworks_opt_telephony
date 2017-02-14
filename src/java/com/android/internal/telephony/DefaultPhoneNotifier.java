@@ -28,13 +28,6 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.PreciseCallState;
-import android.telephony.DisconnectCause;
-
-import com.android.internal.telephony.Call;
-import com.android.internal.telephony.CallManager;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.ITelephonyRegistry;
-import com.android.internal.telephony.PhoneConstants;
 
 import java.util.List;
 
@@ -288,6 +281,26 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         // FIXME: subID
         try {
             mRegistry.notifyVoLteServiceStateChanged(lteState);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
+    @Override
+    public void notifyDataActivationStateChanged(Phone sender, int activationState) {
+        try {
+            mRegistry.notifySimActivationStateChangedForPhoneId(sender.getPhoneId(),
+                    sender.getSubId(), PhoneConstants.SIM_ACTIVATION_TYPE_DATA, activationState);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
+    @Override
+    public void notifyVoiceActivationStateChanged(Phone sender, int activationState) {
+        try {
+            mRegistry.notifySimActivationStateChangedForPhoneId(sender.getPhoneId(),
+                    sender.getSubId(), PhoneConstants.SIM_ACTIVATION_TYPE_VOICE, activationState);
         } catch (RemoteException ex) {
             // system process is dead
         }
