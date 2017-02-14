@@ -1115,7 +1115,9 @@ public class RadioResponse extends IRadioResponse.Stub {
                 ret = mRil.makeStaticRadioCapability();
                 responseInfo.error = RadioError.NONE;
             }
-            sendMessageResponse(rr.mResult, ret);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
             mRil.processResponseDone(rr, responseInfo, ret);
         }
     }
