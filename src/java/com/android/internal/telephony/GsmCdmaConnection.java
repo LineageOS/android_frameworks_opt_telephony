@@ -441,6 +441,7 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.ACM_LIMIT_EXCEEDED:
                 return DisconnectCause.LIMIT_EXCEEDED;
 
+            case CallFailCause.OPERATOR_DETERMINED_BARRING:
             case CallFailCause.CALL_BARRED:
                 return DisconnectCause.CALL_BARRED;
 

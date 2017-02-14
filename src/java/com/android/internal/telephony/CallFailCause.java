@@ -31,6 +31,7 @@ public interface CallFailCause {
     // Unassigned/Unobtainable number
     int UNOBTAINABLE_NUMBER = 1;
 
+    int OPERATOR_DETERMINED_BARRING = 8;
     int NORMAL_CLEARING     = 16;
     // Busy Tone
     int USER_BUSY           = 17;
