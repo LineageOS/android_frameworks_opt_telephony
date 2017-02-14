@@ -30,6 +30,9 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.database.ContentObserver;
+import android.hardware.radio.V1_0.CellInfoType;
+import android.hardware.radio.V1_0.DataRegStateResult;
+import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Build;
@@ -1623,53 +1626,67 @@ public class ServiceStateTracker extends Handler {
 
     void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
-        String states[];
         switch (what) {
             case EVENT_POLL_STATE_REGISTRATION: {
-                if (mPhone.isPhoneTypeGsm()) {
-                    states = (String[]) ar.result;
-                    int lac = -1;
-                    int cid = -1;
-                    int type = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-                    int regState = ServiceState.RIL_REG_STATE_UNKNOWN;
-                    int reasonRegStateDenied = -1;
-                    int psc = -1;
-                    if (states.length > 0) {
-                        try {
-                            regState = Integer.parseInt(states[0]);
-                            if (states.length >= 3) {
-                                if (states[1] != null && states[1].length() > 0) {
-                                    lac = (int)Long.parseLong(states[1], 16);
-                                }
-                                if (states[2] != null && states[2].length() > 0) {
-                                    cid = (int)Long.parseLong(states[2], 16);
-                                }
+                VoiceRegStateResult voiceRegStateResult = (VoiceRegStateResult) ar.result;
+                int registrationState = voiceRegStateResult.regState;
 
-                                // states[3] (if present) is the current radio technology
-                                if (states.length >= 4 && states[3] != null) {
-                                    type = Integer.parseInt(states[3]);
-                                }
+                mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
+                mNewSS.setRilVoiceRadioTechnology(voiceRegStateResult.rat);
+
+                //Denial reason if registrationState = 3
+                int reasonForDenial = voiceRegStateResult.reasonForDenial;
+                if (mPhone.isPhoneTypeGsm()) {
+                    int psc = -1;
+                    int cid = -1;
+                    int lac = -1;
+                    switch(voiceRegStateResult.cellIdentity.cellInfoType) {
+                        case CellInfoType.GSM: {
+                            if (voiceRegStateResult.cellIdentity.cellIdentityGsm.size() == 1) {
+                                android.hardware.radio.V1_0.CellIdentityGsm cellIdentityGsm =
+                                        voiceRegStateResult.cellIdentity.cellIdentityGsm.get(0);
+                                cid = cellIdentityGsm.cid;
+                                lac = cellIdentityGsm.lac;
                             }
-                            if (states.length > 14) {
-                                if (states[14] != null && states[14].length() > 0) {
-                                    psc = (int)Long.parseLong(states[14], 16);
-                                }
+                            break;
+                        }
+                        case CellInfoType.WCDMA: {
+                            if (voiceRegStateResult.cellIdentity.cellIdentityWcdma.size() == 1) {
+                                android.hardware.radio.V1_0.CellIdentityWcdma cellIdentityWcdma =
+                                        voiceRegStateResult.cellIdentity.cellIdentityWcdma.get(0);
+                                cid = cellIdentityWcdma.cid;
+                                lac = cellIdentityWcdma.lac;
+                                psc = cellIdentityWcdma.psc;
                             }
-                        } catch (NumberFormatException ex) {
-                            loge("error parsing RegistrationState: " + ex);
+                            break;
+                        }
+                        case CellInfoType.TD_SCDMA: {
+                            if (voiceRegStateResult.cellIdentity.cellIdentityTdscdma.size() == 1) {
+                                android.hardware.radio.V1_0.CellIdentityTdscdma
+                                        cellIdentityTdscdma =
+                                        voiceRegStateResult.cellIdentity.cellIdentityTdscdma.get(0);
+                                cid = cellIdentityTdscdma.cid;
+                                lac = cellIdentityTdscdma.lac;
+                            }
+                            break;
+                        }
+                        default: {
+                            break;
                         }
                     }
 
-                    mGsmRoaming = regCodeIsRoaming(regState);
-                    mNewSS.setVoiceRegState(regCodeToServiceState(regState));
-                    mNewSS.setRilVoiceRadioTechnology(type);
+                    mGsmRoaming = regCodeIsRoaming(registrationState);
 
                     boolean isVoiceCapable = mPhone.getContext().getResources()
                             .getBoolean(com.android.internal.R.bool.config_voice_capable);
-                    if ((regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED
-                            || regState == ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED
-                            || regState == ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED
-                            || regState == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED)
+                    if (((registrationState
+                            == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED)
+                            || (registrationState
+                            == ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED)
+                            || (registrationState
+                            == ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED)
+                            || (registrationState
+                            == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED))
                             && isVoiceCapable) {
                         mEmergencyOnly = true;
                     } else {
@@ -1680,73 +1697,44 @@ public class ServiceStateTracker extends Handler {
                     ((GsmCellLocation)mNewCellLoc).setLacAndCid(lac, cid);
                     ((GsmCellLocation)mNewCellLoc).setPsc(psc);
                 } else {
-                    states = (String[])ar.result;
-
-                    int registrationState = 4;     //[0] registrationState
-                    int radioTechnology = -1;      //[3] radioTechnology
-                    int baseStationId = -1;        //[4] baseStationId
-                    //[5] baseStationLatitude
+                    int baseStationId = -1;
                     int baseStationLatitude = CdmaCellLocation.INVALID_LAT_LONG;
-                    //[6] baseStationLongitude
                     int baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-                    int cssIndicator = 0;          //[7] init with 0, because it is treated as a boolean
-                    int systemId = 0;              //[8] systemId
-                    int networkId = 0;             //[9] networkId
-                    int roamingIndicator = -1;     //[10] Roaming indicator
-                    int systemIsInPrl = 0;         //[11] Indicates if current system is in PRL
-                    int defaultRoamingIndicator = 0;  //[12] Is default roaming indicator from PRL
-                    int reasonForDenial = 0;       //[13] Denial reason if registrationState = 3
+                    int systemId = 0;
+                    int networkId = 0;
 
-                    if (states.length >= 14) {
-                        try {
-                            if (states[0] != null) {
-                                registrationState = Integer.parseInt(states[0]);
+                    //init with 0, because it is treated as a boolean
+                    int cssIndicator = voiceRegStateResult.cssSupported ? 1 : 0;
+                    int roamingIndicator = voiceRegStateResult.roamingIndicator;
+
+                    //Indicates if current system is in PR
+                    int systemIsInPrl = voiceRegStateResult.systemIsInPrl;
+
+                    //Is default roaming indicator from PRL
+                    int defaultRoamingIndicator = voiceRegStateResult.defaultRoamingIndicator;
+
+                    switch(voiceRegStateResult.cellIdentity.cellInfoType) {
+                        case CellInfoType.CDMA: {
+                            if (voiceRegStateResult.cellIdentity.cellIdentityCdma.size() == 1) {
+                                android.hardware.radio.V1_0.CellIdentityCdma cellIdentityCdma =
+                                        voiceRegStateResult.cellIdentity.cellIdentityCdma.get(0);
+                                baseStationId = cellIdentityCdma.baseStationId;
+                                baseStationLatitude = cellIdentityCdma.latitude;
+                                baseStationLongitude = cellIdentityCdma.longitude;
+                                systemId = cellIdentityCdma.systemId;
+                                networkId = cellIdentityCdma.networkId;
                             }
-                            if (states[3] != null) {
-                                radioTechnology = Integer.parseInt(states[3]);
-                            }
-                            if (states[4] != null) {
-                                baseStationId = Integer.parseInt(states[4]);
-                            }
-                            if (states[5] != null) {
-                                baseStationLatitude = Integer.parseInt(states[5]);
-                            }
-                            if (states[6] != null) {
-                                baseStationLongitude = Integer.parseInt(states[6]);
-                            }
-                            // Some carriers only return lat-lngs of 0,0
-                            if (baseStationLatitude == 0 && baseStationLongitude == 0) {
-                                baseStationLatitude  = CdmaCellLocation.INVALID_LAT_LONG;
-                                baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-                            }
-                            if (states[7] != null) {
-                                cssIndicator = Integer.parseInt(states[7]);
-                            }
-                            if (states[8] != null) {
-                                systemId = Integer.parseInt(states[8]);
-                            }
-                            if (states[9] != null) {
-                                networkId = Integer.parseInt(states[9]);
-                            }
-                            if (states[10] != null) {
-                                roamingIndicator = Integer.parseInt(states[10]);
-                            }
-                            if (states[11] != null) {
-                                systemIsInPrl = Integer.parseInt(states[11]);
-                            }
-                            if (states[12] != null) {
-                                defaultRoamingIndicator = Integer.parseInt(states[12]);
-                            }
-                            if (states[13] != null) {
-                                reasonForDenial = Integer.parseInt(states[13]);
-                            }
-                        } catch (NumberFormatException ex) {
-                            loge("EVENT_POLL_STATE_REGISTRATION_CDMA: error parsing: " + ex);
+                            break;
                         }
-                    } else {
-                        throw new RuntimeException("Warning! Wrong number of parameters returned from "
-                                + "RIL_REQUEST_REGISTRATION_STATE: expected 14 or more "
-                                + "strings and got " + states.length + " strings");
+                        default: {
+                            break;
+                        }
+                    }
+
+                    // Some carriers only return lat-lngs of 0,0
+                    if (baseStationLatitude == 0 && baseStationLongitude == 0) {
+                        baseStationLatitude  = CdmaCellLocation.INVALID_LAT_LONG;
+                        baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
                     }
 
                     mRegistrationState = registrationState;
@@ -1754,12 +1742,10 @@ public class ServiceStateTracker extends Handler {
                     // roaming indicator is not in the carrier-specified
                     // list of ERIs for home system, mCdmaRoaming is true.
                     boolean cdmaRoaming =
-                            regCodeIsRoaming(registrationState) && !isRoamIndForHomeSystem(states[10]);
+                            regCodeIsRoaming(registrationState)
+                                    && !isRoamIndForHomeSystem(
+                                            Integer.toString(roamingIndicator));
                     mNewSS.setVoiceRoaming(cdmaRoaming);
-                    mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
-
-                    mNewSS.setRilVoiceRadioTechnology(radioTechnology);
-
                     mNewSS.setCssIndicator(cssIndicator);
                     mNewSS.setSystemAndNetworkId(systemId, networkId);
                     mRoamingIndicator = roamingIndicator;
@@ -1783,100 +1769,44 @@ public class ServiceStateTracker extends Handler {
                         if (DBG) log("Registration denied, " + mRegistrationDeniedReason);
                     }
                 }
+
+                if (DBG) {
+                    log("handlPollVoiceRegResultMessage: regState=" + registrationState
+                            + " radioTechnology=" + voiceRegStateResult.rat);
+                }
                 break;
             }
 
             case EVENT_POLL_STATE_GPRS: {
+                DataRegStateResult dataRegStateResult = (DataRegStateResult) ar.result;
+                int regState = dataRegStateResult.regState;
+                int dataRegState = regCodeToServiceState(regState);
+                int newDataRat = dataRegStateResult.rat;
+
+                mNewSS.setDataRegState(dataRegState);
+                mNewSS.setRilDataRadioTechnology(newDataRat);
+
                 if (mPhone.isPhoneTypeGsm()) {
-                    states = (String[]) ar.result;
 
-                    int type = 0;
-                    int regState = ServiceState.RIL_REG_STATE_UNKNOWN;
-                    mNewReasonDataDenied = -1;
-                    mNewMaxDataCalls = 1;
-                    if (states.length > 0) {
-                        try {
-                            regState = Integer.parseInt(states[0]);
-
-                            // states[3] (if present) is the current radio technology
-                            if (states.length >= 4 && states[3] != null) {
-                                type = Integer.parseInt(states[3]);
-                            }
-                            if ((states.length >= 5) &&
-                                    (regState == ServiceState.RIL_REG_STATE_DENIED)) {
-                                mNewReasonDataDenied = Integer.parseInt(states[4]);
-                            }
-                            if (states.length >= 6) {
-                                mNewMaxDataCalls = Integer.parseInt(states[5]);
-                            }
-                        } catch (NumberFormatException ex) {
-                            loge("error parsing GprsRegistrationState: " + ex);
-                        }
-                    }
-                    int dataRegState = regCodeToServiceState(regState);
-                    mNewSS.setDataRegState(dataRegState);
+                    mNewReasonDataDenied = dataRegStateResult.reasonDataDenied;
+                    mNewMaxDataCalls = dataRegStateResult.maxDataCalls;
                     mDataRoaming = regCodeIsRoaming(regState);
-                    mNewSS.setRilDataRadioTechnology(type);
+
                     if (DBG) {
                         log("handlPollStateResultMessage: GsmSST setDataRegState=" + dataRegState
                                 + " regState=" + regState
-                                + " dataRadioTechnology=" + type);
+                                + " dataRadioTechnology=" + newDataRat);
                     }
                 } else if (mPhone.isPhoneTypeCdma()) {
-                    states = (String[])ar.result;
-                    if (DBG) {
-                        log("handlePollStateResultMessage: EVENT_POLL_STATE_GPRS states.length=" +
-                                states.length + " states=" + states);
-                    }
 
-                    int regState = ServiceState.RIL_REG_STATE_UNKNOWN;
-                    int dataRadioTechnology = 0;
-
-                    if (states.length > 0) {
-                        try {
-                            regState = Integer.parseInt(states[0]);
-
-                            // states[3] (if present) is the current radio technology
-                            if (states.length >= 4 && states[3] != null) {
-                                dataRadioTechnology = Integer.parseInt(states[3]);
-                            }
-                        } catch (NumberFormatException ex) {
-                            loge("handlePollStateResultMessage: error parsing GprsRegistrationState: "
-                                    + ex);
-                        }
-                    }
-
-                    int dataRegState = regCodeToServiceState(regState);
-                    mNewSS.setDataRegState(dataRegState);
-                    mNewSS.setRilDataRadioTechnology(dataRadioTechnology);
                     mNewSS.setDataRoaming(regCodeIsRoaming(regState));
+
                     if (DBG) {
                         log("handlPollStateResultMessage: cdma setDataRegState=" + dataRegState
                                 + " regState=" + regState
-                                + " dataRadioTechnology=" + dataRadioTechnology);
+                                + " dataRadioTechnology=" + newDataRat);
                     }
                 } else {
-                    states = (String[])ar.result;
-                    if (DBG) {
-                        log("handlePollStateResultMessage: EVENT_POLL_STATE_GPRS states.length=" +
-                                states.length + " states=" + states);
-                    }
-
-                    int newDataRAT = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-                    int regState = -1;
-                    if (states.length > 0) {
-                        try {
-                            regState = Integer.parseInt(states[0]);
-
-                            // states[3] (if present) is the current radio technology
-                            if (states.length >= 4 && states[3] != null) {
-                                newDataRAT = Integer.parseInt(states[3]);
-                            }
-                        } catch (NumberFormatException ex) {
-                            loge("handlePollStateResultMessage: error parsing GprsRegistrationState: "
-                                    + ex);
-                        }
-                    }
 
                     // If the unsolicited signal strength comes just before data RAT family changes
                     // (i.e. from UNKNOWN to LTE, CDMA to LTE, LTE to CDMA), the signal bar might
@@ -1885,22 +1815,20 @@ public class ServiceStateTracker extends Handler {
                     // even not come at all.  In order to provide the best user experience, we
                     // query the latest signal information so it will show up on the UI on time.
                     int oldDataRAT = mSS.getRilDataRadioTechnology();
-                    if ((oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN &&
-                            newDataRAT != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) ||
-                            (ServiceState.isCdma(oldDataRAT) && ServiceState.isLte(newDataRAT)) ||
-                            (ServiceState.isLte(oldDataRAT) && ServiceState.isCdma(newDataRAT))) {
+                    if (((oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)
+                            && (newDataRat != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN))
+                            || (ServiceState.isCdma(oldDataRAT) && ServiceState.isLte(newDataRat))
+                            || (ServiceState.isLte(oldDataRAT)
+                            && ServiceState.isCdma(newDataRat))) {
                         mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
                     }
 
-                    mNewSS.setRilDataRadioTechnology(newDataRAT);
-                    int dataRegState = regCodeToServiceState(regState);
-                    mNewSS.setDataRegState(dataRegState);
                     // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
                     mNewSS.setDataRoaming(regCodeIsRoaming(regState));
                     if (DBG) {
                         log("handlPollStateResultMessage: CdmaLteSST setDataRegState=" + dataRegState
                                 + " regState=" + regState
-                                + " dataRadioTechnology=" + newDataRAT);
+                                + " dataRadioTechnology=" + newDataRat);
                     }
                 }
                 break;
