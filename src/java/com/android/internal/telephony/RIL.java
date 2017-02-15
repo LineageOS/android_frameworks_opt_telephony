@@ -786,6 +786,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    boolean mIsMobileNetworkSupported;
     RadioResponse mRadioResponse;
     RadioIndication mRadioIndication;
     volatile IRadio mRadioProxy = null;
@@ -832,6 +833,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private IRadio getRadioProxy(Message result) {
+        if (!mIsMobileNetworkSupported) {
+            if (RILJ_LOGV) riljLog("Not calling getService(): wifi-only");
+            return null;
+        }
+
         if (mRadioProxy != null) {
             return mRadioProxy;
         }
@@ -883,6 +889,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         mPhoneType = RILConstants.NO_PHONE;
         mPhoneId = instanceId;
 
+        ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        mIsMobileNetworkSupported = cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
+
         mRadioResponse = new RadioResponse(this);
         mRadioIndication = new RadioIndication(this);
         mRilHandler = new RilHandler();
@@ -908,9 +918,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         Looper looper = mSenderThread.getLooper();
         mSender = new RILSender(looper);
 
-        ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        if (cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE) == false) {
+        if (!mIsMobileNetworkSupported) {
             riljLog("Not starting RILReceiver: wifi-only");
         } else {
             riljLog("Starting RILReceiver" + mPhoneId);
