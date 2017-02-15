@@ -2061,6 +2061,14 @@ public interface CommandsInterface {
      */
     public void unregisterForPcoData(Handler h);
 
+    /**
+     * Set SIM card power up or down
+     *
+     * @param powerUp True if powering up the sim card
+     * @param result callback message contains the information of SUCCESS/FAILURE
+     */
+    public void setSimCardPower(boolean powerUp, Message result);
+
     default public List<ClientRequestStats> getClientRequestStats() {
         return null;
     }

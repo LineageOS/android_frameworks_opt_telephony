@@ -1356,4 +1356,8 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void unregisterForPcoData(Handler h) {
     }
+
+    @Override
+    public void setSimCardPower(boolean powerUp, Message result) {
+    }
 }
