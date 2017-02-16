@@ -16,98 +16,37 @@
 
 package com.android.internal.telephony.mocks;
 
-import static android.Manifest.permission.RECEIVE_DATA_ACTIVITY_CHANGE;
-import static android.net.ConnectivityManager.CONNECTIVITY_ACTION;
-import static android.net.ConnectivityManager.NETID_UNSET;
-import static android.net.ConnectivityManager.TYPE_NONE;
-import static android.net.ConnectivityManager.TYPE_VPN;
-import static android.net.ConnectivityManager.getNetworkTypeName;
-import static android.net.ConnectivityManager.isNetworkTypeValid;
-import static android.net.NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET;
-import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED;
-import static android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED;
-import static android.net.NetworkPolicyManager.RULE_ALLOW_ALL;
-import static android.net.NetworkPolicyManager.RULE_REJECT_ALL;
-import static android.net.NetworkPolicyManager.RULE_REJECT_METERED;
 
 import android.annotation.Nullable;
-import android.app.AlarmManager;
-import android.app.BroadcastOptions;
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.content.res.Configuration;
-import android.content.res.Resources;
-import android.database.ContentObserver;
 import android.net.ConnectivityManager;
-import android.net.ConnectivityManager.PacketKeepalive;
 import android.net.IConnectivityManager;
-import android.net.INetworkManagementEventObserver;
-import android.net.INetworkPolicyListener;
-import android.net.INetworkPolicyManager;
-import android.net.INetworkStatsService;
 import android.net.LinkProperties;
-import android.net.LinkProperties.CompareResult;
 import android.net.Network;
-import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
-import android.net.NetworkConfig;
 import android.net.NetworkInfo;
-import android.net.NetworkInfo.DetailedState;
 import android.net.NetworkMisc;
 import android.net.NetworkQuotaInfo;
 import android.net.NetworkRequest;
 import android.net.NetworkState;
-import android.net.NetworkUtils;
-import android.net.Proxy;
 import android.net.ProxyInfo;
-import android.net.RouteInfo;
-import android.net.UidRange;
-import android.net.Uri;
 import android.os.Binder;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.FileUtils;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.INetworkManagementService;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.ParcelFileDescriptor;
-import android.os.PowerManager;
-import android.os.Process;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
-import android.os.SystemClock;
-import android.os.SystemProperties;
-import android.os.UserHandle;
-import android.os.UserManager;
-import android.provider.Settings;
-import android.security.Credentials;
-import android.security.KeyStore;
-import android.telephony.TelephonyManager;
-import android.text.TextUtils;
-import android.util.LocalLog;
-import android.util.LocalLog.ReadOnlyLocalLog;
-import android.util.Pair;
 import android.util.Slog;
-import android.util.SparseArray;
-import android.util.SparseBooleanArray;
-import android.util.SparseIntArray;
-import android.util.Xml;
 
-import com.android.internal.R;
-import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.net.LegacyVpnInfo;
 import com.android.internal.net.VpnConfig;
@@ -117,28 +56,9 @@ import com.android.internal.util.AsyncChannel;
 import com.android.server.connectivity.NetworkAgentInfo;
 import com.android.server.connectivity.NetworkMonitor;
 
-import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @hide
@@ -768,7 +688,7 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
             Messenger messenger, int timeoutMs, IBinder binder, int legacyType) {
         networkCapabilities = new NetworkCapabilities(networkCapabilities);
 
-        if (timeoutMs < 0 || timeoutMs > ConnectivityManager.MAX_NETWORK_REQUEST_TIMEOUT_MS) {
+        if (timeoutMs < 0) {
             throw new IllegalArgumentException("Bad timeout specified");
         }
 
