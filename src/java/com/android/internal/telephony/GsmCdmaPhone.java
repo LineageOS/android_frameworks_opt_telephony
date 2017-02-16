@@ -1125,6 +1125,14 @@ public class GsmCdmaPhone extends Phone {
                 && mSST.mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE && !isEmergency) {
             throw new CallStateException("cannot dial in current state");
         }
+        // Check non-emergency voice CS call - shouldn't dial when POWER_OFF
+        if (mSST != null && mSST.mSS.getState() == ServiceState.STATE_POWER_OFF /* CS POWER_OFF */
+                && !VideoProfile.isVideo(videoState) /* voice call */
+                && !isEmergency /* non-emergency call */) {
+            throw new CallStateException(
+                CallStateException.ERROR_POWER_OFF,
+                "cannot dial voice call in airplane mode");
+        }
         if (DBG) logd("Trying (non-IMS) CS call");
 
         if (isPhoneTypeGsm()) {
