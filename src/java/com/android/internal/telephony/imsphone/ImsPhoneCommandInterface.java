@@ -623,4 +623,8 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     @Override
     public void getAllowedCarriers(Message result) {
     }
+
+    @Override
+    public void setSimCardPower(boolean powerUp, Message result) {
+    }
 }

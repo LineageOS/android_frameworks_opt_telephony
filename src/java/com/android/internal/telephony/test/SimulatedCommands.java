@@ -2102,6 +2102,10 @@ public class SimulatedCommands extends BaseCommands
     public void unregisterForPcoData(Handler h) {
     }
 
+    @Override
+    public void setSimCardPower(boolean powerUp, Message result) {
+    }
+
     @VisibleForTesting
     public void triggerRestrictedStateChanged(int restrictedState) {
         if (mRestrictedStateRegistrant != null) {
