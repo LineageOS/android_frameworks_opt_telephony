@@ -68,13 +68,13 @@ public class TestImsServiceControllerAdapter {
         }
 
         @Override
-        public boolean isConnected(int slotId, int featureType, int sessionId, int callSessionType,
-                int callType) throws RemoteException {
+        public boolean isConnected(int slotId, int featureType, int callSessionType, int callType)
+                throws RemoteException {
             return false;
         }
 
         @Override
-        public boolean isOpened(int slotId, int featureType, int sessionId) throws RemoteException {
+        public boolean isOpened(int slotId, int featureType) throws RemoteException {
             return false;
         }
 
@@ -84,13 +84,13 @@ public class TestImsServiceControllerAdapter {
         }
 
         @Override
-        public void addRegistrationListener(int slotId, int featureType, int sessionId,
+        public void addRegistrationListener(int slotId, int featureType,
                 IImsRegistrationListener listener) throws RemoteException {
 
         }
 
         @Override
-        public void removeRegistrationListener(int slotId, int featureType, int sessionId,
+        public void removeRegistrationListener(int slotId, int featureType,
                 IImsRegistrationListener listener) throws RemoteException {
 
         }
@@ -114,43 +114,43 @@ public class TestImsServiceControllerAdapter {
         }
 
         @Override
-        public IImsUt getUtInterface(int slotId, int featureType, int sessionId)
+        public IImsUt getUtInterface(int slotId, int featureType)
                 throws RemoteException {
             return null;
         }
 
         @Override
-        public IImsConfig getConfigInterface(int slotId, int featureType, int sessionId)
+        public IImsConfig getConfigInterface(int slotId, int featureType)
                 throws RemoteException {
             return null;
         }
 
         @Override
-        public void turnOnIms(int slotId, int featureType, int sessionId)
+        public void turnOnIms(int slotId, int featureType)
                 throws RemoteException {
 
         }
 
         @Override
-        public void turnOffIms(int slotId, int featureType, int sessionId) throws RemoteException {
+        public void turnOffIms(int slotId, int featureType) throws RemoteException {
 
         }
 
         @Override
-        public IImsEcbm getEcbmInterface(int slotId, int featureType, int sessionId)
+        public IImsEcbm getEcbmInterface(int slotId, int featureType)
                 throws RemoteException {
             return null;
         }
 
         @Override
-        public void setUiTTYMode(int slotId, int featureType, int sessionId, int uiTtyMode,
-                Message onComplete) throws RemoteException {
+        public void setUiTTYMode(int slotId, int featureType, int uiTtyMode, Message onComplete)
+                throws RemoteException {
 
         }
 
         @Override
-        public IImsMultiEndpoint getMultiEndpointInterface(int slotId, int featureType,
-                int sessionId) throws RemoteException {
+        public IImsMultiEndpoint getMultiEndpointInterface(int slotId, int featureType)
+                throws RemoteException {
             return null;
         }
     }
