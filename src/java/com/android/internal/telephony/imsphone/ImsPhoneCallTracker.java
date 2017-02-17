@@ -45,6 +45,8 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.ImsServiceProxy;
+import android.telephony.ims.feature.ImsFeature;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -221,10 +223,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     // connection due to the modem not responding.
     private static final int TIMEOUT_CLEAR_DISCONNECTING_CONN = 5000;
 
-    // The number of times we will try to connect to the ImsService before giving up.
-    private static final int NUM_IMS_SERVICE_RETRIES = 10;
-    // The number of milliseconds in between each try.
-    private static final int TIME_BETWEEN_IMS_SERVICE_RETRIES_MS = 400; // ms
+    // Initial condition for ims connection retry.
+    private static final int IMS_RETRY_STARTING_TIMEOUT_MS = 500; // ms
+    // Ceiling bitshift amount for service query timeout, calculated as:
+    // 2^mImsServiceRetryCount * IMS_RETRY_STARTING_TIMEOUT_MS, where
+    // mImsServiceRetryCount ∊ [0, CEILING_SERVICE_RETRY_COUNT].
+    private static final int CEILING_SERVICE_RETRY_COUNT = 6;
 
     private static final int HANDOVER_TO_WIFI_TIMEOUT_MS = 60000; // ms
 
@@ -349,6 +353,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      */
     private boolean mShouldUpdateImsConfigOnDisconnect = false;
 
+    private ImsServiceProxy.INotifyStatusChanged mNotifyFeatureRemovedCallback = () -> {
+        try {
+            if (mImsManager.getImsServiceStatus() != ImsFeature.STATE_READY) {
+                retryGetImsService();
+            }
+        } catch (ImsException e) {
+            // Could not get the ImsService, retry!
+            retryGetImsService();
+        }
+    };
+
     //***** Events
 
 
@@ -384,6 +399,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private void getImsService() throws ImsException {
         if (DBG) log("getImsService");
         mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId());
+        // Adding to set, will be safe adding multiple times.
+        mImsManager.addNotifyStatusChangedCallback(mNotifyFeatureRemovedCallback);
+        if (mImsManager.getImsServiceStatus() != ImsFeature.STATE_READY) {
+            // We can not call "open" until the ims service is ready
+            throw new ImsException("getImsServiceStatus()",
+                    ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN);
+        }
+        mImsServiceRetryCount = 0;
         mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
                 createIncomingCallPendingIntent(),
                 mImsConnectionStateListener);
@@ -2424,20 +2447,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     getImsService();
                 } catch (ImsException e) {
                     loge("getImsService: " + e);
-                    //Leave mImsManager as null, then CallStateException will be thrown when dialing
-                    mImsManager = null;
-                    if (mImsServiceRetryCount < NUM_IMS_SERVICE_RETRIES) {
-                        loge("getImsService: Retrying getting ImsService...");
-                        sendEmptyMessageDelayed(EVENT_GET_IMS_SERVICE,
-                                TIME_BETWEEN_IMS_SERVICE_RETRIES_MS);
-                        mImsServiceRetryCount++;
-                    } else {
-                        // We have been unable to connect for
-                        // NUM_IMS_SERVICE_RETRIES*TIME_BETWEEN_IMS_SERVICE_RETRIES_MS ms. We will
-                        // probably never be able to connect, so we should just give up.
-                        loge("getImsService: ImsService retrieval timeout... ImsService is " +
-                                "unavailable.");
-                    }
+                    retryGetImsService();
                 }
                 break;
             case EVENT_CHECK_FOR_WIFI_HANDOVER:
@@ -2600,6 +2610,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @Override
     public PhoneConstants.State getState() {
         return mState;
+    }
+
+    private void retryGetImsService() {
+        //Leave mImsManager as null, then CallStateException will be thrown when dialing
+        mImsManager = null;
+        // Exponential backoff during retry, limited to 32 seconds.
+        loge("getImsService: Retrying getting ImsService...");
+        removeMessages(EVENT_GET_IMS_SERVICE);
+        sendEmptyMessageDelayed(EVENT_GET_IMS_SERVICE,
+                (1 << mImsServiceRetryCount) * IMS_RETRY_STARTING_TIMEOUT_MS);
+        if (mImsServiceRetryCount <= CEILING_SERVICE_RETRY_COUNT) {
+            mImsServiceRetryCount++;
+        }
     }
 
     private void setVideoCallProvider(ImsPhoneConnection conn, ImsCall imsCall)
