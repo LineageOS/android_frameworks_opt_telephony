@@ -30,6 +30,7 @@ import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ims.feature.ImsFeature;
+import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
 
@@ -39,6 +40,7 @@ import com.android.internal.telephony.PhoneConstants;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
@@ -64,6 +66,7 @@ import static org.mockito.Mockito.when;
 /**
  * Unit tests for ImsResolver
  */
+@RunWith(AndroidJUnit4.class)
 public class ImsResolverTest extends ImsTestBase {
 
     private static final int TEST_TIMEOUT = 200; //ms

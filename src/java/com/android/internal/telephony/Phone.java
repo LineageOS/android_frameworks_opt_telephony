@@ -528,7 +528,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Start listening for IMS service UP/DOWN events.
+     * Start listening for IMS service UP/DOWN events. If using the new ImsResolver APIs, we should
+     * always be setting up ImsPhones.
      */
     public void startMonitoringImsService() {
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_SIP) {
@@ -543,12 +544,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             mContext.registerReceiver(mImsIntentReceiver, filter);
 
             // Monitor IMS service - but first poll to see if already up (could miss
-            // intent)
+            // intent). Also, when using new ImsResolver APIs, the service will be available soon,
+            // so start trying to bind.
             ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
-            if (imsManager != null && imsManager.isServiceAvailable()) {
-                mImsServiceReady = true;
-                updateImsPhone();
-                ImsManager.updateImsServiceConfig(mContext, mPhoneId, false);
+            if (imsManager != null) {
+                // If it is dynamic binding, kick off ImsPhone creation now instead of waiting for
+                // the service to be available.
+                if (imsManager.isDynamicBinding() || imsManager.isServiceAvailable()) {
+                    mImsServiceReady = true;
+                    updateImsPhone();
+                    ImsManager.updateImsServiceConfig(mContext, mPhoneId, false);
+                }
             }
         }
     }
