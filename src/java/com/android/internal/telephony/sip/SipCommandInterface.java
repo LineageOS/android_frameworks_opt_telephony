@@ -626,4 +626,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public void getAllowedCarriers(Message result) {
     }
 
+    @Override
+    public void setSimCardPower(boolean powerUp, Message result) {
+    }
 }

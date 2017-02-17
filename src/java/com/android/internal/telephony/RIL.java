@@ -16,41 +16,37 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.RILConstants.*;
-import static com.android.internal.util.Preconditions.checkNotNull;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
-import android.hardware.radio.V1_0.CellInfoCdma;
-import android.hardware.radio.V1_0.CellInfoGsm;
-import android.hardware.radio.V1_0.CellInfoLte;
-import android.hardware.radio.V1_0.CellInfoType;
-import android.hardware.radio.V1_0.CellInfoWcdma;
 import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
 import android.hardware.radio.V1_0.CdmaSmsAck;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.hardware.radio.V1_0.CdmaSmsWriteArgs;
-import android.hardware.radio.V1_0.DataProfileInfo;
+import android.hardware.radio.V1_0.CellInfoCdma;
+import android.hardware.radio.V1_0.CellInfoGsm;
+import android.hardware.radio.V1_0.CellInfoLte;
+import android.hardware.radio.V1_0.CellInfoType;
+import android.hardware.radio.V1_0.CellInfoWcdma;
 import android.hardware.radio.V1_0.Dial;
-import android.hardware.radio.V1_0.HardwareConfigModem;
 import android.hardware.radio.V1_0.GsmBroadcastSmsConfigInfo;
 import android.hardware.radio.V1_0.GsmSmsMessage;
+import android.hardware.radio.V1_0.HardwareConfigModem;
 import android.hardware.radio.V1_0.IRadio;
-import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.IccIo;
 import android.hardware.radio.V1_0.ImsSmsMessage;
+import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.NvWriteItem;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
-import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SelectUiccSub;
+import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SimApdu;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
@@ -95,8 +91,6 @@ import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
-
-import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
 
@@ -113,6 +107,8 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static com.android.internal.telephony.RILConstants.*;
 
 /**
  * {@hide}
@@ -3905,6 +3901,25 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void setSimCardPower(boolean powerUp, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_SIM_CARD_POWER, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                radioProxy.setSimCardPower(rr.mSerial, powerUp);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "setSimCardPower", e);
+            }
+        }
+    }
+
+    @Override
     public void getIMEI(Message result) {
         throw new RuntimeException("getIMEI not expected to be called");
     }
@@ -5328,6 +5343,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_SET_ALLOWED_CARRIERS";
             case RIL_REQUEST_GET_ALLOWED_CARRIERS:
                 return "RIL_REQUEST_GET_ALLOWED_CARRIERS";
+            case RIL_REQUEST_SET_SIM_CARD_POWER:
+                return "RIL_REQUEST_SET_SIM_CARD_POWER";
             case RIL_RESPONSE_ACKNOWLEDGEMENT:
                 return "RIL_RESPONSE_ACKNOWLEDGEMENT";
             default: return "<unknown request>";
