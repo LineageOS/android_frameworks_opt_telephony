@@ -140,6 +140,10 @@ public class TelephonyComponentFactory {
         return new AppSmsManager(context);
     }
 
+    public DeviceStateMonitor makeDeviceStateMonitor(Phone phone) {
+        return new DeviceStateMonitor(phone);
+    }
+
     public CdmaSubscriptionSourceManager
     getCdmaSubscriptionSourceManagerInstance(Context context, CommandsInterface ci, Handler h,
                                              int what, Object obj) {

@@ -16,11 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.hardware.display.DisplayManager;
 import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
@@ -57,7 +53,6 @@ import android.net.ConnectivityManager;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
 import android.os.AsyncResult;
-import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.HwBinder;
@@ -83,7 +78,6 @@ import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
 import android.text.TextUtils;
 import android.util.SparseArray;
-import android.view.Display;
 
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -294,9 +288,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final String RILJ_ACK_WAKELOCK_NAME = "RILJ_ACK_WL";
     static final boolean RILJ_LOGD = true;
     static final boolean RILJ_LOGV = false; // STOPSHIP if true
-    static final int RADIO_SCREEN_UNSET = -1;
-    static final int RADIO_SCREEN_OFF = 0;
-    static final int RADIO_SCREEN_ON = 1;
     static final int RIL_HISTOGRAM_BUCKET_COUNT = 5;
 
     /**
@@ -323,10 +314,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     RILSender mSender;
     Thread mReceiverThread;
     RILReceiver mReceiver;
-    Display mDefaultDisplay;
-    int mDefaultDisplayState = Display.STATE_UNKNOWN;
-    int mRadioScreenState = RADIO_SCREEN_UNSET;
-    boolean mIsDevicePlugged = false;
     final WakeLock mWakeLock;           // Wake lock associated with request/response
     final WakeLock mAckWakeLock;        // Wake lock associated with ack sent
     final int mWakeLockTimeout;         // Timeout associated with request/response
@@ -388,38 +375,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
 
     private static final int CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES = 31;
-
-    private final DisplayManager.DisplayListener mDisplayListener =
-            new DisplayManager.DisplayListener() {
-        @Override
-        public void onDisplayAdded(int displayId) { }
-
-        @Override
-        public void onDisplayRemoved(int displayId) { }
-
-        @Override
-        public void onDisplayChanged(int displayId) {
-            if (displayId == Display.DEFAULT_DISPLAY) {
-                final int oldState = mDefaultDisplayState;
-                mDefaultDisplayState = mDefaultDisplay.getState();
-                if (mDefaultDisplayState != oldState) {
-                    updateScreenState(false);
-                }
-            }
-        }
-    };
-
-    private final BroadcastReceiver mBatteryStateListener = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            boolean oldState = mIsDevicePlugged;
-            // 0 means it's on battery
-            mIsDevicePlugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
-            if (mIsDevicePlugged != oldState) {
-                updateScreenState(false);
-            }
-        }
-    };
 
     public static List<TelephonyHistogram> getTelephonyRILTimingHistograms() {
         List<TelephonyHistogram> list;
@@ -967,19 +922,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             mReceiver = new RILReceiver();
             mReceiverThread = new Thread(mReceiver, "RILReceiver" + mPhoneId);
             mReceiverThread.start();
-
-            DisplayManager dm = (DisplayManager)context.getSystemService(
-                    Context.DISPLAY_SERVICE);
-            mDefaultDisplay = dm.getDisplay(Display.DEFAULT_DISPLAY);
-            dm.registerDisplayListener(mDisplayListener, null);
-            mDefaultDisplayState = mDefaultDisplay.getState();
-
-            IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-            Intent batteryStatus = context.registerReceiver(mBatteryStateListener, filter);
-            if (batteryStatus != null) {
-                // 0 means it's on battery
-                mIsDevicePlugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
-            }
         }
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
@@ -2321,25 +2263,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         new ArrayList<String>(Arrays.asList(strings)));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "invokeOemRilRequestStrings", e);
-            }
-        }
-    }
-
-    private void sendScreenState(boolean on) {
-        IRadio radioProxy = getRadioProxy(null);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_SCREEN_STATE, null,
-                    mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString()
-                        + "> " + requestToString(rr.mRequest) + ": " + on);
-            }
-
-            try {
-                radioProxy.sendScreenState(rr.mSerial, on);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "sendScreenState", e);
             }
         }
     }
@@ -3939,6 +3862,46 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void sendDeviceState(int stateType, boolean state,
+                                Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SEND_DEVICE_STATE, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " "
+                        + stateType + ":" + state);
+            }
+
+            try {
+                radioProxy.sendDeviceState(rr.mSerial, stateType, state);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "sendDeviceState", e);
+            }
+        }
+    }
+
+    @Override
+    public void setUnsolResponseFilter(int filter, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " + filter);
+            }
+
+            try {
+                radioProxy.setIndicationFilter(rr.mSerial, filter);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "setIndicationFilter", e);
+            }
+        }
+    }
+
+    @Override
     public void setSimCardPower(boolean powerUp, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
@@ -3946,7 +3909,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " + powerUp);
             }
 
             try {
@@ -4032,37 +3995,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     //***** Private Methods
-
-    // TODO(jeffbrown): Delete me.
-    // The RIL should *not* be listening for screen state changes since they are
-    // becoming increasingly ambiguous on our devices.  The RIL_REQUEST_SCREEN_STATE
-    // message should be deleted and replaced with more precise messages to control
-    // behavior such as signal strength reporting or power managements based on
-    // more robust signals.
-    /**
-     * Update the screen state. Send screen state ON if the default display is ON or the device
-     * is plugged.
-     * @param forceUpdate If it is true, update screen state without compare to oldState.
-     */
-    void updateScreenState(boolean forceUpdate) {
-        final int oldState = mRadioScreenState;
-        mRadioScreenState = (mDefaultDisplayState == Display.STATE_ON || mIsDevicePlugged)
-                ? RADIO_SCREEN_ON : RADIO_SCREEN_OFF;
-        if (mRadioScreenState != oldState || forceUpdate) {
-            if (RILJ_LOGV) {
-                riljLog("defaultDisplayState: " + mDefaultDisplayState
-                        + ", isDevicePlugged: " + mIsDevicePlugged);
-            }
-            sendScreenState(mRadioScreenState == RADIO_SCREEN_ON);
-        }
-    }
-
-    @Override
-    protected void onRadioAvailable() {
-        // In case screen state was lost (due to process crash),
-        // this ensures that the RIL knows the correct screen state.
-        updateScreenState(false);
-    }
 
     /**
      * This is a helper function to be called when a RadioIndication callback is called.
@@ -5111,6 +5043,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_GET_ALLOWED_CARRIERS";
             case RIL_REQUEST_SET_SIM_CARD_POWER:
                 return "RIL_REQUEST_SET_SIM_CARD_POWER";
+            case RIL_REQUEST_SEND_DEVICE_STATE:
+                return "RIL_REQUEST_SEND_DEVICE_STATE";
+            case RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER:
+                return "RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER";
             case RIL_RESPONSE_ACKNOWLEDGEMENT:
                 return "RIL_RESPONSE_ACKNOWLEDGEMENT";
             default: return "<unknown request>";

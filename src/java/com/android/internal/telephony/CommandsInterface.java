@@ -2045,12 +2045,29 @@ public interface CommandsInterface {
     public void unregisterForPcoData(Handler h);
 
     /**
+     * Send the updated device state
+     *
+     * @param stateType Device state type
+     * @param state True if enabled, otherwise disabled
+     * @param result callback message contains the information of SUCCESS/FAILURE
+     */
+    void sendDeviceState(int stateType, boolean state, Message result);
+
+    /**
+     * Send the device state to the modem
+     *
+     * @param filter unsolicited response filter. See DeviceStateMonitor.UnsolicitedResponseFilter
+     * @param result callback message contains the information of SUCCESS/FAILURE
+     */
+    void setUnsolResponseFilter(int filter, Message result);
+
+    /**
      * Set SIM card power up or down
      *
      * @param powerUp True if powering up the sim card
      * @param result callback message contains the information of SUCCESS/FAILURE
      */
-    public void setSimCardPower(boolean powerUp, Message result);
+    void setSimCardPower(boolean powerUp, Message result);
 
     default public List<ClientRequestStats> getClientRequestStats() {
         return null;

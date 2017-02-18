@@ -177,6 +177,8 @@ public abstract class TelephonyTest {
     protected ImsExternalCallTracker mImsExternalCallTracker;
     @Mock
     protected AppSmsManager mAppSmsManager;
+    @Mock
+    protected DeviceStateMonitor mDeviceStateMonitor;
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
@@ -347,10 +349,16 @@ public abstract class TelephonyTest {
                         anyInt(), any(Object.class));
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
                 .getIDeviceIdleController();
-        doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory).
-                makeImsExternalCallTracker(any(ImsPhone.class));
+        doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory)
+                .makeImsExternalCallTracker(any(ImsPhone.class));
         doReturn(mAppSmsManager).when(mTelephonyComponentFactory)
                 .makeAppSmsManager(any(Context.class));
+        doReturn(mCarrierSignalAgent).when(mTelephonyComponentFactory)
+                .makeCarrierSignalAgent(any(Phone.class));
+        doReturn(mCarrierActionAgent).when(mTelephonyComponentFactory)
+                .makeCarrierActionAgent(any(Phone.class));
+        doReturn(mDeviceStateMonitor).when(mTelephonyComponentFactory)
+                .makeDeviceStateMonitor(any(Phone.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();

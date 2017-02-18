@@ -2091,6 +2091,18 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
+    public void sendDeviceState(int stateType, boolean state, Message result) {
+        SimulatedCommandsVerifier.getInstance().sendDeviceState(stateType, state, result);
+        resultSuccess(result, null);
+    }
+
+    @Override
+    public void setUnsolResponseFilter(int filter, Message result) {
+        SimulatedCommandsVerifier.getInstance().setUnsolResponseFilter(filter, result);
+        resultSuccess(result, null);
+    }
+
+    @Override
     public void setSimCardPower(boolean powerUp, Message result) {
     }
 
