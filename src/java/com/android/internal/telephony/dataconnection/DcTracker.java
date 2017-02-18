@@ -274,6 +274,7 @@ public class DcTracker extends Handler {
             String action = intent.getAction();
 
             if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                // TODO: Evaluate hooking this up with DeviceStateMonitor
                 if (DBG) log("screen on");
                 mIsScreenOn = true;
                 stopNetStatPoll();

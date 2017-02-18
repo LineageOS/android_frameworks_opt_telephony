@@ -28,7 +28,6 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.imsphone.ImsPullCall;
 import com.android.internal.telephony.uicc.IccCardProxy;
 
 /**
@@ -132,6 +131,10 @@ public class TelephonyComponentFactory {
     public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone) {
 
         return new ImsExternalCallTracker(imsPhone);
+    }
+
+    public DeviceStateMonitor makeDeviceStateMonitor(Phone phone) {
+        return new DeviceStateMonitor(phone);
     }
 
     public CdmaSubscriptionSourceManager
