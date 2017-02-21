@@ -106,10 +106,10 @@ public class ImsServiceTest {
     public void testCallMethodOnCreatedFeature() throws RemoteException {
         mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
 
-        mTestImsServiceBinder.isConnected(TEST_SLOT_0, ImsFeature.MMTEL, 0 /*session id*/,
-                0 /*callSessionType*/, 0 /*callType*/);
+        mTestImsServiceBinder.isConnected(TEST_SLOT_0, ImsFeature.MMTEL, 0 /*callSessionType*/,
+                0 /*callType*/);
 
-        verify(mTestImsService.mMockMMTelFeature).isConnected(anyInt(), anyInt(), anyInt());
+        verify(mTestImsService.mMockMMTelFeature).isConnected(anyInt(), anyInt());
     }
 
     @Test
@@ -117,10 +117,9 @@ public class ImsServiceTest {
     public void testCallMethodWithNoCreatedFeature() throws RemoteException {
         mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
 
-        mTestImsServiceBinder.isConnected(TEST_SLOT_1, ImsFeature.MMTEL, 0 /*session id*/,
-                0 /*callSessionType*/, 0 /*callType*/);
+        mTestImsServiceBinder.isConnected(TEST_SLOT_1, ImsFeature.MMTEL, 0 /*callSessionType*/,
+                0 /*callType*/);
 
-        verify(mTestImsService.mMockMMTelFeature, never()).isConnected(anyInt(), anyInt(),
-                anyInt());
+        verify(mTestImsService.mMockMMTelFeature, never()).isConnected(anyInt(), anyInt());
     }
 }
