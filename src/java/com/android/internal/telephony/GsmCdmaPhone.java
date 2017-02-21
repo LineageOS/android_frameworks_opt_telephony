@@ -55,6 +55,7 @@ import android.provider.Telephony;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
+import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -1488,6 +1489,16 @@ public class GsmCdmaPhone extends Phone {
         } else { //isPhoneTypeCdmaLte()
             return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
         }
+    }
+
+    @Override
+    public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType) {
+        return CarrierInfoManager.getCarrierInfoForImsiEncryption(keyType);
+    }
+
+    @Override
+    public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo) {
+        CarrierInfoManager.setCarrierInfoForImsiEncryption(imsiEncryptionInfo);
     }
 
     @Override
