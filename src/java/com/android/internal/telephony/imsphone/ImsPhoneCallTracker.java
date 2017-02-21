@@ -424,7 +424,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mPhone.getContext().getContentResolver(),
             Settings.Secure.PREFERRED_TTY_MODE,
             Phone.TTY_MODE_OFF);
-        mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
+        mImsManager.setUiTTYMode(mPhone.getContext(), mPreferredTtyMode, null);
 
         ImsMultiEndpoint multiEndpoint = getMultiEndpointInterface();
         if (multiEndpoint != null) {
@@ -1061,7 +1061,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         try {
-            mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, uiTtyMode, onComplete);
+            mImsManager.setUiTTYMode(mPhone.getContext(), uiTtyMode, onComplete);
         } catch (ImsException e) {
             loge("setTTYMode : " + e);
             mPhone.sendErrorResponse(onComplete, e);
@@ -2318,7 +2318,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             throw getImsManagerIsNullException();
         }
 
-        ImsUtInterface ut = mImsManager.getSupplementaryServiceConfiguration(mServiceId);
+        ImsUtInterface ut = mImsManager.getSupplementaryServiceConfiguration();
         return ut;
     }
 
