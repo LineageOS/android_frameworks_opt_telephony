@@ -373,7 +373,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // supported IMS features if they have changed.
     // Called from the handler ONLY
     private void maybeAddedImsService(String packageName) {
-        Log.i(TAG, "maybeAddedImsService, packageName: " + packageName);
+        Log.d(TAG, "maybeAddedImsService, packageName: " + packageName);
         List<ImsServiceInfo> infos = getImsServiceInfo(packageName);
         List<ImsServiceInfo> newlyAddedInfos = new ArrayList<>();
         for (ImsServiceInfo info : infos) {
