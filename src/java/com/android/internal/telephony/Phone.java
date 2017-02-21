@@ -44,6 +44,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
 import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
+import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -2946,6 +2947,28 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public Phone getImsPhone() {
         return mImsPhone;
+    }
+
+    /**
+     * Returns Carrier specific information that will be used to encrypt the IMSI and IMPI.
+     * @param keyType whether the key is being used for WLAN or ePDG.
+     * @return ImsiEncryptionInfo which includes the Key Type, the Public Key
+     *        {@link java.security.PublicKey} and the Key Identifier.
+     *        The keyIdentifier This is used by the server to help it locate the private key to
+     *        decrypt the permanent identity.
+     */
+    public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType) {
+        return null;
+    }
+
+    /**
+     * Sets the carrier information needed to encrypt the IMSI and IMPI.
+     * @param imsiEncryptionInfo Carrier specific information that will be used to encrypt the
+     *        IMSI and IMPI. This includes the Key type, the Public key
+     *        {@link java.security.PublicKey} and the Key identifier.
+     */
+    public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo) {
+        return;
     }
 
     /**
