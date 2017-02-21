@@ -2596,6 +2596,10 @@ public class ServiceStateTracker extends Handler {
     }
 
     private void pollStateDoneGsm() {
+        if (!mPhone.isPhoneTypeGsm()) {
+            updateRoamingState();
+        }
+
         if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
             mNewSS.setVoiceRoaming(true);
             mNewSS.setDataRoaming(true);
@@ -2604,12 +2608,12 @@ public class ServiceStateTracker extends Handler {
         resetServiceStateInIwlanMode();
 
         if (DBG) {
-            log("Poll ServiceState done: " +
-                    " oldSS=[" + mSS + "] newSS=[" + mNewSS + "]" +
-                    " oldMaxDataCalls=" + mMaxDataCalls +
-                    " mNewMaxDataCalls=" + mNewMaxDataCalls +
-                    " oldReasonDataDenied=" + mReasonDataDenied +
-                    " mNewReasonDataDenied=" + mNewReasonDataDenied);
+            log("Poll ServiceState done: "
+                    + " oldSS=[" + mSS + "] newSS=[" + mNewSS + "]"
+                    + " oldMaxDataCalls=" + mMaxDataCalls
+                    + " mNewMaxDataCalls=" + mNewMaxDataCalls
+                    + " oldReasonDataDenied=" + mReasonDataDenied
+                    + " mNewReasonDataDenied=" + mNewReasonDataDenied);
         }
 
         boolean hasRegistered =
@@ -2620,11 +2624,11 @@ public class ServiceStateTracker extends Handler {
                 mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
                         && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasGprsAttached =
+        boolean hasDataAttached =
                 mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE
                         && mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
 
-        boolean hasGprsDetached =
+        boolean hasDataDetached =
                 mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
                         && mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE;
 
@@ -2638,7 +2642,7 @@ public class ServiceStateTracker extends Handler {
 
         // ratchet the new tech up through it's rat family but don't drop back down
         // until cell change
-        if (hasLocationChanged == false) {
+        if (!hasLocationChanged) {
             mRatRatcheter.ratchetRat(mSS, mNewSS);
         }
 
@@ -2658,37 +2662,88 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
 
-        TelephonyManager tm =
-                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        boolean has4gHandoff = false;
+        boolean hasMultiApnSupport = false;
+        boolean hasLostMultiApnSupport = false;
+        if (mPhone.isPhoneTypeCdmaLte()) {
+            has4gHandoff = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
+                    && ((ServiceState.isLte(mSS.getRilDataRadioTechnology())
+                    && (mNewSS.getRilDataRadioTechnology()
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+                    ||
+                    ((mSS.getRilDataRadioTechnology()
+                            == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)
+                            && ServiceState.isLte(mNewSS.getRilDataRadioTechnology())));
+
+            hasMultiApnSupport = ((ServiceState.isLte(mNewSS.getRilDataRadioTechnology())
+                    || (mNewSS.getRilDataRadioTechnology()
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+                    &&
+                    (!ServiceState.isLte(mSS.getRilDataRadioTechnology())
+                            && (mSS.getRilDataRadioTechnology()
+                            != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
+
+            hasLostMultiApnSupport =
+                    ((mNewSS.getRilDataRadioTechnology()
+                            >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A)
+                            && (mNewSS.getRilDataRadioTechnology()
+                            <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
+        }
+
+        if (DBG) {
+            log("pollStateDone:"
+                    + " hasRegistered=" + hasRegistered
+                    + " hasDeregistered=" + hasDeregistered
+                    + " hasDataAttached=" + hasDataAttached
+                    + " hasDataDetached=" + hasDataDetached
+                    + " hasDataRegStateChanged=" + hasDataRegStateChanged
+                    + " hasRilVoiceRadioTechnologyChanged= " + hasRilVoiceRadioTechnologyChanged
+                    + " hasRilDataRadioTechnologyChanged=" + hasRilDataRadioTechnologyChanged
+                    + " hasChanged=" + hasChanged
+                    + " hasVoiceRoamingOn=" + hasVoiceRoamingOn
+                    + " hasVoiceRoamingOff=" + hasVoiceRoamingOff
+                    + " hasDataRoamingOn=" + hasDataRoamingOn
+                    + " hasDataRoamingOff=" + hasDataRoamingOff
+                    + " hasLocationChanged=" + hasLocationChanged
+                    + " has4gHandoff = " + has4gHandoff
+                    + " hasMultiApnSupport=" + hasMultiApnSupport
+                    + " hasLostMultiApnSupport=" + hasLostMultiApnSupport);
+        }
 
         // Add an event log when connection state changes
         if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
-            EventLog.writeEvent(EventLogTags.GSM_SERVICE_STATE_CHANGE,
+            EventLog.writeEvent(mPhone.isPhoneTypeGsm() ? EventLogTags.GSM_SERVICE_STATE_CHANGE :
+                            EventLogTags.CDMA_SERVICE_STATE_CHANGE,
                     mSS.getVoiceRegState(), mSS.getDataRegState(),
                     mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
-        // Add an event log when network type switched
-        // TODO: we may add filtering to reduce the event logged,
-        // i.e. check preferred network setting, only switch to 2G, etc
-        if (hasRilVoiceRadioTechnologyChanged) {
-            int cid = -1;
-            GsmCellLocation loc = (GsmCellLocation)mNewCellLoc;
-            if (loc != null) cid = loc.getCid();
-            // NOTE: this code was previously located after mSS and mNewSS are swapped, so
-            // existing logs were incorrectly using the new state for "network_from"
-            // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
-            // to record the correct states.
-            EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED_NEW, cid,
-                    mSS.getRilVoiceRadioTechnology(),
-                    mNewSS.getRilVoiceRadioTechnology());
-            if (DBG) {
-                log("RAT switched "
-                        + ServiceState.rilRadioTechnologyToString(mSS.getRilVoiceRadioTechnology())
-                        + " -> "
-                        + ServiceState.rilRadioTechnologyToString(
-                        mNewSS.getRilVoiceRadioTechnology()) + " at cell " + cid);
+        if (mPhone.isPhoneTypeGsm()) {
+            // Add an event log when network type switched
+            // TODO: we may add filtering to reduce the event logged,
+            // i.e. check preferred network setting, only switch to 2G, etc
+            if (hasRilVoiceRadioTechnologyChanged) {
+                int cid = -1;
+                GsmCellLocation loc = (GsmCellLocation) mNewCellLoc;
+                if (loc != null) cid = loc.getCid();
+                // NOTE: this code was previously located after mSS and mNewSS are swapped, so
+                // existing logs were incorrectly using the new state for "network_from"
+                // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
+                // to record the correct states.
+                EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED_NEW, cid,
+                        mSS.getRilVoiceRadioTechnology(),
+                        mNewSS.getRilVoiceRadioTechnology());
+                if (DBG) {
+                    log("RAT switched "
+                            + ServiceState.rilRadioTechnologyToString(
+                            mSS.getRilVoiceRadioTechnology())
+                            + " -> "
+                            + ServiceState.rilRadioTechnologyToString(
+                            mNewSS.getRilVoiceRadioTechnology()) + " at cell " + cid);
+                }
             }
+            mReasonDataDenied = mNewReasonDataDenied;
+            mMaxDataCalls = mNewMaxDataCalls;
         }
 
         // swap mSS and mNewSS to put new state in mSS
@@ -2699,16 +2754,16 @@ public class ServiceStateTracker extends Handler {
         mNewSS.setStateOutOfService();
 
         // swap mCellLoc and mNewCellLoc to put new state in mCellLoc
-        GsmCellLocation tcl = (GsmCellLocation)mCellLoc;
+        CellLocation tcl = mCellLoc;
         mCellLoc = mNewCellLoc;
         mNewCellLoc = tcl;
-
-        mReasonDataDenied = mNewReasonDataDenied;
-        mMaxDataCalls = mNewMaxDataCalls;
 
         if (hasRilVoiceRadioTechnologyChanged) {
             updatePhoneObject();
         }
+
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
 
         if (hasRilDataRadioTechnologyChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
@@ -2723,8 +2778,8 @@ public class ServiceStateTracker extends Handler {
             mNetworkAttachedRegistrants.notifyRegistrants();
 
             if (DBG) {
-                log("pollStateDone: registering current mNitzUpdatedTime=" +
-                        mNitzUpdatedTime + " changing to false");
+                log("pollStateDone: registering current mNitzUpdatedTime=" + mNitzUpdatedTime
+                        + " changing to false");
             }
             mNitzUpdatedTime = false;
         }
@@ -2734,66 +2789,73 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (hasChanged) {
-            String operatorNumeric;
-
             updateSpnDisplay();
 
             tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
 
             String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
-            operatorNumeric = mSS.getOperatorNumeric();
+            String operatorNumeric = mSS.getOperatorNumeric();
+
+            if (!mPhone.isPhoneTypeGsm()) {
+                // try to fix the invalid Operator Numeric
+                if (isInvalidOperatorNumeric(operatorNumeric)) {
+                    int sid = mSS.getSystemId();
+                    operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
+                }
+            }
+
             tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
             updateCarrierMccMncConfiguration(operatorNumeric,
                     prevOperatorNumeric, mPhone.getContext());
-            if (operatorNumeric == null) {
-                if (DBG) log("operatorNumeric is null");
+            if (isInvalidOperatorNumeric(operatorNumeric)) {
+                if (DBG) log("operatorNumeric " + operatorNumeric + " is invalid");
                 tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
                 mGotCountryCode = false;
                 mNitzUpdatedTime = false;
             } else {
                 String iso = "";
                 String mcc = "";
-                try{
+                try {
                     mcc = operatorNumeric.substring(0, 3);
                     iso = MccTable.countryCodeForMcc(Integer.parseInt(mcc));
-                } catch ( NumberFormatException ex){
-                    loge("pollStateDone: countryCodeForMcc error" + ex);
-                } catch ( StringIndexOutOfBoundsException ex) {
-                    loge("pollStateDone: countryCodeForMcc error" + ex);
+                } catch (NumberFormatException | StringIndexOutOfBoundsException ex) {
+                    loge("pollStateDone: countryCodeForMcc error: " + ex);
                 }
 
                 tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), iso);
                 mGotCountryCode = true;
 
-                TimeZone zone = null;
-
-                if (!mNitzUpdatedTime && !mcc.equals("000") && !TextUtils.isEmpty(iso) &&
-                        getAutoTimeZone()) {
+                if (!mNitzUpdatedTime && !mcc.equals("000") && !TextUtils.isEmpty(iso)
+                        && getAutoTimeZone()) {
 
                     // Test both paths if ignore nitz is true
                     boolean testOneUniqueOffsetPath = SystemProperties.getBoolean(
-                            TelephonyProperties.PROPERTY_IGNORE_NITZ, false) &&
-                            ((SystemClock.uptimeMillis() & 1) == 0);
+                            TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
+                            && ((SystemClock.uptimeMillis() & 1) == 0);
 
                     ArrayList<TimeZone> uniqueZones = TimeUtils.getTimeZonesWithUniqueOffsets(iso);
                     if ((uniqueZones.size() == 1) || testOneUniqueOffsetPath) {
-                        zone = uniqueZones.get(0);
+                        TimeZone zone = uniqueZones.get(0);
                         if (DBG) {
-                            log("pollStateDone: no nitz but one TZ for iso-cc=" + iso +
-                                    " with zone.getID=" + zone.getID() +
-                                    " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
+                            log("pollStateDone: no nitz but one TZ for iso-cc=" + iso
+                                    + " with zone.getID=" + zone.getID()
+                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
                         }
                         mTimeZoneLog.log("pollStateDone: set time zone=" + zone.getID()
                                 + " mcc=" + mcc + " iso=" + iso);
                         setAndBroadcastNetworkSetTimeZone(zone.getID());
                     } else {
                         if (DBG) {
-                            log("pollStateDone: there are " + uniqueZones.size() +
-                                    " unique offsets for iso-cc='" + iso +
-                                    " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath +
-                                    "', do nothing");
+                            log("pollStateDone: there are " + uniqueZones.size()
+                                    + " unique offsets for iso-cc='" + iso
+                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath
+                                    + "', do nothing");
                         }
                     }
+                }
+
+                if (!mPhone.isPhoneTypeGsm()) {
+                    setOperatorIdd(operatorNumeric);
                 }
 
                 if (shouldFixTimeZoneNow(mPhone, operatorNumeric, prevOperatorNumeric,
@@ -2802,7 +2864,9 @@ public class ServiceStateTracker extends Handler {
                 }
             }
 
-            tm.setNetworkRoamingForPhone(mPhone.getPhoneId(), mSS.getVoiceRoaming());
+            tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
+                    mPhone.isPhoneTypeGsm() ? mSS.getVoiceRoaming() :
+                            (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
 
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
@@ -2811,15 +2875,16 @@ public class ServiceStateTracker extends Handler {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
-        if (hasGprsAttached || hasGprsDetached || hasRegistered || hasDeregistered) {
+        if (hasDataAttached || has4gHandoff || hasDataDetached || hasRegistered
+                || hasDeregistered) {
             logAttachChange();
         }
 
-        if (hasGprsAttached) {
+        if (hasDataAttached || has4gHandoff) {
             mAttachedRegistrants.notifyRegistrants();
         }
 
-        if (hasGprsDetached) {
+        if (hasDataDetached) {
             mDetachedRegistrants.notifyRegistrants();
         }
 
@@ -2862,28 +2927,44 @@ public class ServiceStateTracker extends Handler {
             mPhone.notifyLocationChanged();
         }
 
-        if (!isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
-            if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
-                mStartedGprsRegCheck = true;
+        if (mPhone.isPhoneTypeGsm()) {
+            if (!isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
+                if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
+                    mStartedGprsRegCheck = true;
 
-                int check_period = Settings.Global.getInt(
-                        mPhone.getContext().getContentResolver(),
-                        Settings.Global.GPRS_REGISTER_CHECK_PERIOD_MS,
-                        DEFAULT_GPRS_CHECK_PERIOD_MILLIS);
-                sendMessageDelayed(obtainMessage(EVENT_CHECK_REPORT_GPRS),
-                        check_period);
+                    int check_period = Settings.Global.getInt(
+                            mPhone.getContext().getContentResolver(),
+                            Settings.Global.GPRS_REGISTER_CHECK_PERIOD_MS,
+                            DEFAULT_GPRS_CHECK_PERIOD_MILLIS);
+                    sendMessageDelayed(obtainMessage(EVENT_CHECK_REPORT_GPRS),
+                            check_period);
+                }
+            } else {
+                mReportedGprsNoReg = false;
             }
-        } else {
-            mReportedGprsNoReg = false;
         }
     }
 
     protected void pollStateDoneCdma() {
-        updateRoamingState();
+        if (!mPhone.isPhoneTypeGsm()) {
+            updateRoamingState();
+        }
 
+        if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
+            mNewSS.setVoiceRoaming(true);
+            mNewSS.setDataRoaming(true);
+        }
         useDataRegStateForDataOnlyDevices();
         resetServiceStateInIwlanMode();
-        if (DBG) log("pollStateDone: cdma oldSS=[" + mSS + "] newSS=[" + mNewSS + "]");
+
+        if (DBG) {
+            log("Poll ServiceState done: "
+                    + " oldSS=[" + mSS + "] newSS=[" + mNewSS + "]"
+                    + " oldMaxDataCalls=" + mMaxDataCalls
+                    + " mNewMaxDataCalls=" + mNewMaxDataCalls
+                    + " oldReasonDataDenied=" + mReasonDataDenied
+                    + " mNewReasonDataDenied=" + mNewReasonDataDenied);
+        }
 
         boolean hasRegistered =
                 mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
@@ -2893,22 +2974,25 @@ public class ServiceStateTracker extends Handler {
                 mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
                         && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasCdmaDataConnectionAttached =
+        boolean hasDataAttached =
                 mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE
                         && mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
 
-        boolean hasCdmaDataConnectionDetached =
+        boolean hasDataDetached =
                 mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
                         && mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasCdmaDataConnectionChanged =
+        boolean hasDataRegStateChanged =
                 mSS.getDataRegState() != mNewSS.getDataRegState();
+
+        boolean hasVoiceRegStateChanged =
+                mSS.getVoiceRegState() != mNewSS.getVoiceRegState();
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         // ratchet the new tech up through it's rat family but don't drop back down
         // until cell change
-        if (hasLocationChanged == false) {
+        if (!hasLocationChanged) {
             mRatRatcheter.ratchetRat(mSS, mNewSS);
         }
 
@@ -2928,31 +3012,108 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
 
-        TelephonyManager tm =
-                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        boolean has4gHandoff = false;
+        boolean hasMultiApnSupport = false;
+        boolean hasLostMultiApnSupport = false;
+        if (mPhone.isPhoneTypeCdmaLte()) {
+            has4gHandoff = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
+                    && ((ServiceState.isLte(mSS.getRilDataRadioTechnology())
+                    && (mNewSS.getRilDataRadioTechnology()
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+                    ||
+                    ((mSS.getRilDataRadioTechnology()
+                            == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)
+                            && ServiceState.isLte(mNewSS.getRilDataRadioTechnology())));
+
+            hasMultiApnSupport = ((ServiceState.isLte(mNewSS.getRilDataRadioTechnology())
+                    || (mNewSS.getRilDataRadioTechnology()
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+                    &&
+                    (!ServiceState.isLte(mSS.getRilDataRadioTechnology())
+                            && (mSS.getRilDataRadioTechnology()
+                            != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
+
+            hasLostMultiApnSupport =
+                    ((mNewSS.getRilDataRadioTechnology()
+                            >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A)
+                            && (mNewSS.getRilDataRadioTechnology()
+                            <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
+        }
+
+        if (DBG) {
+            log("pollStateDone:"
+                    + " hasRegistered=" + hasRegistered
+                    + " hasDeregistered=" + hasDeregistered
+                    + " hasDataAttached=" + hasDataAttached
+                    + " hasDataDetached=" + hasDataDetached
+                    + " hasDataRegStateChanged=" + hasDataRegStateChanged
+                    + " hasRilVoiceRadioTechnologyChanged= " + hasRilVoiceRadioTechnologyChanged
+                    + " hasRilDataRadioTechnologyChanged=" + hasRilDataRadioTechnologyChanged
+                    + " hasChanged=" + hasChanged
+                    + " hasVoiceRoamingOn=" + hasVoiceRoamingOn
+                    + " hasVoiceRoamingOff=" + hasVoiceRoamingOff
+                    + " hasDataRoamingOn=" + hasDataRoamingOn
+                    + " hasDataRoamingOff=" + hasDataRoamingOff
+                    + " hasLocationChanged=" + hasLocationChanged
+                    + " has4gHandoff = " + has4gHandoff
+                    + " hasMultiApnSupport=" + hasMultiApnSupport
+                    + " hasLostMultiApnSupport=" + hasLostMultiApnSupport);
+        }
 
         // Add an event log when connection state changes
-        if (mSS.getVoiceRegState() != mNewSS.getVoiceRegState() ||
-                mSS.getDataRegState() != mNewSS.getDataRegState()) {
-            EventLog.writeEvent(EventLogTags.CDMA_SERVICE_STATE_CHANGE,
+        if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
+            EventLog.writeEvent(mPhone.isPhoneTypeGsm() ? EventLogTags.GSM_SERVICE_STATE_CHANGE :
+                            EventLogTags.CDMA_SERVICE_STATE_CHANGE,
                     mSS.getVoiceRegState(), mSS.getDataRegState(),
                     mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
-        ServiceState tss;
-        tss = mSS;
+        if (mPhone.isPhoneTypeGsm()) {
+            // Add an event log when network type switched
+            // TODO: we may add filtering to reduce the event logged,
+            // i.e. check preferred network setting, only switch to 2G, etc
+            if (hasRilVoiceRadioTechnologyChanged) {
+                int cid = -1;
+                GsmCellLocation loc = (GsmCellLocation) mNewCellLoc;
+                if (loc != null) cid = loc.getCid();
+                // NOTE: this code was previously located after mSS and mNewSS are swapped, so
+                // existing logs were incorrectly using the new state for "network_from"
+                // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
+                // to record the correct states.
+                EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED_NEW, cid,
+                        mSS.getRilVoiceRadioTechnology(),
+                        mNewSS.getRilVoiceRadioTechnology());
+                if (DBG) {
+                    log("RAT switched "
+                            + ServiceState.rilRadioTechnologyToString(
+                            mSS.getRilVoiceRadioTechnology())
+                            + " -> "
+                            + ServiceState.rilRadioTechnologyToString(
+                            mNewSS.getRilVoiceRadioTechnology()) + " at cell " + cid);
+                }
+            }
+            mReasonDataDenied = mNewReasonDataDenied;
+            mMaxDataCalls = mNewMaxDataCalls;
+        }
+
+        // swap mSS and mNewSS to put new state in mSS
+        ServiceState tss = mSS;
         mSS = mNewSS;
         mNewSS = tss;
         // clean slate for next time
         mNewSS.setStateOutOfService();
 
-        CdmaCellLocation tcl = (CdmaCellLocation)mCellLoc;
+        // swap mCellLoc and mNewCellLoc to put new state in mCellLoc
+        CellLocation tcl = mCellLoc;
         mCellLoc = mNewCellLoc;
         mNewCellLoc = tcl;
 
         if (hasRilVoiceRadioTechnologyChanged) {
             updatePhoneObject();
         }
+
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
 
         if (hasRilDataRadioTechnologyChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
@@ -2965,6 +3126,12 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRegistered) {
             mNetworkAttachedRegistrants.notifyRegistrants();
+
+            if (DBG) {
+                log("pollStateDone: registering current mNitzUpdatedTime=" + mNitzUpdatedTime
+                        + " changing to false");
+            }
+            mNitzUpdatedTime = false;
         }
 
         if (hasDeregistered) {
@@ -2974,54 +3141,83 @@ public class ServiceStateTracker extends Handler {
         if (hasChanged) {
             updateSpnDisplay();
 
-            String operatorNumeric;
-
             tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
 
             String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
-            operatorNumeric = mSS.getOperatorNumeric();
+            String operatorNumeric = mSS.getOperatorNumeric();
 
-            // try to fix the invalid Operator Numeric
-            if (isInvalidOperatorNumeric(operatorNumeric)) {
-                int sid = mSS.getSystemId();
-                operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
+            if (!mPhone.isPhoneTypeGsm()) {
+                // try to fix the invalid Operator Numeric
+                if (isInvalidOperatorNumeric(operatorNumeric)) {
+                    int sid = mSS.getSystemId();
+                    operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
+                }
             }
 
             tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
             updateCarrierMccMncConfiguration(operatorNumeric,
                     prevOperatorNumeric, mPhone.getContext());
-
             if (isInvalidOperatorNumeric(operatorNumeric)) {
-                if (DBG) log("operatorNumeric "+ operatorNumeric +"is invalid");
+                if (DBG) log("operatorNumeric " + operatorNumeric + " is invalid");
                 tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
                 mGotCountryCode = false;
+                mNitzUpdatedTime = false;
             } else {
-                String isoCountryCode = "";
-                String mcc = operatorNumeric.substring(0, 3);
-                try{
-                    isoCountryCode = MccTable.countryCodeForMcc(Integer.parseInt(
-                            operatorNumeric.substring(0, 3)));
-                } catch ( NumberFormatException ex){
-                    loge("pollStateDone: countryCodeForMcc error" + ex);
-                } catch ( StringIndexOutOfBoundsException ex) {
-                    loge("pollStateDone: countryCodeForMcc error" + ex);
+                String iso = "";
+                String mcc = "";
+                try {
+                    mcc = operatorNumeric.substring(0, 3);
+                    iso = MccTable.countryCodeForMcc(Integer.parseInt(mcc));
+                } catch (NumberFormatException | StringIndexOutOfBoundsException ex) {
+                    loge("pollStateDone: countryCodeForMcc error: " + ex);
                 }
 
-                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), isoCountryCode);
+                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), iso);
                 mGotCountryCode = true;
 
-                setOperatorIdd(operatorNumeric);
+                if (!mNitzUpdatedTime && !mcc.equals("000") && !TextUtils.isEmpty(iso)
+                        && getAutoTimeZone()) {
+
+                    // Test both paths if ignore nitz is true
+                    boolean testOneUniqueOffsetPath = SystemProperties.getBoolean(
+                            TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
+                            && ((SystemClock.uptimeMillis() & 1) == 0);
+
+                    ArrayList<TimeZone> uniqueZones = TimeUtils.getTimeZonesWithUniqueOffsets(iso);
+                    if ((uniqueZones.size() == 1) || testOneUniqueOffsetPath) {
+                        TimeZone zone = uniqueZones.get(0);
+                        if (DBG) {
+                            log("pollStateDone: no nitz but one TZ for iso-cc=" + iso
+                                    + " with zone.getID=" + zone.getID()
+                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
+                        }
+                        mTimeZoneLog.log("pollStateDone: set time zone=" + zone.getID()
+                                + " mcc=" + mcc + " iso=" + iso);
+                        setAndBroadcastNetworkSetTimeZone(zone.getID());
+                    } else {
+                        if (DBG) {
+                            log("pollStateDone: there are " + uniqueZones.size()
+                                    + " unique offsets for iso-cc='" + iso
+                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath
+                                    + "', do nothing");
+                        }
+                    }
+                }
+
+                if (!mPhone.isPhoneTypeGsm()) {
+                    setOperatorIdd(operatorNumeric);
+                }
 
                 if (shouldFixTimeZoneNow(mPhone, operatorNumeric, prevOperatorNumeric,
                         mNeedFixZoneAfterNitz)) {
-                    fixTimeZone(isoCountryCode);
+                    fixTimeZone(iso);
                 }
             }
 
             tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
-                    (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
+                    mPhone.isPhoneTypeGsm() ? mSS.getVoiceRoaming() :
+                            (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
 
-            // set roaming type
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
@@ -3029,15 +3225,16 @@ public class ServiceStateTracker extends Handler {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
-        if (hasCdmaDataConnectionAttached || hasCdmaDataConnectionDetached || hasRegistered) {
+        if (hasDataAttached || has4gHandoff || hasDataDetached || hasRegistered
+                || hasDeregistered) {
             logAttachChange();
         }
 
-        if (hasCdmaDataConnectionAttached) {
+        if (hasDataAttached || has4gHandoff) {
             mAttachedRegistrants.notifyRegistrants();
         }
 
-        if (hasCdmaDataConnectionDetached) {
+        if (hasDataDetached) {
             mDetachedRegistrants.notifyRegistrants();
         }
 
@@ -3045,8 +3242,9 @@ public class ServiceStateTracker extends Handler {
             logRatChange();
         }
 
-        if (hasCdmaDataConnectionChanged || hasRilDataRadioTechnologyChanged) {
+        if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
+
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                     == mSS.getRilDataRadioTechnology()) {
                 mPhone.notifyDataConnection(Phone.REASON_IWLAN_AVAILABLE);
@@ -3055,16 +3253,16 @@ public class ServiceStateTracker extends Handler {
             }
         }
 
+        if (hasVoiceRoamingOn || hasVoiceRoamingOff || hasDataRoamingOn || hasDataRoamingOff) {
+            logRoamingChange();
+        }
+
         if (hasVoiceRoamingOn) {
             mVoiceRoamingOnRegistrants.notifyRegistrants();
         }
 
         if (hasVoiceRoamingOff) {
             mVoiceRoamingOffRegistrants.notifyRegistrants();
-        }
-
-        if (hasVoiceRoamingOn || hasVoiceRoamingOff || hasDataRoamingOn || hasDataRoamingOff) {
-            logRoamingChange();
         }
 
         if (hasDataRoamingOn) {
@@ -3078,51 +3276,81 @@ public class ServiceStateTracker extends Handler {
         if (hasLocationChanged) {
             mPhone.notifyLocationChanged();
         }
-        // TODO: Add CdmaCellIdenity updating, see CdmaLteServiceStateTracker.
+
+        if (mPhone.isPhoneTypeGsm()) {
+            if (!isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
+                if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
+                    mStartedGprsRegCheck = true;
+
+                    int check_period = Settings.Global.getInt(
+                            mPhone.getContext().getContentResolver(),
+                            Settings.Global.GPRS_REGISTER_CHECK_PERIOD_MS,
+                            DEFAULT_GPRS_CHECK_PERIOD_MILLIS);
+                    sendMessageDelayed(obtainMessage(EVENT_CHECK_REPORT_GPRS),
+                            check_period);
+                }
+            } else {
+                mReportedGprsNoReg = false;
+            }
+        }
     }
 
     protected void pollStateDoneCdmaLte() {
-        updateRoamingState();
+        if (!mPhone.isPhoneTypeGsm()) {
+            updateRoamingState();
+        }
 
         if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
             mNewSS.setVoiceRoaming(true);
             mNewSS.setDataRoaming(true);
         }
-
         useDataRegStateForDataOnlyDevices();
         resetServiceStateInIwlanMode();
-        log("pollStateDone: lte 1 ss=[" + mSS + "] newSS=[" + mNewSS + "]");
 
-        boolean hasRegistered = mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
-                && mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
+        if (DBG) {
+            log("Poll ServiceState done: "
+                    + " oldSS=[" + mSS + "] newSS=[" + mNewSS + "]"
+                    + " oldMaxDataCalls=" + mMaxDataCalls
+                    + " mNewMaxDataCalls=" + mNewMaxDataCalls
+                    + " oldReasonDataDenied=" + mReasonDataDenied
+                    + " mNewReasonDataDenied=" + mNewReasonDataDenied);
+        }
 
-        boolean hasDeregistered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
-                && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
+        boolean hasRegistered =
+                mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
+                        && mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
 
-        boolean hasCdmaDataConnectionAttached =
+        boolean hasDeregistered =
+                mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
+                        && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
+
+        boolean hasDataAttached =
                 mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE
                         && mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
 
-        boolean hasCdmaDataConnectionDetached =
+        boolean hasDataDetached =
                 mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
                         && mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasCdmaDataConnectionChanged =
+        boolean hasDataRegStateChanged =
                 mSS.getDataRegState() != mNewSS.getDataRegState();
+
+        boolean hasVoiceRegStateChanged =
+                mSS.getVoiceRegState() != mNewSS.getVoiceRegState();
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         // ratchet the new tech up through it's rat family but don't drop back down
         // until cell change
-        if (hasLocationChanged == false) {
+        if (!hasLocationChanged) {
             mRatRatcheter.ratchetRat(mSS, mNewSS);
         }
 
-        boolean hasVoiceRadioTechnologyChanged = mSS.getRilVoiceRadioTechnology()
-                != mNewSS.getRilVoiceRadioTechnology();
+        boolean hasRilVoiceRadioTechnologyChanged =
+                mSS.getRilVoiceRadioTechnology() != mNewSS.getRilVoiceRadioTechnology();
 
-        boolean hasDataRadioTechnologyChanged = mSS.getRilDataRadioTechnology()
-                != mNewSS.getRilDataRadioTechnology();
+        boolean hasRilDataRadioTechnologyChanged =
+                mSS.getRilDataRadioTechnology() != mNewSS.getRilDataRadioTechnology();
 
         boolean hasChanged = !mNewSS.equals(mSS);
 
@@ -3134,35 +3362,43 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
 
-        boolean has4gHandoff =
-                mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&
-                ((ServiceState.isLte(mSS.getRilDataRadioTechnology()) &&
-                (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) ||
-                ((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD) &&
-                ServiceState.isLte(mNewSS.getRilDataRadioTechnology())));
+        boolean has4gHandoff = false;
+        boolean hasMultiApnSupport = false;
+        boolean hasLostMultiApnSupport = false;
+        if (mPhone.isPhoneTypeCdmaLte()) {
+            has4gHandoff = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
+                    && ((ServiceState.isLte(mSS.getRilDataRadioTechnology())
+                    && (mNewSS.getRilDataRadioTechnology()
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+                    ||
+                    ((mSS.getRilDataRadioTechnology()
+                            == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)
+                            && ServiceState.isLte(mNewSS.getRilDataRadioTechnology())));
 
-        boolean hasMultiApnSupport =
-                ((ServiceState.isLte(mNewSS.getRilDataRadioTechnology()) ||
-                (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) &&
-                (!ServiceState.isLte(mSS.getRilDataRadioTechnology()) &&
-                (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
+            hasMultiApnSupport = ((ServiceState.isLte(mNewSS.getRilDataRadioTechnology())
+                    || (mNewSS.getRilDataRadioTechnology()
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+                    &&
+                    (!ServiceState.isLte(mSS.getRilDataRadioTechnology())
+                            && (mSS.getRilDataRadioTechnology()
+                            != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
 
-        boolean hasLostMultiApnSupport =
-                ((mNewSS.getRilDataRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A) &&
-                (mNewSS.getRilDataRadioTechnology() <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
-
-        TelephonyManager tm =
-                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+            hasLostMultiApnSupport =
+                    ((mNewSS.getRilDataRadioTechnology()
+                            >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A)
+                            && (mNewSS.getRilDataRadioTechnology()
+                            <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
+        }
 
         if (DBG) {
             log("pollStateDone:"
                     + " hasRegistered=" + hasRegistered
-                    + " hasDeegistered=" + hasDeregistered
-                    + " hasCdmaDataConnectionAttached=" + hasCdmaDataConnectionAttached
-                    + " hasCdmaDataConnectionDetached=" + hasCdmaDataConnectionDetached
-                    + " hasCdmaDataConnectionChanged=" + hasCdmaDataConnectionChanged
-                    + " hasVoiceRadioTechnologyChanged= " + hasVoiceRadioTechnologyChanged
-                    + " hasDataRadioTechnologyChanged=" + hasDataRadioTechnologyChanged
+                    + " hasDeregistered=" + hasDeregistered
+                    + " hasDataAttached=" + hasDataAttached
+                    + " hasDataDetached=" + hasDataDetached
+                    + " hasDataRegStateChanged=" + hasDataRegStateChanged
+                    + " hasRilVoiceRadioTechnologyChanged= " + hasRilVoiceRadioTechnologyChanged
+                    + " hasRilDataRadioTechnologyChanged=" + hasRilDataRadioTechnologyChanged
                     + " hasChanged=" + hasChanged
                     + " hasVoiceRoamingOn=" + hasVoiceRoamingOn
                     + " hasVoiceRoamingOff=" + hasVoiceRoamingOff
@@ -3173,31 +3409,63 @@ public class ServiceStateTracker extends Handler {
                     + " hasMultiApnSupport=" + hasMultiApnSupport
                     + " hasLostMultiApnSupport=" + hasLostMultiApnSupport);
         }
+
         // Add an event log when connection state changes
-        if (mSS.getVoiceRegState() != mNewSS.getVoiceRegState()
-                || mSS.getDataRegState() != mNewSS.getDataRegState()) {
-            EventLog.writeEvent(EventLogTags.CDMA_SERVICE_STATE_CHANGE, mSS.getVoiceRegState(),
-                    mSS.getDataRegState(), mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
+        if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
+            EventLog.writeEvent(mPhone.isPhoneTypeGsm() ? EventLogTags.GSM_SERVICE_STATE_CHANGE :
+                            EventLogTags.CDMA_SERVICE_STATE_CHANGE,
+                    mSS.getVoiceRegState(), mSS.getDataRegState(),
+                    mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
-        ServiceState tss;
-        tss = mSS;
+        if (mPhone.isPhoneTypeGsm()) {
+            // Add an event log when network type switched
+            // TODO: we may add filtering to reduce the event logged,
+            // i.e. check preferred network setting, only switch to 2G, etc
+            if (hasRilVoiceRadioTechnologyChanged) {
+                int cid = -1;
+                GsmCellLocation loc = (GsmCellLocation) mNewCellLoc;
+                if (loc != null) cid = loc.getCid();
+                // NOTE: this code was previously located after mSS and mNewSS are swapped, so
+                // existing logs were incorrectly using the new state for "network_from"
+                // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
+                // to record the correct states.
+                EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED_NEW, cid,
+                        mSS.getRilVoiceRadioTechnology(),
+                        mNewSS.getRilVoiceRadioTechnology());
+                if (DBG) {
+                    log("RAT switched "
+                            + ServiceState.rilRadioTechnologyToString(
+                            mSS.getRilVoiceRadioTechnology())
+                            + " -> "
+                            + ServiceState.rilRadioTechnologyToString(
+                            mNewSS.getRilVoiceRadioTechnology()) + " at cell " + cid);
+                }
+            }
+            mReasonDataDenied = mNewReasonDataDenied;
+            mMaxDataCalls = mNewMaxDataCalls;
+        }
+
+        // swap mSS and mNewSS to put new state in mSS
+        ServiceState tss = mSS;
         mSS = mNewSS;
         mNewSS = tss;
         // clean slate for next time
         mNewSS.setStateOutOfService();
 
-        CdmaCellLocation tcl = (CdmaCellLocation)mCellLoc;
+        // swap mCellLoc and mNewCellLoc to put new state in mCellLoc
+        CellLocation tcl = mCellLoc;
         mCellLoc = mNewCellLoc;
         mNewCellLoc = tcl;
 
-        mNewSS.setStateOutOfService(); // clean slate for next time
-
-        if (hasVoiceRadioTechnologyChanged) {
+        if (hasRilVoiceRadioTechnologyChanged) {
             updatePhoneObject();
         }
 
-        if (hasDataRadioTechnologyChanged) {
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+
+        if (hasRilDataRadioTechnologyChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
 
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
@@ -3208,6 +3476,12 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRegistered) {
             mNetworkAttachedRegistrants.notifyRegistrants();
+
+            if (DBG) {
+                log("pollStateDone: registering current mNitzUpdatedTime=" + mNitzUpdatedTime
+                        + " changing to false");
+            }
+            mNitzUpdatedTime = false;
         }
 
         if (hasDeregistered) {
@@ -3217,50 +3491,82 @@ public class ServiceStateTracker extends Handler {
         if (hasChanged) {
             updateSpnDisplay();
 
-            String operatorNumeric;
-
             tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
 
             String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
-            operatorNumeric = mSS.getOperatorNumeric();
-            // try to fix the invalid Operator Numeric
-            if (isInvalidOperatorNumeric(operatorNumeric)) {
-                int sid = mSS.getSystemId();
-                operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
+            String operatorNumeric = mSS.getOperatorNumeric();
+
+            if (!mPhone.isPhoneTypeGsm()) {
+                // try to fix the invalid Operator Numeric
+                if (isInvalidOperatorNumeric(operatorNumeric)) {
+                    int sid = mSS.getSystemId();
+                    operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
+                }
             }
+
             tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
             updateCarrierMccMncConfiguration(operatorNumeric,
                     prevOperatorNumeric, mPhone.getContext());
-
             if (isInvalidOperatorNumeric(operatorNumeric)) {
-                if (DBG) log("operatorNumeric is null");
+                if (DBG) log("operatorNumeric " + operatorNumeric + " is invalid");
                 tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
                 mGotCountryCode = false;
+                mNitzUpdatedTime = false;
             } else {
-                String isoCountryCode = "";
-                String mcc = operatorNumeric.substring(0, 3);
+                String iso = "";
+                String mcc = "";
                 try {
-                    isoCountryCode = MccTable.countryCodeForMcc(Integer.parseInt(operatorNumeric
-                            .substring(0, 3)));
-                } catch (NumberFormatException ex) {
-                    loge("countryCodeForMcc error" + ex);
-                } catch (StringIndexOutOfBoundsException ex) {
-                    loge("countryCodeForMcc error" + ex);
+                    mcc = operatorNumeric.substring(0, 3);
+                    iso = MccTable.countryCodeForMcc(Integer.parseInt(mcc));
+                } catch (NumberFormatException | StringIndexOutOfBoundsException ex) {
+                    loge("pollStateDone: countryCodeForMcc error: " + ex);
                 }
 
-                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), isoCountryCode);
+                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), iso);
                 mGotCountryCode = true;
 
-                setOperatorIdd(operatorNumeric);
+                if (!mNitzUpdatedTime && !mcc.equals("000") && !TextUtils.isEmpty(iso)
+                        && getAutoTimeZone()) {
+
+                    // Test both paths if ignore nitz is true
+                    boolean testOneUniqueOffsetPath = SystemProperties.getBoolean(
+                            TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
+                            && ((SystemClock.uptimeMillis() & 1) == 0);
+
+                    ArrayList<TimeZone> uniqueZones = TimeUtils.getTimeZonesWithUniqueOffsets(iso);
+                    if ((uniqueZones.size() == 1) || testOneUniqueOffsetPath) {
+                        TimeZone zone = uniqueZones.get(0);
+                        if (DBG) {
+                            log("pollStateDone: no nitz but one TZ for iso-cc=" + iso
+                                    + " with zone.getID=" + zone.getID()
+                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
+                        }
+                        mTimeZoneLog.log("pollStateDone: set time zone=" + zone.getID()
+                                + " mcc=" + mcc + " iso=" + iso);
+                        setAndBroadcastNetworkSetTimeZone(zone.getID());
+                    } else {
+                        if (DBG) {
+                            log("pollStateDone: there are " + uniqueZones.size()
+                                    + " unique offsets for iso-cc='" + iso
+                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath
+                                    + "', do nothing");
+                        }
+                    }
+                }
+
+                if (!mPhone.isPhoneTypeGsm()) {
+                    setOperatorIdd(operatorNumeric);
+                }
 
                 if (shouldFixTimeZoneNow(mPhone, operatorNumeric, prevOperatorNumeric,
                         mNeedFixZoneAfterNitz)) {
-                    fixTimeZone(isoCountryCode);
+                    fixTimeZone(iso);
                 }
             }
 
             tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
-                    (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
+                    mPhone.isPhoneTypeGsm() ? mSS.getVoiceRoaming() :
+                            (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
 
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
@@ -3269,25 +3575,26 @@ public class ServiceStateTracker extends Handler {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
-        if (hasCdmaDataConnectionAttached || has4gHandoff || hasCdmaDataConnectionDetached ||
-                hasRegistered || hasDeregistered) {
+        if (hasDataAttached || has4gHandoff || hasDataDetached || hasRegistered
+                || hasDeregistered) {
             logAttachChange();
         }
 
-        if (hasCdmaDataConnectionAttached || has4gHandoff) {
+        if (hasDataAttached || has4gHandoff) {
             mAttachedRegistrants.notifyRegistrants();
         }
 
-        if (hasCdmaDataConnectionDetached) {
+        if (hasDataDetached) {
             mDetachedRegistrants.notifyRegistrants();
         }
 
-        if (hasDataRadioTechnologyChanged || hasVoiceRadioTechnologyChanged) {
+        if (hasRilDataRadioTechnologyChanged || hasRilVoiceRadioTechnologyChanged) {
             logRatChange();
         }
 
-        if ((hasCdmaDataConnectionChanged || hasDataRadioTechnologyChanged)) {
+        if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
+
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                     == mSS.getRilDataRadioTechnology()) {
                 mPhone.notifyDataConnection(Phone.REASON_IWLAN_AVAILABLE);
@@ -3318,6 +3625,23 @@ public class ServiceStateTracker extends Handler {
 
         if (hasLocationChanged) {
             mPhone.notifyLocationChanged();
+        }
+
+        if (mPhone.isPhoneTypeGsm()) {
+            if (!isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
+                if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
+                    mStartedGprsRegCheck = true;
+
+                    int check_period = Settings.Global.getInt(
+                            mPhone.getContext().getContentResolver(),
+                            Settings.Global.GPRS_REGISTER_CHECK_PERIOD_MS,
+                            DEFAULT_GPRS_CHECK_PERIOD_MILLIS);
+                    sendMessageDelayed(obtainMessage(EVENT_CHECK_REPORT_GPRS),
+                            check_period);
+                }
+            } else {
+                mReportedGprsNoReg = false;
+            }
         }
     }
 
