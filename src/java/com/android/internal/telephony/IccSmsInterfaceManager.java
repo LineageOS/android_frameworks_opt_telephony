@@ -449,8 +449,7 @@ public class IccSmsInterfaceManager {
             return;
         }
         if (!persistMessageForNonDefaultSmsApp) {
-            // Only allow carrier app or phone process to skip auto message persistence.
-            enforceCarrierOrPhonePrivilege();
+            enforcePrivilegedAppPermissions();
         }
         destAddr = filterDestAddress(destAddr);
         mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
@@ -468,7 +467,7 @@ public class IccSmsInterfaceManager {
      *  the same time an SMS received from radio is acknowledged back.
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
-        enforceCarrierOrCarrierImsPrivilege();
+        enforcePrivilegedAppPermissions();
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("pdu: " + pdu +
                 "\n format=" + format +
@@ -511,7 +510,7 @@ public class IccSmsInterfaceManager {
                 "Sending SMS message");
         if (!persistMessageForNonDefaultSmsApp) {
             // Only allow carrier app or carrier ims to skip auto message persistence.
-            enforceCarrierOrCarrierImsPrivilege();
+            enforcePrivilegedAppPermissions();
         }
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             int i = 0;
@@ -1118,8 +1117,21 @@ public class IccSmsInterfaceManager {
         }
     }
 
-    private void enforceCarrierOrCarrierImsPrivilege() {
+    /**
+     * Enforces that the caller is one of the following:
+     * <ul>
+     *     <li> Phone process
+     *     <li> IMS App
+     *     <li> Carrier App
+     * </ul>
+     */
+    private void enforcePrivilegedAppPermissions() {
         int callingUid = Binder.getCallingUid();
+        // Allow the phone process itself to send, inject messages.
+        if (callingUid == Process.PHONE_UID) {
+            return;
+        }
+
         String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
                 new Intent(CarrierMessagingService.SERVICE_INTERFACE));
         try {
@@ -1134,13 +1146,6 @@ public class IccSmsInterfaceManager {
             }
         }
         enforceCarrierPrivilege();
-    }
-
-    private void enforceCarrierOrPhonePrivilege() {
-        int callingUid = Binder.getCallingUid();
-        if (callingUid != Process.PHONE_UID) {
-            enforceCarrierPrivilege();
-        }
     }
 
     private String filterDestAddress(String destAddr) {
