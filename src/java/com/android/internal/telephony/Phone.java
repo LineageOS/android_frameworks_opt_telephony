@@ -50,7 +50,6 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
 
@@ -3400,6 +3399,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public Uri[] getCurrentSubscriberUris() {
         return null;
+    }
+
+    /**
+     * Set SIM card power state. Request is equivalent to inserting or removing the card.
+     * @param powerUp True if powering up the SIM, otherwise powering down
+     **/
+    public void setSimPowerState(boolean powerUp) {
+        mCi.setSimCardPower(powerUp, null);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
