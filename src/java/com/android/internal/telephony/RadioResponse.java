@@ -75,7 +75,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param msg Response message to be sent
      * @param ret Return object to be included in the response message
      */
-    private void sendMessageResponse(Message msg, Object ret) {
+    static void sendMessageResponse(Message msg, Object ret) {
         if (msg != null) {
             AsyncResult.forMessage(msg, ret, null);
             msg.sendToTarget();
@@ -558,16 +558,6 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     public void sendOemRilRequestRawResponse(RadioResponseInfo responseInfo,
                                              ArrayList<Byte> var2) {}
-
-    /**
-     *
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param strings data returned by oem
-     */
-    public void sendOemRilRequestStringsResponse(RadioResponseInfo responseInfo,
-                                                 ArrayList<String> strings) {
-        responseStringArrayList(responseInfo, strings);
-    }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
@@ -1261,19 +1251,6 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
-    private void responseByteArrayList(RadioResponseInfo responseInfo, ArrayList<Byte> var) {
-        RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            byte[] ret = null;
-            if (responseInfo.error == RadioError.NONE) {
-                ret = RIL.arrayListToPrimitiveArray(var);
-                sendMessageResponse(rr.mResult, ret);
-            }
-            mRil.processResponseDone(rr, responseInfo, ret);
-        }
-    }
-
     private void responseCurrentCalls(RadioResponseInfo responseInfo,
                                       ArrayList<android.hardware.radio.V1_0.Call> calls) {
         RILRequest rr = mRil.processResponse(responseInfo);
@@ -1388,12 +1365,12 @@ public class RadioResponse extends IRadioResponse.Stub {
         for (int i = 0; i < str.length; i++) {
             strings.add(str[i]);
         }
-        responseStringArrayList(responseInfo, strings);
+        responseStringArrayList(mRil, responseInfo, strings);
     }
 
-    private void responseStringArrayList(RadioResponseInfo responseInfo,
-                                         ArrayList<String> strings) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+    static void responseStringArrayList(RIL ril, RadioResponseInfo responseInfo,
+                                        ArrayList<String> strings) {
+        RILRequest rr = ril.processResponse(responseInfo);
 
         if (rr != null) {
             String[] ret = null;
@@ -1404,7 +1381,7 @@ public class RadioResponse extends IRadioResponse.Stub {
                 }
                 sendMessageResponse(rr.mResult, ret);
             }
-            mRil.processResponseDone(rr, responseInfo, ret);
+            ril.processResponseDone(rr, responseInfo, ret);
         }
     }
 
