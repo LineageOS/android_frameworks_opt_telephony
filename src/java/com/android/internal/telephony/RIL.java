@@ -21,6 +21,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
+import android.hardware.radio.deprecated.V1_0.IOemHook;
+import android.hardware.radio.V1_0.CellInfoCdma;
+import android.hardware.radio.V1_0.CellInfoGsm;
+import android.hardware.radio.V1_0.CellInfoLte;
+import android.hardware.radio.V1_0.CellInfoType;
+import android.hardware.radio.V1_0.CellInfoWcdma;
 import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
@@ -375,7 +381,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int RESPONSE_SOLICITED_ACK_EXP = 3;
     static final int RESPONSE_UNSOLICITED_ACK_EXP = 4;
 
-    static final String[] SOCKET_NAME_RIL = {"rild", "rild2", "rild3"};
+    static final String[] RIL_SERVICE_NAME = {"rild", "rild2", "rild3"};
+    static final String[] OEM_HOOK_SERVICE_NAME = {"oemhook", "oemhook2", "oemhook3"};
 
     static final int SOCKET_OPEN_RETRY_MILLIS = 4 * 1000;
     static final int IRADIO_GET_SERVICE_DELAY_MILLIS = 3 * 1000;
@@ -685,9 +692,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 LocalSocketAddress l;
 
                 if (mPhoneId == null || mPhoneId == 0 ) {
-                    rilSocket = SOCKET_NAME_RIL[0];
+                    rilSocket = RIL_SERVICE_NAME[0];
                 } else {
-                    rilSocket = SOCKET_NAME_RIL[mPhoneId];
+                    rilSocket = RIL_SERVICE_NAME[mPhoneId];
                 }
 
                 try {
@@ -789,6 +796,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     RadioResponse mRadioResponse;
     RadioIndication mRadioIndication;
     volatile IRadio mRadioProxy = null;
+    OemHookResponse mOemHookResponse;
+    OemHookIndication mOemHookIndication;
+    volatile IOemHook mOemHookProxy = null;
     final AtomicLong mRadioProxyCookie = new AtomicLong(0);
     final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
@@ -822,6 +832,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private void resetProxyAndRequestList() {
         mRadioProxy = null;
+        mOemHookProxy = null;
         RILRequest.resetSerial();
         // Clear request list on close
         clearRequestList(RADIO_NOT_AVAILABLE, false);
@@ -841,13 +852,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             return mRadioProxy;
         }
         try {
-            mRadioProxy = IRadio.getService(SOCKET_NAME_RIL[mPhoneId == null ? 0 : mPhoneId]);
+            mRadioProxy = IRadio.getService(RIL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
             if (mRadioProxy != null) {
                 mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
                         mRadioProxyCookie.incrementAndGet());
                 mRadioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
             } else {
-                riljLoge("getRadioProxy: radioProxy == null");
+                riljLoge("getRadioProxy: mRadioProxy == null");
             }
         } catch (RemoteException | RuntimeException e) {
             mRadioProxy = null;
@@ -866,6 +877,39 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             riljLoge("setResponseFunctions", e);
         }
         return mRadioProxy;
+    }
+
+    private IOemHook getOemHookProxy(Message result) {
+        if (mOemHookProxy != null) {
+            return mOemHookProxy;
+        }
+        try {
+            mOemHookProxy = IOemHook.getService(
+                    OEM_HOOK_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
+            if (mOemHookProxy != null) {
+                // not calling linkToDeath() as ril service runs in the same process and death
+                // notification for that should be sufficient
+                mOemHookProxy.setResponseFunctions(mOemHookResponse, mOemHookIndication);
+            } else {
+                riljLoge("getOemHookProxy: mOemHookProxy == null");
+            }
+        } catch (RemoteException | RuntimeException e) {
+            mOemHookProxy = null;
+
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                result.sendToTarget();
+            }
+
+            // if service is not up, treat it like death notification to try to get service again
+            mRilHandler.sendMessageDelayed(
+                    mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, mRadioProxyCookie.get()),
+                    IRADIO_GET_SERVICE_DELAY_MILLIS);
+
+            riljLoge("setResponseFunctions", e);
+        }
+        return mOemHookProxy;
     }
 
     //***** Constructors
@@ -894,10 +938,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         mRadioResponse = new RadioResponse(this);
         mRadioIndication = new RadioIndication(this);
+        mOemHookResponse = new OemHookResponse(this);
+        mOemHookIndication = new OemHookIndication(this);
         mRilHandler = new RilHandler();
         mRadioProxyDeathRecipient = new RadioProxyDeathRecipient();
         // set radio callback; needed to set RadioIndication callback
         getRadioProxy(null);
+        getOemHookProxy(null);
 
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_LOG_TAG);
@@ -2199,22 +2246,28 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
-        RILRequest rr
-                = RILRequest.obtain(RIL_REQUEST_OEM_HOOK_RAW, response, mRILDefaultWorkSource);
+        IOemHook oemHookProxy = getOemHookProxy(response);
+        if (oemHookProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_OEM_HOOK_RAW, response,
+                    mRILDefaultWorkSource);
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                + "[" + IccUtils.bytesToHexString(data) + "]");
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + "[" + IccUtils.bytesToHexString(data) + "]");
+            }
 
-        rr.mParcel.writeByteArray(data);
-
-        send(rr);
-
+            try {
+                oemHookProxy.sendRequestRaw(rr.mSerial, primitiveArrayToArrayList(data));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "invokeOemRilRequestStrings", e);
+            }
+        }
     }
 
     @Override
     public void invokeOemRilRequestStrings(String[] strings, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        IOemHook oemHookProxy = getOemHookProxy(result);
+        if (oemHookProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_OEM_HOOK_STRINGS, result,
                     mRILDefaultWorkSource);
 
@@ -2228,7 +2281,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.sendOemRadioRequestStrings(rr.mSerial,
+                oemHookProxy.sendRequestStrings(rr.mSerial,
                         new ArrayList<String>(Arrays.asList(strings)));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "invokeOemRilRequestStrings", e);
@@ -4491,7 +4544,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     // separate CL. Other RIL commands below are deprecated and require framework
                     // code to be modified to remove them completely.
                     case RIL_REQUEST_SETUP_DATA_CALL: ret =  responseSetupDataCall(p); break;
-                    case RIL_REQUEST_OEM_HOOK_RAW: ret =  responseRaw(p); break;
                     case RIL_REQUEST_SET_INITIAL_ATTACH_APN: ret = responseVoid(p); break;
                     case RIL_REQUEST_SET_DATA_PROFILE: ret = responseVoid(p); break;
                     default:
@@ -5535,6 +5587,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     public List<ClientRequestStats> getClientRequestStats() {
         return mClientWakelockTracker.getClientRequestStats();
+    }
+
+    public static ArrayList<Byte> primitiveArrayToArrayList(byte[] arr) {
+        ArrayList<Byte> arrayList = new ArrayList<>(arr.length);
+        for (byte b : arr) {
+            arrayList.add(b);
+        }
+        return arrayList;
     }
 
     public static byte[] arrayListToPrimitiveArray(ArrayList<Byte> bytes) {
