@@ -16,6 +16,7 @@
 
 package android.telephony.ims;
 
+import android.content.Context;
 import android.telephony.ims.feature.MMTelFeature;
 import android.telephony.ims.feature.RcsFeature;
 
@@ -28,7 +29,8 @@ import org.mockito.MockitoAnnotations;
 
 public class TestImsService extends ImsService {
 
-    public TestImsService() {
+    public TestImsService(Context context) {
+        attachBaseContext(context);
         MockitoAnnotations.initMocks(this);
     }
 
