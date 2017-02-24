@@ -32,6 +32,7 @@ import org.mockito.stubbing.Answer;
 
 import android.net.Uri;
 import android.platform.test.annotations.Postsubmit;
+import android.support.test.filters.FlakyTest;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,6 +70,7 @@ public class ImsExternalCallTrackerTest {
         mTracker = new ImsExternalCallTracker(mImsPhone, mImsPullCall, mCallNotifier);
     }
 
+    @FlakyTest
     @Postsubmit
     @Test
     public void testAddExternalCall() {
@@ -92,6 +94,7 @@ public class ImsExternalCallTrackerTest {
         assert(connection instanceof ImsExternalConnection);
     }
 
+    @FlakyTest
     @Postsubmit
     @Test
     public void testRemoveExternalCall() {

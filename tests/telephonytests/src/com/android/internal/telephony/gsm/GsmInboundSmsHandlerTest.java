@@ -30,6 +30,7 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.platform.test.annotations.Postsubmit;
+import android.support.test.filters.FlakyTest;
 import android.provider.Telephony;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -355,6 +356,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(mInboundSmsTrackerCVPart2).when(mInboundSmsTrackerPart2).getContentValues();
     }
 
+    @FlakyTest
     @Postsubmit
     @Test
     @MediumTest

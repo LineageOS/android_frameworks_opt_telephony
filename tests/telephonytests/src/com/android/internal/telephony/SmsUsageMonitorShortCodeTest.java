@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.os.Looper;
 import android.platform.test.annotations.Postsubmit;
+import android.support.test.filters.FlakyTest;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -457,6 +458,7 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
             new ShortCodeTest(null, "112", CATEGORY_NOT_SHORT_CODE),
     };
 
+    @FlakyTest
     @Postsubmit
     @SmallTest
     public void testSmsUsageMonitor() {
