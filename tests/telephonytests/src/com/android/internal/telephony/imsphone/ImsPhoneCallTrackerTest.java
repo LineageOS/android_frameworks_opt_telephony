@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.ims.feature.ImsFeature;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCall;
@@ -150,7 +151,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mSecondImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         imsCallMocking(mImsCall);
         imsCallMocking(mSecondImsCall);
-
+        doReturn(ImsFeature.STATE_READY).when(mImsManager).getImsServiceStatus();
         doReturn(mImsCallProfile).when(mImsManager).createCallProfile(eq(mServiceId),
                 anyInt(), anyInt());
 
