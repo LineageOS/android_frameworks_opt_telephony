@@ -1993,7 +1993,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * com.android.internal.telephony.gsm.CommandException
      *
      * @see #invokeOemRilRequestRaw(byte[], android.os.Message)
+     * @deprecated OEM needs a vendor-extension hal and their apps should use that instead
      */
+    @Deprecated
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
         mCi.invokeOemRilRequestRaw(data, response);
     }
@@ -2011,7 +2013,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * com.android.internal.telephony.gsm.CommandException
      *
      * @see #invokeOemRilRequestStrings(java.lang.String[], android.os.Message)
+     * @deprecated OEM needs a vendor-extension hal and their apps should use that instead
      */
+    @Deprecated
     public void invokeOemRilRequestStrings(String[] strings, Message response) {
         mCi.invokeOemRilRequestStrings(strings, response);
     }
