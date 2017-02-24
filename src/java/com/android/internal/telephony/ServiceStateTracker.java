@@ -4860,6 +4860,16 @@ public class ServiceStateTracker extends Handler {
         ipw.increaseIndent();
         mTimeZoneLog.dump(fd, ipw, args);
         ipw.decreaseIndent();
+
+        ipw.println(" Time Logs:");
+        ipw.increaseIndent();
+        mTimeLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
+
+        ipw.println(" Time zone Logs:");
+        ipw.increaseIndent();
+        mTimeZoneLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
     }
 
     public boolean isImsRegistered() {
