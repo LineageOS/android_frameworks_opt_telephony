@@ -29,6 +29,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.platform.test.annotations.Postsubmit;
+import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -452,6 +453,7 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
+    @FlakyTest
     @Postsubmit
     @Test
     @SmallTest
@@ -578,6 +580,7 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(false, mImsPhoneUT.getWakeLock().isHeld());
     }
 
+    @FlakyTest
     @Postsubmit
     @Test
     @SmallTest
