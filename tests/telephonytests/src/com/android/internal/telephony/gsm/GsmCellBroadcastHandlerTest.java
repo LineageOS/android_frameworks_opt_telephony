@@ -16,14 +16,26 @@
 
 package com.android.internal.telephony.gsm;
 
-import static org.junit.Assert.assertTrue;
+import static android.provider.Settings.Secure.CMAS_ADDITIONAL_BROADCAST_PKG;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.Manifest;
+import android.app.Activity;
+import android.app.AppOpsManager;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
+import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -36,6 +48,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+
+import java.util.List;
 
 public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     @Mock
@@ -86,8 +100,11 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     @Test @SmallTest
     public void testBroadcastSms() {
         mContextFixture.putResource(
-                com.android.internal.R.string.config_defaultCellBroadcastReceiverComponent,
-                "fake.cellbroadcastreceiver.component");
+                com.android.internal.R.string.config_defaultCellBroadcastReceiverPkg,
+                "fake.cellbroadcastreceiver");
+
+        Settings.Secure.putString(mContext.getContentResolver(),
+                CMAS_ADDITIONAL_BROADCAST_PKG, "another.fake.pkg");
         mSimulatedCommands.notifyGsmBroadcastSms(new byte[] {
                 (byte)0xc0, //geographical scope
                 (byte)0x01, //serial number
@@ -96,12 +113,23 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
                 (byte)0x01, //message identifier
                 (byte)0x01
         });
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble()).sendBroadcast(intentArgumentCaptor.capture());
-        assertTrue(intentArgumentCaptor.getValue().getAction().equals(
-                Telephony.Sms.Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION) ||
-                intentArgumentCaptor.getValue().getAction().equals(
-                        Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION));
+        verify(mContextFixture.getTestDouble(), times(2)).sendOrderedBroadcastAsUser(
+                intentArgumentCaptor.capture(), eq(UserHandle.ALL),
+                eq(Manifest.permission.RECEIVE_SMS), eq(AppOpsManager.OP_RECEIVE_SMS),
+                any(BroadcastReceiver.class), any(Handler.class), eq(Activity.RESULT_OK), eq(null),
+                eq(null));
+
+        List<Intent> intentList = intentArgumentCaptor.getAllValues();
+
+        assertEquals(Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION,
+                intentList.get(0).getAction());
+        // TODO: uncomment the following once ArgumentCaptor's bug is fixed.
+        // assertEquals("fake.cellbroadcastreceiver", intentList.get(0).getPackage());
+
+        assertEquals(Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION,
+                intentList.get(1).getAction());
+        assertEquals("another.fake.pkg", intentList.get(0).getPackage());
     }
 }
