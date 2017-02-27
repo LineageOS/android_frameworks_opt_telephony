@@ -19,6 +19,7 @@ package com.android.internal.telephony.cdma;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.os.Parcel;
 import android.platform.test.annotations.Postsubmit;
+import android.support.test.filters.FlakyTest;
 import android.telephony.SmsCbCmasInfo;
 import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;

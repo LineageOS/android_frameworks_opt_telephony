@@ -27,6 +27,10 @@ import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 import com.android.internal.telephony.test.SimulatedCommands;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.IConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
@@ -34,10 +38,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.platform.test.annotations.Postsubmit;
-import android.net.ConnectivityManager;
-import android.net.IConnectivityManager;
-import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
+import android.support.test.filters.FlakyTest;
 
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
