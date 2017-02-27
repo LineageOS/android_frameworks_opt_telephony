@@ -19,10 +19,10 @@ package com.android.internal.telephony;
 import android.net.Uri;
 import android.platform.test.annotations.Postsubmit;
 import android.support.test.filters.FlakyTest;
+import android.telephony.PhoneNumberUtils;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.SpannableStringBuilder;
-import android.telephony.PhoneNumberUtils;
 
 public class PhoneNumberUtilsTest extends AndroidTestCase {
 
@@ -691,5 +691,18 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
         source = Uri.fromParts("sip", "+16505551212@something.com;user=phone", null);
         converted = PhoneNumberUtils.convertSipUriToTelUri(source);
         assertEquals(expected, converted);
+    }
+
+    @SmallTest
+    public void testIsInternational() {
+        assertFalse(PhoneNumberUtils.isInternationalNumber("+16505551212", "US"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("+16505551212", "UK"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("+16505551212", "JP"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("+86 10 8888 0000", "US"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("001-541-754-3010", "DE"));
+        assertFalse(PhoneNumberUtils.isInternationalNumber("001-541-754-3010", "US"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("01161396694916", "US"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "US"));
+        assertFalse(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "AU"));
     }
 }

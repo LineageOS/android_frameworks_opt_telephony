@@ -45,6 +45,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UssdResponse;
@@ -72,7 +73,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
-import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -1140,6 +1140,42 @@ public class GsmCdmaPhone extends Phone {
         } else {
             return dialInternal(dialString, null, videoState, intentExtras);
         }
+    }
+
+    /**
+     * @return {@code true} if the user should be informed of an attempt to dial an international
+     * number while on WFC only, {@code false} otherwise.
+     */
+    public boolean isNotificationOfWfcCallRequired(String dialString) {
+        CarrierConfigManager configManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle config = configManager.getConfigForSubId(getSubId());
+
+        // Determine if carrier config indicates that international calls over WFC should trigger a
+        // notification to the user. This is controlled by carrier configuration and is off by
+        // default.
+        boolean shouldNotifyInternationalCallOnWfc = config != null
+                && config.getBoolean(
+                        CarrierConfigManager.KEY_NOTIFY_INTERNATIONAL_CALL_ON_WFC_BOOL);
+
+        if (!shouldNotifyInternationalCallOnWfc) {
+            return false;
+        }
+
+        Phone imsPhone = mImsPhone;
+        boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(getSubId(), dialString);
+        boolean shouldConfirmCall =
+                        // Using IMS
+                        isImsUseEnabled()
+                        && imsPhone != null
+                        // VoLTE not available
+                        && !imsPhone.isVolteEnabled()
+                        // WFC is available
+                        && imsPhone.isWifiCallingEnabled()
+                        && !isEmergency
+                        // Dialing international number
+                        && PhoneNumberUtils.isInternationalNumber(dialString, getCountryIso());
+        return shouldConfirmCall;
     }
 
     private synchronized boolean addToMMIQueue(MmiCode mmi) {
@@ -3318,6 +3354,19 @@ public class GsmCdmaPhone extends Phone {
 
         }
         return operatorNumeric;
+    }
+
+    /**
+     * @return The country ISO for the subscription associated with this phone.
+     */
+    public String getCountryIso() {
+        int subId = getSubId();
+        SubscriptionInfo subInfo = SubscriptionManager.from(getContext())
+                .getActiveSubscriptionInfo(subId);
+        if (subInfo == null) {
+            return null;
+        }
+        return subInfo.getCountryIso().toUpperCase();
     }
 
     public void notifyEcbmTimerReset(Boolean flag) {
