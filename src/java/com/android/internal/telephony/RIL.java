@@ -3904,8 +3904,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
             for (CarrierIdentifier ci : carriers) { /* allowed carriers */
                 Carrier c = new Carrier();
-                c.mcc = ci.getMcc();
-                c.mnc = ci.getMnc();
+                c.mcc = convertNullToEmptyString(ci.getMcc());
+                c.mnc = convertNullToEmptyString(ci.getMnc());
                 int matchType = CarrierIdentifier.MatchType.ALL;
                 String matchData = null;
                 if (!TextUtils.isEmpty(ci.getSpn())) {
@@ -3922,11 +3922,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     matchData = ci.getGid2();
                 }
                 c.matchType = matchType;
-                c.matchData = matchData;
+                c.matchData = convertNullToEmptyString(matchData);
                 carrierList.allowedCarriers.add(c);
             }
 
-        /* TODO: add excluded carriers */
+            /* TODO: add excluded carriers */
 
             try {
                 radioProxy.setAllowedCarriers(rr.mSerial, allAllowed, carrierList);
