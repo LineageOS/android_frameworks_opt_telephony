@@ -16,6 +16,7 @@
 
 package android.telephony.ims;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;
 import android.support.test.runner.AndroidJUnit4;
@@ -33,11 +34,17 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static android.Manifest.permission.MODIFY_PHONE_STATE;
+import static android.Manifest.permission.READ_PHONE_STATE;
 import static com.android.internal.telephony.ims.ImsResolver.SERVICE_INTERFACE;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,12 +62,14 @@ public class ImsServiceTest {
     private IImsServiceController mTestImsServiceBinder;
 
     @Mock
+    private Context mMockContext;
+    @Mock
     private IImsFeatureStatusCallback mTestCallback;
 
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        mTestImsService = new TestImsService();
+        mTestImsService = new TestImsService(mMockContext);
         mTestImsServiceBinder = (IImsServiceController) mTestImsService.onBind(
                 new Intent(SERVICE_INTERFACE));
     }
@@ -119,6 +128,38 @@ public class ImsServiceTest {
 
         mTestImsServiceBinder.isConnected(TEST_SLOT_1, ImsFeature.MMTEL, 0 /*callSessionType*/,
                 0 /*callType*/);
+
+        verify(mTestImsService.mMockMMTelFeature, never()).isConnected(anyInt(), anyInt());
+    }
+
+    @Test
+    @SmallTest
+    public void testCreateFeatureWithNoPermissions() throws RemoteException {
+        doThrow(new SecurityException()).when(mMockContext).enforceCallingOrSelfPermission(
+                eq(MODIFY_PHONE_STATE), anyString());
+
+        try {
+            mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
+            fail();
+        } catch (SecurityException e) {
+            // Expected
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testMethodWithNoPermissions() throws RemoteException {
+        doThrow(new SecurityException()).when(mMockContext).enforceCallingOrSelfPermission(
+                eq(READ_PHONE_STATE), anyString());
+        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
+
+        try {
+            mTestImsServiceBinder.isConnected(TEST_SLOT_1, ImsFeature.MMTEL, 0 /*callSessionType*/,
+                    0 /*callType*/);
+            fail();
+        } catch (SecurityException e) {
+            // Expected
+        }
 
         verify(mTestImsService.mMockMMTelFeature, never()).isConnected(anyInt(), anyInt());
     }
