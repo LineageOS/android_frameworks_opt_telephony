@@ -510,6 +510,28 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
         assertEquals("800-GOOG-114", PhoneNumberUtils.formatNumber("800-GOOG-114", "US"));
     }
 
+    /**
+     * Tests ability to format phone numbers from Japan using the international format when the
+     * current country is not Japan.
+     */
+    @SmallTest
+    public void testFormatJapanInternational() {
+        assertEquals("+81 90-6657-1180", PhoneNumberUtils.formatNumber("+819066571180", "US"));
+    }
+
+    /**
+     * Tests ability to format phone numbers from Japan using the national format when the current
+     * country is Japan.
+     */
+    @SmallTest
+    public void testFormatJapanNational() {
+        assertEquals("090-6657-0660", PhoneNumberUtils.formatNumber("09066570660", "JP"));
+        assertEquals("090-6657-1180", PhoneNumberUtils.formatNumber("+819066571180", "JP"));
+
+        // US number should still be internationally formatted
+        assertEquals("+1 650-555-1212", PhoneNumberUtils.formatNumber("+16505551212", "JP"));
+    }
+
     @SmallTest
     public void testFormatNumber_LeadingStarAndHash() {
         // Numbers with a leading '*' or '#' should be left unchanged.
