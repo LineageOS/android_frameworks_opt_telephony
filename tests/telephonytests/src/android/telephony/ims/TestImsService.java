@@ -20,8 +20,10 @@ import android.content.Context;
 import android.telephony.ims.feature.MMTelFeature;
 import android.telephony.ims.feature.RcsFeature;
 
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
+
+import static org.mockito.Mockito.spy;
 
 /**
  * Test ImsService used by mockito to verify functionality.
@@ -29,13 +31,16 @@ import org.mockito.MockitoAnnotations;
 
 public class TestImsService extends ImsService {
 
+    public TestMMTelFeature mSpyMMTelFeature;
+    private TestMMTelFeature mTestMMTelFeature;
+
     public TestImsService(Context context) {
         attachBaseContext(context);
         MockitoAnnotations.initMocks(this);
+        // Must create real MMTelFeature to initialize ImsFeature objects.
+        mTestMMTelFeature = new TestMMTelFeature();
+        mSpyMMTelFeature = spy(mTestMMTelFeature);
     }
-
-    @Mock
-    public TestMMTelFeature mMockMMTelFeature;
 
     @Override
     public MMTelFeature onCreateEmergencyMMTelImsFeature(int slotId) {
@@ -44,7 +49,7 @@ public class TestImsService extends ImsService {
 
     @Override
     public MMTelFeature onCreateMMTelImsFeature(int slotId) {
-        return mMockMMTelFeature;
+        return mSpyMMTelFeature;
     }
 
     @Override
