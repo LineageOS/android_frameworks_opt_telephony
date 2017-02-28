@@ -230,7 +230,12 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void dataCallListChanged(int indicationType, ArrayList<SetupDataCallResult> dcList) {
         mRil.processIndication(indicationType);
 
-        ArrayList<DataCallResponse> response = RIL.convertHalDcList(dcList);
+        ArrayList<DataCallResponse> response = new ArrayList<>();
+
+        for (SetupDataCallResult dcResult : dcList) {
+            response.add(RIL.convertDataCallResult(dcResult));
+        }
+
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, response);
 
         mRil.mDataCallListChangedRegistrants.notifyRegistrants(

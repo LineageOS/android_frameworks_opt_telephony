@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.Context;
+import android.hardware.radio.V1_0.ApnTypes;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
@@ -29,10 +30,8 @@ import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * This class represents a apn setting for create PDP link
@@ -57,6 +56,7 @@ public class ApnSetting {
     public final String password;
     public final int authType;
     public final String[] types;
+    public final int typesBitmap;
     public final int id;
     public final String numeric;
     public final String protocol;
@@ -113,12 +113,13 @@ public class ApnSetting {
     public boolean permanentFailed = false;
 
     public ApnSetting(int id, String numeric, String carrier, String apn,
-            String proxy, String port,
-            String mmsc, String mmsProxy, String mmsPort,
-            String user, String password, int authType, String[] types,
-            String protocol, String roamingProtocol, boolean carrierEnabled, int bearer,
-            int bearerBitmask, int profileId, boolean modemCognitive, int maxConns, int waitTime,
-            int maxConnsTime, int mtu, String mvnoType, String mvnoMatchData) {
+                      String proxy, String port,
+                      String mmsc, String mmsProxy, String mmsPort,
+                      String user, String password, int authType, String[] types,
+                      String protocol, String roamingProtocol, boolean carrierEnabled, int bearer,
+                      int bearerBitmask, int profileId, boolean modemCognitive, int maxConns,
+                      int waitTime, int maxConnsTime, int mtu, String mvnoType,
+                      String mvnoMatchData) {
         this.id = id;
         this.numeric = numeric;
         this.carrier = carrier;
@@ -132,9 +133,12 @@ public class ApnSetting {
         this.password = password;
         this.authType = authType;
         this.types = new String[types.length];
+        int apnBitmap = 0;
         for (int i = 0; i < types.length; i++) {
-            this.types[i] = types[i].toLowerCase(Locale.ROOT);
+            this.types[i] = types[i].toLowerCase();
+            apnBitmap |= getApnBitmask(this.types[i]);
         }
+        this.typesBitmap = apnBitmap;
         this.protocol = protocol;
         this.roamingProtocol = roamingProtocol;
         this.carrierEnabled = carrierEnabled;
@@ -477,31 +481,50 @@ public class ApnSetting {
 
         ApnSetting other = (ApnSetting) o;
 
-        return carrier.equals(other.carrier) &&
-                id == other.id &&
-                numeric.equals(other.numeric) &&
-                apn.equals(other.apn) &&
-                proxy.equals(other.proxy) &&
-                mmsc.equals(other.mmsc) &&
-                mmsProxy.equals(other.mmsProxy) &&
-                TextUtils.equals(mmsPort, other.mmsPort) &&
-                port.equals(other.port) &&
-                TextUtils.equals(user, other.user) &&
-                TextUtils.equals(password, other.password) &&
-                authType == other.authType &&
-                Arrays.deepEquals(types, other.types) &&
-                protocol.equals(other.protocol) &&
-                roamingProtocol.equals(other.roamingProtocol) &&
-                carrierEnabled == other.carrierEnabled &&
-                bearer == other.bearer &&
-                bearerBitmask == other.bearerBitmask &&
-                profileId == other.profileId &&
-                modemCognitive == other.modemCognitive &&
-                maxConns == other.maxConns &&
-                waitTime == other.waitTime &&
-                maxConnsTime == other.maxConnsTime &&
-                mtu == other.mtu &&
-                mvnoType.equals(other.mvnoType) &&
-                mvnoMatchData.equals(other.mvnoMatchData);
+        return carrier.equals(other.carrier)
+                && id == other.id
+                && numeric.equals(other.numeric)
+                && apn.equals(other.apn)
+                && proxy.equals(other.proxy)
+                && mmsc.equals(other.mmsc)
+                && mmsProxy.equals(other.mmsProxy)
+                && TextUtils.equals(mmsPort, other.mmsPort)
+                && port.equals(other.port)
+                && TextUtils.equals(user, other.user)
+                && TextUtils.equals(password, other.password)
+                && authType == other.authType
+                && Arrays.deepEquals(types, other.types)
+                && typesBitmap == other.typesBitmap
+                && protocol.equals(other.protocol)
+                && roamingProtocol.equals(other.roamingProtocol)
+                && carrierEnabled == other.carrierEnabled
+                && bearer == other.bearer
+                && bearerBitmask == other.bearerBitmask
+                && profileId == other.profileId
+                && modemCognitive == other.modemCognitive
+                && maxConns == other.maxConns
+                && waitTime == other.waitTime
+                && maxConnsTime == other.maxConnsTime
+                && mtu == other.mtu
+                && mvnoType.equals(other.mvnoType)
+                && mvnoMatchData.equals(other.mvnoMatchData);
+    }
+
+    // Helper function to convert APN string into a 32-bit bitmask.
+    private static int getApnBitmask(String apn) {
+        switch (apn) {
+            case PhoneConstants.APN_TYPE_DEFAULT: return ApnTypes.DEFAULT;
+            case PhoneConstants.APN_TYPE_MMS: return ApnTypes.MMS;
+            case PhoneConstants.APN_TYPE_SUPL: return ApnTypes.SUPL;
+            case PhoneConstants.APN_TYPE_DUN: return ApnTypes.DUN;
+            case PhoneConstants.APN_TYPE_HIPRI: return ApnTypes.HIPRI;
+            case PhoneConstants.APN_TYPE_FOTA: return ApnTypes.FOTA;
+            case PhoneConstants.APN_TYPE_IMS: return ApnTypes.IMS;
+            case PhoneConstants.APN_TYPE_CBS: return ApnTypes.CBS;
+            case PhoneConstants.APN_TYPE_IA: return ApnTypes.IA;
+            case PhoneConstants.APN_TYPE_EMERGENCY: return ApnTypes.EMERGENCY;
+            case PhoneConstants.APN_TYPE_ALL: return ApnTypes.ALL;
+            default: return ApnTypes.NONE;
+        }
     }
 }
