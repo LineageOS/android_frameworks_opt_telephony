@@ -29,7 +29,6 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 
 import java.util.List;
 
-
 /**
  * {@hide}
  */
@@ -1605,26 +1604,17 @@ public interface CommandsInterface {
      *
      * @param radioTechnology
      *            Radio technology to use. Values is one of RIL_RADIO_TECHNOLOGY_*
-     * @param profile
-     *            Profile Number. Values is one of DATA_PROFILE_*
-     * @param apn
-     *            the APN to connect to if radio technology is GSM/UMTS.
-     *            Otherwise null for CDMA.
-     * @param user
-     *            the username for APN, or NULL
-     * @param password
-     *            the password for APN, or NULL
-     * @param authType
-     *            the PAP / CHAP auth type. Values is one of SETUP_DATA_AUTH_*
-     * @param protocol
-     *            one of the PDP_type values in TS 27.007 section 10.1.1.
-     *            For example, "IP", "IPV6", "IPV4V6", or "PPP".
+     * @param dataProfile
+     *            Data profile for data call setup
+     * @param isRoaming
+     *            Device is roaming or not
+     * @param allowRoaming
+     *            Flag indicating data roaming is enabled or not
      * @param result
      *            Callback message
      */
-    public void setupDataCall(int radioTechnology, int profile,
-            String apn, String user, String password, int authType,
-            String protocol, Message result);
+    void setupDataCall(int radioTechnology, DataProfile dataProfile, boolean isRoaming,
+                       boolean allowRoaming, Message result);
 
     /**
      * Deactivate packet data connection
@@ -1764,33 +1754,26 @@ public interface CommandsInterface {
     /**
      * Set Initial Attach Apn
      *
-     * @param apn
-     *            the APN to connect to if radio technology is GSM/UMTS.
-     * @param protocol
-     *            one of the PDP_type values in TS 27.007 section 10.1.1.
-     *            For example, "IP", "IPV6", "IPV4V6", or "PPP".
-     * @param authType
-     *            authentication protocol used for this PDP context
-     *            (None: 0, PAP: 1, CHAP: 2, PAP&CHAP: 3)
-     * @param username
-     *            the username for APN, or NULL
-     * @param password
-     *            the password for APN, or NULL
+     * @param dataProfile
+     *            data profile for initial APN attach
+     * @param isRoaming
+     *            indicating the device is roaming or not
      * @param result
      *            callback message contains the information of SUCCESS/FAILURE
      */
-    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
-            String password, Message result);
+    void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result);
 
     /**
      * Set data profiles in modem
      *
      * @param dps
      *            Array of the data profiles set to modem
+     * @param isRoaming
+     *            Indicating if the device is roaming or not
      * @param result
      *            callback message contains the information of SUCCESS/FAILURE
      */
-    public void setDataProfile(DataProfile[] dps, Message result);
+    void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result);
 
     /**
      * Notifiy that we are testing an emergency call
