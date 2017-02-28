@@ -16,21 +16,6 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import com.android.internal.telephony.CallTracker;
-import com.android.internal.telephony.CarrierSignalAgent;
-import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.DctConstants;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.RILConstants;
-import com.android.internal.telephony.RetryManager;
-import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.util.AsyncChannel;
-import com.android.internal.util.Protocol;
-import com.android.internal.util.State;
-import com.android.internal.util.StateMachine;
-
 import android.app.PendingIntent;
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -53,15 +38,30 @@ import android.util.Pair;
 import android.util.Patterns;
 import android.util.TimeUtils;
 
+import com.android.internal.telephony.CallTracker;
+import com.android.internal.telephony.CarrierSignalAgent;
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RetryManager;
+import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.Protocol;
+import com.android.internal.util.State;
+import com.android.internal.util.StateMachine;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * {@hide}
@@ -440,20 +440,10 @@ public class DataConnection extends StateMachine {
 
         // Check if we should fake an error.
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
-            DataCallResponse response = new DataCallResponse();
-            response.version = mPhone.mCi.getRilVersion();
-            response.status = mDcTesterFailBringUpAll.getDcFailBringUp().mFailCause.getErrorCode();
-            response.cid = 0;
-            response.active = 0;
-            response.type = "";
-            response.ifname = "";
-            response.addresses = new String[0];
-            response.dnses = new String[0];
-            response.gateways = new String[0];
-            response.suggestedRetryTime =
-                    mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime;
-            response.pcscf = new String[0];
-            response.mtu = PhoneConstants.UNSET_MTU;
+            DataCallResponse response = new DataCallResponse(
+                    mDcTesterFailBringUpAll.getDcFailBringUp().mFailCause.getErrorCode(),
+                    mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime, 0, 0, "", "",
+                    "", "", "", "", PhoneConstants.UNSET_MTU);
 
             Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
             AsyncResult.forMessage(msg, response, null);
@@ -474,25 +464,11 @@ public class DataConnection extends StateMachine {
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
 
-        int authType = mApnSetting.authType;
-        if (authType == -1) {
-            authType = TextUtils.isEmpty(mApnSetting.user) ? RILConstants.SETUP_DATA_AUTH_NONE
-                    : RILConstants.SETUP_DATA_AUTH_PAP_CHAP;
-        }
+        DataProfile dp = new DataProfile(mApnSetting, cp.mProfileId);
 
-        String protocol;
-        if (mPhone.getServiceState().getDataRoamingFromRegistration()) {
-            protocol = mApnSetting.roamingProtocol;
-        } else {
-            protocol = mApnSetting.protocol;
-        }
-
-        mPhone.mCi.setupDataCall(
-                cp.mRilRat,
-                cp.mProfileId,
-                mApnSetting.apn, mApnSetting.user, mApnSetting.password,
-                authType,
-                protocol, msg);
+        mPhone.mCi.setupDataCall(cp.mRilRat, dp,
+                mPhone.getServiceState().getDataRoamingFromRegistration(),
+                mPhone.getDataRoamingEnabled(), msg);
     }
 
     /**

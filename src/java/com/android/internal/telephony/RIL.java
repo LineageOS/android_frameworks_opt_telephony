@@ -21,12 +21,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
-import android.hardware.radio.deprecated.V1_0.IOemHook;
-import android.hardware.radio.V1_0.CellInfoCdma;
-import android.hardware.radio.V1_0.CellInfoGsm;
-import android.hardware.radio.V1_0.CellInfoLte;
-import android.hardware.radio.V1_0.CellInfoType;
-import android.hardware.radio.V1_0.CellInfoWcdma;
 import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
@@ -38,6 +32,7 @@ import android.hardware.radio.V1_0.CellInfoGsm;
 import android.hardware.radio.V1_0.CellInfoLte;
 import android.hardware.radio.V1_0.CellInfoType;
 import android.hardware.radio.V1_0.CellInfoWcdma;
+import android.hardware.radio.V1_0.DataProfileInfo;
 import android.hardware.radio.V1_0.Dial;
 import android.hardware.radio.V1_0.GsmBroadcastSmsConfigInfo;
 import android.hardware.radio.V1_0.GsmSmsMessage;
@@ -46,6 +41,7 @@ import android.hardware.radio.V1_0.IRadio;
 import android.hardware.radio.V1_0.IccIo;
 import android.hardware.radio.V1_0.ImsSmsMessage;
 import android.hardware.radio.V1_0.LceDataInfo;
+import android.hardware.radio.V1_0.MvnoType;
 import android.hardware.radio.V1_0.NvWriteItem;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
@@ -56,6 +52,7 @@ import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SimApdu;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
+import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
@@ -93,7 +90,6 @@ import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DataProfile;
-import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -756,7 +752,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                         //Rlog.v(RILJ_LOG_TAG, "Read packet: " + length + " bytes");
 
-                        processResponse(p);
+                        //processResponse(p);
                         p.recycle();
                     }
                 } catch (java.io.IOException ex) {
@@ -1593,57 +1589,97 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Convert MVNO type string into MvnoType defined in types.hal.
+     * @param mvnoType MVNO type
+     * @return MVNO type in integer
+     */
+    private static int convertToHalMvnoType(String mvnoType) {
+        switch (mvnoType) {
+            case "imsi" : return MvnoType.IMSI;
+            case "gid" : return MvnoType.GID;
+            case "spn" : return MvnoType.SPN;
+            default: return MvnoType.NONE;
+        }
+    }
+
+    /**
+     * Convert to DataProfileInfo defined in types.hal
+     * @param dp Data profile
+     * @return A converted data profile
+     */
+    private static DataProfileInfo convertToHalDataProfile(DataProfile dp) {
+        DataProfileInfo dpi = new DataProfileInfo();
+
+        dpi.profileId = dp.profileId;
+        dpi.apn = dp.apn;
+        dpi.protocol = dp.protocol;
+        dpi.roamingProtocol = dp.roamingProtocol;
+        dpi.authType = dp.authType;
+        dpi.user = dp.user;
+        dpi.password = dp.password;
+        dpi.type = dp.type;
+        dpi.maxConnsTime = dp.maxConnsTime;
+        dpi.maxConns = dp.maxConns;
+        dpi.waitTime = dp.waitTime;
+        dpi.enabled = dp.enabled;
+        dpi.supportedApnTypesBitmap = dp.supportedApnTypesBitmap;
+        dpi.bearerBitmap = dp.bearerBitmap;
+        dpi.mtu = dp.mtu;
+        dpi.mvnoType = convertToHalMvnoType(dp.mvnoType);
+        dpi.mvnoMatchData = dp.mvnoMatchData;
+
+        return dpi;
+    }
+
+    /**
+     * Convert SetupDataCallResult defined in types.hal into DataCallResponse
+     * @param dcResult setup data call result
+     * @return converted DataCallResponse object
+     */
+    static DataCallResponse convertDataCallResult(SetupDataCallResult dcResult) {
+        return new DataCallResponse(dcResult.status,
+                dcResult.suggestedRetryTime,
+                dcResult.cid,
+                dcResult.active,
+                dcResult.type,
+                dcResult.ifname,
+                dcResult.addresses,
+                dcResult.dnses,
+                dcResult.gateways,
+                dcResult.pcscf,
+                dcResult.mtu
+        );
+    }
+
     @Override
-    public void setupDataCall(int radioTechnology, int profile, String apn,
-                              String user, String password, int authType, String protocol,
-                              Message result) {
-        /* todo: hidlize
+    public void setupDataCall(int radioTechnology, DataProfile dataProfile, boolean isRoaming,
+                              boolean allowRoaming, Message result) {
+
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
+
             RILRequest rr = obtainRequest(RIL_REQUEST_SETUP_DATA_CALL, result,
                     mRILDefaultWorkSource);
 
+            // Convert to HAL data profile
+            DataProfileInfo dpi = convertToHalDataProfile(dataProfile);
+
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> "
-                        + requestToString(rr.mRequest) + " radioTechnology = " + radioTechnology
-                        + " profile = " + profile + " apn = " + apn + " user = " + user
-                        + " password = " + password + " authType = " + authType + " protocol = "
-                        + protocol);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + ",radioTechnology=" + radioTechnology + ",isRoaming="
+                        + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile);
             }
 
             try {
-                radioProxy.setupDataCall(rr.mSerial, radioTechnology + 2, profile,
-                        convertNullToEmptyString(apn), convertNullToEmptyString(user),
-                        convertNullToEmptyString(password), authType,
-                        convertNullToEmptyString(protocol));
-                mMetrics.writeRilSetupDataCall(mPhoneId, rr.mSerial,
-                        radioTechnology, profile, apn, authType, protocol);
+                radioProxy.setupDataCall(rr.mSerial, radioTechnology, dpi,
+                        dataProfile.modemCognitive, allowRoaming, isRoaming);
+                mMetrics.writeRilSetupDataCall(mPhoneId, rr.mSerial, radioTechnology, dpi.profileId,
+                        dpi.apn, dpi.authType, dpi.protocol);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setupDataCall", e);
             }
-        } */
-        RILRequest rr
-                = RILRequest.obtain(RIL_REQUEST_SETUP_DATA_CALL, result, mRILDefaultWorkSource);
-
-        rr.mParcel.writeInt(7);
-
-        rr.mParcel.writeString(Integer.toString(radioTechnology + 2));
-        rr.mParcel.writeString(Integer.toString(profile));
-        rr.mParcel.writeString(apn);
-        rr.mParcel.writeString(user);
-        rr.mParcel.writeString(password);
-        rr.mParcel.writeString(Integer.toString(authType));
-        rr.mParcel.writeString(protocol);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> "
-                + requestToString(rr.mRequest) + " " + radioTechnology + " "
-                + profile + " " + apn + " " + user + " "
-                + password + " " + authType + " " + protocol);
-
-        mMetrics.writeRilSetupDataCall(mPhoneId, rr.mSerial,
-                radioTechnology, profile, apn, authType, protocol);
-
-        send(rr);
+        }
     }
 
     @Override
@@ -3263,48 +3299,24 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
-                                    String password, Message result) {
-        /* todo: hidlize
+    public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result) {
+
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_INITIAL_ATTACH_APN, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + " apn = " + apn + " protocol = " + protocol + " authType = " + authType
-                        + " username = " + username + " password = " + password);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + dataProfile);
             }
 
             try {
-                radioProxy.setInitialAttachApn(rr.mSerial,
-                        convertNullToEmptyString(apn),
-                        convertNullToEmptyString(protocol),
-                        authType,
-                        convertNullToEmptyString(username),
-                        convertNullToEmptyString(password));
+                radioProxy.setInitialAttachApn(rr.mSerial, convertToHalDataProfile(dataProfile),
+                        dataProfile.modemCognitive, isRoaming);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setInitialAttachApn", e);
             }
         }
-        */
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_INITIAL_ATTACH_APN, result,
-                mRILDefaultWorkSource);
-
-        if (RILJ_LOGD) riljLog("Set RIL_REQUEST_SET_INITIAL_ATTACH_APN");
-
-        rr.mParcel.writeString(apn);
-        rr.mParcel.writeString(protocol);
-        rr.mParcel.writeInt(authType);
-        rr.mParcel.writeString(username);
-        rr.mParcel.writeString(password);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                + ", apn:" + apn + ", protocol:" + protocol + ", authType:" + authType
-                + ", username:" + username + ", password:" + password);
-
-        send(rr);
     }
 
     @Override
@@ -3668,8 +3680,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setDataProfile(DataProfile[] dps, Message result) {
-        /* todo - hidlize
+    public void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result) {
+
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
@@ -3677,52 +3689,23 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + " with " + dps + " Data Profiles : ");
-                for (int i = 0; i < dps.length; i++) {
-                    riljLog(dps[i].toString());
+                        + " with data profiles : ");
+                for (DataProfile profile : dps) {
+                    riljLog(profile.toString());
                 }
             }
 
-            ArrayList<DataProfileInfo> dpInfos = new ArrayList<>();
-            DataProfileInfo info;
-
-            for (int i = 0; i < dps.length; i++) {
-                info = new DataProfileInfo();
-                info.profileId = dps[i].profileId;
-                info.apn = convertNullToEmptyString(dps[i].apn);
-                info.protocol = convertNullToEmptyString(dps[i].protocol);
-                info.authType = dps[i].authType;
-                info.user = convertNullToEmptyString(dps[i].user);
-                info.password = convertNullToEmptyString(dps[i].password);
-                info.type = dps[i].type;
-                info.maxConnsTime = dps[i].maxConnsTime;
-                info.maxConns = dps[i].maxConns;
-                info.waitTime = dps[i].waitTime;
-                info.enabled = dps[i].enabled;
-                dpInfos.add(info);
+            ArrayList<DataProfileInfo> dpis = new ArrayList<>();
+            for (DataProfile dp : dps) {
+                dpis.add(convertToHalDataProfile(dp));
             }
 
             try {
-                radioProxy.setDataProfile(rr.mSerial, dpInfos);
+                radioProxy.setDataProfile(rr.mSerial, dpis, isRoaming);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setDataProfile", e);
             }
-        } */
-        if (RILJ_LOGD) riljLog("Set RIL_REQUEST_SET_DATA_PROFILE");
-
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_DATA_PROFILE, null,
-                mRILDefaultWorkSource);
-        DataProfile.toParcel(rr.mParcel, dps);
-
-        if (RILJ_LOGD) {
-            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                    + " with " + dps + " Data Profiles : ");
-            for (int i = 0; i < dps.length; i++) {
-                riljLog(dps[i].toString());
-            }
         }
-
-        send(rr);
     }
 
     @Override
@@ -4410,39 +4393,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         msg.sendToTarget();
     }
 
-    private void processResponse(Parcel p) {
-        int type;
-
-        type = p.readInt();
-
-        if (type == RESPONSE_SOLICITED || type == RESPONSE_SOLICITED_ACK_EXP) {
-            RILRequest rr = processSolicited (p, type);
-            if (rr != null) {
-                if (type == RESPONSE_SOLICITED) {
-                    decrementWakeLock(rr);
-                }
-                rr.release();
-                return;
-            }
-        } else if (type == RESPONSE_SOLICITED_ACK) {
-            int serial;
-            serial = p.readInt();
-
-            RILRequest rr;
-            synchronized (mRequestList) {
-                rr = mRequestList.get(serial);
-            }
-            if (rr == null) {
-                Rlog.w(RILJ_LOG_TAG, "Unexpected solicited ack response! sn: " + serial);
-            } else {
-                decrementWakeLock(rr);
-                if (RILJ_LOGD) {
-                    riljLog(rr.serialString() + " Ack < " + requestToString(rr.mRequest));
-                }
-            }
-        }
-    }
-
     /**
      * Release each request in mRequestList then clear the list
      * @param error is the RIL_Errno sent back
@@ -4497,130 +4447,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }
             entry.addTimeTaken(totalTime);
         }
-    }
-
-    private RILRequest processSolicited(Parcel p, int type) {
-        int serial, error;
-        boolean found = false;
-
-        serial = p.readInt();
-        error = p.readInt();
-
-        RILRequest rr;
-
-        rr = findAndRemoveRequestFromList(serial);
-
-        if (rr == null) {
-            Rlog.w(RILJ_LOG_TAG, "Unexpected solicited response! sn: "
-                            + serial + " error: " + error);
-            return null;
-        }
-
-        // Time logging for RIL command and storing it in TelephonyHistogram.
-        addToRilHistogram(rr);
-
-        if (getRilVersion() >= 13 && type == RESPONSE_SOLICITED_ACK_EXP) {
-            Message msg;
-            RILRequest response = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null,
-                    mRILDefaultWorkSource);
-            msg = mSender.obtainMessage(EVENT_SEND_ACK, response);
-            acquireWakeLock(rr, FOR_ACK_WAKELOCK);
-            msg.sendToTarget();
-            if (RILJ_LOGD) {
-                riljLog("Response received for " + rr.serialString() + " "
-                        + requestToString(rr.mRequest) + " Sending ack to ril.cpp");
-            }
-        }
-
-        Object ret = null;
-
-        if (error == 0 || p.dataAvail() > 0) {
-            // either command succeeds or command fails but with data payload
-            try {
-                switch (rr.mRequest) {
-                    // TODO : Remove all the code below later. Some of the RIL commands below
-                    // will be using same code as unsolicited ril commands which will be done in
-                    // separate CL. Other RIL commands below are deprecated and require framework
-                    // code to be modified to remove them completely.
-                    case RIL_REQUEST_SETUP_DATA_CALL: ret =  responseSetupDataCall(p); break;
-                    case RIL_REQUEST_SET_INITIAL_ATTACH_APN: ret = responseVoid(p); break;
-                    case RIL_REQUEST_SET_DATA_PROFILE: ret = responseVoid(p); break;
-                    default:
-                        throw new RuntimeException("Unrecognized solicited response: "
-                                + rr.mRequest);
-                }
-            } catch (Throwable tr) {
-                // Exceptions here usually mean invalid RIL responses
-
-                Rlog.w(RILJ_LOG_TAG, rr.serialString() + "< "
-                        + requestToString(rr.mRequest)
-                        + " exception, possible invalid RIL response", tr);
-
-                if (rr.mResult != null) {
-                    AsyncResult.forMessage(rr.mResult, null, tr);
-                    rr.mResult.sendToTarget();
-                }
-                return rr;
-            }
-        }
-
-        if (rr.mRequest == RIL_REQUEST_SHUTDOWN) {
-            // Set RADIO_STATE to RADIO_UNAVAILABLE to continue shutdown process
-            // regardless of error code to continue shutdown procedure.
-            riljLog("Response to RIL_REQUEST_SHUTDOWN received. Error is "
-                    + error + " Setting Radio State to Unavailable regardless of error.");
-            setRadioState(RadioState.RADIO_UNAVAILABLE);
-        }
-
-        if (error != 0) {
-            switch (rr.mRequest) {
-                case RIL_REQUEST_SET_FACILITY_LOCK:
-                    if (mIccStatusChangedRegistrants != null) {
-                        if (RILJ_LOGD) {
-                            riljLog("ON some errors fakeSimStatusChanged: reg count="
-                                    + mIccStatusChangedRegistrants.size());
-                        }
-                        mIccStatusChangedRegistrants.notifyRegistrants();
-                    }
-                    break;
-                case RIL_REQUEST_GET_RADIO_CAPABILITY: {
-                    // Ideally RIL's would support this or at least give NOT_SUPPORTED
-                    // but the hammerhead RIL reports GENERIC :(
-                    // TODO - remove GENERIC_FAILURE catching: b/21079604
-                    if (REQUEST_NOT_SUPPORTED == error || GENERIC_FAILURE == error) {
-                        // we should construct the RAF bitmask the radio
-                        // supports based on preferred network bitmasks
-                        ret = makeStaticRadioCapability();
-                        error = 0;
-                    }
-                    break;
-                }
-                case RIL_REQUEST_GET_ACTIVITY_INFO:
-                    ret = new ModemActivityInfo(0, 0, 0,
-                            new int [ModemActivityInfo.TX_POWER_LEVELS], 0, 0);
-                    error = 0;
-                    break;
-            }
-
-            if (error != 0) rr.onError(error, ret);
-        }
-        if (error == 0) {
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
-                        + " " + retToString(rr.mRequest, ret));
-            }
-
-            if (rr.mResult != null) {
-                AsyncResult.forMessage(rr.mResult, ret, null);
-                rr.mResult.sendToTarget();
-            }
-        }
-
-        mMetrics.writeOnRilSolicitedResponse(mPhoneId, rr.mSerial, error,
-                rr.mRequest, ret);
-
-        return rr;
     }
 
     RadioCapability makeStaticRadioCapability() {
@@ -4735,7 +4561,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
 
     /**
-     * Notifiy all registrants that the ril has connected or disconnected.
+     * Notify all registrants that the ril has connected or disconnected.
      *
      * @param rilVer is the version of the ril or -1 if disconnected.
      */
@@ -4843,123 +4669,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         response.efId   = p.readInt();
         response.aid = p.readString();
         return response;
-    }
-
-    private DataCallResponse getDataCallResponse(Parcel p, int version) {
-        DataCallResponse dataCall = new DataCallResponse();
-
-        dataCall.version = version;
-        if (version < 5) {
-            dataCall.cid = p.readInt();
-            dataCall.active = p.readInt();
-            dataCall.type = p.readString();
-            String addresses = p.readString();
-            if (!TextUtils.isEmpty(addresses)) {
-                dataCall.addresses = addresses.split(" ");
-            }
-        } else {
-            dataCall.status = p.readInt();
-            dataCall.suggestedRetryTime = p.readInt();
-            dataCall.cid = p.readInt();
-            dataCall.active = p.readInt();
-            dataCall.type = p.readString();
-            dataCall.ifname = p.readString();
-            if ((dataCall.status == DcFailCause.NONE.getErrorCode())
-                    && TextUtils.isEmpty(dataCall.ifname)) {
-                throw new RuntimeException("getDataCallResponse, no ifname");
-            }
-            String addresses = p.readString();
-            if (!TextUtils.isEmpty(addresses)) {
-                dataCall.addresses = addresses.split(" ");
-            }
-            String dnses = p.readString();
-            if (!TextUtils.isEmpty(dnses)) {
-                dataCall.dnses = dnses.split(" ");
-            }
-            String gateways = p.readString();
-            if (!TextUtils.isEmpty(gateways)) {
-                dataCall.gateways = gateways.split(" ");
-            }
-            if (version >= 10) {
-                String pcscf = p.readString();
-                if (!TextUtils.isEmpty(pcscf)) {
-                    dataCall.pcscf = pcscf.split(" ");
-                }
-            }
-            if (version >= 11) {
-                dataCall.mtu = p.readInt();
-            }
-        }
-        return dataCall;
-    }
-
-    private Object responseDataCallList(Parcel p) {
-        ArrayList<DataCallResponse> response;
-
-        int ver = p.readInt();
-        int num = p.readInt();
-        riljLog("responseDataCallList ver=" + ver + " num=" + num);
-
-        response = new ArrayList<DataCallResponse>(num);
-        for (int i = 0; i < num; i++) {
-            response.add(getDataCallResponse(p, ver));
-        }
-
-
-        return response;
-    }
-
-    private Object responseSetupDataCall(Parcel p) {
-        int ver = p.readInt();
-        int num = p.readInt();
-        if (RILJ_LOGV) riljLog("responseSetupDataCall ver=" + ver + " num=" + num);
-
-        DataCallResponse dataCall;
-
-        if (ver < 5) {
-            dataCall = new DataCallResponse();
-            dataCall.version = ver;
-            dataCall.cid = Integer.parseInt(p.readString());
-            dataCall.ifname = p.readString();
-            if (TextUtils.isEmpty(dataCall.ifname)) {
-                throw new RuntimeException(
-                        "RIL_REQUEST_SETUP_DATA_CALL response, no ifname");
-            }
-            String addresses = p.readString();
-            if (!TextUtils.isEmpty(addresses)) {
-                dataCall.addresses = addresses.split(" ");
-            }
-            if (num >= 4) {
-                String dnses = p.readString();
-                if (RILJ_LOGD) riljLog("responseSetupDataCall got dnses=" + dnses);
-                if (!TextUtils.isEmpty(dnses)) {
-                    dataCall.dnses = dnses.split(" ");
-                }
-            }
-            if (num >= 5) {
-                String gateways = p.readString();
-                if (RILJ_LOGD) riljLog("responseSetupDataCall got gateways=" + gateways);
-                if (!TextUtils.isEmpty(gateways)) {
-                    dataCall.gateways = gateways.split(" ");
-                }
-            }
-            if (num >= 6) {
-                String pcscf = p.readString();
-                if (RILJ_LOGD) riljLog("responseSetupDataCall got pcscf=" + pcscf);
-                if (!TextUtils.isEmpty(pcscf)) {
-                    dataCall.pcscf = pcscf.split(" ");
-                }
-            }
-        } else {
-            if (num != 1) {
-                throw new RuntimeException(
-                        "RIL_REQUEST_SETUP_DATA_CALL response expecting 1 RIL_Data_Call_response_v5"
-                        + " got " + num);
-            }
-            dataCall = getDataCallResponse(p, ver);
-        }
-
-        return dataCall;
     }
 
     private Object responseSignalStrength(Parcel p) {
@@ -5597,52 +5306,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             ret[i] = bytes.get(i);
         }
         return ret;
-    }
-
-    static DataCallResponse convertHalDc(SetupDataCallResult dc) {
-        DataCallResponse dcResponse = new DataCallResponse();
-        // todo: get rid of this version field?
-        // todo: create a DataCallResponse constructor that takes in these fields to make sure
-        // no fields are missing
-        dcResponse.version = 11;
-        dcResponse.status = dc.status;
-        dcResponse.suggestedRetryTime = dc.suggestedRetryTime;
-        dcResponse.cid = dc.cid;
-        dcResponse.active = dc.active;
-        dcResponse.type = dc.type;
-        dcResponse.ifname = dc.ifname;
-        if ((dcResponse.status == DcFailCause.NONE.getErrorCode()) &&
-                TextUtils.isEmpty(dcResponse.ifname)) {
-            throw new RuntimeException("getDataCallResponse, no ifname");
-        }
-        String addresses = dc.addresses;
-        if (!TextUtils.isEmpty(addresses)) {
-            dcResponse.addresses = addresses.split(" ");
-        }
-        String dnses = dc.dnses;
-        if (!TextUtils.isEmpty(dnses)) {
-            dcResponse.dnses = dnses.split(" ");
-        }
-        String gateways = dc.gateways;
-        if (!TextUtils.isEmpty(gateways)) {
-            dcResponse.gateways = gateways.split(" ");
-        }
-        String pcscf = dc.pcscf;
-        if (!TextUtils.isEmpty(pcscf)) {
-            dcResponse.pcscf = pcscf.split(" ");
-        }
-        dcResponse.mtu = dc.mtu;
-
-        return dcResponse;
-    }
-
-    static ArrayList<DataCallResponse> convertHalDcList(ArrayList<SetupDataCallResult> dcList) {
-        ArrayList<DataCallResponse> dcResponseList = new ArrayList<>(dcList.size());
-        for (SetupDataCallResult dc : dcList) {
-            DataCallResponse dcResponse = convertHalDc(dc);
-            dcResponseList.add(dcResponse);
-        }
-        return dcResponseList;
     }
 
     static ArrayList<HardwareConfig> convertHalHwConfigList(

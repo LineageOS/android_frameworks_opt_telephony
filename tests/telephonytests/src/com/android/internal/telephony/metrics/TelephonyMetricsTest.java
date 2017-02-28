@@ -16,6 +16,25 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.telephony.ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
+
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
+import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doReturn;
+
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
@@ -29,8 +48,8 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.TelephonyProto;
 import com.android.internal.telephony.TelephonyProto.ImsConnectionState;
-import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.TelephonyProto.RadioAccessTechnology;
+import com.android.internal.telephony.TelephonyProto.SmsSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.CallState;
 import com.android.internal.telephony.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
@@ -49,18 +68,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
-
-import static android.telephony.ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
-import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
-import static com.android.internal.telephony.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.doReturn;
 
 public class TelephonyMetricsTest extends TelephonyTest {
 
@@ -322,13 +329,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteOnSetupDataCallResponse() throws Exception {
-        DataCallResponse response = new DataCallResponse();
-        response.status = 5;
-        response.suggestedRetryTime = 6;
-        response.cid = 7;
-        response.active = 8;
-        response.type = "IPV4V6";
-        response.ifname = "ifname";
+        DataCallResponse response = new DataCallResponse(5, 6, 7, 8, "IPV4V6", FAKE_IFNAME,
+                FAKE_ADDRESS, FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,
                 RIL_REQUEST_SETUP_DATA_CALL, response);
@@ -351,7 +353,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertTrue(respProto.call.hasType());
         assertEquals(PDP_TYPE_IPV4V6, respProto.call.getType());
         assertTrue(respProto.call.hasIframe());
-        assertEquals("ifname", respProto.call.getIframe());
+        assertEquals(FAKE_IFNAME, respProto.call.getIframe());
     }
 
     // Test write on deactivate data call response

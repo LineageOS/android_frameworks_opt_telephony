@@ -16,8 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import android.os.Parcel;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.RILConstants;
 
 import junit.framework.TestCase;
 
@@ -81,11 +82,11 @@ public class DataProfileTest extends TestCase {
 
     @SmallTest
     public void testCreateFromApnSetting() throws Exception {
-        DataProfile dp = new DataProfile(mApn1, false);
+        DataProfile dp = new DataProfile(mApn1);
         assertEquals(mApn1.profileId, dp.profileId);
         assertEquals(mApn1.apn, dp.apn);
         assertEquals(mApn1.protocol, dp.protocol);
-        assertEquals(mApn1.authType, dp.authType);
+        assertEquals(RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dp.authType);
         assertEquals(mApn1.user, dp.user);
         assertEquals(mApn1.password, dp.password);
         assertEquals(0, dp.type);
@@ -96,41 +97,12 @@ public class DataProfileTest extends TestCase {
     }
 
     @SmallTest
-    public void testParcel() throws Exception {
-        Parcel p = Parcel.obtain();
-
-        DataProfile[] dps = new DataProfile[]{new DataProfile(mApn1, false),
-                new DataProfile(mApn1, false)};
-
-        DataProfile.toParcel(p, dps);
-        p.setDataPosition(0);
-
-        assertEquals(dps.length, p.readInt());
-        for (int i = 0; i < dps.length; i++) {
-            assertEquals("i = " + i, mApn1.profileId, p.readInt());
-            assertEquals("i = " + i, mApn1.apn, p.readString());
-            assertEquals("i = " + i, mApn1.protocol, p.readString());
-            assertEquals("i = " + i, mApn1.authType, p.readInt());
-            assertEquals("i = " + i, mApn1.user, p.readString());
-            assertEquals("i = " + i, mApn1.password, p.readString());
-            assertEquals("i = " + i, 0, p.readInt());
-            assertEquals("i = " + i, mApn1.maxConnsTime, p.readInt());
-            assertEquals("i = " + i, mApn1.maxConns, p.readInt());
-            assertEquals("i = " + i, mApn1.waitTime, p.readInt());
-            assertEquals("i = " + i, mApn1.carrierEnabled?1:0, p.readInt());
-        }
-    }
-
-    @SmallTest
     public void testEquals() throws Exception {
-        DataProfile dp1 = new DataProfile(mApn1, false);
-        DataProfile dp2 = new DataProfile(mApn1, false);
+        DataProfile dp1 = new DataProfile(mApn1);
+        DataProfile dp2 = new DataProfile(mApn1);
         assertEquals(dp1, dp2);
 
-        dp2 = new DataProfile(mApn1, true);
-        assertFalse(dp1.equals(dp2));
-
-        dp2 = new DataProfile(mApn2, false);
+        dp2 = new DataProfile(mApn2);
         assertFalse(dp1.equals(dp2));
     }
 }
