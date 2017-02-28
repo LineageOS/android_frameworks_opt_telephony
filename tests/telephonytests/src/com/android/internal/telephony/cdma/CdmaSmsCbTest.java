@@ -19,6 +19,7 @@ package com.android.internal.telephony.cdma;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.os.Parcel;
 import android.platform.test.annotations.Postsubmit;
+import android.support.test.filters.FlakyTest;
 import android.telephony.SmsCbCmasInfo;
 import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;
@@ -480,6 +481,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
 
     // VZW requirement is to discard message with unsupported charset. Verify that we return null
     // for this unsupported character set.
+    @FlakyTest
     @Postsubmit
     @Test @SmallTest
     public void testCmasUnsupportedCharSet() throws Exception {

@@ -35,6 +35,7 @@ import android.os.PersistableBundle;
 import android.platform.test.annotations.Postsubmit;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
@@ -657,6 +658,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
+    @FlakyTest
     @Postsubmit
     @Test
     @MediumTest
@@ -768,6 +770,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     // Test for API carrierActionSetMeteredApnsEnabled.
+    @FlakyTest
     @Postsubmit
     @Test
     @MediumTest
