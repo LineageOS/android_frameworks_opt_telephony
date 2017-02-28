@@ -28,4 +28,8 @@ public class TestMMTelFeature extends MMTelFeature {
     public void onFeatureRemoved() {
 
     }
+
+    public void sendSetFeatureState(int state) {
+        setFeatureState(state);
+    }
 }
