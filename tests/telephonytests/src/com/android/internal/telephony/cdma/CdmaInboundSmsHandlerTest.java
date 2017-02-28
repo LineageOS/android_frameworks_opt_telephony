@@ -26,6 +26,7 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.platform.test.annotations.Postsubmit;
 import android.provider.Telephony;
+import android.support.test.filters.FlakyTest;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 
@@ -174,6 +175,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
+    @FlakyTest
     @Postsubmit
     @Test
     @MediumTest
