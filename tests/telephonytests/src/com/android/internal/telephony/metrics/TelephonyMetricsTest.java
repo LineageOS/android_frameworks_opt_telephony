@@ -22,6 +22,11 @@ import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -341,13 +346,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteOnSetupDataCallResponse() throws Exception {
-        DataCallResponse response = new DataCallResponse();
-        response.status = 5;
-        response.suggestedRetryTime = 6;
-        response.cid = 7;
-        response.active = 8;
-        response.type = "IPV4V6";
-        response.ifname = "ifname";
+        DataCallResponse response = new DataCallResponse(5, 6, 7, 8, "IPV4V6", FAKE_IFNAME,
+                FAKE_ADDRESS, FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,
                 RIL_REQUEST_SETUP_DATA_CALL, response);
@@ -364,7 +364,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(6, respProto.suggestedRetryTimeMillis);
         assertEquals(7, respProto.call.cid);
         assertEquals(PDP_TYPE_IPV4V6, respProto.call.type);
-        assertEquals("ifname", respProto.call.iframe);
+        assertEquals(FAKE_IFNAME, respProto.call.iframe);
     }
 
     // Test write on deactivate data call response
@@ -523,7 +523,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(1, log.events.length);
         assertEquals(0, log.callSessions.length);
         assertEquals(0, log.smsSessions.length);
-        
+
         assertFalse(log.eventsDropped);
 
         TelephonyEvent event = log.events[0];
@@ -564,7 +564,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(1, log.events.length);
         assertEquals(0, log.callSessions.length);
         assertEquals(0, log.smsSessions.length);
-        
+
         assertFalse(log.eventsDropped);
 
         TelephonyEvent event = log.events[0];

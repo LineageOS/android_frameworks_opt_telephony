@@ -16,6 +16,14 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
+
+import static org.junit.Assert.assertEquals;
+
 import android.net.LinkProperties;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -26,8 +34,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-
 public class DataCallResponseTest extends TelephonyTest {
 
     DataCallResponse mDcResponse;
@@ -35,19 +41,8 @@ public class DataCallResponseTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mDcResponse = new DataCallResponse();
-        mDcResponse.version = 11;
-        mDcResponse.status = 0;
-        mDcResponse.suggestedRetryTime = -1;
-        mDcResponse.cid = 1;
-        mDcResponse.active = 2;
-        mDcResponse.type = "IP";
-        mDcResponse.ifname = "rmnet_data7";
-        mDcResponse.mtu = 1440;
-        mDcResponse.addresses = new String[]{"12.34.56.78"};
-        mDcResponse.dnses = new String[]{"98.76.54.32"};
-        mDcResponse.gateways = new String[]{"11.22.33.44"};
-        mDcResponse.pcscf = new String[]{};
+        mDcResponse = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME, FAKE_ADDRESS,
+                FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
     }
 
     @After
@@ -88,7 +83,9 @@ public class DataCallResponseTest extends TelephonyTest {
     @SmallTest
     public void testSetLinkPropertiesInvalidAddress() throws Exception {
 
-        mDcResponse.addresses = new String[]{"224.224.224.224"};
+        // 224.224.224.224 is an invalid address.
+        mDcResponse = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME, "224.224.224.224",
+                FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
 
         LinkProperties linkProperties = new LinkProperties();
         assertEquals(SetupResult.ERR_UnacceptableParameter,
