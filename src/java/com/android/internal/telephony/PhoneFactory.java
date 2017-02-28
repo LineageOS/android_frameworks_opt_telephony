@@ -16,17 +16,13 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_DEFAULT_SUBSCRIPTION;
-
+import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.LocalServerSocket;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.ServiceManager;
-import android.os.SystemProperties;
-import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.Rlog;
@@ -36,6 +32,7 @@ import android.util.LocalLog;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
+import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
@@ -69,6 +66,7 @@ public class PhoneFactory {
 
     static private ProxyController sProxyController;
     static private UiccController sUiccController;
+    private static @Nullable EuiccController sEuiccController;
 
     static private CommandsInterface sCommandsInterface = null;
     static private SubscriptionInfoUpdater sSubInfoRecordUpdater = null;
@@ -133,6 +131,11 @@ public class PhoneFactory {
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
+
+                if (context.getPackageManager().hasSystemFeature(
+                        PackageManager.FEATURE_TELEPHONY_EUICC)) {
+                    sEuiccController = EuiccController.init(context);
+                }
 
                 /* In case of multi SIM mode two instances of Phone, RIL are created,
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
@@ -438,6 +441,19 @@ public class PhoneFactory {
         pw.flush();
         pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
+
+        if (sEuiccController != null) {
+            pw.println("EuiccController:");
+            pw.increaseIndent();
+            try {
+                sEuiccController.dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            pw.flush();
+            pw.decreaseIndent();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
 
         pw.println("SubscriptionController:");
         pw.increaseIndent();

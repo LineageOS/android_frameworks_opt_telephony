@@ -28,16 +28,14 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccAccessRule;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandException;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -109,30 +107,6 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private static final int MAX_RETRY = 1;
     private static final int RETRY_INTERVAL_MS = 10000;
 
-    // Describes a single rule.
-    private static class AccessRule {
-        public byte[] certificateHash;
-        public String packageName;
-        public long accessType;   // This bit is not currently used, but reserved for future use.
-
-        AccessRule(byte[] certificateHash, String packageName, long accessType) {
-            this.certificateHash = certificateHash;
-            this.packageName = packageName;
-            this.accessType = accessType;
-        }
-
-        boolean matches(byte[] certHash, String packageName) {
-          return certHash != null && Arrays.equals(this.certificateHash, certHash) &&
-                (TextUtils.isEmpty(this.packageName) || this.packageName.equals(packageName));
-        }
-
-        @Override
-        public String toString() {
-            return "cert: " + IccUtils.bytesToHexString(certificateHash) + " pkg: " +
-                packageName + " access: " + accessType;
-        }
-    }
-
     // Used for parsing the data from the UICC.
     public static class TLV {
         private static final int SINGLE_BYTE_MAX_LENGTH = 0x80;
@@ -202,7 +176,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private UiccCard mUiccCard;  // Parent
     private UiccPkcs15 mUiccPkcs15; // ARF fallback
     private AtomicInteger mState;
-    private List<AccessRule> mAccessRules;
+    private List<UiccAccessRule> mAccessRules;
     private String mRules;
     private Message mLoadedCallback;
     private String mStatusMessage;  // Only used for debugging.
@@ -228,7 +202,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
         mStatusMessage = "Not loaded.";
         mLoadedCallback = loadedCallback;
         mRules = "";
-        mAccessRules = new ArrayList<AccessRule>();
+        mAccessRules = new ArrayList<>();
 
         openChannel();
     }
@@ -255,9 +229,9 @@ public class UiccCarrierPrivilegeRules extends Handler {
     public List<String> getPackageNames() {
         List<String> pkgNames = new ArrayList<String>();
         if (mAccessRules != null) {
-            for (AccessRule ar : mAccessRules) {
-                if(!TextUtils.isEmpty(ar.packageName)) {
-                    pkgNames.add(ar.packageName);
+            for (UiccAccessRule ar : mAccessRules) {
+                if (!TextUtils.isEmpty(ar.getPackageName())) {
+                    pkgNames.add(ar.getPackageName());
                 }
             }
         }
@@ -279,12 +253,10 @@ public class UiccCarrierPrivilegeRules extends Handler {
             return TelephonyManager.CARRIER_PRIVILEGE_STATUS_ERROR_LOADING_RULES;
         }
 
-        // SHA-1 is for backward compatible support only, strongly discouraged for new use.
-        byte[] certHash = getCertHash(signature, "SHA-1");
-        byte[] certHash256 = getCertHash(signature, "SHA-256");
-        for (AccessRule ar : mAccessRules) {
-            if (ar.matches(certHash, packageName) || ar.matches(certHash256, packageName)) {
-                return TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+        for (UiccAccessRule ar : mAccessRules) {
+            int accessStatus = ar.getCarrierPrivilegeStatus(signature, packageName);
+            if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
+                return accessStatus;
             }
         }
 
@@ -315,7 +287,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
             // is disabled by default, and some other component wants to enable it when it has
             // gained carrier privileges (as an indication that a matching SIM has been inserted).
             PackageInfo pInfo = packageManager.getPackageInfo(packageName,
-                PackageManager.GET_SIGNATURES | PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS);
+                    PackageManager.GET_SIGNATURES
+                            | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS);
             return getCarrierPrivilegeStatus(pInfo);
         } catch (PackageManager.NameNotFoundException ex) {
             Rlog.e(LOG_TAG, "NameNotFoundException", ex);
@@ -330,9 +303,15 @@ public class UiccCarrierPrivilegeRules extends Handler {
      * @return Access status.
      */
     public int getCarrierPrivilegeStatus(PackageInfo packageInfo) {
-        Signature[] signatures = packageInfo.signatures;
-        for (Signature sig : signatures) {
-            int accessStatus = getCarrierPrivilegeStatus(sig, packageInfo.packageName);
+        int state = mState.get();
+        if (state == STATE_LOADING) {
+            return TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
+        } else if (state == STATE_ERROR) {
+            return TelephonyManager.CARRIER_PRIVILEGE_STATUS_ERROR_LOADING_RULES;
+        }
+
+        for (UiccAccessRule ar : mAccessRules) {
+            int accessStatus = ar.getCarrierPrivilegeStatus(packageInfo);
             if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
                 return accessStatus;
             }
@@ -486,7 +465,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                     updateState(STATE_ERROR, "No ARA or ARF.");
                 } else {
                     for (String cert : mUiccPkcs15.getRules()) {
-                        AccessRule accessRule = new AccessRule(
+                        UiccAccessRule accessRule = new UiccAccessRule(
                                 IccUtils.hexStringToBytes(cert), "", 0x00);
                         mAccessRules.add(accessRule);
                     }
@@ -525,18 +504,18 @@ public class UiccCarrierPrivilegeRules extends Handler {
     /*
      * Parses the rules from the input string.
      */
-    private static List<AccessRule> parseRules(String rules) {
+    private static List<UiccAccessRule> parseRules(String rules) {
         log("Got rules: " + rules);
 
         TLV allRefArDo = new TLV(TAG_ALL_REF_AR_DO); //FF40
         allRefArDo.parse(rules, true);
 
         String arDos = allRefArDo.value;
-        List<AccessRule> accessRules = new ArrayList<AccessRule>();
+        List<UiccAccessRule> accessRules = new ArrayList<>();
         while (!arDos.isEmpty()) {
             TLV refArDo = new TLV(TAG_REF_AR_DO); //E2
             arDos = refArDo.parse(arDos, false);
-            AccessRule accessRule = parseRefArdo(refArDo.value);
+            UiccAccessRule accessRule = parseRefArdo(refArDo.value);
             if (accessRule != null) {
                 accessRules.add(accessRule);
             } else {
@@ -549,7 +528,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
     /*
      * Parses a single rule.
      */
-    private static AccessRule parseRefArdo(String rule) {
+    private static UiccAccessRule parseRefArdo(String rule) {
         log("Got rule: " + rule);
 
         String certificateHash = null;
@@ -598,22 +577,9 @@ public class UiccCarrierPrivilegeRules extends Handler {
             }
         }
 
-        AccessRule accessRule = new AccessRule(IccUtils.hexStringToBytes(certificateHash),
-            packageName, accessType);
+        UiccAccessRule accessRule = new UiccAccessRule(
+                IccUtils.hexStringToBytes(certificateHash), packageName, accessType);
         return accessRule;
-    }
-
-    /*
-     * Converts a Signature into a Certificate hash usable for comparison.
-     */
-    private static byte[] getCertHash(Signature signature, String algo) {
-        try {
-            MessageDigest md = MessageDigest.getInstance(algo);
-            return md.digest(signature.toByteArray());
-        } catch (NoSuchAlgorithmException ex) {
-            Rlog.e(LOG_TAG, "NoSuchAlgorithmException: " + ex);
-        }
-        return null;
     }
 
     /*
@@ -641,7 +607,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
         pw.println(" mStatusMessage='" + mStatusMessage + "'");
         if (mAccessRules != null) {
             pw.println(" mAccessRules: ");
-            for (AccessRule ar : mAccessRules) {
+            for (UiccAccessRule ar : mAccessRules) {
                 pw.println("  rule='" + ar + "'");
             }
         } else {
