@@ -50,7 +50,6 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.platform.test.annotations.Postsubmit;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
@@ -673,7 +672,6 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     @MediumTest
     public void testDataCallOnUserDisableRoaming() throws Exception {
@@ -784,7 +782,6 @@ public class DcTrackerTest extends TelephonyTest {
 
     // Test for API carrierActionSetMeteredApnsEnabled.
     @FlakyTest
-    @Postsubmit
     @Test
     @MediumTest
     public void testCarrierActionSetMeteredApnsEnabled() throws Exception {

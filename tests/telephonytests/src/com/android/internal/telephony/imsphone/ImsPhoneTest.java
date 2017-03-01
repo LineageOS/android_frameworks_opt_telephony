@@ -28,7 +28,6 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
-import android.platform.test.annotations.Postsubmit;
 import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -454,7 +453,6 @@ public class ImsPhoneTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     @SmallTest
     public void testCallForwardingOption() throws Exception {
@@ -581,7 +579,6 @@ public class ImsPhoneTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     @SmallTest
     public void testProcessDisconnectReason() throws Exception {
