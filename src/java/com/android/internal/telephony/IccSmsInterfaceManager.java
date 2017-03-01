@@ -34,7 +34,6 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Process;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.service.carrier.CarrierMessagingService;
@@ -1118,20 +1117,20 @@ public class IccSmsInterfaceManager {
     }
 
     /**
-     * Enforces that the caller is one of the following:
+     * Enforces that the caller has {@link android.Manifest.permission#MODIFY_PHONE_STATE}
+     * permission or is one of the following apps:
      * <ul>
-     *     <li> Phone process
      *     <li> IMS App
      *     <li> Carrier App
      * </ul>
      */
     private void enforcePrivilegedAppPermissions() {
-        int callingUid = Binder.getCallingUid();
-        // Allow the phone process itself to send, inject messages.
-        if (callingUid == Process.PHONE_UID) {
+        if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
+                == PackageManager.PERMISSION_GRANTED) {
             return;
         }
 
+        int callingUid = Binder.getCallingUid();
         String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
                 new Intent(CarrierMessagingService.SERVICE_INTERFACE));
         try {
@@ -1145,6 +1144,7 @@ public class IccSmsInterfaceManager {
                 log("Cannot find configured carrier ims package");
             }
         }
+
         enforceCarrierPrivilege();
     }
 
