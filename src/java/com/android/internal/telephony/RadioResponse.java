@@ -248,20 +248,14 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getVoiceRegistrationStateResponse(RadioResponseInfo responseInfo,
                                                   VoiceRegStateResult voiceRegResponse) {
-        responseStrings(responseInfo, Integer.toString(voiceRegResponse.regState),
-                Integer.toString(voiceRegResponse.lac), Integer.toString(voiceRegResponse.cid),
-                Integer.toString(voiceRegResponse.rat),
-                Integer.toString(voiceRegResponse.baseStationId),
-                Integer.toString(voiceRegResponse.baseStationLatitude),
-                Integer.toString(voiceRegResponse.baseStationLongitude),
-                Integer.toString(voiceRegResponse.cssSupported ? 1 : 0),
-                Integer.toString(voiceRegResponse.systemId),
-                Integer.toString(voiceRegResponse.networkId),
-                Integer.toString(voiceRegResponse.roamingIndicator),
-                Integer.toString(voiceRegResponse.systemIsInPrl),
-                Integer.toString(voiceRegResponse.defaultRoamingIndicator),
-                Integer.toString(voiceRegResponse.reasonForDenial),
-                Integer.toString(voiceRegResponse.psc));
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, voiceRegResponse);
+            }
+            mRil.processResponseDone(rr, responseInfo, voiceRegResponse);
+        }
     }
 
     /**
@@ -271,16 +265,14 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getDataRegistrationStateResponse(RadioResponseInfo responseInfo,
                                                  DataRegStateResult dataRegResponse) {
-        responseStrings(responseInfo, Integer.toString(dataRegResponse.regState),
-                Integer.toString(dataRegResponse.lac), Integer.toString(dataRegResponse.cid),
-                Integer.toString(dataRegResponse.rat),
-                Integer.toString(dataRegResponse.reasonDataDenied),
-                Integer.toString(dataRegResponse.maxDataCalls),
-                Integer.toString(dataRegResponse.tac),
-                Integer.toString(dataRegResponse.phyCid),
-                Integer.toString(dataRegResponse.eci),
-                Integer.toString(dataRegResponse.csgid),
-                Integer.toString(dataRegResponse.tadv));
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dataRegResponse);
+            }
+            mRil.processResponseDone(rr, responseInfo, dataRegResponse);
+        }
     }
 
     /**
