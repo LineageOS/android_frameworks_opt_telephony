@@ -671,6 +671,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
+    @FlakyTest
     @Test
     @MediumTest
     public void testDataCallOnUserDisableRoaming() throws Exception {
@@ -780,6 +781,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     // Test for API carrierActionSetMeteredApnsEnabled.
+    @FlakyTest
     @Test
     @MediumTest
     public void testCarrierActionSetMeteredApnsEnabled() throws Exception {
