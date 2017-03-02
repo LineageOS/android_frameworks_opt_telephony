@@ -603,10 +603,6 @@ public class RadioIndication extends IRadioIndication.Stub {
         // todo: this should not require a version number now. Setting it to latest RIL version for
         // now.
         mRil.notifyRegistrantsRilConnectionChanged(15);
-        // When modem crashes, if user turns the screen off before RIL reconnects, screen
-        // state cannot be sent to modem. Resend the display state here so that modem
-        // has the correct state (to stop signal strength reporting, etc).
-        mRil.updateScreenState(true);
     }
 
     public void voiceRadioTechChanged(int indicationType, int rat) {
