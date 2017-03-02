@@ -1105,22 +1105,24 @@ public abstract class InboundSmsHandler extends StateMachine {
                     intent.putExtra("uri", uri.toString());
                 }
             }
+
+            // Handle app specific sms messages.
+            AppSmsManager appManager = mPhone.getAppSmsManager();
+            if (appManager.handleSmsReceivedIntent(intent)) {
+                // The AppSmsManager handled this intent, we're done.
+                dropSms(resultReceiver);
+                return;
+            }
         } else {
             intent.setAction(Intents.DATA_SMS_RECEIVED_ACTION);
             Uri uri = Uri.parse("sms://localhost:" + destPort);
             intent.setData(uri);
             intent.setComponent(null);
         }
-        // Handle app specific sms messages.
-        AppSmsManager appManager = mPhone.getAppSmsManager();
-        if (appManager.handleSmsReceivedIntent(intent)) {
-            // The AppSmsManager handled this intent, we're done.
-            dropSms(resultReceiver);
-        } else {
-            Bundle options = handleSmsWhitelisting(intent.getComponent());
-            dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                    AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM);
-        }
+
+        Bundle options = handleSmsWhitelisting(intent.getComponent());
+        dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
+                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM);
     }
 
     /**
