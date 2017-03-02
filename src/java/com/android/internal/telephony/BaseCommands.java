@@ -782,7 +782,6 @@ public abstract class BaseCommands implements CommandsInterface {
 
             if (mState.isAvailable() && !oldState.isAvailable()) {
                 mAvailRegistrants.notifyRegistrants();
-                onRadioAvailable();
             }
 
             if (!mState.isAvailable() && oldState.isAvailable()) {
@@ -799,9 +798,6 @@ public abstract class BaseCommands implements CommandsInterface {
                 mOffOrNotAvailRegistrants.notifyRegistrants();
             }
         }
-    }
-
-    protected void onRadioAvailable() {
     }
 
     /**
