@@ -175,6 +175,8 @@ public abstract class TelephonyTest {
     protected CarrierActionAgent mCarrierActionAgent;
     @Mock
     protected ImsExternalCallTracker mImsExternalCallTracker;
+    @Mock
+    protected DeviceStateMonitor mDeviceStateMonitor;
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
@@ -350,6 +352,8 @@ public abstract class TelephonyTest {
                 .makeCarrierSignalAgent(any(Phone.class));
         doReturn(mCarrierActionAgent).when(mTelephonyComponentFactory)
                 .makeCarrierActionAgent(any(Phone.class));
+        doReturn(mDeviceStateMonitor).when(mTelephonyComponentFactory)
+                .makeDeviceStateMonitor(any(Phone.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();

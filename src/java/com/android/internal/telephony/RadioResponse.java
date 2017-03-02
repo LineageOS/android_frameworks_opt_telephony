@@ -1174,9 +1174,19 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseCarrierIdentifiers(responseInfo, allAllowed, carriers);
     }
 
-    public void sendDeviceStateResponse(RadioResponseInfo responseInfo) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void sendDeviceStateResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
 
-    public void setIndicationFilterResponse(RadioResponseInfo responseInfo) {}
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setIndicationFilterResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
