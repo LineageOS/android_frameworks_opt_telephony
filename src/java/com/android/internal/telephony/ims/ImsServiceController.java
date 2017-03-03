@@ -65,10 +65,10 @@ public class ImsServiceController {
 
         @Override
         public void binderDied() {
-            Log.e(LOG_TAG, "ImsService(" + mComponentName + ") died. Cleaning up.");
+            Log.e(LOG_TAG, "ImsService(" + mComponentName + ") died. Restarting...");
             notifyAllFeaturesRemoved();
             cleanUpService();
-            mHandler.postDelayed(mRestartImsServiceRunnable, mRebindRetry.getRetryTimeout());
+            startDelayedRebindToService();
         }
     }
 
@@ -76,16 +76,18 @@ public class ImsServiceController {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            if (service != null) {
-                synchronized (mLock) {
+            synchronized (mLock) {
+                mIsBound = true;
+                mIsBinding = false;
+                grantPermissionsToService();
+                Log.d(LOG_TAG, "ImsService(" + name + "): onServiceConnected with binder: "
+                        + service);
+                if (service != null) {
                     mImsDeathRecipient = new ImsDeathRecipient(name);
                     try {
                         service.linkToDeath(mImsDeathRecipient, 0);
                         mImsServiceControllerBinder = service;
                         mIImsServiceController = IImsServiceController.Stub.asInterface(service);
-                        mIsBound = true;
-                        mIsBinding = false;
-                        grantPermissionsToService();
                         // create all associated features in the ImsService
                         for (Pair<Integer, Integer> i : mImsFeatures) {
                             addImsServiceFeature(i);
@@ -114,7 +116,8 @@ public class ImsServiceController {
             }
             notifyAllFeaturesRemoved();
             cleanUpService();
-            mHandler.postDelayed(mRestartImsServiceRunnable, mRebindRetry.getRetryTimeout());
+            Log.w(LOG_TAG, "ImsService(" + name + "): onServiceDisconnected. Rebinding...");
+            startDelayedRebindToService();
         }
     }
 
@@ -355,6 +358,13 @@ public class ImsServiceController {
     private void removeImsServiceFeatureListener() {
         synchronized (mLock) {
             mImsStatusCallbacks.clear();
+        }
+    }
+
+    // Only add a new rebind if there are no pending rebinds waiting.
+    private void startDelayedRebindToService() {
+        if (!mHandler.hasCallbacks(mRestartImsServiceRunnable)) {
+            mHandler.postDelayed(mRestartImsServiceRunnable, mRebindRetry.getRetryTimeout());
         }
     }
 
