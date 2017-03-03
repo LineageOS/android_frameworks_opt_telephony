@@ -70,10 +70,10 @@ public class DeviceStateMonitor extends Handler {
     private boolean mIsTetheringOn;
 
     /**
-     * Screen state provided by Display Manager. True indicates screen on, otherwise off.
+     * Screen state provided by Display Manager. True indicates one of the screen is on, otherwise
+     * all off.
      */
-    // TODO: Support remote display and Android Auto in the future.
-    private boolean mIsScreenStateOn;
+    private boolean mIsScreenOn;
 
     /**
      * Indicating the device is plugged in and is supplying sufficient power that the battery level
@@ -102,11 +102,6 @@ public class DeviceStateMonitor extends Handler {
      */
     private int mUnsolicitedResponseFilter = IndicationFilter.ALL;
 
-    /**
-     * The built-in primary display. Used for retrieving the screen state.
-     */
-    private final Display mDefaultDisplay;
-
     private final DisplayManager.DisplayListener mDisplayListener =
             new DisplayManager.DisplayListener() {
                 @Override
@@ -117,13 +112,10 @@ public class DeviceStateMonitor extends Handler {
 
                 @Override
                 public void onDisplayChanged(int displayId) {
-                    if (displayId == Display.DEFAULT_DISPLAY) {
-                        boolean screenOn = isScreenOn();
-                        Message msg = obtainMessage(EVENT_SCREEN_STATE_CHANGED);
-                        msg.arg1 = screenOn ? 1 : 0;
-                        log("Screen " + (screenOn ? "on" : "off"), true);
-                        sendMessage(msg);
-                    }
+                    boolean screenOn = isScreenOn();
+                    Message msg = obtainMessage(EVENT_SCREEN_STATE_CHANGED);
+                    msg.arg1 = screenOn ? 1 : 0;
+                    sendMessage(msg);
                 }
             };
 
@@ -178,18 +170,17 @@ public class DeviceStateMonitor extends Handler {
         mPhone = phone;
         DisplayManager dm = (DisplayManager) phone.getContext().getSystemService(
                 Context.DISPLAY_SERVICE);
-        mDefaultDisplay = dm.getDisplay(Display.DEFAULT_DISPLAY);
         dm.registerDisplayListener(mDisplayListener, null);
 
         mIsPowerSaveOn = isPowerSaveModeOn();
         mIsCharging = isDeviceCharging();
-        mIsScreenStateOn = isScreenOn();
+        mIsScreenOn = isScreenOn();
         // Assuming tethering is always off after boot up.
         mIsTetheringOn = false;
         mIsLowDataExpected = false;
 
-        log("DeviceStateMonitor mIsPowerSaveOn=" + mIsPowerSaveOn + ",mIsScreenStateOn="
-                + mIsScreenStateOn + ",mIsCharging=" + mIsCharging, false);
+        log("DeviceStateMonitor mIsPowerSaveOn=" + mIsPowerSaveOn + ",mIsScreenOn="
+                + mIsScreenOn + ",mIsCharging=" + mIsCharging, false);
 
         final IntentFilter filter = new IntentFilter();
         filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
@@ -205,14 +196,14 @@ public class DeviceStateMonitor extends Handler {
      * @return True if low data is expected
      */
     private boolean isLowDataExpected() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsTetheringOn && !mIsScreenStateOn);
+        return mIsPowerSaveOn || (!mIsCharging && !mIsTetheringOn && !mIsScreenOn);
     }
 
     /**
      * @return True if signal strength update should be turned off.
      */
     private boolean shouldTurnOffSignalStrength() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsScreenStateOn);
+        return mIsPowerSaveOn || (!mIsCharging && !mIsScreenOn);
     }
 
     /**
@@ -220,14 +211,14 @@ public class DeviceStateMonitor extends Handler {
      * trigger the network update unsolicited response.
      */
     private boolean shouldTurnOffFullNetworkUpdate() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsScreenStateOn && !mIsTetheringOn);
+        return mIsPowerSaveOn || (!mIsCharging && !mIsScreenOn && !mIsTetheringOn);
     }
 
     /**
      * @return True if data dormancy status update should be turned off.
      */
     private boolean shouldTurnOffDormancyUpdate() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsTetheringOn && !mIsScreenStateOn);
+        return mIsPowerSaveOn || (!mIsCharging && !mIsTetheringOn && !mIsScreenOn);
     }
 
     /**
@@ -256,8 +247,8 @@ public class DeviceStateMonitor extends Handler {
     private void updateDeviceState(int eventType, boolean state) {
         switch (eventType) {
             case EVENT_SCREEN_STATE_CHANGED:
-                if (mIsScreenStateOn == state) return;
-                mIsScreenStateOn = state;
+                if (mIsScreenOn == state) return;
+                mIsScreenOn = state;
                 break;
             case EVENT_CHARGING_STATE_CHANGED:
                 if (mIsCharging == state) return;
@@ -376,16 +367,32 @@ public class DeviceStateMonitor extends Handler {
     }
 
     /**
-     * @return True if the device's state is on.
+     * @return True if one the device's screen (e.g. main screen, wifi display, HDMI display, or
+     *         Android auto, etc...) is on.
      */
     private boolean isScreenOn() {
         // Note that we don't listen to Intent.SCREEN_ON and Intent.SCREEN_OFF because they are no
         // longer adequate for monitoring the screen state since they are not sent in cases where
         // the screen is turned off transiently such as due to the proximity sensor.
+        final DisplayManager dm = (DisplayManager) mPhone.getContext().getSystemService(
+                Context.DISPLAY_SERVICE);
+        Display[] displays = dm.getDisplays();
 
-        // Anything other than STATE_ON is treated as screen off, such as STATE_DOZE,
-        // STATE_DOZE_SUSPEND, etc...
-        return mDefaultDisplay.getState() == Display.STATE_ON;
+        if (displays != null) {
+            for (Display display : displays) {
+                // Anything other than STATE_ON is treated as screen off, such as STATE_DOZE,
+                // STATE_DOZE_SUSPEND, etc...
+                if (display.getState() == Display.STATE_ON) {
+                    log("Screen " + Display.typeToString(display.getType()) + " on", true);
+                    return true;
+                }
+            }
+            log("Screens all off", true);
+            return false;
+        }
+
+        log("No displays found", true);
+        return false;
     }
 
     /**
@@ -410,7 +417,7 @@ public class DeviceStateMonitor extends Handler {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
         ipw.increaseIndent();
         ipw.println("mIsTetheringOn=" + mIsTetheringOn);
-        ipw.println("mIsScreenStateOn=" + mIsScreenStateOn);
+        ipw.println("mIsScreenOn=" + mIsScreenOn);
         ipw.println("mIsCharging=" + mIsCharging);
         ipw.println("mIsPowerSaveOn=" + mIsPowerSaveOn);
         ipw.println("mIsLowDataExpected=" + mIsLowDataExpected);
