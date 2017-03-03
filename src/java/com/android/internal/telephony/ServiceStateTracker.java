@@ -123,16 +123,6 @@ public class ServiceStateTracker extends Handler {
     // TODO - this should not be public, right now used externally GsmConnetion.
     public RestrictedState mRestrictedState;
 
-    /* The otaspMode passed to PhoneStateListener#onOtaspChanged */
-    static public final int OTASP_UNINITIALIZED = 0;
-    static public final int OTASP_UNKNOWN = 1;
-    static public final int OTASP_NEEDED = 2;
-    static public final int OTASP_NOT_NEEDED = 3;
-    /**
-     * OtaUtil has conflict enum 4: OtaUtils.OTASP_FAILURE_SPC_RETRIES
-     */
-    static public final int OTASP_SIM_UNPROVISIONED = 5;
-
     /**
      * A unique identifier to track requests associated with a poll
      * and ignore stale responses.  The value is a count-down of
@@ -468,7 +458,7 @@ public class ServiceStateTracker extends Handler {
     public static final String UNACTIVATED_MIN2_VALUE = "000000";
     public static final String UNACTIVATED_MIN_VALUE = "1111110111";
     // Current Otasp value
-    private int mCurrentOtaspMode = OTASP_UNINITIALIZED;
+    private int mCurrentOtaspMode = TelephonyManager.OTASP_UNINITIALIZED;
     /** if time between NITZ updates is less than mNitzUpdateSpacing the update may be ignored. */
     public static final int NITZ_UPDATE_SPACING_DEFAULT = 1000 * 60 * 10;
     private int mNitzUpdateSpacing = SystemProperties.getInt("ro.nitz_update_spacing",
@@ -558,7 +548,7 @@ public class ServiceStateTracker extends Handler {
         filter.addAction(ACTION_RADIO_OFF);
         context.registerReceiver(mIntentReceiver, filter);
 
-        mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
+        mPhone.notifyOtaspChanged(TelephonyManager.OTASP_UNINITIALIZED);
 
         updatePhoneType();
 
@@ -1447,27 +1437,27 @@ public class ServiceStateTracker extends Handler {
         // if sim is not loaded, return otasp uninitialized
         if(!mPhone.getIccRecordsLoaded()) {
             if(DBG) log("getOtasp: otasp uninitialized due to sim not loaded");
-            return OTASP_UNINITIALIZED;
+            return TelephonyManager.OTASP_UNINITIALIZED;
         }
         // if voice tech is Gsm, return otasp not needed
         if(mPhone.isPhoneTypeGsm()) {
             if(DBG) log("getOtasp: otasp not needed for GSM");
-            return OTASP_NOT_NEEDED;
+            return TelephonyManager.OTASP_NOT_NEEDED;
         }
         // for ruim, min is null means require otasp.
         if (mIsSubscriptionFromRuim && mMin == null) {
-            return OTASP_NEEDED;
+            return TelephonyManager.OTASP_NEEDED;
         }
         if (mMin == null || (mMin.length() < 6)) {
             if (DBG) log("getOtasp: bad mMin='" + mMin + "'");
-            provisioningState = OTASP_UNKNOWN;
+            provisioningState = TelephonyManager.OTASP_UNKNOWN;
         } else {
             if ((mMin.equals(UNACTIVATED_MIN_VALUE)
                     || mMin.substring(0,6).equals(UNACTIVATED_MIN2_VALUE))
                     || SystemProperties.getBoolean("test_cdma_setup", false)) {
-                provisioningState = OTASP_NEEDED;
+                provisioningState = TelephonyManager.OTASP_NEEDED;
             } else {
-                provisioningState = OTASP_NOT_NEEDED;
+                provisioningState = TelephonyManager.OTASP_NOT_NEEDED;
             }
         }
         if (DBG) log("getOtasp: state=" + provisioningState);
