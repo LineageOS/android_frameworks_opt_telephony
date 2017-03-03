@@ -1267,11 +1267,6 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public int getRilVersion() {
-        return 0;
-    }
-
-    @Override
     public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
                                     Message result) {
 

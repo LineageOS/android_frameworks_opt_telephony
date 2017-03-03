@@ -736,9 +736,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }} catch (Throwable tr) {
                 Rlog.e(RILJ_LOG_TAG,"Uncaught exception", tr);
             }
-
-            /* We're disconnected so we don't know the ril version */
-            notifyRegistrantsRilConnectionChanged(-1);
         }
     }
 
@@ -783,6 +780,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private void resetProxyAndRequestList() {
         mRadioProxy = null;
         mOemHookProxy = null;
+
+        setRadioState(RadioState.RADIO_UNAVAILABLE);
+
         RILRequest.resetSerial();
         // Clear request list on close
         clearRequestList(RADIO_NOT_AVAILABLE, false);
@@ -4495,14 +4495,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     /**
      * Notify all registrants that the ril has connected or disconnected.
-     *
-     * @param rilVer is the version of the ril or -1 if disconnected.
      */
-    void notifyRegistrantsRilConnectionChanged(int rilVer) {
-        mRilVersion = rilVer;
+    void notifyRegistrantsRilConnected() {
         if (mRilConnectedRegistrants != null) {
             mRilConnectedRegistrants.notifyRegistrants(
-                    new AsyncResult(null, new Integer(rilVer), null));
+                    new AsyncResult(null, null, null));
         }
     }
 
