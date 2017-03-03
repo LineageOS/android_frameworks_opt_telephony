@@ -783,6 +783,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private void resetProxyAndRequestList() {
         mRadioProxy = null;
         mOemHookProxy = null;
+
+        setRadioState(RadioState.RADIO_UNAVAILABLE);
+
         RILRequest.resetSerial();
         // Clear request list on close
         clearRequestList(RADIO_NOT_AVAILABLE, false);
