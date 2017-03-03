@@ -102,8 +102,8 @@ public abstract class BaseCommands implements CommandsInterface {
     protected int mCdmaSubscription;
     // Type of Phone, GSM or CDMA. Set by GsmCdmaPhone.
     protected int mPhoneType;
-    // RIL Version
-    protected int mRilVersion = -1;
+    // RIL connected
+    protected boolean mRilConnected = false;
 
     public BaseCommands(Context context) {
         mContext = context;  // May be null (if so we won't log statistics)
@@ -736,8 +736,8 @@ public abstract class BaseCommands implements CommandsInterface {
     public void registerForRilConnected(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mRilConnectedRegistrants.add(r);
-        if (mRilVersion != -1) {
-            r.notifyRegistrant(new AsyncResult(null, new Integer(mRilVersion), null));
+        if (mRilConnected) {
+            r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
 
@@ -835,11 +835,6 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void testingEmergencyCall() {}
-
-    @Override
-    public int getRilVersion() {
-        return mRilVersion;
-    }
 
     public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
             Message response) {
