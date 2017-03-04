@@ -4171,32 +4171,26 @@ public class ServiceStateTracker extends Handler {
     public List<CellInfo> getAllCellInfo(WorkSource workSource) {
         CellInfoResult result = new CellInfoResult();
         if (VDBG) log("SST.getAllCellInfo(): E");
-        int ver = mCi.getRilVersion();
-        if (ver >= 8) {
-            if (isCallerOnDifferentThread()) {
-                if ((SystemClock.elapsedRealtime() - mLastCellInfoListTime)
-                        > LAST_CELL_INFO_LIST_MAX_AGE_MS) {
-                    Message msg = obtainMessage(EVENT_GET_CELL_INFO_LIST, result);
-                    synchronized(result.lockObj) {
-                        result.list = null;
-                        mCi.getCellInfoList(msg, workSource);
-                        try {
-                            result.lockObj.wait(5000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+        if (isCallerOnDifferentThread()) {
+            if ((SystemClock.elapsedRealtime() - mLastCellInfoListTime)
+                    > LAST_CELL_INFO_LIST_MAX_AGE_MS) {
+                Message msg = obtainMessage(EVENT_GET_CELL_INFO_LIST, result);
+                synchronized(result.lockObj) {
+                    result.list = null;
+                    mCi.getCellInfoList(msg, workSource);
+                    try {
+                        result.lockObj.wait(5000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                } else {
-                    if (DBG) log("SST.getAllCellInfo(): return last, back to back calls");
-                    result.list = mLastCellInfoList;
                 }
             } else {
-                if (DBG) log("SST.getAllCellInfo(): return last, same thread can't block");
+                if (DBG) log("SST.getAllCellInfo(): return last, back to back calls");
                 result.list = mLastCellInfoList;
             }
         } else {
-            if (DBG) log("SST.getAllCellInfo(): not implemented");
-            result.list = null;
+            if (DBG) log("SST.getAllCellInfo(): return last, same thread can't block");
+            result.list = mLastCellInfoList;
         }
         synchronized(result.lockObj) {
             if (result.list != null) {
