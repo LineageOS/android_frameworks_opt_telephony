@@ -1886,11 +1886,6 @@ public interface CommandsInterface {
      */
     void getHardwareConfig (Message result);
 
-    /**
-     * @return version of the ril.
-     */
-    int getRilVersion();
-
    /**
      * Sets user selected subscription at Modem.
      *
