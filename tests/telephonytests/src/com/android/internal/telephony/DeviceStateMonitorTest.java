@@ -20,12 +20,12 @@ import static android.hardware.radio.V1_0.DeviceStateType.LOW_DATA_EXPECTED;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
-import static java.util.Arrays.asList;
-
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+
+import static java.util.Arrays.asList;
 
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -69,62 +69,27 @@ public class DeviceStateMonitorTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDeviceStateMonitor = null;
+        mDeviceStateMonitorTestHandler.quitSafely();
         super.tearDown();
     }
 
     @Test
     @SmallTest
-    public void testScreenOff() throws Exception {
-        Intent intent = new Intent(Intent.ACTION_SCREEN_ON);
-        mContext.sendBroadcast(intent);
-        intent = new Intent(Intent.ACTION_SCREEN_OFF);
-        mContext.sendBroadcast(intent);
-        waitForMs(100);
-        verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(0),
-                any(Message.class));
-
-        intent = new Intent(Intent.ACTION_SCREEN_ON);
-        mContext.sendBroadcast(intent);
-        waitForMs(100);
-        verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(7),
-                any(Message.class));
-    }
-
-    @Test
-    @SmallTest
     public void testTethering() throws Exception {
-        // Screen on
-        Intent intent = new Intent(Intent.ACTION_SCREEN_ON);
-        mContext.sendBroadcast(intent);
-
         // Turn tethering on
-        intent = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
+        Intent intent = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
         intent.putExtra(ConnectivityManager.EXTRA_ACTIVE_TETHER, new ArrayList<>(asList("abc")));
         mContext.sendBroadcast(intent);
 
-        // Screen off
-        intent = new Intent(Intent.ACTION_SCREEN_OFF);
-        mContext.sendBroadcast(intent);
         waitForMs(100);
 
         verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(6),
                 any(Message.class));
 
-        // Screen on
-        intent = new Intent(Intent.ACTION_SCREEN_ON);
-        mContext.sendBroadcast(intent);
-        waitForMs(100);
-
-        verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(7),
-                any(Message.class));
-
         // Turn tethering off
         intent = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
         intent.putExtra(ConnectivityManager.EXTRA_ACTIVE_TETHER, new ArrayList<>());
-        mContext.sendBroadcast(intent);
-
-        // Screen off
-        intent = new Intent(Intent.ACTION_SCREEN_OFF);
         mContext.sendBroadcast(intent);
         waitForMs(100);
 
@@ -138,25 +103,10 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testCharging() throws Exception {
-        // Screen on
-        Intent intent = new Intent(Intent.ACTION_SCREEN_ON);
-        mContext.sendBroadcast(intent);
-        // Screen off
-        intent = new Intent(Intent.ACTION_SCREEN_OFF);
-        mContext.sendBroadcast(intent);
-        // Not charging
-        intent = new Intent(BatteryManager.ACTION_DISCHARGING);
-        mContext.sendBroadcast(intent);
         // Charging
-        intent = new Intent(BatteryManager.ACTION_CHARGING);
+        Intent intent = new Intent(BatteryManager.ACTION_CHARGING);
         mContext.sendBroadcast(intent);
         waitForMs(100);
-
-        verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(7),
-                any(Message.class));
-
-        verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(LOW_DATA_EXPECTED),
-                eq(false), any(Message.class));
 
         verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(CHARGING_STATE),
                 eq(true), any(Message.class));
@@ -166,10 +116,10 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         mContext.sendBroadcast(intent);
         waitForMs(100);
 
-        verify(mSimulatedCommandsVerifier, times(2)).setUnsolResponseFilter(eq(0),
+        verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(0),
                 any(Message.class));
 
-        verify(mSimulatedCommandsVerifier, times(2)).sendDeviceState(eq(LOW_DATA_EXPECTED),
+        verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(LOW_DATA_EXPECTED),
                 eq(true), any(Message.class));
 
         verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(CHARGING_STATE),
