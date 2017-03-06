@@ -467,9 +467,8 @@ public class GsmCdmaPhone extends Phone {
                 // get voice mail count from SIM
                 countVoiceMessages = r.getVoiceMessageCount();
             }
-            int countVoiceMessagesStored = getStoredVoiceMessageCount();
-            if (countVoiceMessages == -1 && countVoiceMessagesStored != 0) {
-                countVoiceMessages = countVoiceMessagesStored;
+            if (countVoiceMessages == IccRecords.DEFAULT_VOICE_MESSAGE_COUNT) {
+                countVoiceMessages = getStoredVoiceMessageCount();
             }
             logd("updateVoiceMail countVoiceMessages = " + countVoiceMessages
                     + " subId " + getSubId());
