@@ -882,11 +882,93 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    private void processCellLocationInfo(CellLocation cellLocation,
+                                         VoiceRegStateResult voiceRegStateResult) {
+        if (mPhone.isPhoneTypeGsm()) {
+            int psc = -1;
+            int cid = -1;
+            int lac = -1;
+            switch(voiceRegStateResult.cellIdentity.cellInfoType) {
+                case CellInfoType.GSM: {
+                    if (voiceRegStateResult.cellIdentity.cellIdentityGsm.size() == 1) {
+                        android.hardware.radio.V1_0.CellIdentityGsm cellIdentityGsm =
+                                voiceRegStateResult.cellIdentity.cellIdentityGsm.get(0);
+                        cid = cellIdentityGsm.cid;
+                        lac = cellIdentityGsm.lac;
+                    }
+                    break;
+                }
+                case CellInfoType.WCDMA: {
+                    if (voiceRegStateResult.cellIdentity.cellIdentityWcdma.size() == 1) {
+                        android.hardware.radio.V1_0.CellIdentityWcdma cellIdentityWcdma =
+                                voiceRegStateResult.cellIdentity.cellIdentityWcdma.get(0);
+                        cid = cellIdentityWcdma.cid;
+                        lac = cellIdentityWcdma.lac;
+                        psc = cellIdentityWcdma.psc;
+                    }
+                    break;
+                }
+                case CellInfoType.TD_SCDMA: {
+                    if (voiceRegStateResult.cellIdentity.cellIdentityTdscdma.size() == 1) {
+                        android.hardware.radio.V1_0.CellIdentityTdscdma
+                                cellIdentityTdscdma =
+                                voiceRegStateResult.cellIdentity.cellIdentityTdscdma.get(0);
+                        cid = cellIdentityTdscdma.cid;
+                        lac = cellIdentityTdscdma.lac;
+                    }
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+            // LAC and CID are -1 if not avail
+            ((GsmCellLocation) cellLocation).setLacAndCid(lac, cid);
+            ((GsmCellLocation) cellLocation).setPsc(psc);
+        } else {
+            int baseStationId = -1;
+            int baseStationLatitude = CdmaCellLocation.INVALID_LAT_LONG;
+            int baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
+            int systemId = 0;
+            int networkId = 0;
+
+            switch(voiceRegStateResult.cellIdentity.cellInfoType) {
+                case CellInfoType.CDMA: {
+                    if (voiceRegStateResult.cellIdentity.cellIdentityCdma.size() == 1) {
+                        android.hardware.radio.V1_0.CellIdentityCdma cellIdentityCdma =
+                                voiceRegStateResult.cellIdentity.cellIdentityCdma.get(0);
+                        baseStationId = cellIdentityCdma.baseStationId;
+                        baseStationLatitude = cellIdentityCdma.latitude;
+                        baseStationLongitude = cellIdentityCdma.longitude;
+                        systemId = cellIdentityCdma.systemId;
+                        networkId = cellIdentityCdma.networkId;
+                    }
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+
+            // Some carriers only return lat-lngs of 0,0
+            if (baseStationLatitude == 0 && baseStationLongitude == 0) {
+                baseStationLatitude  = CdmaCellLocation.INVALID_LAT_LONG;
+                baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
+            }
+
+            // Values are -1 if not available.
+            ((CdmaCellLocation) cellLocation).setCellLocationData(baseStationId,
+                    baseStationLatitude, baseStationLongitude, systemId, networkId);
+        }
+    }
+
     @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
         int[] ints;
         Message message;
+
+        if (VDBG) log("received event " + msg.what);
         switch (msg.what) {
             case EVENT_SET_RADIO_POWER_OFF:
                 synchronized(this) {
@@ -1007,62 +1089,8 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_GET_LOC_DONE:
                 ar = (AsyncResult) msg.obj;
-
                 if (ar.exception == null) {
-                    String states[] = (String[])ar.result;
-                    if (mPhone.isPhoneTypeGsm()) {
-                        int lac = -1;
-                        int cid = -1;
-                        if (states.length >= 3) {
-                            try {
-                                if (states[1] != null && states[1].length() > 0) {
-                                    lac = (int)Long.parseLong(states[1], 16);
-                                }
-                                if (states[2] != null && states[2].length() > 0) {
-                                    cid = (int)Long.parseLong(states[2], 16);
-                                }
-                            } catch (NumberFormatException ex) {
-                                Rlog.w(LOG_TAG, "error parsing location: " + ex);
-                            }
-                        }
-                        ((GsmCellLocation)mCellLoc).setLacAndCid(lac, cid);
-                    } else {
-                        int baseStationId = -1;
-                        int baseStationLatitude = CdmaCellLocation.INVALID_LAT_LONG;
-                        int baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-                        int systemId = -1;
-                        int networkId = -1;
-
-                        if (states.length > 9) {
-                            try {
-                                if (states[4] != null) {
-                                    baseStationId = Integer.parseInt(states[4]);
-                                }
-                                if (states[5] != null) {
-                                    baseStationLatitude = Integer.parseInt(states[5]);
-                                }
-                                if (states[6] != null) {
-                                    baseStationLongitude = Integer.parseInt(states[6]);
-                                }
-                                // Some carriers only return lat-lngs of 0,0
-                                if (baseStationLatitude == 0 && baseStationLongitude == 0) {
-                                    baseStationLatitude  = CdmaCellLocation.INVALID_LAT_LONG;
-                                    baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-                                }
-                                if (states[8] != null) {
-                                    systemId = Integer.parseInt(states[8]);
-                                }
-                                if (states[9] != null) {
-                                    networkId = Integer.parseInt(states[9]);
-                                }
-                            } catch (NumberFormatException ex) {
-                                loge("error parsing cell location data: " + ex);
-                            }
-                        }
-
-                        ((CdmaCellLocation)mCellLoc).setCellLocationData(baseStationId,
-                                baseStationLatitude, baseStationLongitude, systemId, networkId);
-                    }
+                    processCellLocationInfo(mCellLoc, (VoiceRegStateResult) ar.result);
                     mPhone.notifyLocationChanged();
                 }
 
@@ -1645,43 +1673,6 @@ public class ServiceStateTracker extends Handler {
                 //Denial reason if registrationState = 3
                 int reasonForDenial = voiceRegStateResult.reasonForDenial;
                 if (mPhone.isPhoneTypeGsm()) {
-                    int psc = -1;
-                    int cid = -1;
-                    int lac = -1;
-                    switch(voiceRegStateResult.cellIdentity.cellInfoType) {
-                        case CellInfoType.GSM: {
-                            if (voiceRegStateResult.cellIdentity.cellIdentityGsm.size() == 1) {
-                                android.hardware.radio.V1_0.CellIdentityGsm cellIdentityGsm =
-                                        voiceRegStateResult.cellIdentity.cellIdentityGsm.get(0);
-                                cid = cellIdentityGsm.cid;
-                                lac = cellIdentityGsm.lac;
-                            }
-                            break;
-                        }
-                        case CellInfoType.WCDMA: {
-                            if (voiceRegStateResult.cellIdentity.cellIdentityWcdma.size() == 1) {
-                                android.hardware.radio.V1_0.CellIdentityWcdma cellIdentityWcdma =
-                                        voiceRegStateResult.cellIdentity.cellIdentityWcdma.get(0);
-                                cid = cellIdentityWcdma.cid;
-                                lac = cellIdentityWcdma.lac;
-                                psc = cellIdentityWcdma.psc;
-                            }
-                            break;
-                        }
-                        case CellInfoType.TD_SCDMA: {
-                            if (voiceRegStateResult.cellIdentity.cellIdentityTdscdma.size() == 1) {
-                                android.hardware.radio.V1_0.CellIdentityTdscdma
-                                        cellIdentityTdscdma =
-                                        voiceRegStateResult.cellIdentity.cellIdentityTdscdma.get(0);
-                                cid = cellIdentityTdscdma.cid;
-                                lac = cellIdentityTdscdma.lac;
-                            }
-                            break;
-                        }
-                        default: {
-                            break;
-                        }
-                    }
 
                     mGsmRoaming = regCodeIsRoaming(registrationState);
 
@@ -1700,17 +1691,7 @@ public class ServiceStateTracker extends Handler {
                     } else {
                         mEmergencyOnly = false;
                     }
-
-                    // LAC and CID are -1 if not avail
-                    ((GsmCellLocation)mNewCellLoc).setLacAndCid(lac, cid);
-                    ((GsmCellLocation)mNewCellLoc).setPsc(psc);
                 } else {
-                    int baseStationId = -1;
-                    int baseStationLatitude = CdmaCellLocation.INVALID_LAT_LONG;
-                    int baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-                    int systemId = 0;
-                    int networkId = 0;
-
                     //init with 0, because it is treated as a boolean
                     int cssIndicator = voiceRegStateResult.cssSupported ? 1 : 0;
                     int roamingIndicator = voiceRegStateResult.roamingIndicator;
@@ -1720,30 +1701,6 @@ public class ServiceStateTracker extends Handler {
 
                     //Is default roaming indicator from PRL
                     int defaultRoamingIndicator = voiceRegStateResult.defaultRoamingIndicator;
-
-                    switch(voiceRegStateResult.cellIdentity.cellInfoType) {
-                        case CellInfoType.CDMA: {
-                            if (voiceRegStateResult.cellIdentity.cellIdentityCdma.size() == 1) {
-                                android.hardware.radio.V1_0.CellIdentityCdma cellIdentityCdma =
-                                        voiceRegStateResult.cellIdentity.cellIdentityCdma.get(0);
-                                baseStationId = cellIdentityCdma.baseStationId;
-                                baseStationLatitude = cellIdentityCdma.latitude;
-                                baseStationLongitude = cellIdentityCdma.longitude;
-                                systemId = cellIdentityCdma.systemId;
-                                networkId = cellIdentityCdma.networkId;
-                            }
-                            break;
-                        }
-                        default: {
-                            break;
-                        }
-                    }
-
-                    // Some carriers only return lat-lngs of 0,0
-                    if (baseStationLatitude == 0 && baseStationLongitude == 0) {
-                        baseStationLatitude  = CdmaCellLocation.INVALID_LAT_LONG;
-                        baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-                    }
 
                     mRegistrationState = registrationState;
                     // When registration state is roaming and TSB58
@@ -1755,15 +1712,20 @@ public class ServiceStateTracker extends Handler {
                                             Integer.toString(roamingIndicator));
                     mNewSS.setVoiceRoaming(cdmaRoaming);
                     mNewSS.setCssIndicator(cssIndicator);
-                    mNewSS.setSystemAndNetworkId(systemId, networkId);
                     mRoamingIndicator = roamingIndicator;
                     mIsInPrl = (systemIsInPrl == 0) ? false : true;
                     mDefaultRoamingIndicator = defaultRoamingIndicator;
 
-
-                    // Values are -1 if not available.
-                    ((CdmaCellLocation)mNewCellLoc).setCellLocationData(baseStationId,
-                            baseStationLatitude, baseStationLongitude, systemId, networkId);
+                    int systemId = 0;
+                    int networkId = 0;
+                    if (voiceRegStateResult.cellIdentity.cellInfoType == CellInfoType.CDMA
+                            && voiceRegStateResult.cellIdentity.cellIdentityCdma.size() == 1) {
+                        android.hardware.radio.V1_0.CellIdentityCdma cellIdentityCdma =
+                                voiceRegStateResult.cellIdentity.cellIdentityCdma.get(0);
+                        systemId = cellIdentityCdma.systemId;
+                        networkId = cellIdentityCdma.networkId;
+                    }
+                    mNewSS.setSystemAndNetworkId(systemId, networkId);
 
                     if (reasonForDenial == 0) {
                         mRegistrationDeniedReason = ServiceStateTracker.REGISTRATION_DENIED_GEN;
@@ -1777,6 +1739,8 @@ public class ServiceStateTracker extends Handler {
                         if (DBG) log("Registration denied, " + mRegistrationDeniedReason);
                     }
                 }
+
+                processCellLocationInfo(mNewCellLoc, voiceRegStateResult);
 
                 if (DBG) {
                     log("handlPollVoiceRegResultMessage: regState=" + registrationState
@@ -2454,6 +2418,8 @@ public class ServiceStateTracker extends Handler {
     public void pollState(boolean modemTriggered) {
         mPollingContext = new int[1];
         mPollingContext[0] = 0;
+
+        log("pollState: modemTriggered=" + modemTriggered);
 
         switch (mCi.getRadioState()) {
             case RADIO_UNAVAILABLE:

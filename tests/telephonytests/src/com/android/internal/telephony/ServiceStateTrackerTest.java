@@ -25,7 +25,6 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.spy;
@@ -35,6 +34,9 @@ import static org.mockito.Mockito.verify;
 import android.app.IAlarmManager;
 import android.content.Context;
 import android.content.Intent;
+import android.hardware.radio.V1_0.CellIdentityGsm;
+import android.hardware.radio.V1_0.CellInfoType;
+import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -67,6 +69,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class ServiceStateTrackerTest extends TelephonyTest {
 
@@ -241,11 +244,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(750);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), atLeast(2)).
-                sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
+        verify(mContextFixture.getTestDouble(), times(3))
+                .sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
 
         // We only want to verify the intent SPN_STRINGS_UPDATED_ACTION.
-        Intent intent = intentArgumentCaptor.getValue();
+        List<Intent> intents = intentArgumentCaptor.getAllValues();
+        logd("Total " + intents.size() + " intents");
+        for (Intent intent : intents) {
+            logd("  " + intent.getAction());
+        }
+        Intent intent = intents.get(2);
         assertEquals(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION, intent.getAction());
 
         Bundle b = intent.getExtras();
@@ -366,13 +374,17 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @MediumTest
     public void testGsmCellLocation() {
 
+        VoiceRegStateResult result = new VoiceRegStateResult();
+        result.cellIdentity.cellInfoType = CellInfoType.GSM;
+        result.cellIdentity.cellIdentityGsm.add(new CellIdentityGsm());
+        result.cellIdentity.cellIdentityGsm.get(0).lac = 2;
+        result.cellIdentity.cellIdentityGsm.get(0).cid = 3;
+
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_GET_LOC_DONE,
-                new AsyncResult(null, new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9",
-                        "10", "11", "12", "13", "14", "15"}, null)));
+                new AsyncResult(null, result, null)));
 
         waitForMs(200);
-        WorkSource workSource = new WorkSource(Process.myUid(),
-                mContext.getPackageName());
+        WorkSource workSource = new WorkSource(Process.myUid(), mContext.getPackageName());
         GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation(workSource);
         assertEquals(2, cl.getLac());
         assertEquals(3, cl.getCid());

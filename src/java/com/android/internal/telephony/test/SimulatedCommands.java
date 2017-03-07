@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.test;
 
+import android.hardware.radio.V1_0.DataRegStateResult;
+import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -916,10 +918,10 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void getVoiceRegistrationState(Message result) {
         mGetVoiceRegistrationStateCallCount.incrementAndGet();
-        String ret[] = new String[14];
 
-        ret[0] = Integer.toString(mVoiceRegState);
-        ret[3] = Integer.toString(mVoiceRadioTech);
+        VoiceRegStateResult ret = new VoiceRegStateResult();
+        ret.regState = mVoiceRegState;
+        ret.rat = mVoiceRadioTech;
 
         resultSuccess(result, ret);
     }
@@ -942,10 +944,10 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void getDataRegistrationState (Message result) {
         mGetDataRegistrationStateCallCount.incrementAndGet();
-        String ret[] = new String[11];
 
-        ret[0] = Integer.toString(mDataRegState);
-        ret[3] = Integer.toString(mDataRadioTech);
+        DataRegStateResult ret = new DataRegStateResult();
+        ret.regState = mDataRegState;
+        ret.rat = mDataRadioTech;
 
         resultSuccess(result, ret);
     }
