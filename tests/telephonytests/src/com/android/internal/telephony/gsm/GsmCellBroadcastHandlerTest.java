@@ -37,6 +37,7 @@ import android.os.HandlerThread;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.SmsStorageMonitor;
@@ -97,6 +98,7 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
         super.tearDown();
     }
 
+    @FlakyTest
     @Test @SmallTest
     public void testBroadcastSms() {
         mContextFixture.putResource(
