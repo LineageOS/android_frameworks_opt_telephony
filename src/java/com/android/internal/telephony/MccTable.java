@@ -423,7 +423,7 @@ public final class MccTable {
 		sTable.add(new MccEntry(225,"va",2));	//Vatican City State
 		sTable.add(new MccEntry(226,"ro",2));	//Romania
 		sTable.add(new MccEntry(228,"ch",2));	//Switzerland (Confederation of)
-		sTable.add(new MccEntry(230,"cz",2));	//Czech Republic
+		sTable.add(new MccEntry(230,"cz",2));	//Czechia
 		sTable.add(new MccEntry(231,"sk",2));	//Slovak Republic
 		sTable.add(new MccEntry(232,"at",2));	//Austria
 		sTable.add(new MccEntry(234,"gb",2));	//United Kingdom of Great Britain and Northern Ireland
