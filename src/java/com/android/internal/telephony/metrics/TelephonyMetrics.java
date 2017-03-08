@@ -366,6 +366,15 @@ public class TelephonyMetrics {
                 if (event.type == TelephonyCallSession.Event.Type.RIL_SERVICE_STATE_CHANGED) {
                     pw.println(callSessionEventToString(event.type)
                             + "(" + event.serviceState.dataRat + ")");
+                } else if (event.type == TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED) {
+                    pw.println(callSessionEventToString(event.type));
+                    pw.increaseIndent();
+                    for (RilCall call : event.calls) {
+                        pw.println(call.index + ". Type = " + call.type + " State = "
+                                + call.state + " End Reason " + call.callEndReason
+                                + " isMultiparty = " + call.isMultiparty);
+                    }
+                    pw.decreaseIndent();
                 } else {
                     pw.println(callSessionEventToString(event.type));
                 }
@@ -1081,8 +1090,18 @@ public class TelephonyMetrics {
                             TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED)
                             .setRilCalls(calls)
             );
-            if (VDBG)  Rlog.v(TAG, "Logged Call list changed");
+            if (VDBG) Rlog.v(TAG, "Logged Call list changed");
+            if (callSession.isPhoneIdle() && disconnectReasonsKnown(calls)) {
+                finishCallSession(callSession);
+            }
         }
+    }
+
+    private boolean disconnectReasonsKnown(RilCall[] calls) {
+        for (RilCall call : calls) {
+            if (call.callEndReason == 0) return false;
+        }
+        return true;
     }
 
     private RilCall[] convertConnectionsToRilCalls(ArrayList<GsmCdmaConnection> mConnections) {
@@ -1435,7 +1454,12 @@ public class TelephonyMetrics {
         if (callSession == null) {
             Rlog.e(TAG, "writePhoneState: Call session is missing");
         } else {
-            if (state == TelephonyCallSession.Event.PhoneState.STATE_IDLE) {
+            // For CS Calls Finish the Call Session after Receiving the Last Call Fail Cause
+            // For IMS calls we receive the Disconnect Cause along with Call End event.
+            // So we can finish the call session here.
+            callSession.setLastKnownPhoneState(state);
+            if ((state == TelephonyCallSession.Event.PhoneState.STATE_IDLE)
+                    && (!callSession.containsCsCalls())) {
                 finishCallSession(callSession);
             }
             callSession.addEvent(new CallSessionEventBuilder(
