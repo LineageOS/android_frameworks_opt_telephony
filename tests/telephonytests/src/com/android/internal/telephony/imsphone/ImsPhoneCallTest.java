@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
+import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsStreamMediaProfile;
@@ -59,6 +60,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
         super.tearDown();
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testAttachDetach() {
@@ -81,6 +83,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
         assertEquals(Call.State.IDLE, mImsCallUT.getState());
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testConnectionDisconnected() {
@@ -98,6 +101,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
         assertEquals(Call.State.DISCONNECTED, mImsCallUT.getState());
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testHangup() {
@@ -109,6 +113,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
         }
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testUpdateRingBackTone() {
@@ -140,6 +145,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
         assertEquals(mConnection2, mImsCallUT.getConnections().get(0));
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testMultiParty() {
