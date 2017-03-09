@@ -180,6 +180,7 @@ public class GsmCdmaPhone extends Phone {
 
     private boolean mResetModemOnRadioTechnologyChange = false;
 
+    private int mRilVersion;
     private boolean mBroadcastEmergencyCallStateChanges = false;
     // flag to indicate if emergency call end broadcast should be sent
     boolean mSendEmergencyCallEnd = true;
@@ -256,6 +257,7 @@ public class GsmCdmaPhone extends Phone {
         mResetModemOnRadioTechnologyChange = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_RESET_ON_RADIO_TECH_CHANGE, false);
 
+        mCi.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mCi.registerForVoiceRadioTechChanged(this, EVENT_VOICE_RADIO_TECH_CHANGED, null);
         mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
@@ -2064,6 +2066,16 @@ public class GsmCdmaPhone extends Phone {
                 handleRadioOn();
                 break;
 
+            case EVENT_RIL_CONNECTED:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null && ar.result != null) {
+                    mRilVersion = (Integer) ar.result;
+                } else {
+                    logd("Unexpected exception on EVENT_RIL_CONNECTED");
+                    mRilVersion = -1;
+                }
+                break;
+
             case EVENT_VOICE_RADIO_TECH_CHANGED:
             case EVENT_REQUEST_VOICE_RADIO_TECH_DONE:
                 String what = (msg.what == EVENT_VOICE_RADIO_TECH_CHANGED) ?
@@ -3048,27 +3060,46 @@ public class GsmCdmaPhone extends Phone {
             }
         }
 
-        // If the device is shutting down, then there is no need to switch to the new phone
-        // which might send unnecessary attach request to the modem.
-        if (isShuttingDown()) {
-            logd("Device is shutting down. No need to switch phone now.");
-            return;
-        }
+        if(mRilVersion == 6 && getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+            /*
+             * On v6 RIL, when LTE_ON_CDMA is TRUE, always create CDMALTEPhone
+             * irrespective of the voice radio tech reported.
+             */
+            if (getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                logd("phoneObjectUpdater: LTE ON CDMA property is set. Use CDMA Phone" +
+                        " newVoiceRadioTech=" + newVoiceRadioTech +
+                        " mActivePhone=" + getPhoneName());
+                return;
+            } else {
+                logd("phoneObjectUpdater: LTE ON CDMA property is set. Switch to CDMALTEPhone" +
+                        " newVoiceRadioTech=" + newVoiceRadioTech +
+                        " mActivePhone=" + getPhoneName());
+                newVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
+            }
+        } else {
 
-        boolean matchCdma = ServiceState.isCdma(newVoiceRadioTech);
-        boolean matchGsm = ServiceState.isGsm(newVoiceRadioTech);
-        if ((matchCdma && getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) ||
-                (matchGsm && getPhoneType() == PhoneConstants.PHONE_TYPE_GSM)) {
-            // Nothing changed. Keep phone as it is.
-            logd("phoneObjectUpdater: No change ignore," +
-                    " newVoiceRadioTech=" + newVoiceRadioTech +
-                    " mActivePhone=" + getPhoneName());
-            return;
-        }
-        if (!matchCdma && !matchGsm) {
-            loge("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech +
-                    " doesn't match either CDMA or GSM - error! No phone change");
-            return;
+            // If the device is shutting down, then there is no need to switch to the new phone
+            // which might send unnecessary attach request to the modem.
+            if (isShuttingDown()) {
+                logd("Device is shutting down. No need to switch phone now.");
+                return;
+            }
+
+            boolean matchCdma = ServiceState.isCdma(newVoiceRadioTech);
+            boolean matchGsm = ServiceState.isGsm(newVoiceRadioTech);
+            if ((matchCdma && getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) ||
+                    (matchGsm && getPhoneType() == PhoneConstants.PHONE_TYPE_GSM)) {
+                // Nothing changed. Keep phone as it is.
+                logd("phoneObjectUpdater: No change ignore," +
+                        " newVoiceRadioTech=" + newVoiceRadioTech +
+                        " mActivePhone=" + getPhoneName());
+                return;
+            }
+            if (!matchCdma && !matchGsm) {
+                loge("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech +
+                        " doesn't match either CDMA or GSM - error! No phone change");
+                return;
+            }
         }
 
         if (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
