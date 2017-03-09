@@ -177,6 +177,7 @@ public class DataConnection extends StateMachine {
     static final int EVENT_GET_LAST_FAIL_DONE = BASE + 2;
     static final int EVENT_DEACTIVATE_DONE = BASE + 3;
     static final int EVENT_DISCONNECT = BASE + 4;
+    static final int EVENT_RIL_CONNECTED = BASE + 5;
     static final int EVENT_DISCONNECT_ALL = BASE + 6;
     static final int EVENT_DATA_STATE_CHANGED = BASE + 7;
     static final int EVENT_TEAR_DOWN_NOW = BASE + 8;
@@ -199,6 +200,7 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_GET_LAST_FAIL_DONE - BASE] = "EVENT_GET_LAST_FAIL_DONE";
         sCmdToString[EVENT_DEACTIVATE_DONE - BASE] = "EVENT_DEACTIVATE_DONE";
         sCmdToString[EVENT_DISCONNECT - BASE] = "EVENT_DISCONNECT";
+        sCmdToString[EVENT_RIL_CONNECTED - BASE] = "EVENT_RIL_CONNECTED";
         sCmdToString[EVENT_DISCONNECT_ALL - BASE] = "EVENT_DISCONNECT_ALL";
         sCmdToString[EVENT_DATA_STATE_CHANGED - BASE] = "EVENT_DATA_STATE_CHANGED";
         sCmdToString[EVENT_TEAR_DOWN_NOW - BASE] = "EVENT_TEAR_DOWN_NOW";
