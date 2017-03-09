@@ -157,6 +157,8 @@ public class DcController extends StateMachine {
     private class DccDefaultState extends State {
         @Override
         public void enter() {
+            mPhone.mCi.registerForRilConnected(getHandler(),
+                    DataConnection.EVENT_RIL_CONNECTED, null);
             mPhone.mCi.registerForDataCallListChanged(getHandler(),
                     DataConnection.EVENT_DATA_STATE_CHANGED, null);
             if (Build.IS_DEBUGGABLE) {
@@ -168,6 +170,7 @@ public class DcController extends StateMachine {
         @Override
         public void exit() {
             if (mPhone != null) {
+                mPhone.mCi.unregisterForRilConnected(getHandler());
                 mPhone.mCi.unregisterForDataCallListChanged(getHandler());
             }
             if (mDcTesterDeactivateAll != null) {
@@ -180,6 +183,18 @@ public class DcController extends StateMachine {
             AsyncResult ar;
 
             switch (msg.what) {
+                case DataConnection.EVENT_RIL_CONNECTED:
+                    ar = (AsyncResult)msg.obj;
+                    if (ar.exception == null) {
+                        if (DBG) {
+                            log("DccDefaultState: msg.what=EVENT_RIL_CONNECTED mRilVersion=" +
+                                ar.result);
+                        }
+                    } else {
+                        log("DccDefaultState: Unexpected exception on EVENT_RIL_CONNECTED");
+                    }
+                    break;
+
                 case DataConnection.EVENT_DATA_STATE_CHANGED:
                     ar = (AsyncResult)msg.obj;
                     if (ar.exception == null) {

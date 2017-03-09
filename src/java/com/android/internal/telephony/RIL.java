@@ -628,6 +628,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }} catch (Throwable tr) {
                 Rlog.e(RILJ_LOG_TAG,"Uncaught exception", tr);
             }
+
+            /* We're disconnected so we don't know the ril version */
+            notifyRegistrantsRilConnectionChanged(-1);
         }
     }
 
@@ -4353,11 +4356,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     /**
      * Notify all registrants that the ril has connected or disconnected.
+     *
+     * @param rilVer is the version of the ril or -1 if disconnected.
      */
-    void notifyRegistrantsRilConnected() {
+    void notifyRegistrantsRilConnectionChanged(int rilVer) {
+        mRilVersion = rilVer;
         if (mRilConnectedRegistrants != null) {
             mRilConnectedRegistrants.notifyRegistrants(
-                    new AsyncResult(null, null, null));
+                    new AsyncResult(null, new Integer(rilVer), null));
         }
     }
 
