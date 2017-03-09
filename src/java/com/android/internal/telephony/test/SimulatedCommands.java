@@ -1818,6 +1818,11 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
+    public int getRilVersion() {
+        return 11;
+    }
+
+    @Override
     public void setCellInfoListRate(int rateInMillis, Message response, WorkSource workSource) {
         unimplemented(response);
     }
