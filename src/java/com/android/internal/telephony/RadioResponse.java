@@ -1471,12 +1471,12 @@ public class RadioResponse extends IRadioResponse.Stub {
                                          ArrayList<android.hardware.radio.V1_0.CallForwardInfo>
                                                  callForwardInfos) {
         RILRequest rr = mRil.processResponse(responseInfo);
-
         if (rr != null) {
             CallForwardInfo[] ret = null;
             if (responseInfo.error == RadioError.NONE) {
                 ret = new CallForwardInfo[callForwardInfos.size()];
                 for (int i = 0; i < callForwardInfos.size(); i++) {
+                    ret[i] = new CallForwardInfo();
                     ret[i].status = callForwardInfos.get(i).status;
                     ret[i].reason = callForwardInfos.get(i).reason;
                     ret[i].serviceClass = callForwardInfos.get(i).serviceClass;
