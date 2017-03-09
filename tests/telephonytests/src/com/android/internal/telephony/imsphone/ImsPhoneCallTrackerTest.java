@@ -20,6 +20,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.support.test.filters.FlakyTest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ims.feature.ImsFeature;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -335,6 +336,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(Call.State.HOLDING, mCTUT.mBackgroundCall.getState());
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testImsMOCallDial() {

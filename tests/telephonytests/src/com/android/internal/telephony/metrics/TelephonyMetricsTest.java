@@ -35,6 +35,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
+import android.support.test.filters.FlakyTest;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
@@ -135,6 +136,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         return (String) method.invoke(null, log);
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testEventDropped() throws Exception {

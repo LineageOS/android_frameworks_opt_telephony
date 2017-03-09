@@ -232,6 +232,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 mSimulatedCommands.getGetNetworkSelectionModeCallCount());
     }
 
+    @FlakyTest
     @Test
     @MediumTest
     public void testSpnUpdateShowPlmnOnly() {
