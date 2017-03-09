@@ -29,6 +29,7 @@ import android.os.Message;
 import android.os.Process;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
+import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
@@ -401,6 +402,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testVoiceMailCount() {
@@ -506,6 +508,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
      * GsmCdmaPhone handles a lot of messages. This function verifies behavior for messages that are
      * received when obj is created and that are received on phone type switch
      */
+    @FlakyTest
     @Test
     @SmallTest
     public void testHandleInitialMessages() {
