@@ -611,6 +611,51 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
+    public void testRegAndInvalidregForDataConnAttach() throws Exception {
+        // Initially set service state out of service
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mSimulatedCommands.setVoiceRegState(23);
+        mSimulatedCommands.setDataRegState(23);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        sst.registerForDataConnectionAttached(mTestHandler, EVENT_DATA_CONNECTION_ATTACHED, null);
+
+        // set service state in service and trigger events to post message on handler
+        mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(200);
+
+        // verify if registered handler has message posted to it
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        assertEquals(EVENT_DATA_CONNECTION_ATTACHED, messageArgumentCaptor.getValue().what);
+
+        // set service state out of service
+        mSimulatedCommands.setVoiceRegState(-1);
+        mSimulatedCommands.setDataRegState(-1);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        // Unregister registrant
+        sst.unregisterForDataConnectionAttached(mTestHandler);
+
+        // set service state in service
+        mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        // verify that no new message posted to handler
+        verify(mTestHandler, times(1)).sendMessageAtTime(any(Message.class), anyLong());
+    }
+    @Test
+    @MediumTest
     public void testRegAndUnregForDataConnAttach() throws Exception {
         // Initially set service state out of service
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -762,6 +807,59 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // verify that no new message posted to handler
         verify(mTestHandler, times(1)).sendMessageAtTime(any(Message.class), anyLong());
+    }
+
+    @Test
+    @MediumTest
+    public void testRegAndInvalidRegForNetworkAttached() throws Exception {
+        // Initially set service state out of service
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mSimulatedCommands.setVoiceRegState(23);
+        mSimulatedCommands.setDataRegState(23);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        sst.registerForNetworkAttached(mTestHandler, EVENT_REGISTERED_TO_NETWORK, null);
+
+        // set service state in service and trigger events to post message on handler
+        mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        // verify if registered handler has message posted to it
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        assertEquals(EVENT_REGISTERED_TO_NETWORK, messageArgumentCaptor.getValue().what);
+
+        // set service state out of service
+        mSimulatedCommands.setVoiceRegState(-1);
+        mSimulatedCommands.setDataRegState(-1);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        // Unregister registrant
+        sst.unregisterForNetworkAttached(mTestHandler);
+
+
+        waitForMs(100);
+
+        sst.registerForNetworkAttached(mTestHandler, EVENT_REGISTERED_TO_NETWORK, null);
+
+        // set service state in service
+        mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        // verify if registered handler has message posted to it
+        messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        assertEquals(EVENT_REGISTERED_TO_NETWORK, messageArgumentCaptor.getValue().what);
     }
 
     @Test
