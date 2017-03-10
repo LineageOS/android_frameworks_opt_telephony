@@ -468,7 +468,7 @@ public class DcTrackerTest extends TelephonyTest {
         allowed = isDataAllowed(failureReason);
         assertTrue(failureReason.getDataAllowFailReason(), allowed);
 
-        ArgumentCaptor<DataProfile> dpCaptor = new ArgumentCaptor<>();
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
@@ -534,7 +534,7 @@ public class DcTrackerTest extends TelephonyTest {
         allowed = isDataAllowed(failureReason);
         assertTrue(failureReason.getDataAllowFailReason(), allowed);
 
-        ArgumentCaptor<DataProfile> dpCaptor = new ArgumentCaptor<>();
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
@@ -560,7 +560,7 @@ public class DcTrackerTest extends TelephonyTest {
         mContext.sendBroadcast(intent);
         waitForMs(200);
 
-        dpCaptor = new ArgumentCaptor<>();
+        dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
@@ -594,7 +594,7 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setDataEnabled(true);
 
         waitForMs(200);
-        ArgumentCaptor<DataProfile> dpCaptor = new ArgumentCaptor<>();
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
@@ -645,7 +645,7 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setDataEnabled(true);
 
         waitForMs(300);
-        ArgumentCaptor<DataProfile> dpCaptor = new ArgumentCaptor<>();
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
@@ -704,7 +704,7 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setDataEnabled(true);
 
         waitForMs(200);
-        ArgumentCaptor<DataProfile> dpCaptor = new ArgumentCaptor<>();
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
@@ -806,7 +806,7 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
         waitForMs(200);
 
-        ArgumentCaptor<DataProfile> dpCaptor = new ArgumentCaptor<>();
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
