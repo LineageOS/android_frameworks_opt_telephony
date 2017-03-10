@@ -32,6 +32,7 @@ import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.hardware.radio.V1_0.CellInfoType;
 import android.hardware.radio.V1_0.DataRegStateResult;
+import android.hardware.radio.V1_0.RegState;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.os.AsyncResult;
 import android.os.BaseBundle;
@@ -918,6 +919,17 @@ public class ServiceStateTracker extends Handler {
                     }
                     break;
                 }
+                case CellInfoType.LTE: {
+                    if (voiceRegStateResult.cellIdentity.cellIdentityLte.size() == 1) {
+                        android.hardware.radio.V1_0.CellIdentityLte cellIdentityLte =
+                                voiceRegStateResult.cellIdentity.cellIdentityLte.get(0);
+                        cid = cellIdentityLte.ci;
+
+                        /* Continuing the historical behaviour of using tac as lac. */
+                        lac = cellIdentityLte.tac;
+                    }
+                    break;
+                }
                 default: {
                     break;
                 }
@@ -1660,12 +1672,39 @@ public class ServiceStateTracker extends Handler {
         return cdmaRoaming && !isSameOperatorNameFromSimAndSS(s);
     }
 
+    private int getRegStateFromHalRegState(int regState) {
+        switch (regState) {
+            case RegState.NOT_REG_MT_NOT_SEARCHING_OP:
+                return ServiceState.RIL_REG_STATE_NOT_REG;
+            case RegState.REG_HOME:
+                return ServiceState.RIL_REG_STATE_HOME;
+            case RegState.NOT_REG_MT_SEARCHING_OP:
+                return ServiceState.RIL_REG_STATE_SEARCHING;
+            case RegState.REG_DENIED:
+                return ServiceState.RIL_REG_STATE_DENIED;
+            case RegState.UNKNOWN:
+                return ServiceState.RIL_REG_STATE_UNKNOWN;
+            case RegState.REG_ROAMING:
+                return ServiceState.RIL_REG_STATE_ROAMING;
+            case RegState.NOT_REG_MT_NOT_SEARCHING_OP_EM:
+                return ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED;
+            case RegState.NOT_REG_MT_SEARCHING_OP_EM:
+                return ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED;
+            case RegState.REG_DENIED_EM:
+                return ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED;
+            case RegState.UNKNOWN_EM:
+                return ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED;
+            default:
+                return ServiceState.REGISTRATION_STATE_NOT_REGISTERED_AND_NOT_SEARCHING;
+        }
+    }
+
     void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
         switch (what) {
             case EVENT_POLL_STATE_REGISTRATION: {
                 VoiceRegStateResult voiceRegStateResult = (VoiceRegStateResult) ar.result;
-                int registrationState = voiceRegStateResult.regState;
+                int registrationState = getRegStateFromHalRegState(voiceRegStateResult.regState);
 
                 mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
                 mNewSS.setRilVoiceRadioTechnology(voiceRegStateResult.rat);
@@ -1751,7 +1790,7 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_POLL_STATE_GPRS: {
                 DataRegStateResult dataRegStateResult = (DataRegStateResult) ar.result;
-                int regState = dataRegStateResult.regState;
+                int regState = getRegStateFromHalRegState(dataRegStateResult.regState);
                 int dataRegState = regCodeToServiceState(regState);
                 int newDataRat = dataRegStateResult.rat;
 
@@ -3068,25 +3107,14 @@ public class ServiceStateTracker extends Handler {
         return guess;
     }
 
-    /** code is registration state 0-5 from TS 27.007 7.2 */
+    /** convert ServiceState registration code
+     * to service state */
     private int regCodeToServiceState(int code) {
         switch (code) {
-            case 0:
-            case 2: // 2 is "searching"
-            case 3: // 3 is "registration denied"
-            case 4: // 4 is "unknown" no vaild in current baseband
-            case 10:// same as 0, but indicates that emergency call is possible.
-            case 12:// same as 2, but indicates that emergency call is possible.
-            case 13:// same as 3, but indicates that emergency call is possible.
-            case 14:// same as 4, but indicates that emergency call is possible.
-                return ServiceState.STATE_OUT_OF_SERVICE;
-
-            case 1:
-            case 5: // 5 is "registered, roaming"
+            case ServiceState.RIL_REG_STATE_HOME:
+            case ServiceState.RIL_REG_STATE_ROAMING:
                 return ServiceState.STATE_IN_SERVICE;
-
             default:
-                loge("regCodeToServiceState: unexpected service state " + code);
                 return ServiceState.STATE_OUT_OF_SERVICE;
         }
     }
