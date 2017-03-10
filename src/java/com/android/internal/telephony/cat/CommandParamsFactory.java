@@ -230,7 +230,9 @@ class CommandParamsFactory extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
         case MSG_ID_LOAD_ICON_DONE:
-            sendCmdParams(setIcons(msg.obj));
+            if (mIconLoader != null) {
+                sendCmdParams(setIcons(msg.obj));
+            }
             break;
         }
     }
