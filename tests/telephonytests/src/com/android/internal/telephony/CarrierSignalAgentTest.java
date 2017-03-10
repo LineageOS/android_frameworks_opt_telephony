@@ -26,7 +26,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.ArgumentMatcher;
+import org.mockito.compat.ArgumentMatcher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -161,7 +161,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 .when(mPackageManager).queryBroadcastReceivers(
                 argThat(new ArgumentMatcher<Intent>() {
                     @Override
-                    public boolean matches(Object o) {
+                    public boolean matchesObject(Object o) {
                         return o instanceof Intent && ((Intent) o).getAction()
                                 .equals(ACTION_CARRIER_SIGNAL_PCO_VALUE); }}), anyInt());
 
