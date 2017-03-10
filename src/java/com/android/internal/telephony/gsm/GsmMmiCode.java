@@ -1625,10 +1625,10 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         sb.append("State=" + getState());
         if (mAction != null) sb.append(" action=" + mAction);
         if (mSc != null) sb.append(" sc=" + mSc);
-        if (mSia != null) sb.append(" sia=" + mSia);
-        if (mSib != null) sb.append(" sib=" + mSib);
-        if (mSic != null) sb.append(" sic=" + mSic);
-        if (mPoundString != null) sb.append(" poundString=" + mPoundString);
+        if (mSia != null) sb.append(" sia=" + Rlog.pii(LOG_TAG, mSia));
+        if (mSib != null) sb.append(" sib=" + Rlog.pii(LOG_TAG, mSib));
+        if (mSic != null) sb.append(" sic=" + Rlog.pii(LOG_TAG, mSic));
+        if (mPoundString != null) sb.append(" poundString=" + Rlog.pii(LOG_TAG, mPoundString));
         if (mDialingNumber != null) sb.append(" dialingNumber=" + mDialingNumber);
         if (mPwd != null) sb.append(" pwd=" + mPwd);
         sb.append("}");
