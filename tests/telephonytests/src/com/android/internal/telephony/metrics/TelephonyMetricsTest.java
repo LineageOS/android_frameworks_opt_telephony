@@ -131,7 +131,6 @@ public class TelephonyMetricsTest extends TelephonyTest {
         return (String) method.invoke(null, log);
     }
 
-    @FlakyTest
     @Test
     @SmallTest
     public void testEventDropped() throws Exception {
