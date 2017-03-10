@@ -31,6 +31,9 @@ import android.util.Log;
 
 import com.android.internal.telephony.VisualVoicemailSmsParser.WrappedMessageData;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -169,6 +172,7 @@ public class VisualVoicemailSmsFilter {
     @Nullable
     private static String getFullMessage(byte[][] pdus, String format) {
         StringBuilder builder = new StringBuilder();
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
         for (byte pdu[] : pdus) {
             SmsMessage message = SmsMessage.createFromPdu(pdu, format);
 
@@ -177,6 +181,19 @@ public class VisualVoicemailSmsFilter {
                 return null;
             }
             String body = message.getMessageBody();
+            if (body == null && message.getUserData() != null) {
+                // Attempt to interpret the user data as UTF-8. UTF-8 string over data SMS using
+                // 8BIT data coding scheme is our recommended way to send VVM SMS and is used in CTS
+                // Tests. The OMTP visual voicemail specification does not specify the SMS type and
+                // encoding.
+                ByteBuffer byteBuffer = ByteBuffer.wrap(message.getUserData());
+                try {
+                    body = decoder.decode(byteBuffer).toString();
+                } catch (CharacterCodingException e) {
+                    // User data is not decode-able as UTF-8. Ignoring.
+                    return null;
+                }
+            }
             if (body != null) {
                 builder.append(body);
             }
