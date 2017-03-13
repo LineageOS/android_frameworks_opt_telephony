@@ -31,7 +31,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import android.net.Uri;
-import android.platform.test.annotations.Postsubmit;
 import android.support.test.filters.FlakyTest;
 
 import java.util.ArrayList;
@@ -71,7 +70,6 @@ public class ImsExternalCallTrackerTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     public void testAddExternalCall() {
         List<ImsExternalCallState> dep = new ArrayList<>();
@@ -95,7 +93,6 @@ public class ImsExternalCallTrackerTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     public void testRemoveExternalCall() {
         testAddExternalCall();

@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import android.net.Uri;
-import android.platform.test.annotations.Postsubmit;
 import android.support.test.filters.FlakyTest;
 import android.telephony.PhoneNumberUtils;
 import android.test.AndroidTestCase;
@@ -415,7 +414,6 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
 
     // To run this test, the device has to be registered with network
     @FlakyTest
-    @Postsubmit
     public void testCheckAndProcessPlusCode() {
         assertEquals("0118475797000",
                 PhoneNumberUtils.cdmaCheckAndProcessPlusCode("+8475797000"));
@@ -586,6 +584,7 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
                 PhoneNumberUtils.formatNumber("011861088880000", "", "GB"));
     }
 
+    @FlakyTest
     @SmallTest
     public void testIsEmergencyNumber() {
         // There are two parallel sets of tests here: one for the
