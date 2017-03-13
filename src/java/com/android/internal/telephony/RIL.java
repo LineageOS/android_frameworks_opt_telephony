@@ -438,6 +438,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         // todo: rild should be back up since message was sent with a delay. this is
                         // a hack.
                         getRadioProxy(null);
+                        getOemHookProxy(null);
                     }
                     break;
             }
@@ -675,7 +676,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private IRadio getRadioProxy(Message result) {
         if (!mIsMobileNetworkSupported) {
-            if (RILJ_LOGV) riljLog("Not calling getService(): wifi-only");
+            if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
             return null;
         }
 
@@ -711,6 +712,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private IOemHook getOemHookProxy(Message result) {
+        if (!mIsMobileNetworkSupported) {
+            if (RILJ_LOGV) riljLog("getOemHookProxy: Not calling getService(): wifi-only");
+            return null;
+        }
+
         if (mOemHookProxy != null) {
             return mOemHookProxy;
         }
@@ -831,10 +837,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private void handleRadioProxyExceptionForRR(RILRequest rr, String caller, Exception e) {
         riljLoge(caller, e);
-        rr.onError(RADIO_NOT_AVAILABLE, null);
-        decrementWakeLock(rr);
-        rr.release();
-
         resetProxyAndRequestList();
     }
 
