@@ -29,6 +29,7 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony;
+import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -119,6 +120,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         assertEquals(0, mFakeBlockedNumberContentProvider.mNumEmergencyContactNotifications);
     }
 
+    @FlakyTest
     @Test @MediumTest
     public void testSendSmsToEmergencyNumber_notifiesBlockedNumberProvider() throws Exception {
         setupMockPackagePermissionChecks();

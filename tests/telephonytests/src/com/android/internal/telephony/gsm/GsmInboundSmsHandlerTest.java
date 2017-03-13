@@ -29,7 +29,6 @@ import android.os.HandlerThread;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.platform.test.annotations.Postsubmit;
 import android.support.test.filters.FlakyTest;
 import android.provider.Telephony;
 import android.test.mock.MockContentResolver;
@@ -357,7 +356,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     @MediumTest
     public void testMultiPartSms() {
@@ -627,7 +625,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {

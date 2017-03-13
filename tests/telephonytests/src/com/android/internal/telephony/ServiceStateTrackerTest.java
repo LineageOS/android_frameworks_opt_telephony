@@ -46,7 +46,6 @@ import android.os.Parcel;
 import android.os.Process;
 import android.os.UserHandle;
 import android.os.WorkSource;
-import android.platform.test.annotations.Postsubmit;
 import android.support.test.filters.FlakyTest;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
@@ -327,7 +326,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Postsubmit
     @Test
     @MediumTest
     public void testSignalStrength() {
