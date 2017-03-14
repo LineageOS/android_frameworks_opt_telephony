@@ -564,13 +564,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
-    public void sendScreenStateResponse(RadioResponseInfo responseInfo) {
-        responseVoid(responseInfo);
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     */
     public void setSuppServiceNotificationsResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
