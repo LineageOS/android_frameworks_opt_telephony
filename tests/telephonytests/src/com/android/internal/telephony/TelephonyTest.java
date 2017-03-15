@@ -476,5 +476,7 @@ public abstract class TelephonyTest {
     protected void setupMockPackagePermissionChecks() throws Exception {
         doReturn(new String[]{TAG}).when(mPackageManager).getPackagesForUid(anyInt());
         doReturn(mPackageInfo).when(mPackageManager).getPackageInfo(eq(TAG), anyInt());
+        doReturn(mPackageInfo).when(mPackageManager).getPackageInfoAsUser(
+                eq(TAG), anyInt(), anyInt());
     }
 }
