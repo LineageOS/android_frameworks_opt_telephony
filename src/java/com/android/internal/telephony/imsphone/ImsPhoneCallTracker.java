@@ -1472,6 +1472,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case ImsReasonInfo.CODE_FDN_BLOCKED:
                 return DisconnectCause.FDN_BLOCKED;
 
+            case ImsReasonInfo.CODE_IMEI_NOT_ACCEPTED:
+                return DisconnectCause.IMEI_NOT_ACCEPTED;
+
             case ImsReasonInfo.CODE_ANSWERED_ELSEWHERE:
                 return DisconnectCause.ANSWERED_ELSEWHERE;
 
