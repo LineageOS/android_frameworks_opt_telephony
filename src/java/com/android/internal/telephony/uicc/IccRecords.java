@@ -128,6 +128,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int EVENT_SPN = 2; // Service Provider Name
 
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
+    public static final int EVENT_REFRESH = 31; // ICC refresh occurred
     protected static final int EVENT_APP_READY = 1;
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
 
@@ -198,6 +199,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mParentApp = app;
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(
                 Context.TELEPHONY_SERVICE);
+        mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
 
         mCarrierTestOverride = new CarrierTestOverride();
 
@@ -229,10 +231,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
             mLock.notifyAll();
         }
 
+        mCi.unregisterForIccRefresh(this);
         mParentApp = null;
         mFh = null;
         mCi = null;
         mContext = null;
+        if (mAdnCache != null) {
+            mAdnCache.reset();
+        }
     }
 
     public abstract void onReady();
@@ -512,21 +518,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public abstract void onRefresh(boolean fileChanged, int[] fileList);
 
-    /**
-     * Called by subclasses (SimRecords and RuimRecords) whenever
-     * IccRefreshResponse.REFRESH_RESULT_INIT event received
-     */
-    protected void onIccRefreshInit() {
-        mAdnCache.reset();
-        mMncLength = UNINITIALIZED;
-        UiccCardApplication parentApp = mParentApp;
-        if ((parentApp != null) &&
-                (parentApp.getState() == AppState.APPSTATE_READY)) {
-            // This will cause files to be reread
-            sendMessage(obtainMessage(EVENT_APP_READY));
-        }
-    }
-
     public boolean getRecordsLoaded() {
         if (mRecordsToLoad == 0 && mRecordsRequested == true) {
             return true;
@@ -558,6 +549,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 } finally {
                     // Count up record load responses even if they are fails
                     onRecordLoaded();
+                }
+                break;
+
+            case EVENT_REFRESH:
+                ar = (AsyncResult)msg.obj;
+                if (DBG) log("Card REFRESH occurred: ");
+                if (ar.exception == null) {
+                    handleRefresh((IccRefreshResponse)ar.result);
+                } else {
+                    loge("Icc refresh Exception: " + ar.exception);
                 }
                 break;
 
@@ -627,6 +628,32 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
         // no match found. return null
         return null;
+    }
+
+    protected abstract void handleFileUpdate(int efid);
+
+    protected void handleRefresh(IccRefreshResponse refreshResponse){
+        if (refreshResponse == null) {
+            if (DBG) log("handleRefresh received without input");
+            return;
+        }
+
+        if (refreshResponse.aid != null &&
+                !refreshResponse.aid.equals(mParentApp.getAid())) {
+            // This is for different app. Ignore.
+            return;
+        }
+
+        switch (refreshResponse.refreshResult) {
+            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
+                if (DBG) log("handleRefresh with SIM_FILE_UPDATED");
+                handleFileUpdate(refreshResponse.efId);
+                break;
+            default:
+                // unknown refresh operation
+                if (DBG) log("handleRefresh with unknown operation");
+                break;
+        }
     }
 
     protected abstract void onRecordLoaded();
