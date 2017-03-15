@@ -120,14 +120,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
                     break;
 
                 case EVENT_ISIM_REFRESH:
-                    ar = (AsyncResult)msg.obj;
-                    loge("ISim REFRESH(EVENT_ISIM_REFRESH) with exception: " + ar.exception);
-                    if (ar.exception == null) {
-                        Intent intent = new Intent(INTENT_ISIM_REFRESH);
-                        loge("send ISim REFRESH: " + INTENT_ISIM_REFRESH);
-                        mContext.sendBroadcast(intent);
-                        handleIsimRefresh((IccRefreshResponse)ar.result);
-                    }
+                    broadcastRefresh();
                     break;
 
                 case EVENT_ISIM_AUTHENTICATE_DONE:
@@ -305,7 +298,8 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
                 new AsyncResult(null, null, null));
     }
 
-    private void handleFileUpdate(int efid) {
+    @Override
+    protected void handleFileUpdate(int efid) {
         switch (efid) {
             case EF_IMPI:
                 mFh.loadEFTransparent(EF_IMPI, obtainMessage(
@@ -342,42 +336,10 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         }
     }
 
-    private void handleIsimRefresh(IccRefreshResponse refreshResponse) {
-        if (refreshResponse == null) {
-            if (DBG) log("handleIsimRefresh received without input");
-            return;
-        }
-
-        if (!TextUtils.isEmpty(refreshResponse.aid)
-                && !refreshResponse.aid.equals(mParentApp.getAid())) {
-            // This is for different app. Ignore.
-            if (DBG) log("handleIsimRefresh received different app");
-            return;
-        }
-
-        switch (refreshResponse.refreshResult) {
-            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
-                if (DBG) log("handleIsimRefresh with REFRESH_RESULT_FILE_UPDATE");
-                handleFileUpdate(refreshResponse.efId);
-                break;
-
-            case IccRefreshResponse.REFRESH_RESULT_INIT:
-                if (DBG) log("handleIsimRefresh with REFRESH_RESULT_INIT");
-                // need to reload all files (that we care about)
-                // onIccRefreshInit();
-                fetchIsimRecords();
-                break;
-
-            case IccRefreshResponse.REFRESH_RESULT_RESET:
-                // Refresh reset is handled by the UiccCard object.
-                if (DBG) log("handleIsimRefresh with REFRESH_RESULT_RESET");
-                break;
-
-            default:
-                // unknown refresh operation
-                if (DBG) log("handleIsimRefresh with unknown operation");
-                break;
-        }
+    private void broadcastRefresh() {
+        Intent intent = new Intent(INTENT_ISIM_REFRESH);
+        log("send ISim REFRESH: " + INTENT_ISIM_REFRESH);
+        mContext.sendBroadcast(intent);
     }
 
     /**
