@@ -2851,6 +2851,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return;
         }
 
+        if (mIgnoreDataEnabledChangedForVideoCalls) {
+            log("Ignore data " + ((enabled) ? "enabled" : "disabled") + " due to carrier policy.");
+            return;
+        }
+
         if (!enabled) {
             int reasonCode;
             if (reason == DataEnabledSettings.REASON_POLICY_DATA_ENABLED) {
