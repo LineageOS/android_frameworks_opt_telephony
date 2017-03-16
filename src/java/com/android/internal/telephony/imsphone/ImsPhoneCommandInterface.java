@@ -29,6 +29,7 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
+import java.security.PublicKey;
 import java.util.List;
 
 /**
@@ -612,6 +613,11 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
 
     @Override
     public void getModemActivityInfo(Message result) {
+    }
+
+    @Override
+    public void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+                                                Message result) {
     }
 
     @Override
