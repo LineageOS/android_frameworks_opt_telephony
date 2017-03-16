@@ -658,6 +658,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Check if sending CLIR activation("*31#") and deactivation("#31#") code only without dialing
+     * number is prevented.
+     *
+     * @return {@code true} when carrier config
+     * "KEY_PREVENT_CLIR_ACTIVATION_AND_DEACTIVATION_CODE_BOOL" is set to {@code true}
+     */
+    public boolean isClirActivationAndDeactivationPrevented() {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configManager.getConfigForSubId(getSubId());
+        if (b == null) {
+            b = CarrierConfigManager.getDefaultConfig();
+        }
+        return b.getBoolean(
+                CarrierConfigManager.KEY_PREVENT_CLIR_ACTIVATION_AND_DEACTIVATION_CODE_BOOL);
+    }
+
+    /**
      * When overridden the derived class needs to call
      * super.handleMessage(msg) so this method has a
      * a chance to process the message.
