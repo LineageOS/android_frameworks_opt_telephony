@@ -103,6 +103,8 @@ public class ImsPhoneConnection extends Connection implements
 
     private ImsVideoCallProviderWrapper mImsVideoCallProviderWrapper;
 
+    private int mPreciseDisconnectCause = 0;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -694,7 +696,11 @@ public class ImsPhoneConnection extends Connection implements
 
     @Override
     public int getPreciseDisconnectCause() {
-        return 0;
+        return mPreciseDisconnectCause;
+    }
+
+    public void setPreciseDisconnectCause(int cause) {
+        mPreciseDisconnectCause = cause;
     }
 
     /**
