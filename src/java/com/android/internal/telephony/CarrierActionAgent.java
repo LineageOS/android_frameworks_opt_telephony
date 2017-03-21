@@ -15,6 +15,10 @@
  */
 package com.android.internal.telephony;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -25,7 +29,6 @@ import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.util.IndentingPrintWriter;
-
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
@@ -49,6 +52,7 @@ public class CarrierActionAgent extends Handler {
     /** A list of carrier actions */
     public static final int CARRIER_ACTION_SET_METERED_APNS_ENABLED      = 0;
     public static final int CARRIER_ACTION_SET_RADIO_ENABLED             = 1;
+    public static final int CARRIER_ACTION_RESET                         = 2;
 
     /** Member variables */
     private final Phone mPhone;
@@ -62,9 +66,24 @@ public class CarrierActionAgent extends Handler {
     private Boolean mCarrierActionOnMeteredApnEnabled = true;
     private Boolean mCarrierActionOnRadioEnabled = true;
 
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)){
+                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(
+                        intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE))) {
+                    sendEmptyMessage(CARRIER_ACTION_RESET);
+                }
+            }
+        }
+    };
+
     /** Constructor */
     public CarrierActionAgent(Phone phone) {
         mPhone = phone;
+        mPhone.getContext().registerReceiver(mReceiver,
+                new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED));
         if (DBG) log("Creating CarrierActionAgent");
     }
 
@@ -85,6 +104,11 @@ public class CarrierActionAgent extends Handler {
                 mRadioEnabledLog.log("SET_RADIO_ENABLED: " + mCarrierActionOnRadioEnabled);
                 mRadioEnableRegistrants.notifyRegistrants(
                         new AsyncResult(null, mCarrierActionOnRadioEnabled, null));
+                break;
+            case CARRIER_ACTION_RESET:
+                log("CARRIER_ACTION_RESET");
+                carrierActionSetMeteredApnsEnabled(true);
+                carrierActionSetRadioEnabled(true);
                 break;
             default:
                 loge("Unknown carrier action: " + msg.what);
