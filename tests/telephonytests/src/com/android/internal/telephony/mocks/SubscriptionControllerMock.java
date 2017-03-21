@@ -44,7 +44,7 @@ import java.util.List;
 public class SubscriptionControllerMock extends SubscriptionController {
     final AtomicInteger mDefaultDataSubId = new AtomicInteger(INVALID_SUBSCRIPTION_ID);
     final ITelephonyRegistry.Stub mTelephonyRegistry;
-    final int[][] mSlotIdxToSubId;
+    final int[][] mSlotIndexToSubId;
 
     public static SubscriptionController init(Phone phone) {
         throw new RuntimeException("not implemented");
@@ -59,10 +59,10 @@ public class SubscriptionControllerMock extends SubscriptionController {
     public SubscriptionControllerMock(Context c, ITelephonyRegistry.Stub tr, int phoneCount) {
         super(c);
         mTelephonyRegistry = tr;
-        mSlotIdxToSubId = new int[phoneCount][];
+        mSlotIndexToSubId = new int[phoneCount][];
         for (int i = 0; i < phoneCount; i++) {
-            mSlotIdxToSubId[i] = new int[1];
-            mSlotIdxToSubId[i][0] = INVALID_SUBSCRIPTION_ID;
+            mSlotIndexToSubId[i] = new int[1];
+            mSlotIndexToSubId[i][0] = INVALID_SUBSCRIPTION_ID;
         }
     }
 
@@ -117,7 +117,7 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIdx, String cp){
+    public SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIndex, String cp){
         throw new RuntimeException("not implemented");
     }
     @Override
@@ -141,11 +141,11 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public int addSubInfoRecord(String iccId, int slotId) {
+    public int addSubInfoRecord(String iccId, int slotIndex) {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public boolean setPlmnSpn(int slotId, boolean showPlmn, String plmn, boolean showSpn,
+    public boolean setPlmnSpn(int slotIndex, boolean showPlmn, String plmn, boolean showSpn,
             String spn) {
         throw new RuntimeException("not implemented");
     }
@@ -174,28 +174,28 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public int getSlotId(int subId) {
+    public int getSlotIndex(int subId) {
         throw new RuntimeException("not implemented");
     }
 
-    private boolean isInvalidSlotId(int slotIdx) {
-        if (slotIdx < 0 || slotIdx >= mSlotIdxToSubId.length) return true;
+    private boolean isInvalidslotIndex(int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= mSlotIndexToSubId.length) return true;
         return false;
     }
 
     @Override
-    public int[] getSubId(int slotIdx) {
-        if (isInvalidSlotId(slotIdx)) {
+    public int[] getSubId(int slotIndex) {
+        if (isInvalidslotIndex(slotIndex)) {
             return null;
         }
-        return mSlotIdxToSubId[slotIdx];
+        return mSlotIndexToSubId[slotIndex];
     }
-    public void setSlotSubId(int slotIdx, int subId) {
-        if (isInvalidSlotId(slotIdx)) {
-            throw new RuntimeException("invalid slot specified" + slotIdx);
+    public void setSlotSubId(int slotIndex, int subId) {
+        if (isInvalidslotIndex(slotIndex)) {
+            throw new RuntimeException("invalid slot specified" + slotIndex);
         }
-        if (mSlotIdxToSubId[slotIdx][0] != subId) {
-            mSlotIdxToSubId[slotIdx][0] = subId;
+        if (mSlotIndexToSubId[slotIndex][0] != subId) {
+            mSlotIndexToSubId[slotIndex][0] = subId;
             try {
                 mTelephonyRegistry.notifySubscriptionInfoChanged();
             } catch (RemoteException ex) {}
@@ -209,8 +209,8 @@ public class SubscriptionControllerMock extends SubscriptionController {
 
         if (subId <= INVALID_SUBSCRIPTION_ID) return INVALID_PHONE_INDEX;
 
-        for (int i = 0; i < mSlotIdxToSubId.length; i++) {
-            if (mSlotIdxToSubId[i][0] == subId) return i;
+        for (int i = 0; i < mSlotIndexToSubId.length; i++) {
+            if (mSlotIndexToSubId[i][0] == subId) return i;
         }
         return INVALID_PHONE_INDEX;
     }
@@ -243,8 +243,8 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public List<SubscriptionInfo> getSubInfoUsingSlotIdWithCheck(int slotId, boolean needCheck,
-            String callingPackage) {
+    public List<SubscriptionInfo> getSubInfoUsingSlotIndexWithCheck(int slotId, boolean needCheck,
+                                                                    String callingPackage) {
         throw new RuntimeException("not implemented");
     }
     @Override
@@ -260,7 +260,7 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public int getSimStateForSlotIdx(int slotIdx) {
+    public int getSimStateForSlotIndex(int slotIndex) {
         throw new RuntimeException("not implemented");
     }
     @Override

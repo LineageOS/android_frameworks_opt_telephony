@@ -164,9 +164,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
          */
         int getSubId(int slotId);
         /**
-         * Mock-able interface for {@link SubscriptionManager#getSlotId(int)} used for testing.
+         * Mock-able interface for {@link SubscriptionManager#getSlotIndex(int)} used for testing.
          */
-        int getSlotId(int subId);
+        int getSlotIndex(int subId);
     }
 
     private SubscriptionManagerProxy mSubscriptionManagerProxy = new SubscriptionManagerProxy() {
@@ -181,8 +181,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
 
         @Override
-        public int getSlotId(int subId) {
-            return SubscriptionManager.getSlotId(subId);
+        public int getSlotIndex(int subId) {
+            return SubscriptionManager.getSlotIndex(subId);
         }
     };
 
@@ -610,7 +610,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     private void updateBoundCarrierServices(int subId) {
-        int slotId = mSubscriptionManagerProxy.getSlotId(subId);
+        int slotId = mSubscriptionManagerProxy.getSlotIndex(subId);
         String newPackageName = mCarrierConfigManager.getConfigForSubId(subId).getString(
                 CarrierConfigManager.KEY_CONFIG_IMS_PACKAGE_OVERRIDE_STRING, null);
         if (slotId != SubscriptionManager.INVALID_SIM_SLOT_INDEX && slotId < mNumSlots) {
