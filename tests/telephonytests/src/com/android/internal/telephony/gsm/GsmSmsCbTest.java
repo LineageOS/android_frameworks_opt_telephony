@@ -38,18 +38,18 @@ public class GsmSmsCbTest extends AndroidTestCase {
 
     private static final SmsCbLocation sTestLocation = new SmsCbLocation("94040", 1234, 5678);
 
-    private static SmsCbMessage createFromPdu(byte[] pdu) {
+    private SmsCbMessage createFromPdu(byte[] pdu) {
         try {
             SmsCbHeader header = new SmsCbHeader(pdu);
             byte[][] pdus = new byte[1][];
             pdus[0] = pdu;
-            return GsmSmsCbMessage.createSmsCbMessage(header, sTestLocation, pdus);
+            return GsmSmsCbMessage.createSmsCbMessage(getContext(), header, sTestLocation, pdus);
         } catch (IllegalArgumentException e) {
             return null;
         }
     }
 
-    private static void doTestGeographicalScopeValue(byte[] pdu, byte b, int expectedGs) {
+    private void doTestGeographicalScopeValue(byte[] pdu, byte b, int expectedGs) {
         pdu[0] = b;
         SmsCbMessage msg = createFromPdu(pdu);
 
