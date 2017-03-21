@@ -584,10 +584,12 @@ public class ImsPhoneConnection extends Connection implements
 
     void
     releaseWakeLock() {
-        synchronized(mPartialWakeLock) {
-            if (mPartialWakeLock.isHeld()) {
-                Rlog.d(LOG_TAG, "releaseWakeLock");
-                mPartialWakeLock.release();
+        if (mPartialWakeLock != null) {
+            synchronized (mPartialWakeLock) {
+                if (mPartialWakeLock.isHeld()) {
+                    Rlog.d(LOG_TAG, "releaseWakeLock");
+                    mPartialWakeLock.release();
+                }
             }
         }
     }
