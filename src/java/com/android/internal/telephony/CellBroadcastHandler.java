@@ -94,22 +94,23 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             receiverPermission = Manifest.permission.RECEIVE_SMS;
             appOp = AppOpsManager.OP_RECEIVE_SMS;
         }
-        // explicitly send it to the default cell broadcast receiver only.
-        intent.setPackage(mContext.getResources().getString(
-                com.android.internal.R.string.config_defaultCellBroadcastReceiverPkg));
+
         intent.putExtra("message", message);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-        mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission, appOp,
-                mReceiver, getHandler(), Activity.RESULT_OK, null, null);
 
         if (Build.IS_DEBUGGABLE) {
-            String additionalPackage = Settings.Secure.getString(mContext.getContentResolver(),
-                    CMAS_ADDITIONAL_BROADCAST_PKG);
+            final String additionalPackage = Settings.Secure.getString(
+                    mContext.getContentResolver(), CMAS_ADDITIONAL_BROADCAST_PKG);
             if (additionalPackage != null) {
                 intent.setPackage(additionalPackage);
                 mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission,
-                        appOp, mReceiver, getHandler(), Activity.RESULT_OK, null, null);
+                        appOp, null, getHandler(), Activity.RESULT_OK, null, null);
             }
         }
+
+        intent.setPackage(mContext.getResources().getString(
+                com.android.internal.R.string.config_defaultCellBroadcastReceiverPkg));
+        mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission, appOp,
+                mReceiver, getHandler(), Activity.RESULT_OK, null, null);
     }
 }
