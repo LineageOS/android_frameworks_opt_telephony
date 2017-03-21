@@ -787,7 +787,7 @@ public class ImsResolverTest extends ImsTestBase {
             mCarrierConfigs[i] = new PersistableBundle();
             when(mMockCarrierConfigManager.getConfigForSubId(eq(i))).thenReturn(
                     mCarrierConfigs[i]);
-            when(mTestSubscriptionManagerProxy.getSlotId(eq(i))).thenReturn(i);
+            when(mTestSubscriptionManagerProxy.getSlotIndex(eq(i))).thenReturn(i);
             when(mTestSubscriptionManagerProxy.getSubId(eq(i))).thenReturn(i);
         }
 
