@@ -4104,10 +4104,6 @@ public class DcTracker extends Handler {
                     mIccRecords.set(newIccRecords);
                     newIccRecords.registerForRecordsLoaded(
                             this, DctConstants.EVENT_RECORDS_LOADED, null);
-                    // reset carrier actions on sim loaded
-                    final ServiceStateTracker sst = mPhone.getServiceStateTracker();
-                    sst.setRadioPowerFromCarrier(true);
-                    mDataEnabledSettings.setCarrierDataEnabled(true);
                 }
             } else {
                 onSimNotReady();
