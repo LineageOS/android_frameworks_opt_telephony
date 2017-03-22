@@ -64,6 +64,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGEN
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_HARDWARE_CONFIG_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_SS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RADIO_CAPABILITY;
@@ -726,6 +727,12 @@ public class RadioIndication extends IRadioIndication.Stub {
                 ssData.ssInfo[i] = ssInfo.ssInfo.get(i);
                 mRil.riljLog("[SS Data] SS Info " + i + " : " +  ssData.ssInfo[i]);
             }
+        }
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_ON_SS, ssData);
+
+        if (mRil.mSsRegistrant != null) {
+            mRil.mSsRegistrant.notifyRegistrant(new AsyncResult(null, ssData, null));
         }
     }
 
