@@ -500,10 +500,17 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    // Validate data is !null and the MSP (Multiple Subscriber Profile)
-    // byte is between 1 and 4. See ETSI TS 131 102 v11.3.0 section 4.2.64.
+    // Validate data is !null.
     private boolean validEfCfis(byte[] data) {
-        return ((data != null) && (data[0] >= 1) && (data[0] <= 4));
+        if (data != null) {
+            if (data[0] < 1 || data[0] > 4) {
+                // The MSP (Multiple Subscriber Profile) byte should be between
+                // 1 and 4 according to ETSI TS 131 102 v11.3.0 section 4.2.64.
+                logw("MSP byte: " + data[0] + " is not between 1 and 4", null);
+            }
+            return true;
+        }
+        return false;
     }
 
     public int getVoiceMessageCount() {
