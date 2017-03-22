@@ -97,7 +97,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testSmsStatus() {
-        mSimulatedCommands.notifySmsStatus("0123056789ABCDEF".getBytes());
+        mSimulatedCommands.notifySmsStatus(new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF});
         TelephonyTestUtils.waitForMs(50);
         verify(mSimulatedCommandsVerifier).acknowledgeLastIncomingGsmSms(true,
                 Telephony.Sms.Intents.RESULT_SMS_HANDLED, null);

@@ -24,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -405,7 +406,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mRuimRecords).registerForRecordsLoaded(eq(sst), integerArgumentCaptor.capture(),
-                any(Object.class));
+                nullable(Object.class));
 
         // response for mRuimRecords.registerForRecordsLoaded()
         Message msg = Message.obtain();
@@ -652,6 +653,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // verify that no new message posted to handler
         verify(mTestHandler, times(1)).sendMessageAtTime(any(Message.class), anyLong());
     }
+
     @Test
     @MediumTest
     public void testRegAndUnregForDataConnAttach() throws Exception {
@@ -994,7 +996,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testDisableLocationUpdates() throws Exception {
         sst.disableLocationUpdates();
         verify(mSimulatedCommandsVerifier, times(1)).setLocationUpdates(eq(false),
-                any(Message.class));
+                nullable(Message.class));
     }
 
     @Test
