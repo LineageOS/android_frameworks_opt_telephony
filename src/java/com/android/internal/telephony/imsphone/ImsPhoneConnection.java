@@ -113,6 +113,9 @@ public class ImsPhoneConnection extends Connection implements
 
     private int mPreciseDisconnectCause = 0;
 
+    private ImsRttTextHandler mRttTextHandler;
+    private android.telecom.Connection.RttTextStream mRttTextStream;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -903,6 +906,51 @@ public class ImsPhoneConnection extends Connection implements
         }
 
         return changed;
+    }
+
+    public void sendRttModifyRequest(android.telecom.Connection.RttTextStream textStream) {
+        getImsCall().sendRttModifyRequest();
+        setCurrentRttTextStream(textStream);
+    }
+
+    /**
+     * Sends the user's response to a remotely-issued RTT upgrade request
+     *
+     * @param textStream A valid {@link android.telecom.Connection.RttTextStream} if the user
+     *                   accepts, {@code null} if not.
+     */
+    public void sendRttModifyResponse(android.telecom.Connection.RttTextStream textStream) {
+        boolean accept = textStream != null;
+        ImsCall imsCall = getImsCall();
+
+        imsCall.sendRttModifyResponse(accept);
+        if (accept) {
+            setCurrentRttTextStream(textStream);
+            startRttTextProcessing();
+        } else {
+            Rlog.e(LOG_TAG, "sendRttModifyResponse: foreground call has no connections");
+        }
+    }
+
+    public void onRttMessageReceived(String message) {
+        getOrCreateRttTextHandler().sendToInCall(message);
+    }
+
+    public void setCurrentRttTextStream(android.telecom.Connection.RttTextStream rttTextStream) {
+        mRttTextStream = rttTextStream;
+    }
+
+    public void startRttTextProcessing() {
+        getOrCreateRttTextHandler().initialize(mRttTextStream);
+    }
+
+    private ImsRttTextHandler getOrCreateRttTextHandler() {
+        if (mRttTextHandler != null) {
+            return mRttTextHandler;
+        }
+        mRttTextHandler = new ImsRttTextHandler(Looper.getMainLooper(),
+                (message) -> getImsCall().sendRttMessage(message));
+        return mRttTextHandler;
     }
 
     /**
