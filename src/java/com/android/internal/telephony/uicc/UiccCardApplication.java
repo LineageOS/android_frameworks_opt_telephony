@@ -350,15 +350,11 @@ public class UiccCardApplication {
      * Parse the error response to obtain number of attempts remaining
      */
     private int parsePinPukErrorResult(AsyncResult ar) {
-        int[] result = (int[]) ar.result;
+        Integer result =  (Integer) ar.result;
         if (result == null) {
             return -1;
         } else {
-            int length = result.length;
-            int attemptsRemaining = -1;
-            if (length > 0) {
-                attemptsRemaining = result[0];
-            }
+            int attemptsRemaining = result;
             log("parsePinPukErrorResult: attemptsRemaining=" + attemptsRemaining);
             return attemptsRemaining;
         }
@@ -384,7 +380,7 @@ public class UiccCardApplication {
                     // request has completed. ar.userObj is the response Message
                     int attemptsRemaining = -1;
                     ar = (AsyncResult)msg.obj;
-                    if ((ar.exception != null) && (ar.result != null)) {
+                    if (ar.result != null) {
                         attemptsRemaining = parsePinPukErrorResult(ar);
                     }
                     Message response = (Message)ar.userObj;

@@ -108,7 +108,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPinForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        responseInts(responseInfo, remainingAttempts);
+        responsePinOrPukStatus(responseInfo, remainingAttempts);
     }
 
     /**
@@ -116,7 +116,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPukForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        responseInts(responseInfo, remainingAttempts);
+        responsePinOrPukStatus(responseInfo, remainingAttempts);
     }
 
     /**
@@ -124,7 +124,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPin2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        responseInts(responseInfo, remainingAttempts);
+        responsePinOrPukStatus(responseInfo, remainingAttempts);
     }
 
     /**
@@ -132,7 +132,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPuk2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        responseInts(responseInfo, remainingAttempts);
+        responsePinOrPukStatus(responseInfo, remainingAttempts);
     }
 
     /**
@@ -140,7 +140,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void changeIccPinForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        responseInts(responseInfo, remainingAttempts);
+        responsePinOrPukStatus(responseInfo, remainingAttempts);
     }
 
     /**
@@ -148,7 +148,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void changeIccPin2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        responseInts(responseInfo, remainingAttempts);
+        responsePinOrPukStatus(responseInfo, remainingAttempts);
     }
 
     /**
@@ -450,7 +450,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param retry 0 is the number of retries remaining, or -1 if unknown
      */
     public void setFacilityLockForAppResponse(RadioResponseInfo responseInfo, int retry) {
-        responseInts(responseInfo, retry);
+        responsePinOrPukStatus(responseInfo, retry);
     }
 
     /**
@@ -1291,6 +1291,18 @@ public class RadioResponse extends IRadioResponse.Stub {
             for (int i = 0; i < var.size(); i++) {
                 ret[i] = var.get(i);
             }
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responsePinOrPukStatus(RadioResponseInfo responseInfo, int remainingAttempts) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+        if (rr != null) {
+            Integer ret = new Integer(remainingAttempts);
+            mRil.riljLog("responsePinOrPukStatus : remainingAttempts = " + ret);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
