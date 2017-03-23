@@ -66,7 +66,6 @@ public class ImsPhoneConnection extends Connection implements
     private Bundle mExtras = new Bundle();
 
     private boolean mDisconnected;
-    private boolean mDisconnecting = false;
 
     /*
     int mIndex;          // index in ImsPhoneCallTracker.connections[], -1 if unassigned
@@ -381,16 +380,7 @@ public class ImsPhoneConnection extends Connection implements
      */
     void
     onHangupLocal() {
-        mDisconnecting = true;
         mCause = DisconnectCause.LOCAL;
-    }
-
-    /**
-     * Return whether or not this connection is DISCONNECTING and waiting for a signal from the
-     * modem to disconnect.
-     */
-    boolean isDisconnecting() {
-        return mDisconnecting;
     }
 
     /** Called when the connection has been disconnected */
@@ -411,7 +401,6 @@ public class ImsPhoneConnection extends Connection implements
 
             mDisconnectTime = System.currentTimeMillis();
             mDuration = SystemClock.elapsedRealtime() - mConnectTimeReal;
-            mDisconnecting = false;
             mDisconnected = true;
 
             mOwner.mPhone.notifyDisconnect(this);
