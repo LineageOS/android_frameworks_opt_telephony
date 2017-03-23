@@ -145,7 +145,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testSimAbsent() {
         doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
-                .getSubInfoUsingSlotIdWithCheck(eq(0), anyBoolean(), anyString());
+                .getSubInfoUsingSlotIndexWithCheck(eq(0), anyBoolean(), anyString());
         Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_ABSENT);
@@ -224,7 +224,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     public void testSimLoaded() {
         /* mock new sim got loaded and there is no sim loaded before */
         doReturn(null).when(mSubscriptionController)
-                .getSubInfoUsingSlotIdWithCheck(eq(0), anyBoolean(), anyString());
+                .getSubInfoUsingSlotIndexWithCheck(eq(0), anyBoolean(), anyString());
         doReturn("89012604200000000000").when(mIccRecord).getIccId();
         doReturn(FAKE_PLMN).when(mTelephonyManager).getSimOperatorNumericForPhone(0);
         Intent intentInternalSimStateChanged =
@@ -291,7 +291,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     public void testSimLoadedEmptyOperatorNumeric() {
         /* mock new sim got loaded and there is no sim loaded before */
         doReturn(null).when(mSubscriptionController)
-                .getSubInfoUsingSlotIdWithCheck(eq(0), anyBoolean(), anyString());
+                .getSubInfoUsingSlotIndexWithCheck(eq(0), anyBoolean(), anyString());
         doReturn("89012604200000000000").when(mIccRecord).getIccId();
         // operator numeric is empty
         doReturn("").when(mTelephonyManager).getSimOperatorNumericForPhone(0);
@@ -332,7 +332,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         }).when(mIccFileHandler).loadEFTransparent(anyInt(), any(Message.class));
 
         doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
-                .getSubInfoUsingSlotIdWithCheck(eq(0), anyBoolean(), anyString());
+                .getSubInfoUsingSlotIndexWithCheck(eq(0), anyBoolean(), anyString());
 
         Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
