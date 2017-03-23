@@ -201,7 +201,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         for (int i = 0; i < mSubList.size(); i++) {
             assertTrue(SubscriptionManager.isValidSubscriptionId(
                     mSubList.get(i).getSubscriptionId()));
-            assertTrue(SubscriptionManager.isValidSlotId(mSubList.get(i).getSimSlotIndex()));
+            assertTrue(SubscriptionManager.isValidSlotIndex(mSubList.get(i).getSimSlotIndex()));
         }
     }
 
@@ -247,7 +247,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.clearSubInfo();
         assertFalse(mSubscriptionControllerUT.isActiveSubId(0));
         assertEquals(SubscriptionManager.SIM_NOT_INSERTED,
-                mSubscriptionControllerUT.getSlotId(0));
+                mSubscriptionControllerUT.getSlotIndex(0));
     }
 
     @Test @SmallTest

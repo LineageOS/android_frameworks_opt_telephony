@@ -258,7 +258,7 @@ public class CatService extends Handler implements AppInterface {
             mHandlerThread = null;
             removeCallbacksAndMessages(null);
             if (sInstance != null) {
-                if (SubscriptionManager.isValidSlotId(mSlotId)) {
+                if (SubscriptionManager.isValidSlotIndex(mSlotId)) {
                     sInstance[mSlotId] = null;
                 } else {
                     CatLog.d(this, "error: invaild slot id: " + mSlotId);
@@ -777,7 +777,7 @@ public class CatService extends Handler implements AppInterface {
         int slotId = PhoneConstants.DEFAULT_CARD_INDEX;
         SubscriptionController sControl = SubscriptionController.getInstance();
         if (sControl != null) {
-            slotId = sControl.getSlotId(sControl.getDefaultSubId());
+            slotId = sControl.getSlotIndex(sControl.getDefaultSubId());
         }
         return getInstance(null, null, null, slotId);
     }

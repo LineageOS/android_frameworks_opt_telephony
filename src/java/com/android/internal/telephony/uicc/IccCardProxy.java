@@ -462,7 +462,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private void broadcastIccStateChangedIntent(String value, String reason) {
         synchronized (mLock) {
-            if (mPhoneId == null || !SubscriptionManager.isValidSlotId(mPhoneId)) {
+            if (mPhoneId == null || !SubscriptionManager.isValidSlotIndex(mPhoneId)) {
                 loge("broadcastIccStateChangedIntent: mPhoneId=" + mPhoneId
                         + " is invalid; Return!!");
                 return;
@@ -513,7 +513,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private void setExternalState(State newState, boolean override) {
         synchronized (mLock) {
-            if (mPhoneId == null || !SubscriptionManager.isValidSlotId(mPhoneId)) {
+            if (mPhoneId == null || !SubscriptionManager.isValidSlotIndex(mPhoneId)) {
                 loge("setExternalState: mPhoneId=" + mPhoneId + " is invalid; Return!!");
                 return;
             }
