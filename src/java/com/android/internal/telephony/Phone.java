@@ -2302,6 +2302,21 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * send secret dialer codes to launch arbitrary activities.
+     * an Intent is started with the android_secret_code://<code> URI.
+     *
+     * @param code stripped version of secret code without *#*# prefix and #*#* suffix
+     */
+    public void sendDialerSpecialCode(String code) {
+        if (!TextUtils.isEmpty(code)) {
+            Intent intent = new Intent(TelephonyIntents.SECRET_CODE_ACTION,
+                    Uri.parse("android_secret_code://" + code));
+            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
+            mContext.sendBroadcast(intent);
+        }
+    }
+
+    /**
      * Returns the CDMA ERI icon index to display
      */
     public int getCdmaEriIconIndex() {
