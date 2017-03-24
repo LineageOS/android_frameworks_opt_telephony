@@ -2116,7 +2116,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setSimCardPower(boolean powerUp, Message result) {
+    public void setSimCardPower(int state, Message result) {
     }
 
     @VisibleForTesting

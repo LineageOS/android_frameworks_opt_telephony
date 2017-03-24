@@ -3460,11 +3460,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Set SIM card power state. Request is equivalent to inserting or removing the card.
-     * @param powerUp True if powering up the SIM, otherwise powering down
+     * Set SIM card power state.
+     * @param state State of SIM (power down, power up, pass through)
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_DOWN}
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_UP}
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_UP_PASS_THROUGH}
      **/
-    public void setSimPowerState(boolean powerUp) {
-        mCi.setSimCardPower(powerUp, null);
+    public void setSimPowerState(int state) {
+        mCi.setSimCardPower(state, null);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
