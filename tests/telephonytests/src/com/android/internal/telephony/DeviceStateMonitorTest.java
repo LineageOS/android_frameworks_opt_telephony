@@ -22,6 +22,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -87,7 +88,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         waitForMs(100);
 
         verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(6),
-                any(Message.class));
+                nullable(Message.class));
 
         // Turn tethering off
         intent = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
@@ -112,7 +113,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         waitForMs(100);
 
         verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(CHARGING_STATE),
-                eq(true), any(Message.class));
+                eq(true), nullable(Message.class));
 
         // Not charging
         intent = new Intent(BatteryManager.ACTION_DISCHARGING);

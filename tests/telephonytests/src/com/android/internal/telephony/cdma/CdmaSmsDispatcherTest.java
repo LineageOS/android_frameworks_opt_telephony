@@ -80,7 +80,7 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
     public void testSendSms() {
         doReturn(mServiceState).when(mPhone).getServiceState();
         mCdmaSmsDispatcher.sendSms(mSmsTracker);
-        verify(mSimulatedCommandsVerifier).sendCdmaSms(any(byte[].class), any(Message.class));
+        verify(mSimulatedCommandsVerifier).sendCdmaSms(nullable(byte[].class), any(Message.class));
     }
 
     @Test @SmallTest
