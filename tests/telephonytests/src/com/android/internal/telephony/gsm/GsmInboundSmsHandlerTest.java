@@ -16,6 +16,22 @@
 
 package com.android.internal.telephony.gsm;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -29,8 +45,8 @@ import android.os.HandlerThread;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.support.test.filters.FlakyTest;
 import android.provider.Telephony;
+import android.support.test.filters.FlakyTest;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 
@@ -53,10 +69,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 public class GsmInboundSmsHandlerTest extends TelephonyTest {
     @Mock
