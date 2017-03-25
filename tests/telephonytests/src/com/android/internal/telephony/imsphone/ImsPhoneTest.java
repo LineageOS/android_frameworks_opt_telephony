@@ -16,6 +16,23 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyChar;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.nullable;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.app.Activity;
 import android.app.IApplicationThread;
 import android.content.BroadcastReceiver;
@@ -36,14 +53,12 @@ import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
-import com.android.ims.ImsStreamMediaProfile;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneInternalInterface;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.TelephonyTest;
@@ -56,25 +71,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.List;
-
-import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
-import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyChar;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 public class ImsPhoneTest extends TelephonyTest {
     @Mock
@@ -399,20 +395,20 @@ public class ImsPhoneTest extends TelephonyTest {
         // case 1
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         mImsPhoneUT.sendDtmf('-');
-        verify(mImsCT, times(0)).sendDtmf(anyChar(), any(Message.class));
+        verify(mImsCT, times(0)).sendDtmf(anyChar(), nullable(Message.class));
 
         // case 2
         mImsPhoneUT.sendDtmf('0');
-        verify(mImsCT, times(0)).sendDtmf(eq('0'), any(Message.class));
+        verify(mImsCT, times(0)).sendDtmf(eq('0'), nullable(Message.class));
 
         // case 3
         doReturn(PhoneConstants.State.OFFHOOK).when(mImsCT).getState();
         mImsPhoneUT.sendDtmf('-');
-        verify(mImsCT, times(0)).sendDtmf(eq('0'), any(Message.class));
+        verify(mImsCT, times(0)).sendDtmf(eq('0'), nullable(Message.class));
 
         // case 4
         mImsPhoneUT.sendDtmf('0');
-        verify(mImsCT, times(1)).sendDtmf(anyChar(), any(Message.class));
+        verify(mImsCT, times(1)).sendDtmf(anyChar(), nullable(Message.class));
 
         mImsPhoneUT.startDtmf('-');
         verify(mImsCT, times(0)).startDtmf(anyChar());
@@ -608,8 +604,9 @@ public class ImsPhoneTest extends TelephonyTest {
 
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mContext).sendOrderedBroadcast(
-                intent.capture(), anyString(), any(BroadcastReceiver.class), any(),
-                eq(Activity.RESULT_OK), anyString(), any());
+                intent.capture(), nullable(String.class), any(BroadcastReceiver.class),
+                nullable(Handler.class), eq(Activity.RESULT_OK), nullable(String.class),
+                nullable(Bundle.class));
         assertEquals(ImsManager.ACTION_IMS_REGISTRATION_ERROR, intent.getValue().getAction());
         assertEquals(title, intent.getValue().getStringExtra(Phone.EXTRA_KEY_ALERT_TITLE));
         assertEquals(messageAlert, intent.getValue().getStringExtra(Phone.EXTRA_KEY_ALERT_MESSAGE));

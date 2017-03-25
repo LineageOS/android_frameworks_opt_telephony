@@ -502,7 +502,9 @@ public abstract class Connection {
     }
 
     protected final void clearPostDialListeners() {
-        mPostDialListeners.clear();
+        if (mPostDialListeners != null) {
+            mPostDialListeners.clear();
+        }
     }
 
     protected final void notifyPostDialListeners() {

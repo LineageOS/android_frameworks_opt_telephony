@@ -19,6 +19,7 @@ package com.android.internal.telephony.gsm;
 import static android.provider.Settings.Secure.CMAS_ADDITIONAL_BROADCAST_PKG;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -120,18 +121,17 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
         verify(mContextFixture.getTestDouble(), times(2)).sendOrderedBroadcastAsUser(
                 intentArgumentCaptor.capture(), eq(UserHandle.ALL),
                 eq(Manifest.permission.RECEIVE_SMS), eq(AppOpsManager.OP_RECEIVE_SMS),
-                any(BroadcastReceiver.class), any(Handler.class), eq(Activity.RESULT_OK), eq(null),
-                eq(null));
+                nullable(BroadcastReceiver.class), any(Handler.class), eq(Activity.RESULT_OK),
+                eq(null), eq(null));
 
         List<Intent> intentList = intentArgumentCaptor.getAllValues();
 
         assertEquals(Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION,
                 intentList.get(0).getAction());
-        // TODO: uncomment the following once ArgumentCaptor's bug is fixed.
-        // assertEquals("fake.cellbroadcastreceiver", intentList.get(0).getPackage());
+        assertEquals("another.fake.pkg", intentList.get(0).getPackage());
 
         assertEquals(Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION,
                 intentList.get(1).getAction());
-        assertEquals("another.fake.pkg", intentList.get(0).getPackage());
+        assertEquals("fake.cellbroadcastreceiver", intentList.get(1).getPackage());
     }
 }

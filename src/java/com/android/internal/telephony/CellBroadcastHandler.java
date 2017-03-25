@@ -99,12 +99,16 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
 
         if (Build.IS_DEBUGGABLE) {
+            // Send additional broadcast intent to the specified package. This is only for sl4a
+            // automation tests.
             final String additionalPackage = Settings.Secure.getString(
                     mContext.getContentResolver(), CMAS_ADDITIONAL_BROADCAST_PKG);
             if (additionalPackage != null) {
-                intent.setPackage(additionalPackage);
-                mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission,
-                        appOp, null, getHandler(), Activity.RESULT_OK, null, null);
+                Intent additionalIntent = new Intent(intent);
+                additionalIntent.setPackage(additionalPackage);
+                mContext.sendOrderedBroadcastAsUser(additionalIntent, UserHandle.ALL,
+                        receiverPermission, appOp, null, getHandler(), Activity.RESULT_OK, null,
+                        null);
             }
         }
 
