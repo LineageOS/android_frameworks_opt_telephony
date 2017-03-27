@@ -56,9 +56,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static android.Manifest.permission.READ_PHONE_STATE;
-import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
-
 /**
  *@hide
  */
@@ -193,10 +190,11 @@ public class SubscriptionInfoUpdater extends Handler {
                 return;
             }
 
-            int slotId = intent.getIntExtra(PhoneConstants.PHONE_KEY,
+            int slotIndex = intent.getIntExtra(PhoneConstants.PHONE_KEY,
                     SubscriptionManager.INVALID_SIM_SLOT_INDEX);
-            logd("slotId: " + slotId);
-            if (slotId == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
+            logd("slotIndex: " + slotIndex);
+            if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
+                logd("ACTION_SIM_STATE_CHANGED contains invalid slotIndex: " + slotIndex);
                 return;
             }
 
@@ -204,15 +202,15 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("simStatus: " + simStatus);
 
             if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
-                rebroadcastIntentsOnUnlock.put(slotId, intent);
+                rebroadcastIntentsOnUnlock.put(slotIndex, intent);
                 if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
-                    sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotId, -1));
+                    sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_UNKNOWN.equals(simStatus)) {
-                    sendMessage(obtainMessage(EVENT_SIM_UNKNOWN, slotId, -1));
+                    sendMessage(obtainMessage(EVENT_SIM_UNKNOWN, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR.equals(simStatus)) {
-                    sendMessage(obtainMessage(EVENT_SIM_IO_ERROR, slotId, -1));
+                    sendMessage(obtainMessage(EVENT_SIM_IO_ERROR, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED.equals(simStatus)) {
-                    sendMessage(obtainMessage(EVENT_SIM_RESTRICTED, slotId, -1));
+                    sendMessage(obtainMessage(EVENT_SIM_RESTRICTED, slotIndex, -1));
                 } else {
                     logd("Ignoring simStatus: " + simStatus);
                 }
@@ -220,9 +218,9 @@ public class SubscriptionInfoUpdater extends Handler {
                 if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
                     String reason = intent.getStringExtra(
                         IccCardConstants.INTENT_KEY_LOCKED_REASON);
-                    sendMessage(obtainMessage(EVENT_SIM_LOCKED, slotId, -1, reason));
+                    sendMessage(obtainMessage(EVENT_SIM_LOCKED, slotIndex, -1, reason));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
-                    sendMessage(obtainMessage(EVENT_SIM_LOADED, slotId, -1));
+                    sendMessage(obtainMessage(EVENT_SIM_LOADED, slotIndex, -1));
                 } else {
                     logd("Ignoring simStatus: " + simStatus);
                 }
@@ -552,7 +550,7 @@ public class SubscriptionInfoUpdater extends Handler {
             List<SubscriptionInfo> oldSubInfo =
                     SubscriptionController.getInstance().getSubInfoUsingSlotIndexWithCheck(i, false,
                     mContext.getOpPackageName());
-            if (oldSubInfo != null) {
+            if (oldSubInfo != null && oldSubInfo.size() > 0) {
                 oldIccId[i] = oldSubInfo.get(0).getIccId();
                 logd("updateSubscriptionInfoByIccId: oldSubId = "
                         + oldSubInfo.get(0).getSubscriptionId());
