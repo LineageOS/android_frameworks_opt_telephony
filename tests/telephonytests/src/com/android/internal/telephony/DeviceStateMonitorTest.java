@@ -20,7 +20,6 @@ import static android.hardware.radio.V1_0.DeviceStateType.LOW_DATA_EXPECTED;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
-import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.times;
@@ -97,10 +96,10 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         waitForMs(100);
 
         verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(0),
-                any(Message.class));
+                nullable(Message.class));
 
         verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(LOW_DATA_EXPECTED),
-                eq(true), any(Message.class));
+                eq(true), nullable(Message.class));
     }
 
     @FlakyTest
@@ -121,12 +120,12 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         waitForMs(100);
 
         verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(0),
-                any(Message.class));
+                nullable(Message.class));
 
         verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(LOW_DATA_EXPECTED),
-                eq(true), any(Message.class));
+                eq(true), nullable(Message.class));
 
         verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(CHARGING_STATE),
-                eq(false), any(Message.class));
+                eq(false), nullable(Message.class));
     }
 }
