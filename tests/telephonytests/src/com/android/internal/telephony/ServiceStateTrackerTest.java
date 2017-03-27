@@ -858,7 +858,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // verify if registered handler has message posted to it
         messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
-        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        verify(mTestHandler, times(2)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
         assertEquals(EVENT_REGISTERED_TO_NETWORK, messageArgumentCaptor.getValue().what);
     }
 
