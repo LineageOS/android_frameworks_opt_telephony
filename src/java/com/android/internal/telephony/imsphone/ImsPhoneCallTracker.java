@@ -2949,6 +2949,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean shouldDisconnectActiveCallOnAnswer(ImsCall activeCall,
             ImsCall incomingCall) {
 
+        if (activeCall == null || incomingCall == null) {
+            return false;
+        }
+
         if (!mDropVideoCallWhenAnsweringAudioCall) {
             return false;
         }
