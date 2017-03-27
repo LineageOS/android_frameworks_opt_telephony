@@ -3776,7 +3776,7 @@ public class ServiceStateTracker extends Handler {
 
 
         CharSequence details = "";
-        CharSequence title = context.getText(com.android.internal.R.string.RestrictedOnData);
+        CharSequence title = "";
         int notificationId = CS_NOTIFICATION;
         int icon = com.android.internal.R.drawable.stat_sys_warning;
 
@@ -3787,19 +3787,25 @@ public class ServiceStateTracker extends Handler {
                     return;
                 }
                 notificationId = PS_NOTIFICATION;
-                details = context.getText(com.android.internal.R.string.RestrictedOnData);
+                title = context.getText(com.android.internal.R.string.RestrictedOnDataTitle);
+                details = context.getText(com.android.internal.R.string.RestrictedOnDataContent);
                 break;
             case PS_DISABLED:
                 notificationId = PS_NOTIFICATION;
                 break;
             case CS_ENABLED:
-                details = context.getText(com.android.internal.R.string.RestrictedOnAllVoice);
+                title = context.getText(com.android.internal.R.string.RestrictedOnAllVoiceTitle);
+                details = context.getText(
+                        com.android.internal.R.string.RestrictedOnAllVoiceContent);
                 break;
             case CS_NORMAL_ENABLED:
-                details = context.getText(com.android.internal.R.string.RestrictedOnNormal);
+                title = context.getText(com.android.internal.R.string.RestrictedOnNormalTitle);
+                details = context.getText(com.android.internal.R.string.RestrictedOnNormalContent);
                 break;
             case CS_EMERGENCY_ENABLED:
-                details = context.getText(com.android.internal.R.string.RestrictedOnEmergency);
+                title = context.getText(com.android.internal.R.string.RestrictedOnEmergencyTitle);
+                details = context.getText(
+                        com.android.internal.R.string.RestrictedOnEmergencyContent);
                 break;
             case CS_DISABLED:
                 // do nothing and cancel the notification later
