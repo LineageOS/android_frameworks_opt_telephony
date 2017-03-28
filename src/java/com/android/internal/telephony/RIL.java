@@ -342,8 +342,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     //***** Constants
 
-    static final String[] RIL_SERVICE_NAME = {"rild", "rild2", "rild3"};
-    static final String[] OEM_HOOK_SERVICE_NAME = {"oemhook", "oemhook2", "oemhook3"};
+    static final String[] HIDL_SERVICE_NAME = {"slot1", "slot2", "slot3"};
 
     static final int IRADIO_GET_SERVICE_DELAY_MILLIS = 4 * 1000;
 
@@ -503,7 +502,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
 
         try {
-            mRadioProxy = IRadio.getService(RIL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
+            mRadioProxy = IRadio.getService(HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
             if (mRadioProxy != null) {
                 mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
                         mRadioProxyCookie.incrementAndGet());
@@ -545,7 +544,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         try {
             mOemHookProxy = IOemHook.getService(
-                    OEM_HOOK_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
+                    HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
             if (mOemHookProxy != null) {
                 // not calling linkToDeath() as ril service runs in the same process and death
                 // notification for that should be sufficient
