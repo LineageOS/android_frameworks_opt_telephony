@@ -190,4 +190,26 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         assertEquals(DisconnectCause.LOCAL, connection.getDisconnectCause());
         assertTrue(connection.getDisconnectTime() <= System.currentTimeMillis());
     }
+
+    @Test @SmallTest
+    public void testAddressUpdate() {
+        String[] testAddressMappingSet[] = {
+                /* {"0:inputAddress", "1:updateAddress", "2:ExpectResult"} */
+                {"12345", "12345", "12345"},
+                {"12345", "67890", "67890"},
+                {"12345*00000", "12345", "12345*00000"},
+                {"12345*00000", "67890", "67890"},
+                {"12345*00000", "12345*00000", "12345*00000"},
+                {"12345;11111*00000", "12345", "12345"},
+                {"12345*00000;11111", "12345", "12345*00000"},
+                {"18412345*00000", "18412345", "18412345*00000"},
+                {"+8112345*00000", "+8112345", "+8112345*00000"}};
+        mDC.state = DriverCall.State.ALERTING;
+        for (String[] testAddress : testAddressMappingSet) {
+            connection = new GsmCdmaConnection(mPhone, testAddress[0], mCT, null, false);
+            mDC.number = testAddress[1];
+            connection.update(mDC);
+            assertEquals(testAddress[2], connection.getAddress());
+        }
+    }
 }
