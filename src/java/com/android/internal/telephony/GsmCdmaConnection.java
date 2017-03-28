@@ -229,6 +229,11 @@ public class GsmCdmaConnection extends Connection {
         return (a == null) ? (b == null) : a.equals (b);
     }
 
+    static boolean
+    equalsBaseDialString (String a, String b) {
+        return (a == null) ? (b == null) : (b != null && a.startsWith (b));
+    }
+
     //CDMA
     /**
      * format original dial string
@@ -610,8 +615,8 @@ public class GsmCdmaConnection extends Connection {
             if (Phone.DEBUG_PHONE) log("update: mOrigConnection is not null");
         } else {
             log(" mNumberConverted " + mNumberConverted);
-            if (!equalsHandlesNulls(mAddress, dc.number) && (!mNumberConverted
-                    || !equalsHandlesNulls(mConvertedNumber, dc.number))) {
+            if (!equalsBaseDialString(mAddress, dc.number) && (!mNumberConverted
+                    || !equalsBaseDialString(mConvertedNumber, dc.number))) {
                 if (Phone.DEBUG_PHONE) log("update: phone # changed!");
                 mAddress = dc.number;
                 changed = true;

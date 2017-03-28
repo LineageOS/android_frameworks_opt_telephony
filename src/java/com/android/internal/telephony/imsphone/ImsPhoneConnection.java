@@ -244,6 +244,11 @@ public class ImsPhoneConnection extends Connection implements
         return (a == null) ? (b == null) : a.equals (b);
     }
 
+    static boolean
+    equalsBaseDialString (String a, String b) {
+        return (a == null) ? (b == null) : (b != null && a.startsWith (b));
+    }
+
     private static int applyLocalCallCapabilities(ImsCallProfile localProfile, int capabilities) {
         Rlog.w(LOG_TAG, "applyLocalCallCapabilities - localProfile = "+localProfile);
         capabilities = removeCapability(capabilities,
@@ -769,7 +774,7 @@ public class ImsPhoneConnection extends Connection implements
                 Rlog.d(LOG_TAG, "address = " + Rlog.pii(LOG_TAG, address) + " name = " + name +
                         " nump = " + nump + " namep = " + namep);
             }
-            if(equalsHandlesNulls(mAddress, address)) {
+            if(!equalsBaseDialString(mAddress, address)) {
                 mAddress = address;
                 changed = true;
             }
