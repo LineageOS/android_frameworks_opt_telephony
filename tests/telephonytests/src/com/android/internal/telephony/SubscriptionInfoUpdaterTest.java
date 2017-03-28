@@ -15,7 +15,18 @@
  */
 package com.android.internal.telephony;
 
-import android.Manifest;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
@@ -25,7 +36,6 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -39,28 +49,14 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.util.Arrays;
 import java.util.HashMap;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyBoolean;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
@@ -109,18 +105,13 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
 
-        replaceInstance(SubscriptionInfoUpdater.class, "mIccId", null,
-                new String[SubscriptionInfoUpdater.STATUS_SIM1_INSERTED]);
-        replaceInstance(SubscriptionInfoUpdater.class, "mInsertSimState", null,
-                new int[SubscriptionInfoUpdater.STATUS_SIM1_INSERTED]);
+        replaceInstance(SubscriptionInfoUpdater.class, "mIccId", null, new String[1]);
+        replaceInstance(SubscriptionInfoUpdater.class, "mInsertSimState", null, new int[1]);
         replaceInstance(SubscriptionInfoUpdater.class, "mContext", null, null);
-        replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null,
-                SubscriptionInfoUpdater.STATUS_SIM1_INSERTED);
+        replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null, 1);
 
-        doReturn(SubscriptionInfoUpdater.STATUS_SIM1_INSERTED)
-                .when(mTelephonyManager).getSimCount();
-        doReturn(SubscriptionInfoUpdater.STATUS_SIM1_INSERTED)
-                .when(mTelephonyManager).getPhoneCount();
+        doReturn(1).when(mTelephonyManager).getSimCount();
+        doReturn(1).when(mTelephonyManager).getPhoneCount();
 
         doReturn(mUserInfo).when(mIActivityManager).getCurrentUser();
         doReturn(new int[]{FAKE_SUB_ID}).when(mSubscriptionController).getSubId(0);
@@ -143,7 +134,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimAbsent() {
+    public void testSimAbsent() throws Exception {
         doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
                 .getSubInfoUsingSlotIndexWithCheck(eq(0), anyBoolean(), anyString());
         Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
@@ -166,7 +157,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimUnknown() {
+    public void testSimUnknown() throws Exception {
         Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
@@ -185,25 +176,25 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimError() {
+    public void testSimError() throws Exception {
         Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
-        mIntent.putExtra(PhoneConstants.PHONE_KEY, 2);
+        mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
 
         mContext.sendBroadcast(mIntent);
         waitForMs(100);
         verify(mSubscriptionContent, times(0)).put(anyString(), any());
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        verify(mConfigManager).updateConfigForPhoneId(eq(2),
+        verify(mConfigManager).updateConfigForPhoneId(eq(0),
                 eq(IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR));
-        verify(mSubscriptionController, times(0)).notifySubscriptionInfoChanged();
+        verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
     }
 
     @Test
     @SmallTest
-    public void testWrongSimState() {
+    public void testWrongSimState() throws Exception {
         Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_IMSI);
@@ -221,7 +212,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimLoaded() {
+    public void testSimLoaded() throws Exception {
         /* mock new sim got loaded and there is no sim loaded before */
         doReturn(null).when(mSubscriptionController)
                 .getSubInfoUsingSlotIndexWithCheck(eq(0), anyBoolean(), anyString());
@@ -288,7 +279,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimLoadedEmptyOperatorNumeric() {
+    public void testSimLoadedEmptyOperatorNumeric() throws Exception {
         /* mock new sim got loaded and there is no sim loaded before */
         doReturn(null).when(mSubscriptionController)
                 .getSubInfoUsingSlotIndexWithCheck(eq(0), anyBoolean(), anyString());
@@ -316,7 +307,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimLockedWithOutIccId() {
+    public void testSimLockedWithOutIccId() throws Exception {
         /* mock no IccId Info present and try to query IccId
          after IccId query, update subscriptionDB */
         doReturn(mIccFileHandler).when(mIccCardProxy).getIccFileHandler();
@@ -359,14 +350,11 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimLockWIthIccId() {
+    public void testSimLockWIthIccId() throws Exception {
         /* no need for IccId query */
-        try {
-            replaceInstance(SubscriptionInfoUpdater.class, "mIccId", null,
-                    new String[]{"89012604200000000000"});
-        } catch (Exception ex) {
-            Assert.fail("unexpected exception thrown" + ex.getMessage());
-        }
+
+        replaceInstance(SubscriptionInfoUpdater.class, "mIccId", null,
+                new String[]{"89012604200000000000"});
         doReturn(mIccFileHandler).when(mIccCardProxy).getIccFileHandler();
 
         Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
@@ -389,5 +377,4 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         verify(mConfigManager, times(1)).updateConfigForPhoneId(eq(0),
                 eq(IccCardConstants.INTENT_VALUE_ICC_LOCKED));
     }
-
 }
