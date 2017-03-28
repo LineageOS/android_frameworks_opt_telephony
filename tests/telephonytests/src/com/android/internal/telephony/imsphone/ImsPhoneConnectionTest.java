@@ -133,7 +133,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         // MT background Connection dialing -> active
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mBackGroundCall, false);
         doReturn(Call.State.HOLDING).when(mBackGroundCall).getState();
-        assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
+        assertFalse(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         verify(mBackGroundCall, times(1)).detach(eq(mConnectionUT));
         verify(mForeGroundCall, times(1)).attach(eq(mConnectionUT));
         verify(mForeGroundCall, times(1)).update(eq(mConnectionUT), eq(mImsCall),
@@ -263,5 +263,30 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertTrue(mConnectionUT.isWifi());
+    }
+
+    @Test
+    @SmallTest
+    public void testAddressUpdate() {
+        String[] testAddressMappingSet[] = {
+                /* {"inputAddress", "updateAddress", "ExpectResult"} */
+                {"12345", "12345", "12345"},
+                {"12345", "67890", "67890"},
+                {"12345*00000", "12345", "12345*00000"},
+                {"12345*00000", "67890", "67890"},
+                {"12345*00000", "12345*00000", "12345*00000"},
+                {"12345;11111*00000", "12345", "12345"},
+                {"12345*00000;11111", "12345", "12345*00000"},
+                {"18412345*00000", "18412345", "18412345*00000"},
+                {"+8112345*00000", "+8112345", "+8112345*00000"},
+                {"12345*00000", "12346", "12346"}};
+        for (String[] testAddress : testAddressMappingSet) {
+            mConnectionUT = new ImsPhoneConnection(mImsPhone, testAddress[0], mImsCT,
+                    mForeGroundCall, false);
+            doReturn(testAddress[1]).when(mImsCallProfile)
+                    .getCallExtra(eq(ImsCallProfile.EXTRA_OI));
+            mConnectionUT.updateAddressDisplay(mImsCall);
+            assertEquals(testAddress[2], mConnectionUT.getAddress());
+        }
     }
 }
