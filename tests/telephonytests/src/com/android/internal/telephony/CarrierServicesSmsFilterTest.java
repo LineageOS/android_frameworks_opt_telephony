@@ -73,7 +73,7 @@ public class CarrierServicesSmsFilterTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mCarrierServicesSmsFilterUT = new CarrierServicesSmsFilter(
                 mContext, mPhone, new byte[][]{SMS_PDU},
-                0, null, mFilterCallback, getClass().getSimpleName());
+                0, "3gpp", mFilterCallback, getClass().getSimpleName());
     }
 
     @After
