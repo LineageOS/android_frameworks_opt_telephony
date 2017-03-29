@@ -52,7 +52,7 @@ public class SimActivationTrackerTest extends TelephonyTest {
         // verify activated state is set successfully
         try {
             mSAT.setVoiceActivationState(SIM_ACTIVATION_STATE_ACTIVATED);
-        } catch (InvalidParameterException ex) {
+        } catch (IllegalArgumentException ex) {
             fail("Exception in setVoiceActivationState: " + ex);
         }
 
@@ -65,7 +65,7 @@ public class SimActivationTrackerTest extends TelephonyTest {
             mSAT.setVoiceActivationState(SIM_ACTIVATION_STATE_RESTRICTED);
             fail("Expect exception in setVoiceActivationState with wrong state: "
                     + SIM_ACTIVATION_STATE_RESTRICTED);
-        } catch (InvalidParameterException ex) {
+        } catch (IllegalArgumentException ex) {
             //test pass
         }
         assertEquals(SIM_ACTIVATION_STATE_ACTIVATED, mSAT.getVoiceActivationState());
