@@ -161,9 +161,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     // If there is an active call.
                     if (mForegroundCall.hasConnections()) {
                         ImsCall activeCall = mForegroundCall.getFirstConnection().getImsCall();
-                        boolean answeringWillDisconnect =
-                                shouldDisconnectActiveCallOnAnswer(activeCall, imsCall);
-                        conn.setActiveCallDisconnectedOnAnswer(answeringWillDisconnect);
+                        if (activeCall != null && imsCall != null) {
+                            // activeCall could be null if the foreground call is in a disconnected
+                            // state.  If either of the calls is null there is no need to check if
+                            // one will be disconnected on answer.
+                            boolean answeringWillDisconnect =
+                                    shouldDisconnectActiveCallOnAnswer(activeCall, imsCall);
+                            conn.setActiveCallDisconnectedOnAnswer(answeringWillDisconnect);
+                        }
                     }
                     conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
                     addConnection(conn);
