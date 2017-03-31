@@ -439,8 +439,8 @@ public class PduPersister {
                     if (ContentType.TEXT_PLAIN.equals(type) || ContentType.APP_SMIL.equals(type)
                             || ContentType.TEXT_HTML.equals(type)) {
                         String text = c.getString(PART_COLUMN_TEXT);
-                        byte [] blob = new EncodedStringValue(text != null ? text : "")
-                            .getTextString();
+                        // we will use default encoding when charset is null or not supported
+                        byte [] blob = getBlob(getCharsetName(charset) != null, charset, text);
                         baos.write(blob, 0, blob.length);
                     } else {
 
@@ -478,6 +478,32 @@ public class PduPersister {
         }
 
         return parts;
+    }
+
+    private String getCharsetName(Integer charset) {
+        if (charset == null || (charset == 0)) {
+            return null;
+        }
+        String charsetName = null;
+        try {
+            charsetName = CharacterSets.getMimeName(charset);
+        } catch (UnsupportedEncodingException e) {
+            Log.d(TAG, "charset " + charset + " is not supported");
+        }
+        return charsetName;
+
+    }
+
+    private byte [] getBlob(boolean hasCharset, Integer charset, String text) {
+        byte [] blob = null;
+        if (hasCharset) {
+            blob = new EncodedStringValue(charset, text != null ? text : "")
+                .getTextString();
+        } else {
+            blob = new EncodedStringValue(text != null ? text : "")
+                .getTextString();
+        }
+        return blob;
     }
 
     private void loadAddress(long msgId, PduHeaders headers) {
@@ -765,6 +791,16 @@ public class PduPersister {
         return res;
     }
 
+    private EncodedStringValue getEncodedStringValue(int charset, byte[] data) {
+        EncodedStringValue ev = null;
+        if (getCharsetName(charset) != null) {
+            ev = new EncodedStringValue(charset, data);
+        } else {
+            ev = new EncodedStringValue(data);
+        }
+        return ev;
+    }
+
     /**
      * Save data of the part into storage. The source data may be given
      * by a byte[] or a Uri. If it's a byte[], directly save it
@@ -796,8 +832,22 @@ public class PduPersister {
                 ContentValues cv = new ContentValues();
                 if (data == null) {
                     data = new String("").getBytes(CharacterSets.DEFAULT_CHARSET_NAME);
+                    cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(data).getString());
+                    Log.w(TAG, "Part data is null. contentType: " + contentType);
+                } else {
+                    // we will use default encoding when charset is 0 or not supported
+                    int charset = part.getCharset();
+                    if (charset == CharacterSets.US_ASCII
+                            && ContentType.APP_SMIL.equals(contentType)) {
+                        charset = CharacterSets.UTF_8;
+                    }
+
+                    EncodedStringValue ev = getEncodedStringValue(charset, data);
+
+                    // Update the charset in database, make sure part have the right charset.
+                    cv.put(Telephony.Mms.Part.CHARSET, ev.getCharacterSet());
+                    cv.put(Telephony.Mms.Part.TEXT, ev.getString());
                 }
-                cv.put(Telephony.Mms.Part.TEXT, new EncodedStringValue(data).getString());
                 if (mContentResolver.update(uri, cv, null, null) != 1) {
                     throw new MmsException("unable to update " + uri.toString());
                 }
@@ -1548,7 +1598,7 @@ public class PduPersister {
      */
     public static String toIsoString(byte[] bytes) {
         try {
-            return new String(bytes, CharacterSets.MIMENAME_ISO_8859_1);
+            return new String(bytes, CharacterSets.MIMENAME_UTF_8);
         } catch (UnsupportedEncodingException e) {
             // Impossible to reach here!
             Log.e(TAG, "ISO_8859_1 must be supported!", e);
@@ -1561,7 +1611,7 @@ public class PduPersister {
      */
     public static byte[] getBytes(String data) {
         try {
-            return data.getBytes(CharacterSets.MIMENAME_ISO_8859_1);
+            return data.getBytes(CharacterSets.MIMENAME_UTF_8);
         } catch (UnsupportedEncodingException e) {
             // Impossible to reach here!
             Log.e(TAG, "ISO_8859_1 must be supported!", e);
