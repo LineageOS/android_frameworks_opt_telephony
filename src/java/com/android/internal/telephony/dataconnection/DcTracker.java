@@ -2789,9 +2789,11 @@ public class DcTracker extends Handler {
     private void onRoamingOff() {
         if (DBG) log("onRoamingOff");
 
-        // TODO: Remove this once all old vendor RILs are gone. We don't need to send the
-        // data profile again as the modem should have both roaming and non-roaming protocol in
-        // place. Modem should choose the right protocol based on roaming condition.
+        // TODO: Remove this once all old vendor RILs are gone. We don't need to set initial apn
+        // attach and send the data profile again as the modem should have both roaming and
+        // non-roaming protocol in place. Modem should choose the right protocol based on the
+        // roaming condition.
+        setInitialAttachApn();
         setDataProfilesAsNeeded();
 
         if (!mDataEnabledSettings.isUserDataEnabled()) return;
@@ -2807,9 +2809,11 @@ public class DcTracker extends Handler {
     private void onRoamingOn() {
         if (DBG) log("onRoamingOn");
 
-        // TODO: Remove this once all old vendor RILs are gone. We don't need to send the
-        // data profile again as the modem should have both roaming and non-roaming protocol in
-        // place. Modem should choose the right protocol based on roaming condition.
+        // TODO: Remove this once all old vendor RILs are gone. We don't need to set initial apn
+        // attach and send the data profile again as the modem should have both roaming and
+        // non-roaming protocol in place. Modem should choose the right protocol based on the
+        // roaming condition.
+        setInitialAttachApn();
         setDataProfilesAsNeeded();
 
         if (!mDataEnabledSettings.isUserDataEnabled()) {
