@@ -1266,6 +1266,9 @@ public abstract class InboundSmsHandler extends StateMachine {
             if (action.equals(Intents.SMS_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.SMS_RECEIVED_ACTION);
+                // Allow registered broadcast receivers to get this intent even
+                // when they are in the background.
+                intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
                 intent.setComponent(null);
                 // All running users will be notified of the received sms.
                 Bundle options = handleSmsWhitelisting(null);
@@ -1277,6 +1280,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);
                 intent.setComponent(null);
+                // Allow registered broadcast receivers to get this intent even
+                // when they are in the background.
+                intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
                 // Only the primary user will receive notification of incoming mms.
                 // That app will do the actual downloading of the mms.
                 Bundle options = null;
