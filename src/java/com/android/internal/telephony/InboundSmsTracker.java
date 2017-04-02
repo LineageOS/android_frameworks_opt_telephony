@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.content.ContentValues;
 import android.database.Cursor;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
 
 import java.util.Arrays;
@@ -59,20 +60,46 @@ public class InboundSmsTracker {
      */
     private final String mDisplayAddress;
 
+    @VisibleForTesting
     /** Destination port flag bit for no destination port. */
-    private static final int DEST_PORT_FLAG_NO_PORT = (1 << 16);
+    public static final int DEST_PORT_FLAG_NO_PORT = (1 << 16);
 
     /** Destination port flag bit to indicate 3GPP format message. */
     private static final int DEST_PORT_FLAG_3GPP = (1 << 17);
 
+    @VisibleForTesting
     /** Destination port flag bit to indicate 3GPP2 format message. */
-    private static final int DEST_PORT_FLAG_3GPP2 = (1 << 18);
+    public static final int DEST_PORT_FLAG_3GPP2 = (1 << 18);
 
+    @VisibleForTesting
     /** Destination port flag bit to indicate 3GPP2 format WAP message. */
-    private static final int DEST_PORT_FLAG_3GPP2_WAP_PDU = (1 << 19);
+    public static final int DEST_PORT_FLAG_3GPP2_WAP_PDU = (1 << 19);
 
     /** Destination port mask (16-bit unsigned value on GSM and CDMA). */
     private static final int DEST_PORT_MASK = 0xffff;
+
+    @VisibleForTesting
+    public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND "
+            + "count=? AND (destination_port & " + DEST_PORT_FLAG_3GPP2_WAP_PDU
+            + "=0) AND deleted=0";
+
+    @VisibleForTesting
+    public static final String SELECT_BY_REFERENCE_3GPP2WAP = "address=? AND reference_number=? "
+            + "AND count=? AND (destination_port & "
+            + DEST_PORT_FLAG_3GPP2_WAP_PDU + "=" + DEST_PORT_FLAG_3GPP2_WAP_PDU + ") AND deleted=0";
+
+    @VisibleForTesting
+    public static final String SELECT_BY_DUPLICATE_REFERENCE = "address=? AND "
+            + "reference_number=? AND count=? AND sequence=? AND "
+            + "((date=? AND message_body=?) OR deleted=0) AND (destination_port & "
+            + DEST_PORT_FLAG_3GPP2_WAP_PDU + "=0)";
+
+    @VisibleForTesting
+    public static final String SELECT_BY_DUPLICATE_REFERENCE_3GPP2WAP = "address=? AND "
+            + "reference_number=? " + "AND count=? AND sequence=? AND "
+            + "((date=? AND message_body=?) OR deleted=0) AND "
+            + "(destination_port & " + DEST_PORT_FLAG_3GPP2_WAP_PDU + "="
+            + DEST_PORT_FLAG_3GPP2_WAP_PDU + ")";
 
     /**
      * Create a tracker for a single-part SMS.
@@ -190,7 +217,7 @@ public class InboundSmsTracker {
                         + " of " + mMessageCount);
             }
 
-            mDeleteWhere = InboundSmsHandler.SELECT_BY_REFERENCE;
+            mDeleteWhere = getQueryForSegments();
             mDeleteWhereArgs = new String[]{mAddress,
                     Integer.toString(mReferenceNumber), Integer.toString(mMessageCount)};
         }
@@ -291,6 +318,15 @@ public class InboundSmsTracker {
 
     public String getFormat() {
         return mIs3gpp2 ? SmsConstants.FORMAT_3GPP2 : SmsConstants.FORMAT_3GPP;
+    }
+
+    public String getQueryForSegments() {
+        return mIs3gpp2WapPdu ? SELECT_BY_REFERENCE_3GPP2WAP : SELECT_BY_REFERENCE;
+    }
+
+    public String getQueryForMultiPartDuplicates() {
+        return mIs3gpp2WapPdu ? SELECT_BY_DUPLICATE_REFERENCE_3GPP2WAP :
+                SELECT_BY_DUPLICATE_REFERENCE;
     }
 
     /**
