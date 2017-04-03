@@ -816,7 +816,7 @@ public class DataConnection extends StateMachine {
      *
      * This gets set once per connection setup and is based on conditions at that time.
      * We could theoretically have dynamic capabilities but now is not a good time to
-     * experiement with that.
+     * experiment with that.
      *
      * This flag overrides the APN-based restriction capability, restricting the network
      * based on both having a NetworkRequest with restricted AND needing a restricted

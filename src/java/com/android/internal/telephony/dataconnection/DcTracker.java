@@ -1556,7 +1556,7 @@ public class DcTracker extends Handler {
         boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
         final ServiceStateTracker sst = mPhone.getServiceStateTracker();
 
-        // set to false if apn type is non-metered or if we have a restricted (priveleged)
+        // set to false if apn type is non-metered or if we have a restricted (privileged)
         // request for the network.
         // TODO - may want restricted requests to only apply to carrier-limited data access
         //        rather than applying to user limited as well.
