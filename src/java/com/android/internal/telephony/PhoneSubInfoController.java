@@ -33,7 +33,7 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 
 import static android.Manifest.permission.CALL_PRIVILEGED;
-import static android.Manifest.permission.READ_PHONE_NUMBER;
+import static android.Manifest.permission.READ_PHONE_NUMBERS;
 import static android.Manifest.permission.READ_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 import static android.Manifest.permission.READ_SMS;
@@ -435,7 +435,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     /**
-     * Besides READ_PHONE_STATE, READ_PHONE_NUMBER, WRITE_SMS and READ_SMS also allow apps to get
+     * Besides READ_PHONE_STATE, READ_PHONE_NUMBERS, WRITE_SMS and READ_SMS also allow apps to get
      * phone numbers.
      */
     private boolean checkReadPhoneNumber(String callingPackage, String message) {
@@ -461,9 +461,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         } catch (SecurityException readSmsSecurityException) {
         }
         try {
-            // Can be read with READ_PHONE_NUMBER too.
-            mContext.enforceCallingOrSelfPermission(READ_PHONE_NUMBER, message);
-            int opCode = mAppOps.permissionToOpCode(READ_PHONE_NUMBER);
+            // Can be read with READ_PHONE_NUMBERS too.
+            mContext.enforceCallingOrSelfPermission(READ_PHONE_NUMBERS, message);
+            int opCode = mAppOps.permissionToOpCode(READ_PHONE_NUMBERS);
             if (opCode != AppOpsManager.OP_NONE) {
                 return mAppOps.noteOp(opCode, Binder.getCallingUid(), callingPackage)
                         == AppOpsManager.MODE_ALLOWED;
@@ -472,7 +472,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             }
         } catch (SecurityException readPhoneNumberSecurityException) {
         }
-        // Throw exception with message including READ_PHONE_STATE, READ_SMS, and READ_PHONE_NUMBER
+        // Throw exception with message including READ_PHONE_STATE, READ_SMS, and READ_PHONE_NUMBERS
         // permissions
         throw new SecurityException(message + ": Neither user " + Binder.getCallingUid() +
                 " nor current process has " + READ_PHONE_STATE + ", " +
