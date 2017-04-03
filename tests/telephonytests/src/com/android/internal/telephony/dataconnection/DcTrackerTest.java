@@ -28,7 +28,6 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -705,9 +704,6 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setDataEnabled(true);
 
         waitForMs(200);
-        verify(mSimulatedCommandsVerifier, times(1)).setInitialAttachApn(any(DataProfile.class),
-                eq(true), nullable(Message.class));
-
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
@@ -717,6 +713,11 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
         assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
+
+        // reset roaming settings / data enabled settings at end of this test
+        mDct.setDataOnRoamingEnabled(roamingEnabled);
+        mDct.setDataEnabled(dataEnabled);
+        waitForMs(200);
     }
 
     // Test the default data switch scenario.
