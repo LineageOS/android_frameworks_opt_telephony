@@ -457,6 +457,7 @@ public class ContextFixture implements TestFixture<Context> {
             new HashMap<String, IInterface>();
     private final Map<ComponentName, ServiceInfo> mServiceInfoByComponentName =
             new HashMap<ComponentName, ServiceInfo>();
+    private final Map<ComponentName, IntentFilter> mIntentFilterByComponentName = new HashMap<>();
     private final Map<IInterface, ComponentName> mComponentNameByService =
             new HashMap<IInterface, ComponentName>();
     private final Map<ServiceConnection, IInterface> mServiceByServiceConnection =
@@ -567,8 +568,15 @@ public class ContextFixture implements TestFixture<Context> {
 
     public void addService(String action, ComponentName name, String packageName,
                            IInterface service, ServiceInfo serviceInfo) {
+        addService(action, name, packageName, service, serviceInfo, null /* filter */);
+    }
+
+    public void addService(String action, ComponentName name, String packageName,
+            IInterface service, ServiceInfo serviceInfo, IntentFilter filter) {
         mComponentNamesByAction.put(action, name);
         mServiceInfoByComponentName.put(name, serviceInfo);
+        mIntentFilterByComponentName.put(name, filter);
+        mServiceByComponentName.put(name, service);
         mServiceByPackageName.put(packageName, service);
         mComponentNameByService.put(service, name);
     }
@@ -578,6 +586,7 @@ public class ContextFixture implements TestFixture<Context> {
         for (ComponentName componentName : mComponentNamesByAction.get(intent.getAction())) {
             ResolveInfo resolveInfo = new ResolveInfo();
             resolveInfo.serviceInfo = mServiceInfoByComponentName.get(componentName);
+            resolveInfo.filter = mIntentFilterByComponentName.get(componentName);
             result.add(resolveInfo);
         }
         return result;
