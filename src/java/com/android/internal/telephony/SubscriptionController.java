@@ -1343,10 +1343,11 @@ public class SubscriptionController extends ISub.Stub {
     private void broadcastDefaultSmsSubIdChanged(int subId) {
         // Broadcast an Intent for default sms sub change
         if (DBG) logdl("[broadcastDefaultSmsSubIdChanged] subId=" + subId);
-        Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
+        Intent intent = new Intent(Intent.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
+        intent.putExtra(Intent.EXTRA_SUBSCRIPTION_INDEX, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
