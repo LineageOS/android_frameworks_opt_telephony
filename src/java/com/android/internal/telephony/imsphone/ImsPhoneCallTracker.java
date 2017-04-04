@@ -66,6 +66,7 @@ import com.android.ims.ImsUtInterface;
 import com.android.ims.internal.IImsVideoCallProvider;
 import com.android.ims.internal.ImsCallSession;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
+import com.android.ims.internal.VideoPauseTracker;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -261,6 +262,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private Call.SrvccState mSrvccState = Call.SrvccState.NONE;
 
     private boolean mIsInEmergencyCall = false;
+    private boolean mIsDataEnabled = false;
 
     private int pendingCallClirMode;
     private int mPendingCallVideoState;
@@ -269,6 +271,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mSwitchingFgAndBgCalls = false;
     private ImsCall mCallExpectedToResume = null;
     private boolean mAllowEmergencyVideoCalls = false;
+    private boolean mIgnoreDataEnabledChangedForVideoCalls = false;
 
     private Object mAddParticipantLock = new Object();
     private Message mAddPartResp;
@@ -317,6 +320,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mNotifyHandoverVideoFromWifiToLTE = false;
 
     /**
+     * Carrier configuration option which determines whether the carrier supports the
+     * {@link VideoProfile#STATE_PAUSED} signalling.
+     * See {@link CarrierConfigManager#KEY_SUPPORT_PAUSE_IMS_VIDEO_CALLS_BOOL} for more information.
+     */
+    private boolean mSupportPauseVideo = false;
+
+    /**
      * Carrier configuration option which defines a mapping from pairs of
      * {@link ImsReasonInfo#getCode()} and {@link ImsReasonInfo#getExtraMessage()} values to a new
      * {@code ImsReasonInfo#CODE_*} value.
@@ -324,6 +334,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * See {@link CarrierConfigManager#KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY}.
      */
     private Map<Pair<Integer, String>, Integer> mImsReasonCodeMap = new ArrayMap<>();
+
+    /**
+     * TODO: Remove this code; it is a workaround.
+     * When {@code true}, forces {@link ImsManager#updateImsServiceConfig(Context, int, boolean)} to
+     * be called when an ongoing video call is disconnected.  In some cases, where video pause is
+     * supported by the carrier, when {@link #onDataEnabledChanged(boolean, int)} reports that data
+     * has been disabled we will pause the video rather than disconnecting the call.  When this
+     * happens we need to prevent the IMS service config from being updated, as this will cause VT
+     * to be disabled mid-call, resulting in an inability to un-pause the video.
+     */
+    private boolean mShouldUpdateImsConfigOnDisconnect = false;
 
     //***** Events
 
@@ -617,6 +638,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 CarrierConfigManager.KEY_SUPPORT_DOWNGRADE_VT_TO_AUDIO_BOOL);
         mNotifyHandoverVideoFromWifiToLTE = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
+        mIgnoreDataEnabledChangedForVideoCalls = carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_IGNORE_DATA_ENABLED_CHANGED_FOR_VIDEO_CALLS);
+        mSupportPauseVideo = carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_SUPPORT_PAUSE_IMS_VIDEO_CALLS_BOOL);
 
         String[] mappings = carrierConfig
                 .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
@@ -1719,6 +1744,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mCallExpectedToResume = null;
                 }
             }
+
+            if (mShouldUpdateImsConfigOnDisconnect) {
+                // Ensure we update the IMS config when the call is disconnected; we delayed this
+                // because a video call was paused.
+                ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+                mShouldUpdateImsConfigOnDisconnect = false;
+            }
         }
 
         @Override
@@ -2261,16 +2293,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mPhone.notifyForVideoCapabilityChanged(isVideoCallEnabled());
                 }
 
-                // TODO: Use the ImsCallSession or ImsCallProfile to tell the initial Wifi state and
-                // {@link ImsCallSession.Listener#callSessionHandover} to listen for changes to
-                // wifi capability caused by a handover.
                 if (DBG) log("onFeatureCapabilityChanged: isVolteEnabled=" + isVolteEnabled()
                             + ", isVideoCallEnabled=" + isVideoCallEnabled()
                             + ", isVowifiEnabled=" + isVowifiEnabled()
                             + ", isUtEnabled=" + isUtEnabled());
-                for (ImsPhoneConnection connection : mConnections) {
-                    connection.updateWifiState();
-                }
 
                 mPhone.onFeatureCapabilityChanged();
 
@@ -2825,7 +2851,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private void onDataEnabledChanged(boolean enabled, int reason) {
 
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
+
         ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId()).setDataEnabled(enabled);
+        mIsDataEnabled = enabled;
+
+        if (mIgnoreDataEnabledChangedForVideoCalls) {
+            log("Ignore data " + ((enabled) ? "enabled" : "disabled") + " due to carrier policy.");
+            return;
+        }
 
         if (!enabled) {
             int reasonCode;
@@ -2858,9 +2891,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                     TelephonyManager.EVENT_DOWNGRADE_DATA_LIMIT_REACHED, null);
                         }
                         modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
+                    } else if (mSupportPauseVideo) {
+                        // The carrier supports video pause signalling, so pause the video.
+                        mShouldUpdateImsConfigOnDisconnect = true;
+                        conn.pauseVideo(VideoPauseTracker.SOURCE_DATA_ENABLED);
                     } else {
-                        // If the carrier does not support downgrading to voice, the only choice we
-                        // have is to terminate the call.
+                        // At this point the only choice we have is to terminate the call.
                         try {
                             imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);
                         } catch (ImsException ie) {
@@ -2869,11 +2905,27 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 }
             }
+        } else if (mSupportPauseVideo) {
+            // Data was re-enabled, so un-pause previously paused video calls.
+            for (ImsPhoneConnection conn : mConnections) {
+                // If video is paused, check to see if there are any pending pauses due to enabled
+                // state of data changing.
+                log("onDataEnabledChanged - resuming " + conn);
+                if (VideoProfile.isPaused(conn.getVideoState()) &&
+                        conn.wasVideoPausedFromSource(VideoPauseTracker.SOURCE_DATA_ENABLED)) {
+                    // The data enabled state was a cause of a pending pause, so potentially
+                    // resume the video now.
+                    conn.resumeVideo(VideoPauseTracker.SOURCE_DATA_ENABLED);
+                }
+            }
+            mShouldUpdateImsConfigOnDisconnect = false;
         }
 
-        // This will call into updateVideoCallFeatureValue and eventually all clients will be
-        // asynchronously notified that the availability of VT over LTE has changed.
-        ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+        if (!mShouldUpdateImsConfigOnDisconnect) {
+            // This will call into updateVideoCallFeatureValue and eventually all clients will be
+            // asynchronously notified that the availability of VT over LTE has changed.
+            ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+        }
     }
 
     /**

@@ -248,8 +248,6 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertTrue(mConnectionUT.isWifi());
-        //keep using the wifi state from extra, not update
-        assertFalse(mConnectionUT.updateWifiState());
     }
 
     @Test
@@ -265,7 +263,5 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertTrue(mConnectionUT.isWifi());
-        //keep using the wifi state from extra, not update
-        assertFalse(mConnectionUT.updateWifiState());
     }
 }

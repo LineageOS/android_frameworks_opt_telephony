@@ -446,9 +446,6 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.CHANNEL_UNACCEPTABLE:
                 return DisconnectCause.CHANNEL_UNACCEPTABLE;
 
-            case CallFailCause.OPERATOR_DETERMINED_BARRING:
-                return DisconnectCause.OPERATOR_DETERMINED_BARRING;
-
             case CallFailCause.CALL_FAIL_NO_USER_RESPONDING:
                 return DisconnectCause.CALL_FAIL_NO_USER_RESPONDING;
 
@@ -587,6 +584,7 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.ACM_LIMIT_EXCEEDED:
                 return DisconnectCause.LIMIT_EXCEEDED;
 
+            case CallFailCause.OPERATOR_DETERMINED_BARRING:
             case CallFailCause.CALL_BARRED:
                 return DisconnectCause.CALL_BARRED;
 

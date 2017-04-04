@@ -47,6 +47,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.SystemClock;
@@ -56,6 +57,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.PcoData;
 import android.telephony.Rlog;
@@ -314,6 +316,14 @@ public class DcTracker extends Handler {
                 if (DBG) {
                     log("WIFI_STATE_CHANGED_ACTION: enabled=" + enabled
                             + " mIsWifiConnected=" + mIsWifiConnected);
+                }
+            } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                CarrierConfigManager configMgr = (CarrierConfigManager)
+                        mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                if (configMgr != null) {
+                    PersistableBundle cfg = configMgr.getConfigForSubId(mPhone.getSubId());
+                    if (cfg != null) mAllowUserEditTetherApn =
+                            cfg.getBoolean(CarrierConfigManager.KEY_EDITABLE_TETHER_APN_BOOL);
                 }
             } else {
                 if (DBG) log("onReceive: Unknown action=" + action);
@@ -617,6 +627,22 @@ public class DcTracker extends Handler {
     private boolean mMeteredApnDisabled = false;
 
     /**
+     * int to remember whether has setDataProfiles and with roaming or not.
+     * 0: default, has never set data profile
+     * 1: has set data profile with home protocol
+     * 2: has set data profile with roaming protocol
+     * This is not needed once RIL command is updated to support both home and roaming protocol.
+     */
+    private int mSetDataProfileStatus = 0;
+
+    /**
+     * Whether carrier allow user edited tether APN. Updated by carrier config
+     * KEY_EDITABLE_TETHER_APN_BOOL
+     * If true, APN with dun type from database will be used, see fetchDunApn for details.
+     */
+    private boolean mAllowUserEditTetherApn = false;
+
+    /**
      * Handles changes to the APN db.
      */
     private class ApnChangeObserver extends ContentObserver {
@@ -688,6 +714,7 @@ public class DcTracker extends Handler {
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
+        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
 
         // TODO - redundent with update call below?
         mDataEnabledSettings.setUserDataEnabled(getDataEnabled());
@@ -1038,6 +1065,7 @@ public class DcTracker extends Handler {
         public void onReceive(Context context, Intent intent) {
             // Turning back on the radio can take time on the order of a minute, so show user a
             // spinner so they know something is going on.
+            log("onReceive : ProvisionNotificationBroadcastReceiver");
             mProvisioningSpinner = new ProgressDialog(context);
             mProvisioningSpinner.setTitle(mNetworkOperator);
             mProvisioningSpinner.setMessage(
@@ -1857,50 +1885,56 @@ public class DcTracker extends Handler {
             return null;
         }
         int bearer = mPhone.getServiceState().getRilDataRadioTechnology();
-        ApnSetting retDunSetting = null;
-        String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
-        List<ApnSetting> dunSettings = ApnSetting.arrayFromString(apnData);
         IccRecords r = mIccRecords.get();
-        for (ApnSetting dunSetting : dunSettings) {
-            String operator = mPhone.getOperatorNumeric();
+        String operator = (r != null) ? r.getOperatorNumeric() : "";
+        ArrayList<ApnSetting> dunCandidates = new ArrayList<ApnSetting>();
+        ApnSetting retDunSetting = null;
+
+        // Places to look for tether APN in order: TETHER_DUN_APN setting, APN database if
+        // carrier allows it, and config_tether_apndata resource.
+        String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
+        if (!TextUtils.isEmpty(apnData)) {
+            dunCandidates.addAll(ApnSetting.arrayFromString(apnData));
+            if (VDBG) log("fetchDunApn: dunCandidates from Setting: " + dunCandidates);
+        } else if (mAllowUserEditTetherApn) {
+            for (ApnSetting apn : mAllApnSettings) {
+                if (apn.canHandleType(PhoneConstants.APN_TYPE_DUN)) {
+                    dunCandidates.add(apn);
+                }
+            }
+            if (VDBG) log("fetchDunApn: dunCandidates from database: " + dunCandidates);
+        }
+        // If TETHER_DUN_APN isn't set or
+        // mAllowUserEditTetherApn is true but APN database doesn't have dun APN,
+        // try the resource as last resort.
+        if (dunCandidates.isEmpty()) {
+            String[] apnArrayData = mPhone.getContext().getResources()
+                .getStringArray(R.array.config_tether_apndata);
+            for (String apnString : apnArrayData) {
+                ApnSetting apn = ApnSetting.fromString(apnString);
+                // apn may be null if apnString isn't valid or has error parsing
+                if (apn != null) dunCandidates.add(apn);
+            }
+            if (VDBG) log("fetchDunApn: dunCandidates from resource: " + dunCandidates);
+        }
+
+        for (ApnSetting dunSetting : dunCandidates) {
             if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
             if (dunSetting.numeric.equals(operator)) {
                 if (dunSetting.hasMvnoParams()) {
                     if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
                             dunSetting.mvnoMatchData)) {
-                        if (VDBG) {
-                            log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
-                        }
-                        return dunSetting;
-                    }
-                } else if (mMvnoMatched == false) {
-                    if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
-                    return dunSetting;
-                }
-            }
-        }
-
-        Context c = mPhone.getContext();
-        String[] apnArrayData = c.getResources().getStringArray(R.array.config_tether_apndata);
-        for (String apn : apnArrayData) {
-            ApnSetting dunSetting = ApnSetting.fromString(apn);
-            if (dunSetting != null) {
-                if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
-                if (dunSetting.hasMvnoParams()) {
-                    if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
-                            dunSetting.mvnoMatchData)) {
-                        if (VDBG) {
-                            log("fetchDunApn: config_tether_apndata mvno dunSetting=" + dunSetting);
-                        }
-                        return dunSetting;
+                        retDunSetting = dunSetting;
+                        break;
                     }
                 } else if (mMvnoMatched == false) {
                     retDunSetting = dunSetting;
+                    break;
                 }
             }
         }
 
-        if (VDBG) log("fetchDunApn: config_tether_apndata dunSetting=" + retDunSetting);
+        if (VDBG) log("fetchDunApn: dunSetting=" + retDunSetting);
         return retDunSetting;
     }
 
@@ -2183,15 +2217,15 @@ public class DcTracker extends Handler {
 
         log("setInitialApn: E mPreferredApn=" + mPreferredApn);
 
-        if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
+        if (mPreferredApn != null && mPreferredApn.canHandleType(PhoneConstants.APN_TYPE_IA)) {
+              iaApnSetting = mPreferredApn;
+        } else if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
             firstApnSetting = mAllApnSettings.get(0);
             log("setInitialApn: firstApnSetting=" + firstApnSetting);
 
             // Search for Initial APN setting and the first apn that can handle default
             for (ApnSetting apn : mAllApnSettings) {
-                // Can't use apn.canHandleType(), as that returns true for APNs that have no type.
-                if (ArrayUtils.contains(apn.types, PhoneConstants.APN_TYPE_IA) &&
-                        apn.carrierEnabled) {
+                if (apn.canHandleType(PhoneConstants.APN_TYPE_IA)) {
                     // The Initial Attach APN is highest priority so use it if there is one
                     log("setInitialApn: iaApnSetting=" + apn);
                     iaApnSetting = apn;
@@ -2460,6 +2494,10 @@ public class DcTracker extends Handler {
                     // Tear down all metered apns
                     cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
                 } else {
+                    // Re-evauluate Otasp state
+                    int otaspState = mPhone.getServiceStateTracker().getOtasp();
+                    mPhone.notifyOtaspChanged(otaspState);
+
                     teardownRestrictedMeteredConnections();
                     setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
                 }
@@ -2703,6 +2741,16 @@ public class DcTracker extends Handler {
         // TODO change our retry manager to use the appropriate numbers for the new APN
         if (DBG) log("onEnableApn: apnContext=" + apnContext + " call applyNewState");
         applyNewState(apnContext, enabled == DctConstants.ENABLED, apnContext.getDependencyMet());
+
+        if ((enabled == DctConstants.DISABLED) &&
+            isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology()) &&
+            !isHigherPriorityApnContextActive(apnContext)) {
+
+            if(DBG) log("onEnableApn: isOnlySingleDcAllowed true & higher priority APN disabled");
+            // If the highest priority APN is disabled and only single
+            // data call is allowed, try to setup data call on other connectable APN.
+            setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+        }
     }
 
     // TODO: We shouldnt need this.
@@ -2822,6 +2870,10 @@ public class DcTracker extends Handler {
         if (DBG) log("onRoamingOff");
 
         if (!mDataEnabledSettings.isUserDataEnabled()) return;
+
+        // Note onRoamingOff will be called immediately when DcTracker registerForDataRoamingOff,
+        // and will be called again if SST calls mDataRoamingOffRegistrants.notify().
+        setDataProfilesAsNeeded();
 
         if (getDataOnRoamingEnabled() == false) {
             notifyOffApnsOfAvailability(Phone.REASON_ROAMING_OFF);
@@ -3357,27 +3409,29 @@ public class DcTracker extends Handler {
     }
 
     protected void setDataProfilesAsNeeded() {
-        if (DBG) log("setDataProfilesAsNeeded");
+        if (DBG) log("setDataProfilesAsNeeded mSetDataProfileStatus: " + mSetDataProfileStatus);
         if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
             ArrayList<DataProfile> dps = new ArrayList<DataProfile>();
+            // Note getDataRoaming is also false if data not registered
+            boolean isRoaming = mPhone.getServiceState().getDataRoaming();
+            // If has set profile with home, and isRoaming is also false, no need to resend
+            // Also skip if has set profile with roaming and isRoaming is true.
+            if ((mSetDataProfileStatus == 1 && !isRoaming) ||
+                (mSetDataProfileStatus == 2 && isRoaming)) {
+                return;
+            }
             for (ApnSetting apn : mAllApnSettings) {
                 if (apn.modemCognitive) {
-                    DataProfile dp = new DataProfile(apn,
-                            mPhone.getServiceState().getDataRoaming());
-                    boolean isDup = false;
-                    for(DataProfile dpIn : dps) {
-                        if (dp.equals(dpIn)) {
-                            isDup = true;
-                            break;
-                        }
-                    }
-                    if (!isDup) {
+                    DataProfile dp = new DataProfile(apn, isRoaming);
+                    // ArrayList.contains will call object.equals
+                    if (!dps.contains(dp)) {
                         dps.add(dp);
                     }
                 }
             }
             if(dps.size() > 0) {
                 mPhone.mCi.setDataProfile(dps.toArray(new DataProfile[0]), null);
+                mSetDataProfileStatus = isRoaming ? 2 : 1;
             }
         }
     }
@@ -4295,6 +4349,7 @@ public class DcTracker extends Handler {
         pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
+        pw.println(" mSetDataProfileStatus=" + mSetDataProfileStatus);
         pw.flush();
         pw.println(" ***************************************");
         DcController dcc = mDcc;

@@ -79,7 +79,9 @@ import com.android.internal.util.StateMachine;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This class broadcasts incoming SMS messages to interested apps after storing them in
@@ -114,8 +116,18 @@ public abstract class InboundSmsHandler extends StateMachine {
     private static final String[] PDU_SEQUENCE_PORT_PROJECTION = {
             "pdu",
             "sequence",
-            "destination_port"
+            "destination_port",
+            "display_originating_addr"
     };
+
+    /** Mapping from DB COLUMN to PDU_SEQUENCE_PORT PROJECTION index */
+    private static final Map<Integer, Integer> PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING =
+            new HashMap<Integer, Integer>() {{
+                put(PDU_COLUMN, 0);
+                put(SEQUENCE_COLUMN, 1);
+                put(DESTINATION_PORT_COLUMN, 2);
+                put(DISPLAY_ADDRESS_COLUMN, 3);
+    }};
 
     public static final int PDU_COLUMN = 0;
     public static final int SEQUENCE_COLUMN = 1;
@@ -126,6 +138,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     public static final int ADDRESS_COLUMN = 6;
     public static final int ID_COLUMN = 7;
     public static final int MESSAGE_BODY_COLUMN = 8;
+    public static final int DISPLAY_ADDRESS_COLUMN = 9;
 
     public static final String SELECT_BY_ID = "_id=?";
     public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND " +
@@ -724,7 +737,8 @@ public abstract class InboundSmsHandler extends StateMachine {
 
             tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
                     sms.getTimestampMillis(), destPort, is3gpp2(), false,
-                    sms.getDisplayOriginatingAddress(), sms.getMessageBody());
+                    sms.getOriginatingAddress(), sms.getDisplayOriginatingAddress(),
+                    sms.getMessageBody());
         } else {
             // Create a tracker for this message segment.
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
@@ -732,7 +746,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             int destPort = (portAddrs != null ? portAddrs.destPort : -1);
 
             tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
-                    sms.getTimestampMillis(), destPort, is3gpp2(),
+                    sms.getTimestampMillis(), destPort, is3gpp2(), sms.getOriginatingAddress(),
                     sms.getDisplayOriginatingAddress(), concatRef.refNumber, concatRef.seqNumber,
                     concatRef.msgCount, false, sms.getMessageBody());
         }
@@ -778,10 +792,12 @@ public abstract class InboundSmsHandler extends StateMachine {
         int messageCount = tracker.getMessageCount();
         byte[][] pdus;
         int destPort = tracker.getDestPort();
+        boolean block = false;
 
         if (messageCount == 1) {
             // single-part message
             pdus = new byte[][]{tracker.getPdu()};
+            block = BlockChecker.isBlocked(mContext, tracker.getDisplayAddress());
         } else {
             // multi-part message
             Cursor cursor = null;
@@ -810,19 +826,35 @@ public abstract class InboundSmsHandler extends StateMachine {
                 pdus = new byte[messageCount][];
                 while (cursor.moveToNext()) {
                     // subtract offset to convert sequence to 0-based array index
-                    int index = cursor.getInt(SEQUENCE_COLUMN) - tracker.getIndexOffset();
+                    int index = cursor.getInt(PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING
+                            .get(SEQUENCE_COLUMN)) - tracker.getIndexOffset();
 
-                    pdus[index] = HexDump.hexStringToByteArray(cursor.getString(PDU_COLUMN));
+                    pdus[index] = HexDump.hexStringToByteArray(cursor.getString(
+                            PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING.get(PDU_COLUMN)));
 
                     // Read the destination port from the first segment (needed for CDMA WAP PDU).
                     // It's not a bad idea to prefer the port from the first segment in other cases.
-                    if (index == 0 && !cursor.isNull(DESTINATION_PORT_COLUMN)) {
-                        int port = cursor.getInt(DESTINATION_PORT_COLUMN);
+                    if (index == 0 && !cursor.isNull(PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING
+                            .get(DESTINATION_PORT_COLUMN))) {
+                        int port = cursor.getInt(PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING
+                                .get(DESTINATION_PORT_COLUMN));
                         // strip format flags and convert to real port number, or -1
                         port = InboundSmsTracker.getRealDestPort(port);
                         if (port != -1) {
                             destPort = port;
                         }
+                    }
+                    // check if display address should be blocked or not
+                    if (!block) {
+                        // Depending on the nature of the gateway, the display origination address
+                        // is either derived from the content of the SMS TP-OA field, or the TP-OA
+                        // field contains a generic gateway address and the from address is added
+                        // at the beginning in the message body. In that case only the first SMS
+                        // (part of Multi-SMS) comes with the display originating address which
+                        // could be used for block checking purpose.
+                        block = BlockChecker.isBlocked(mContext,
+                                cursor.getString(PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING
+                                        .get(DISPLAY_ADDRESS_COLUMN)));
                     }
                 }
             } catch (SQLException e) {
@@ -877,7 +909,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
-        if (BlockChecker.isBlocked(mContext, tracker.getAddress())) {
+        if (block) {
             deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
                     DELETE_PERMANENTLY);
             return false;

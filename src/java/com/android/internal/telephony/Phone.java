@@ -51,10 +51,12 @@ import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
 
+import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -2134,23 +2136,40 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return videoState;
     }
 
-    private boolean isVideoCall(Call call) {
-        int videoState = getVideoState(call);
-        return (VideoProfile.isVideo(videoState));
+    /**
+     * Determines if the specified call currently is or was at some point a video call, or if it is
+     * a conference call.
+     * @param call The call.
+     * @return {@code true} if the call is or was a video call or is a conference call,
+     *      {@code false} otherwise.
+     */
+    private boolean isVideoCallOrConference(Call call) {
+        if (call.isMultiparty()) {
+            return true;
+        }
+
+        boolean isDowngradedVideoCall = false;
+        if (call instanceof ImsPhoneCall) {
+            ImsPhoneCall imsPhoneCall = (ImsPhoneCall) call;
+            ImsCall imsCall = imsPhoneCall.getImsCall();
+            return imsCall != null && (imsCall.isVideoCall() ||
+                    imsCall.wasVideoCall());
+        }
+        return isDowngradedVideoCall;
     }
 
     /**
-     * @return {@code true} if video call is present, false otherwise.
+     * @return {@code true} if an IMS video call or IMS conference is present, false otherwise.
      */
-    public boolean isVideoCallPresent() {
-        boolean isVideoCallActive = false;
+    public boolean isImsVideoCallOrConferencePresent() {
+        boolean isPresent = false;
         if (mImsPhone != null) {
-            isVideoCallActive = isVideoCall(mImsPhone.getForegroundCall()) ||
-                    isVideoCall(mImsPhone.getBackgroundCall()) ||
-                    isVideoCall(mImsPhone.getRingingCall());
+            isPresent = isVideoCallOrConference(mImsPhone.getForegroundCall()) ||
+                    isVideoCallOrConference(mImsPhone.getBackgroundCall()) ||
+                    isVideoCallOrConference(mImsPhone.getRingingCall());
         }
-        Rlog.d(LOG_TAG, "isVideoCallActive: " + isVideoCallActive);
-        return isVideoCallActive;
+        Rlog.d(LOG_TAG, "isImsVideoCallOrConferencePresent: " + isPresent);
+        return isPresent;
     }
 
     /**
@@ -2926,6 +2945,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Return if UT capability of ImsPhone is enabled or not
      */
     public boolean isUtEnabled() {
+        if (mImsPhone != null) {
+            return mImsPhone.isUtEnabled();
+        }
         return false;
     }
 
