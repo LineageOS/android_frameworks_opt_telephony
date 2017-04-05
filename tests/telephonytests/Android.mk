@@ -17,4 +17,6 @@ LOCAL_STATIC_JAVA_LIBRARIES := guava \
 
 LOCAL_PACKAGE_NAME := FrameworksTelephonyTests
 
+LOCAL_COMPATIBILITY_SUITE := device-tests
+
 include $(BUILD_PACKAGE)
