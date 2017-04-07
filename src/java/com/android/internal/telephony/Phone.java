@@ -2278,30 +2278,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * send secret dialer codes to launch arbitrary activities in the form of *#*#<code>#*#*.
-     * If a secret code is encountered, an Intent is started with the android_secret_code://<code>
-     * URI.
-     *
-     * @param code the text to check for a secret code in
-     * @return true if a secret code was encountered
-     */
-    public boolean sendDialerCode(String code) {
-        // Secret dialer codes are in the form *#*#<code>#*#*
-        if (TextUtils.isEmpty(code)) {
-            return false;
-        }
-        int len = code.length();
-        if (len > 8 && code.startsWith("*#*#") && code.endsWith("#*#*")) {
-            Intent intent = new Intent(TelephonyIntents.SECRET_CODE_ACTION,
-                    Uri.parse("android_secret_code://" + code.substring(4, len - 4)));
-            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
-            mContext.sendBroadcast(intent);
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * send secret dialer codes to launch arbitrary activities.
      * an Intent is started with the android_secret_code://<code> URI.
      *
