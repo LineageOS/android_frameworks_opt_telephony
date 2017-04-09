@@ -36,10 +36,12 @@ import android.os.Message;
 import android.service.euicc.DownloadResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
+import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.service.euicc.IDownloadSubscriptionCallback;
 import android.service.euicc.IEuiccService;
 import android.service.euicc.IGetDownloadableSubscriptionMetadataCallback;
 import android.service.euicc.IGetEidCallback;
+import android.service.euicc.IGetEuiccProfileInfoListCallback;
 import android.telephony.SubscriptionManager;
 import android.telephony.euicc.DownloadableSubscription;
 import android.text.TextUtils;
@@ -106,6 +108,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private static final int CMD_GET_EID = 6;
     private static final int CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA = 7;
     private static final int CMD_DOWNLOAD_SUBSCRIPTION = 8;
+    private static final int CMD_GET_EUICC_PROFILE_INFO_LIST = 9;
 
     private static boolean isEuiccCommand(int what) {
         return what >= CMD_GET_EID;
@@ -170,6 +173,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     public interface DownloadCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the download has completed (though it may have failed). */
         void onDownloadComplete(DownloadResult result);
+    }
+
+    interface GetEuiccProfileInfoListCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the list has completed (though it may have failed). */
+        void onListComplete(GetEuiccProfileInfoListResult result);
     }
 
     private Context mContext;
@@ -280,6 +288,10 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         request.mForceDeactivateSim = forceDeactivateSim;
         request.mCallback = callback;
         sendMessage(CMD_DOWNLOAD_SUBSCRIPTION, request);
+    }
+
+    void getEuiccProfileInfoList(GetEuiccProfileInfoListCommandCallback callback) {
+        sendMessage(CMD_GET_EUICC_PROFILE_INFO_LIST, callback);
     }
 
     /**
@@ -497,6 +509,19 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     });
                             break;
                         }
+                        case CMD_GET_EUICC_PROFILE_INFO_LIST: {
+                            mEuiccService.getEuiccProfileInfoList(slotId,
+                                    new IGetEuiccProfileInfoListCallback.Stub() {
+                                        @Override
+                                        public void onComplete(
+                                                GetEuiccProfileInfoListResult result) {
+                                            ((GetEuiccProfileInfoListCommandCallback) callback)
+                                                    .onListComplete(result);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
                         default: {
                             Log.wtf(TAG, "Unimplemented eUICC command: " + message.what);
                             callback.onEuiccServiceUnavailable();
@@ -528,6 +553,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private static BaseEuiccCommandCallback getCallback(Message message) {
         switch (message.what) {
             case CMD_GET_EID:
+            case CMD_GET_EUICC_PROFILE_INFO_LIST:
                 return (BaseEuiccCommandCallback) message.obj;
             case CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA:
                 return ((GetMetadataRequest) message.obj).mCallback;

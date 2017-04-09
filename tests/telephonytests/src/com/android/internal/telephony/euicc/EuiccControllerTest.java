@@ -41,7 +41,7 @@ import android.service.euicc.DownloadResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.support.test.runner.AndroidJUnit4;
-import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionInfo;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccManager;
@@ -59,6 +59,7 @@ import org.mockito.stubbing.Answer;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 
 @RunWith(AndroidJUnit4.class)
 public class EuiccControllerTest extends TelephonyTest {
@@ -69,19 +70,23 @@ public class EuiccControllerTest extends TelephonyTest {
     private static final String CARRIER_NAME = "test name";
     private static final byte[] SIGNATURE_BYTES = new byte[] {1, 2, 3, 4, 5};
 
-    private static final DownloadableSubscription SUBSCRIPTION_WITH_METADATA =
-            DownloadableSubscription.forActivationCode("abcde");
+    private static final UiccAccessRule ACCESS_RULE;
     static {
         try {
-            SUBSCRIPTION_WITH_METADATA.setCarrierName("test name");
-            UiccAccessRule rule = new UiccAccessRule(
+            ACCESS_RULE = new UiccAccessRule(
                     MessageDigest.getInstance("SHA-256").digest(SIGNATURE_BYTES),
                     PACKAGE_NAME,
                     0);
-            SUBSCRIPTION_WITH_METADATA.setAccessRules(new UiccAccessRule[] { rule });
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 must exist");
         }
+    }
+
+    private static final DownloadableSubscription SUBSCRIPTION_WITH_METADATA =
+            DownloadableSubscription.forActivationCode("abcde");
+    static {
+        SUBSCRIPTION_WITH_METADATA.setCarrierName("test name");
+        SUBSCRIPTION_WITH_METADATA.setAccessRules(new UiccAccessRule[] { ACCESS_RULE });
     }
 
     @Mock private EuiccConnector mMockConnector;
@@ -298,9 +303,11 @@ public class EuiccControllerTest extends TelephonyTest {
         pi.packageName = PACKAGE_NAME;
         pi.signatures = new Signature[] { new Signature(SIGNATURE_BYTES) };
         when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
-        // TODO(b/33075886): This should mock the current profile metadata, not privileges.
-        when(mTelephonyManager.checkCarrierPrivilegesForPackage(PACKAGE_NAME))
-                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        SubscriptionInfo subInfo = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
+                new UiccAccessRule[] { ACCESS_RULE });
+        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
+                Collections.singletonList(subInfo));
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
@@ -317,9 +324,11 @@ public class EuiccControllerTest extends TelephonyTest {
         pi.packageName = PACKAGE_NAME;
         pi.signatures = new Signature[] { new Signature(SIGNATURE_BYTES) };
         when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
-        // TODO(b/33075886): This should mock the current profile metadata, not privileges.
-        when(mTelephonyManager.checkCarrierPrivilegesForPackage(PACKAGE_NAME))
-                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        SubscriptionInfo subInfo = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
+                null /* accessRules */);
+        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
+                Collections.singletonList(subInfo));
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,

@@ -44,6 +44,7 @@ import android.provider.BlockedNumberContract;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.euicc.EuiccManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.util.Log;
@@ -183,6 +184,7 @@ public abstract class TelephonyTest {
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
+    protected EuiccManager mEuiccManager;
     protected PackageManager mPackageManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
@@ -315,6 +317,7 @@ public abstract class TelephonyTest {
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mSubscriptionManager = (SubscriptionManager) mContext.getSystemService(
                 Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        mEuiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
         mPackageManager = mContext.getPackageManager();
 
         replaceInstance(TelephonyManager.class, "sInstance", null,

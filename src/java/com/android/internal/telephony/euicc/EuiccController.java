@@ -29,6 +29,9 @@ import android.os.ServiceManager;
 import android.service.euicc.DownloadResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
+import android.service.euicc.GetEuiccProfileInfoListResult;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.DownloadableSubscription;
@@ -36,9 +39,11 @@ import android.telephony.euicc.EuiccManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.SubscriptionController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -61,6 +66,7 @@ public class EuiccController extends IEuiccController.Stub {
 
     private final Context mContext;
     private final EuiccConnector mConnector;
+    private final SubscriptionManager mSubscriptionManager;
     private final AppOpsManager mAppOpsManager;
     private final PackageManager mPackageManager;
 
@@ -97,6 +103,8 @@ public class EuiccController extends IEuiccController.Stub {
     public EuiccController(Context context, EuiccConnector connector) {
         mContext = context;
         mConnector = connector;
+        mSubscriptionManager = (SubscriptionManager)
+                context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
         mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mPackageManager = context.getPackageManager();
     }
@@ -316,24 +324,33 @@ public class EuiccController extends IEuiccController.Stub {
             for (int i = 0; i < rules.length; i++) {
                 if (rules[i].getCarrierPrivilegeStatus(info)
                         == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                    // TODO(b/33075886): For consistency, this should check the privilege rules in
-                    // the metadata, not the profile itself.
-                    TelephonyManager tm =
-                            (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-                    if (tm.checkCarrierPrivilegesForPackage(mCallingPackage)
-                            == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                        // Permission verified - move on to the download.
-                        downloadSubscriptionPrivileged(
-                                mCallingToken, subscription, mSwitchAfterDownload,
-                                mForceDeactivateSim, mCallingPackage, mCallbackIntent);
-                    } else {
-                        // Switch might still be permitted, but the user must consent first.
-                        Intent extrasIntent = new Intent();
-                        addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
-                                EuiccOperation.forDownloadNoPrivileges(
-                                        mCallingToken, subscription, mSwitchAfterDownload));
-                        sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
+                    // Caller can download this profile. Now, determine whether the caller can also
+                    // manage the current profile; if so, we can perform the download silently; if
+                    // not, the user must provide consent.
+
+                    // TODO(b/36260308): We should plumb a slot ID through here for multi-SIM
+                    // devices.
+                    List<SubscriptionInfo> subInfoList =
+                            mSubscriptionManager.getActiveSubscriptionInfoList();
+                    int size = subInfoList.size();
+                    for (int subIndex = 0; subIndex < size; subIndex++) {
+                        SubscriptionInfo subInfo = subInfoList.get(subIndex);
+                        if (subInfo.isEmbedded()
+                                && subInfo.canManageSubscription(mContext, mCallingPackage)) {
+                            // Permission verified - move on to the download.
+                            downloadSubscriptionPrivileged(
+                                    mCallingToken, subscription, mSwitchAfterDownload,
+                                    mForceDeactivateSim, mCallingPackage, mCallbackIntent);
+                            return;
+                        }
                     }
+
+                    // Switch might still be permitted, but the user must consent first.
+                    Intent extrasIntent = new Intent();
+                    addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                            EuiccOperation.forDownloadNoPrivileges(
+                                    mCallingToken, subscription, mSwitchAfterDownload));
+                    sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
                     return;
                 }
             }
@@ -364,6 +381,12 @@ public class EuiccController extends IEuiccController.Stub {
                         switch (result.result) {
                             case DownloadResult.RESULT_OK:
                                 resultCode = OK;
+                                if (!switchAfterDownload) {
+                                    // Since we're not switching, nothing will trigger a
+                                    // subscription list refresh on its own, so request one here.
+                                    SubscriptionController.getInstance()
+                                            .requestEmbeddedSubscriptionInfoListRefresh();
+                                }
                                 break;
                             case DownloadResult.RESULT_MUST_DEACTIVATE_SIM:
                                 resultCode = RESOLVABLE_ERROR;
@@ -393,6 +416,36 @@ public class EuiccController extends IEuiccController.Stub {
                         sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
                     }
                 });
+    }
+
+    /**
+     * Blocking call to {@link EuiccService#onGetEuiccProfileInfoList}.
+     *
+     * <p>Does not perform permission checks as this is not an exposed API and is only used within
+     * the phone process.
+     */
+    public GetEuiccProfileInfoListResult blockingGetEuiccProfileInfoList() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<GetEuiccProfileInfoListResult> resultRef = new AtomicReference<>();
+        mConnector.getEuiccProfileInfoList(
+                new EuiccConnector.GetEuiccProfileInfoListCommandCallback() {
+                    @Override
+                    public void onListComplete(GetEuiccProfileInfoListResult result) {
+                        resultRef.set(result);
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        latch.countDown();
+                    }
+                });
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return resultRef.get();
     }
 
     /** Dispatch the given callback intent with the given result code and data. */
