@@ -494,6 +494,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private IRadio getRadioProxy(Message result) {
         if (!mIsMobileNetworkSupported) {
             if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                result.sendToTarget();
+            }
             return null;
         }
 
@@ -535,6 +540,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private IOemHook getOemHookProxy(Message result) {
         if (!mIsMobileNetworkSupported) {
             if (RILJ_LOGV) riljLog("getOemHookProxy: Not calling getService(): wifi-only");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                result.sendToTarget();
+            }
             return null;
         }
 
