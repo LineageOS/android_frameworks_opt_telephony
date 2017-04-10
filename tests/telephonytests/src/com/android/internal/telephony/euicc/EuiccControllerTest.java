@@ -18,9 +18,12 @@ package com.android.internal.telephony.euicc;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,12 +33,16 @@ import android.app.PendingIntent;
 import android.content.IIntentReceiver;
 import android.content.IIntentSender;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.service.euicc.DownloadResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.support.test.runner.AndroidJUnit4;
+import android.telephony.TelephonyManager;
+import android.telephony.UiccAccessRule;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccManager;
 
@@ -51,10 +58,32 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 @RunWith(AndroidJUnit4.class)
 public class EuiccControllerTest extends TelephonyTest {
     private static final DownloadableSubscription SUBSCRIPTION =
             DownloadableSubscription.forActivationCode("abcde");
+
+    private static final String PACKAGE_NAME = "test.package";
+    private static final String CARRIER_NAME = "test name";
+    private static final byte[] SIGNATURE_BYTES = new byte[] {1, 2, 3, 4, 5};
+
+    private static final DownloadableSubscription SUBSCRIPTION_WITH_METADATA =
+            DownloadableSubscription.forActivationCode("abcde");
+    static {
+        try {
+            SUBSCRIPTION_WITH_METADATA.setCarrierName("test name");
+            UiccAccessRule rule = new UiccAccessRule(
+                    MessageDigest.getInstance("SHA-256").digest(SIGNATURE_BYTES),
+                    PACKAGE_NAME,
+                    0);
+            SUBSCRIPTION_WITH_METADATA.setAccessRules(new UiccAccessRule[] { rule });
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 must exist");
+        }
+    }
 
     @Mock private EuiccConnector mMockConnector;
     private EuiccController mController;
@@ -122,17 +151,15 @@ public class EuiccControllerTest extends TelephonyTest {
     @Test
     public void testGetDownloadableSubscriptionMetadata_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
-        DownloadableSubscription subscription = DownloadableSubscription.forActivationCode("abcde");
-        subscription.setCarrierName("test name");
         GetDownloadableSubscriptionMetadataResult result =
-                GetDownloadableSubscriptionMetadataResult.success(subscription);
+                GetDownloadableSubscriptionMetadataResult.success(SUBSCRIPTION_WITH_METADATA);
         callGetDownloadableSubscriptionMetadata(SUBSCRIPTION, true /* complete */, result);
         Intent intent = verifyIntentSent(
                 EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
         DownloadableSubscription receivedSubscription = intent.getParcelableExtra(
                 EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION);
         assertNotNull(receivedSubscription);
-        assertEquals("test name", receivedSubscription.getCarrierName());
+        assertEquals(CARRIER_NAME, receivedSubscription.getCarrierName());
     }
 
     @Test
@@ -140,7 +167,7 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(
                 SUBSCRIPTION, true /* switchAfterDownload */, false /* complete */,
-                null /* result */);
+                null /* result */, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
                 0 /* detailedCode */);
     }
@@ -150,7 +177,7 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         DownloadResult result = DownloadResult.genericError(42);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
-                result);
+                result, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
                 42 /* detailedCode */);
     }
@@ -160,12 +187,76 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         DownloadResult result = DownloadResult.success();
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                result);
+                result, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
     }
 
-    // TODO(b/33075886): Add security tests once carrier privilege checks are implemented.
-    // TODO(b/33075886): Add resolvable error tests once resolvable errors are implemented.
+    @Test
+    public void testDownloadSubscription_noPrivileges_getMetadata_serviceUnavailable()
+            throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareGetDownloadableSubscriptionMetadataCall(false /* complete */, null /* result */);
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).downloadSubscription(
+                Mockito.any(), anyBoolean(), Mockito.any());
+    }
+
+    @Test
+    public void testDownloadSubscription_noPrivileges_getMetadata_genericError()
+            throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        GetDownloadableSubscriptionMetadataResult result =
+                GetDownloadableSubscriptionMetadataResult.genericError(42);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                42 /* detailedCode */);
+        verify(mMockConnector, never()).downloadSubscription(
+                Mockito.any(), anyBoolean(), Mockito.any());
+    }
+
+    @Test
+    public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        GetDownloadableSubscriptionMetadataResult result =
+                GetDownloadableSubscriptionMetadataResult.success(SUBSCRIPTION_WITH_METADATA);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        pi.signatures = new Signature[] { new Signature(SIGNATURE_BYTES) };
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
+        // TODO(b/33075886): This should mock the current profile metadata, not privileges.
+        when(mTelephonyManager.checkCarrierPrivilegesForPackage(PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test
+    public void testDownloadSubscription_noPrivileges_noCarrierPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        GetDownloadableSubscriptionMetadataResult result =
+                GetDownloadableSubscriptionMetadataResult.success(SUBSCRIPTION_WITH_METADATA);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        pi.signatures = new Signature[] { new Signature(new byte[] { 5, 4, 3, 2, 1 }) };
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mTelephonyManager, never()).checkCarrierPrivilegesForPackage(PACKAGE_NAME);
+        verify(mMockConnector, never()).downloadSubscription(
+                Mockito.any(), anyBoolean(), Mockito.any());
+    }
+
+    // TODO(b/33075886): Add resolvable error tests once resolvable errors are implemented
 
     private void setGetEidPermissions(
             boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges) {
@@ -199,9 +290,8 @@ public class EuiccControllerTest extends TelephonyTest {
         return mController.getEid();
     }
 
-    private void callGetDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
+    private void prepareGetDownloadableSubscriptionMetadataCall(
             final boolean complete, final GetDownloadableSubscriptionMetadataResult result) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -216,11 +306,18 @@ public class EuiccControllerTest extends TelephonyTest {
         }).when(mMockConnector).getDownloadableSubscriptionMetadata(
                 Mockito.<DownloadableSubscription>any(),
                 Mockito.<EuiccConnector.GetMetadataCommandCallback>any());
+    }
+
+    private void callGetDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
+            boolean complete, GetDownloadableSubscriptionMetadataResult result) {
+        prepareGetDownloadableSubscriptionMetadataCall(complete, result);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
         mController.getDownloadableSubscriptionMetadata(subscription, resultCallback);
     }
 
     private void callDownloadSubscription(DownloadableSubscription subscription,
-            boolean switchAfterDownload, final boolean complete, final DownloadResult result) {
+            boolean switchAfterDownload, final boolean complete, final DownloadResult result,
+            String callingPackage) {
         PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
         doAnswer(new Answer<Void>() {
             @Override
@@ -237,7 +334,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 Mockito.<DownloadableSubscription>any(),
                 Mockito.eq(switchAfterDownload),
                 Mockito.<EuiccConnector.DownloadCommandCallback>any());
-        mController.downloadSubscription(subscription, switchAfterDownload, resultCallback);
+        mController.downloadSubscription(subscription, switchAfterDownload, callingPackage,
+                resultCallback);
     }
 
     private Intent verifyIntentSent(int resultCode, int detailedCode)
