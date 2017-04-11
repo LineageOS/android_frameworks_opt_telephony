@@ -3057,18 +3057,19 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void iccOpenLogicalChannel(String aid, Message result) {
+    public void iccOpenLogicalChannel(String aid, int p2, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SIM_OPEN_CHANNEL, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " aid = " + aid);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " aid = " + aid
+                        + " p2 = " + p2);
             }
 
             try {
-                radioProxy.iccOpenLogicalChannel(rr.mSerial, convertNullToEmptyString(aid));
+                radioProxy.iccOpenLogicalChannel(rr.mSerial, convertNullToEmptyString(aid), p2);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "iccOpenLogicalChannel", e);
             }

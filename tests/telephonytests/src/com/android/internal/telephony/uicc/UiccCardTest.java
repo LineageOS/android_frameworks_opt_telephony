@@ -202,7 +202,7 @@ public class UiccCardTest extends TelephonyTest {
 
         assertTrue(mUicccard.areCarrierPriviligeRulesLoaded());
         verify(mSimulatedCommandsVerifier, times(1)).iccOpenLogicalChannel(isA(String.class),
-                isA(Message.class));
+                anyInt(), isA(Message.class));
         verify(mSimulatedCommandsVerifier, times(1)).iccTransmitApduLogicalChannel(
                 eq(mChannelId), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyString(),
                 isA(Message.class)
