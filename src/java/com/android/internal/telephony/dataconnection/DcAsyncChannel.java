@@ -16,15 +16,15 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
-import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
-import com.android.internal.util.AsyncChannel;
-import com.android.internal.util.Protocol;
-
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.ProxyInfo;
 import android.os.Message;
+
+import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
+import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
+import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.Protocol;
 
 /**
  * AsyncChannel to a DataConnection
@@ -342,7 +342,7 @@ public class DcAsyncChannel extends AsyncChannel {
                 value = null;
             }
         } else {
-            value = mDc.getCopyNetworkCapabilities();
+            value = mDc.getNetworkCapabilities();
         }
         return value;
     }
