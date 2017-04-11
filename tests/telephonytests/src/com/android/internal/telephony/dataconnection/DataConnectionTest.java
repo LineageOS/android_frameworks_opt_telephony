@@ -278,8 +278,8 @@ public class DataConnectionTest extends TelephonyTest {
         return (NetworkInfo) f.get(mDc);
     }
 
-    private NetworkCapabilities getCopyNetworkCapabilities() throws Exception {
-        Method method = DataConnection.class.getDeclaredMethod("getCopyNetworkCapabilities");
+    private NetworkCapabilities getNetworkCapabilities() throws Exception {
+        Method method = DataConnection.class.getDeclaredMethod("getNetworkCapabilities");
         method.setAccessible(true);
         return (NetworkCapabilities) method.invoke(mDc);
     }
@@ -294,8 +294,8 @@ public class DataConnectionTest extends TelephonyTest {
 
         testConnectEvent();
 
-        assertFalse(getCopyNetworkCapabilities().
-                hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
+        assertFalse(getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
         assertTrue(getNetworkInfo().isMetered());
     }
 
@@ -310,8 +310,8 @@ public class DataConnectionTest extends TelephonyTest {
 
         testConnectEvent();
 
-        assertTrue(getCopyNetworkCapabilities().
-                hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
+        assertTrue(getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
         assertFalse(getNetworkInfo().isMetered());
     }
 }
