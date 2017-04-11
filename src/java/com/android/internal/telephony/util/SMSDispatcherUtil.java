@@ -67,8 +67,47 @@ public final class SMSDispatcherUtil {
     }
 
     /**
+     * Trigger the proper implementation for getting submit pdu for text sms based on format.
+     *
+     * @param isCdma true if cdma format should be used.
+     * @param scAddr is the service center address or null to use the current default SMSC
+     * @param destAddr the address to send the message to
+     * @param message the body of the message.
+     * @param statusReportRequested whether or not a status report is requested.
+     * @param smsHeader message header.
+     * @param priority Priority level of the message
+     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
+     *  ---------------------------------
+     *  PRIORITY      | Level of Priority
+     *  ---------------------------------
+     *      '00'      |     Normal
+     *      '01'      |     Interactive
+     *      '10'      |     Urgent
+     *      '11'      |     Emergency
+     *  ----------------------------------
+     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
+     * @param validityPeriod Validity Period of the message in mins.
+     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
+     *  Validity Period(Minimum) -> 5 mins
+     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
+     *  Any Other values included Negative considered as Invalid Validity Period of the message.
+     * @return the submit pdu.
+     */
+    public static SmsMessageBase.SubmitPduBase getSubmitPdu(boolean isCdma, String scAddr,
+            String destAddr, String message, boolean statusReportRequested, SmsHeader smsHeader,
+            int priority, int validityPeriod) {
+        if (isCdma) {
+            return getSubmitPduCdma(scAddr, destAddr, message, statusReportRequested, smsHeader,
+                    priority);
+        } else {
+            return getSubmitPduGsm(scAddr, destAddr, message, statusReportRequested,
+                    validityPeriod);
+        }
+    }
+
+    /**
      * Gsm implementation for
-     * {@link #getSubmitPdu(boolean, String, String, String, boolean, SmsHeader)}
+     * {@link #getSubmitPdu(boolean, String, String, String, boolean)}
      *
      * @param scAddr is the service center address or null to use the current default SMSC
      * @param destAddr the address to send the message to
@@ -80,6 +119,27 @@ public final class SMSDispatcherUtil {
             String message, boolean statusReportRequested) {
         return com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(scAddr, destAddr, message,
                 statusReportRequested);
+    }
+
+    /**
+     * Gsm implementation for
+     * {@link #getSubmitPdu(boolean, String, String, String, boolean, int)}
+     *
+     * @param scAddr is the service center address or null to use the current default SMSC
+     * @param destAddr the address to send the message to
+     * @param message the body of the message.
+     * @param statusReportRequested whether or not a status report is requested.
+     * @param validityPeriod Validity Period of the message in mins.
+     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
+     *  Validity Period(Minimum) -> 5 mins
+     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
+     *  Any Other values included Negative considered as Invalid Validity Period of the message.
+     * @return the submit pdu.
+     */
+    public static SmsMessageBase.SubmitPduBase getSubmitPduGsm(String scAddr, String destAddr,
+            String message, boolean statusReportRequested, int validityPeriod) {
+        return com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(scAddr, destAddr, message,
+                statusReportRequested, validityPeriod);
     }
 
     /**
@@ -97,6 +157,34 @@ public final class SMSDispatcherUtil {
             String message, boolean statusReportRequested, SmsHeader smsHeader) {
         return com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(scAddr, destAddr,
                 message, statusReportRequested, smsHeader);
+    }
+
+    /**
+     * Cdma implementation for
+     * {@link #getSubmitPdu(boolean, String, String, String, boolean, SmsHeader)}
+     *
+     *  @param scAddr is the service center address or null to use the current default SMSC
+     * @param destAddr the address to send the message to
+     * @param message the body of the message.
+     * @param statusReportRequested whether or not a status report is requested.
+     * @param smsHeader message header.
+     * @param priority Priority level of the message
+     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
+     *  ---------------------------------
+     *  PRIORITY      | Level of Priority
+     *  ---------------------------------
+     *      '00'      |     Normal
+     *      '01'      |     Interactive
+     *      '10'      |     Urgent
+     *      '11'      |     Emergency
+     *  ----------------------------------
+     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
+     * @return the submit pdu.
+     */
+    public static SmsMessageBase.SubmitPduBase getSubmitPduCdma(String scAddr, String destAddr,
+            String message, boolean statusReportRequested, SmsHeader smsHeader, int priority) {
+        return com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(scAddr, destAddr,
+                message, statusReportRequested, smsHeader, priority);
     }
 
     /**

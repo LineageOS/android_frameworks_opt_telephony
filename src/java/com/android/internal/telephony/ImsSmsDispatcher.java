@@ -312,9 +312,10 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
     @Override
     protected SmsMessageBase.SubmitPduBase getSubmitPdu(String scAddr, String destAddr,
-            String message, boolean statusReportRequested, SmsHeader smsHeader) {
+            String message, boolean statusReportRequested, SmsHeader smsHeader, int priority,
+            int validityPeriod) {
         return SMSDispatcherUtil.getSubmitPdu(isCdmaMo(), scAddr, destAddr, message,
-                statusReportRequested, smsHeader);
+                statusReportRequested, smsHeader, priority, validityPeriod);
     }
 
     @Override
