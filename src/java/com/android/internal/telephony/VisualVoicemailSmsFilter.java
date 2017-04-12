@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.provider.VoicemailContract;
 import android.telecom.PhoneAccountHandle;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -304,7 +305,7 @@ public class VisualVoicemailSmsFilter {
         }
 
         for (String number : numbers) {
-            if (number.equals(message.getOriginatingAddress())) {
+            if (PhoneNumberUtils.compare(number, message.getOriginatingAddress())) {
                 return true;
             }
         }
