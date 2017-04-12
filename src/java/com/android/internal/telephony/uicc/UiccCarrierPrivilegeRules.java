@@ -217,7 +217,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
     private void openChannel() {
         // Send open logical channel request.
-        mUiccCard.iccOpenLogicalChannel(AID,
+        int p2 = 0x00;
+        mUiccCard.iccOpenLogicalChannel(AID, p2, /* supported p2 value */
             obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, null));
     }
 
