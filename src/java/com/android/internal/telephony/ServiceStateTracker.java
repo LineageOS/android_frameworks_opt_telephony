@@ -2529,11 +2529,11 @@ public class ServiceStateTracker extends Handler {
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
                 mNitzUpdatedTime = false;
-                // don't poll for state when the radio is off
-                // EXCEPT, if the poll was modemTrigged (they sent us new radio data)
-                // or we're on IWLAN
-                if (!modemTriggered && ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                        != mSS.getRilDataRadioTechnology()) {
+                // don't poll when device is shutting down or the poll was not modemTrigged
+                // (they sent us new radio data) and current network is not IWLAN
+                if (mDeviceShuttingDown ||
+                        (!modemTriggered && ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        != mSS.getRilDataRadioTechnology())) {
                     pollStateDone();
                     break;
                 }
