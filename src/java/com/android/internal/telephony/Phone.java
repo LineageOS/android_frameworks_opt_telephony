@@ -2155,6 +2155,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return mIsPhoneInEcmState;
     }
 
+    public void setIsInEcm(boolean isInEcm) {
+        setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, String.valueOf(isInEcm));
+        mIsPhoneInEcmState = isInEcm;
+    }
+
     private static int getVideoState(Call call) {
         int videoState = VideoProfile.STATE_AUDIO_ONLY;
         Connection conn = call.getEarliestConnection();

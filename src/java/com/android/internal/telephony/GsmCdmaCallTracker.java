@@ -400,8 +400,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             dialString = convertNumberIfNecessary(mPhone, dialString);
         }
 
-        String inEcm=SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-        boolean isPhoneInEcmMode = inEcm.equals("true");
+        boolean isPhoneInEcmMode = mPhone.isInEcm();
         boolean isEmergencyCall =
                 PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(), dialString);
 
@@ -1560,11 +1559,11 @@ public class GsmCdmaCallTracker extends CallTracker {
     private void checkAndEnableDataCallAfterEmergencyCallDropped() {
         if (mIsInEmergencyCall) {
             mIsInEmergencyCall = false;
-            String inEcm=SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+            boolean inEcm = mPhone.isInEcm();
             if (Phone.DEBUG_PHONE) {
                 log("checkAndEnableDataCallAfterEmergencyCallDropped,inEcm=" + inEcm);
             }
-            if (inEcm.compareTo("false") == 0) {
+            if (!inEcm) {
                 // Re-initiate data connection
                 mPhone.mDcTracker.setInternalDataEnabled(true);
                 mPhone.notifyEmergencyCallRegistrants(false);
