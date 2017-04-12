@@ -25,6 +25,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkMisc;
 import android.net.ProxyInfo;
+import android.net.StringNetworkSpecifier;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
@@ -963,7 +964,7 @@ public class DataConnection extends StateMachine {
         result.setLinkUpstreamBandwidthKbps(up);
         result.setLinkDownstreamBandwidthKbps(down);
 
-        result.setNetworkSpecifier(Integer.toString(mPhone.getSubId()));
+        result.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(mPhone.getSubId())));
 
         return result;
     }
