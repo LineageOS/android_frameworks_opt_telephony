@@ -1506,7 +1506,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             cfInfo.reason = cfReason;
             cfInfo.serviceClass = serviceClass;
             cfInfo.toa = PhoneNumberUtils.toaFromString(number);
-            cfInfo.number = number;
+            cfInfo.number = convertNullToEmptyString(number);
             cfInfo.timeSeconds = 0;
 
             try {
