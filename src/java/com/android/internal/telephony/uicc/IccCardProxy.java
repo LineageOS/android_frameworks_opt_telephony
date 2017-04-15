@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-import static android.Manifest.permission.READ_PHONE_STATE;
-
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
@@ -26,7 +24,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -37,14 +34,13 @@ import android.text.TextUtils;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
-import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -420,9 +416,8 @@ public class IccCardProxy extends Handler implements IccCard {
                 if (mUiccApplication.getPersoSubState() ==
                         PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
                     setExternalState(State.NETWORK_LOCKED);
-                } else {
-                    setExternalState(State.UNKNOWN);
                 }
+                // Otherwise don't change external SIM state.
                 break;
             case APPSTATE_READY:
                 setExternalState(State.READY);
