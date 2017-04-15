@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-import static android.Manifest.permission.READ_PHONE_STATE;
-
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
