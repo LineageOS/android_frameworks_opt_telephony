@@ -821,6 +821,9 @@ public class GsmCdmaPhone extends Phone {
     public String getIccSerialNumber() {
         IccRecords r = mIccRecords.get();
         if (!isPhoneTypeGsm() && r == null) {
+            if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
+                return DUMMY_NV_ICC_SERIAL;
+            }
             // to get ICCID form SIMRecords because it is on MF.
             r = mUiccController.getIccRecords(mPhoneId, UiccController.APP_FAM_3GPP);
         }
@@ -831,6 +834,9 @@ public class GsmCdmaPhone extends Phone {
     public String getFullIccSerialNumber() {
         IccRecords r = mIccRecords.get();
         if (!isPhoneTypeGsm() && r == null) {
+            if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
+                return DUMMY_NV_ICC_SERIAL;
+            }
             // to get ICCID form SIMRecords because it is on MF.
             r = mUiccController.getIccRecords(mPhoneId, UiccController.APP_FAM_3GPP);
         }
