@@ -147,6 +147,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
     static class GetMetadataRequest {
         DownloadableSubscription mSubscription;
+        boolean mForceDeactivateSim;
         GetMetadataCommandCallback mCallback;
     }
 
@@ -160,6 +161,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     static class DownloadRequest {
         DownloadableSubscription mSubscription;
         boolean mSwitchAfterDownload;
+        boolean mForceDeactivateSim;
         DownloadCommandCallback mCallback;
     }
 
@@ -258,10 +260,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     /** Asynchronously fetch metadata for the given downloadable mSubscription. */
     @VisibleForTesting(visibility = PACKAGE)
     public void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
-            GetMetadataCommandCallback callback) {
+            boolean forceDeactivateSim, GetMetadataCommandCallback callback) {
         GetMetadataRequest request =
                 new GetMetadataRequest();
         request.mSubscription = subscription;
+        request.mForceDeactivateSim = forceDeactivateSim;
         request.mCallback = callback;
         sendMessage(CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA, request);
     }
@@ -269,10 +272,12 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     /** Asynchronously download the given mSubscription. */
     @VisibleForTesting(visibility = PACKAGE)
     public void downloadSubscription(DownloadableSubscription subscription,
-            boolean switchAfterDownload, DownloadCommandCallback callback) {
+            boolean switchAfterDownload, boolean forceDeactivateSim,
+            DownloadCommandCallback callback) {
         DownloadRequest request = new DownloadRequest();
         request.mSubscription = subscription;
         request.mSwitchAfterDownload = switchAfterDownload;
+        request.mForceDeactivateSim = forceDeactivateSim;
         request.mCallback = callback;
         sendMessage(CMD_DOWNLOAD_SUBSCRIPTION, request);
     }
@@ -464,6 +469,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                             GetMetadataRequest request = (GetMetadataRequest) message.obj;
                             mEuiccService.getDownloadableSubscriptionMetadata(slotId,
                                     request.mSubscription,
+                                    request.mForceDeactivateSim,
                                     new IGetDownloadableSubscriptionMetadataCallback.Stub() {
                                         @Override
                                         public void onComplete(
@@ -480,6 +486,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                             mEuiccService.downloadSubscription(slotId,
                                     request.mSubscription,
                                     request.mSwitchAfterDownload,
+                                    request.mForceDeactivateSim,
                                     new IDownloadSubscriptionCallback.Stub() {
                                         @Override
                                         public void onComplete(DownloadResult result) {

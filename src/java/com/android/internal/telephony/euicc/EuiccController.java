@@ -24,8 +24,10 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.ServiceManager;
 import android.service.euicc.DownloadResult;
+import android.service.euicc.EuiccService;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
@@ -43,6 +45,10 @@ import java.util.concurrent.atomic.AtomicReference;
 /** Backing implementation of {@link android.telephony.euicc.EuiccManager}. */
 public class EuiccController extends IEuiccController.Stub {
     private static final String TAG = "EuiccController";
+
+    /** Extra set on resolution intents containing the {@link EuiccOperation}. */
+    @VisibleForTesting
+    static final String EXTRA_OPERATION = "operation";
 
     // Aliases so line lengths stay short.
     private static final int OK = EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK;
@@ -96,6 +102,41 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     /**
+     * Continue an operation which failed with a user-resolvable error.
+     *
+     * <p>The implementation here makes a key assumption that the resolutionIntent has not been
+     * tampered with. This is guaranteed because:
+     * <UL>
+     * <LI>The intent is wrapped in a PendingIntent created by the phone process which is created
+     * with {@link #EXTRA_OPERATION} already present. This means that the operation cannot be
+     * overridden on the PendingIntent - a caller can only add new extras.
+     * <LI>The resolution activity is restricted by a privileged permission; unprivileged apps
+     * cannot start it directly. So the PendingIntent is the only way to start it.
+     * </UL>
+     */
+    @Override
+    public void continueOperation(Intent resolutionIntent, Bundle resolutionExtras) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to continue operation");
+        }
+        long token = Binder.clearCallingIdentity();
+        try {
+            EuiccOperation op = resolutionIntent.getParcelableExtra(EXTRA_OPERATION);
+            if (op == null) {
+                throw new IllegalArgumentException("Invalid resolution intent");
+            }
+
+            PendingIntent callbackIntent =
+                    resolutionIntent.getParcelableExtra(
+                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_CALLBACK_INTENT);
+            op.continueOperation(resolutionExtras, callbackIntent);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    /**
      * Return the EID.
      *
      * <p>For API simplicity, this call blocks until completion; while it requires an IPC to load,
@@ -120,22 +161,36 @@ public class EuiccController extends IEuiccController.Stub {
     @Override
     public void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
             PendingIntent callbackIntent) {
+        getDownloadableSubscriptionMetadata(
+                subscription, false /* forceDeactivateSim */, callbackIntent);
+    }
+
+    void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
+            boolean forceDeactivateSim, PendingIntent callbackIntent) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException("Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get metadata");
         }
         long token = Binder.clearCallingIdentity();
         try {
             mConnector.getDownloadableSubscriptionMetadata(
-                    subscription, new GetMetadataCommandCallback(callbackIntent));
+                    subscription, forceDeactivateSim,
+                    new GetMetadataCommandCallback(token, subscription, callbackIntent));
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
     class GetMetadataCommandCallback implements EuiccConnector.GetMetadataCommandCallback {
+        protected final long mCallingToken;
+        protected final DownloadableSubscription mSubscription;
         protected final PendingIntent mCallbackIntent;
 
-        GetMetadataCommandCallback(PendingIntent callbackIntent) {
+        GetMetadataCommandCallback(
+                long callingToken,
+                DownloadableSubscription subscription,
+                PendingIntent callbackIntent) {
+            mCallingToken = callingToken;
+            mSubscription = subscription;
             mCallbackIntent = callbackIntent;
         }
 
@@ -151,10 +206,11 @@ public class EuiccController extends IEuiccController.Stub {
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION,
                             result.subscription);
                     break;
-                case GetDownloadableSubscriptionMetadataResult.RESULT_MUST_DEACTIVATE_REMOVABLE_SIM:
+                case GetDownloadableSubscriptionMetadataResult.RESULT_MUST_DEACTIVATE_SIM:
                     resultCode = RESOLVABLE_ERROR;
-                    // TODO(b/33075886): Pass through the PendingIntent for the
-                    // resolution action.
+                    addResolutionIntent(extrasIntent,
+                            EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                            getOperationForDeactivateSim());
                     break;
                 case GetDownloadableSubscriptionMetadataResult.RESULT_GENERIC_ERROR:
                     resultCode = GENERIC_ERROR;
@@ -175,11 +231,22 @@ public class EuiccController extends IEuiccController.Stub {
         public void onEuiccServiceUnavailable() {
             sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
         }
+
+        protected EuiccOperation getOperationForDeactivateSim() {
+            return EuiccOperation.forGetMetadataDeactivateSim(mCallingToken, mSubscription);
+        }
     }
 
     @Override
     public void downloadSubscription(DownloadableSubscription subscription,
             boolean switchAfterDownload, String callingPackage, PendingIntent callbackIntent) {
+        downloadSubscription(subscription, switchAfterDownload, callingPackage,
+                false /* forceDeactivateSim */, callbackIntent);
+    }
+
+    void downloadSubscription(DownloadableSubscription subscription,
+            boolean switchAfterDownload, String callingPackage, boolean forceDeactivateSim,
+            PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
 
@@ -188,14 +255,17 @@ public class EuiccController extends IEuiccController.Stub {
             if (callerCanWriteEmbeddedSubscriptions) {
                 // With WRITE_EMBEDDED_SUBSCRIPTIONS, we can skip profile-specific permission checks
                 // and move straight to the profile download.
-                downloadSubscriptionPrivileged(subscription, switchAfterDownload, callbackIntent);
+                downloadSubscriptionPrivileged(token, subscription, switchAfterDownload,
+                        forceDeactivateSim, callingPackage, callbackIntent);
                 return;
             }
             // Without WRITE_EMBEDDED_SUBSCRIPTIONS, the caller *must* be whitelisted per the
             // metadata of the profile to be downloaded, so check the metadata first.
             mConnector.getDownloadableSubscriptionMetadata(subscription,
-                    new DownloadSubscriptionGetMetadataCommandCallback(
-                            switchAfterDownload, callbackIntent, callingPackage));
+                    forceDeactivateSim,
+                    new DownloadSubscriptionGetMetadataCommandCallback(token, subscription,
+                            switchAfterDownload, callingPackage, forceDeactivateSim,
+                            callbackIntent));
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -204,12 +274,16 @@ public class EuiccController extends IEuiccController.Stub {
     class DownloadSubscriptionGetMetadataCommandCallback extends GetMetadataCommandCallback {
         private final boolean mSwitchAfterDownload;
         private final String mCallingPackage;
+        private final boolean mForceDeactivateSim;
 
-        DownloadSubscriptionGetMetadataCommandCallback(
-                boolean switchAfterDownload, PendingIntent callbackIntent, String callingPackage) {
-            super(callbackIntent);
+        DownloadSubscriptionGetMetadataCommandCallback(long callingToken,
+                DownloadableSubscription subscription, boolean switchAfterDownload,
+                String callingPackage, boolean forceDeactivateSim,
+                PendingIntent callbackIntent) {
+            super(callingToken, subscription, callbackIntent);
             mSwitchAfterDownload = switchAfterDownload;
             mCallingPackage = callingPackage;
+            mForceDeactivateSim = forceDeactivateSim;
         }
 
         @Override
@@ -217,9 +291,6 @@ public class EuiccController extends IEuiccController.Stub {
                 GetDownloadableSubscriptionMetadataResult result) {
             if (result.result != GetDownloadableSubscriptionMetadataResult.RESULT_OK) {
                 // Just propagate the error as normal.
-                // TODO(b/33075886): Pass through the PendingIntent for the resolution action. We
-                // want to retry the parent download operation after resolution, not the get
-                // metadata call.
                 super.onGetMetadataComplete(result);
                 return;
             }
@@ -253,12 +324,15 @@ public class EuiccController extends IEuiccController.Stub {
                             == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
                         // Permission verified - move on to the download.
                         downloadSubscriptionPrivileged(
-                                subscription, mSwitchAfterDownload, mCallbackIntent);
+                                mCallingToken, subscription, mSwitchAfterDownload,
+                                mForceDeactivateSim, mCallingPackage, mCallbackIntent);
                     } else {
                         // Switch might still be permitted, but the user must consent first.
-                        // TODO(b/33075886): Pass through the PendingIntent for the resolution
-                        // action.
-                        sendResult(mCallbackIntent, RESOLVABLE_ERROR, null /* extrasIntent */);
+                        Intent extrasIntent = new Intent();
+                        addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                                EuiccOperation.forDownloadNoPrivileges(
+                                        mCallingToken, subscription, mSwitchAfterDownload));
+                        sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
                     }
                     return;
                 }
@@ -266,11 +340,22 @@ public class EuiccController extends IEuiccController.Stub {
             Log.e(TAG, "Caller is not permitted to download this profile");
             sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
         }
+
+        @Override
+        protected EuiccOperation getOperationForDeactivateSim() {
+            return EuiccOperation.forDownloadDeactivateSim(
+                    mCallingToken, mSubscription, mSwitchAfterDownload, mCallingPackage);
+        }
     }
 
-    private void downloadSubscriptionPrivileged(DownloadableSubscription subscription,
-            boolean switchAfterDownload, final PendingIntent callbackIntent) {
-        mConnector.downloadSubscription(subscription, switchAfterDownload,
+    void downloadSubscriptionPrivileged(final long callingToken,
+            DownloadableSubscription subscription, boolean switchAfterDownload,
+            boolean forceDeactivateSim, final String callingPackage,
+            final PendingIntent callbackIntent) {
+        mConnector.downloadSubscription(
+                subscription,
+                switchAfterDownload,
+                forceDeactivateSim,
                 new EuiccConnector.DownloadCommandCallback() {
                     @Override
                     public void onDownloadComplete(DownloadResult result) {
@@ -280,10 +365,13 @@ public class EuiccController extends IEuiccController.Stub {
                             case DownloadResult.RESULT_OK:
                                 resultCode = OK;
                                 break;
-                            case DownloadResult.RESULT_MUST_DEACTIVATE_REMOVABLE_SIM:
+                            case DownloadResult.RESULT_MUST_DEACTIVATE_SIM:
                                 resultCode = RESOLVABLE_ERROR;
-                                // TODO(b/33075886): Pass through the PendingIntent for the
-                                // resolution action.
+                                addResolutionIntent(extrasIntent,
+                                        EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                                        EuiccOperation.forDownloadDeactivateSim(
+                                                callingToken, subscription, switchAfterDownload,
+                                                callingPackage));
                                 break;
                             case DownloadResult.RESULT_GENERIC_ERROR:
                                 resultCode = GENERIC_ERROR;
@@ -307,12 +395,26 @@ public class EuiccController extends IEuiccController.Stub {
                 });
     }
 
-    private void sendResult(PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+    void sendResult(PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
         try {
             callbackIntent.send(mContext, resultCode, extrasIntent);
         } catch (PendingIntent.CanceledException e) {
             // Caller canceled the callback; do nothing.
         }
+    }
+
+    /** Add a resolution intent to the given extras intent. */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void addResolutionIntent(Intent extrasIntent, String resolutionAction,
+            EuiccOperation op) {
+        Intent intent = new Intent(EuiccManager.ACTION_RESOLVE_ERROR);
+        intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_ACTION,
+                resolutionAction);
+        intent.putExtra(EXTRA_OPERATION, op);
+        PendingIntent resolutionIntent = PendingIntent.getActivity(
+                mContext, 0 /* requestCode */, intent, PendingIntent.FLAG_ONE_SHOT);
+        extrasIntent.putExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_INTENT, resolutionIntent);
     }
 
     @Override
