@@ -97,7 +97,7 @@ public class SIMRecords extends IccRecords {
     public String toString() {
         return "SimRecords: " + super.toString()
                 + " mVmConfig" + mVmConfig
-                + " mSpnOverride=" + "mSpnOverride"
+                + " mSpnOverride=" + mSpnOverride
                 + " callForwardingEnabled=" + mCallForwardingStatus
                 + " spnState=" + mSpnState
                 + " mCphsInfo=" + mCphsInfo
