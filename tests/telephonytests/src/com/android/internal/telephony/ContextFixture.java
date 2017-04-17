@@ -58,6 +58,7 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.provider.Telephony.ServiceStateTable;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -529,6 +530,7 @@ public class ContextFixture implements TestFixture<Context> {
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
         mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
+        mContentResolver.addProvider(ServiceStateTable.AUTHORITY, mContentProvider);
         mPermissionTable.add(PERMISSION_ENABLE_ALL);
     }
 
