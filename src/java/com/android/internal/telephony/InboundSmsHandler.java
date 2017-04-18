@@ -132,8 +132,6 @@ public abstract class InboundSmsHandler extends StateMachine {
     public static final int DISPLAY_ADDRESS_COLUMN = 9;
 
     public static final String SELECT_BY_ID = "_id=?";
-    public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND " +
-            "count=? AND deleted=0";
 
     /** New SMS received as an AsyncResult. */
     public static final int EVENT_NEW_SMS = 1;
@@ -751,7 +749,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // query for all segments and broadcast message if we have all the parts
                 String[] whereArgs = {address, refNumber, count};
                 cursor = mResolver.query(sRawUri, PDU_SEQUENCE_PORT_PROJECTION,
-                        SELECT_BY_REFERENCE, whereArgs, null);
+                        tracker.getQueryForSegments(), whereArgs, null);
 
                 int cursorCount = cursor.getCount();
                 if (cursorCount < messageCount) {
@@ -1139,9 +1137,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         } else {
             // for multi-part messages, deduping should also be done against undeleted
             // segments that can cause ambiguity when contacenating the segments, that is,
-            // segments with same address, reference_number, count and sequence
-            where = "address=? AND reference_number=? AND count=? AND sequence=? AND " +
-                    "((date=? AND message_body=?) OR deleted=0)";
+            // segments with same address, reference_number, count, sequence and message type.
+            where = tracker.getQueryForMultiPartDuplicates();
         }
 
         Cursor cursor = null;
@@ -1218,7 +1215,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             } else {
                 // set the delete selection args for multi-part message
                 String[] deleteWhereArgs = {address, refNumber, count};
-                tracker.setDeleteWhere(SELECT_BY_REFERENCE, deleteWhereArgs);
+                tracker.setDeleteWhere(tracker.getQueryForSegments(), deleteWhereArgs);
             }
             return Intents.RESULT_SMS_HANDLED;
         } catch (Exception e) {
