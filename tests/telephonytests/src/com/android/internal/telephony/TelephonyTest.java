@@ -353,7 +353,7 @@ public abstract class TelephonyTest {
         doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory)
                 .makeImsExternalCallTracker(nullable(ImsPhone.class));
         doReturn(mCarrierSignalAgent).when(mTelephonyComponentFactory)
-                .makeCarrierActionAgent(nullable(Phone.class));
+                .makeCarrierSignalAgent(nullable(Phone.class));
         doReturn(mCarrierActionAgent).when(mTelephonyComponentFactory)
                 .makeCarrierActionAgent(nullable(Phone.class));
         doReturn(mDeviceStateMonitor).when(mTelephonyComponentFactory)
