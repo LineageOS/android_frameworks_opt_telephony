@@ -626,7 +626,7 @@ public class DcTrackerTest extends TelephonyTest {
         //step 4: only tear down metered data connections.
 
         //set Default and MMS to be metered in the CarrierConfigManager
-        boolean roamingEnabled = mDct.getDataOnRoamingEnabled();
+        boolean roamingEnabled = mDct.getDataRoamingEnabled();
         boolean dataEnabled = mDct.getDataEnabled();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
@@ -655,7 +655,7 @@ public class DcTrackerTest extends TelephonyTest {
         //user is in roaming
         doReturn(true).when(mServiceState).getDataRoaming();
         logd("Sending DISABLE_ROAMING_CMD");
-        mDct.setDataOnRoamingEnabled(false);
+        mDct.setDataRoamingEnabled(false);
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_ROAMING_ON));
         waitForMs(200);
 
@@ -667,7 +667,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
 
         // reset roaming settings / data enabled settings at end of this test
-        mDct.setDataOnRoamingEnabled(roamingEnabled);
+        mDct.setDataRoamingEnabled(roamingEnabled);
         mDct.setDataEnabled(dataEnabled);
         waitForMs(200);
     }
@@ -680,7 +680,7 @@ public class DcTrackerTest extends TelephonyTest {
         //step 2: user toggled data settings on
         //step 3: only non-metered data call is established
 
-        boolean roamingEnabled = mDct.getDataOnRoamingEnabled();
+        boolean roamingEnabled = mDct.getDataRoamingEnabled();
         boolean dataEnabled = mDct.getDataEnabled();
 
         //set Default and MMS to be metered in the CarrierConfigManager
@@ -691,7 +691,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(true).when(mServiceState).getDataRoaming();
 
         logd("Sending DISABLE_ROAMING_CMD");
-        mDct.setDataOnRoamingEnabled(false);
+        mDct.setDataRoamingEnabled(false);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
