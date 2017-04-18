@@ -1864,12 +1864,12 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean getDataRoamingEnabled() {
-        return mDcTracker.getDataOnRoamingEnabled();
+        return mDcTracker.getDataRoamingEnabled();
     }
 
     @Override
     public void setDataRoamingEnabled(boolean enable) {
-        mDcTracker.setDataOnRoamingEnabled(enable);
+        mDcTracker.setDataRoamingEnabled(enable);
     }
 
     @Override
