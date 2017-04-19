@@ -72,6 +72,7 @@ import com.android.internal.telephony.dataconnection.DcTracker.DataAllowFailReas
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -573,6 +574,8 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
+    @Ignore
+    @FlakyTest
     public void testUserDisableData() throws Exception {
         //step 1: setup two DataCalls one for Metered: default, another one for Non-metered: IMS
         //set Default and MMS to be metered in the CarrierConfigManager
