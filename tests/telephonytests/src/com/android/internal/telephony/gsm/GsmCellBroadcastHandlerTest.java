@@ -39,7 +39,6 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
@@ -47,12 +46,13 @@ import com.android.internal.telephony.TelephonyTestUtils;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.Ignore;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.List;
 
+@Ignore
 public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     @Mock
     private SmsStorageMonitor mSmsStorageMonitor;
@@ -100,7 +100,6 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Test @SmallTest
     public void testBroadcastSms() {
         mContextFixture.putResource(
                 com.android.internal.R.string.config_defaultCellBroadcastReceiverPkg,

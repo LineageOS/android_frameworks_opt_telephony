@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -24,9 +26,9 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.isNull;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import android.app.ActivityManager;
 import android.app.PendingIntent;
@@ -36,13 +38,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.test.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Singleton;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -99,7 +101,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
         super.tearDown();
     }
 
-    @Test @SmallTest
+    @Test @SmallTest @FlakyTest @Ignore
     public void testSmsHandleStateUpdate() throws Exception {
         assertEquals(SmsConstants.FORMAT_UNKNOWN, mImsSmsDispatcher.getImsSmsFormat());
         //Mock ImsNetWorkStateChange with GSM phone type
@@ -113,7 +115,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
         assertTrue(mImsSmsDispatcher.isIms());
     }
 
-    @Test @SmallTest
+    @Test @SmallTest @FlakyTest @Ignore
     public void testSendImsGmsTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
         mImsSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
