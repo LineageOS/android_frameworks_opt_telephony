@@ -83,6 +83,7 @@ import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.util.TelephonyNotificationBuilder;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -3847,7 +3848,7 @@ public class ServiceStateTracker extends Handler {
                     + ", title: " + title + ", details: " + details);
         }
 
-        mNotification = new Notification.Builder(context)
+        mNotification = new TelephonyNotificationBuilder(context)
                 .setWhen(System.currentTimeMillis())
                 .setAutoCancel(true)
                 .setSmallIcon(icon)
@@ -3856,6 +3857,7 @@ public class ServiceStateTracker extends Handler {
                         com.android.internal.R.color.system_notification_accent_color))
                 .setContentTitle(title)
                 .setContentText(details)
+                .setChannel(TelephonyNotificationBuilder.CHANNEL_ID_ALERT)
                 .build();
 
         NotificationManager notificationManager = (NotificationManager)
