@@ -3509,7 +3509,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 for (int i = 0; i < carriers.size(); i++) {
                     logStr = logStr + carriers.get(i) + " ";
                 }
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + "carriers = "
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " carriers = "
                         + logStr);
             }
 
