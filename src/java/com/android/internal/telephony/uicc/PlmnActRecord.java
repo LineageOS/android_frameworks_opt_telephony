@@ -64,7 +64,7 @@ public class PlmnActRecord implements Parcelable {
     public PlmnActRecord(byte[] bytes, int offset) {
         if (VDBG) Rlog.v(LOG_TAG, "Creating PlmnActRecord " + offset);
         this.plmn = IccUtils.bcdPlmnToString(bytes, offset);
-        this.accessTechs = ((int) bytes[offset + 3] << 8) | bytes[offset + 4];
+        this.accessTechs = ((int) bytes[offset + 3] << 8) | (bytes[offset + 4] & 0xFF);
     }
 
     private PlmnActRecord(String plmn, int accessTechs) {
