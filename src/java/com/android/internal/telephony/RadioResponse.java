@@ -494,6 +494,22 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void startNetworkScanResponse(RadioResponseInfo responseInfo) {
+        responseScanStatus(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void stopNetworkScanResponse(RadioResponseInfo responseInfo) {
+        responseScanStatus(responseInfo);
+    }
+
+    /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void startDtmfResponse(RadioResponseInfo responseInfo) {
@@ -1528,6 +1544,16 @@ public class RadioResponse extends IRadioResponse.Stub {
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responseScanStatus(RadioResponseInfo responseInfo) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            NetworkScanResult nsr = new NetworkScanResult(0, responseInfo.error, null);
+            sendMessageResponse(rr.mResult, nsr);
+            mRil.processResponseDone(rr, responseInfo, nsr);
         }
     }
 

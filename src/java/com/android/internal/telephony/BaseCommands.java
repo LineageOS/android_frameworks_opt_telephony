@@ -72,6 +72,7 @@ public abstract class BaseCommands implements CommandsInterface {
             new RegistrantList();
     protected RegistrantList mPcoDataRegistrants = new RegistrantList();
     protected RegistrantList mCarrierInfoForImsiEncryptionRegistrants = new RegistrantList();
+    protected RegistrantList mRilNetworkScanResultRegistrants = new RegistrantList();
 
 
     protected Registrant mGsmSmsRegistrant;
@@ -728,6 +729,17 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForHardwareConfigChanged(Handler h) {
         mHardwareConfigChangeRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForNetworkScanResult(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mRilNetworkScanResultRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForNetworkScanResult(Handler h) {
+        mRilNetworkScanResultRegistrants.remove(h);
     }
 
     /**
