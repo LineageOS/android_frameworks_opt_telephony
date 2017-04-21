@@ -101,6 +101,7 @@ import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.util.TelephonyNotificationBuilder;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1552,13 +1553,15 @@ public class ImsPhone extends ImsPhoneBase {
                         );
 
                 final Notification notification =
-                        new Notification.Builder(mContext)
+                        new TelephonyNotificationBuilder(mContext)
                                 .setSmallIcon(android.R.drawable.stat_sys_warning)
                                 .setContentTitle(title)
                                 .setContentText(messageNotification)
                                 .setAutoCancel(true)
                                 .setContentIntent(resultPendingIntent)
-                                .setStyle(new Notification.BigTextStyle().bigText(messageNotification))
+                                .setStyle(new Notification.BigTextStyle()
+                                .bigText(messageNotification))
+                                .setChannel(TelephonyNotificationBuilder.CHANNEL_ID_WFC)
                                 .build();
                 final String notificationTag = "wifi_calling";
                 final int notificationId = 1;
