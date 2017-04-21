@@ -868,7 +868,8 @@ public class DataConnection extends StateMachine {
         if (mApnSetting != null) {
             for (String type : mApnSetting.types) {
                 if (!mRestrictedNetworkOverride
-                        && mConnectionParams.mUnmeteredUseOnly && ApnSetting.isMeteredApnType(type,
+                        && (mConnectionParams != null && mConnectionParams.mUnmeteredUseOnly)
+                        && ApnSetting.isMeteredApnType(type,
                         mPhone.getContext(), mPhone.getSubId(),
                         mPhone.getServiceState().getDataRoaming())) {
                     log("Dropped the metered " + type + " for the unmetered data call.");
@@ -931,7 +932,8 @@ public class DataConnection extends StateMachine {
             // Mark NOT_METERED in the following cases,
             // 1. All APNs in APN settings are unmetered.
             // 2. The non-restricted data and is intended for unmetered use only.
-            if ((mConnectionParams.mUnmeteredUseOnly && !mRestrictedNetworkOverride)
+            if (((mConnectionParams != null && mConnectionParams.mUnmeteredUseOnly)
+                    && !mRestrictedNetworkOverride)
                     || !mApnSetting.isMetered(mPhone.getContext(), mPhone.getSubId(),
                     mPhone.getServiceState().getDataRoaming())) {
                 result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
