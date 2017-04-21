@@ -946,6 +946,16 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void startNetworkScan(Message response) {
+
+    }
+
+    @Override
+    public void stopNetworkScan(Message response) {
+
+    }
+
+    @Override
     public void getBasebandVersion(Message response) {
 
     }
@@ -1376,6 +1386,14 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
 
     @Override
     public void registerForCarrierInfoForImsiEncryption(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void registerForNetworkScanResult(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForNetworkScanResult(Handler h) {
     }
 
     @Override
