@@ -104,14 +104,17 @@ public class DataConnection extends StateMachine {
         ApnContext mApnContext;
         int mProfileId;
         int mRilRat;
+        final boolean mUnmeteredUseOnly;
         Message mOnCompletedMsg;
         final int mConnectionGeneration;
 
-        ConnectionParams(ApnContext apnContext, int profileId,
-                int rilRadioTechnology, Message onCompletedMsg, int connectionGeneration) {
+        ConnectionParams(ApnContext apnContext, int profileId, int rilRadioTechnology,
+                         boolean unmeteredUseOnly,  Message onCompletedMsg,
+                         int connectionGeneration) {
             mApnContext = apnContext;
             mProfileId = profileId;
             mRilRat = rilRadioTechnology;
+            mUnmeteredUseOnly = unmeteredUseOnly;
             mOnCompletedMsg = onCompletedMsg;
             mConnectionGeneration = connectionGeneration;
         }
@@ -121,6 +124,7 @@ public class DataConnection extends StateMachine {
             return "{mTag=" + mTag + " mApnContext=" + mApnContext
                     + " mProfileId=" + mProfileId
                     + " mRat=" + mRilRat
+                    + " mUnmeteredUseOnly=" + mUnmeteredUseOnly
                     + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg) + "}";
         }
     }
@@ -854,7 +858,7 @@ public class DataConnection extends StateMachine {
         }
 
         // Is data disabled?
-        mRestrictedNetworkOverride = (mDct.isDataEnabled(true) == false);
+        mRestrictedNetworkOverride = !mDct.isDataEnabled();
     }
 
     NetworkCapabilities getNetworkCapabilities() {
@@ -863,6 +867,13 @@ public class DataConnection extends StateMachine {
 
         if (mApnSetting != null) {
             for (String type : mApnSetting.types) {
+                if (!mRestrictedNetworkOverride
+                        && mConnectionParams.mUnmeteredUseOnly && ApnSetting.isMeteredApnType(type,
+                        mPhone.getContext(), mPhone.getSubId(),
+                        mPhone.getServiceState().getDataRoaming())) {
+                    log("Dropped the metered " + type + " for the unmetered data call.");
+                    continue;
+                }
                 switch (type) {
                     case PhoneConstants.APN_TYPE_ALL: {
                         result.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
@@ -917,9 +928,11 @@ public class DataConnection extends StateMachine {
                 }
             }
 
-            // If none of the APN types associated with this APN setting is metered,
-            // then we apply NOT_METERED capability to the network.
-            if (!mApnSetting.isMetered(mPhone.getContext(), mPhone.getSubId(),
+            // Mark NOT_METERED in the following cases,
+            // 1. All APNs in APN settings are unmetered.
+            // 2. The non-restricted data and is intended for unmetered use only.
+            if ((mConnectionParams.mUnmeteredUseOnly && !mRestrictedNetworkOverride)
+                    || !mApnSetting.isMetered(mPhone.getContext(), mPhone.getSubId(),
                     mPhone.getServiceState().getDataRoaming())) {
                 result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
                 mNetworkInfo.setMetered(false);
