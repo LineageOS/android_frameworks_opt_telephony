@@ -22,6 +22,7 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.ResultReceiver;
 import android.telephony.PhoneNumberUtils;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
@@ -176,6 +177,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     private String mPoundString;         // Entire MMI string up to and including #
     private String mDialingNumber;
     private String mPwd;                 // For password registration
+    private ResultReceiver mCallbackReceiver;
 
     private boolean mIsPendingUSSD;
 
@@ -234,8 +236,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      * Please see flow chart in TS 22.030 6.5.3.2
      */
 
-    static ImsPhoneMmiCode
-    newFromDialString(String dialString, ImsPhone phone) {
+    static ImsPhoneMmiCode newFromDialString(String dialString, ImsPhone phone) {
+       return newFromDialString(dialString, phone, null);
+    }
+
+    static ImsPhoneMmiCode newFromDialString(String dialString,
+                                             ImsPhone phone, ResultReceiver wrappedCallback) {
         Matcher m;
         ImsPhoneMmiCode ret = null;
 
@@ -252,6 +258,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             ret.mSic = makeEmptyNull(m.group(MATCH_GROUP_SIC));
             ret.mPwd = makeEmptyNull(m.group(MATCH_GROUP_PWD_CONFIRM));
             ret.mDialingNumber = makeEmptyNull(m.group(MATCH_GROUP_DIALING_NUMBER));
+            ret.mCallbackReceiver = wrappedCallback;
             // According to TS 22.030 6.5.2 "Structure of the MMI",
             // the dialing number should not ending with #.
             // The dialing number ending # is treated as unique USSD,
@@ -532,6 +539,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return mPoundString == null
                     && mDialingNumber != null && mDialingNumber.length() <= 2;
 
+    }
+
+    @Override
+    public String getDialString() {
+        return mPoundString;
     }
 
     static private boolean
@@ -1629,6 +1641,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             }
         }
         return sb;
+    }
+
+    @Override
+    public ResultReceiver getUssdCallbackReceiver() {
+        return this.mCallbackReceiver;
     }
 
     /***
