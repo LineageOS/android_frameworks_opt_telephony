@@ -16,21 +16,24 @@
 
 package com.android.internal.telephony;
 
-import android.os.Looper;
-import android.support.test.filters.FlakyTest;
-import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
-
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_FREE_SHORT_CODE;
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE;
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE;
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_PREMIUM_SHORT_CODE;
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_STANDARD_SHORT_CODE;
 
+import static org.junit.Assert.assertEquals;
+
+import android.os.Looper;
+import android.support.test.filters.FlakyTest;
+
+import org.junit.Ignore;
+
 /**
  * Test cases for SMS short code pattern matching in SmsUsageMonitor.
  */
-public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
+@Ignore
+public class SmsUsageMonitorShortCodeTest {
 
     private static final class ShortCodeTest {
         final String countryIso;
@@ -458,14 +461,13 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
     };
 
     @FlakyTest
-    @SmallTest
     public void testSmsUsageMonitor() {
         // InstrumentationTestRunner prepares a looper, but AndroidJUnitRunner does not.
         // http://b/25897652 .
         if (Looper.myLooper() == null) {
             Looper.prepare();
         }
-        SmsUsageMonitor monitor = new SmsUsageMonitor(getContext());
+        SmsUsageMonitor monitor = new SmsUsageMonitor(TestApplication.getAppContext());
         for (ShortCodeTest test : sShortCodeTests) {
             assertEquals("country: " + test.countryIso + " number: " + test.address,
                     test.category, monitor.checkDestination(test.address, test.countryIso));

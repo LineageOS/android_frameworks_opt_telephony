@@ -33,14 +33,14 @@ import android.os.BatteryManager;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.support.test.filters.FlakyTest;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.Ignore;
 
 import java.util.ArrayList;
 
+@Ignore
 public class DeviceStateMonitorTest extends TelephonyTest {
 
     private DeviceStateMonitor mDSM;
@@ -76,8 +76,6 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Test
-    @SmallTest
     public void testTethering() throws Exception {
         // Turn tethering on
         Intent intent = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
@@ -103,8 +101,6 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Test
-    @SmallTest
     public void testCharging() throws Exception {
         // Charging
         Intent intent = new Intent(BatteryManager.ACTION_CHARGING);
