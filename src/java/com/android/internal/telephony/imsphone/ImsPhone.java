@@ -33,17 +33,20 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.ResultReceiver;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 
 import android.provider.Telephony;
+import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UssdResponse;
 import android.text.TextUtils;
 
 import com.android.ims.ImsCallForwardInfo;
@@ -88,6 +91,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaPhone;
+import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
@@ -366,6 +370,17 @@ public class ImsPhone extends ImsPhoneBase {
         return true;
     }
 
+    @Override
+    public boolean handleUssdRequest(String ussdRequest, ResultReceiver wrappedCallback) {
+        try {
+           dialInternal(ussdRequest, VideoProfile.STATE_AUDIO_ONLY, null, wrappedCallback);
+           return true;
+        } catch (Exception e) {
+           Rlog.d(LOG_TAG, "exception" + e);
+           return false;
+        }
+    }
+
     private boolean handleCallWaitingIncallSupplementaryService(
             String dialString) {
         int len = dialString.length();
@@ -544,7 +559,7 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public Connection
     dial(String dialString, int videoState) throws CallStateException {
-        return dialInternal(dialString, videoState, null);
+        return dialInternal(dialString, videoState, null, null);
     }
 
     @Override
@@ -552,10 +567,16 @@ public class ImsPhone extends ImsPhoneBase {
     dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
             throws CallStateException {
         // ignore UUSInfo
-        return dialInternal (dialString, videoState, intentExtras);
+        return dialInternal (dialString, videoState, intentExtras, null);
     }
 
-    private Connection dialInternal(String dialString, int videoState, Bundle intentExtras)
+    protected Connection dialInternal(String dialString, int videoState, Bundle intentExtras)
+            throws CallStateException {
+        return dialInternal(dialString, videoState, intentExtras, null);
+    }
+
+    private Connection dialInternal(String dialString, int videoState,
+                                    Bundle intentExtras, ResultReceiver wrappedCallback)
             throws CallStateException {
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
@@ -1038,8 +1059,18 @@ public class ImsPhone extends ImsPhoneBase {
          * not on the list.
          */
         if (mPendingMMIs.remove(mmi) || mmi.isUssdRequest()) {
-            mMmiCompleteRegistrants.notifyRegistrants(
+            ResultReceiver receiverCallback = mmi.getUssdCallbackReceiver();
+            if (receiverCallback != null) {
+                UssdResponse response = new UssdResponse(mmi.getDialString(), mmi.getMessage());
+                Bundle returnData = new Bundle();
+                returnData.putParcelable(TelephonyManager.USSD_RESPONSE, response);
+                int returnCode = (mmi.getState() ==  MmiCode.State.COMPLETE) ?
+                        TelephonyManager.USSD_RETURN_SUCCESS : TelephonyManager.USSD_RETURN_FAILURE;
+                receiverCallback.send(returnCode, returnData);
+            } else {
+                mMmiCompleteRegistrants.notifyRegistrants(
                     new AsyncResult(null, mmi, null));
+            }
         }
     }
 
