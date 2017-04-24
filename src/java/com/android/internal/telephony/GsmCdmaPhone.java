@@ -45,6 +45,7 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.ResultReceiver;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.WorkSource;
@@ -60,6 +61,8 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UssdResponse;
+
 import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.util.Log;
@@ -128,6 +131,7 @@ public class GsmCdmaPhone extends Phone {
     private String mMeid;
     // string to define how the carrier specifies its own ota sp number
     private String mCarrierOtaSpNumSchema;
+
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -1174,6 +1178,12 @@ public class GsmCdmaPhone extends Phone {
     protected Connection dialInternal(String dialString, UUSInfo uusInfo, int videoState,
                                       Bundle intentExtras)
             throws CallStateException {
+        return dialInternal(dialString, uusInfo, videoState, intentExtras, null);
+    }
+
+    protected Connection dialInternal(String dialString, UUSInfo uusInfo, int videoState,
+                                      Bundle intentExtras, ResultReceiver wrappedCallback)
+            throws CallStateException {
 
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
@@ -1186,8 +1196,8 @@ public class GsmCdmaPhone extends Phone {
 
             // Only look at the Network portion for mmi
             String networkPortion = PhoneNumberUtils.extractNetworkPortionAlt(newDialString);
-            GsmMmiCode mmi =
-                    GsmMmiCode.newFromDialString(networkPortion, this, mUiccApplication.get());
+            GsmMmiCode mmi = GsmMmiCode.newFromDialString(networkPortion, this,
+                                                          mUiccApplication.get(), wrappedCallback);
             if (DBG) logd("dialing w/ mmi '" + mmi + "'...");
 
             if (mmi == null) {
@@ -1233,6 +1243,17 @@ public class GsmCdmaPhone extends Phone {
 
         loge("Mmi is null or unrecognized!");
         return false;
+    }
+
+    @Override
+    public boolean handleUssdRequest(String ussdRequest, ResultReceiver wrappedCallback) {
+        try {
+            dialInternal(ussdRequest, null, VideoProfile.STATE_AUDIO_ONLY, null, wrappedCallback);
+            return true;
+         } catch (Exception e) {
+           logd("exception" + e);
+           return false;
+         }
     }
 
     @Override
@@ -1877,9 +1898,21 @@ public class GsmCdmaPhone extends Phone {
          * The exception is cancellation of an incoming USSD-REQUEST, which is
          * not on the list.
          */
+        logd("USSD Response:" + mmi);
         if (mPendingMMIs.remove(mmi) || (isPhoneTypeGsm() && (mmi.isUssdRequest() ||
                 ((GsmMmiCode)mmi).isSsInfo()))) {
-            mMmiCompleteRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
+
+            ResultReceiver receiverCallback = mmi.getUssdCallbackReceiver();
+            if (receiverCallback != null) {
+                UssdResponse response = new UssdResponse(mmi.getDialString(), mmi.getMessage());
+                Bundle returnData = new Bundle();
+                returnData.putParcelable(TelephonyManager.USSD_RESPONSE, response);
+                int returnCode = (mmi.getState() ==  MmiCode.State.COMPLETE) ?
+                    TelephonyManager.USSD_RETURN_SUCCESS : TelephonyManager.USSD_RETURN_FAILURE;
+                receiverCallback.send(returnCode, returnData);
+            } else {
+                mMmiCompleteRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
+            }
         }
     }
 
