@@ -2326,6 +2326,34 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
         }
 
+        @Override
+        public void onRttModifyRequestReceived(ImsCall imsCall) {
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                conn.onRttModifyRequestReceived();
+            }
+        }
+
+        @Override
+        public void onRttModifyResponseReceived(ImsCall imsCall, int status) {
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                conn.onRttModifyResponseReceived(status);
+                if (status ==
+                        android.telecom.Connection.RttModifyStatus.SESSION_MODIFY_REQUEST_SUCCESS) {
+                    conn.startRttTextProcessing();
+                }
+            }
+        }
+
+        @Override
+        public void onRttMessageReceived(ImsCall imsCall, String message) {
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                conn.onRttMessageReceived(message);
+            }
+        }
+
         /**
          * Handles a change to the multiparty state for an {@code ImsCall}.  Notifies the associated
          * {@link ImsPhoneConnection} of the change.
