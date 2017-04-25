@@ -43,7 +43,7 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
                 .build();
 
         Mockito.when(telephonyManager
-                .getVisualVoicemailSmsFilterSettings(Mockito.anyString(), Mockito.anyInt()))
+                .getVisualVoicemailSmsFilterSettings(Mockito.anyInt()))
                 .thenReturn(settings);
 
         byte[][] pdus = {
