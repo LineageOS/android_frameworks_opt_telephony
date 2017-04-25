@@ -16,33 +16,10 @@
 
 package com.android.internal.telephony.ims;
 
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
-import android.os.RemoteException;
-import android.support.test.runner.AndroidJUnit4;
-import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Pair;
-
-import com.android.ims.internal.IImsServiceFeatureListener;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.Spy;
-
-import java.util.HashSet;
-
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -51,10 +28,36 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.RemoteException;
+import android.support.test.filters.FlakyTest;
+import android.support.test.runner.AndroidJUnit4;
+import android.util.Pair;
+
+import com.android.ims.internal.IImsServiceFeatureListener;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Spy;
+
+import java.util.HashSet;
+
 /**
  * Unit tests for ImsServiceController
  */
 @RunWith(AndroidJUnit4.class)
+@Ignore
 public class ImsServiceControllerTest extends ImsTestBase {
 
     private static final int RETRY_TIMEOUT = 50; // ms
@@ -91,8 +94,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Tests that Context.bindService is called with the correct parameters when we call bind.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindService() {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -113,8 +116,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Verify that if bind is called multiple times, we only call bindService once.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindFailureWhenBound() {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -130,8 +133,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests ImsServiceController callbacks are properly called when an ImsService is bound and
      * connected.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindServiceAndConnected() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -157,8 +160,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests ImsServiceController callbacks are properly called when an ImsService is bound and
      * connected.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindServiceAndConnectedDisconnected() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -183,8 +186,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests ImsServiceController callbacks are properly called when an ImsService is bound and
      * connected.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindServiceBindUnbind() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -209,8 +212,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures that imsServiceFeatureRemoved is called when the binder dies in another process.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindServiceAndBinderDied() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -234,8 +237,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures ImsService and ImsResolver are notified when a feature is added.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindServiceAndAddFeature() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -259,8 +262,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures ImsService and ImsResolver are notified when a feature is added.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindServiceAndRemoveFeature() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -289,8 +292,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures ImsService and ImsResolver are notified when all features are removed.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindServiceAndRemoveAllFeatures() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -321,8 +324,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Verifies that nothing is notified of a feature change if the service is not bound.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindUnbindServiceAndAddFeature() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -344,8 +347,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Verifies that the ImsServiceController automatically tries to bind again after an untimely
      * binder death.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testAutoBindAfterBinderDied() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -364,8 +367,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensure that bindService has only been called once before automatic rebind occurs.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testNoAutoBindBeforeTimeout() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -382,8 +385,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensure that calling unbind stops automatic rebind of the ImsService from occuring.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testUnbindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));
@@ -404,8 +407,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Ensure that calling bind causes the automatic rebinding to be cancelled or not cause another
      * call to bindService.
      */
+    @FlakyTest
     @Test
-    @SmallTest
     public void testBindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
         HashSet<Pair<Integer, Integer>> testFeatures = new HashSet<>();
         testFeatures.add(new Pair<>(1, 1));

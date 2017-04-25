@@ -16,10 +16,32 @@
 
 package android.telephony.ims;
 
+import static android.Manifest.permission.MODIFY_PHONE_STATE;
+import static android.Manifest.permission.READ_PHONE_STATE;
+import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
+
+import static com.android.internal.telephony.ims.ImsResolver.SERVICE_INTERFACE;
+
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.fail;
+
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.nullable;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.RemoteException;
+import android.support.test.filters.FlakyTest;
 import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.feature.ImsFeature;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -31,29 +53,12 @@ import com.android.ims.internal.IImsServiceController;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import static android.Manifest.permission.MODIFY_PHONE_STATE;
-import static android.Manifest.permission.READ_PHONE_STATE;
-import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
-import static com.android.internal.telephony.ims.ImsResolver.SERVICE_INTERFACE;
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNotNull;
-import static junit.framework.Assert.assertNull;
-import static junit.framework.Assert.fail;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.nullable;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for ImsService
@@ -152,8 +157,9 @@ public class ImsServiceTest {
         }
     }
 
+    @FlakyTest
+    @Ignore
     @Test
-    @SmallTest
     public void testMethodWithNoPermissions() throws RemoteException {
         when(mMockContext.checkCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE)).thenReturn(
                 PackageManager.PERMISSION_DENIED);

@@ -66,6 +66,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -450,7 +451,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
     @FlakyTest
     @Test
-    @SmallTest
+    @Ignore
     public void testCallForwardingOption() throws Exception {
         Message msg = mTestHandler.obtainMessage();
         mImsPhoneUT.getCallForwardingOption(CF_REASON_UNCONDITIONAL, msg);
@@ -507,8 +508,9 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
+    @FlakyTest
     @Test
-    @SmallTest
+    @Ignore
     public void testEcbm() throws Exception {
         ImsEcbmStateListener imsEcbmStateListener = mImsPhoneUT.getImsEcbmStateListener();
 
