@@ -387,7 +387,7 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mPhone, times(1)).notifyDataConnection(eq(Phone.REASON_CONNECTED),
                 eq(PhoneConstants.APN_TYPE_DEFAULT));
 
-        verify(mAlarmManager, times(1)).set(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP), anyLong(),
+        verify(mAlarmManager, times(1)).set(eq(AlarmManager.ELAPSED_REALTIME), anyLong(),
                 any(PendingIntent.class));
 
         assertEquals(apnSetting, mDct.getActiveApnString(PhoneConstants.APN_TYPE_DEFAULT));
