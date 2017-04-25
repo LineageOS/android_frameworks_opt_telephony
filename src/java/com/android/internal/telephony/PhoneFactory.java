@@ -19,10 +19,12 @@ package com.android.internal.telephony;
 import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.LocalServerSocket;
 import android.os.Looper;
 import android.os.ServiceManager;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.Rlog;
@@ -45,6 +47,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * {@hide}
@@ -98,7 +101,6 @@ public class PhoneFactory {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
                 sContext = context;
-
                 // create the telephony device controller.
                 TelephonyDevController.create();
 
@@ -488,6 +490,23 @@ public class PhoneFactory {
             }
             pw.flush();
         }
+        pw.decreaseIndent();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        pw.println("SharedPreferences:");
+        pw.increaseIndent();
+        try {
+            if (sContext != null) {
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(sContext);
+                Map spValues = sp.getAll();
+                for (Object key : spValues.keySet()) {
+                    pw.println(key + " : " + spValues.get(key));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
         pw.decreaseIndent();
     }
 }
