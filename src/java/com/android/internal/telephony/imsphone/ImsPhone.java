@@ -139,9 +139,6 @@ public class ImsPhone extends ImsPhoneBase {
     ImsPhoneCallTracker mCT;
     ImsExternalCallTracker mExternalCallTracker;
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
-    private final Deque<ImsPhoneMmiCode> mMMIQueue =
-            new ArrayDeque<ImsPhoneMmiCode>(USSD_MAX_QUEUE);
-
     private ServiceState mSS = new ServiceState();
 
     // To redial silently through GSM or CDMA when dialing through IMS fails
@@ -375,10 +372,6 @@ public class ImsPhone extends ImsPhoneBase {
         return true;
     }
 
-    private synchronized boolean isMmiQueueFull() {
-        return (mMMIQueue.size() >= USSD_MAX_QUEUE - 1);
-    }
-
     private void sendUssdResponse(String ussdRequest, CharSequence message, int returnCode,
                                    ResultReceiver wrappedCallback) {
         UssdResponse response = new UssdResponse(ussdRequest, message);
@@ -389,17 +382,29 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public boolean handleUssdRequest(String ussdRequest, ResultReceiver wrappedCallback) {
-        if (isMmiQueueFull()) {
-            //todo: replace the generic failure with specific error code.
+    public boolean handleUssdRequest(String ussdRequest, ResultReceiver wrappedCallback)
+            throws CallStateException {
+        if (mPendingMMIs.size() > 0) {
+            // There are MMI codes in progress; fail attempt now.
+            Rlog.i(LOG_TAG, "handleUssdRequest: queue full: " + Rlog.pii(LOG_TAG, ussdRequest));
             sendUssdResponse(ussdRequest, null, TelephonyManager.USSD_RETURN_FAILURE,
                     wrappedCallback );
             return true;
         }
         try {
             dialInternal(ussdRequest, VideoProfile.STATE_AUDIO_ONLY, null, wrappedCallback);
+        } catch (CallStateException cse) {
+            if (CS_FALLBACK.equals(cse.getMessage())) {
+                throw cse;
+            } else {
+                Rlog.w(LOG_TAG, "Could not execute USSD " + cse);
+                sendUssdResponse(ussdRequest, null, TelephonyManager.USSD_RETURN_FAILURE,
+                        wrappedCallback);
+            }
         } catch (Exception e) {
-            Rlog.d(LOG_TAG, "exception" + e);
+            Rlog.w(LOG_TAG, "Could not execute USSD " + e);
+            sendUssdResponse(ussdRequest, null, TelephonyManager.USSD_RETURN_FAILURE,
+                    wrappedCallback);
             return false;
         }
         return true;
@@ -580,16 +585,6 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);
     }
 
-    protected synchronized boolean addToMMIQueue(ImsPhoneMmiCode mmi) {
-        if (mPendingMMIs.size() >= 1) {
-            mMMIQueue.offerLast(mmi);
-            return true;
-        }
-        mPendingMMIs.add(mmi);
-        mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
-        return false;
-    }
-
     @Override
     public Connection
     dial(String dialString, int videoState) throws CallStateException {
@@ -627,9 +622,9 @@ public class ImsPhone extends ImsPhoneBase {
         // Only look at the Network portion for mmi
         String networkPortion = PhoneNumberUtils.extractNetworkPortionAlt(newDialString);
         ImsPhoneMmiCode mmi =
-                ImsPhoneMmiCode.newFromDialString(networkPortion, this);
+                ImsPhoneMmiCode.newFromDialString(networkPortion, this, wrappedCallback);
         if (DBG) Rlog.d(LOG_TAG,
-                "dialing w/ mmi '" + mmi + "'...");
+                "dialInternal: dialing w/ mmi '" + mmi + "'...");
 
         if (mmi == null) {
             return mCT.dial(dialString, videoState, intentExtras);
@@ -638,24 +633,29 @@ public class ImsPhone extends ImsPhoneBase {
         } else if (!mmi.isSupportedOverImsPhone()) {
             // If the mmi is not supported by IMS service,
             // try to initiate dialing with default phone
+            // Note: This code is never reached; there is a bug in isSupportedOverImsPhone which
+            // causes it to return true even though the "processCode" method ultimately throws the
+            // exception.
+            Rlog.i(LOG_TAG, "dialInternal: USSD not supported by IMS; fallback to CS.");
             throw new CallStateException(CS_FALLBACK);
         } else {
-            return dialInternal(mmi);
-        }
-    }
+            mPendingMMIs.add(mmi);
+            mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
 
-    protected Connection dialInternal(ImsPhoneMmiCode mmi) {
-        if (addToMMIQueue(mmi)) {
+            try {
+                mmi.processCode();
+            } catch (CallStateException cse) {
+                if (CS_FALLBACK.equals(cse.getMessage())) {
+                    Rlog.i(LOG_TAG, "dialInternal: fallback to GSM required.");
+                    // Make sure we remove from the list of pending MMIs since it will handover to
+                    // GSM.
+                    mPendingMMIs.remove(mmi);
+                    throw cse;
+                }
+            }
+
             return null;
         }
-        try {
-            mmi.processCode();
-        } catch (CallStateException e) {
-            //do nothing
-        }
-
-        // FIXME should this return null or something else?
-        return null;
     }
 
     @Override
@@ -1087,15 +1087,6 @@ public class ImsPhone extends ImsPhoneBase {
                         isUssdRequest,
                         this);
                 onNetworkInitiatedUssd(mmi);
-        } else {
-            if (mMMIQueue.peek() != null) {
-                try {
-
-                    dialInternal(mMMIQueue.remove());
-                } catch (Exception e) {
-                    Rlog.d(LOG_TAG,"Exception:" + e);
-                }
-            }
         }
     }
 

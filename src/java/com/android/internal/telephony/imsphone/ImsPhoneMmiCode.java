@@ -1665,9 +1665,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         if (mSia != null) sb.append(" sia=" + mSia);
         if (mSib != null) sb.append(" sib=" + mSib);
         if (mSic != null) sb.append(" sic=" + mSic);
-        if (mPoundString != null) sb.append(" poundString=" + mPoundString);
-        if (mDialingNumber != null) sb.append(" dialingNumber=" + mDialingNumber);
-        if (mPwd != null) sb.append(" pwd=" + mPwd);
+        if (mPoundString != null) sb.append(" poundString=" + Rlog.pii(LOG_TAG, mPoundString));
+        if (mDialingNumber != null) sb.append(" dialingNumber="
+                + Rlog.pii(LOG_TAG, mDialingNumber));
+        if (mPwd != null) sb.append(" pwd=" + Rlog.pii(LOG_TAG, mPwd));
+        if (mCallbackReceiver != null) sb.append(" hasReceiver");
         sb.append("}");
         return sb.toString();
     }
