@@ -73,6 +73,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccException;
@@ -155,7 +156,6 @@ public class GsmCdmaPhone extends Phone {
     public GsmCdmaCallTracker mCT;
     public ServiceStateTracker mSST;
     private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
-    private final Deque<MmiCode> mMMIQueue = new ArrayDeque<MmiCode>(USSD_MAX_QUEUE);
     private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     private DeviceStateMonitor mDeviceStateMonitor;
 
@@ -1176,16 +1176,6 @@ public class GsmCdmaPhone extends Phone {
         return shouldConfirmCall;
     }
 
-    private synchronized boolean addToMMIQueue(MmiCode mmi) {
-        if (mPendingMMIs.size() >= 1) {
-            mMMIQueue.offerLast(mmi);
-            return true;
-        }
-        mPendingMMIs.add(mmi);
-        mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
-        return false;
-    }
-
     @Override
     protected Connection dialInternal(String dialString, UUSInfo uusInfo, int videoState,
                                       Bundle intentExtras)
@@ -1210,36 +1200,24 @@ public class GsmCdmaPhone extends Phone {
             String networkPortion = PhoneNumberUtils.extractNetworkPortionAlt(newDialString);
             GsmMmiCode mmi = GsmMmiCode.newFromDialString(networkPortion, this,
                     mUiccApplication.get(), wrappedCallback);
-            if (DBG) logd("dialing w/ mmi '" + mmi + "'...");
+            if (DBG) logd("dialInternal: dialing w/ mmi '" + mmi + "'...");
 
             if (mmi == null) {
                 return mCT.dial(newDialString, uusInfo, intentExtras);
             } else if (mmi.isTemporaryModeCLIR()) {
                 return mCT.dial(mmi.mDialingNumber, mmi.getCLIRMode(), uusInfo, intentExtras);
             } else {
-                return dialInternal(mmi);
+                mPendingMMIs.add(mmi);
+                mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
+                mmi.processCode();
+                return null;
             }
         } else {
             return mCT.dial(newDialString);
         }
     }
 
-    protected Connection dialInternal(MmiCode mmi) {
-        if (addToMMIQueue(mmi)) {
-            return null;
-        }
-        try {
-            mmi.processCode();
-        } catch (CallStateException e) {
-            //do nothing
-        }
-
-        // FIXME should this return null or something else?
-        return null;
-    }
-
-
-    @Override
+   @Override
     public boolean handlePinMmi(String dialString) {
         MmiCode mmi;
         if (isPhoneTypeGsm()) {
@@ -1263,10 +1241,6 @@ public class GsmCdmaPhone extends Phone {
         return false;
     }
 
-    private synchronized boolean isMmiQueueFull() {
-        return (mMMIQueue.size() >= USSD_MAX_QUEUE - 1);
-    }
-
     private void sendUssdResponse(String ussdRequest, CharSequence message, int returnCode,
                                    ResultReceiver wrappedCallback) {
         UssdResponse response = new UssdResponse(ussdRequest, message);
@@ -1277,16 +1251,37 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean handleUssdRequest(String ussdRequest, ResultReceiver wrappedCallback) {
-        if (!isPhoneTypeGsm() || isMmiQueueFull()) {
+        if (!isPhoneTypeGsm() || mPendingMMIs.size() > 0) {
             //todo: replace the generic failure with specific error code.
             sendUssdResponse(ussdRequest, null, TelephonyManager.USSD_RETURN_FAILURE,
                     wrappedCallback );
             return true;
         }
+
+        // Try over IMS if possible.
+        Phone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
+                || imsPhone.isUtEnabled())) {
+            try {
+                logd("handleUssdRequest: attempting over IMS");
+                return imsPhone.handleUssdRequest(ussdRequest, wrappedCallback);
+            } catch (CallStateException cse) {
+                if (!CS_FALLBACK.equals(cse.getMessage())) {
+                    return false;
+                }
+                // At this point we've tried over IMS but have been informed we need to handover
+                // back to GSM.
+                logd("handleUssdRequest: fallback to CS required");
+            }
+        }
+
+        // Try USSD over GSM.
         try {
-            dialInternal(ussdRequest, null, VideoProfile.STATE_AUDIO_ONLY, null, wrappedCallback);
+            dialInternal(ussdRequest, null, VideoProfile.STATE_AUDIO_ONLY, null,
+                    wrappedCallback);
         } catch (Exception e) {
-            logd("exception" + e);
+            logd("handleUssdRequest: exception" + e);
             return false;
         }
         return true;
@@ -1934,19 +1929,22 @@ public class GsmCdmaPhone extends Phone {
          * The exception is cancellation of an incoming USSD-REQUEST, which is
          * not on the list.
          */
-        logd("USSD Response:" + mmi);
         if (mPendingMMIs.remove(mmi) || (isPhoneTypeGsm() && (mmi.isUssdRequest() ||
                 ((GsmMmiCode)mmi).isSsInfo()))) {
 
             ResultReceiver receiverCallback = mmi.getUssdCallbackReceiver();
             if (receiverCallback != null) {
+                Rlog.i(LOG_TAG, "onMMIDone: invoking callback: " + mmi);
                 int returnCode = (mmi.getState() ==  MmiCode.State.COMPLETE) ?
                     TelephonyManager.USSD_RETURN_SUCCESS : TelephonyManager.USSD_RETURN_FAILURE;
                 sendUssdResponse(mmi.getDialString(), mmi.getMessage(), returnCode,
                         receiverCallback );
             } else {
+                Rlog.i(LOG_TAG, "onMMIDone: notifying registrants: " + mmi);
                 mMmiCompleteRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
             }
+        } else {
+            Rlog.i(LOG_TAG, "onMMIDone: invalid response or already handled; ignoring: " + mmi);
         }
     }
 
@@ -2020,15 +2018,6 @@ public class GsmCdmaPhone extends Phone {
                                                    GsmCdmaPhone.this,
                                                    mUiccApplication.get());
             onNetworkInitiatedUssd(mmi);
-        } else {
-            if (mMMIQueue.peek() != null) {
-                try {
-
-                    dialInternal(mMMIQueue.remove());
-                } catch (Exception e) {
-                    logd("Exception:" + e);
-                }
-            }
         }
     }
 
