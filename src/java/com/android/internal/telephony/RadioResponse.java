@@ -24,7 +24,6 @@ import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
 import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.GsmBroadcastSmsConfigInfo;
-import android.hardware.radio.V1_0.IRadioResponse;
 import android.hardware.radio.V1_0.LastCallFailCauseInfo;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.LceStatusInfo;
@@ -34,6 +33,7 @@ import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
+import android.hardware.radio.V1_1.IRadioResponse;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -1171,6 +1171,13 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendDeviceStateResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setCarrierInfoForImsiEncryptionResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
 

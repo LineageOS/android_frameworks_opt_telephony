@@ -27,6 +27,7 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
+import java.security.PublicKey;
 import java.util.List;
 
 public class SimulatedCommandsVerifier implements CommandsInterface {
@@ -1338,6 +1339,12 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void setCarrierInfoForImsiEncryption(PublicKey carrierPublicKey, String keyIdentifier,
+                                                Message result) {
+
+    }
+
+    @Override
     public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result) {
 
     }
@@ -1365,5 +1372,13 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
 
     @Override
     public void setSimCardPower(boolean powerUp, Message result) {
+    }
+
+    @Override
+    public void registerForCarrierInfoForImsiEncryption(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForCarrierInfoForImsiEncryption(Handler h) {
     }
 }
