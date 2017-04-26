@@ -262,14 +262,6 @@ public class DcTracker extends Handler {
                     log("WIFI_STATE_CHANGED_ACTION: enabled=" + enabled
                             + " mIsWifiConnected=" + mIsWifiConnected);
                 }
-            } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                CarrierConfigManager configMgr = (CarrierConfigManager)
-                        mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-                if (configMgr != null) {
-                    PersistableBundle cfg = configMgr.getConfigForSubId(mPhone.getSubId());
-                    if (cfg != null) mAllowUserEditTetherApn =
-                            cfg.getBoolean(CarrierConfigManager.KEY_EDITABLE_TETHER_APN_BOOL);
-                }
             } else {
                 if (DBG) log("onReceive: Unknown action=" + action);
             }
@@ -587,13 +579,6 @@ public class DcTracker extends Handler {
     private int mSetDataProfileStatus = 0;
 
     /**
-     * Whether carrier allow user edited tether APN. Updated by carrier config
-     * KEY_EDITABLE_TETHER_APN_BOOL
-     * If true, APN with dun type from database will be used, see fetchDunApn for details.
-     */
-    private boolean mAllowUserEditTetherApn = false;
-
-    /**
      * Handles changes to the APN db.
      */
     private class ApnChangeObserver extends ContentObserver {
@@ -661,7 +646,6 @@ public class DcTracker extends Handler {
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
-        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
 
         // TODO - redundent with update call below?
         mDataEnabledSettings.setUserDataEnabled(getDataEnabled());
@@ -1768,7 +1752,12 @@ public class DcTracker extends Handler {
         apnContext.requestLog(str);
     }
 
-    ApnSetting fetchDunApn() {
+    /**
+     * Fetch dun apn
+     * @return ApnSetting to be used for dun
+     */
+    @VisibleForTesting
+    public ApnSetting fetchDunApn() {
         if (SystemProperties.getBoolean("net.tethering.noprovisioning", false)) {
             log("fetchDunApn: net.tethering.noprovisioning=true ret: null");
             return null;
@@ -1779,22 +1768,16 @@ public class DcTracker extends Handler {
         ArrayList<ApnSetting> dunCandidates = new ArrayList<ApnSetting>();
         ApnSetting retDunSetting = null;
 
-        // Places to look for tether APN in order: TETHER_DUN_APN setting, APN database if
-        // carrier allows it, and config_tether_apndata resource.
+        // Places to look for tether APN in order: TETHER_DUN_APN setting (to be deprecated soon),
+        // APN database, and config_tether_apndata resource (to be deprecated soon).
         String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
         if (!TextUtils.isEmpty(apnData)) {
             dunCandidates.addAll(ApnSetting.arrayFromString(apnData));
             if (VDBG) log("fetchDunApn: dunCandidates from Setting: " + dunCandidates);
-        } else if (mAllowUserEditTetherApn) {
-            for (ApnSetting apn : mAllApnSettings) {
-                if (apn.canHandleType(PhoneConstants.APN_TYPE_DUN)) {
-                    dunCandidates.add(apn);
-                }
-            }
-            if (VDBG) log("fetchDunApn: dunCandidates from database: " + dunCandidates);
         }
-        // If TETHER_DUN_APN isn't set or
-        // mAllowUserEditTetherApn is true but APN database doesn't have dun APN,
+
+        // todo: remove this and config_tether_apndata after APNs are moved from overlay to apns xml
+        // If TETHER_DUN_APN isn't set or APN database doesn't have dun APN,
         // try the resource as last resort.
         if (dunCandidates.isEmpty()) {
             String[] apnArrayData = mPhone.getContext().getResources()
@@ -1806,6 +1789,17 @@ public class DcTracker extends Handler {
                     if (apn != null) dunCandidates.add(apn);
                 }
                 if (VDBG) log("fetchDunApn: dunCandidates from resource: " + dunCandidates);
+            }
+        }
+
+        if (dunCandidates.isEmpty()) {
+            if (!ArrayUtils.isEmpty(mAllApnSettings)) {
+                for (ApnSetting apn : mAllApnSettings) {
+                    if (apn.canHandleType(PhoneConstants.APN_TYPE_DUN)) {
+                        dunCandidates.add(apn);
+                    }
+                }
+                if (VDBG) log("fetchDunApn: dunCandidates from database: " + dunCandidates);
             }
         }
 
