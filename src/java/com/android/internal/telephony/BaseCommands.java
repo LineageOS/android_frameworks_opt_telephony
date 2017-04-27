@@ -71,6 +71,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mPhoneRadioCapabilityChangedRegistrants =
             new RegistrantList();
     protected RegistrantList mPcoDataRegistrants = new RegistrantList();
+    protected RegistrantList mCarrierInfoForImsiEncryptionRegistrants = new RegistrantList();
 
 
     protected Registrant mGsmSmsRegistrant;
@@ -904,5 +905,15 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForPcoData(Handler h) {
         mPcoDataRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForCarrierInfoForImsiEncryption(Handler h, int what, Object obj) {
+        mCarrierInfoForImsiEncryptionRegistrants.add(new Registrant(h, what, obj));
+    }
+
+    @Override
+    public void unregisterForCarrierInfoForImsiEncryption(Handler h) {
+        mCarrierInfoForImsiEncryptionRegistrants.remove(h);
     }
 }
