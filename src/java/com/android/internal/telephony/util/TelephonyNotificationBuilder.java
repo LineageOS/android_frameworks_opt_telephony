@@ -125,7 +125,7 @@ public class TelephonyNotificationBuilder extends Notification.Builder {
         NotificationChannel channel = getNotificationManager(mContext)
                 .getNotificationChannel(channelId);
         if (channel == null) channel = createChannel(mContext, channelId);
-        return super.setChannel(channel.getId());
+        return super.setChannelId(channel.getId());
     }
 
     public TelephonyNotificationBuilder(Context context) {

@@ -919,7 +919,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 .setContentTitle(mContext.getString(R.string.new_sms_notification_title))
                 .setContentText(mContext.getString(R.string.new_sms_notification_content))
                 .setContentIntent(intent)
-                .setChannel(TelephonyNotificationBuilder.CHANNEL_ID_SMS);
+                .setChannelId(TelephonyNotificationBuilder.CHANNEL_ID_SMS);
         NotificationManager mNotificationManager =
             (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(
