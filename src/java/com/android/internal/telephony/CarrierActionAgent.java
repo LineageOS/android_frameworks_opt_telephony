@@ -70,9 +70,10 @@ public class CarrierActionAgent extends Handler {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
+            final String iccState = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
             if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)){
-                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(
-                        intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE))) {
+                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(iccState) ||
+                        IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(iccState)) {
                     sendEmptyMessage(CARRIER_ACTION_RESET);
                 }
             }
@@ -109,6 +110,9 @@ public class CarrierActionAgent extends Handler {
                 log("CARRIER_ACTION_RESET");
                 carrierActionSetMeteredApnsEnabled(true);
                 carrierActionSetRadioEnabled(true);
+                // notify configured carrier apps for reset
+                mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(
+                        new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
                 break;
             default:
                 loge("Unknown carrier action: " + msg.what);
