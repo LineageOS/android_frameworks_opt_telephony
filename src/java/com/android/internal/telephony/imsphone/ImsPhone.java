@@ -1561,7 +1561,7 @@ public class ImsPhone extends ImsPhoneBase {
                                 .setContentIntent(resultPendingIntent)
                                 .setStyle(new Notification.BigTextStyle()
                                 .bigText(messageNotification))
-                                .setChannel(TelephonyNotificationBuilder.CHANNEL_ID_WFC)
+                                .setChannelId(TelephonyNotificationBuilder.CHANNEL_ID_WFC)
                                 .build();
                 final String notificationTag = "wifi_calling";
                 final int notificationId = 1;
