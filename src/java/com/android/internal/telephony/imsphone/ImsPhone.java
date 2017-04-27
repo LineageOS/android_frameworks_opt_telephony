@@ -998,8 +998,8 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
-    /* package */
-    void sendErrorResponse(Message onComplete, Throwable e) {
+    @VisibleForTesting
+    public void sendErrorResponse(Message onComplete, Throwable e) {
         Rlog.d(LOG_TAG, "sendErrorResponse");
         if (onComplete != null) {
             AsyncResult.forMessage(onComplete, null, getCommandException(e));

@@ -16,24 +16,29 @@
 package com.android.internal.telephony.imsphone;
 
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.support.test.filters.FlakyTest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ims.feature.ImsFeature;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.test.suitebuilder.annotation.LargeTest;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsConnectionStateListener;
+import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.internal.ImsCallSession;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
@@ -50,14 +55,20 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -73,6 +84,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private int mServiceId;
     @Mock
     private ImsCallSession mImsCallSession;
+    private Handler mCTHander;
 
     private class ImsCTHandlerThread extends HandlerThread {
 
@@ -87,6 +99,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
             mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+            mCTHander = new Handler(mCTUT.getLooper());
             setReady(true);
         }
     }
@@ -191,8 +204,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         waitUntilReady();
         logd("ImsPhoneCallTracker initiated");
-        /* Make sure getImsService is triggered on a separate thread */
-        waitForMs(100);
+        /* Make sure getImsService is triggered on handler */
+        waitForHandlerAction(mCTHander, 100);
     }
 
     @After
@@ -435,5 +448,50 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 mCTUT.maybeRemapReasonCode(new ImsReasonInfo(510, 1, "Call answered elsewhere.")));
         assertEquals(90210, mCTUT.maybeRemapReasonCode(new ImsReasonInfo(90210, 1,
                 "Call answered elsewhere.")));
+    }
+
+
+    @Test
+    @SmallTest
+    public void testDialImsServiceUnavailable() throws ImsException {
+        doThrow(new ImsException("Test Exception", ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN)).when(
+                mImsManager).createCallProfile(anyInt(), anyInt(), anyInt());
+        mCTUT.mRetryTimeout = () -> 0; //ms
+        assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+
+        try {
+            mCTUT.dial("+17005554141", ImsCallProfile.CALL_TYPE_VOICE, null);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
+        // wait for handler to process ImsService connection retry
+        waitForHandlerAction(mCTHander, 1000); // 1 second timeout
+        verify(mImsManager, never()).makeCall(anyInt(), nullable(ImsCallProfile.class),
+                eq(new String[]{"+17005554141"}), nullable(ImsCall.Listener.class));
+        // Make sure that open is called in ImsPhoneCallTracker when it was first connected and
+        // again after retry.
+        verify(mImsManager, times(2)).open(anyInt(), nullable(PendingIntent.class),
+                nullable(ImsConnectionStateListener.class));
+    }
+
+    @Test
+    @SmallTest
+    public void testTTYImsServiceUnavailable() throws ImsException {
+        doThrow(new ImsException("Test Exception", ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN)).when(
+                mImsManager).setUiTTYMode(nullable(Context.class), anyInt(),
+                nullable(Message.class));
+        // Remove retry timeout delay
+        mCTUT.mRetryTimeout = () -> 0; //ms
+
+        mCTUT.setUiTTYMode(0, new Message());
+
+        // wait for handler to process ImsService connection retry
+        waitForHandlerAction(mCTHander, 100);
+        // Make sure that open is called in ImsPhoneCallTracker to re-establish connection to
+        // ImsService
+        verify(mImsManager, times(2)).open(anyInt(), nullable(PendingIntent.class),
+                nullable(ImsConnectionStateListener.class));
     }
 }
