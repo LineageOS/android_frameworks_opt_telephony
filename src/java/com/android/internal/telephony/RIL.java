@@ -92,6 +92,7 @@ import java.io.DataInputStream;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -3623,6 +3624,34 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+                                                Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            android.hardware.radio.V1_1.IRadio radioProxy11 =
+                    android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
+            if (radioProxy11 == null) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            } else {
+                RILRequest rr = obtainRequest(RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION, result,
+                        mRILDefaultWorkSource);
+                if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+                try {
+                    radioProxy11.setCarrierInfoForImsiEncryption(
+                            rr.mSerial, publicKeyToArrayList(publicKey), keyIdentifier);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setCarrierInfoForImsiEncryption", e);
+                }
+            }
+        }
+    }
+
+    @Override
     public void getIMEI(Message result) {
         throw new RuntimeException("getIMEI not expected to be called");
     }
@@ -4523,6 +4552,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER";
             case RIL_RESPONSE_ACKNOWLEDGEMENT:
                 return "RIL_RESPONSE_ACKNOWLEDGEMENT";
+            case RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION:
+                return "RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION";
             default: return "<unknown request>";
         }
     }
@@ -4621,6 +4652,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 return "UNSOL_LCE_INFO_RECV";
             case RIL_UNSOL_PCO_DATA:
                 return "UNSOL_PCO_DATA";
+            case RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION:
+                return "RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION";
             default:
                 return "<unknown response>";
         }
@@ -4704,6 +4737,19 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     public static ArrayList<Byte> primitiveArrayToArrayList(byte[] arr) {
         ArrayList<Byte> arrayList = new ArrayList<>(arr.length);
         for (byte b : arr) {
+            arrayList.add(b);
+        }
+        return arrayList;
+    }
+
+    /**
+     * Method to serialize the Public Key into ArrayList of bytes
+     * @param publicKey publicKey to be converted to ArrayList of bytes.
+     **/
+    public static ArrayList<Byte> publicKeyToArrayList(PublicKey publicKey) {
+        byte[] key = publicKey.getEncoded();
+        ArrayList<Byte> arrayList = new ArrayList<>(key.length);
+        for (byte b : key) {
             arrayList.add(b);
         }
         return arrayList;

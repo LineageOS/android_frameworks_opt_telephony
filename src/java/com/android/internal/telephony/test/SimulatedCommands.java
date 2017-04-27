@@ -53,6 +53,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1424,6 +1425,16 @@ public class SimulatedCommands extends BaseCommands
         // Just echo back data
         if (response != null) {
             AsyncResult.forMessage(response).result = data;
+            response.sendToTarget();
+        }
+    }
+
+    @Override
+    public void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+                                                Message response) {
+        // Just echo back data
+        if (response != null) {
+            AsyncResult.forMessage(response).result = publicKey;
             response.sendToTarget();
         }
     }
