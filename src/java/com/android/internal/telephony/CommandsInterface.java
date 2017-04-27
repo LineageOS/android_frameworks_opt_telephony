@@ -27,6 +27,7 @@ import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
+import java.security.PublicKey;
 import java.util.List;
 
 /**
@@ -1433,6 +1434,18 @@ public interface CommandsInterface {
 
     void invokeOemRilRequestRaw(byte[] data, Message response);
 
+    /**
+     * Sends carrier specific information to the vendor ril that can be used to
+     * encrypt the IMSI and IMPI.
+     *
+     * @param publicKey the public key of the carrier used to encrypt IMSI/IMPI.
+     * @param keyIdentifier the key identifier is optional information that is carrier
+     *        specific.
+     * @param response callback message
+     */
+    void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+                                         Message response);
+
     void invokeOemRilRequestStrings(String[] strings, Message response);
 
     /**
@@ -2069,6 +2082,22 @@ public interface CommandsInterface {
      * @param result callback message contains the information of SUCCESS/FAILURE
      */
     void setSimCardPower(boolean powerUp, Message result);
+
+    /**
+     * Register for unsolicited Carrier Public Key.
+     *
+     * @param h Handler for notificaiton message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForCarrierInfoForImsiEncryption(Handler h, int what, Object obj);
+
+    /**
+     * DeRegister for unsolicited Carrier Public Key.
+     *
+     * @param h Handler for notificaiton message.
+     */
+    void unregisterForCarrierInfoForImsiEncryption(Handler h);
 
     default public List<ClientRequestStats> getClientRequestStats() {
         return null;
