@@ -184,7 +184,8 @@ public class ImsServiceController {
 
             @Override
             public void notifyImsFeatureStatus(int featureStatus) throws RemoteException {
-                Log.i(LOG_TAG, "notifyImsFeatureStatus");
+                Log.i(LOG_TAG, "notifyImsFeatureStatus: slot=" + mSlotId + ", feature="
+                        + mFeatureType + ", status=" + featureStatus);
                 sendImsFeatureStatusChanged(mSlotId, mFeatureType, featureStatus);
             }
         };
