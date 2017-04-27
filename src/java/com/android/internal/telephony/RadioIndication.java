@@ -16,42 +16,8 @@
 
 package com.android.internal.telephony;
 
-import android.hardware.radio.V1_0.CdmaCallWaiting;
-import android.hardware.radio.V1_0.CdmaInformationRecord;
-import android.hardware.radio.V1_0.CdmaLineControlInfoRecord;
-import android.hardware.radio.V1_0.CdmaNumberInfoRecord;
-import android.hardware.radio.V1_0.CdmaRedirectingNumberInfoRecord;
-import android.hardware.radio.V1_0.CdmaSignalInfoRecord;
-import android.hardware.radio.V1_0.CdmaSmsMessage;
-import android.hardware.radio.V1_0.CdmaT53AudioControlInfoRecord;
-import android.hardware.radio.V1_0.CfData;
-import android.hardware.radio.V1_0.IRadioIndication;
-import android.hardware.radio.V1_0.LceDataInfo;
-import android.hardware.radio.V1_0.PcoDataInfo;
-import android.hardware.radio.V1_0.SetupDataCallResult;
-import android.hardware.radio.V1_0.SimRefreshResult;
-import android.hardware.radio.V1_0.SsInfoData;
-import android.hardware.radio.V1_0.StkCcUnsolSsResult;
-import android.hardware.radio.V1_0.SuppSvcNotification;
-import android.os.AsyncResult;
-import android.os.SystemProperties;
-import android.telephony.CellInfo;
-import android.telephony.PcoData;
-import android.telephony.SignalStrength;
-import android.telephony.SmsMessage;
-
-import com.android.internal.telephony.TelephonyProto.SmsSession;
-import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
-import com.android.internal.telephony.cdma.CdmaInformationRecords;
-import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.gsm.SsData;
-import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.uicc.IccRefreshResponse;
-import com.android.internal.telephony.uicc.IccUtils;
-
-import java.util.ArrayList;
-
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_CALL_WAITING;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_INFO_REC;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_OTA_PROVISION_STATUS;
@@ -95,6 +61,41 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOT
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
+
+import android.hardware.radio.V1_0.CdmaCallWaiting;
+import android.hardware.radio.V1_0.CdmaInformationRecord;
+import android.hardware.radio.V1_0.CdmaLineControlInfoRecord;
+import android.hardware.radio.V1_0.CdmaNumberInfoRecord;
+import android.hardware.radio.V1_0.CdmaRedirectingNumberInfoRecord;
+import android.hardware.radio.V1_0.CdmaSignalInfoRecord;
+import android.hardware.radio.V1_0.CdmaSmsMessage;
+import android.hardware.radio.V1_0.CdmaT53AudioControlInfoRecord;
+import android.hardware.radio.V1_0.CfData;
+import android.hardware.radio.V1_0.LceDataInfo;
+import android.hardware.radio.V1_0.PcoDataInfo;
+import android.hardware.radio.V1_0.SetupDataCallResult;
+import android.hardware.radio.V1_0.SimRefreshResult;
+import android.hardware.radio.V1_0.SsInfoData;
+import android.hardware.radio.V1_0.StkCcUnsolSsResult;
+import android.hardware.radio.V1_0.SuppSvcNotification;
+import android.hardware.radio.V1_1.IRadioIndication;
+import android.os.AsyncResult;
+import android.os.SystemProperties;
+import android.telephony.CellInfo;
+import android.telephony.PcoData;
+import android.telephony.SignalStrength;
+import android.telephony.SmsMessage;
+
+import com.android.internal.telephony.TelephonyProto.SmsSession;
+import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
+import com.android.internal.telephony.cdma.CdmaInformationRecords;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
+import com.android.internal.telephony.gsm.SsData;
+import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.uicc.IccRefreshResponse;
+import com.android.internal.telephony.uicc.IccUtils;
+
+import java.util.ArrayList;
 
 public class RadioIndication extends IRadioIndication.Stub {
     RIL mRil;
@@ -773,6 +774,19 @@ public class RadioIndication extends IRadioIndication.Stub {
 
     public void modemReset(int indicationType, String reason) {
         mRil.processIndication(indicationType);
+    }
+
+    /**
+     * Indicates when the carrier info to encrypt IMSI is being requested
+     * @param indicationType RadioIndicationType
+     */
+    public void carrierInfoForImsiEncryption(int indicationType) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION, null);
+
+        mRil.mCarrierInfoForImsiEncryptionRegistrants.notifyRegistrants(
+                new AsyncResult(null, null, null));
     }
 
     private CommandsInterface.RadioState getRadioStateFromInt(int stateInt) {
