@@ -30,7 +30,6 @@ import android.telephony.TelephonyManager;
 import android.telephony.PreciseCallState;
 
 import com.android.internal.telephony.PhoneConstantConversions;
-import com.android.internal.telephony.PhoneConstants;
 
 import java.util.List;
 
