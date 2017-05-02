@@ -88,9 +88,10 @@ public class CarrierSignalAgent {
      * This is a list of supported signals from CarrierSignalAgent
      */
     private final Set<String> mCarrierSignalList = new HashSet<>(Arrays.asList(
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE.toLowerCase(),
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED.toLowerCase(),
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED.toLowerCase()));
+            TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE,
+            TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED,
+            TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
+            TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
 
     private final LocalLog mErrorLocalLog = new LocalLog(20);
 
@@ -99,6 +100,11 @@ public class CarrierSignalAgent {
             String action = intent.getAction();
             if (DBG) log("CarrierSignalAgent receiver action: " + action);
             if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                // notify carrier apps before cache get purged
+                if (IccCardConstants.State.ABSENT == mPhone.getIccCard().getState()) {
+                    notifyCarrierSignalReceivers(
+                            new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
+                }
                 loadCarrierConfig();
             }
         }
@@ -163,7 +169,6 @@ public class CarrierSignalAgent {
                         }
                         String[] signals = splitStr[1].split(CARRIER_SIGNAL_DELIMITER);
                         for (String s : signals) {
-                            s = s.toLowerCase();
                             if (!mCarrierSignalList.contains(s)) {
                                 loge("Invalid signal name: " + s);
                                 continue;
@@ -191,8 +196,8 @@ public class CarrierSignalAgent {
      * Check if there are registered carrier broadcast receivers to handle the passing intent
      */
     public boolean hasRegisteredReceivers(String action) {
-        return mCachedWakeSignalConfigs.containsKey(action.toLowerCase())
-                || mCachedNoWakeSignalConfigs.containsKey(action.toLowerCase());
+        return mCachedWakeSignalConfigs.containsKey(action)
+                || mCachedNoWakeSignalConfigs.containsKey(action);
     }
 
     /**
@@ -254,14 +259,14 @@ public class CarrierSignalAgent {
         List<ComponentName> receiverList;
 
         synchronized (mCachedWakeSignalConfigs) {
-            receiverList = mCachedWakeSignalConfigs.get(intent.getAction().toLowerCase());
+            receiverList = mCachedWakeSignalConfigs.get(intent.getAction());
             if (!ArrayUtils.isEmpty(receiverList)) {
                 broadcast(intent, receiverList, WAKE);
             }
         }
 
         synchronized (mCachedNoWakeSignalConfigs) {
-            receiverList = mCachedNoWakeSignalConfigs.get(intent.getAction().toLowerCase());
+            receiverList = mCachedNoWakeSignalConfigs.get(intent.getAction());
             if (!ArrayUtils.isEmpty(receiverList)) {
                 broadcast(intent, receiverList, NO_WAKE);
             }
