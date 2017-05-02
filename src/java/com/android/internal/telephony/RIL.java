@@ -4827,7 +4827,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     p.writeInt(cellInfoGsm.cellIdentityGsm.lac);
                     p.writeInt(cellInfoGsm.cellIdentityGsm.cid);
                     p.writeInt(cellInfoGsm.cellIdentityGsm.arfcn);
-                    p.writeInt(cellInfoGsm.cellIdentityGsm.bsic);
+                    p.writeInt(Byte.toUnsignedInt(cellInfoGsm.cellIdentityGsm.bsic));
                     p.writeInt(cellInfoGsm.signalStrengthGsm.signalStrength);
                     p.writeInt(cellInfoGsm.signalStrengthGsm.bitErrorRate);
                     p.writeInt(cellInfoGsm.signalStrengthGsm.timingAdvance);
