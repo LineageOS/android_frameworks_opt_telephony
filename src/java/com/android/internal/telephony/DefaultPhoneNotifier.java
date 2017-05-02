@@ -22,12 +22,12 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.CellInfo;
+import android.telephony.PreciseCallState;
 import android.telephony.Rlog;
-import android.telephony.VoLteServiceState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.PreciseCallState;
+import android.telephony.VoLteServiceState;
 
 import com.android.internal.telephony.PhoneConstantConversions;
 
@@ -179,14 +179,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             if (mRegistry != null) {
                 mRegistry.notifyDataConnectionForSubscriber(subId,
                     PhoneConstantConversions.convertDataState(state),
-                    sender.isDataConnectivityPossible(apnType), reason,
-                    sender.getActiveApnHost(apnType),
-                    apnType,
-                    linkProperties,
-                    networkCapabilities,
-                    ((telephony!=null) ? telephony.getDataNetworkType(subId) :
-                    TelephonyManager.NETWORK_TYPE_UNKNOWN),
-                    roaming);
+                        sender.isDataAllowed(), reason,
+                        sender.getActiveApnHost(apnType),
+                        apnType,
+                        linkProperties,
+                        networkCapabilities,
+                        ((telephony != null) ? telephony.getDataNetworkType(subId) :
+                                TelephonyManager.NETWORK_TYPE_UNKNOWN), roaming);
             }
         } catch (RemoteException ex) {
             // system process is dead
