@@ -26,7 +26,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -72,7 +71,7 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
 
     OutputStreamWriter mPipeToHandler;
     InputStreamReader mPipeFromHandler;
-
+    InputStreamReader mHandlerSideOfPipeToHandler;
 
     @Before
     public void setUp() throws Exception {
@@ -93,6 +92,8 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
                 new ParcelFileDescriptor.AutoCloseInputStream(fromTextHandler[0]));
         mPipeToHandler = new OutputStreamWriter(
                 new ParcelFileDescriptor.AutoCloseOutputStream(toTextHandler[1]));
+        mHandlerSideOfPipeToHandler = new InputStreamReader(
+                new ParcelFileDescriptor.AutoCloseInputStream(toTextHandler[1]));
     }
 
     /**
@@ -130,6 +131,15 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
         // Send four more characters
         mPipeToHandler.write("efgh");
         mPipeToHandler.flush();
+        // Wait for the stream to consume the characters
+        int count = 0;
+        while (mHandlerSideOfPipeToHandler.ready()) {
+            Thread.sleep(10);
+            count += 1;
+            if (count >= 5) {
+                break;
+            }
+        }
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         // make sure that all characters were sent.
