@@ -30,7 +30,7 @@ import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.util.TelephonyNotificationBuilder;
+import com.android.internal.telephony.util.NotificationChannelController;
 
 /**
  * This contains Carrier specific logic based on the states/events
@@ -166,7 +166,7 @@ public class CarrierServiceStateTracker extends Handler {
                 context.getText(com.android.internal.R.string.NetworkPreferenceSwitchSummary);
 
 
-        Notification mNotification = new TelephonyNotificationBuilder(context)
+        Notification mNotification = new Notification.Builder(context)
                 .setWhen(System.currentTimeMillis())
                 .setAutoCancel(true)
                 .setSmallIcon(com.android.internal.R.drawable.stat_sys_warning)
@@ -176,7 +176,7 @@ public class CarrierServiceStateTracker extends Handler {
                 .setStyle(new Notification.BigTextStyle().bigText(details))
                 .setContentText(details)
                 .setContentIntent(settingsIntent)
-                .setChannel(TelephonyNotificationBuilder.CHANNEL_ID_ALERT)
+                .setChannel(NotificationChannelController.CHANNEL_ID_ALERT)
                 .build();
 
         notificationManager.notify(NOTIFICATION_ID, mNotification);
