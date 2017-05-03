@@ -176,7 +176,6 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_POLL_SIGNAL_STRENGTH              = 10;
     protected static final int EVENT_NITZ_TIME                         = 11;
     protected static final int EVENT_SIGNAL_STRENGTH_UPDATE            = 12;
-    protected static final int EVENT_RADIO_AVAILABLE                   = 13;
     protected static final int EVENT_POLL_STATE_NETWORK_SELECTION_MODE = 14;
     protected static final int EVENT_GET_LOC_DONE                      = 15;
     protected static final int EVENT_SIM_RECORDS_LOADED                = 16;
@@ -542,6 +541,7 @@ public class ServiceStateTracker extends Handler {
         mSubscriptionManager = SubscriptionManager.from(phone.getContext());
         mSubscriptionManager
                 .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mRestrictedState = new RestrictedState();
 
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
 
@@ -587,6 +587,7 @@ public class ServiceStateTracker extends Handler {
 
         mPhone.notifyOtaspChanged(TelephonyManager.OTASP_UNINITIALIZED);
 
+        mCi.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
         updatePhoneType();
 
         mCSST = new CarrierServiceStateTracker(phone, this);
@@ -608,7 +609,6 @@ public class ServiceStateTracker extends Handler {
         mLastCellInfoListTime = 0;
         mLastCellInfoList = null;
         mSignalStrength = new SignalStrength();
-        mRestrictedState = new RestrictedState();
         mStartedGprsRegCheck = false;
         mReportedGprsNoReg = false;
         mMdn = null;
@@ -633,13 +633,7 @@ public class ServiceStateTracker extends Handler {
 
             mCellLoc = new GsmCellLocation();
             mNewCellLoc = new GsmCellLocation();
-            mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
-            mCi.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
         } else {
-            //clear GSM regsitrations first
-            mCi.unregisterForAvailable(this);
-            mCi.unSetOnRestrictedStateChanged(this);
-
             if (mPhone.isPhoneTypeCdmaLte()) {
                 mPhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
             }
@@ -1106,12 +1100,7 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
-            //GSM
-            case EVENT_RADIO_AVAILABLE:
-                //this is unnecessary
-                //setPowerStateToDesired();
-                break;
-
+            // GSM
             case EVENT_SIM_READY:
                 // Reset the mPreviousSubId so we treat a SIM power bounce
                 // as a first boot.  See b/19194287

@@ -45,7 +45,6 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-
 public class GsmCdmaCallTrackerTest extends TelephonyTest {
     private static final int VOICE_CALL_STARTED_EVENT = 0;
     private static final int VOICE_CALL_ENDED_EVENT = 1;
@@ -309,6 +308,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(GsmCdmaCall.State.HOLDING, mCTUT.mBackgroundCall.getState());
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMOCallPickUpHangUpResumeBackGround() {
