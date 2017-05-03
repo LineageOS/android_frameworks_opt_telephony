@@ -473,13 +473,19 @@ public class DcTracker extends Handler {
     }
 
     private void onActionIntentReconnectAlarm(Intent intent) {
-        String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
-        String apnType = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
+        Message msg = obtainMessage(DctConstants.EVENT_DATA_RECONNECT);
+        msg.setData(intent.getExtras());
+        sendMessage(msg);
+    }
+
+    private void onDataReconnect(Bundle bundle) {
+        String reason = bundle.getString(INTENT_RECONNECT_ALARM_EXTRA_REASON);
+        String apnType = bundle.getString(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
 
         int phoneSubId = mPhone.getSubId();
-        int currSubId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
+        int currSubId = bundle.getInt(PhoneConstants.SUBSCRIPTION_KEY,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        log("onActionIntentReconnectAlarm: currSubId = " + currSubId + " phoneSubId=" + phoneSubId);
+        log("onDataReconnect: currSubId = " + currSubId + " phoneSubId=" + phoneSubId);
 
         // Stop reconnect if not current subId is not correct.
         // FIXME STOPSHIP - phoneSubId is coming up as -1 way after boot and failing this?
@@ -491,33 +497,33 @@ public class DcTracker extends Handler {
         ApnContext apnContext = mApnContexts.get(apnType);
 
         if (DBG) {
-            log("onActionIntentReconnectAlarm: mState=" + mState + " reason=" + reason +
-                    " apnType=" + apnType + " apnContext=" + apnContext +
-                    " mDataConnectionAsyncChannels=" + mDataConnectionAcHashMap);
+            log("onDataReconnect: mState=" + mState + " reason=" + reason + " apnType=" + apnType
+                    + " apnContext=" + apnContext + " mDataConnectionAsyncChannels="
+                    + mDataConnectionAcHashMap);
         }
 
         if ((apnContext != null) && (apnContext.isEnabled())) {
             apnContext.setReason(reason);
             DctConstants.State apnContextState = apnContext.getState();
             if (DBG) {
-                log("onActionIntentReconnectAlarm: apnContext state=" + apnContextState);
+                log("onDataReconnect: apnContext state=" + apnContextState);
             }
             if ((apnContextState == DctConstants.State.FAILED)
                     || (apnContextState == DctConstants.State.IDLE)) {
                 if (DBG) {
-                    log("onActionIntentReconnectAlarm: state is FAILED|IDLE, disassociate");
+                    log("onDataReconnect: state is FAILED|IDLE, disassociate");
                 }
                 DcAsyncChannel dcac = apnContext.getDcAc();
                 if (dcac != null) {
                     if (DBG) {
-                        log("onActionIntentReconnectAlarm: tearDown apnContext=" + apnContext);
+                        log("onDataReconnect: tearDown apnContext=" + apnContext);
                     }
                     dcac.tearDown(apnContext, "", null);
                 }
                 apnContext.setDataConnectionAc(null);
                 apnContext.setState(DctConstants.State.IDLE);
             } else {
-                if (DBG) log("onActionIntentReconnectAlarm: keep associated");
+                if (DBG) log("onDataReconnect: keep associated");
             }
             // TODO: IF already associated should we send the EVENT_TRY_SETUP_DATA???
             sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
@@ -4091,6 +4097,9 @@ public class DcTracker extends Handler {
             }
             case DctConstants.EVENT_SET_CARRIER_DATA_ENABLED:
                 onSetCarrierDataEnabled((AsyncResult) msg.obj);
+                break;
+            case DctConstants.EVENT_DATA_RECONNECT:
+                onDataReconnect(msg.getData());
                 break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
