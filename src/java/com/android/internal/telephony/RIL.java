@@ -710,8 +710,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " aid = " + aid
-                + " pin = " + pin);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " aid = " + aid);
             }
 
             try {
@@ -737,8 +737,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " puk = " + puk
-                        + " newPin = " + newPin + " aid = " + aid);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " aid = " + aid);
             }
 
             try {
@@ -765,8 +765,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " aid = " + aid
-                        + " pin = " + pin);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " aid = " + aid);
             }
 
             try {
@@ -792,8 +792,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " puk = " + puk
-                        + " newPin = " + newPin2 + " aid = " + aid);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " aid = " + aid);
             }
 
             try {
