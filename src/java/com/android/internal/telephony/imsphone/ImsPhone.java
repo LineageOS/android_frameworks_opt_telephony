@@ -38,7 +38,6 @@ import android.os.PowerManager.WakeLock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 
-import android.provider.Telephony;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
@@ -55,7 +54,6 @@ import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
-import com.android.ims.ImsMultiEndpoint;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
@@ -101,7 +99,7 @@ import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccRecords;
-import com.android.internal.telephony.util.TelephonyNotificationBuilder;
+import com.android.internal.telephony.util.NotificationChannelController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1552,8 +1550,7 @@ public class ImsPhone extends ImsPhoneBase {
                                 PendingIntent.FLAG_UPDATE_CURRENT
                         );
 
-                final Notification notification =
-                        new TelephonyNotificationBuilder(mContext)
+                final Notification notification = new Notification.Builder(mContext)
                                 .setSmallIcon(android.R.drawable.stat_sys_warning)
                                 .setContentTitle(title)
                                 .setContentText(messageNotification)
@@ -1561,7 +1558,7 @@ public class ImsPhone extends ImsPhoneBase {
                                 .setContentIntent(resultPendingIntent)
                                 .setStyle(new Notification.BigTextStyle()
                                 .bigText(messageNotification))
-                                .setChannelId(TelephonyNotificationBuilder.CHANNEL_ID_WFC)
+                                .setChannelId(NotificationChannelController.CHANNEL_ID_WFC)
                                 .build();
                 final String notificationTag = "wifi_calling";
                 final int notificationId = 1;

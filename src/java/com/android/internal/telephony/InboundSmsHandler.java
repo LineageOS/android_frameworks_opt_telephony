@@ -64,7 +64,7 @@ import android.text.TextUtils;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.util.TelephonyNotificationBuilder;
+import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -911,7 +911,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             0,
             new Intent(ACTION_OPEN_SMS_APP),
             PendingIntent.FLAG_ONE_SHOT);
-        Notification.Builder mBuilder = new TelephonyNotificationBuilder(mContext)
+        Notification.Builder mBuilder = new Notification.Builder(mContext)
                 .setSmallIcon(com.android.internal.R.drawable.sym_action_chat)
                 .setAutoCancel(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -919,7 +919,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 .setContentTitle(mContext.getString(R.string.new_sms_notification_title))
                 .setContentText(mContext.getString(R.string.new_sms_notification_content))
                 .setContentIntent(intent)
-                .setChannelId(TelephonyNotificationBuilder.CHANNEL_ID_SMS);
+                .setChannelId(NotificationChannelController.CHANNEL_ID_SMS);
         NotificationManager mNotificationManager =
             (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(
