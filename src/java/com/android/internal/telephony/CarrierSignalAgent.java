@@ -101,7 +101,8 @@ public class CarrierSignalAgent {
             if (DBG) log("CarrierSignalAgent receiver action: " + action);
             if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
                 // notify carrier apps before cache get purged
-                if (IccCardConstants.State.ABSENT == mPhone.getIccCard().getState()) {
+                if (mPhone.getIccCard() != null
+                        && IccCardConstants.State.ABSENT == mPhone.getIccCard().getState()) {
                     notifyCarrierSignalReceivers(
                             new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
                 }
