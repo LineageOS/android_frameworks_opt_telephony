@@ -441,6 +441,11 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.BEARER_NOT_AVAIL:
                 return DisconnectCause.CONGESTION;
 
+            case CallFailCause.EMERGENCY_TEMP_FAILURE:
+                return DisconnectCause.EMERGENCY_TEMP_FAILURE;
+            case CallFailCause.EMERGENCY_PERM_FAILURE:
+                return DisconnectCause.EMERGENCY_PERM_FAILURE;
+
             case CallFailCause.ACM_LIMIT_EXCEEDED:
                 return DisconnectCause.LIMIT_EXCEEDED;
 

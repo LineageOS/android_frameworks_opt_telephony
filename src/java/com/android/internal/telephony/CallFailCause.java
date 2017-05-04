@@ -60,6 +60,10 @@ public interface CallFailCause {
     int DIAL_MODIFIED_TO_SS   = 245;
     int DIAL_MODIFIED_TO_DIAL = 246;
 
+    //Emergency Redial
+    int EMERGENCY_TEMP_FAILURE = 325;
+    int EMERGENCY_PERM_FAILURE = 326;
+
     int CDMA_LOCKED_UNTIL_POWER_CYCLE  = 1000;
     int CDMA_DROP                      = 1001;
     int CDMA_INTERCEPT                 = 1002;
