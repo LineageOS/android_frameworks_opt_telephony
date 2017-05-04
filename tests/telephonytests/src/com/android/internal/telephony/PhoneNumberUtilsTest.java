@@ -23,6 +23,8 @@ import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.SpannableStringBuilder;
 
+import org.junit.Test;
+
 public class PhoneNumberUtilsTest extends AndroidTestCase {
 
     @SmallTest
@@ -702,5 +704,22 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
         assertTrue(PhoneNumberUtils.isInternationalNumber("01161396694916", "US"));
         assertTrue(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "US"));
         assertFalse(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "AU"));
+    }
+
+    @SmallTest
+    @Test
+    public void testIsUriNumber() {
+        assertTrue(PhoneNumberUtils.isUriNumber("foo@google.com"));
+        assertTrue(PhoneNumberUtils.isUriNumber("xyz@zzz.org"));
+        assertFalse(PhoneNumberUtils.isUriNumber("+15103331245"));
+        assertFalse(PhoneNumberUtils.isUriNumber("+659231235"));
+    }
+
+    @SmallTest
+    @Test
+    public void testGetUsernameFromUriNumber() {
+        assertEquals("john", PhoneNumberUtils.getUsernameFromUriNumber("john@myorg.com"));
+        assertEquals("tim_123", PhoneNumberUtils.getUsernameFromUriNumber("tim_123@zzz.org"));
+        assertEquals("5103331245", PhoneNumberUtils.getUsernameFromUriNumber("5103331245"));
     }
 }
