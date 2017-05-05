@@ -1131,6 +1131,18 @@ public class GsmCdmaPhone extends Phone {
                 CallStateException.ERROR_POWER_OFF,
                 "cannot dial voice call in airplane mode");
         }
+        // Check for service before placing non emergency CS voice call.
+        // Allow dial only if either CS is camped on any RAT (or) PS is in LTE service.
+        if (mSST != null
+                && mSST.mSS.getState() == ServiceState.STATE_OUT_OF_SERVICE /* CS out of service */
+                && !(mSST.mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
+                    && ServiceState.isLte(mSST.mSS.getRilDataRadioTechnology())) /* PS not in LTE */
+                && !VideoProfile.isVideo(videoState) /* voice call */
+                && !isEmergency /* non-emergency call */) {
+            throw new CallStateException(
+                CallStateException.ERROR_OUT_OF_SERVICE,
+                "cannot dial voice call in out of service");
+        }
         if (DBG) logd("Trying (non-IMS) CS call");
 
         if (isPhoneTypeGsm()) {
