@@ -1507,7 +1507,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             cfInfo.serviceClass = serviceClass;
             cfInfo.toa = PhoneNumberUtils.toaFromString(number);
             cfInfo.number = convertNullToEmptyString(number);
-            cfInfo.timeSeconds = 0;
+            cfInfo.timeSeconds = timeSeconds;
 
             try {
                 radioProxy.setCallForward(rr.mSerial, cfInfo);
