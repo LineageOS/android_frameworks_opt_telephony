@@ -410,8 +410,10 @@ public class ImsPhoneConnection extends Connection implements
             } else {
                 Rlog.d(LOG_TAG, "onDisconnect: no parent");
             }
-            if (mImsCall != null) mImsCall.close();
-            mImsCall = null;
+            synchronized (this) {
+                if (mImsCall != null) mImsCall.close();
+                mImsCall = null;
+            }
         }
         releaseWakeLock();
         return changed;
@@ -608,7 +610,7 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     @Override
-    public boolean isMultiparty() {
+    public synchronized boolean isMultiparty() {
         return mImsCall != null && mImsCall.isMultiparty();
     }
 
@@ -621,11 +623,8 @@ public class ImsPhoneConnection extends Connection implements
      *      {@code false} otherwise.
      */
     @Override
-    public boolean isConferenceHost() {
-        if (mImsCall == null) {
-            return false;
-        }
-        return mImsCall.isConferenceHost();
+    public synchronized boolean isConferenceHost() {
+        return mImsCall != null && mImsCall.isConferenceHost();
     }
 
     @Override
@@ -633,11 +632,11 @@ public class ImsPhoneConnection extends Connection implements
         return !isConferenceHost();
     }
 
-    public ImsCall getImsCall() {
+    public synchronized ImsCall getImsCall() {
         return mImsCall;
     }
 
-    public void setImsCall(ImsCall imsCall) {
+    public synchronized void setImsCall(ImsCall imsCall) {
         mImsCall = imsCall;
     }
 
@@ -1007,10 +1006,12 @@ public class ImsPhoneConnection extends Connection implements
         sb.append(" address: ");
         sb.append(Rlog.pii(LOG_TAG, getAddress()));
         sb.append(" ImsCall: ");
-        if (mImsCall == null) {
-            sb.append("null");
-        } else {
-            sb.append(mImsCall);
+        synchronized (this) {
+            if (mImsCall == null) {
+                sb.append("null");
+            } else {
+                sb.append(mImsCall);
+            }
         }
         sb.append("]");
         return sb.toString();
