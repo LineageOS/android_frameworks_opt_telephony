@@ -59,7 +59,6 @@ import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
-import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -3384,7 +3383,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                             ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
             if (wfcWiFiOnly) {
                 throw new CallStateException(
-                        CallStateException.ERROR_DISCONNECTED,
+                        CallStateException.ERROR_OUT_OF_SERVICE,
                         "WFC Wi-Fi Only Mode: IMS not registered");
             }
         }

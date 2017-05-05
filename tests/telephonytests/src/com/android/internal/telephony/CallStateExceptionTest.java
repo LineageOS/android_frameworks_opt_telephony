@@ -15,10 +15,12 @@
  */
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+
 import android.test.suitebuilder.annotation.SmallTest;
+
 import org.junit.After;
 import org.junit.Test;
-import static org.junit.Assert.assertEquals;
 
 public class CallStateExceptionTest {
     private CallStateException mCallStateException;
@@ -39,9 +41,9 @@ public class CallStateExceptionTest {
     @Test
     @SmallTest
     public void testCallStateExceptionWithErrCode() {
-        mCallStateException = new CallStateException(mCallStateException.ERROR_DISCONNECTED,
+        mCallStateException = new CallStateException(mCallStateException.ERROR_OUT_OF_SERVICE,
                                                      "sanity test with err code");
         assertEquals("sanity test with err code", mCallStateException.getMessage());
-        assertEquals(mCallStateException.ERROR_DISCONNECTED, mCallStateException.getError());
+        assertEquals(mCallStateException.ERROR_OUT_OF_SERVICE, mCallStateException.getError());
     }
 }
