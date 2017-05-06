@@ -604,9 +604,9 @@ public class IccSmsInterfaceManager {
     protected byte[] makeSmsRecordData(int status, byte[] pdu) {
         byte[] data;
         if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
-            data = new byte[IccConstants.SMS_RECORD_LENGTH];
+            data = new byte[SmsManager.SMS_RECORD_LENGTH];
         } else {
-            data = new byte[IccConstants.CDMA_SMS_RECORD_LENGTH];
+            data = new byte[SmsManager.CDMA_SMS_RECORD_LENGTH];
         }
 
         // Status bits for this record.  See TS 51.011 10.5.3
