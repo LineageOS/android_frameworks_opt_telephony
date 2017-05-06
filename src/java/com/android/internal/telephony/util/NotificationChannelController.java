@@ -84,6 +84,11 @@ public class NotificationChannelController {
         createAll(context);
     }
 
+    public static NotificationChannel getChannel(String channelId, Context context) {
+        return context.getSystemService(NotificationManager.class)
+                .getNotificationChannel(channelId);
+    }
+
     // rename all registered channels on locale change
     private BroadcastReceiver mLocaleChangeReceiver = new BroadcastReceiver() {
         @Override
