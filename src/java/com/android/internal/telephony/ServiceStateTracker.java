@@ -1637,12 +1637,27 @@ public class ServiceStateTracker extends Handler {
                 if (mIsSubscriptionFromRuim) {
                     mNewSS.setVoiceRoaming(isRoamingBetweenOperators(mNewSS.getVoiceRoaming(), mNewSS));
                 }
-                // For CDMA, voice and data should have the same roaming status
-                final boolean isVoiceInService =
-                        (mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
-                final int dataRegType = mNewSS.getRilDataRadioTechnology();
-                if (isVoiceInService && ServiceState.isCdma(dataRegType)) {
-                    mNewSS.setDataRoaming(mNewSS.getVoiceRoaming());
+                /**
+                 * For CDMA, voice and data should have the same roaming status.
+                 * If voice is not in service, use TSB58 roaming indicator to set
+                 * data roaming status. If TSB58 roaming indicator is not in the
+                 * carrier-specified list of ERIs for home system then set roaming.
+                 */
+                final int dataRat = mNewSS.getRilDataRadioTechnology();
+                if (ServiceState.isCdma(dataRat)) {
+                    final boolean isVoiceInService =
+                            (mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
+                    if (isVoiceInService) {
+                        mNewSS.setDataRoaming(mNewSS.getVoiceRoaming());
+                    } else {
+                        /**
+                         * As per VoiceRegStateResult from radio types.hal the TSB58
+                         * Roaming Indicator shall be sent if device is registered
+                         * on a CDMA or EVDO system.
+                         */
+                        mNewSS.setDataRoaming(
+                                !isRoamIndForHomeSystem(Integer.toString(mRoamingIndicator)));
+                    }
                 }
 
                 // Setting SS CdmaRoamingIndicator and CdmaDefaultRoamingIndicator
