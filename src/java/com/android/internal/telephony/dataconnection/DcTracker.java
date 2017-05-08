@@ -90,6 +90,7 @@ import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataA
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataDisallowedReasonType;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.AsyncChannel;
@@ -138,6 +139,8 @@ public class DcTracker extends Handler {
     private static final int POLL_NETSTAT_SCREEN_OFF_MILLIS = 1000*60*10;
     // Default sent packets without ack which triggers initial recovery steps
     private static final int NUMBER_SENT_PACKETS_OF_HANG = 10;
+
+    private static final int EVENT_SIM_RECORDS_LOADED = 100;
 
     // Default for the data stall alarm while non-aggressive stall detection
     private static final int DATA_STALL_ALARM_NON_AGGRESSIVE_DELAY_IN_MS_DEFAULT = 1000 * 60 * 6;
@@ -3638,20 +3641,35 @@ public class DcTracker extends Handler {
         return null;
     }
 
+    void onRecordsLoaded() {
+        // If onRecordsLoadedOrSubIdChanged() is not called here, it should be called on
+        // onSubscriptionsChanged() when a valid subId is available.
+        int subId = mPhone.getSubId();
+        if (mSubscriptionManager.isActiveSubId(subId)) {
+            onRecordsLoadedOrSubIdChanged();
+        } else {
+            log("Ignoring EVENT_RECORDS_LOADED as subId is not valid: " + subId);
+        }
+    }
+
     @Override
     public void handleMessage (Message msg) {
         if (VDBG) log("handleMessage msg=" + msg);
 
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
-                // If onRecordsLoadedOrSubIdChanged() is not called here, it should be called on
-                // onSubscriptionsChanged() when a valid subId is available.
-                int subId = mPhone.getSubId();
-                if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                    onRecordsLoadedOrSubIdChanged();
+                if ((mIccRecords.get() instanceof RuimRecords) &&
+                        (mPhone.getSIMRecords() != null)) {
+                    mPhone.getSIMRecords().registerForRecordsLoaded(this,
+                            EVENT_SIM_RECORDS_LOADED, null);
                 } else {
-                    log("Ignoring EVENT_RECORDS_LOADED as subId is not valid: " + subId);
+                    onRecordsLoaded();
                 }
+                break;
+
+            case EVENT_SIM_RECORDS_LOADED:
+                onRecordsLoaded();
+                mPhone.getSIMRecords().unregisterForRecordsLoaded(this);
                 break;
 
             case DctConstants.EVENT_DATA_CONNECTION_DETACHED:
