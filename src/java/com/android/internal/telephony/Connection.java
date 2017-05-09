@@ -633,6 +633,7 @@ public abstract class Connection {
         mOrigConnection = c.getOrigConnection();
         mPostDialString = c.mPostDialString;
         mNextPostDialChar = c.mNextPostDialChar;
+        mPostDialState = c.mPostDialState;
     }
 
     /**
