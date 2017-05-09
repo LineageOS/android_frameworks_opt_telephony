@@ -4284,10 +4284,15 @@ public class ServiceStateTracker extends Handler {
      */
     protected boolean onSignalStrengthResult(AsyncResult ar) {
         boolean isGsm = false;
-        //override isGsm for CDMA LTE
-        if (mPhone.isPhoneTypeGsm() ||
-                (mPhone.isPhoneTypeCdmaLte() &&
-                        ServiceState.isLte(mSS.getRilDataRadioTechnology()))) {
+        int dataRat = mSS.getRilDataRadioTechnology();
+        int voiceRat = mSS.getRilVoiceRadioTechnology();
+
+        // Override isGsm based on currently camped data and voice RATs
+        // Set isGsm to true if the RAT belongs to GSM family and not IWLAN
+        if ((dataRat != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                && ServiceState.isGsm(dataRat))
+                || (voiceRat != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                && ServiceState.isGsm(voiceRat))) {
             isGsm = true;
         }
 
