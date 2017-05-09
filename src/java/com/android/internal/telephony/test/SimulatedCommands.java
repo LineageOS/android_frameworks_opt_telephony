@@ -2126,4 +2126,10 @@ public class SimulatedCommands extends BaseCommands
                     new AsyncResult(null, restrictedState, null));
         }
     }
+
+    @Override
+    public void setOnRestrictedStateChanged(Handler h, int what, Object obj) {
+        super.setOnRestrictedStateChanged(h, what, obj);
+        SimulatedCommandsVerifier.getInstance().setOnRestrictedStateChanged(h, what, obj);
+    }
 }
