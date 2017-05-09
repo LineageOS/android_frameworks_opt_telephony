@@ -902,7 +902,14 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(IccCardApplicationStatus.AppState.APPSTATE_READY).when(
                 mUiccCardApplication3gpp).getState();
-        spySst.updatePhoneType();
+
+        ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(mSimulatedCommandsVerifier).setOnRestrictedStateChanged(any(Handler.class),
+                intArgumentCaptor.capture(), eq(null));
+        // Since spy() creates a copy of sst object we need to call
+        // setOnRestrictedStateChanged() explicitly.
+        mSimulatedCommands.setOnRestrictedStateChanged(spySst,
+                intArgumentCaptor.getValue().intValue(), null);
 
         // Combination of restricted state and expected notification type.
         final int CS_ALL[] = {RILConstants.RIL_RESTRICTED_STATE_CS_ALL,
