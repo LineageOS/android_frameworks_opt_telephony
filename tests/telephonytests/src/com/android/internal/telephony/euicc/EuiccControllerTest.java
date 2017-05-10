@@ -52,7 +52,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
@@ -89,8 +88,14 @@ public class EuiccControllerTest extends TelephonyTest {
     private TestEuiccController mController;
 
     private static class TestEuiccController extends EuiccController {
+        // Captured arguments to addResolutionIntent
         private String mResolutionAction;
         private EuiccOperation mOp;
+
+        // Captured arguments to sendResult.
+        private PendingIntent mCallbackIntent;
+        private int mResultCode;
+        private Intent mExtrasIntent;
 
         TestEuiccController(Context context, EuiccConnector connector) {
             super(context, connector);
@@ -101,6 +106,14 @@ public class EuiccControllerTest extends TelephonyTest {
                 EuiccOperation op) {
             mResolutionAction = resolutionAction;
             mOp = op;
+        }
+
+        @Override
+        public void sendResult(PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+            assertNull("sendResult called twice unexpectedly", mCallbackIntent);
+            mCallbackIntent = callbackIntent;
+            mResultCode = resultCode;
+            mExtrasIntent = extrasIntent;
         }
     }
 
@@ -420,17 +433,15 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private Intent verifyIntentSent(int resultCode, int detailedCode)
             throws RemoteException {
-        ArgumentCaptor<Intent> intentCapture = ArgumentCaptor.forClass(Intent.class);
-        verify(mIActivityManager).sendIntentSender(
-                any(), eq(resultCode), intentCapture.capture(), any(), any(), any(), any());
-        Intent capturedIntent = intentCapture.getValue();
-        if (capturedIntent == null) {
+        assertNotNull(mController.mCallbackIntent);
+        assertEquals(resultCode, mController.mResultCode);
+        if (mController.mExtrasIntent == null) {
             assertEquals(0, detailedCode);
         } else {
             assertEquals(detailedCode,
-                    capturedIntent.getIntExtra(
+                    mController.mExtrasIntent.getIntExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE, 0));
         }
-        return capturedIntent;
+        return mController.mExtrasIntent;
     }
 }

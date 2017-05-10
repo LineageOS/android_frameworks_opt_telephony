@@ -395,7 +395,9 @@ public class EuiccController extends IEuiccController.Stub {
                 });
     }
 
-    void sendResult(PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+    /** Dispatch the given callback intent with the given result code and data. */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void sendResult(PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
         try {
             callbackIntent.send(mContext, resultCode, extrasIntent);
         } catch (PendingIntent.CanceledException e) {
