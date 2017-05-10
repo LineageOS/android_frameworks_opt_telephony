@@ -43,6 +43,8 @@ public class ImsFeatureTest {
     @Mock
     private IImsFeatureStatusCallback mTestStatusCallback;
     @Mock
+    private IImsFeatureStatusCallback mTestStatusCallback2;
+    @Mock
     private ImsFeature.INotifyFeatureRemoved mTestRemovedCallback;
 
     private class TestImsFeature extends ImsFeature {
@@ -73,19 +75,23 @@ public class ImsFeatureTest {
     @Test
     @SmallTest
     public void testSetCallbackAndNotify() throws Exception {
-        mTestImsService.setImsFeatureStatusCallback(mTestStatusCallback);
+        mTestImsService.addImsFeatureStatusCallback(mTestStatusCallback);
+        mTestImsService.addImsFeatureStatusCallback(mTestStatusCallback2);
 
         verify(mTestStatusCallback).notifyImsFeatureStatus(eq(ImsFeature.STATE_NOT_AVAILABLE));
+        verify(mTestStatusCallback2).notifyImsFeatureStatus(eq(ImsFeature.STATE_NOT_AVAILABLE));
     }
 
     @Test
     @SmallTest
     public void testSetFeatureAndCheckCallback() throws Exception {
-        mTestImsService.setImsFeatureStatusCallback(mTestStatusCallback);
+        mTestImsService.addImsFeatureStatusCallback(mTestStatusCallback);
+        mTestImsService.addImsFeatureStatusCallback(mTestStatusCallback2);
 
         mTestImsService.testSetFeatureState(ImsFeature.STATE_READY);
 
         verify(mTestStatusCallback).notifyImsFeatureStatus(eq(ImsFeature.STATE_READY));
+        verify(mTestStatusCallback2).notifyImsFeatureStatus(eq(ImsFeature.STATE_READY));
         assertEquals(ImsFeature.STATE_READY, mTestImsService.getFeatureState());
     }
 
