@@ -284,7 +284,7 @@ public class ImsServiceController {
     }
 
     /**
-     * Calls {@link IImsServiceController#removeImsFeature(int, int)} on all features that the
+     * Calls {@link IImsServiceController#removeImsFeature} on all features that the
      * ImsService supports and then unbinds the service.
      */
     public void unbind() throws RemoteException {
@@ -459,7 +459,15 @@ public class ImsServiceController {
             Log.w(LOG_TAG, "removeImsServiceFeature called with null values.");
             return;
         }
-        mIImsServiceController.removeImsFeature(featurePair.first, featurePair.second);
+        ImsFeatureStatusCallback callbackToRemove = mFeatureStatusCallbacks.stream().filter(c ->
+                c.mSlotId == featurePair.first && c.mFeatureType == featurePair.second)
+                .findFirst().orElse(null);
+        // Remove status callbacks from list.
+        if (callbackToRemove != null) {
+            mFeatureStatusCallbacks.remove(callbackToRemove);
+        }
+        mIImsServiceController.removeImsFeature(featurePair.first, featurePair.second,
+                (callbackToRemove != null ? callbackToRemove.getCallback() : null));
         // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
         mCallbacks.imsServiceFeatureRemoved(featurePair.first, featurePair.second, this);
         // Send callback to ImsServiceProxy to change supported ImsFeatures
@@ -467,9 +475,6 @@ public class ImsServiceController {
         // ImsManager requests the ImsService while it is being removed in ImsResolver, this
         // callback will clean it up after.
         sendImsFeatureRemovedCallback(featurePair.first, featurePair.second);
-        // Remove status callbacks from list.
-        mFeatureStatusCallbacks.removeIf(c -> c.mSlotId == featurePair.first
-                && c.mFeatureType == featurePair.second);
     }
 
     private void notifyAllFeaturesRemoved() {
