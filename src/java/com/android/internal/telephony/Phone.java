@@ -543,15 +543,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         synchronized(Phone.lockForRadioTechnologyChange) {
             IntentFilter filter = new IntentFilter();
-            filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
-            filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+            ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
+            // Don't listen to deprecated intents using the new dynamic binding.
+            if (imsManager != null && !imsManager.isDynamicBinding()) {
+                filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
+                filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+            }
             filter.addAction(ImsConfig.ACTION_IMS_CONFIG_CHANGED);
             mContext.registerReceiver(mImsIntentReceiver, filter);
 
             // Monitor IMS service - but first poll to see if already up (could miss
             // intent). Also, when using new ImsResolver APIs, the service will be available soon,
             // so start trying to bind.
-            ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
             if (imsManager != null) {
                 // If it is dynamic binding, kick off ImsPhone creation now instead of waiting for
                 // the service to be available.

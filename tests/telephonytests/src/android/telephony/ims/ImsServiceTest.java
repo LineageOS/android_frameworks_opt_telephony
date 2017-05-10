@@ -101,7 +101,7 @@ public class ImsServiceTest {
                 mTestImsService.getImsFeatureFromType(features, ImsFeature.MMTEL));
         // Verify that upon creating a feature, we assign the callback and get the set feature state
         // when querying it.
-        verify(mTestImsService.mSpyMMTelFeature).setImsFeatureStatusCallback(eq(mTestCallback));
+        verify(mTestImsService.mSpyMMTelFeature).addImsFeatureStatusCallback(eq(mTestCallback));
         assertEquals(ImsFeature.STATE_READY, mTestImsServiceBinder.getFeatureStatus(TEST_SLOT_0,
                 ImsFeature.MMTEL));
     }
@@ -111,10 +111,10 @@ public class ImsServiceTest {
     public void testRemoveMMTelFeature() throws RemoteException {
         mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
 
-        mTestImsServiceBinder.removeImsFeature(TEST_SLOT_0, ImsFeature.MMTEL);
+        mTestImsServiceBinder.removeImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
 
         verify(mTestImsService.mSpyMMTelFeature).notifyFeatureRemoved(eq(0));
-        verify(mTestImsService.mSpyMMTelFeature).setImsFeatureStatusCallback(null);
+        verify(mTestImsService.mSpyMMTelFeature).removeImsFeatureStatusCallback(mTestCallback);
         SparseArray<ImsFeature> features = mTestImsService.getImsFeatureMap(TEST_SLOT_0);
         assertNull(mTestImsService.getImsFeatureFromType(features, ImsFeature.MMTEL));
     }
@@ -186,14 +186,11 @@ public class ImsServiceTest {
         mTestImsService.mSpyMMTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
 
         ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mMockContext, times(2)).sendBroadcast(intentCaptor.capture());
+        verify(mMockContext).sendBroadcast(intentCaptor.capture());
         try {
-            // IMS_SERVICE_DOWN is always sent when createImsFeature completes
-            assertNotNull(intentCaptor.getAllValues().get(0));
-            verifyServiceDownSent(intentCaptor.getAllValues().get(0));
             // Verify IMS_SERVICE_UP is sent
-            assertNotNull(intentCaptor.getAllValues().get(1));
-            verifyServiceUpSent(intentCaptor.getAllValues().get(1));
+            assertNotNull(intentCaptor.getValue());
+            verifyServiceUpSent(intentCaptor.getValue());
         } catch (IndexOutOfBoundsException e) {
             fail("Did not receive all intents");
         }
@@ -211,35 +208,14 @@ public class ImsServiceTest {
         mTestImsService.mSpyMMTelFeature.sendSetFeatureState(ImsFeature.STATE_INITIALIZING);
 
         ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mMockContext, times(2)).sendBroadcast(intentCaptor.capture());
+        verify(mMockContext).sendBroadcast(intentCaptor.capture());
         try {
-            // IMS_SERVICE_DOWN is always sent when createImsFeature completes.
-            assertNotNull(intentCaptor.getAllValues().get(0));
-            verifyServiceDownSent(intentCaptor.getAllValues().get(0));
             // IMS_SERVICE_DOWN is sent when the service is STATE_INITIALIZING.
-            assertNotNull(intentCaptor.getAllValues().get(1));
-            verifyServiceDownSent(intentCaptor.getAllValues().get(1));
+            assertNotNull(intentCaptor.getValue());
+            verifyServiceDownSent(intentCaptor.getValue());
         } catch (IndexOutOfBoundsException e) {
             fail("Did not receive all intents");
         }
-    }
-
-    /**
-     * Tests that the new ImsService still sends the IMS_SERVICE_DOWN broadcast when the feature is
-     * set to not available.
-     */
-    @Test
-    @SmallTest
-    public void testImsServiceDownSentCompatNotAvailable() throws RemoteException {
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
-
-        // The ImsService will send the STATE_NOT_AVAILABLE status as soon as the feature is
-        // created.
-
-        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mMockContext).sendBroadcast(intentCaptor.capture());
-        assertNotNull(intentCaptor.getValue());
-        verifyServiceDownSent(intentCaptor.getValue());
     }
 
     private void verifyServiceDownSent(Intent testIntent) {
