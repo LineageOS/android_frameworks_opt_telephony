@@ -1090,11 +1090,9 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            RadioCapability ret = null;
-            if (responseInfo.error == RadioError.NONE) {
-                ret = RIL.convertHalRadioCapability(rc, mRil);
-            } else if (responseInfo.error == RadioError.REQUEST_NOT_SUPPORTED ||
-                    responseInfo.error == RadioError.GENERIC_FAILURE) {
+            RadioCapability ret = RIL.convertHalRadioCapability(rc, mRil);
+            if (responseInfo.error == RadioError.REQUEST_NOT_SUPPORTED
+                    || responseInfo.error == RadioError.GENERIC_FAILURE) {
                 // we should construct the RAF bitmask the radio
                 // supports based on preferred network bitmasks
                 ret = mRil.makeStaticRadioCapability();
@@ -1192,42 +1190,40 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            Object ret = null;
-            if (responseInfo.error == RadioError.NONE) {
-                IccCardStatus iccCardStatus = new IccCardStatus();
-                iccCardStatus.setCardState(cardStatus.cardState);
-                iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
-                iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
-                iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
-                iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
-                int numApplications = cardStatus.applications.size();
+            IccCardStatus iccCardStatus = new IccCardStatus();
+            iccCardStatus.setCardState(cardStatus.cardState);
+            iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
+            iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
+            iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
+            iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
+            int numApplications = cardStatus.applications.size();
 
-                // limit to maximum allowed applications
-                if (numApplications
-                        > com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS) {
-                    numApplications =
-                            com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS;
-                }
-                iccCardStatus.mApplications = new IccCardApplicationStatus[numApplications];
-                for (int i = 0; i < numApplications; i++) {
-                    AppStatus rilAppStatus = cardStatus.applications.get(i);
-                    IccCardApplicationStatus appStatus = new IccCardApplicationStatus();
-                    appStatus.app_type       = appStatus.AppTypeFromRILInt(rilAppStatus.appType);
-                    appStatus.app_state      = appStatus.AppStateFromRILInt(rilAppStatus.appState);
-                    appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(
-                            rilAppStatus.persoSubstate);
-                    appStatus.aid            = rilAppStatus.aidPtr;
-                    appStatus.app_label      = rilAppStatus.appLabelPtr;
-                    appStatus.pin1_replaced  = rilAppStatus.pin1Replaced;
-                    appStatus.pin1           = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
-                    appStatus.pin2           = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
-                    iccCardStatus.mApplications[i] = appStatus;
-                }
-                mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
-                ret = iccCardStatus;
-                sendMessageResponse(rr.mResult, ret);
+            // limit to maximum allowed applications
+            if (numApplications
+                    > com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS) {
+                numApplications =
+                        com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS;
             }
-            mRil.processResponseDone(rr, responseInfo, ret);
+            iccCardStatus.mApplications = new IccCardApplicationStatus[numApplications];
+            for (int i = 0; i < numApplications; i++) {
+                AppStatus rilAppStatus = cardStatus.applications.get(i);
+                IccCardApplicationStatus appStatus = new IccCardApplicationStatus();
+                appStatus.app_type       = appStatus.AppTypeFromRILInt(rilAppStatus.appType);
+                appStatus.app_state      = appStatus.AppStateFromRILInt(rilAppStatus.appState);
+                appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(
+                        rilAppStatus.persoSubstate);
+                appStatus.aid            = rilAppStatus.aidPtr;
+                appStatus.app_label      = rilAppStatus.appLabelPtr;
+                appStatus.pin1_replaced  = rilAppStatus.pin1Replaced;
+                appStatus.pin1           = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
+                appStatus.pin2           = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
+                iccCardStatus.mApplications[i] = appStatus;
+            }
+            mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, iccCardStatus);
+            }
+            mRil.processResponseDone(rr, responseInfo, iccCardStatus);
         }
     }
 
@@ -1243,13 +1239,11 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            Object ret = null;
+            int[] ret = new int[var.size()];
+            for (int i = 0; i < var.size(); i++) {
+                ret[i] = var.get(i);
+            }
             if (responseInfo.error == RadioError.NONE) {
-                int[] response = new int[var.size()];
-                for (int i = 0; i < var.size(); i++) {
-                    response[i] = var.get(i);
-                }
-                ret = response;
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1261,82 +1255,77 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            Object ret = null;
-            if (responseInfo.error == RadioError.NONE) {
-                int num;
-                ArrayList<DriverCall> dcCalls;
-                DriverCall dc;
+            int num = calls.size();
+            ArrayList<DriverCall> dcCalls = new ArrayList<DriverCall>(num);
+            DriverCall dc;
 
-                num = calls.size();
-                dcCalls = new ArrayList<DriverCall>(num);
-
-                for (int i = 0; i < num; i++) {
-                    dc = new DriverCall();
-                    // TODO: change name of function stateFromCLCC() in DriverCall.java to name
-                    // clarifying what is CLCC
-                    dc.state = DriverCall.stateFromCLCC((int) (calls.get(i).state));
-                    dc.index = calls.get(i).index;
-                    dc.TOA = calls.get(i).toa;
-                    dc.isMpty = calls.get(i).isMpty;
-                    dc.isMT = calls.get(i).isMT;
-                    dc.als = calls.get(i).als;
-                    dc.isVoice = calls.get(i).isVoice;
-                    dc.isVoicePrivacy = calls.get(i).isVoicePrivacy;
-                    dc.number = calls.get(i).number;
-                    dc.numberPresentation =
-                            DriverCall.presentationFromCLIP(
-                                    (int) (calls.get(i).numberPresentation));
-                    dc.name = calls.get(i).name;
-                    dc.namePresentation =
-                            DriverCall.presentationFromCLIP((int) (calls.get(i).namePresentation));
-                    if (calls.get(i).uusInfo.size() == 1) {
-                        dc.uusInfo = new UUSInfo();
-                        dc.uusInfo.setType(calls.get(i).uusInfo.get(0).uusType);
-                        dc.uusInfo.setDcs(calls.get(i).uusInfo.get(0).uusDcs);
-                        if (calls.get(i).uusInfo.get(0).uusData != null) {
-                            byte[] userData = calls.get(i).uusInfo.get(0).uusData.getBytes();
-                            dc.uusInfo.setUserData(userData);
-                        } else {
-                            mRil.riljLog("responseCurrentCalls: uusInfo data is null");
-                        }
-
-                        mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
-                                dc.uusInfo.getType(), dc.uusInfo.getDcs(),
-                                dc.uusInfo.getUserData().length));
-                        mRil.riljLogv("Incoming UUS : data (hex): "
-                                + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
+            for (int i = 0; i < num; i++) {
+                dc = new DriverCall();
+                // TODO: change name of function stateFromCLCC() in DriverCall.java to name
+                // clarifying what is CLCC
+                dc.state = DriverCall.stateFromCLCC((int) (calls.get(i).state));
+                dc.index = calls.get(i).index;
+                dc.TOA = calls.get(i).toa;
+                dc.isMpty = calls.get(i).isMpty;
+                dc.isMT = calls.get(i).isMT;
+                dc.als = calls.get(i).als;
+                dc.isVoice = calls.get(i).isVoice;
+                dc.isVoicePrivacy = calls.get(i).isVoicePrivacy;
+                dc.number = calls.get(i).number;
+                dc.numberPresentation =
+                        DriverCall.presentationFromCLIP(
+                                (int) (calls.get(i).numberPresentation));
+                dc.name = calls.get(i).name;
+                dc.namePresentation =
+                        DriverCall.presentationFromCLIP((int) (calls.get(i).namePresentation));
+                if (calls.get(i).uusInfo.size() == 1) {
+                    dc.uusInfo = new UUSInfo();
+                    dc.uusInfo.setType(calls.get(i).uusInfo.get(0).uusType);
+                    dc.uusInfo.setDcs(calls.get(i).uusInfo.get(0).uusDcs);
+                    if (calls.get(i).uusInfo.get(0).uusData != null) {
+                        byte[] userData = calls.get(i).uusInfo.get(0).uusData.getBytes();
+                        dc.uusInfo.setUserData(userData);
                     } else {
-                        mRil.riljLogv("Incoming UUS : NOT present!");
+                        mRil.riljLog("responseCurrentCalls: uusInfo data is null");
                     }
 
-                    // Make sure there's a leading + on addresses with a TOA of 145
-                    dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
-
-                    dcCalls.add(dc);
-
-                    if (dc.isVoicePrivacy) {
-                        mRil.mVoicePrivacyOnRegistrants.notifyRegistrants();
-                        mRil.riljLog("InCall VoicePrivacy is enabled");
-                    } else {
-                        mRil.mVoicePrivacyOffRegistrants.notifyRegistrants();
-                        mRil.riljLog("InCall VoicePrivacy is disabled");
-                    }
+                    mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
+                            dc.uusInfo.getType(), dc.uusInfo.getDcs(),
+                            dc.uusInfo.getUserData().length));
+                    mRil.riljLogv("Incoming UUS : data (hex): "
+                            + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
+                } else {
+                    mRil.riljLogv("Incoming UUS : NOT present!");
                 }
 
-                Collections.sort(dcCalls);
+                // Make sure there's a leading + on addresses with a TOA of 145
+                dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
 
-                if ((num == 0) && mRil.mTestingEmergencyCall.getAndSet(false)) {
-                    if (mRil.mEmergencyCallbackModeRegistrant != null) {
-                        mRil.riljLog("responseCurrentCalls: call ended, testing emergency call,"
-                                + " notify ECM Registrants");
-                        mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
-                    }
+                dcCalls.add(dc);
+
+                if (dc.isVoicePrivacy) {
+                    mRil.mVoicePrivacyOnRegistrants.notifyRegistrants();
+                    mRil.riljLog("InCall VoicePrivacy is enabled");
+                } else {
+                    mRil.mVoicePrivacyOffRegistrants.notifyRegistrants();
+                    mRil.riljLog("InCall VoicePrivacy is disabled");
                 }
-
-                ret = dcCalls;
-                sendMessageResponse(rr.mResult, ret);
             }
-            mRil.processResponseDone(rr, responseInfo, ret);
+
+            Collections.sort(dcCalls);
+
+            if ((num == 0) && mRil.mTestingEmergencyCall.getAndSet(false)) {
+                if (mRil.mEmergencyCallbackModeRegistrant != null) {
+                    mRil.riljLog("responseCurrentCalls: call ended, testing emergency call,"
+                            + " notify ECM Registrants");
+                    mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
+                }
+            }
+
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dcCalls);
+            }
+            mRil.processResponseDone(rr, responseInfo, dcCalls);
         }
     }
 
@@ -1356,12 +1345,10 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            String ret = null;
             if (responseInfo.error == RadioError.NONE) {
-                ret = str;
-                sendMessageResponse(rr.mResult, ret);
+                sendMessageResponse(rr.mResult, str);
             }
-            mRil.processResponseDone(rr, responseInfo, ret);
+            mRil.processResponseDone(rr, responseInfo, str);
         }
     }
 
@@ -1378,12 +1365,11 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = ril.processResponse(responseInfo);
 
         if (rr != null) {
-            String[] ret = null;
+            String[] ret = new String[strings.size()];
+            for (int i = 0; i < strings.size(); i++) {
+                ret[i] = strings.get(i);
+            }
             if (responseInfo.error == RadioError.NONE) {
-                ret = new String[strings.size()];
-                for (int i = 0; i < strings.size(); i++) {
-                    ret[i] = strings.get(i);
-                }
                 sendMessageResponse(rr.mResult, ret);
             }
             ril.processResponseDone(rr, responseInfo, ret);
@@ -1395,11 +1381,10 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            LastCallFailCause ret = null;
+            LastCallFailCause ret = new LastCallFailCause();
+            ret.causeCode = fcInfo.causeCode;
+            ret.vendorCause = fcInfo.vendorCause;
             if (responseInfo.error == RadioError.NONE) {
-                ret = new LastCallFailCause();
-                ret.causeCode = fcInfo.causeCode;
-                ret.vendorCause = fcInfo.vendorCause;
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1411,9 +1396,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = null;
+            SignalStrength ret = RIL.convertHalSignalStrength(sigStrength);
             if (responseInfo.error == RadioError.NONE) {
-                ret = RIL.convertHalSignalStrength(sigStrength);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1424,9 +1408,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SmsResponse ret = null;
+            SmsResponse ret = new SmsResponse(sms.messageRef, sms.ackPDU, sms.errorCode);
             if (responseInfo.error == RadioError.NONE) {
-                ret = new SmsResponse(sms.messageRef, sms.ackPDU, sms.errorCode);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1451,9 +1434,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            IccIoResult ret = null;
+            IccIoResult ret = new IccIoResult(result.sw1, result.sw2, result.simResponse);
             if (responseInfo.error == RadioError.NONE) {
-                ret = new IccIoResult(result.sw1, result.sw2, result.simResponse);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1465,18 +1447,17 @@ public class RadioResponse extends IRadioResponse.Stub {
                                                  callForwardInfos) {
         RILRequest rr = mRil.processResponse(responseInfo);
         if (rr != null) {
-            CallForwardInfo[] ret = null;
+            CallForwardInfo[] ret = new CallForwardInfo[callForwardInfos.size()];
+            for (int i = 0; i < callForwardInfos.size(); i++) {
+                ret[i] = new CallForwardInfo();
+                ret[i].status = callForwardInfos.get(i).status;
+                ret[i].reason = callForwardInfos.get(i).reason;
+                ret[i].serviceClass = callForwardInfos.get(i).serviceClass;
+                ret[i].toa = callForwardInfos.get(i).toa;
+                ret[i].number = callForwardInfos.get(i).number;
+                ret[i].timeSeconds = callForwardInfos.get(i).timeSeconds;
+            }
             if (responseInfo.error == RadioError.NONE) {
-                ret = new CallForwardInfo[callForwardInfos.size()];
-                for (int i = 0; i < callForwardInfos.size(); i++) {
-                    ret[i] = new CallForwardInfo();
-                    ret[i].status = callForwardInfos.get(i).status;
-                    ret[i].reason = callForwardInfos.get(i).reason;
-                    ret[i].serviceClass = callForwardInfos.get(i).serviceClass;
-                    ret[i].toa = callForwardInfos.get(i).toa;
-                    ret[i].number = callForwardInfos.get(i).number;
-                    ret[i].timeSeconds = callForwardInfos.get(i).timeSeconds;
-                }
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1503,14 +1484,13 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<OperatorInfo> ret = null;
+            ArrayList<OperatorInfo> ret = new ArrayList<OperatorInfo>();
+            for (int i = 0; i < networkInfos.size(); i++) {
+                ret.add(new OperatorInfo(networkInfos.get(i).alphaLong,
+                        networkInfos.get(i).alphaShort, networkInfos.get(i).operatorNumeric,
+                        convertOpertatorInfoToString(networkInfos.get(i).status)));
+            }
             if (responseInfo.error == RadioError.NONE) {
-                ret =  new ArrayList<OperatorInfo>();
-                for (int i = 0; i < networkInfos.size(); i++) {
-                    ret.add(new OperatorInfo(networkInfos.get(i).alphaLong,
-                            networkInfos.get(i).alphaShort, networkInfos.get(i).operatorNumeric,
-                            convertOpertatorInfoToString(networkInfos.get(i).status)));
-                }
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1522,12 +1502,11 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<DataCallResponse> dcResponseList = null;
+            ArrayList<DataCallResponse> dcResponseList = new ArrayList<>();
+            for (SetupDataCallResult dcResult : dataCallResultList) {
+                dcResponseList.add(RIL.convertDataCallResult(dcResult));
+            }
             if (responseInfo.error == RadioError.NONE) {
-                dcResponseList = new ArrayList<>();
-                for (SetupDataCallResult dcResult : dataCallResultList) {
-                    dcResponseList.add(RIL.convertDataCallResult(dcResult));
-                }
                 sendMessageResponse(rr.mResult, dcResponseList);
             }
             mRil.processResponseDone(rr, responseInfo, dcResponseList);
@@ -1541,25 +1520,23 @@ public class RadioResponse extends IRadioResponse.Stub {
         if (rr != null) {
             int rssi;
             String location;
-            ArrayList<NeighboringCellInfo> ret = null;
+            ArrayList<NeighboringCellInfo> ret = new ArrayList<NeighboringCellInfo>();
             NeighboringCellInfo cell;
 
-            if (responseInfo.error == RadioError.NONE) {
-                ret =  new ArrayList<NeighboringCellInfo>();
+            int[] subId = SubscriptionManager.getSubId(mRil.mPhoneId);
+            int radioType =
+                    ((TelephonyManager) mRil.mContext.getSystemService(
+                            Context.TELEPHONY_SERVICE)).getDataNetworkType(subId[0]);
 
-                int[] subId = SubscriptionManager.getSubId(mRil.mPhoneId);
-                int radioType =
-                        ((TelephonyManager) mRil.mContext.getSystemService(
-                                Context.TELEPHONY_SERVICE)).getDataNetworkType(subId[0]);
-
-                if (radioType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-                    for (int i = 0; i < cells.size(); i++) {
-                        rssi = cells.get(i).rssi;
-                        location = cells.get(i).cid;
-                        cell = new NeighboringCellInfo(rssi, location, radioType);
-                        ret.add(cell);
-                    }
+            if (radioType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                for (int i = 0; i < cells.size(); i++) {
+                    rssi = cells.get(i).rssi;
+                    location = cells.get(i).cid;
+                    cell = new NeighboringCellInfo(rssi, location, radioType);
+                    ret.add(cell);
                 }
+            }
+            if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1571,14 +1548,13 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<SmsBroadcastConfigInfo> ret = null;
+            ArrayList<SmsBroadcastConfigInfo> ret = new ArrayList<SmsBroadcastConfigInfo>();
+            for (int i = 0; i < configs.size(); i++) {
+                ret.add(new SmsBroadcastConfigInfo(configs.get(i).fromServiceId,
+                        configs.get(i).toServiceId, configs.get(i).fromCodeScheme,
+                        configs.get(i).toCodeScheme, configs.get(i).selected));
+            }
             if (responseInfo.error == RadioError.NONE) {
-                ret =  new ArrayList<SmsBroadcastConfigInfo>();
-                for (int i = 0; i < configs.size(); i++) {
-                    ret.add(new SmsBroadcastConfigInfo(configs.get(i).fromServiceId,
-                            configs.get(i).toServiceId, configs.get(i).fromCodeScheme,
-                            configs.get(i).toCodeScheme, configs.get(i).selected));
-                }
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1592,41 +1568,41 @@ public class RadioResponse extends IRadioResponse.Stub {
         if (rr != null) {
             int[] ret = null;
 
-            if (responseInfo.error == RadioError.NONE) {
-                int numServiceCategories = configs.size();
+            int numServiceCategories = configs.size();
 
-                if (numServiceCategories == 0) {
-                    // TODO: The logic of providing default values should
-                    // not be done by this transport layer. And needs to
-                    // be done by the vendor ril or application logic.
-                    int numInts;
-                    numInts = CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES
-                            * CDMA_BSI_NO_OF_INTS_STRUCT + 1;
-                    ret = new int[numInts];
+            if (numServiceCategories == 0) {
+                // TODO: The logic of providing default values should
+                // not be done by this transport layer. And needs to
+                // be done by the vendor ril or application logic.
+                int numInts;
+                numInts = CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES
+                        * CDMA_BSI_NO_OF_INTS_STRUCT + 1;
+                ret = new int[numInts];
 
-                    // Faking a default record for all possible records.
-                    ret[0] = CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES;
+                // Faking a default record for all possible records.
+                ret[0] = CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES;
 
-                    // Loop over CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES set 'english' as
-                    // default language and selection status to false for all.
-                    for (int i = 1; i < numInts; i += CDMA_BSI_NO_OF_INTS_STRUCT) {
-                        ret[i + 0] = i / CDMA_BSI_NO_OF_INTS_STRUCT;
-                        ret[i + 1] = 1;
-                        ret[i + 2] = 0;
-                    }
-                } else {
-                    int numInts;
-                    numInts = (numServiceCategories * CDMA_BSI_NO_OF_INTS_STRUCT) + 1;
-                    ret = new int[numInts];
-
-                    ret[0] = numServiceCategories;
-                    for (int i = 1, j = 0; j < configs.size();
-                            j++, i = i + CDMA_BSI_NO_OF_INTS_STRUCT) {
-                        ret[i] = configs.get(j).serviceCategory;
-                        ret[i + 1] = configs.get(j).language;
-                        ret[i + 2] = configs.get(j).selected ? 1 : 0;
-                    }
+                // Loop over CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES set 'english' as
+                // default language and selection status to false for all.
+                for (int i = 1; i < numInts; i += CDMA_BSI_NO_OF_INTS_STRUCT) {
+                    ret[i + 0] = i / CDMA_BSI_NO_OF_INTS_STRUCT;
+                    ret[i + 1] = 1;
+                    ret[i + 2] = 0;
                 }
+            } else {
+                int numInts;
+                numInts = (numServiceCategories * CDMA_BSI_NO_OF_INTS_STRUCT) + 1;
+                ret = new int[numInts];
+
+                ret[0] = numServiceCategories;
+                for (int i = 1, j = 0; j < configs.size();
+                        j++, i = i + CDMA_BSI_NO_OF_INTS_STRUCT) {
+                    ret[i] = configs.get(j).serviceCategory;
+                    ret[i + 1] = configs.get(j).language;
+                    ret[i + 2] = configs.get(j).selected ? 1 : 0;
+                }
+            }
+            if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1638,9 +1614,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<CellInfo> ret = null;
+            ArrayList<CellInfo> ret = RIL.convertHalCellInfoList(cellInfo);
             if (responseInfo.error == RadioError.NONE) {
-                ret =  RIL.convertHalCellInfoList(cellInfo);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1679,9 +1654,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<HardwareConfig> ret = null;
+            ArrayList<HardwareConfig> ret = RIL.convertHalHwConfigList(config, mRil);
             if (responseInfo.error == RadioError.NONE) {
-                ret = RIL.convertHalHwConfigList(config, mRil);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1693,11 +1667,13 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            IccIoResult ret = null;
+            IccIoResult ret = new IccIoResult(
+                    result.sw1,
+                    result.sw2,
+                    (!(result.simResponse).equals(""))
+                            ? android.util.Base64.decode(result.simResponse,
+                            android.util.Base64.DEFAULT) : (byte[]) null);
             if (responseInfo.error == RadioError.NONE) {
-                ret = new IccIoResult(result.sw1, result.sw2, (!(result.simResponse).equals(""))
-                        ? android.util.Base64.decode(result.simResponse,
-                        android.util.Base64.DEFAULT) : (byte[]) null);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1709,9 +1685,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            RadioCapability ret = null;
+            RadioCapability ret = RIL.convertHalRadioCapability(rc, mRil);
             if (responseInfo.error == RadioError.NONE) {
-                ret = RIL.convertHalRadioCapability(rc, mRil);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1722,11 +1697,10 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<Integer> ret = null;
+            ArrayList<Integer> ret = new ArrayList<Integer>();
+            ret.add(statusInfo.lceStatus);
+            ret.add((int) statusInfo.actualIntervalMs);
             if (responseInfo.error == RadioError.NONE) {
-                ret = new ArrayList<Integer>();
-                ret.add(statusInfo.lceStatus);
-                ret.add((int) statusInfo.actualIntervalMs);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1737,9 +1711,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<Integer> ret = null;
+            ArrayList<Integer> ret = RIL.convertHalLceData(lceInfo, mRil);
             if (responseInfo.error == RadioError.NONE) {
-                ret = RIL.convertHalLceData(lceInfo, mRil);
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
@@ -1751,26 +1724,25 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            List<CarrierIdentifier> ret = null;
-            if (responseInfo.error == RadioError.NONE) {
-                ret = new ArrayList<CarrierIdentifier>();
-                for (int i = 0; i < carriers.allowedCarriers.size(); i++) {
-                    String mcc = carriers.allowedCarriers.get(i).mcc;
-                    String mnc = carriers.allowedCarriers.get(i).mnc;
-                    String spn = null, imsi = null, gid1 = null, gid2 = null;
-                    int matchType = carriers.allowedCarriers.get(i).matchType;
-                    String matchData = carriers.allowedCarriers.get(i).matchData;
-                    if (matchType == CarrierIdentifier.MatchType.SPN) {
-                        spn = matchData;
-                    } else if (matchType == CarrierIdentifier.MatchType.IMSI_PREFIX) {
-                        imsi = matchData;
-                    } else if (matchType == CarrierIdentifier.MatchType.GID1) {
-                        gid1 = matchData;
-                    } else if (matchType == CarrierIdentifier.MatchType.GID2) {
-                        gid2 = matchData;
-                    }
-                    ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
+            List<CarrierIdentifier> ret = new ArrayList<CarrierIdentifier>();
+            for (int i = 0; i < carriers.allowedCarriers.size(); i++) {
+                String mcc = carriers.allowedCarriers.get(i).mcc;
+                String mnc = carriers.allowedCarriers.get(i).mnc;
+                String spn = null, imsi = null, gid1 = null, gid2 = null;
+                int matchType = carriers.allowedCarriers.get(i).matchType;
+                String matchData = carriers.allowedCarriers.get(i).matchData;
+                if (matchType == CarrierIdentifier.MatchType.SPN) {
+                    spn = matchData;
+                } else if (matchType == CarrierIdentifier.MatchType.IMSI_PREFIX) {
+                    imsi = matchData;
+                } else if (matchType == CarrierIdentifier.MatchType.GID1) {
+                    gid1 = matchData;
+                } else if (matchType == CarrierIdentifier.MatchType.GID2) {
+                    gid2 = matchData;
                 }
+                ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
+            }
+            if (responseInfo.error == RadioError.NONE) {
                 /* TODO: Handle excluded carriers */
                 sendMessageResponse(rr.mResult, ret);
             }
