@@ -46,6 +46,7 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
+import android.hardware.radio.V1_0.ResetNvType;
 import android.hardware.radio.V1_0.SelectUiccSub;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SimApdu;
@@ -75,6 +76,7 @@ import android.telephony.Rlog;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.SparseArray;
 
@@ -1286,6 +1288,26 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         dpi.mvnoMatchData = dp.mvnoMatchData;
 
         return dpi;
+    }
+
+    /**
+     * Convert NV reset type into ResetNvType defined in types.hal.
+     * @param resetType NV reset type.
+     * @return Converted reset type in integer or -1 if param is invalid.
+     */
+    private static int convertToHalResetNvType(int resetType) {
+        /**
+         * resetType values
+         * 1 - reload all NV items
+         * 2 - erase NV reset (SCRTN)
+         * 3 - factory reset (RTN)
+         */
+        switch (resetType) {
+            case 1: return ResetNvType.RELOAD;
+            case 2: return ResetNvType.ERASE;
+            case 3: return ResetNvType.FACTORY_RESET;
+        }
+        return -1;
     }
 
     /**
@@ -3221,7 +3243,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.nvResetConfig(rr.mSerial, resetType);
+                radioProxy.nvResetConfig(rr.mSerial, convertToHalResetNvType(resetType));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "nvResetConfig", e);
             }
@@ -3616,20 +3638,45 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setSimCardPower(boolean powerUp, Message result) {
+    public void setSimCardPower(int state, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_SIM_CARD_POWER, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " + powerUp);
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " + state);
             }
-
-            try {
-                radioProxy.setSimCardPower(rr.mSerial, powerUp);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setSimCardPower", e);
+            android.hardware.radio.V1_1.IRadio radioProxy11 =
+                    android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
+            if (radioProxy11 == null) {
+                try {
+                    switch (state) {
+                        case TelephonyManager.CARD_POWER_DOWN: {
+                            radioProxy.setSimCardPower(rr.mSerial, false);
+                            break;
+                        }
+                        case TelephonyManager.CARD_POWER_UP: {
+                            radioProxy.setSimCardPower(rr.mSerial, true);
+                            break;
+                        }
+                        default: {
+                            if (result != null) {
+                                AsyncResult.forMessage(result, null,
+                                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                                result.sendToTarget();
+                            }
+                        }
+                    }
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setSimCardPower", e);
+                }
+            } else {
+                try {
+                    radioProxy11.setSimCardPower_1_1(rr.mSerial, state);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setSimCardPower", e);
+                }
             }
         }
     }

@@ -52,7 +52,8 @@ public class TestImsServiceControllerAdapter {
         }
 
         @Override
-        public void removeImsFeature(int slotId, int feature) throws RemoteException {
+        public void removeImsFeature(int slotId, int feature, IImsFeatureStatusCallback c)
+                throws RemoteException {
             TestImsServiceControllerAdapter.this.removeImsFeature(slotId, feature);
         }
 
