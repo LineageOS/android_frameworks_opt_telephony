@@ -1235,6 +1235,14 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
+    public void startNetworkScan(Message response) {
+        throw new RuntimeException("not implemented");
+    }
+
+    public void stopNetworkScan(Message response) {
+        throw new RuntimeException("not implemented");
+    }
+
     public void getNeighboringCids(Message response) {
         throw new RuntimeException("not implemented");
     }

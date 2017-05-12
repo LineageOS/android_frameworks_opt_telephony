@@ -427,6 +427,14 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
+    public void startNetworkScan(Message response) {
+    }
+
+    @Override
+    public void stopNetworkScan(Message response) {
+    }
+
+    @Override
     public void setNetworkSelectionModeAutomatic(Message response) {
     }
 

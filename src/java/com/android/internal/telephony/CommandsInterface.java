@@ -1284,12 +1284,29 @@ public interface CommandsInterface {
     /**
      * Queries the currently available networks
      *
-     * ((AsyncResult)response.obj).result  is a List of NetworkInfo objects
+     * ((AsyncResult)response.obj).result is a List of NetworkInfo objects
      */
     void getAvailableNetworks(Message response);
 
-    void getBasebandVersion (Message response);
+    /**
+     * Starts a radio network scan
+     *
+     * ((AsyncResult)response.obj).result is a NetworkScanResult object
+     */
+    void startNetworkScan(Message response);
 
+    /**
+     * Stops the ongoing network scan
+     *
+     * ((AsyncResult)response.obj).result is a NetworkScanResult object
+     *
+     */
+    void stopNetworkScan(Message response);
+
+    /**
+     * Gets the baseband version
+     */
+    void getBasebandVersion(Message response);
 
     /**
      * (AsyncResult)response.obj).result will be an Integer representing
@@ -2101,6 +2118,22 @@ public interface CommandsInterface {
      * @param h Handler for notificaiton message.
      */
     void unregisterForCarrierInfoForImsiEncryption(Handler h);
+
+    /**
+     * Register for unsolicited Network Scan result.
+     *
+     * @param h Handler for notificaiton message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForNetworkScanResult(Handler h, int what, Object obj);
+
+    /**
+     * DeRegister for unsolicited Network Scan result.
+     *
+     * @param h Handler for notificaiton message.
+     */
+    void unregisterForNetworkScanResult(Handler h);
 
     default public List<ClientRequestStats> getClientRequestStats() {
         return null;
