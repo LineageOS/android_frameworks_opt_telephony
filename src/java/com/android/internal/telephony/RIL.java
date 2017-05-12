@@ -4209,6 +4209,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         mMetrics.writeRilSrvcc(mPhoneId, state);
     }
 
+    void writeMetricsModemRestartEvent(String reason) {
+        mMetrics.writeModemRestartEvent(mPhoneId, reason);
+    }
 
     /**
      * Notify all registrants that the ril has connected or disconnected.
@@ -4652,6 +4655,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 return "UNSOL_LCE_INFO_RECV";
             case RIL_UNSOL_PCO_DATA:
                 return "UNSOL_PCO_DATA";
+            case RIL_UNSOL_MODEM_RESTART:
+                return "UNSOL_MODEM_RESTART";
             case RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION:
                 return "RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION";
             default:
@@ -4939,5 +4944,4 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.tdScdma.rscp,
                 false /* gsmFlag - don't care; will be changed by SST */);
     }
-
 }

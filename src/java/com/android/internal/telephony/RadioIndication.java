@@ -29,6 +29,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGE
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_HARDWARE_CONFIG_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_MODEM_RESTART;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_SS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
@@ -775,6 +776,10 @@ public class RadioIndication extends IRadioIndication.Stub {
 
     public void modemReset(int indicationType, String reason) {
         mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_MODEM_RESTART, reason);
+
+        mRil.writeMetricsModemRestartEvent(reason);
     }
 
     /**
