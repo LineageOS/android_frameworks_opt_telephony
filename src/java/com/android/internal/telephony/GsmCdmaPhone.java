@@ -73,7 +73,6 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccException;
@@ -89,9 +88,7 @@ import com.android.internal.telephony.uicc.UiccController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1808,6 +1805,16 @@ public class GsmCdmaPhone extends Phone {
         } else {
             loge("getAvailableNetworks: not possible in CDMA");
         }
+    }
+
+    @Override
+    public void startNetworkScan(Message response) {
+        mCi.startNetworkScan(response);
+    }
+
+    @Override
+    public void stopNetworkScan(Message response) {
+        mCi.stopNetworkScan(response);
     }
 
     @Override
