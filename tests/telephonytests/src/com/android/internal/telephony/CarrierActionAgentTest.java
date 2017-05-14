@@ -15,6 +15,13 @@
  */
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
+
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Bundle;
@@ -31,13 +38,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 public class CarrierActionAgentTest extends TelephonyTest {
     private CarrierActionAgent mCarrierActionAgentUT;
@@ -126,6 +126,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
 
         verify(mRadioActionHandler).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
+        Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
     }
 
     @After
