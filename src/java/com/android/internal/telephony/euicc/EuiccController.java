@@ -27,15 +27,10 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.ServiceManager;
 import android.provider.Settings;
-import android.service.euicc.DeleteResult;
-import android.service.euicc.DownloadResult;
-import android.service.euicc.EraseResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.service.euicc.GetEuiccProfileInfoListResult;
-import android.service.euicc.SwitchResult;
-import android.service.euicc.UpdateNicknameResult;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -66,8 +61,8 @@ public class EuiccController extends IEuiccController.Stub {
     private static final int OK = EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK;
     private static final int RESOLVABLE_ERROR =
             EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR;
-    private static final int GENERIC_ERROR =
-            EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR;
+    private static final int ERROR =
+            EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR;
 
     private static EuiccController sInstance;
 
@@ -215,27 +210,23 @@ public class EuiccController extends IEuiccController.Stub {
             Intent extrasIntent = new Intent();
             final int resultCode;
             switch (result.result) {
-                case GetDownloadableSubscriptionMetadataResult.RESULT_OK:
+                case EuiccService.RESULT_OK:
                     resultCode = OK;
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION,
                             result.subscription);
                     break;
-                case GetDownloadableSubscriptionMetadataResult.RESULT_MUST_DEACTIVATE_SIM:
+                case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
                     resultCode = RESOLVABLE_ERROR;
                     addResolutionIntent(extrasIntent,
                             EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                             getOperationForDeactivateSim());
                     break;
-                case GetDownloadableSubscriptionMetadataResult.RESULT_GENERIC_ERROR:
-                    resultCode = GENERIC_ERROR;
+                default:
+                    resultCode = ERROR;
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                            result.detailedCode);
-                    break;
-                default:
-                    Log.wtf(TAG, "Unknown result: " + result.result);
-                    resultCode = GENERIC_ERROR;
+                            result.result);
                     break;
             }
 
@@ -244,7 +235,7 @@ public class EuiccController extends IEuiccController.Stub {
 
         @Override
         public void onEuiccServiceUnavailable() {
-            sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+            sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
         }
 
         protected EuiccOperation getOperationForDeactivateSim() {
@@ -304,7 +295,7 @@ public class EuiccController extends IEuiccController.Stub {
         @Override
         public void onGetMetadataComplete(
                 GetDownloadableSubscriptionMetadataResult result) {
-            if (result.result != GetDownloadableSubscriptionMetadataResult.RESULT_OK) {
+            if (result.result != EuiccService.RESULT_OK) {
                 // Just propagate the error as normal.
                 super.onGetMetadataComplete(result);
                 return;
@@ -314,7 +305,7 @@ public class EuiccController extends IEuiccController.Stub {
             UiccAccessRule[] rules = subscription.getAccessRules();
             if (rules == null) {
                 Log.e(TAG, "No access rules but caller is unprivileged");
-                sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
                 return;
             }
 
@@ -324,7 +315,7 @@ public class EuiccController extends IEuiccController.Stub {
                         mCallingPackage, PackageManager.GET_SIGNATURES);
             } catch (PackageManager.NameNotFoundException e) {
                 Log.e(TAG, "Calling package valid but gone");
-                sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
                 return;
             }
 
@@ -352,7 +343,7 @@ public class EuiccController extends IEuiccController.Stub {
                 }
             }
             Log.e(TAG, "Caller is not permitted to download this profile");
-            sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+            sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
         }
 
         @Override
@@ -372,11 +363,11 @@ public class EuiccController extends IEuiccController.Stub {
                 forceDeactivateSim,
                 new EuiccConnector.DownloadCommandCallback() {
                     @Override
-                    public void onDownloadComplete(DownloadResult result) {
+                    public void onDownloadComplete(int result) {
                         Intent extrasIntent = new Intent();
                         final int resultCode;
-                        switch (result.result) {
-                            case DownloadResult.RESULT_OK:
+                        switch (result) {
+                            case EuiccService.RESULT_OK:
                                 resultCode = OK;
                                 // Now that a profile has been successfully downloaded, mark the
                                 // eUICC as provisioned so it appears in settings UI as appropriate.
@@ -391,7 +382,7 @@ public class EuiccController extends IEuiccController.Stub {
                                             .requestEmbeddedSubscriptionInfoListRefresh();
                                 }
                                 break;
-                            case DownloadResult.RESULT_MUST_DEACTIVATE_SIM:
+                            case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
                                 resultCode = RESOLVABLE_ERROR;
                                 addResolutionIntent(extrasIntent,
                                         EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
@@ -399,15 +390,11 @@ public class EuiccController extends IEuiccController.Stub {
                                                 callingToken, subscription, switchAfterDownload,
                                                 callingPackage));
                                 break;
-                            case DownloadResult.RESULT_GENERIC_ERROR:
-                                resultCode = GENERIC_ERROR;
+                            default:
+                                resultCode = ERROR;
                                 extrasIntent.putExtra(
                                         EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                        result.detailedCode);
-                                break;
-                            default:
-                                Log.wtf(TAG, "Unknown result: " + result.result);
-                                resultCode = GENERIC_ERROR;
+                                        result);
                                 break;
                         }
 
@@ -416,7 +403,7 @@ public class EuiccController extends IEuiccController.Stub {
 
                     @Override
                     public void onEuiccServiceUnavailable() {
-                        sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                        sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     }
                 });
     }
@@ -485,27 +472,23 @@ public class EuiccController extends IEuiccController.Stub {
             Intent extrasIntent = new Intent();
             final int resultCode;
             switch (result.result) {
-                case GetDefaultDownloadableSubscriptionListResult.RESULT_OK:
+                case EuiccService.RESULT_OK:
                     resultCode = OK;
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTIONS,
                             result.subscriptions);
                     break;
-                case GetDefaultDownloadableSubscriptionListResult.RESULT_MUST_DEACTIVATE_SIM:
+                case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
                     resultCode = RESOLVABLE_ERROR;
                     addResolutionIntent(extrasIntent,
                             EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                             EuiccOperation.forGetDefaultListDeactivateSim(mCallingToken));
                     break;
-                case GetDefaultDownloadableSubscriptionListResult.RESULT_GENERIC_ERROR:
-                    resultCode = GENERIC_ERROR;
+                default:
+                    resultCode = ERROR;
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                            result.detailedCode);
-                    break;
-                default:
-                    Log.wtf(TAG, "Unknown result: " + result.result);
-                    resultCode = GENERIC_ERROR;
+                            result.result);
                     break;
             }
 
@@ -514,7 +497,7 @@ public class EuiccController extends IEuiccController.Stub {
 
         @Override
         public void onEuiccServiceUnavailable() {
-            sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+            sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
         }
     }
 
@@ -547,14 +530,14 @@ public class EuiccController extends IEuiccController.Stub {
             SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
             if (sub == null) {
                 Log.e(TAG, "Cannot delete nonexistent subscription: " + subscriptionId);
-                sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                 return;
             }
 
             if (!callerCanWriteEmbeddedSubscriptions
                     && !sub.canManageSubscription(mContext, callingPackage)) {
                 Log.e(TAG, "No permissions: " + subscriptionId);
-                sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                 return;
             }
 
@@ -569,24 +552,20 @@ public class EuiccController extends IEuiccController.Stub {
                 iccid,
                 new EuiccConnector.DeleteCommandCallback() {
                     @Override
-                    public void onDeleteComplete(DeleteResult result) {
+                    public void onDeleteComplete(int result) {
                         Intent extrasIntent = new Intent();
                         final int resultCode;
-                        switch (result.result) {
-                            case DeleteResult.RESULT_OK:
+                        switch (result) {
+                            case EuiccService.RESULT_OK:
                                 resultCode = OK;
                                 SubscriptionController.getInstance()
                                         .requestEmbeddedSubscriptionInfoListRefresh();
                                 break;
-                            case DeleteResult.RESULT_GENERIC_ERROR:
-                                resultCode = GENERIC_ERROR;
+                            default:
+                                resultCode = ERROR;
                                 extrasIntent.putExtra(
                                         EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                        result.detailedCode);
-                                break;
-                            default:
-                                Log.wtf(TAG, "Unknown result: " + result.result);
-                                resultCode = GENERIC_ERROR;
+                                        result);
                                 break;
                         }
 
@@ -595,7 +574,7 @@ public class EuiccController extends IEuiccController.Stub {
 
                     @Override
                     public void onEuiccServiceUnavailable() {
-                        sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                        sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     }
                 });
     }
@@ -619,7 +598,7 @@ public class EuiccController extends IEuiccController.Stub {
                 // Switch to "no" subscription. Only the system can do this.
                 if (!callerCanWriteEmbeddedSubscriptions) {
                     Log.e(TAG, "Not permitted to switch to empty subscription");
-                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
                 }
                 iccid = null;
@@ -627,13 +606,13 @@ public class EuiccController extends IEuiccController.Stub {
                 SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
                 if (sub == null) {
                     Log.e(TAG, "Cannot switch to nonexistent subscription: " + subscriptionId);
-                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
                 }
                 if (!callerCanWriteEmbeddedSubscriptions
                         && !sub.canManageSubscription(mContext, callingPackage)) {
                     Log.e(TAG, "Not permitted to switch to subscription: " + subscriptionId);
-                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
                 }
                 iccid = sub.getIccId();
@@ -678,29 +657,25 @@ public class EuiccController extends IEuiccController.Stub {
                 forceDeactivateSim,
                 new EuiccConnector.SwitchCommandCallback() {
                     @Override
-                    public void onSwitchComplete(SwitchResult result) {
+                    public void onSwitchComplete(int result) {
                         Intent extrasIntent = new Intent();
                         final int resultCode;
-                        switch (result.result) {
-                            case SwitchResult.RESULT_OK:
+                        switch (result) {
+                            case EuiccService.RESULT_OK:
                                 resultCode = OK;
                                 break;
-                            case SwitchResult.RESULT_MUST_DEACTIVATE_SIM:
+                            case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
                                 resultCode = RESOLVABLE_ERROR;
                                 addResolutionIntent(extrasIntent,
                                         EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                                         EuiccOperation.forSwitchDeactivateSim(
                                                 callingToken, subscriptionId, callingPackage));
                                 break;
-                            case SwitchResult.RESULT_GENERIC_ERROR:
-                                resultCode = GENERIC_ERROR;
+                            default:
+                                resultCode = ERROR;
                                 extrasIntent.putExtra(
                                         EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                        result.detailedCode);
-                                break;
-                            default:
-                                Log.wtf(TAG, "Unknown result: " + result.result);
-                                resultCode = GENERIC_ERROR;
+                                        result);
                                 break;
                         }
 
@@ -709,7 +684,7 @@ public class EuiccController extends IEuiccController.Stub {
 
                     @Override
                     public void onEuiccServiceUnavailable() {
-                        sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                        sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     }
                 });
     }
@@ -726,29 +701,25 @@ public class EuiccController extends IEuiccController.Stub {
             SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
             if (sub == null) {
                 Log.e(TAG, "Cannot update nickname to nonexistent subscription: " + subscriptionId);
-                sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                 return;
             }
             mConnector.updateSubscriptionNickname(
                     sub.getIccId(), nickname,
                     new EuiccConnector.UpdateNicknameCommandCallback() {
                         @Override
-                        public void onUpdateNicknameComplete(UpdateNicknameResult result) {
+                        public void onUpdateNicknameComplete(int result) {
                             Intent extrasIntent = new Intent();
                             final int resultCode;
-                            switch (result.result) {
-                                case UpdateNicknameResult.RESULT_OK:
+                            switch (result) {
+                                case EuiccService.RESULT_OK:
                                     resultCode = OK;
                                     break;
-                                case UpdateNicknameResult.RESULT_GENERIC_ERROR:
-                                    resultCode = GENERIC_ERROR;
+                                default:
+                                    resultCode = ERROR;
                                     extrasIntent.putExtra(
                                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                            result.detailedCode);
-                                    break;
-                                default:
-                                    Log.wtf(TAG, "Unknown result: " + result.result);
-                                    resultCode = GENERIC_ERROR;
+                                            result);
                                     break;
                             }
 
@@ -757,7 +728,7 @@ public class EuiccController extends IEuiccController.Stub {
 
                         @Override
                         public void onEuiccServiceUnavailable() {
-                            sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                            sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                         }
                     });
         } finally {
@@ -775,24 +746,20 @@ public class EuiccController extends IEuiccController.Stub {
         try {
             mConnector.eraseSubscriptions(new EuiccConnector.EraseCommandCallback() {
                 @Override
-                public void onEraseComplete(EraseResult result) {
+                public void onEraseComplete(int result) {
                     Intent extrasIntent = new Intent();
                     final int resultCode;
-                    switch (result.result) {
-                        case EraseResult.RESULT_OK:
+                    switch (result) {
+                        case EuiccService.RESULT_OK:
                             resultCode = OK;
                             SubscriptionController.getInstance()
                                     .requestEmbeddedSubscriptionInfoListRefresh();
                             break;
-                        case EraseResult.RESULT_GENERIC_ERROR:
-                            resultCode = GENERIC_ERROR;
+                        default:
+                            resultCode = ERROR;
                             extrasIntent.putExtra(
                                     EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                    result.detailedCode);
-                            break;
-                        default:
-                            Log.wtf(TAG, "Unknown result: " + result.result);
-                            resultCode = GENERIC_ERROR;
+                                    result);
                             break;
                     }
 
@@ -801,7 +768,7 @@ public class EuiccController extends IEuiccController.Stub {
 
                 @Override
                 public void onEuiccServiceUnavailable() {
-                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                 }
             });
         } finally {
