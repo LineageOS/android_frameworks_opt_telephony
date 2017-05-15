@@ -1670,33 +1670,39 @@ public class DcTracker extends Handler {
             str.append("trySetupData failed. apnContext = [type=" + apnContext.getApnType() +
                     ", mState=" + apnContext.getState() + ", mDataEnabled=" +
                     apnContext.isEnabled() + ", mDependencyMet=" +
-                    apnContext.getDependencyMet() + "] ");
+                    apnContext.getDependencyMet() + "].");
 
             if (!apnContext.isConnectable()) {
-                str.append("isConnectable = false. ");
+                str.append(" isConnectable = false.");
             }
             if (!isDataAllowed) {
-                str.append("data not allowed: " + failureReason.getDataAllowFailReason() + ". ");
+                str.append(" data not allowed: " + failureReason.getDataAllowFailReason() + ".");
             }
             if (!isDataAllowedForApn(apnContext)) {
-                str.append("isDataAllowedForApn = false. RAT = " +
-                        mPhone.getServiceState().getRilDataRadioTechnology());
+                str.append(" isDataAllowedForApn = false. RAT = "
+                        + mPhone.getServiceState().getRilDataRadioTechnology() + ".");
             }
             if (!mDataEnabledSettings.isDataEnabled()) {
-                str.append("isDataEnabled() = false. "
+                str.append(" isDataEnabled() = false. "
                         + "isInternalDataEnabled = " + mDataEnabledSettings.isInternalDataEnabled()
                         + ", userDataEnabled = " + mDataEnabledSettings.isUserDataEnabled()
                         + ", isPolicyDataEnabled = " + mDataEnabledSettings.isPolicyDataEnabled()
                         + ", isCarrierDataEnabled = "
-                        + mDataEnabledSettings.isCarrierDataEnabled());
+                        + mDataEnabledSettings.isCarrierDataEnabled() + ".");
             }
             if (isEmergency()) {
-                str.append("emergency = true");
+                str.append(" emergency = true.");
+            }
+
+            // If this is a data retry, we should set the APN state to FAILED so it won't stay
+            // in SCANNING forever.
+            if (apnContext.getState() == DctConstants.State.SCANNING) {
+                apnContext.setState(DctConstants.State.FAILED);
+                str.append(" Stop retrying.");
             }
 
             if (DBG) log(str.toString());
             apnContext.requestLog(str.toString());
-
             return false;
         }
     }
@@ -2559,7 +2565,6 @@ public class DcTracker extends Handler {
                 DctConstants.State state = apnContext.getState();
                 switch(state) {
                     case CONNECTING:
-                    case SCANNING:
                     case CONNECTED:
                     case DISCONNECTING:
                         // We're "READY" and active so just return
@@ -2569,6 +2574,7 @@ public class DcTracker extends Handler {
                     case IDLE:
                         // fall through: this is unexpected but if it happens cleanup and try setup
                     case FAILED:
+                    case SCANNING:
                     case RETRYING: {
                         // We're "READY" but not active so disconnect (cleanup = true) and
                         // connect (trySetup = true) to be sure we retry the connection.
