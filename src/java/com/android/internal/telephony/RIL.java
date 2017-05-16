@@ -69,14 +69,18 @@ import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
+import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
+import android.telephony.RadioAccessSpecifier;
+import android.telephony.RadioNetworkConstants.RadioAccessNetworks;
 import android.telephony.Rlog;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.TelephonyProto.SmsSession;
@@ -1769,6 +1773,98 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 radioProxy.getAvailableNetworks(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getAvailableNetworks", e);
+            }
+        }
+    }
+
+    @Override
+    public void startNetworkScan(Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            android.hardware.radio.V1_1.IRadio radioProxy11 =
+                    android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
+            if (radioProxy11 == null) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            } else {
+                NetworkScanRequest nsr = (NetworkScanRequest) result.obj;
+                android.hardware.radio.V1_1.NetworkScanRequest request =
+                        new android.hardware.radio.V1_1.NetworkScanRequest();
+                request.type = nsr.scanType;
+                request.interval = 60;
+                for (RadioAccessSpecifier ras : nsr.specifiers) {
+                    android.hardware.radio.V1_1.RadioAccessSpecifier s =
+                            new android.hardware.radio.V1_1.RadioAccessSpecifier();
+                    s.radioAccessNetwork = ras.radioAccessNetwork;
+                    List<Integer> bands = null;
+                    switch (ras.radioAccessNetwork) {
+                        case RadioAccessNetworks.GERAN:
+                            bands = s.geranBands;
+                            break;
+                        case RadioAccessNetworks.UTRAN:
+                            bands = s.utranBands;
+                            break;
+                        case RadioAccessNetworks.EUTRAN:
+                            bands = s.eutranBands;
+                            break;
+                        default:
+                            Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.radioAccessNetwork
+                                    + " not supported!");
+                            return;
+                    }
+                    for (int band : ras.bands) {
+                        bands.add(band);
+                    }
+                    for (int channel : ras.channels) {
+                        s.channels.add(channel);
+                    }
+                    request.specifiers.add(s);
+                }
+
+                RILRequest rr = obtainRequest(RIL_REQUEST_START_NETWORK_SCAN, result,
+                        mRILDefaultWorkSource);
+
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
+
+                try {
+                    radioProxy11.startNetworkScan(rr.mSerial, request);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "startNetworkScan", e);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void stopNetworkScan(Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            android.hardware.radio.V1_1.IRadio radioProxy11 =
+                    android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
+            if (radioProxy11 == null) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            } else {
+                RILRequest rr = obtainRequest(RIL_REQUEST_STOP_NETWORK_SCAN, result,
+                        mRILDefaultWorkSource);
+
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
+
+                try {
+                    radioProxy11.stopNetworkScan(rr.mSerial);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "stopNetworkScan", e);
+                }
             }
         }
     }

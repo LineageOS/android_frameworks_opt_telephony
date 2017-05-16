@@ -16,32 +16,18 @@
 
 package com.android.internal.telephony;
 
-import android.content.Context;
-import android.net.LinkProperties;
-import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.WorkSource;
 import android.os.ResultReceiver;
-import android.telephony.CellInfo;
-import android.telephony.CellLocation;
+import android.os.WorkSource;
 import android.telephony.CarrierConfigManager;
-import android.telephony.PhoneStateListener;
+import android.telephony.CellLocation;
 import android.telephony.ServiceState;
-import android.telephony.SignalStrength;
-
-import com.android.internal.telephony.imsphone.ImsPhone;
-import com.android.internal.telephony.RadioCapability;
-import com.android.internal.telephony.test.SimulatedRadioControl;
-import com.android.internal.telephony.uicc.IsimRecords;
-import com.android.internal.telephony.uicc.UiccCard;
-import com.android.internal.telephony.uicc.UsimServiceTable;
 
 import com.android.internal.telephony.PhoneConstants.*; // ????
 
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Internal interface used to control the phone; SDK developers cannot
@@ -655,6 +641,30 @@ public interface PhoneInternalInterface {
      * </ul>
      */
     void getAvailableNetworks(Message response);
+
+    /**
+     * Start a network scan. This method is asynchronous; .
+     * On completion, <code>response.obj</code> is set to an AsyncResult with
+     * one of the following members:.<p>
+     * <ul>
+     * <li><code>response.obj.result</code> will be a <code>NetworkScanResult</code> object, or</li>
+     * <li><code>response.obj.exception</code> will be set with an exception
+     * on failure.</li>
+     * </ul>
+     */
+    void startNetworkScan(Message response);
+
+    /**
+     * Stop ongoing network scan. This method is asynchronous; .
+     * On completion, <code>response.obj</code> is set to an AsyncResult with
+     * one of the following members:.<p>
+     * <ul>
+     * <li><code>response.obj.result</code> will be a <code>NetworkScanResult</code> object, or</li>
+     * <li><code>response.obj.exception</code> will be set with an exception
+     * on failure.</li>
+     * </ul>
+     */
+    void stopNetworkScan(Message response);
 
     /**
      * Query neighboring cell IDs.  <code>response</code> is dispatched when
