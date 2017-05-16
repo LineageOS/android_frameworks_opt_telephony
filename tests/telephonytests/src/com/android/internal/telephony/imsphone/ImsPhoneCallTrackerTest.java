@@ -15,6 +15,25 @@
  */
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -26,7 +45,6 @@ import android.support.test.filters.FlakyTest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ims.feature.ImsFeature;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.test.suitebuilder.annotation.LargeTest;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
@@ -38,7 +56,6 @@ import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.internal.ImsCallSession;
 import com.android.internal.telephony.Call;
-import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
@@ -46,32 +63,11 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyBoolean;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.isNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;
@@ -370,6 +366,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(Call.State.ALERTING, mCTUT.mForegroundCall.getState());
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testImsMTActiveMODial() {
@@ -476,6 +474,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 nullable(ImsConnectionStateListener.class));
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testTTYImsServiceUnavailable() throws ImsException {
