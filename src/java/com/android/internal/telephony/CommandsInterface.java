@@ -2078,10 +2078,13 @@ public interface CommandsInterface {
     /**
      * Set SIM card power up or down
      *
-     * @param powerUp True if powering up the sim card
+     * @param state  State of SIM (power down, power up, pass through)
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_DOWN}
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_UP}
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_UP_PASS_THROUGH}
      * @param result callback message contains the information of SUCCESS/FAILURE
      */
-    void setSimCardPower(boolean powerUp, Message result);
+    void setSimCardPower(int state, Message result);
 
     /**
      * Register for unsolicited Carrier Public Key.
