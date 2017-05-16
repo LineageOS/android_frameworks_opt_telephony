@@ -1195,6 +1195,13 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseVoid(responseInfo);
     }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setSimCardPowerResponse_1_1(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
