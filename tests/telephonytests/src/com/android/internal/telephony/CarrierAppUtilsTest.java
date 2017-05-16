@@ -16,18 +16,16 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentResolver;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
-import android.os.Bundle;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
-import android.test.InstrumentationTestCase;
-import android.test.mock.MockContentProvider;
-import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArrayMap;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -36,7 +34,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CarrierAppUtilsTest extends InstrumentationTestCase {
+public class CarrierAppUtilsTest extends TelephonyTest {
     private static final String CARRIER_APP = "com.example.carrier";
     private static final String[] CARRIER_APPS = new String[] { CARRIER_APP };
     private static final String ASSOCIATED_APP = "com.example.associated";
@@ -51,22 +49,19 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
 
     @Mock private IPackageManager mPackageManager;
     @Mock private TelephonyManager mTelephonyManager;
-    private SettingsMockContentProvider mContentProvider;
-    private MockContentResolver mContentResolver;
+    private ContentResolver mContentResolver;
 
-    @Override
+    @Before
     public void setUp() throws Exception {
-        super.setUp();
+        logd("CarrierAppUtilsTest +Setup!");
+        super.setUp(getClass().getSimpleName());
         System.setProperty("dexmaker.dexcache",
-                getInstrumentation().getTargetContext().getCacheDir().getPath());
+                TestApplication.getAppContext().getCacheDir().getPath());
         Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
-        MockitoAnnotations.initMocks(this);
-
-        mContentResolver = new MockContentResolver();
-        mContentProvider = new SettingsMockContentProvider();
-        mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
-        Settings.Secure.putIntForUser(
-                mContentResolver, Settings.Secure.CARRIER_APPS_HANDLED, 0, USER_ID);
+        mContentResolver = mContext.getContentResolver();
+        Settings.Secure.putIntForUser(mContentResolver,
+                Settings.Secure.CARRIER_APPS_HANDLED, 0, USER_ID);
+        logd("CarrierAppUtilsTest -Setup!");
     }
 
     /** No apps configured - should do nothing. */
@@ -667,21 +662,5 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
                 .grantDefaultPermissionsToEnabledCarrierApps(
                         Mockito.any(String[].class), Mockito.anyInt());
     }
-
-    class SettingsMockContentProvider extends MockContentProvider {
-        private int mExpectedValue;
-
-        @Override
-        public Bundle call(String method, String request, Bundle args) {
-            Bundle result = new Bundle();
-            if (Settings.CALL_METHOD_GET_SECURE.equals(method)) {
-                result.putString(Settings.NameValueTable.VALUE, Integer.toString(mExpectedValue));
-            } else {
-                mExpectedValue = Integer.parseInt(args.getString(Settings.NameValueTable.VALUE));
-            }
-            return result;
-        }
-    }
-
 }
 

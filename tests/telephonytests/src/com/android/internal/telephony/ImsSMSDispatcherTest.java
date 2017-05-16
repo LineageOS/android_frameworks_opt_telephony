@@ -169,7 +169,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
                 eq(0), any(Message.class));
     }
 
-    @Test @SmallTest
+    @Test @SmallTest @FlakyTest @Ignore
     public void testInjectNullSmsPdu() throws Exception {
         // unmock ActivityManager to be able to register receiver, create real PendingIntent and
         // receive TEST_INTENT
