@@ -1355,7 +1355,25 @@ public class SimulatedCommands extends BaseCommands
      * ((AsyncResult)response.obj).result  is a List of NetworkInfo objects
      */
     @Override
-    public void getAvailableNetworks(Message result) {unimplemented(result);}
+    public void getAvailableNetworks(Message result) {
+        unimplemented(result);
+    }
+
+    /**
+     * Starts a network scan
+     */
+    @Override
+    public void startNetworkScan(Message result) {
+        unimplemented(result);
+    }
+
+    /**
+     * Stops an ongoing network scan
+     */
+    @Override
+    public void stopNetworkScan(Message result) {
+        unimplemented(result);
+    }
 
     @Override
     public void getBasebandVersion (Message result) {
