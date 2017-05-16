@@ -2326,16 +2326,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     targetAccessTech + ", reasonInfo=" + reasonInfo);
             }
 
-            boolean isHandoverToWifi = srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN &&
-                    targetAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            // Only consider it a valid handover to WIFI if the source radio tech is known.
+            boolean isHandoverToWifi = srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
+                    && srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                    && targetAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
             if (isHandoverToWifi) {
                 // If we handed over to wifi successfully, don't check for failure in the future.
                 removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
             }
 
-            boolean isHandoverFromWifi =
-                    srcAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN &&
-                            targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            // Only consider it a handover from WIFI if the source and target radio tech is known.
+            boolean isHandoverFromWifi = srcAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                    && targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
+                    && targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
             if (mNotifyHandoverVideoFromWifiToLTE && isHandoverFromWifi && imsCall.isVideoCall()) {
                 log("onCallHandover :: notifying of WIFI to LTE handover.");
                 ImsPhoneConnection conn = findConnection(imsCall);
