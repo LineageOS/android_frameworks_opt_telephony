@@ -118,7 +118,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
         mFakeContentProvider.simulateChange(
                 Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON));
-        waitForMs(50);
+        waitForMs(200);
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
 
         verify(mDataActionHandler).sendMessageAtTime(message.capture(), anyLong());
@@ -126,11 +126,11 @@ public class CarrierActionAgentTest extends TelephonyTest {
 
         verify(mRadioActionHandler).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
-        Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
     }
 
     @After
     public void tearDown() throws Exception {
+        Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
         super.tearDown();
     }
 }
