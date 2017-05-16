@@ -4983,7 +4983,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static ArrayList<Integer> convertHalLceData(LceDataInfo lce, RIL ril) {
         final ArrayList<Integer> capacityResponse = new ArrayList<Integer>();
         final int capacityDownKbps = lce.lastHopCapacityKbps;
-        final int confidenceLevel = lce.confidenceLevel;
+        final int confidenceLevel = Byte.toUnsignedInt(lce.confidenceLevel);
         final int lceSuspended = lce.lceSuspended ? 1 : 0;
 
         ril.riljLog("LCE capacity information received:" +
