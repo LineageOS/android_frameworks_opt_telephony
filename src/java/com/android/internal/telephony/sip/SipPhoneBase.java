@@ -394,6 +394,14 @@ abstract class SipPhoneBase extends Phone {
     }
 
     @Override
+    public void startNetworkScan(Message response) {
+    }
+
+    @Override
+    public void stopNetworkScan(Message response) {
+    }
+
+    @Override
     public void setNetworkSelectionModeAutomatic(Message response) {
     }
 

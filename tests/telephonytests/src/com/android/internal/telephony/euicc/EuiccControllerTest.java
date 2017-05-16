@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -36,14 +37,22 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.os.Parcelable;
 import android.os.RemoteException;
+import android.service.euicc.DeleteResult;
 import android.service.euicc.DownloadResult;
+import android.service.euicc.EraseResult;
 import android.service.euicc.EuiccService;
+import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
+import android.service.euicc.SwitchResult;
+import android.service.euicc.UpdateNicknameResult;
 import android.support.test.runner.AndroidJUnit4;
-import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.DownloadableSubscription;
+import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
 
 import com.android.internal.telephony.TelephonyTest;
@@ -59,6 +68,7 @@ import org.mockito.stubbing.Answer;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 
 @RunWith(AndroidJUnit4.class)
 public class EuiccControllerTest extends TelephonyTest {
@@ -69,20 +79,30 @@ public class EuiccControllerTest extends TelephonyTest {
     private static final String CARRIER_NAME = "test name";
     private static final byte[] SIGNATURE_BYTES = new byte[] {1, 2, 3, 4, 5};
 
-    private static final DownloadableSubscription SUBSCRIPTION_WITH_METADATA =
-            DownloadableSubscription.forActivationCode("abcde");
+    private static final UiccAccessRule ACCESS_RULE;
     static {
         try {
-            SUBSCRIPTION_WITH_METADATA.setCarrierName("test name");
-            UiccAccessRule rule = new UiccAccessRule(
+            ACCESS_RULE = new UiccAccessRule(
                     MessageDigest.getInstance("SHA-256").digest(SIGNATURE_BYTES),
                     PACKAGE_NAME,
                     0);
-            SUBSCRIPTION_WITH_METADATA.setAccessRules(new UiccAccessRule[] { rule });
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 must exist");
         }
     }
+
+    private static final DownloadableSubscription SUBSCRIPTION_WITH_METADATA =
+            DownloadableSubscription.forActivationCode("abcde");
+    static {
+        SUBSCRIPTION_WITH_METADATA.setCarrierName("test name");
+        SUBSCRIPTION_WITH_METADATA.setAccessRules(new UiccAccessRule[] { ACCESS_RULE });
+    }
+
+    private static final String OS_VERSION = "1.0";
+    private static final EuiccInfo EUICC_INFO = new EuiccInfo(OS_VERSION);
+
+    private static final int SUBSCRIPTION_ID = 12345;
+    private static final String ICC_ID = "54321";
 
     @Mock private EuiccConnector mMockConnector;
     private TestEuiccController mController;
@@ -121,6 +141,11 @@ public class EuiccControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp("EuiccControllerTest");
         mController = new TestEuiccController(mContext, mMockConnector);
+
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = PACKAGE_NAME;
+        pi.signatures = new Signature[] { new Signature(SIGNATURE_BYTES) };
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
     }
 
     @After
@@ -159,12 +184,28 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testGetEuiccInfo_success() {
+        assertEquals(OS_VERSION, callGetEuiccInfo(true /* success */, EUICC_INFO).osVersion);
+    }
+
+    @Test
+    public void testGetEuiccInfo_failure() {
+        assertNull(callGetEuiccInfo(false /* success */, null /* euiccInfo */));
+    }
+
+    @Test
+    public void testGetEuiccInfo_nullReturnValue() {
+        assertNull(callGetEuiccInfo(true /* success */, null /* euiccInfo */));
+    }
+
+    @Test
     public void testGetDownloadableSubscriptionMetadata_serviceUnavailable() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callGetDownloadableSubscriptionMetadata(
                 SUBSCRIPTION, false /* complete */, null /* result */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
                 0 /* detailedCode */);
+        verify(mMockConnector).getDownloadableSubscriptionMetadata(any(), anyBoolean(), any());
     }
 
     @Test
@@ -205,6 +246,55 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testGetDefaultDownloadableSubscriptionList_serviceUnavailable() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callGetDefaultDownloadableSubscriptionList(false /* complete */, null /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+    }
+
+    @Test
+    public void testGetDefaultDownloadableSubscriptionList_genericError() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        GetDefaultDownloadableSubscriptionListResult result =
+                GetDefaultDownloadableSubscriptionListResult.genericError(42);
+        callGetDefaultDownloadableSubscriptionList(true /* complete */, result);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                42 /* detailedCode */);
+        verify(mMockConnector).getDefaultDownloadableSubscriptionList(anyBoolean(), any());
+    }
+
+    @Test
+    public void testGetDefaultDownloadableSubscriptionList_mustDeactivateSim()
+            throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        GetDefaultDownloadableSubscriptionListResult result =
+                GetDefaultDownloadableSubscriptionListResult.mustDeactivateSim();
+        callGetDefaultDownloadableSubscriptionList(true /* complete */, result);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                EuiccOperation.ACTION_GET_DEFAULT_LIST_DEACTIVATE_SIM);
+    }
+
+    @Test
+    public void testGetDefaultDownloadableSubscriptionList_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        GetDefaultDownloadableSubscriptionListResult result =
+                GetDefaultDownloadableSubscriptionListResult.success(
+                        new DownloadableSubscription[] { SUBSCRIPTION_WITH_METADATA });
+        callGetDefaultDownloadableSubscriptionList(true /* complete */, result);
+        Intent intent = verifyIntentSent(
+                EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        Parcelable[] receivedSubscriptions = intent.getParcelableArrayExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTIONS);
+        assertNotNull(receivedSubscriptions);
+        assertEquals(1, receivedSubscriptions.length);
+        assertEquals(CARRIER_NAME,
+                ((DownloadableSubscription) receivedSubscriptions[0]).getCarrierName());
+    }
+
+    @Test
     public void testDownloadSubscription_serviceUnavailable() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(
@@ -212,6 +302,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 null /* result */, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
                 0 /* detailedCode */);
+        verify(mMockConnector).downloadSubscription(any(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -294,13 +385,7 @@ public class EuiccControllerTest extends TelephonyTest {
         GetDownloadableSubscriptionMetadataResult result =
                 GetDownloadableSubscriptionMetadataResult.success(SUBSCRIPTION_WITH_METADATA);
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
-        PackageInfo pi = new PackageInfo();
-        pi.packageName = PACKAGE_NAME;
-        pi.signatures = new Signature[] { new Signature(SIGNATURE_BYTES) };
-        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
-        // TODO(b/33075886): This should mock the current profile metadata, not privileges.
-        when(mTelephonyManager.checkCarrierPrivilegesForPackage(PACKAGE_NAME))
-                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        setHasCarrierPrivilegesOnActiveSubscription(true);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
@@ -313,13 +398,7 @@ public class EuiccControllerTest extends TelephonyTest {
         GetDownloadableSubscriptionMetadataResult result =
                 GetDownloadableSubscriptionMetadataResult.success(SUBSCRIPTION_WITH_METADATA);
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
-        PackageInfo pi = new PackageInfo();
-        pi.packageName = PACKAGE_NAME;
-        pi.signatures = new Signature[] { new Signature(SIGNATURE_BYTES) };
-        when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
-        // TODO(b/33075886): This should mock the current profile metadata, not privileges.
-        when(mTelephonyManager.checkCarrierPrivilegesForPackage(PACKAGE_NAME))
-                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        setHasCarrierPrivilegesOnActiveSubscription(false);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 DownloadResult.success(), PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
@@ -349,6 +428,272 @@ public class EuiccControllerTest extends TelephonyTest {
                 any(), anyBoolean(), anyBoolean(), any());
     }
 
+    @Test
+    public void testDeleteSubscription_noSuchSubscription() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */,
+                null /* result */, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).deleteSubscription(anyString(), any());
+    }
+
+    @Test
+    public void testDeleteSubscription_serviceUnavailable() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */,
+                null /* result */, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+    }
+
+    @Test
+    public void testDeleteSubscription_genericError() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        DeleteResult result = DeleteResult.genericError(42);
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */,
+                result /* result */, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                42 /* detailedCode */);
+    }
+
+    @Test
+    public void testDeleteSubscription_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        DeleteResult result = DeleteResult.success();
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */,
+                result /* result */, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test
+    public void testDeleteSubscription_noPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */,
+                null /* result */, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).deleteSubscription(anyString(), any());
+    }
+
+    @Test
+    public void testDeleteSubscription_carrierPrivileges_success() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(true /* hasPrivileges */);
+        DeleteResult result = DeleteResult.success();
+        callDeleteSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */, result /* result */, PACKAGE_NAME);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test
+    public void testSwitchToSubscription_noSuchSubscription() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callSwitchToSubscription(
+                12345, ICC_ID, false /* complete */, null /* result */,
+                "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).switchToSubscription(anyString(), anyBoolean(), any());
+    }
+
+    @Test
+    public void testSwitchToSubscription_emptySubscription_noPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        callSwitchToSubscription(
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID, null /* iccid */, false /* complete */,
+                null /* result */, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).switchToSubscription(anyString(), anyBoolean(), any());
+    }
+
+    @Test
+    public void testSwitchToSubscription_serviceUnavailable() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */, null /* result */,
+                "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector).switchToSubscription(anyString(), anyBoolean(), any());
+    }
+
+    @Test
+    public void testSwitchToSubscription_genericError() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        SwitchResult result = SwitchResult.genericError(42);
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */, result,
+                "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                42 /* detailedCode */);
+    }
+
+    @Test
+    public void testSwitchToSubscription_mustDeactivateSim() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        SwitchResult result = SwitchResult.mustDeactivateSim();
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */, result,
+                "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                EuiccOperation.ACTION_SWITCH_DEACTIVATE_SIM);
+    }
+
+    @Test
+    public void testSwitchToSubscription_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        SwitchResult result = SwitchResult.success();
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */, result,
+                "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test
+    public void testSwitchToSubscription_emptySubscription_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        SwitchResult result = SwitchResult.success();
+        callSwitchToSubscription(
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID, null /* iccid */, true /* complete */,
+                result, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test
+    public void testSwitchToSubscription_noPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */, null /* result */,
+                "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).switchToSubscription(anyString(), anyBoolean(), any());
+    }
+
+    @Test
+    public void testSwitchToSubscription_hasCarrierPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(true /* hasPrivileges */);
+        setHasCarrierPrivilegesOnActiveSubscription(true);
+        SwitchResult result = SwitchResult.success();
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */, result, PACKAGE_NAME);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test
+    public void testSwitchToSubscription_hasCarrierPrivileges_needsConsent() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(true /* hasPrivileges */);
+        setHasCarrierPrivilegesOnActiveSubscription(false);
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */, null /* result */, PACKAGE_NAME);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).switchToSubscription(anyString(), anyBoolean(), any());
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                EuiccOperation.ACTION_SWITCH_NO_PRIVILEGES);
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testUpdateSubscriptionNickname_noPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        callUpdateSubscriptionNickname(
+                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, null /* result */);
+    }
+
+    @Test
+    public void testUpdateSubscriptionNickname_noSuchSubscription() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callUpdateSubscriptionNickname(
+                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, null /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).updateSubscriptionNickname(anyString(), anyString(), any());
+    }
+
+    @Test
+    public void testUpdateSubscriptionNickname_serviceUnavailable() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        callUpdateSubscriptionNickname(
+                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, null /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector).updateSubscriptionNickname(anyString(), anyString(), any());
+    }
+
+    @Test
+    public void testUpdateSubscriptionNickname_genericError() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        UpdateNicknameResult result = UpdateNicknameResult.genericError(42);
+        callUpdateSubscriptionNickname(
+                SUBSCRIPTION_ID, ICC_ID, "nickname", true /* complete */, result);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                42 /* detailedCode */);
+    }
+
+    @Test
+    public void testUpdateSubscriptionNickname_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        prepareOperationSubscription(false /* hasPrivileges */);
+        UpdateNicknameResult result = UpdateNicknameResult.success();
+        callUpdateSubscriptionNickname(
+                SUBSCRIPTION_ID, ICC_ID, "nickname", true /* complete */, result);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testEraseSubscriptions_noPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        callEraseSubscriptions(false /* complete */, null /* result */);
+    }
+
+    @Test
+    public void testEraseSubscriptions_serviceUnavailable() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callEraseSubscriptions(false /* complete */, null /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector).eraseSubscriptions(any());
+    }
+
+    @Test
+    public void testEraseSubscriptions_genericError() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        EraseResult result = EraseResult.genericError(42);
+        callEraseSubscriptions(true /* complete */, result);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                42 /* detailedCode */);
+    }
+
+    @Test
+    public void testEraseSubscriptions_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        EraseResult result = EraseResult.success();
+        callEraseSubscriptions(true /* complete */, result);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
     private void setGetEidPermissions(
             boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges) {
         doReturn(hasPhoneStatePrivileged
@@ -365,6 +710,23 @@ public class EuiccControllerTest extends TelephonyTest {
                 .checkCallingPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
     }
 
+    private void setHasCarrierPrivilegesOnActiveSubscription(boolean hasPrivileges)
+            throws Exception {
+        SubscriptionInfo subInfo = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null);
+        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
+                Collections.singletonList(subInfo));
+    }
+
+    private void prepareOperationSubscription(boolean hasPrivileges) throws Exception {
+        SubscriptionInfo subInfo = new SubscriptionInfo(
+                SUBSCRIPTION_ID, ICC_ID, 0, "", "", 0, 0, "", 0, null, 0, 0, "",
+                true /* isEmbedded */, hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null);
+        when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(
+                Collections.singletonList(subInfo));
+    }
+
     private String callGetEid(final boolean success, final @Nullable String eid) {
         doAnswer(new Answer<Void>() {
             @Override
@@ -379,6 +741,22 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).getEid(Mockito.<EuiccConnector.GetEidCommandCallback>any());
         return mController.getEid();
+    }
+
+    private EuiccInfo callGetEuiccInfo(final boolean success, final @Nullable EuiccInfo euiccInfo) {
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.GetEuiccInfoCommandCallback cb = invocation.getArgument(0);
+                if (success) {
+                    cb.onGetEuiccInfoComplete(euiccInfo);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).getEuiccInfo(any());
+        return mController.getEuiccInfo();
     }
 
     private void prepareGetDownloadableSubscriptionMetadataCall(
@@ -404,6 +782,24 @@ public class EuiccControllerTest extends TelephonyTest {
         mController.getDownloadableSubscriptionMetadata(subscription, resultCallback);
     }
 
+    private void callGetDefaultDownloadableSubscriptionList(
+            boolean complete, GetDefaultDownloadableSubscriptionListResult result) {
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.GetDefaultListCommandCallback cb = invocation.getArgument(1);
+                if (complete) {
+                    cb.onGetDefaultListComplete(result);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).getDefaultDownloadableSubscriptionList(anyBoolean(), any());
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        mController.getDefaultDownloadableSubscriptionList(resultCallback);
+    }
+
     private void callDownloadSubscription(DownloadableSubscription subscription,
             boolean switchAfterDownload, final boolean complete, final DownloadResult result,
             String callingPackage) {
@@ -423,6 +819,77 @@ public class EuiccControllerTest extends TelephonyTest {
                 any(), eq(switchAfterDownload), anyBoolean(), any());
         mController.downloadSubscription(subscription, switchAfterDownload, callingPackage,
                 resultCallback);
+    }
+
+    private void callDeleteSubscription(int subscriptionId, String iccid, final boolean complete,
+            final DeleteResult result, String callingPackage) {
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.DeleteCommandCallback cb = invocation.getArgument(1);
+                if (complete) {
+                    cb.onDeleteComplete(result);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).deleteSubscription(eq(iccid), any());
+        mController.deleteSubscription(subscriptionId, callingPackage, resultCallback);
+    }
+
+    private void callSwitchToSubscription(int subscriptionId, String iccid, final boolean complete,
+            final SwitchResult result, String callingPackage) {
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.SwitchCommandCallback cb = invocation.getArgument(2);
+                if (complete) {
+                    cb.onSwitchComplete(result);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).switchToSubscription(eq(iccid), anyBoolean(), any());
+        mController.switchToSubscription(subscriptionId, callingPackage, resultCallback);
+    }
+
+    private void callUpdateSubscriptionNickname(int subscriptionId, String iccid, String nickname,
+            final boolean complete, final UpdateNicknameResult result) {
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.UpdateNicknameCommandCallback cb = invocation.getArgument(2);
+                if (complete) {
+                    cb.onUpdateNicknameComplete(result);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).updateSubscriptionNickname(eq(iccid), eq(nickname), any());
+        mController.updateSubscriptionNickname(subscriptionId, nickname, resultCallback);
+    }
+
+    private void callEraseSubscriptions(final boolean complete, final EraseResult result) {
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.EraseCommandCallback cb = invocation.getArgument(0);
+                if (complete) {
+                    cb.onEraseComplete(result);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).eraseSubscriptions(any());
+        mController.eraseSubscriptions(resultCallback);
     }
 
     private void verifyResolutionIntent(String euiccUiAction, @EuiccOperation.Action int action) {

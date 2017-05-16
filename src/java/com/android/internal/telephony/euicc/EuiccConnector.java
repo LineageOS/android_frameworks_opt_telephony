@@ -33,15 +33,29 @@ import android.content.pm.ServiceInfo;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.service.euicc.DeleteResult;
 import android.service.euicc.DownloadResult;
+import android.service.euicc.EraseResult;
 import android.service.euicc.EuiccService;
+import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
+import android.service.euicc.GetEuiccProfileInfoListResult;
+import android.service.euicc.IDeleteSubscriptionCallback;
 import android.service.euicc.IDownloadSubscriptionCallback;
+import android.service.euicc.IEraseSubscriptionsCallback;
 import android.service.euicc.IEuiccService;
+import android.service.euicc.IGetDefaultDownloadableSubscriptionListCallback;
 import android.service.euicc.IGetDownloadableSubscriptionMetadataCallback;
 import android.service.euicc.IGetEidCallback;
+import android.service.euicc.IGetEuiccInfoCallback;
+import android.service.euicc.IGetEuiccProfileInfoListCallback;
+import android.service.euicc.ISwitchToSubscriptionCallback;
+import android.service.euicc.IUpdateSubscriptionNicknameCallback;
+import android.service.euicc.SwitchResult;
+import android.service.euicc.UpdateNicknameResult;
 import android.telephony.SubscriptionManager;
 import android.telephony.euicc.DownloadableSubscription;
+import android.telephony.euicc.EuiccInfo;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -106,6 +120,13 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private static final int CMD_GET_EID = 6;
     private static final int CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA = 7;
     private static final int CMD_DOWNLOAD_SUBSCRIPTION = 8;
+    private static final int CMD_GET_EUICC_PROFILE_INFO_LIST = 9;
+    private static final int CMD_GET_DEFAULT_DOWNLOADABLE_SUBSCRIPTION_LIST = 10;
+    private static final int CMD_GET_EUICC_INFO = 11;
+    private static final int CMD_DELETE_SUBSCRIPTION = 12;
+    private static final int CMD_SWITCH_TO_SUBSCRIPTION = 13;
+    private static final int CMD_UPDATE_SUBSCRIPTION_NICKNAME = 14;
+    private static final int CMD_ERASE_SUBSCRIPTIONS = 15;
 
     private static boolean isEuiccCommand(int what) {
         return what >= CMD_GET_EID;
@@ -170,6 +191,75 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     public interface DownloadCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the download has completed (though it may have failed). */
         void onDownloadComplete(DownloadResult result);
+    }
+
+    interface GetEuiccProfileInfoListCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the list has completed (though it may have failed). */
+        void onListComplete(GetEuiccProfileInfoListResult result);
+    }
+
+    static class GetDefaultListRequest {
+        boolean mForceDeactivateSim;
+        GetDefaultListCommandCallback mCallback;
+    }
+
+    /** Callback class for {@link #getDefaultDownloadableSubscriptionList}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface GetDefaultListCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the list has completed (though it may have failed). */
+        void onGetDefaultListComplete(GetDefaultDownloadableSubscriptionListResult result);
+    }
+
+    /** Callback class for {@link #getEuiccInfo}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface GetEuiccInfoCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the EuiccInfo lookup has completed. */
+        void onGetEuiccInfoComplete(EuiccInfo euiccInfo);
+    }
+
+    static class DeleteRequest {
+        String mIccid;
+        DeleteCommandCallback mCallback;
+    }
+
+    /** Callback class for {@link #deleteSubscription}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface DeleteCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the delete has completed (though it may have failed). */
+        void onDeleteComplete(DeleteResult result);
+    }
+
+    static class SwitchRequest {
+        @Nullable String mIccid;
+        boolean mForceDeactivateSim;
+        SwitchCommandCallback mCallback;
+    }
+
+    /** Callback class for {@link #switchToSubscription}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface SwitchCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the switch has completed (though it may have failed). */
+        void onSwitchComplete(SwitchResult result);
+    }
+
+    static class UpdateNicknameRequest {
+        String mIccid;
+        String mNickname;
+        UpdateNicknameCommandCallback mCallback;
+    }
+
+    /** Callback class for {@link #updateSubscriptionNickname}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface UpdateNicknameCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the update has completed (though it may have failed). */
+        void onUpdateNicknameComplete(UpdateNicknameResult result);
+    }
+
+    /** Callback class for {@link #eraseSubscriptions}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface EraseCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the erase has completed (though it may have failed). */
+        void onEraseComplete(EraseResult result);
     }
 
     private Context mContext;
@@ -257,7 +347,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         sendMessage(CMD_GET_EID, callback);
     }
 
-    /** Asynchronously fetch metadata for the given downloadable mSubscription. */
+    /** Asynchronously fetch metadata for the given downloadable subscription. */
     @VisibleForTesting(visibility = PACKAGE)
     public void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
             boolean forceDeactivateSim, GetMetadataCommandCallback callback) {
@@ -269,7 +359,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         sendMessage(CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA, request);
     }
 
-    /** Asynchronously download the given mSubscription. */
+    /** Asynchronously download the given subscription. */
     @VisibleForTesting(visibility = PACKAGE)
     public void downloadSubscription(DownloadableSubscription subscription,
             boolean switchAfterDownload, boolean forceDeactivateSim,
@@ -280,6 +370,63 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         request.mForceDeactivateSim = forceDeactivateSim;
         request.mCallback = callback;
         sendMessage(CMD_DOWNLOAD_SUBSCRIPTION, request);
+    }
+
+    void getEuiccProfileInfoList(GetEuiccProfileInfoListCommandCallback callback) {
+        sendMessage(CMD_GET_EUICC_PROFILE_INFO_LIST, callback);
+    }
+
+    /** Asynchronously fetch the default downloadable subscription list. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void getDefaultDownloadableSubscriptionList(
+            boolean forceDeactivateSim, GetDefaultListCommandCallback callback) {
+        GetDefaultListRequest request = new GetDefaultListRequest();
+        request.mForceDeactivateSim = forceDeactivateSim;
+        request.mCallback = callback;
+        sendMessage(CMD_GET_DEFAULT_DOWNLOADABLE_SUBSCRIPTION_LIST, request);
+    }
+
+    /** Asynchronously fetch the {@link EuiccInfo}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void getEuiccInfo(GetEuiccInfoCommandCallback callback) {
+        sendMessage(CMD_GET_EUICC_INFO, callback);
+    }
+
+    /** Asynchronously delete the given subscription. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void deleteSubscription(String iccid, DeleteCommandCallback callback) {
+        DeleteRequest request = new DeleteRequest();
+        request.mIccid = iccid;
+        request.mCallback = callback;
+        sendMessage(CMD_DELETE_SUBSCRIPTION, request);
+    }
+
+    /** Asynchronously switch to the given subscription. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void switchToSubscription(@Nullable String iccid, boolean forceDeactivateSim,
+            SwitchCommandCallback callback) {
+        SwitchRequest request = new SwitchRequest();
+        request.mIccid = iccid;
+        request.mForceDeactivateSim = forceDeactivateSim;
+        request.mCallback = callback;
+        sendMessage(CMD_SWITCH_TO_SUBSCRIPTION, request);
+    }
+
+    /** Asynchronously update the nickname of the given subscription. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void updateSubscriptionNickname(
+            String iccid, String nickname, UpdateNicknameCommandCallback callback) {
+        UpdateNicknameRequest request = new UpdateNicknameRequest();
+        request.mIccid = iccid;
+        request.mNickname = nickname;
+        request.mCallback = callback;
+        sendMessage(CMD_UPDATE_SUBSCRIPTION_NICKNAME, request);
+    }
+
+    /** Asynchronously erase all profiles on the eUICC. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void eraseSubscriptions(EraseCommandCallback callback) {
+        sendMessage(CMD_ERASE_SUBSCRIPTIONS, callback);
     }
 
     /**
@@ -497,6 +644,100 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     });
                             break;
                         }
+                        case CMD_GET_EUICC_PROFILE_INFO_LIST: {
+                            mEuiccService.getEuiccProfileInfoList(slotId,
+                                    new IGetEuiccProfileInfoListCallback.Stub() {
+                                        @Override
+                                        public void onComplete(
+                                                GetEuiccProfileInfoListResult result) {
+                                            ((GetEuiccProfileInfoListCommandCallback) callback)
+                                                    .onListComplete(result);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
+                        case CMD_GET_DEFAULT_DOWNLOADABLE_SUBSCRIPTION_LIST: {
+                            GetDefaultListRequest request = (GetDefaultListRequest) message.obj;
+                            mEuiccService.getDefaultDownloadableSubscriptionList(slotId,
+                                    request.mForceDeactivateSim,
+                                    new IGetDefaultDownloadableSubscriptionListCallback.Stub() {
+                                        @Override
+                                        public void onComplete(
+                                                GetDefaultDownloadableSubscriptionListResult result
+                                        ) {
+                                            ((GetDefaultListCommandCallback) callback)
+                                                    .onGetDefaultListComplete(result);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
+                        case CMD_GET_EUICC_INFO: {
+                            mEuiccService.getEuiccInfo(slotId,
+                                    new IGetEuiccInfoCallback.Stub() {
+                                        @Override
+                                        public void onSuccess(EuiccInfo euiccInfo) {
+                                            ((GetEuiccInfoCommandCallback) callback)
+                                                    .onGetEuiccInfoComplete(euiccInfo);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
+                        case CMD_DELETE_SUBSCRIPTION: {
+                            DeleteRequest request = (DeleteRequest) message.obj;
+                            mEuiccService.deleteSubscription(slotId, request.mIccid,
+                                    new IDeleteSubscriptionCallback.Stub() {
+                                        @Override
+                                        public void onComplete(DeleteResult result) {
+                                            ((DeleteCommandCallback) callback)
+                                                    .onDeleteComplete(result);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
+                        case CMD_SWITCH_TO_SUBSCRIPTION: {
+                            SwitchRequest request = (SwitchRequest) message.obj;
+                            mEuiccService.switchToSubscription(slotId, request.mIccid,
+                                    request.mForceDeactivateSim,
+                                    new ISwitchToSubscriptionCallback.Stub() {
+                                        @Override
+                                        public void onComplete(SwitchResult result) {
+                                            ((SwitchCommandCallback) callback)
+                                                    .onSwitchComplete(result);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
+                        case CMD_UPDATE_SUBSCRIPTION_NICKNAME: {
+                            UpdateNicknameRequest request = (UpdateNicknameRequest) message.obj;
+                            mEuiccService.updateSubscriptionNickname(slotId, request.mIccid,
+                                    request.mNickname,
+                                    new IUpdateSubscriptionNicknameCallback.Stub() {
+                                        @Override
+                                        public void onComplete(UpdateNicknameResult result) {
+                                            ((UpdateNicknameCommandCallback) callback)
+                                                    .onUpdateNicknameComplete(result);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
+                        case CMD_ERASE_SUBSCRIPTIONS: {
+                            mEuiccService.eraseSubscriptions(slotId,
+                                    new IEraseSubscriptionsCallback.Stub() {
+                                        @Override
+                                        public void onComplete(EraseResult result) {
+                                            ((EraseCommandCallback) callback)
+                                                    .onEraseComplete(result);
+                                            onCommandEnd();
+                                        }
+                                    });
+                            break;
+                        }
                         default: {
                             Log.wtf(TAG, "Unimplemented eUICC command: " + message.what);
                             callback.onEuiccServiceUnavailable();
@@ -528,11 +769,22 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private static BaseEuiccCommandCallback getCallback(Message message) {
         switch (message.what) {
             case CMD_GET_EID:
+            case CMD_GET_EUICC_PROFILE_INFO_LIST:
+            case CMD_GET_EUICC_INFO:
+            case CMD_ERASE_SUBSCRIPTIONS:
                 return (BaseEuiccCommandCallback) message.obj;
             case CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA:
                 return ((GetMetadataRequest) message.obj).mCallback;
             case CMD_DOWNLOAD_SUBSCRIPTION:
                 return ((DownloadRequest) message.obj).mCallback;
+            case CMD_GET_DEFAULT_DOWNLOADABLE_SUBSCRIPTION_LIST:
+                return ((GetDefaultListRequest) message.obj).mCallback;
+            case CMD_DELETE_SUBSCRIPTION:
+                return ((DeleteRequest) message.obj).mCallback;
+            case CMD_SWITCH_TO_SUBSCRIPTION:
+                return ((SwitchRequest) message.obj).mCallback;
+            case CMD_UPDATE_SUBSCRIPTION_NICKNAME:
+                return ((UpdateNicknameRequest) message.obj).mCallback;
             default:
                 throw new IllegalArgumentException("Unsupported message: " + message.what);
         }
