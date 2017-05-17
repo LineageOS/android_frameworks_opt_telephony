@@ -1739,7 +1739,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         if (rr != null) {
             ArrayList<Integer> ret = new ArrayList<Integer>();
             ret.add(statusInfo.lceStatus);
-            ret.add((int) statusInfo.actualIntervalMs);
+            ret.add(Byte.toUnsignedInt(statusInfo.actualIntervalMs));
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
