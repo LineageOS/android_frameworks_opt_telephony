@@ -19,10 +19,10 @@ package com.android.internal.telephony;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.WorkSource;
 import android.os.ResultReceiver;
-import android.telephony.CellLocation;
+import android.os.WorkSource;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 
 import com.android.internal.telephony.PhoneConstants.*; // ????
@@ -642,6 +642,30 @@ public interface PhoneInternalInterface {
      * </ul>
      */
     void getAvailableNetworks(Message response);
+
+    /**
+     * Start a network scan. This method is asynchronous; .
+     * On completion, <code>response.obj</code> is set to an AsyncResult with
+     * one of the following members:.<p>
+     * <ul>
+     * <li><code>response.obj.result</code> will be a <code>NetworkScanResult</code> object, or</li>
+     * <li><code>response.obj.exception</code> will be set with an exception
+     * on failure.</li>
+     * </ul>
+     */
+    void startNetworkScan(Message response);
+
+    /**
+     * Stop ongoing network scan. This method is asynchronous; .
+     * On completion, <code>response.obj</code> is set to an AsyncResult with
+     * one of the following members:.<p>
+     * <ul>
+     * <li><code>response.obj.result</code> will be a <code>NetworkScanResult</code> object, or</li>
+     * <li><code>response.obj.exception</code> will be set with an exception
+     * on failure.</li>
+     * </ul>
+     */
+    void stopNetworkScan(Message response);
 
     /**
      * Query neighboring cell IDs.  <code>response</code> is dispatched when

@@ -1811,6 +1811,16 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public void startNetworkScan(Message response) {
+        mCi.startNetworkScan(response);
+    }
+
+    @Override
+    public void stopNetworkScan(Message response) {
+        mCi.stopNetworkScan(response);
+    }
+
+    @Override
     public void getNeighboringCids(Message response, WorkSource workSource) {
         if (isPhoneTypeGsm()) {
             mCi.getNeighboringCids(response, workSource);
