@@ -32,6 +32,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
+import com.android.internal.os.BackgroundThread;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
 import com.android.internal.telephony.euicc.EuiccController;
@@ -42,6 +43,7 @@ import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -81,6 +83,7 @@ public class PhoneFactory {
     static private SubscriptionMonitor sSubscriptionMonitor;
     static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
     static private ImsResolver sImsResolver;
+    static private NotificationChannelController sNotificationChannelController;
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
 
@@ -212,8 +215,8 @@ public class PhoneFactory {
                 sMadeDefaults = true;
 
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
-                sSubInfoRecordUpdater = new SubscriptionInfoUpdater(context,
-                        sPhones, sCommandsInterfaces);
+                sSubInfoRecordUpdater = new SubscriptionInfoUpdater(
+                        BackgroundThread.get().getLooper(), context, sPhones, sCommandsInterfaces);
                 SubscriptionController.getInstance().updatePhonesAvailability(sPhones);
 
                 // Start monitoring after defaults have been made.
@@ -236,6 +239,8 @@ public class PhoneFactory {
 
                 sProxyController = ProxyController.getInstance(context, sPhones,
                         sUiccController, sCommandsInterfaces, sPhoneSwitcher);
+
+                sNotificationChannelController = new NotificationChannelController(context);
 
                 sTelephonyNetworkFactories = new TelephonyNetworkFactory[numPhones];
                 for (int i = 0; i < numPhones; i++) {
@@ -346,6 +351,11 @@ public class PhoneFactory {
      */
     public static Phone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
         return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
+    }
+
+    /** Request a refresh of the embedded subscription list. */
+    public static void refreshEmbeddedSubscriptionList() {
+        sSubInfoRecordUpdater.refreshEmbeddedSubscriptionList();
     }
 
     /**

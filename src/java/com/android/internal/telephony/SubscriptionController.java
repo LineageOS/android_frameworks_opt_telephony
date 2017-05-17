@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest;
 import android.app.AppOpsManager;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -35,15 +36,19 @@ import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccAccessRule;
+import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Log;
-import java.util.Objects;
+
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -51,8 +56,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * SubscriptionController to provide an inter-process communication to
@@ -115,6 +122,17 @@ public class SubscriptionController extends ISub.Stub {
             }
         }
     }
+
+    private static final Comparator<SubscriptionInfo> SUBSCRIPTION_INFO_COMPARATOR =
+            (arg0, arg1) -> {
+                // Primary sort key on SimSlotIndex
+                int flag = arg0.getSimSlotIndex() - arg1.getSimSlotIndex();
+                if (flag == 0) {
+                    // Secondary sort on SubscriptionId
+                    return arg0.getSubscriptionId() - arg1.getSubscriptionId();
+                }
+                return flag;
+            };
 
     protected final Object mLock = new Object();
 
@@ -289,13 +307,23 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.MNC));
         // FIXME: consider stick this into database too
         String countryIso = getSubscriptionCountryIso(id);
+        boolean isEmbedded = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.IS_EMBEDDED)) == 1;
+        UiccAccessRule[] accessRules;
+        if (isEmbedded) {
+            accessRules = UiccAccessRule.decodeRules(cursor.getBlob(
+                    cursor.getColumnIndexOrThrow(SubscriptionManager.ACCESS_RULES)));
+        } else {
+            accessRules = null;
+        }
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccIdToPrint + " simSlotIndex:"
                     + simSlotIndex + " displayName:" + displayName + " nameSource:" + nameSource
                     + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
-                    + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso);
+                    + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso + " isEmbedded:"
+                    + isEmbedded + " accessRules:" + Arrays.toString(accessRules));
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -304,7 +332,8 @@ public class SubscriptionController extends ISub.Stub {
             number = line1Number;
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
-                nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso);
+                nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
+                isEmbedded, accessRules);
     }
 
     /**
@@ -564,18 +593,7 @@ public class SubscriptionController extends ISub.Stub {
 
             if (subList != null) {
                 // FIXME: Unnecessary when an insertion sort is used!
-                Collections.sort(subList, new Comparator<SubscriptionInfo>() {
-                    @Override
-                    public int compare(SubscriptionInfo arg0, SubscriptionInfo arg1) {
-                        // Primary sort key on SimSlotIndex
-                        int flag = arg0.getSimSlotIndex() - arg1.getSimSlotIndex();
-                        if (flag == 0) {
-                            // Secondary sort on SubscriptionId
-                            return arg0.getSubscriptionId() - arg1.getSubscriptionId();
-                        }
-                        return flag;
-                    }
-                });
+                subList.sort(SUBSCRIPTION_INFO_COMPARATOR);
 
                 if (VDBG) logdl("[getActiveSubInfoList]- " + subList.size() + " infos return");
             } else {
@@ -663,6 +681,144 @@ public class SubscriptionController extends ISub.Stub {
         return mTelephonyManager.getSimCount();
     }
 
+    @Override
+    public List<SubscriptionInfo> getAvailableSubscriptionInfoList(String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "getAvailableSubscriptionInfoList")) {
+            throw new SecurityException("Need READ_PHONE_STATE to call "
+                    + " getAvailableSubscriptionInfoList");
+        }
+
+        // Now that all security checks pass, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            EuiccManager euiccManager =
+                    (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
+            if (!euiccManager.isEnabled()) {
+                if (DBG) logdl("[getAvailableSubInfoList] Embedded subscriptions are disabled");
+                return null;
+            }
+
+            List<SubscriptionInfo> subList = getSubInfo(
+                    SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
+                            + SubscriptionManager.IS_EMBEDDED + "=1", null);
+
+            if (subList != null) {
+                subList.sort(SUBSCRIPTION_INFO_COMPARATOR);
+
+                if (VDBG) logdl("[getAvailableSubInfoList]- " + subList.size() + " infos return");
+            } else {
+                if (DBG) logdl("[getAvailableSubInfoList]- no info return");
+            }
+
+            return subList;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    @Override
+    public List<SubscriptionInfo> getAccessibleSubscriptionInfoList(String callingPackage) {
+        EuiccManager euiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
+        if (!euiccManager.isEnabled()) {
+            if (DBG) {
+                logdl("[getAccessibleSubInfoList] Embedded subscriptions are disabled");
+            }
+            return null;
+        }
+
+        // Verify that the given package belongs to the calling UID.
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
+
+        // Perform the operation as ourselves. If the caller cannot read phone state, they may still
+        // have carrier privileges per the subscription metadata, so we always need to make the
+        // query and then filter the results.
+        final long identity = Binder.clearCallingIdentity();
+        List<SubscriptionInfo> subList;
+        try {
+            subList = getSubInfo(SubscriptionManager.IS_EMBEDDED + "=1", null);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+
+        if (subList == null) {
+            if (DBG) logdl("[getAccessibleSubInfoList] No info returned");
+            return null;
+        }
+
+        // Filter the list to only include subscriptions which the (restored) caller can manage.
+        List<SubscriptionInfo> filteredList = subList.stream()
+                .filter(subscriptionInfo ->
+                        subscriptionInfo.canManageSubscription(mContext, callingPackage))
+                .sorted(SUBSCRIPTION_INFO_COMPARATOR)
+                .collect(Collectors.toList());
+        if (VDBG) {
+            logdl("[getAccessibleSubInfoList] " + filteredList.size() + " infos returned");
+        }
+        return filteredList;
+    }
+
+    /**
+     * Return the list of subscriptions in the database which are either:
+     * <ul>
+     * <li>Embedded (but see note about {@code includeNonRemovableSubscriptions}, or
+     * <li>In the given list of current embedded ICCIDs (which may not yet be in the database, or
+     *     which may not currently be marked as embedded).
+     * </ul>
+     *
+     * <p>NOTE: This is not accessible to external processes, so it does not need a permission
+     * check. It is only intended for use by {@link SubscriptionInfoUpdater}.
+     *
+     * @param embeddedIccids all ICCIDs of available embedded subscriptions. This is used to surface
+     *     entries for profiles which had been previously deleted.
+     * @param isEuiccRemovable whether the current ICCID is removable. Non-removable subscriptions
+     *     will only be returned if the current ICCID is not removable; otherwise, they are left
+     *     alone (not returned here unless in the embeddedIccids list) under the assumption that
+     *     they will still be accessible when the eUICC containing them is activated.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public List<SubscriptionInfo> getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
+            String[] embeddedIccids, boolean isEuiccRemovable) {
+        StringBuilder whereClause = new StringBuilder();
+        whereClause.append("(").append(SubscriptionManager.IS_EMBEDDED).append("=1");
+        if (isEuiccRemovable) {
+            // Current eUICC is removable, so don't return non-removable subscriptions (which would
+            // be deleted), as these are expected to still be present on a different, non-removable
+            // eUICC.
+            whereClause.append(" AND ").append(SubscriptionManager.IS_REMOVABLE).append("=1");
+        }
+        // Else, return both removable and non-removable subscriptions. This is expected to delete
+        // all removable subscriptions, which is desired as they may not be accessible.
+
+        whereClause.append(") OR ").append(SubscriptionManager.ICC_ID).append(" IN (");
+        // ICCIDs are validated to contain only numbers when passed in, and come from a trusted
+        // app, so no need to escape.
+        for (int i = 0; i < embeddedIccids.length; i++) {
+            if (i > 0) {
+                whereClause.append(",");
+            }
+            whereClause.append("\"").append(embeddedIccids[i]).append("\"");
+        }
+        whereClause.append(")");
+
+        List<SubscriptionInfo> list = getSubInfo(whereClause.toString(), null);
+        if (list == null) {
+            return Collections.emptyList();
+        }
+        return list;
+    }
+
+    @Override
+    public void requestEmbeddedSubscriptionInfoListRefresh() {
+        mContext.enforceCallingOrSelfPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS,
+                "requestEmbeddedSubscriptionInfoListRefresh");
+        long token = Binder.clearCallingIdentity();
+        try {
+            PhoneFactory.refreshEmbeddedSubscriptionList();
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
     /**
      * Add a new SubInfoRecord to subinfo database if needed
      * @param iccId the IccId of the SIM card
@@ -690,18 +846,11 @@ public class SubscriptionController extends ISub.Stub {
                             SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE},
                     SubscriptionManager.ICC_ID + "=?", new String[]{iccId}, null);
 
-            int color = getUnusedColor(mContext.getOpPackageName());
             boolean setDisplayName = false;
             try {
                 if (cursor == null || !cursor.moveToFirst()) {
                     setDisplayName = true;
-                    ContentValues value = new ContentValues();
-                    value.put(SubscriptionManager.ICC_ID, iccId);
-                    // default SIM color differs between slots
-                    value.put(SubscriptionManager.COLOR, color);
-                    value.put(SubscriptionManager.SIM_SLOT_INDEX, slotIndex);
-                    value.put(SubscriptionManager.CARRIER_NAME, "");
-                    Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
+                    Uri uri = insertEmptySubInfoRecord(iccId, slotIndex);
                     if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
                 } else {
                     int subId = cursor.getInt(0);
@@ -825,6 +974,27 @@ public class SubscriptionController extends ISub.Stub {
             Binder.restoreCallingIdentity(identity);
         }
         return 0;
+    }
+
+    /**
+     * Insert an empty SubInfo record into the database.
+     *
+     * <p>NOTE: This is not accessible to external processes, so it does not need a permission
+     * check. It is only intended for use by {@link SubscriptionInfoUpdater}.
+     *
+     * <p>Precondition: No record exists with this iccId.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public Uri insertEmptySubInfoRecord(String iccId, int slotIndex) {
+        ContentResolver resolver = mContext.getContentResolver();
+        ContentValues value = new ContentValues();
+        value.put(SubscriptionManager.ICC_ID, iccId);
+        int color = getUnusedColor(mContext.getOpPackageName());
+        // default SIM color differs between slots
+        value.put(SubscriptionManager.COLOR, color);
+        value.put(SubscriptionManager.SIM_SLOT_INDEX, slotIndex);
+        value.put(SubscriptionManager.CARRIER_NAME, "");
+        return resolver.insert(SubscriptionManager.CONTENT_URI, value);
     }
 
     /**
@@ -974,6 +1144,9 @@ public class SubscriptionController extends ISub.Stub {
                 value.put(SubscriptionManager.NAME_SOURCE, nameSource);
             }
             if (DBG) logd("[setDisplayName]- mDisplayName:" + nameToSet + " set");
+            // TODO(b/33075886): If this is an embedded subscription, we must also save the new name
+            // to the eSIM itself. Currently it will be blown away the next time the subscription
+            // list is updated.
 
             int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
@@ -1343,11 +1516,11 @@ public class SubscriptionController extends ISub.Stub {
     private void broadcastDefaultSmsSubIdChanged(int subId) {
         // Broadcast an Intent for default sms sub change
         if (DBG) logdl("[broadcastDefaultSmsSubIdChanged] subId=" + subId);
-        Intent intent = new Intent(Intent.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
+        Intent intent = new Intent(SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
-        intent.putExtra(Intent.EXTRA_SUBSCRIPTION_INDEX, subId);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 

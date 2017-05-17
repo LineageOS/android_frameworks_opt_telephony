@@ -1355,7 +1355,25 @@ public class SimulatedCommands extends BaseCommands
      * ((AsyncResult)response.obj).result  is a List of NetworkInfo objects
      */
     @Override
-    public void getAvailableNetworks(Message result) {unimplemented(result);}
+    public void getAvailableNetworks(Message result) {
+        unimplemented(result);
+    }
+
+    /**
+     * Starts a network scan
+     */
+    @Override
+    public void startNetworkScan(Message result) {
+        unimplemented(result);
+    }
+
+    /**
+     * Stops an ongoing network scan
+     */
+    @Override
+    public void stopNetworkScan(Message result) {
+        unimplemented(result);
+    }
 
     @Override
     public void getBasebandVersion (Message result) {
@@ -2116,7 +2134,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setSimCardPower(boolean powerUp, Message result) {
+    public void setSimCardPower(int state, Message result) {
     }
 
     @VisibleForTesting
@@ -2125,5 +2143,11 @@ public class SimulatedCommands extends BaseCommands
             mRestrictedStateRegistrant.notifyRegistrant(
                     new AsyncResult(null, restrictedState, null));
         }
+    }
+
+    @Override
+    public void setOnRestrictedStateChanged(Handler h, int what, Object obj) {
+        super.setOnRestrictedStateChanged(h, what, obj);
+        SimulatedCommandsVerifier.getInstance().setOnRestrictedStateChanged(h, what, obj);
     }
 }

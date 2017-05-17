@@ -44,6 +44,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
 import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
+import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -58,7 +59,6 @@ import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTracker;
-import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -543,15 +543,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         synchronized(Phone.lockForRadioTechnologyChange) {
             IntentFilter filter = new IntentFilter();
-            filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
-            filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+            ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
+            // Don't listen to deprecated intents using the new dynamic binding.
+            if (imsManager != null && !imsManager.isDynamicBinding()) {
+                filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
+                filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+            }
             filter.addAction(ImsConfig.ACTION_IMS_CONFIG_CHANGED);
             mContext.registerReceiver(mImsIntentReceiver, filter);
 
             // Monitor IMS service - but first poll to see if already up (could miss
             // intent). Also, when using new ImsResolver APIs, the service will be available soon,
             // so start trying to bind.
-            ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
             if (imsManager != null) {
                 // If it is dynamic binding, kick off ImsPhone creation now instead of waiting for
                 // the service to be available.
@@ -2754,18 +2757,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Report on whether data connectivity is allowed.
      */
-    public boolean isDataConnectivityPossible() {
-        return isDataConnectivityPossible(PhoneConstants.APN_TYPE_DEFAULT);
+    public boolean isDataAllowed() {
+        return ((mDcTracker != null) && (mDcTracker.isDataAllowed(null)));
     }
-
-    /**
-     * Report on whether data connectivity is allowed for an APN.
-     */
-    public boolean isDataConnectivityPossible(String apnType) {
-        return ((mDcTracker != null) &&
-                (mDcTracker.isDataPossible(apnType)));
-    }
-
 
     /**
      * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
@@ -2953,6 +2947,28 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public Phone getImsPhone() {
         return mImsPhone;
+    }
+
+    /**
+     * Returns Carrier specific information that will be used to encrypt the IMSI and IMPI.
+     * @param keyType whether the key is being used for WLAN or ePDG.
+     * @return ImsiEncryptionInfo which includes the Key Type, the Public Key
+     *        {@link java.security.PublicKey} and the Key Identifier.
+     *        The keyIdentifier This is used by the server to help it locate the private key to
+     *        decrypt the permanent identity.
+     */
+    public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType) {
+        return null;
+    }
+
+    /**
+     * Sets the carrier information needed to encrypt the IMSI and IMPI.
+     * @param imsiEncryptionInfo Carrier specific information that will be used to encrypt the
+     *        IMSI and IMPI. This includes the Key type, the Public key
+     *        {@link java.security.PublicKey} and the Key identifier.
+     */
+    public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo) {
+        return;
     }
 
     /**
@@ -3408,7 +3424,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                             ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
             if (wfcWiFiOnly) {
                 throw new CallStateException(
-                        CallStateException.ERROR_DISCONNECTED,
+                        CallStateException.ERROR_OUT_OF_SERVICE,
                         "WFC Wi-Fi Only Mode: IMS not registered");
             }
         }
@@ -3470,11 +3486,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Set SIM card power state. Request is equivalent to inserting or removing the card.
-     * @param powerUp True if powering up the SIM, otherwise powering down
+     * Set SIM card power state.
+     * @param state State of SIM (power down, power up, pass through)
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_DOWN}
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_UP}
+     * - {@link android.telephony.TelephonyManager#CARD_POWER_UP_PASS_THROUGH}
      **/
-    public void setSimPowerState(boolean powerUp) {
-        mCi.setSimCardPower(powerUp, null);
+    public void setSimPowerState(int state) {
+        mCi.setSimCardPower(state, null);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -3511,7 +3530,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.println(" getPhoneType()=" + getPhoneType());
         pw.println(" getVoiceMessageCount()=" + getVoiceMessageCount());
         pw.println(" getActiveApnTypes()=" + getActiveApnTypes());
-        pw.println(" isDataConnectivityPossible()=" + isDataConnectivityPossible());
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");

@@ -335,6 +335,14 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void startNetworkScan(Message response) {
+    }
+
+    @Override
+    public void stopNetworkScan(Message response) {
+    }
+
+    @Override
     public void setCallForward(int action, int cfReason, int serviceClass,
                 String number, int timeSeconds, Message response) {
     }
@@ -639,6 +647,6 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setSimCardPower(boolean powerUp, Message result) {
+    public void setSimCardPower(int state, Message result) {
     }
 }

@@ -17,6 +17,8 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -24,8 +26,10 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -36,6 +40,8 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.service.euicc.EuiccProfileInfo;
+import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -43,6 +49,7 @@ import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -51,12 +58,15 @@ import com.android.internal.telephony.uicc.IccUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
@@ -66,6 +76,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private static final String FAKE_MCC_MNC_2 = "456789";
 
     private SubscriptionInfoUpdaterHandlerThread mSubscriptionInfoUpdaterHandlerThread;
+    private SubscriptionInfoUpdater mUpdater;
     private IccRecords mIccRecord;
     @Mock
     private UserInfo mUserInfo;
@@ -77,15 +88,14 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private HashMap<String, Object> mSubscriptionContent;
     @Mock
     private IccFileHandler mIccFileHandler;
+    @Mock
+    private EuiccController mEuiccController;
 
     /*Custom ContentProvider */
     private class FakeSubscriptionContentProvider extends MockContentProvider {
         @Override
         public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
-            for (String key : values.keySet()) {
-                mSubscriptionContent.put(key, values.get(key));
-            }
-            return 1;
+            return mContentProvider.update(uri, values, selection, selectionArgs);
         }
     }
 
@@ -97,7 +107,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            new SubscriptionInfoUpdater(mContext, new Phone[]{mPhone},
+            mUpdater = new SubscriptionInfoUpdater(getLooper(), mContext, new Phone[]{mPhone},
                     new CommandsInterface[]{mSimulatedCommands});
             setReady(true);
         }
@@ -112,16 +122,29 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         replaceInstance(SubscriptionInfoUpdater.class, "mContext", null, null);
         replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null, 1);
 
+        replaceInstance(EuiccController.class, "sInstance", null, mEuiccController);
+
         doReturn(1).when(mTelephonyManager).getSimCount();
         doReturn(1).when(mTelephonyManager).getPhoneCount();
+
+        when(mContentProvider.update(any(), any(), any(), isNull())).thenAnswer(
+                new Answer<Integer>() {
+                    @Override
+                    public Integer answer(InvocationOnMock invocation) throws Throwable {
+                        ContentValues values = invocation.getArgument(1);
+                        for (String key : values.keySet()) {
+                            mSubscriptionContent.put(key, values.get(key));
+                        }
+                        return 1;
+                    }
+                });
 
         doReturn(mUserInfo).when(mIActivityManager).getCurrentUser();
         doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionController).getSubId(0);
         doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionManager).getActiveSubscriptionIdList();
-        mContentProvider = new FakeSubscriptionContentProvider();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 SubscriptionManager.CONTENT_URI.getAuthority(),
-                mContentProvider);
+                new FakeSubscriptionContentProvider());
         mIccRecord = mIccCardProxy.getIccRecords();
 
         mSubscriptionInfoUpdaterHandlerThread = new SubscriptionInfoUpdaterHandlerThread(TAG);
@@ -438,4 +461,97 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 eq(IccCardConstants.INTENT_VALUE_ICC_LOCKED));
     }
 
+    @Test
+    @SmallTest
+    public void testUpdateEmbeddedSubscriptions_listSuccess() throws Exception {
+        when(mEuiccManager.isEnabled()).thenReturn(true);
+
+        EuiccProfileInfo[] euiccProfiles = new EuiccProfileInfo[] {
+                new EuiccProfileInfo("1", null /* accessRules */, null /* nickname */),
+                new EuiccProfileInfo("3", null /* accessRules */, null /* nickname */),
+        };
+        when(mEuiccController.blockingGetEuiccProfileInfoList()).thenReturn(
+                GetEuiccProfileInfoListResult.success(euiccProfiles, false /* removable */));
+
+        List<SubscriptionInfo> subInfoList = new ArrayList<>();
+        // 1: not embedded, but has matching iccid with an embedded subscription.
+        subInfoList.add(new SubscriptionInfo(
+                        0, "1", 0, "", "", 0, 0, "", 0, null, 0, 0, "", false /* isEmbedded */,
+                        null /* accessRules */));
+        // 2: embedded but no longer present.
+        subInfoList.add(new SubscriptionInfo(
+                0, "2", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
+                null /* accessRules */));
+
+        when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
+                new String[] { "1", "3"}, false /* removable */)).thenReturn(subInfoList);
+
+        mUpdater.updateEmbeddedSubscriptions();
+
+        // 3 is new and so a new entry should have been created.
+        verify(mSubscriptionController).insertEmptySubInfoRecord(
+                "3", SubscriptionManager.SIM_NOT_INSERTED);
+        // 1 already existed, so no new entries should be created for it.
+        verify(mSubscriptionController, never()).insertEmptySubInfoRecord(eq("1"), anyInt());
+
+        // Info for 1 and 3 should be updated as active embedded subscriptions.
+        ArgumentCaptor<ContentValues> iccid1Values = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid1Values.capture(),
+                eq(SubscriptionManager.ICC_ID + "=\"1\""), isNull());
+        assertEquals(1,
+                iccid1Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
+        ArgumentCaptor<ContentValues> iccid3Values = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid3Values.capture(),
+                eq(SubscriptionManager.ICC_ID + "=\"3\""), isNull());
+        assertEquals(1,
+                iccid3Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
+
+        // 2 should have been removed since it was returned from the cache but was not present
+        // in the list provided by the LPA.
+        ArgumentCaptor<ContentValues> iccid2Values = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid2Values.capture(),
+                eq(SubscriptionManager.ICC_ID + " IN (\"2\")"), isNull());
+        assertEquals(0,
+                iccid2Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateEmbeddedSubscriptions_listFailure() throws Exception {
+        when(mEuiccManager.isEnabled()).thenReturn(true);
+        when(mEuiccController.blockingGetEuiccProfileInfoList())
+                .thenReturn(GetEuiccProfileInfoListResult.genericError(42, false /* removable */));
+
+        List<SubscriptionInfo> subInfoList = new ArrayList<>();
+        // 1: not embedded, but has matching iccid with an embedded subscription.
+        subInfoList.add(new SubscriptionInfo(
+                0, "1", 0, "", "", 0, 0, "", 0, null, 0, 0, "", false /* isEmbedded */,
+                null /* accessRules */));
+        // 2: embedded.
+        subInfoList.add(new SubscriptionInfo(
+                0, "2", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
+                null /* accessRules */));
+
+        when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
+                new String[0], false /* removable */)).thenReturn(subInfoList);
+
+        mUpdater.updateEmbeddedSubscriptions();
+
+        // No new entries should be created.
+        verify(mSubscriptionController, never()).insertEmptySubInfoRecord(anyString(), anyInt());
+
+        // 1 should not have been touched.
+        verify(mContentProvider, never()).update(eq(SubscriptionManager.CONTENT_URI), any(),
+                eq(SubscriptionManager.ICC_ID + "=\"1\""), isNull());
+        verify(mContentProvider, never()).update(eq(SubscriptionManager.CONTENT_URI), any(),
+                eq(SubscriptionManager.ICC_ID + "IN (\"1\")"), isNull());
+
+        // 2 should have been removed since it was returned from the cache but the LPA had an
+        // error when listing.
+        ArgumentCaptor<ContentValues> iccid2Values = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid2Values.capture(),
+                eq(SubscriptionManager.ICC_ID + " IN (\"2\")"), isNull());
+        assertEquals(0,
+                iccid2Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
+    }
 }

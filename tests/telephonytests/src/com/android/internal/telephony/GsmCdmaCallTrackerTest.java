@@ -45,7 +45,6 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-
 public class GsmCdmaCallTrackerTest extends TelephonyTest {
     private static final int VOICE_CALL_STARTED_EVENT = 0;
     private static final int VOICE_CALL_ENDED_EVENT = 1;
@@ -133,6 +132,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mBackgroundCall.getState());
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMOCallHangup() {
@@ -155,6 +156,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMOCallDialPickUpHangup() {
@@ -291,6 +294,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     }
 
+    @FlakyTest
     @Test
     @MediumTest
     public void testMOCallSwitchHangupForeGround() {
@@ -309,6 +313,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(GsmCdmaCall.State.HOLDING, mCTUT.mBackgroundCall.getState());
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMOCallPickUpHangUpResumeBackGround() {
@@ -352,6 +358,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     }
 
+    @FlakyTest
+    @Ignore
     @Test @SmallTest
     public void testVoiceCallEndedListener(){
         logd("register for voice call ended event");

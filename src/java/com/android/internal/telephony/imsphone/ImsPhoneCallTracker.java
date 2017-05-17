@@ -40,8 +40,8 @@ import android.telecom.ConferenceParticipant;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
-import android.telephony.PreciseDisconnectCause;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.PreciseDisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -49,10 +49,10 @@ import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsServiceProxy;
 import android.telephony.ims.feature.ImsFeature;
 import android.text.TextUtils;
-import android.util.SparseIntArray;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
+import android.util.SparseIntArray;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
@@ -335,6 +335,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 PreciseDisconnectCause.LOCAL_IMS_SERVICE_DOWN);
         PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_LOCAL_NO_PENDING_CALL,
                 PreciseDisconnectCause.LOCAL_NO_PENDING_CALL);
+        PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_LOCAL_ENDED_BY_CONFERENCE_MERGE,
+                PreciseDisconnectCause.NORMAL);
         PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_LOCAL_POWER_OFF,
                 PreciseDisconnectCause.LOCAL_POWER_OFF);
         PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_LOCAL_LOW_BATTERY,
@@ -1718,6 +1720,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.BUSY;
 
             case ImsReasonInfo.CODE_USER_TERMINATED:
+            case ImsReasonInfo.CODE_LOCAL_ENDED_BY_CONFERENCE_MERGE:
                 return DisconnectCause.LOCAL;
 
             case ImsReasonInfo.CODE_LOCAL_CALL_DECLINE:
@@ -2323,16 +2326,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     targetAccessTech + ", reasonInfo=" + reasonInfo);
             }
 
-            boolean isHandoverToWifi = srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN &&
-                    targetAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            // Only consider it a valid handover to WIFI if the source radio tech is known.
+            boolean isHandoverToWifi = srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
+                    && srcAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                    && targetAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
             if (isHandoverToWifi) {
                 // If we handed over to wifi successfully, don't check for failure in the future.
                 removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
             }
 
-            boolean isHandoverFromWifi =
-                    srcAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN &&
-                            targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+            // Only consider it a handover from WIFI if the source and target radio tech is known.
+            boolean isHandoverFromWifi = srcAccessTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                    && targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
+                    && targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
             if (mNotifyHandoverVideoFromWifiToLTE && isHandoverFromWifi && imsCall.isVideoCall()) {
                 log("onCallHandover :: notifying of WIFI to LTE handover.");
                 ImsPhoneConnection conn = findConnection(imsCall);
@@ -2504,6 +2510,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onImsDisconnected(ImsReasonInfo imsReasonInfo) {
             if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
+            resetImsCapabilities();
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
             mPhone.setImsRegistered(false);
             mPhone.processDisconnectReason(imsReasonInfo);
@@ -3224,6 +3231,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             // This will call into updateVideoCallFeatureValue and eventually all clients will be
             // asynchronously notified that the availability of VT over LTE has changed.
             ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+        }
+    }
+
+    private void resetImsCapabilities() {
+        log("Resetting Capabilities...");
+        for (int i = 0; i < mImsFeatureEnabled.length; i++) {
+            mImsFeatureEnabled[i] = false;
         }
     }
 

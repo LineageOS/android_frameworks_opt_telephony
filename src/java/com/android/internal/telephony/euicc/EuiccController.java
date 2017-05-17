@@ -26,19 +26,30 @@ import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.ServiceManager;
+import android.service.euicc.DeleteResult;
 import android.service.euicc.DownloadResult;
+import android.service.euicc.EraseResult;
 import android.service.euicc.EuiccService;
+import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
+import android.service.euicc.GetEuiccProfileInfoListResult;
+import android.service.euicc.SwitchResult;
+import android.service.euicc.UpdateNicknameResult;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.DownloadableSubscription;
+import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.SubscriptionController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -61,6 +72,7 @@ public class EuiccController extends IEuiccController.Stub {
 
     private final Context mContext;
     private final EuiccConnector mConnector;
+    private final SubscriptionManager mSubscriptionManager;
     private final AppOpsManager mAppOpsManager;
     private final PackageManager mPackageManager;
 
@@ -97,6 +109,8 @@ public class EuiccController extends IEuiccController.Stub {
     public EuiccController(Context context, EuiccConnector connector) {
         mContext = context;
         mConnector = connector;
+        mSubscriptionManager = (SubscriptionManager)
+                context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
         mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mPackageManager = context.getPackageManager();
     }
@@ -316,24 +330,23 @@ public class EuiccController extends IEuiccController.Stub {
             for (int i = 0; i < rules.length; i++) {
                 if (rules[i].getCarrierPrivilegeStatus(info)
                         == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                    // TODO(b/33075886): For consistency, this should check the privilege rules in
-                    // the metadata, not the profile itself.
-                    TelephonyManager tm =
-                            (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-                    if (tm.checkCarrierPrivilegesForPackage(mCallingPackage)
-                            == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                        // Permission verified - move on to the download.
+                    // Caller can download this profile. Now, determine whether the caller can also
+                    // manage the current profile; if so, we can perform the download silently; if
+                    // not, the user must provide consent.
+                    if (canManageActiveSubscription(mCallingPackage)) {
                         downloadSubscriptionPrivileged(
                                 mCallingToken, subscription, mSwitchAfterDownload,
                                 mForceDeactivateSim, mCallingPackage, mCallbackIntent);
-                    } else {
-                        // Switch might still be permitted, but the user must consent first.
-                        Intent extrasIntent = new Intent();
-                        addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
-                                EuiccOperation.forDownloadNoPrivileges(
-                                        mCallingToken, subscription, mSwitchAfterDownload));
-                        sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
+                        return;
                     }
+
+                    // Switch might still be permitted, but the user must consent first.
+                    Intent extrasIntent = new Intent();
+                    addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                            EuiccOperation.forDownloadNoPrivileges(
+                                    mCallingToken, subscription, mSwitchAfterDownload,
+                                    mCallingPackage));
+                    sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
                     return;
                 }
             }
@@ -364,6 +377,12 @@ public class EuiccController extends IEuiccController.Stub {
                         switch (result.result) {
                             case DownloadResult.RESULT_OK:
                                 resultCode = OK;
+                                if (!switchAfterDownload) {
+                                    // Since we're not switching, nothing will trigger a
+                                    // subscription list refresh on its own, so request one here.
+                                    SubscriptionController.getInstance()
+                                            .requestEmbeddedSubscriptionInfoListRefresh();
+                                }
                                 break;
                             case DownloadResult.RESULT_MUST_DEACTIVATE_SIM:
                                 resultCode = RESOLVABLE_ERROR;
@@ -395,7 +414,396 @@ public class EuiccController extends IEuiccController.Stub {
                 });
     }
 
-    void sendResult(PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+    /**
+     * Blocking call to {@link EuiccService#onGetEuiccProfileInfoList}.
+     *
+     * <p>Does not perform permission checks as this is not an exposed API and is only used within
+     * the phone process.
+     */
+    public GetEuiccProfileInfoListResult blockingGetEuiccProfileInfoList() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<GetEuiccProfileInfoListResult> resultRef = new AtomicReference<>();
+        mConnector.getEuiccProfileInfoList(
+                new EuiccConnector.GetEuiccProfileInfoListCommandCallback() {
+                    @Override
+                    public void onListComplete(GetEuiccProfileInfoListResult result) {
+                        resultRef.set(result);
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        latch.countDown();
+                    }
+                });
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return resultRef.get();
+    }
+
+    @Override
+    public void getDefaultDownloadableSubscriptionList(PendingIntent callbackIntent) {
+        getDefaultDownloadableSubscriptionList(false /* forceDeactivateSim */, callbackIntent);
+    }
+
+    void getDefaultDownloadableSubscriptionList(
+            boolean forceDeactivateSim, PendingIntent callbackIntent) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get default list");
+        }
+        long token = Binder.clearCallingIdentity();
+        try {
+            mConnector.getDefaultDownloadableSubscriptionList(
+                    forceDeactivateSim, new GetDefaultListCommandCallback(token, callbackIntent));
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    class GetDefaultListCommandCallback implements EuiccConnector.GetDefaultListCommandCallback {
+        protected final long mCallingToken;
+        protected final PendingIntent mCallbackIntent;
+
+        GetDefaultListCommandCallback(long callingToken, PendingIntent callbackIntent) {
+            mCallingToken = callingToken;
+            mCallbackIntent = callbackIntent;
+        }
+
+        @Override
+        public void onGetDefaultListComplete(GetDefaultDownloadableSubscriptionListResult result) {
+            Intent extrasIntent = new Intent();
+            final int resultCode;
+            switch (result.result) {
+                case GetDefaultDownloadableSubscriptionListResult.RESULT_OK:
+                    resultCode = OK;
+                    extrasIntent.putExtra(
+                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTIONS,
+                            result.subscriptions);
+                    break;
+                case GetDefaultDownloadableSubscriptionListResult.RESULT_MUST_DEACTIVATE_SIM:
+                    resultCode = RESOLVABLE_ERROR;
+                    addResolutionIntent(extrasIntent,
+                            EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                            EuiccOperation.forGetDefaultListDeactivateSim(mCallingToken));
+                    break;
+                case GetDefaultDownloadableSubscriptionListResult.RESULT_GENERIC_ERROR:
+                    resultCode = GENERIC_ERROR;
+                    extrasIntent.putExtra(
+                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
+                            result.detailedCode);
+                    break;
+                default:
+                    Log.wtf(TAG, "Unknown result: " + result.result);
+                    resultCode = GENERIC_ERROR;
+                    break;
+            }
+
+            sendResult(mCallbackIntent, resultCode, extrasIntent);
+        }
+
+        @Override
+        public void onEuiccServiceUnavailable() {
+            sendResult(mCallbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+        }
+    }
+
+    /**
+     * Return the {@link EuiccInfo}.
+     *
+     * <p>For API simplicity, this call blocks until completion; while it requires an IPC to load,
+     * that IPC should generally be fast, and this info shouldn't be needed in the normal course of
+     * operation.
+     */
+    @Override
+    public EuiccInfo getEuiccInfo() {
+        // No permissions required as EuiccInfo is not sensitive.
+        long token = Binder.clearCallingIdentity();
+        try {
+            return blockingGetEuiccInfoFromEuiccService();
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    @Override
+    public void deleteSubscription(int subscriptionId, String callingPackage,
+            PendingIntent callbackIntent) {
+        boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
+            if (sub == null) {
+                Log.e(TAG, "Cannot delete nonexistent subscription: " + subscriptionId);
+                sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                return;
+            }
+
+            if (!callerCanWriteEmbeddedSubscriptions
+                    && !sub.canManageSubscription(mContext, callingPackage)) {
+                Log.e(TAG, "No permissions: " + subscriptionId);
+                sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                return;
+            }
+
+            deleteSubscriptionPrivileged(sub.getIccId(), callbackIntent);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    void deleteSubscriptionPrivileged(String iccid, final PendingIntent callbackIntent) {
+        mConnector.deleteSubscription(
+                iccid,
+                new EuiccConnector.DeleteCommandCallback() {
+                    @Override
+                    public void onDeleteComplete(DeleteResult result) {
+                        Intent extrasIntent = new Intent();
+                        final int resultCode;
+                        switch (result.result) {
+                            case DeleteResult.RESULT_OK:
+                                resultCode = OK;
+                                SubscriptionController.getInstance()
+                                        .requestEmbeddedSubscriptionInfoListRefresh();
+                                break;
+                            case DeleteResult.RESULT_GENERIC_ERROR:
+                                resultCode = GENERIC_ERROR;
+                                extrasIntent.putExtra(
+                                        EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
+                                        result.detailedCode);
+                                break;
+                            default:
+                                Log.wtf(TAG, "Unknown result: " + result.result);
+                                resultCode = GENERIC_ERROR;
+                                break;
+                        }
+
+                        sendResult(callbackIntent, resultCode, extrasIntent);
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    }
+                });
+    }
+
+    @Override
+    public void switchToSubscription(int subscriptionId, String callingPackage,
+            PendingIntent callbackIntent) {
+        switchToSubscription(
+                subscriptionId, false /* forceDeactivateSim */, callingPackage, callbackIntent);
+    }
+
+    void switchToSubscription(int subscriptionId, boolean forceDeactivateSim, String callingPackage,
+            PendingIntent callbackIntent) {
+        boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            final String iccid;
+            if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                // Switch to "no" subscription. Only the system can do this.
+                if (!callerCanWriteEmbeddedSubscriptions) {
+                    Log.e(TAG, "Not permitted to switch to empty subscription");
+                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    return;
+                }
+                iccid = null;
+            } else {
+                SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
+                if (sub == null) {
+                    Log.e(TAG, "Cannot switch to nonexistent subscription: " + subscriptionId);
+                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    return;
+                }
+                if (!callerCanWriteEmbeddedSubscriptions
+                        && !sub.canManageSubscription(mContext, callingPackage)) {
+                    Log.e(TAG, "Not permitted to switch to subscription: " + subscriptionId);
+                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    return;
+                }
+                iccid = sub.getIccId();
+            }
+
+            if (!callerCanWriteEmbeddedSubscriptions
+                    && !canManageActiveSubscription(callingPackage)) {
+                // Switch needs consent.
+                Intent extrasIntent = new Intent();
+                addResolutionIntent(extrasIntent,
+                        EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                        EuiccOperation.forSwitchNoPrivileges(
+                                token, subscriptionId, callingPackage));
+                sendResult(callbackIntent, RESOLVABLE_ERROR, extrasIntent);
+                return;
+            }
+
+            switchToSubscriptionPrivileged(token, subscriptionId, iccid, forceDeactivateSim,
+                    callingPackage, callbackIntent);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    void switchToSubscriptionPrivileged(final long callingToken, int subscriptionId,
+            boolean forceDeactivateSim, final String callingPackage,
+            final PendingIntent callbackIntent) {
+        String iccid = null;
+        SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
+        if (sub != null) {
+            iccid = sub.getIccId();
+        }
+        switchToSubscriptionPrivileged(callingToken, subscriptionId, iccid, forceDeactivateSim,
+                callingPackage, callbackIntent);
+    }
+
+    void switchToSubscriptionPrivileged(final long callingToken, int subscriptionId,
+            @Nullable String iccid, boolean forceDeactivateSim, final String callingPackage,
+            final PendingIntent callbackIntent) {
+        mConnector.switchToSubscription(
+                iccid,
+                forceDeactivateSim,
+                new EuiccConnector.SwitchCommandCallback() {
+                    @Override
+                    public void onSwitchComplete(SwitchResult result) {
+                        Intent extrasIntent = new Intent();
+                        final int resultCode;
+                        switch (result.result) {
+                            case SwitchResult.RESULT_OK:
+                                resultCode = OK;
+                                break;
+                            case SwitchResult.RESULT_MUST_DEACTIVATE_SIM:
+                                resultCode = RESOLVABLE_ERROR;
+                                addResolutionIntent(extrasIntent,
+                                        EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                                        EuiccOperation.forSwitchDeactivateSim(
+                                                callingToken, subscriptionId, callingPackage));
+                                break;
+                            case SwitchResult.RESULT_GENERIC_ERROR:
+                                resultCode = GENERIC_ERROR;
+                                extrasIntent.putExtra(
+                                        EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
+                                        result.detailedCode);
+                                break;
+                            default:
+                                Log.wtf(TAG, "Unknown result: " + result.result);
+                                resultCode = GENERIC_ERROR;
+                                break;
+                        }
+
+                        sendResult(callbackIntent, resultCode, extrasIntent);
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {
+                        sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                    }
+                });
+    }
+
+    @Override
+    public void updateSubscriptionNickname(int subscriptionId, String nickname,
+            PendingIntent callbackIntent) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to update nickname");
+        }
+        long token = Binder.clearCallingIdentity();
+        try {
+            SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
+            if (sub == null) {
+                Log.e(TAG, "Cannot update nickname to nonexistent subscription: " + subscriptionId);
+                sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                return;
+            }
+            mConnector.updateSubscriptionNickname(
+                    sub.getIccId(), nickname,
+                    new EuiccConnector.UpdateNicknameCommandCallback() {
+                        @Override
+                        public void onUpdateNicknameComplete(UpdateNicknameResult result) {
+                            Intent extrasIntent = new Intent();
+                            final int resultCode;
+                            switch (result.result) {
+                                case UpdateNicknameResult.RESULT_OK:
+                                    resultCode = OK;
+                                    break;
+                                case UpdateNicknameResult.RESULT_GENERIC_ERROR:
+                                    resultCode = GENERIC_ERROR;
+                                    extrasIntent.putExtra(
+                                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
+                                            result.detailedCode);
+                                    break;
+                                default:
+                                    Log.wtf(TAG, "Unknown result: " + result.result);
+                                    resultCode = GENERIC_ERROR;
+                                    break;
+                            }
+
+                            sendResult(callbackIntent, resultCode, extrasIntent);
+                        }
+
+                        @Override
+                        public void onEuiccServiceUnavailable() {
+                            sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                        }
+                    });
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    @Override
+    public void eraseSubscriptions(PendingIntent callbackIntent) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to erase subscriptions");
+        }
+        long token = Binder.clearCallingIdentity();
+        try {
+            mConnector.eraseSubscriptions(new EuiccConnector.EraseCommandCallback() {
+                @Override
+                public void onEraseComplete(EraseResult result) {
+                    Intent extrasIntent = new Intent();
+                    final int resultCode;
+                    switch (result.result) {
+                        case EraseResult.RESULT_OK:
+                            resultCode = OK;
+                            break;
+                        case EraseResult.RESULT_GENERIC_ERROR:
+                            resultCode = GENERIC_ERROR;
+                            extrasIntent.putExtra(
+                                    EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
+                                    result.detailedCode);
+                            break;
+                        default:
+                            Log.wtf(TAG, "Unknown result: " + result.result);
+                            resultCode = GENERIC_ERROR;
+                            break;
+                    }
+
+                    sendResult(callbackIntent, resultCode, extrasIntent);
+                }
+
+                @Override
+                public void onEuiccServiceUnavailable() {
+                    sendResult(callbackIntent, GENERIC_ERROR, null /* extrasIntent */);
+                }
+            });
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+
+    /** Dispatch the given callback intent with the given result code and data. */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void sendResult(PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
         try {
             callbackIntent.send(mContext, resultCode, extrasIntent);
         } catch (PendingIntent.CanceledException e) {
@@ -429,9 +837,22 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Nullable
+    private SubscriptionInfo getSubscriptionForSubscriptionId(int subscriptionId) {
+        List<SubscriptionInfo> subs = mSubscriptionManager.getAvailableSubscriptionInfoList();
+        int subCount = subs.size();
+        for (int i = 0; i < subCount; i++) {
+            SubscriptionInfo sub = subs.get(i);
+            if (subscriptionId == sub.getSubscriptionId()) {
+                return sub;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
     private String blockingGetEidFromEuiccService() {
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<String> eidRef = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<String> eidRef = new AtomicReference<>();
         mConnector.getEid(new EuiccConnector.GetEidCommandCallback() {
             @Override
             public void onGetEidComplete(String eid) {
@@ -444,12 +865,48 @@ public class EuiccController extends IEuiccController.Stub {
                 latch.countDown();
             }
         });
+        return awaitResult(latch, eidRef);
+    }
+
+    @Nullable
+    private EuiccInfo blockingGetEuiccInfoFromEuiccService() {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<EuiccInfo> euiccInfoRef = new AtomicReference<>();
+        mConnector.getEuiccInfo(new EuiccConnector.GetEuiccInfoCommandCallback() {
+            @Override
+            public void onGetEuiccInfoComplete(EuiccInfo euiccInfo) {
+                euiccInfoRef.set(euiccInfo);
+                latch.countDown();
+            }
+
+            @Override
+            public void onEuiccServiceUnavailable() {
+                latch.countDown();
+            }
+        });
+        return awaitResult(latch, euiccInfoRef);
+    }
+
+    private static <T> T awaitResult(CountDownLatch latch, AtomicReference<T> resultRef) {
         try {
             latch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        return eidRef.get();
+        return resultRef.get();
+    }
+
+    private boolean canManageActiveSubscription(String callingPackage) {
+        // TODO(b/36260308): We should plumb a slot ID through here for multi-SIM devices.
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        int size = subInfoList.size();
+        for (int subIndex = 0; subIndex < size; subIndex++) {
+            SubscriptionInfo subInfo = subInfoList.get(subIndex);
+            if (subInfo.isEmbedded() && subInfo.canManageSubscription(mContext, callingPackage)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean callerCanReadPhoneStatePrivileged() {
