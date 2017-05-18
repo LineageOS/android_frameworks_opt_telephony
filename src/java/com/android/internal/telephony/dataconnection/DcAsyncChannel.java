@@ -342,7 +342,7 @@ public class DcAsyncChannel extends AsyncChannel {
                 value = null;
             }
         } else {
-            value = mDc.getCopyNetworkCapabilities();
+            value = mDc.getNetworkCapabilities();
         }
         return value;
     }
