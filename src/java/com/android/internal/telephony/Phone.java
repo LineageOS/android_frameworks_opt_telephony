@@ -2757,18 +2757,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Report on whether data connectivity is allowed.
      */
-    public boolean isDataConnectivityPossible() {
-        return isDataConnectivityPossible(PhoneConstants.APN_TYPE_DEFAULT);
+    public boolean isDataAllowed() {
+        return ((mDcTracker != null) && (mDcTracker.isDataAllowed(null)));
     }
-
-    /**
-     * Report on whether data connectivity is allowed for an APN.
-     */
-    public boolean isDataConnectivityPossible(String apnType) {
-        return ((mDcTracker != null) &&
-                (mDcTracker.isDataPossible(apnType)));
-    }
-
 
     /**
      * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
@@ -3517,7 +3508,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.println(" getPhoneType()=" + getPhoneType());
         pw.println(" getVoiceMessageCount()=" + getVoiceMessageCount());
         pw.println(" getActiveApnTypes()=" + getActiveApnTypes());
-        pw.println(" isDataConnectivityPossible()=" + isDataConnectivityPossible());
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");

@@ -491,7 +491,7 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
-    public boolean isDataConnectivityPossible() {
+    public boolean isDataAllowed() {
         return false;
     }
 

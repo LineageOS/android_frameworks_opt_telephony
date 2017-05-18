@@ -294,6 +294,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     }
 
+    @FlakyTest
     @Test
     @MediumTest
     public void testMOCallSwitchHangupForeGround() {
@@ -407,4 +408,3 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mRingingCall.getState());
     }
 }
-

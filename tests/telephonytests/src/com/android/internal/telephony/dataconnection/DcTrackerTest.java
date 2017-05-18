@@ -68,7 +68,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TestApplication;
-import com.android.internal.telephony.dataconnection.DcTracker.DataAllowFailReason;
 
 import org.junit.After;
 import org.junit.Before;
@@ -392,7 +391,6 @@ public class DcTrackerTest extends TelephonyTest {
 
         assertEquals(apnSetting, mDct.getActiveApnString(PhoneConstants.APN_TYPE_DEFAULT));
         assertArrayEquals(new String[]{PhoneConstants.APN_TYPE_DEFAULT}, mDct.getActiveApnTypes());
-        assertTrue(mDct.getAnyDataEnabled());
 
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
@@ -406,12 +404,12 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(FAKE_GATEWAY, linkProperties.getRoutes().get(0).getGateway().getHostAddress());
     }
 
-    private boolean isDataAllowed(DataAllowFailReason dataAllowFailReasons) {
+    private boolean isDataAllowed(DataConnectionReasons dataConnectionReasons) {
         try {
             Method method = DcTracker.class.getDeclaredMethod("isDataAllowed",
-                    DataAllowFailReason.class);
+                    DataConnectionReasons.class);
             method.setAccessible(true);
-            return (boolean) method.invoke(mDct, dataAllowFailReasons);
+            return (boolean) method.invoke(mDct, dataConnectionReasons);
         } catch (Exception e) {
             fail(e.toString());
             return false;
@@ -427,9 +425,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
 
-        DataAllowFailReason failureReason = new DataAllowFailReason();
-        boolean allowed = isDataAllowed(failureReason);
-        assertFalse(failureReason.getDataAllowFailReason(), allowed);
+        DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
+        boolean allowed = isDataAllowed(dataConnectionReasons);
+        assertFalse(dataConnectionReasons.toString(), allowed);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -465,9 +463,9 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setEnabled(0, true);
         waitForMs(200);
 
-        failureReason.clearAllReasons();
-        allowed = isDataAllowed(failureReason);
-        assertTrue(failureReason.getDataAllowFailReason(), allowed);
+        dataConnectionReasons = new DataConnectionReasons();
+        allowed = isDataAllowed(dataConnectionReasons);
+        assertTrue(dataConnectionReasons.toString(), allowed);
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
@@ -492,9 +490,9 @@ public class DcTrackerTest extends TelephonyTest {
         // Simulate RIL fails the data call setup
         mSimulatedCommands.setDataCallResponse(false, dcResponse);
 
-        DataAllowFailReason failureReason = new DataAllowFailReason();
-        boolean allowed = isDataAllowed(failureReason);
-        assertFalse(failureReason.getDataAllowFailReason(), allowed);
+        DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
+        boolean allowed = isDataAllowed(dataConnectionReasons);
+        assertFalse(dataConnectionReasons.toString(), allowed);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -531,9 +529,9 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
 
 
-        failureReason.clearAllReasons();
-        allowed = isDataAllowed(failureReason);
-        assertTrue(failureReason.getDataAllowFailReason(), allowed);
+        dataConnectionReasons = new DataConnectionReasons();
+        allowed = isDataAllowed(dataConnectionReasons);
+        assertTrue(dataConnectionReasons.toString(), allowed);
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
@@ -735,9 +733,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
 
-        DataAllowFailReason failureReason = new DataAllowFailReason();
-        boolean allowed = isDataAllowed(failureReason);
-        assertFalse(failureReason.getDataAllowFailReason(), allowed);
+        DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
+        boolean allowed = isDataAllowed(dataConnectionReasons);
+        assertFalse(dataConnectionReasons.toString(), allowed);
 
         ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController, times(1)).registerForIccChanged(eq(mDct),
@@ -778,9 +776,9 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
 
         // Data should not be allowed since auto attach flag has been reset.
-        failureReason.clearAllReasons();
-        allowed = isDataAllowed(failureReason);
-        assertFalse(failureReason.getDataAllowFailReason(), allowed);
+        dataConnectionReasons = new DataConnectionReasons();
+        allowed = isDataAllowed(dataConnectionReasons);
+        assertFalse(dataConnectionReasons.toString(), allowed);
     }
 
     // Test for API carrierActionSetMeteredApnsEnabled.

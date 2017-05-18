@@ -1541,34 +1541,23 @@ public class DataConnection extends StateMachine {
 
             // verify and get updated information in case these things
             // are obsolete
-            {
-                ServiceState ss = mPhone.getServiceState();
-                final int networkType = ss.getDataNetworkType();
-                if (mNetworkInfo.getSubtype() != networkType) {
-                    log("DcActiveState with incorrect subtype (" + mNetworkInfo.getSubtype() +
-                            ", " + networkType + "), updating.");
-                }
-                mNetworkInfo.setSubtype(networkType, TelephonyManager.getNetworkTypeName(networkType));
-                final boolean roaming = ss.getDataRoaming();
-                if (roaming != mNetworkInfo.isRoaming()) {
-                    log("DcActiveState with incorrect roaming (" + mNetworkInfo.isRoaming() +
-                            ", " + roaming +"), updating.");
-                }
-                mNetworkInfo.setRoaming(roaming);
+            ServiceState ss = mPhone.getServiceState();
+            final int networkType = ss.getDataNetworkType();
+            if (mNetworkInfo.getSubtype() != networkType) {
+                log("DcActiveState with incorrect subtype (" + mNetworkInfo.getSubtype()
+                        + ", " + networkType + "), updating.");
+            }
+            mNetworkInfo.setSubtype(networkType, TelephonyManager.getNetworkTypeName(networkType));
+            final boolean roaming = ss.getDataRoaming();
+            if (roaming != mNetworkInfo.isRoaming()) {
+                log("DcActiveState with incorrect roaming (" + mNetworkInfo.isRoaming()
+                        + ", " + roaming + "), updating.");
             }
 
-            boolean createNetworkAgent = true;
-            // If a disconnect is already pending, avoid notifying all of connected
-            if (hasMessages(EVENT_DISCONNECT) ||
-                    hasMessages(EVENT_DISCONNECT_ALL) ||
-                    hasDeferredMessages(EVENT_DISCONNECT) ||
-                    hasDeferredMessages(EVENT_DISCONNECT_ALL)) {
-                log("DcActiveState: skipping notifyAllOfConnected()");
-                createNetworkAgent = false;
-            } else {
-                // If we were retrying there maybe more than one, otherwise they'll only be one.
-                notifyAllOfConnected(Phone.REASON_CONNECTED);
-            }
+            mNetworkInfo.setRoaming(roaming);
+
+            // If we were retrying there maybe more than one, otherwise they'll only be one.
+            notifyAllOfConnected(Phone.REASON_CONNECTED);
 
             mPhone.getCallTracker().registerForVoiceCallStarted(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED, null);
@@ -1596,7 +1585,7 @@ public class DataConnection extends StateMachine {
             if (createNetworkAgent) {
                 setNetworkRestriction();
                 mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
-                        "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
+                        "DcNetworkAgent", mNetworkInfo, makeNetworkCapabilities(), mLinkProperties,
                         50, misc);
             }
         }
@@ -2132,4 +2121,3 @@ public class DataConnection extends StateMachine {
         pw.flush();
     }
 }
-
