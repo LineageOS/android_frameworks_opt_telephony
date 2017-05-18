@@ -602,6 +602,23 @@ public class ServiceStateTracker extends Handler {
 
     @VisibleForTesting
     public void updatePhoneType() {
+        // If we are previously voice roaming, we need to notify that roaming status changed before
+        // we change back to non-roaming.
+        if (mSS != null && mSS.getVoiceRoaming()) {
+            mVoiceRoamingOffRegistrants.notifyRegistrants();
+        }
+
+        // If we are previously data roaming, we need to notify that roaming status changed before
+        // we change back to non-roaming.
+        if (mSS != null && mSS.getDataRoaming()) {
+            mDataRoamingOffRegistrants.notifyRegistrants();
+        }
+
+        // If we are previously in service, we need to notify that we are out of service now.
+        if (mSS != null && mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE) {
+            mDetachedRegistrants.notifyRegistrants();
+        }
+
         mSS = new ServiceState();
         mNewSS = new ServiceState();
         mLastCellInfoListTime = 0;
@@ -673,11 +690,7 @@ public class ServiceStateTracker extends Handler {
 
         logPhoneTypeChange();
 
-        // Tell everybody that we've thrown away state and are starting over with
-        // empty, detached ServiceStates.
-        mVoiceRoamingOffRegistrants.notifyRegistrants();
-        mDataRoamingOffRegistrants.notifyRegistrants();
-        mDetachedRegistrants.notifyRegistrants();
+        // Tell everybody that the registration state and RAT have changed.
         notifyDataRegStateRilRadioTechnologyChanged();
     }
 

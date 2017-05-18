@@ -88,13 +88,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     private static final int EVENT_REGISTERED_TO_NETWORK = 1;
     private static final int EVENT_SUBSCRIPTION_INFO_READY = 2;
-    private static final int EVENT_ROAMING_ON = 3;
-    private static final int EVENT_ROAMING_OFF = 4;
+    private static final int EVENT_DATA_ROAMING_ON = 3;
+    private static final int EVENT_DATA_ROAMING_OFF = 4;
     private static final int EVENT_DATA_CONNECTION_ATTACHED = 5;
     private static final int EVENT_DATA_CONNECTION_DETACHED = 6;
     private static final int EVENT_DATA_RAT_CHANGED = 7;
     private static final int EVENT_PS_RESTRICT_ENABLED = 8;
     private static final int EVENT_PS_RESTRICT_DISABLED = 9;
+    private static final int EVENT_VOICE_ROAMING_ON = 10;
+    private static final int EVENT_VOICE_ROAMING_OFF = 11;
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
 
@@ -439,7 +441,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testRegAndUnregForVoiceRoamingOn() throws Exception {
-        sst.registerForVoiceRoamingOn(mTestHandler, EVENT_ROAMING_ON, null);
+        sst.registerForVoiceRoamingOn(mTestHandler, EVENT_DATA_ROAMING_ON, null);
 
         // Enable roaming and trigger events to notify handler registered
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -452,7 +454,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
-        assertEquals(EVENT_ROAMING_ON, messageArgumentCaptor.getValue().what);
+        assertEquals(EVENT_DATA_ROAMING_ON, messageArgumentCaptor.getValue().what);
 
         // Disable roaming
         mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_HOME);
@@ -486,7 +488,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(100);
 
-        sst.registerForVoiceRoamingOff(mTestHandler, EVENT_ROAMING_OFF, null);
+        sst.registerForVoiceRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null);
 
         // Disable roaming
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -499,7 +501,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
-        assertEquals(EVENT_ROAMING_OFF, messageArgumentCaptor.getValue().what);
+        assertEquals(EVENT_DATA_ROAMING_OFF, messageArgumentCaptor.getValue().what);
 
         // Enable roaming
         mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_ROAMING);
@@ -525,7 +527,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testRegAndUnregForDataRoamingOn() throws Exception {
-        sst.registerForDataRoamingOn(mTestHandler, EVENT_ROAMING_ON, null);
+        sst.registerForDataRoamingOn(mTestHandler, EVENT_DATA_ROAMING_ON, null);
 
         // Enable roaming and trigger events to notify handler registered
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -538,7 +540,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
-        assertEquals(EVENT_ROAMING_ON, messageArgumentCaptor.getValue().what);
+        assertEquals(EVENT_DATA_ROAMING_ON, messageArgumentCaptor.getValue().what);
 
         // Disable roaming
         mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_HOME);
@@ -572,7 +574,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(100);
 
-        sst.registerForDataRoamingOff(mTestHandler, EVENT_ROAMING_OFF, null);
+        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null);
 
         // Disable roaming
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -585,7 +587,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // verify if registered handler has message posted to it
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
-        assertEquals(EVENT_ROAMING_OFF, messageArgumentCaptor.getValue().what);
+        assertEquals(EVENT_DATA_ROAMING_OFF, messageArgumentCaptor.getValue().what);
 
         // Enable roaming
         mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_ROAMING);
@@ -975,6 +977,44 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
         assertEquals(EVENT_SUBSCRIPTION_INFO_READY, messageArgumentCaptor.getValue().what);
+    }
+
+    @Test
+    @MediumTest
+    public void testRoamingPhoneTypeSwitch() {
+
+        // Enable roaming
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_ROAMING);
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        waitForMs(100);
+
+        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null);
+        sst.registerForVoiceRoamingOff(mTestHandler, EVENT_VOICE_ROAMING_OFF, null);
+        sst.registerForDataConnectionDetached(mTestHandler, EVENT_DATA_CONNECTION_DETACHED, null);
+
+        // Call functions which would trigger posting of message on test handler
+        doReturn(false).when(mPhone).isPhoneTypeGsm();
+        sst.updatePhoneType();
+
+        // verify if registered handler has message posted to it
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler, times(3)).sendMessageAtTime(
+                messageArgumentCaptor.capture(), anyLong());
+        List<Message> messages = messageArgumentCaptor.getAllValues();
+        assertEquals(EVENT_VOICE_ROAMING_OFF, messages.get(0).what);
+        assertEquals(EVENT_DATA_ROAMING_OFF, messages.get(1).what);
+        assertEquals(EVENT_DATA_CONNECTION_DETACHED, messages.get(2).what);
+
+
+        // Switch the phone type again
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        sst.updatePhoneType();
+        // Make sure we don't get more events.
+        verify(mTestHandler, times(3)).sendMessageAtTime(
+                messageArgumentCaptor.capture(), anyLong());
     }
 
     @Test
