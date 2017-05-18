@@ -259,10 +259,6 @@ public class DataConnection extends StateMachine {
 
     /* Getter functions */
 
-    NetworkCapabilities getCopyNetworkCapabilities() {
-        return makeNetworkCapabilities();
-    }
-
     LinkProperties getCopyLinkProperties() {
         return new LinkProperties(mLinkProperties);
     }
@@ -865,7 +861,7 @@ public class DataConnection extends StateMachine {
         mRestrictedNetworkOverride = !mDct.isDataEnabled();
     }
 
-    private NetworkCapabilities makeNetworkCapabilities() {
+    NetworkCapabilities getNetworkCapabilities() {
         NetworkCapabilities result = new NetworkCapabilities();
         result.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
 
@@ -1158,7 +1154,7 @@ public class DataConnection extends StateMachine {
                     break;
                 }
                 case DcAsyncChannel.REQ_GET_NETWORK_CAPABILITIES: {
-                    NetworkCapabilities nc = getCopyNetworkCapabilities();
+                    NetworkCapabilities nc = getNetworkCapabilities();
                     if (VDBG) log("REQ_GET_NETWORK_CAPABILITIES networkCapabilities" + nc);
                     mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_NETWORK_CAPABILITIES, nc);
                     break;
@@ -1220,7 +1216,7 @@ public class DataConnection extends StateMachine {
                             TelephonyManager.getNetworkTypeName(networkType));
                     if (mNetworkAgent != null) {
                         updateNetworkInfoSuspendState();
-                        mNetworkAgent.sendNetworkCapabilities(makeNetworkCapabilities());
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                         mNetworkAgent.sendLinkProperties(mLinkProperties);
                     }
@@ -1588,7 +1584,7 @@ public class DataConnection extends StateMachine {
 
             setNetworkRestriction();
             mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
-                    "DcNetworkAgent", mNetworkInfo, makeNetworkCapabilities(), mLinkProperties,
+                    "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
                     50, misc);
         }
 
@@ -1709,7 +1705,7 @@ public class DataConnection extends StateMachine {
                     } else {
                         final ArrayList<Integer> capInfo = (ArrayList<Integer>)ar.result;
                         final int lceBwDownKbps = capInfo.get(0);
-                        NetworkCapabilities nc = makeNetworkCapabilities();
+                        NetworkCapabilities nc = getNetworkCapabilities();
                         if (mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {
                             nc.setLinkDownstreamBandwidthKbps(lceBwDownKbps);
                             if (mNetworkAgent != null) {
@@ -2062,7 +2058,7 @@ public class DataConnection extends StateMachine {
                 + " mLastFailCause=" + mLastFailCause
                 + " mTag=" + mTag
                 + " mLinkProperties=" + mLinkProperties
-                + " linkCapabilities=" + makeNetworkCapabilities()
+                + " linkCapabilities=" + getNetworkCapabilities()
                 + " mRestrictedNetworkOverride=" + mRestrictedNetworkOverride;
     }
 
@@ -2112,7 +2108,7 @@ public class DataConnection extends StateMachine {
         pw.flush();
         pw.println(" mDataRegState=" + mDataRegState);
         pw.println(" mRilRat=" + mRilRat);
-        pw.println(" mNetworkCapabilities=" + makeNetworkCapabilities());
+        pw.println(" mNetworkCapabilities=" + getNetworkCapabilities());
         pw.println(" mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
         pw.println(" mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
         pw.println(" mLastFailCause=" + mLastFailCause);
