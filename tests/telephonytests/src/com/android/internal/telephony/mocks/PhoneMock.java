@@ -801,11 +801,7 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public boolean isDataConnectivityPossible() {
-        throw new RuntimeException("not implemented");
-    }
-
-    public boolean isDataConnectivityPossible(String apnType) {
+    public boolean isDataAllowed() {
         throw new RuntimeException("not implemented");
     }
 
