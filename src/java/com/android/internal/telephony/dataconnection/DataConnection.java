@@ -1582,12 +1582,10 @@ public class DataConnection extends StateMachine {
             }
             misc.subscriberId = mPhone.getSubscriberId();
 
-            if (createNetworkAgent) {
-                setNetworkRestriction();
-                mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
-                        "DcNetworkAgent", mNetworkInfo, makeNetworkCapabilities(), mLinkProperties,
-                        50, misc);
-            }
+            setNetworkRestriction();
+            mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
+                    "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
+                    50, misc);
         }
 
         @Override
