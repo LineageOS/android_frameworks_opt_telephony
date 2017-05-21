@@ -30,6 +30,7 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.IccOpenLogicalChannelResponse;
+import android.telephony.ImsiEncryptionInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -53,7 +54,6 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1448,11 +1448,11 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+    public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
                                                 Message response) {
         // Just echo back data
         if (response != null) {
-            AsyncResult.forMessage(response).result = publicKey;
+            AsyncResult.forMessage(response).result = imsiEncryptionInfo;
             response.sendToTarget();
         }
     }
