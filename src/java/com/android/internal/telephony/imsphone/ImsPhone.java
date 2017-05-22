@@ -1099,6 +1099,7 @@ public class ImsPhone extends ImsPhoneBase {
          * The exception is cancellation of an incoming USSD-REQUEST, which is
          * not on the list.
          */
+        Rlog.d(LOG_TAG, "onMMIDone: mmi=" + mmi);
         if (mPendingMMIs.remove(mmi) || mmi.isUssdRequest()) {
             ResultReceiver receiverCallback = mmi.getUssdCallbackReceiver();
             if (receiverCallback != null) {
@@ -1107,6 +1108,7 @@ public class ImsPhone extends ImsPhoneBase {
                 sendUssdResponse(mmi.getDialString(), mmi.getMessage(), returnCode,
                         receiverCallback );
             } else {
+                Rlog.v(LOG_TAG, "onMMIDone: notifyRegistrants");
                 mMmiCompleteRegistrants.notifyRegistrants(
                     new AsyncResult(null, mmi, null));
             }
