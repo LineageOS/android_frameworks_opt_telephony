@@ -72,7 +72,7 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCdmaSmsDispatcher = null;
-        mCdmaSmsDispatcherTestHandler.quitSafely();
+        mCdmaSmsDispatcherTestHandler.quit();
         super.tearDown();
     }
 

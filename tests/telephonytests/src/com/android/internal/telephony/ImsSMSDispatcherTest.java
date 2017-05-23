@@ -95,7 +95,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mImsSmsDispatcher = null;
-        mImsSmsDispatcherTestHandler.quitSafely();
+        mImsSmsDispatcherTestHandler.quit();
         super.tearDown();
     }
 
