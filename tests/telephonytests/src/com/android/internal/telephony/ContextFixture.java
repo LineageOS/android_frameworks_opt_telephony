@@ -530,6 +530,9 @@ public class ContextFixture implements TestFixture<Context> {
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
         mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
+        // Settings caches the provider after first get/set call, this is needed to make sure
+        // Settings is using mContentProvider as the cached provider across all tests.
+        Settings.Global.getInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
         mContentResolver.addProvider(ServiceStateTable.AUTHORITY, mContentProvider);
         mPermissionTable.add(PERMISSION_ENABLE_ALL);
     }
