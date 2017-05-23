@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static com.android.internal.telephony.dataconnection.ApnSettingTest.createApnSetting;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -61,6 +62,7 @@ import android.telephony.SubscriptionManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
+import android.test.suitebuilder.annotation.SmallTest;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.DctConstants;
@@ -113,6 +115,12 @@ public class DcTrackerTest extends TelephonyTest {
     NetworkRequest mNetworkRequest;
     @Mock
     SubscriptionInfo mSubscriptionInfo;
+    @Mock
+    ApnContext mApnContext;
+    @Mock
+    ApnSetting mApnSetting;
+    @Mock
+    DcAsyncChannel mDcac;
 
     private DcTracker mDct;
     private DcTrackerTestHandler mDcTrackerTestHandler;
@@ -336,6 +344,8 @@ public class DcTrackerTest extends TelephonyTest {
 
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         mBundle = mContextFixture.getCarrierConfigBundle();
+
+        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
 
         mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
         mDcTrackerTestHandler.start();
@@ -670,7 +680,6 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
-    @FlakyTest
     @Test
     @MediumTest
     public void testDataCallOnUserDisableRoaming() throws Exception {
@@ -680,13 +689,16 @@ public class DcTrackerTest extends TelephonyTest {
 
         boolean roamingEnabled = mDct.getDataRoamingEnabled();
         boolean dataEnabled = mDct.getDataEnabled();
+        doReturn(true).when(mServiceState).getDataRoaming();
 
         //set Default and MMS to be metered in the CarrierConfigManager
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
         mDct.setEnabled(5, true);
         mDct.setEnabled(0, true);
-        doReturn(true).when(mServiceState).getDataRoaming();
+
+        logd("Sending DATA_ENABLED_CMD");
+        mDct.setDataEnabled(true);
 
         logd("Sending DISABLE_ROAMING_CMD");
         mDct.setDataRoamingEnabled(false);
@@ -698,9 +710,6 @@ public class DcTrackerTest extends TelephonyTest {
         logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
         waitForMs(200);
-
-        logd("Sending DATA_ENABLED_CMD");
-        mDct.setDataEnabled(true);
 
         waitForMs(200);
         verify(mSimulatedCommandsVerifier, times(1)).setInitialAttachApn(any(DataProfile.class),
@@ -825,5 +834,188 @@ public class DcTrackerTest extends TelephonyTest {
         // Reset settings at the end of test
         mDct.setDataEnabled(dataEnabled);
         waitForMs(200);
+    }
+
+    private void initApns(String targetApn, String[] canHandleTypes) {
+        doReturn(targetApn).when(mApnContext).getApnType();
+        doReturn(true).when(mApnContext).isConnectable();
+        ApnSetting apnSetting = createApnSetting(canHandleTypes);
+        doReturn(apnSetting).when(mApnContext).getNextApnSetting();
+        doReturn(apnSetting).when(mApnContext).getApnSetting();
+        doReturn(mDcac).when(mApnContext).getDcAc();
+        doReturn(true).when(mApnContext).isEnabled();
+        doReturn(true).when(mApnContext).getDependencyMet();
+        doReturn(true).when(mApnContext).isReady();
+        doReturn(true).when(mApnContext).hasNoRestrictedRequests(eq(true));
+    }
+
+    // Test the emergency APN setup.
+    @Test
+    @SmallTest
+    public void testTrySetupDataEmergencyApn() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_EMERGENCY, new String[]{PhoneConstants.APN_TYPE_ALL});
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), any(DataProfile.class),
+                eq(false), eq(false), any(Message.class));
+    }
+
+    // Test the unmetered APN setup when data is disabled.
+    @Test
+    @SmallTest
+    public void testTrySetupDataUnmeteredDataDisabled() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_FOTA, new String[]{PhoneConstants.APN_TYPE_ALL});
+        mDct.setDataEnabled(false);
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), any(DataProfile.class),
+                eq(false), eq(false), any(Message.class));
+    }
+
+    // Test the metered APN setup when data is disabled.
+    @Test
+    @SmallTest
+    public void testTrySetupMeteredDataDisabled() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        mDct.setDataEnabled(false);
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(
+                anyInt(), any(DataProfile.class), eq(false), eq(false), any(Message.class));
+    }
+
+    // Test the restricted data request when data is disabled.
+    @Test
+    @SmallTest
+    public void testTrySetupRestrictedDataDisabled() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        doReturn(false).when(mApnContext).hasNoRestrictedRequests(eq(true));
+
+        mDct.setDataEnabled(false);
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                anyInt(), any(DataProfile.class), eq(false), eq(false), any(Message.class));
+    }
+
+    // Test the default data when data is not connectable.
+    @Test
+    @SmallTest
+    public void testTrySetupNotConnectable() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        doReturn(false).when(mApnContext).isConnectable();
+        mDct.setDataEnabled(true);
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(
+                anyInt(), any(DataProfile.class), eq(false), eq(false), any(Message.class));
+    }
+
+    // Test the default data on IWLAN.
+    @Test
+    @SmallTest
+    public void testTrySetupDefaultOnIWLAN() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN).when(mServiceState)
+                .getRilDataRadioTechnology();
+        mDct.setDataEnabled(true);
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(
+                anyInt(), any(DataProfile.class), eq(false), eq(false), any(Message.class));
+    }
+
+    // Test the default data when the phone is in ECBM.
+    @Test
+    @SmallTest
+    public void testTrySetupDefaultInECBM() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        doReturn(true).when(mPhone).isInEcm();
+        mDct.setDataEnabled(true);
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(
+                anyInt(), any(DataProfile.class), eq(false), eq(false), any(Message.class));
     }
 }
