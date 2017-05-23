@@ -16,6 +16,19 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_ALL;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_DEFAULT;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_HIPRI;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_IA;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_MMS;
+import static com.android.internal.telephony.PhoneConstants.APN_TYPE_SUPL;
+
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.fail;
+
+import static org.junit.Assert.assertEquals;
+
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -24,7 +37,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,18 +44,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.android.internal.telephony.PhoneConstants.APN_TYPE_ALL;
-import static com.android.internal.telephony.PhoneConstants.APN_TYPE_DEFAULT;
-import static com.android.internal.telephony.PhoneConstants.APN_TYPE_HIPRI;
-import static com.android.internal.telephony.PhoneConstants.APN_TYPE_IA;
-import static com.android.internal.telephony.PhoneConstants.APN_TYPE_MMS;
-import static com.android.internal.telephony.PhoneConstants.APN_TYPE_SUPL;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
-import static org.junit.Assert.assertEquals;
-
 
 public class ApnSettingTest extends TelephonyTest {
 
@@ -61,15 +61,15 @@ public class ApnSettingTest extends TelephonyTest {
         super.tearDown();
     }
 
-    private ApnSetting createApnSetting(String[] apnTypes) {
+    static ApnSetting createApnSetting(String[] apnTypes) {
         return createApnSettingInternal(apnTypes, true);
     }
 
-    private ApnSetting createDisabledApnSetting(String[] apnTypes) {
+    private static ApnSetting createDisabledApnSetting(String[] apnTypes) {
         return createApnSettingInternal(apnTypes, false);
     }
 
-    private ApnSetting createApnSettingInternal(String[] apnTypes, boolean carrierEnabled) {
+    private static ApnSetting createApnSettingInternal(String[] apnTypes, boolean carrierEnabled) {
         return new ApnSetting(
                 2163,                   // id
                 "44010",                // numeric
