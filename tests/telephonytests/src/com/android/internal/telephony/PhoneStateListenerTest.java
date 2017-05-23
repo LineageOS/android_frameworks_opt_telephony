@@ -60,7 +60,7 @@ public class PhoneStateListenerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        mPhoneStateListenerHandler.quitSafely();
+        mPhoneStateListenerHandler.quit();
         super.tearDown();
     }
 

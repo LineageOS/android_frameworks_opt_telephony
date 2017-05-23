@@ -71,7 +71,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mDeviceStateMonitor = null;
-        mDeviceStateMonitorTestHandler.quitSafely();
+        mDeviceStateMonitorTestHandler.quit();
         super.tearDown();
     }
 

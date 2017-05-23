@@ -164,7 +164,7 @@ public class DataConnectionTest extends TelephonyTest {
         logd("tearDown");
         mDc = null;
         mDcc = null;
-        mDataConnectionTestHandler.quitSafely();
+        mDataConnectionTestHandler.quit();
         super.tearDown();
     }
 

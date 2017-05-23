@@ -388,6 +388,12 @@ public class PhoneSwitcherTest extends AndroidTestCase {
 //        }
 //        if (commandsInterfaces[0].isDataAllowed()) fail("data allowed");
 //        if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
+
+        for (int i = 0; i < numPhones; i++) {
+            commandsInterfaces[i].dispose();
+        }
+
+        connectivityServiceMock.die();
         testHandler.die();
         handlerThread.quit();
     }
@@ -468,6 +474,11 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         if (commandsInterfaces[0].isDataAllowed()) fail("data allowed");
         if (commandsInterfaces[1].isDataAllowed() == false) fail("data not allowed");
 
+        for (int i = 0; i < numPhones; i++) {
+            commandsInterfaces[i].dispose();
+        }
+
+        connectivityServiceMock.die();
         testHandler.die();
         handlerThread.quit();
     }
@@ -537,6 +548,11 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         if (commandsInterfaces[0].isDataAllowed() == false) fail("data not allowed");
         if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
 
+        for (int i = 0; i < numPhones; i++) {
+            commandsInterfaces[i].dispose();
+        }
+
+        connectivityServiceMock.die();
         testHandler.die();
         handlerThread.quit();
     }
