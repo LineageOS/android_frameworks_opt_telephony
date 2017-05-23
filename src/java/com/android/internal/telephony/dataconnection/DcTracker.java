@@ -904,8 +904,7 @@ public class DcTracker extends Handler {
                             // data connection.
                             apnContext.setReason(Phone.REASON_DATA_ENABLED);
                             cleanUpConnection(true, apnContext);
-                        } else if (apnContext.getApnSetting().isMetered(mPhone.getContext(),
-                                mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())
+                        } else if (apnContext.getApnSetting().isMetered(mPhone)
                                 && (netCaps != null && netCaps.hasCapability(
                                         NetworkCapabilities.NET_CAPABILITY_NOT_METERED))) {
                             if (DBG) {
@@ -1319,8 +1318,7 @@ public class DcTracker extends Handler {
                 SubscriptionManager.getDefaultDataSubscriptionId());
 
         boolean isMeteredApnType = apnContext == null
-                || ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone.getContext(),
-                        mPhone.getSubId(), mPhone.getServiceState().getDataRoaming());
+                || ApnSetting.isMeteredApnType(apnContext.getApnType(), mPhone);
 
         PhoneConstants.State phoneState = PhoneConstants.State.IDLE;
         // Note this is explicitly not using mPhone.getState.  See b/19090488.
@@ -1646,8 +1644,7 @@ public class DcTracker extends Handler {
                 // Use ApnSetting to decide metered or non-metered.
                 // Tear down all metered data connections.
                 ApnSetting apnSetting = apnContext.getApnSetting();
-                if (apnSetting != null && apnSetting.isMetered(mPhone.getContext(),
-                        mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())) {
+                if (apnSetting != null && apnSetting.isMetered(mPhone)) {
                     if (DBG) log("clean up metered ApnContext Type: " + apnContext.getApnType());
                     apnContext.setReason(reason);
                     cleanUpConnection(tearDown, apnContext);
