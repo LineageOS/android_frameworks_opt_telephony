@@ -15,6 +15,13 @@
  */
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
+
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Bundle;
@@ -32,19 +39,13 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 public class CarrierActionAgentTest extends TelephonyTest {
     private CarrierActionAgent mCarrierActionAgentUT;
     private FakeContentResolver mFakeContentResolver;
     private FakeContentProvider mFakeContentProvider;
     private static int DATA_CARRIER_ACTION_EVENT = 0;
     private static int RADIO_CARRIER_ACTION_EVENT = 1;
+    private CarrierActionAgentHandler mCarrierActionAgentHandler;
     @Mock
     private Handler mDataActionHandler;
     @Mock
@@ -107,7 +108,8 @@ public class CarrierActionAgentTest extends TelephonyTest {
         mFakeContentProvider = new FakeContentProvider();
         mFakeContentResolver.addProvider(Settings.AUTHORITY, mFakeContentProvider);
         doReturn(mFakeContentResolver).when(mContext).getContentResolver();
-        new CarrierActionAgentHandler(getClass().getSimpleName()).start();
+        mCarrierActionAgentHandler = new CarrierActionAgentHandler(getClass().getSimpleName());
+        mCarrierActionAgentHandler.start();
         waitUntilReady();
         logd("CarrierActionAgentTest -Setup!");
     }
@@ -118,7 +120,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
         mFakeContentProvider.simulateChange(
                 Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON));
-        waitForMs(50);
+        waitForMs(200);
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
 
         verify(mDataActionHandler).sendMessageAtTime(message.capture(), anyLong());
@@ -130,6 +132,8 @@ public class CarrierActionAgentTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
+        mCarrierActionAgentHandler.quit();
         super.tearDown();
     }
 }
