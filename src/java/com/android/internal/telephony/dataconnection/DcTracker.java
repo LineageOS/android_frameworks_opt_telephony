@@ -91,6 +91,7 @@ import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataD
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.AsyncChannel;
@@ -121,6 +122,7 @@ public class DcTracker extends Handler {
     public AtomicBoolean isCleanupRequired = new AtomicBoolean(false);
 
     private final AlarmManager mAlarmManager;
+    private SIMRecords mSimRecords;
 
     /* Currently requested APN type (TODO: This should probably be a parameter not a member) */
     private String mRequestedApnType = PhoneConstants.APN_TYPE_DEFAULT;
@@ -3658,9 +3660,10 @@ public class DcTracker extends Handler {
 
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
+                mSimRecords = mPhone.getSIMRecords();
                 if ((mIccRecords.get() instanceof RuimRecords) &&
-                        (mPhone.getSIMRecords() != null)) {
-                    mPhone.getSIMRecords().registerForRecordsLoaded(this,
+                        (mSimRecords != null)) {
+                    mSimRecords.registerForRecordsLoaded(this,
                             EVENT_SIM_RECORDS_LOADED, null);
                 } else {
                     onRecordsLoaded();
@@ -3669,7 +3672,10 @@ public class DcTracker extends Handler {
 
             case EVENT_SIM_RECORDS_LOADED:
                 onRecordsLoaded();
-                mPhone.getSIMRecords().unregisterForRecordsLoaded(this);
+                if (mSimRecords != null) {
+                    mSimRecords.unregisterForRecordsLoaded(this);
+                    mSimRecords = null;
+                }
                 break;
 
             case DctConstants.EVENT_DATA_CONNECTION_DETACHED:
