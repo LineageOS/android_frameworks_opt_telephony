@@ -142,7 +142,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
-        mImsPhoneTestHandler.quitSafely();
+        mImsPhoneTestHandler.quit();
         super.tearDown();
     }
 
