@@ -150,6 +150,12 @@ public class SimulatedCommands extends BaseCommands
         mPin2Code = DEFAULT_SIM_PIN2_CODE;
     }
 
+    public void dispose() {
+        if (mHandlerThread != null) {
+            mHandlerThread.quit();
+        }
+    }
+
     private void log(String str) {
         Rlog.d(LOG_TAG, str);
     }

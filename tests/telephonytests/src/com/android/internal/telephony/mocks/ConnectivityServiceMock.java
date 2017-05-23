@@ -127,6 +127,9 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
 
     public void die() {
         // clean up threads/handlers
+        if (mHandlerThread != null) {
+            mHandlerThread.quit();
+        }
     }
 
     private class InternalHandler extends Handler {

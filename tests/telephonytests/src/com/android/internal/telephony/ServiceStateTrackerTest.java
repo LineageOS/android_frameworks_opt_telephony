@@ -146,7 +146,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         sst = null;
-        mSSTTestHandler.quitSafely();
+        mSSTTestHandler.quit();
         super.tearDown();
     }
 
