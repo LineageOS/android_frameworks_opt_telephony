@@ -781,6 +781,8 @@ public class EuiccController extends IEuiccController.Stub {
                     switch (result.result) {
                         case EraseResult.RESULT_OK:
                             resultCode = OK;
+                            SubscriptionController.getInstance()
+                                    .requestEmbeddedSubscriptionInfoListRefresh();
                             break;
                         case EraseResult.RESULT_GENERIC_ERROR:
                             resultCode = GENERIC_ERROR;
