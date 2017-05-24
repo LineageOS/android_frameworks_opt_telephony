@@ -756,14 +756,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     processCode () throws CallStateException {
         try {
             if (isShortCode()) {
-                Rlog.d(LOG_TAG, "isShortCode");
+                Rlog.d(LOG_TAG, "processCode: isShortCode");
 
                 // These just get treated as USSD.
-                Rlog.d(LOG_TAG, "Sending short code '"
+                Rlog.d(LOG_TAG, "processCode: Sending short code '"
                        + mDialingNumber + "' over CS pipe.");
                 throw new CallStateException(Phone.CS_FALLBACK);
             } else if (isServiceCodeCallForwarding(mSc)) {
-                Rlog.d(LOG_TAG, "is CF");
+                Rlog.d(LOG_TAG, "processCode: is CF");
 
                 String dialingNumber = mSia;
                 int reason = scToCallForwardReason(mSc);
@@ -806,7 +806,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         ((cfAction == CommandsInterface.CF_ACTION_ENABLE) ||
                                 (cfAction == CommandsInterface.CF_ACTION_REGISTRATION)) ? 1 : 0;
 
-                    Rlog.d(LOG_TAG, "is CF setCallForward");
+                    Rlog.d(LOG_TAG, "processCode: is CF setCallForward");
                     mPhone.setCallForwardingOption(cfAction, reason,
                             dialingNumber, serviceClass, time, obtainMessage(
                                     EVENT_SET_CFF_COMPLETE,
@@ -839,21 +839,21 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         mPhone.mCT.getUtInterface().updateCLIR(CommandsInterface.CLIR_INVOCATION,
                             obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for updateCLIR.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for updateCLIR.");
                     }
                 } else if (isDeactivate()) {
                     try {
                         mPhone.mCT.getUtInterface().updateCLIR(CommandsInterface.CLIR_SUPPRESSION,
                             obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for updateCLIR.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for updateCLIR.");
                     }
                 } else if (isInterrogate()) {
                     try {
                         mPhone.mCT.getUtInterface()
                             .queryCLIR(obtainMessage(EVENT_GET_CLIR_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for queryCLIR.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for queryCLIR.");
                     }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
@@ -865,14 +865,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         mPhone.mCT.getUtInterface()
                             .queryCLIP(obtainMessage(EVENT_SUPP_SVC_QUERY_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for queryCLIP.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for queryCLIP.");
                     }
                 } else if (isActivate() || isDeactivate()) {
                     try {
                         mPhone.mCT.getUtInterface().updateCLIP(isActivate(),
                                 obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for updateCLIP.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for updateCLIP.");
                     }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
@@ -884,14 +884,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         mPhone.mCT.getUtInterface()
                             .queryCOLP(obtainMessage(EVENT_SUPP_SVC_QUERY_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for queryCOLP.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for queryCOLP.");
                     }
                 } else if (isActivate() || isDeactivate()) {
                     try {
                         mPhone.mCT.getUtInterface().updateCOLP(isActivate(),
                                  obtainMessage(EVENT_SET_COMPLETE, this));
                      } catch (ImsException e) {
-                         Rlog.d(LOG_TAG, "Could not get UT handle for updateCOLP.");
+                         Rlog.d(LOG_TAG, "processCode: Could not get UT handle for updateCOLP.");
                      }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
@@ -903,21 +903,21 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         mPhone.mCT.getUtInterface().updateCOLR(NUM_PRESENTATION_RESTRICTED,
                                 obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for updateCOLR.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for updateCOLR.");
                     }
                 } else if (isDeactivate()) {
                     try {
                         mPhone.mCT.getUtInterface().updateCOLR(NUM_PRESENTATION_ALLOWED,
                                 obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for updateCOLR.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for updateCOLR.");
                     }
                 } else if (isInterrogate()) {
                     try {
                         mPhone.mCT.getUtInterface()
                             .queryCOLR(obtainMessage(EVENT_SUPP_SVC_QUERY_COMPLETE, this));
                     } catch (ImsException e) {
-                        Rlog.d(LOG_TAG, "Could not get UT handle for queryCOLR.");
+                        Rlog.d(LOG_TAG, "processCode: Could not get UT handle for queryCOLR.");
                     }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
@@ -933,7 +933,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     }
                  // TODO: isRegister() case needs to be handled.
                 } catch (ImsException e) {
-                    Rlog.d(LOG_TAG, "Could not get UT handle for ICB.");
+                    Rlog.d(LOG_TAG, "processCode: Could not get UT handle for ICB.");
                 }
             } else if (mSc != null && mSc.equals(SC_BAICa)) {
                 int callAction =0;
@@ -956,7 +956,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                                 null);
                     }
                 } catch (ImsException e) {
-                    Rlog.d(LOG_TAG, "Could not get UT handle for ICBa.");
+                    Rlog.d(LOG_TAG, "processCode: Could not get UT handle for ICBa.");
                 }
             } else if (mSc != null && mSc.equals(SC_WAIT)) {
                 // sia = basic service group
@@ -971,15 +971,17 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
             } else if (mPoundString != null) {
-                Rlog.d(LOG_TAG, "Sending pound string '"
+                Rlog.d(LOG_TAG, "processCode: Sending pound string '"
                        + mDialingNumber + "' over CS pipe.");
                 throw new CallStateException(Phone.CS_FALLBACK);
             } else {
+                Rlog.d(LOG_TAG, "processCode: invalid or unsupported MMI");
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
             }
         } catch (RuntimeException exc) {
             mState = State.FAILED;
             mMessage = mContext.getText(com.android.internal.R.string.mmiError);
+            Rlog.d(LOG_TAG, "processCode: RuntimeException = " + exc);
             mPhone.onMMIDone(this);
         }
     }
@@ -998,7 +1000,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         if (mState == State.PENDING) {
             if (ussdMessage == null) {
                 mMessage = mContext.getText(com.android.internal.R.string.mmiComplete);
+                Rlog.v(LOG_TAG, "onUssdFinished: no message; using: " + mMessage);
             } else {
+                Rlog.v(LOG_TAG, "onUssdFinished: message: " + ussdMessage);
                 mMessage = ussdMessage;
             }
             mIsUssdRequest = isUssdRequest;
@@ -1006,7 +1010,6 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             if (!isUssdRequest) {
                 mState = State.COMPLETE;
             }
-
             mPhone.onMMIDone(this);
         }
     }
@@ -1022,7 +1025,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         if (mState == State.PENDING) {
             mState = State.FAILED;
             mMessage = mContext.getText(com.android.internal.R.string.mmiError);
-
+            Rlog.d(LOG_TAG, "onUssdFinishedError: mmi=" + this);
             mPhone.onMMIDone(this);
         }
     }
@@ -1140,7 +1143,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                                obtainMessage(EVENT_SET_COMPLETE,this),
                                icbNum);
         } catch (ImsException e) {
-            Rlog.d(LOG_TAG, "Could not get UT handle for updating ICB.");
+            Rlog.d(LOG_TAG, "processIcbMmiCodeForUpdate:Could not get UT handle for updating ICB.");
         }
     }
 
@@ -1230,6 +1233,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onSetComplete: mmi=" + this);
         mPhone.onMMIDone(this);
     }
 
@@ -1384,6 +1388,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onQueryCfComplete: mmi=" + this);
         mPhone.onMMIDone(this);
 
     }
@@ -1409,12 +1414,13 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             mState = State.FAILED;
             ImsSsInfo ssInfo = null;
             if (ar.result instanceof Bundle) {
-                Rlog.d(LOG_TAG, "Received CLIP/COLP/COLR Response.");
+                Rlog.d(LOG_TAG, "onSuppSvcQueryComplete: Received CLIP/COLP/COLR Response.");
                 // Response for CLIP, COLP and COLR queries.
                 Bundle ssInfoResp = (Bundle) ar.result;
                 ssInfo = (ImsSsInfo) ssInfoResp.getParcelable(UT_BUNDLE_KEY_SSINFO);
                 if (ssInfo != null) {
-                    Rlog.d(LOG_TAG, "ImsSsInfo mStatus = " + ssInfo.mStatus);
+                    Rlog.d(LOG_TAG,
+                            "onSuppSvcQueryComplete: ImsSsInfo mStatus = " + ssInfo.mStatus);
                     if (ssInfo.mStatus == ImsSsInfo.DISABLED) {
                         sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
                         mState = State.COMPLETE;
@@ -1429,7 +1435,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 }
 
             } else {
-                Rlog.d(LOG_TAG, "Received Call Barring Response.");
+                Rlog.d(LOG_TAG, "onSuppSvcQueryComplete: Received Call Barring Response.");
                 // Response for Call Barring queries.
                 int[] cbInfos = (int[]) ar.result;
                 if (cbInfos[0] == 1) {
@@ -1443,11 +1449,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onSuppSvcQueryComplete mmi=" + this);
         mPhone.onMMIDone(this);
     }
 
     private void onIcbQueryComplete(AsyncResult ar) {
-        Rlog.d(LOG_TAG, "onIcbQueryComplete ");
+        Rlog.d(LOG_TAG, "onIcbQueryComplete mmi=" + this);
         StringBuilder sb = new StringBuilder(getScString());
         sb.append("\n");
 
@@ -1508,7 +1515,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             int[] clirInfo = ssInfo.getIntArray(UT_BUNDLE_KEY_CLIR);
             // clirInfo[0] = The 'n' parameter from TS 27.007 7.7
             // clirInfo[1] = The 'm' parameter from TS 27.007 7.7
-            Rlog.d(LOG_TAG, "CLIR param n=" + clirInfo[0]
+            Rlog.d(LOG_TAG, "onQueryClirComplete: CLIR param n=" + clirInfo[0]
                     + " m=" + clirInfo[1]);
 
             // 'm' parameter.
@@ -1579,6 +1586,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onQueryClirComplete mmi=" + this);
         mPhone.onMMIDone(this);
     }
 
@@ -1623,6 +1631,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onQueryComplete mmi=" + this);
         mPhone.onMMIDone(this);
     }
 
