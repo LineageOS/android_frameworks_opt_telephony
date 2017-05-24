@@ -16,6 +16,7 @@
 package com.android.internal.telephony.euicc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -225,6 +226,35 @@ public class EuiccConnectorTest extends TelephonyTest {
             }
         });
         mLooper.dispatchAll();
+        assertTrue(called.get());
+    }
+
+    @Test
+    public void testCommandDispatch_processDied() throws Exception {
+        // Kick off the asynchronous command.
+        prepareEuiccApp(true /* hasPermission */, true /* requiresBindPermission */,
+                true /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        final AtomicBoolean called = new AtomicBoolean(false);
+        mConnector.getEid(new EuiccConnector.GetEidCommandCallback() {
+            @Override
+            public void onGetEidComplete(String eid) {
+                fail("Unexpected command success callback");
+            }
+
+            @Override
+            public void onEuiccServiceUnavailable() {
+                assertTrue("Callback called twice", called.compareAndSet(false, true));
+            }
+        });
+        mLooper.dispatchAll();
+        assertFalse(called.get());
+
+        // Now, pretend the remote process died.
+        mConnector.onServiceDisconnected(null /* name */);
+        mLooper.dispatchAll();
+
+        // Callback should have been called.
         assertTrue(called.get());
     }
 

@@ -41,7 +41,6 @@ import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
-import android.provider.Settings;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -87,6 +86,8 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class TelephonyTest {
     protected static String TAG;
+
+    private static final int MAX_INIT_WAIT_MS = 30000; // 30 seconds
 
     @Mock
     protected GsmCdmaPhone mPhone;
@@ -229,11 +230,14 @@ public abstract class TelephonyTest {
     }
 
     protected void waitUntilReady() {
-        while (true) {
-            synchronized (mLock) {
-                if (mReady) {
-                    break;
-                }
+        synchronized (mLock) {
+            try {
+                mLock.wait(MAX_INIT_WAIT_MS);
+            } catch (InterruptedException ie) {
+            }
+
+            if (!mReady) {
+                fail("Telephony tests failed to initialize");
             }
         }
     }
@@ -241,6 +245,7 @@ public abstract class TelephonyTest {
     protected void setReady(boolean ready) {
         synchronized (mLock) {
             mReady = ready;
+            mLock.notifyAll();
         }
     }
 
@@ -445,13 +450,12 @@ public abstract class TelephonyTest {
         mSST.mSS = mServiceState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
 
-        Settings.Global.putInt(mContext.getContentResolver(),
-                Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
-
         setReady(false);
     }
 
     protected void tearDown() throws Exception {
+
+        mSimulatedCommands.dispose();
 
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
         sharedPreferences.edit().clear().commit();
