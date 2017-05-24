@@ -444,6 +444,8 @@ public abstract class TelephonyTest {
 
     protected void tearDown() throws Exception {
 
+        mSimulatedCommands.dispose();
+
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
         sharedPreferences.edit().clear().commit();
 
