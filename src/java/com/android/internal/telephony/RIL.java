@@ -3266,7 +3266,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             CdmaSmsWriteArgs args = new CdmaSmsWriteArgs();
             args.status = status;
-            constructCdmaSendSmsRilRequest(args.message, pdu.getBytes());
+            constructCdmaSendSmsRilRequest(args.message, IccUtils.hexStringToBytes(pdu));
 
             try {
                 radioProxy.writeSmsToRuim(rr.mSerial, args);
