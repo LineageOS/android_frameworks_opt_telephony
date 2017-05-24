@@ -67,7 +67,7 @@ public class SmsStorageMonitorTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mSmsStorageMonitor = null;
-        mSmsStorageMonitorTestHandler.quitSafely();
+        mSmsStorageMonitorTestHandler.quit();
         super.tearDown();
     }
 

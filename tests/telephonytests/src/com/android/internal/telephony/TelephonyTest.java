@@ -41,7 +41,6 @@ import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
-import android.provider.Settings;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -442,13 +441,12 @@ public abstract class TelephonyTest {
         mSST.mSS = mServiceState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
 
-        Settings.Global.putInt(mContext.getContentResolver(),
-                Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
-
         setReady(false);
     }
 
     protected void tearDown() throws Exception {
+
+        mSimulatedCommands.dispose();
 
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
         sharedPreferences.edit().clear().commit();
