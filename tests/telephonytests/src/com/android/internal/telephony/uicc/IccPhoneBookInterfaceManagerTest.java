@@ -89,7 +89,7 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        mIccPhoneBookInterfaceManagerHandler.quitSafely();
+        mIccPhoneBookInterfaceManagerHandler.quit();
         super.tearDown();
     }
     @Test

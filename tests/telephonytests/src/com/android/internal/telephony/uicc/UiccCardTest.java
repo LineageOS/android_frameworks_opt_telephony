@@ -134,7 +134,7 @@ public class UiccCardTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        mTestHandlerThread.quitSafely();
+        mTestHandlerThread.quit();
         super.tearDown();
     }
 
