@@ -24,12 +24,10 @@ import static org.mockito.Mockito.verify;
 
 import android.database.ContentObserver;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.provider.Settings;
-import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -42,7 +40,6 @@ import org.mockito.Mock;
 public class CarrierActionAgentTest extends TelephonyTest {
     private CarrierActionAgent mCarrierActionAgentUT;
     private FakeContentResolver mFakeContentResolver;
-    private FakeContentProvider mFakeContentProvider;
     private static int DATA_CARRIER_ACTION_EVENT = 0;
     private static int RADIO_CARRIER_ACTION_EVENT = 1;
     @Mock
@@ -60,23 +57,6 @@ public class CarrierActionAgentTest extends TelephonyTest {
             } else {
                 mCarrierActionAgentUT.getContentObserver().dispatchChange(false, uri);
             }
-        }
-    }
-
-    private class FakeContentProvider extends MockContentProvider {
-        private int mExpectedValue;
-        public void simulateChange(Uri uri) {
-            mFakeContentResolver.notifyChange(uri, null);
-        }
-        @Override
-        public Bundle call(String method, String request, Bundle args) {
-            Bundle result = new Bundle();
-            if (Settings.CALL_METHOD_GET_GLOBAL.equals(method)) {
-                result.putString(Settings.NameValueTable.VALUE, Integer.toString(mExpectedValue));
-            } else {
-                mExpectedValue = Integer.parseInt(args.getString(Settings.NameValueTable.VALUE));
-            }
-            return result;
         }
     }
 
@@ -104,8 +84,6 @@ public class CarrierActionAgentTest extends TelephonyTest {
         logd("CarrierActionAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mFakeContentResolver = new FakeContentResolver();
-        mFakeContentProvider = new FakeContentProvider();
-        mFakeContentResolver.addProvider(Settings.AUTHORITY, mFakeContentProvider);
         doReturn(mFakeContentResolver).when(mContext).getContentResolver();
         new CarrierActionAgentHandler(getClass().getSimpleName()).start();
         waitUntilReady();
@@ -116,8 +94,8 @@ public class CarrierActionAgentTest extends TelephonyTest {
     @SmallTest
     public void testCarrierActionResetOnAPM() {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
-        mFakeContentProvider.simulateChange(
-                Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON));
+        mFakeContentResolver.notifyChange(
+                Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON), null);
         waitForMs(200);
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
 

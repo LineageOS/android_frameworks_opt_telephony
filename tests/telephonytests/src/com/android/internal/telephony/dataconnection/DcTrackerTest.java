@@ -281,10 +281,6 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        // set the lazy cp to the real content provider in order to use the real settings
-        ContentResolver realContentResolver = TestApplication.getAppContext().getContentResolver();
-        Settings.Global.getInt(realContentResolver, Settings.Global.MOBILE_DATA, 1);
-
         logd("DcTrackerTest +Setup!");
         super.setUp(getClass().getSimpleName());
 
@@ -350,7 +346,7 @@ public class DcTrackerTest extends TelephonyTest {
         logd("DcTrackerTest -tearDown");
         mDct.removeCallbacksAndMessages(null);
         mDct = null;
-        mDcTrackerTestHandler.quitSafely();
+        mDcTrackerTestHandler.quit();
         super.tearDown();
     }
 

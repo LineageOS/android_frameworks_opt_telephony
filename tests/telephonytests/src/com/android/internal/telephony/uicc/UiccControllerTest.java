@@ -96,7 +96,7 @@ public class UiccControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        mUiccControllerHandlerThread.quitSafely();
+        mUiccControllerHandlerThread.quit();
         super.tearDown();
     }
 
