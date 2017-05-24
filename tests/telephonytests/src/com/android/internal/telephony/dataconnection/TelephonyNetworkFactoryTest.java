@@ -98,6 +98,7 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
         }
 
         void die() {
+            connectivityServiceMock.die();
             looper.quit();
             handlerThread.quit();
         }
@@ -139,7 +140,7 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
 
         TestSetup ts = new TestSetup(numberOfPhones);
 
-        TelephonyNetworkFactory tnf = makeTnf(phoneId, ts);
+        makeTnf(phoneId, ts);
 
         ts.subscriptionControllerMock.setDefaultDataSubId(subId);
         ts.subscriptionControllerMock.setSlotSubId(phoneId, subId);
@@ -234,7 +235,7 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
 
         TestSetup ts = new TestSetup(numberOfPhones);
 
-        TelephonyNetworkFactory tnf = makeTnf(phoneId, ts);
+        makeTnf(phoneId, ts);
 
         ts.subscriptionControllerMock.setDefaultDataSubId(subId);
         ts.subscriptionControllerMock.setSlotSubId(phoneId, subId);
@@ -272,7 +273,7 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
             fail("test 5, LiveRequests != 0");
         }
 
-        NetworkRequest subSpecificMms = makeSubSpecificMmsRequest(ts, subId);
+        makeSubSpecificMmsRequest(ts, subId);
         waitABit();
         if (ts.dcTrackerMock.getNumberOfLiveRequests() != 1) {
             fail("test 6,  LiveRequests != 1");
@@ -285,7 +286,7 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
             fail("test 7,  LiveRequests != 0");
         }
 
-        NetworkRequest subSpecificDefault = makeSubSpecificDefaultRequest(ts, subId);
+        makeSubSpecificDefaultRequest(ts, subId);
         waitABit();
         if (ts.dcTrackerMock.getNumberOfLiveRequests() != 0) {
             fail("test 8, LiveRequests != 0");

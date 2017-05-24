@@ -132,7 +132,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mPhoneUT.removeCallbacksAndMessages(null);
         mPhoneUT = null;
-        mGsmCdmaPhoneTestHandler.quitSafely();
+        mGsmCdmaPhoneTestHandler.quit();
         super.tearDown();
     }
 
