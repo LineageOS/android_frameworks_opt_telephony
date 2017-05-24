@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import android.support.test.filters.FlakyTest;
-
 import static com.android.internal.telephony.PhoneConstants.APN_TYPE_ALL;
 import static com.android.internal.telephony.PhoneConstants.APN_TYPE_DEFAULT;
 import static com.android.internal.telephony.PhoneConstants.APN_TYPE_HIPRI;
@@ -326,7 +324,6 @@ public class ApnSettingTest extends TelephonyTest {
         assertTrue(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_FOTA, mPhone));
     }
 
-    @FlakyTest
     @Test
     @SmallTest
     public void testIsIwlanMetered() throws Exception {
@@ -457,7 +454,6 @@ public class ApnSettingTest extends TelephonyTest {
         assertFalse(ApnSetting.isMeteredApnType(PhoneConstants.APN_TYPE_HIPRI, mPhone));
     }
 
-    @FlakyTest
     @Test
     @SmallTest
     public void testIsIwlanMeteredAnother() throws Exception {
@@ -553,7 +549,6 @@ public class ApnSettingTest extends TelephonyTest {
                 isMetered(mPhone));
     }
 
-    @FlakyTest
     @Test
     @SmallTest
     public void testIsIwlanMeteredNothingCharged() throws Exception {
@@ -631,7 +626,6 @@ public class ApnSettingTest extends TelephonyTest {
                 .isMetered(mPhone));
     }
 
-    @FlakyTest
     @Test
     @SmallTest
     public void testIsIwlanMeteredNothingFree() throws Exception {
