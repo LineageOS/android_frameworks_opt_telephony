@@ -57,6 +57,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccInfo;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -69,6 +70,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * State machine which maintains the binding to the EuiccService implementation and issues commands.
@@ -115,18 +117,24 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private static final int CMD_SERVICE_CONNECTED = 4;
     /** Command indicating that the service has disconnected. */
     private static final int CMD_SERVICE_DISCONNECTED = 5;
+    /**
+     * Command indicating that a command has completed and the callback should be executed.
+     *
+     * <p>{@link Message#obj} is a {@link Runnable} which will trigger the callback.
+     */
+    private static final int CMD_COMMAND_COMPLETE = 6;
 
     // Commands corresponding with EuiccService APIs. Keep isEuiccCommand in sync with any changes.
-    private static final int CMD_GET_EID = 6;
-    private static final int CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA = 7;
-    private static final int CMD_DOWNLOAD_SUBSCRIPTION = 8;
-    private static final int CMD_GET_EUICC_PROFILE_INFO_LIST = 9;
-    private static final int CMD_GET_DEFAULT_DOWNLOADABLE_SUBSCRIPTION_LIST = 10;
-    private static final int CMD_GET_EUICC_INFO = 11;
-    private static final int CMD_DELETE_SUBSCRIPTION = 12;
-    private static final int CMD_SWITCH_TO_SUBSCRIPTION = 13;
-    private static final int CMD_UPDATE_SUBSCRIPTION_NICKNAME = 14;
-    private static final int CMD_ERASE_SUBSCRIPTIONS = 15;
+    private static final int CMD_GET_EID = 100;
+    private static final int CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA = 101;
+    private static final int CMD_DOWNLOAD_SUBSCRIPTION = 102;
+    private static final int CMD_GET_EUICC_PROFILE_INFO_LIST = 103;
+    private static final int CMD_GET_DEFAULT_DOWNLOADABLE_SUBSCRIPTION_LIST = 104;
+    private static final int CMD_GET_EUICC_INFO = 105;
+    private static final int CMD_DELETE_SUBSCRIPTION = 106;
+    private static final int CMD_SWITCH_TO_SUBSCRIPTION = 107;
+    private static final int CMD_UPDATE_SUBSCRIPTION_NICKNAME = 108;
+    private static final int CMD_ERASE_SUBSCRIPTIONS = 109;
 
     private static boolean isEuiccCommand(int what) {
         return what >= CMD_GET_EID;
@@ -284,8 +292,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     /** Set to the currently connected EuiccService implementation in {@link ConnectedState}. */
     private @Nullable IEuiccService mEuiccService;
 
-    /** The number of (asynchronous) commands which are currently in flight. */
-    private int mActiveCommandCount = 0;
+    /** The callbacks for all (asynchronous) commands which are currently in flight. */
+    private Set<BaseEuiccCommandCallback> mActiveCommandCallbacks = new ArraySet<>();
 
     @VisibleForTesting(visibility = PACKAGE) public UnavailableState mUnavailableState;
     @VisibleForTesting(visibility = PACKAGE) public AvailableState mAvailableState;
@@ -581,6 +589,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         @Override
         public void enter() {
             removeMessages(CMD_CONNECT_TIMEOUT);
+            sendMessageDelayed(CMD_LINGER_TIMEOUT, LINGER_TIMEOUT_MILLIS);
         }
 
         @Override
@@ -593,9 +602,13 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                 unbind();
                 transitionTo(mAvailableState);
                 return HANDLED;
+            } else if (message.what == CMD_COMMAND_COMPLETE) {
+                Runnable runnable = (Runnable) message.obj;
+                runnable.run();
+                return HANDLED;
             } else if (isEuiccCommand(message.what)) {
-                onCommandStart();
                 final BaseEuiccCommandCallback callback = getCallback(message);
+                onCommandStart(callback);
                 // TODO(b/36260308): Plumb through an actual SIM slot ID.
                 int slotId = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
                 try {
@@ -605,9 +618,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     new IGetEidCallback.Stub() {
                                         @Override
                                         public void onSuccess(String eid) {
-                                            ((GetEidCommandCallback) callback)
-                                                    .onGetEidComplete(eid);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((GetEidCommandCallback) callback)
+                                                        .onGetEidComplete(eid);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -621,9 +636,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                         @Override
                                         public void onComplete(
                                                 GetDownloadableSubscriptionMetadataResult result) {
-                                            ((GetMetadataCommandCallback) callback)
-                                                    .onGetMetadataComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((GetMetadataCommandCallback) callback)
+                                                        .onGetMetadataComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -637,9 +654,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     new IDownloadSubscriptionCallback.Stub() {
                                         @Override
                                         public void onComplete(DownloadResult result) {
-                                            ((DownloadCommandCallback) callback)
-                                                    .onDownloadComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((DownloadCommandCallback) callback)
+                                                        .onDownloadComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -650,9 +669,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                         @Override
                                         public void onComplete(
                                                 GetEuiccProfileInfoListResult result) {
-                                            ((GetEuiccProfileInfoListCommandCallback) callback)
-                                                    .onListComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((GetEuiccProfileInfoListCommandCallback) callback)
+                                                        .onListComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -666,9 +687,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                         public void onComplete(
                                                 GetDefaultDownloadableSubscriptionListResult result
                                         ) {
-                                            ((GetDefaultListCommandCallback) callback)
-                                                    .onGetDefaultListComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((GetDefaultListCommandCallback) callback)
+                                                        .onGetDefaultListComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -678,9 +701,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     new IGetEuiccInfoCallback.Stub() {
                                         @Override
                                         public void onSuccess(EuiccInfo euiccInfo) {
-                                            ((GetEuiccInfoCommandCallback) callback)
-                                                    .onGetEuiccInfoComplete(euiccInfo);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((GetEuiccInfoCommandCallback) callback)
+                                                        .onGetEuiccInfoComplete(euiccInfo);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -691,9 +716,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     new IDeleteSubscriptionCallback.Stub() {
                                         @Override
                                         public void onComplete(DeleteResult result) {
-                                            ((DeleteCommandCallback) callback)
-                                                    .onDeleteComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((DeleteCommandCallback) callback)
+                                                        .onDeleteComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -705,9 +732,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     new ISwitchToSubscriptionCallback.Stub() {
                                         @Override
                                         public void onComplete(SwitchResult result) {
-                                            ((SwitchCommandCallback) callback)
-                                                    .onSwitchComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((SwitchCommandCallback) callback)
+                                                        .onSwitchComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -719,9 +748,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     new IUpdateSubscriptionNicknameCallback.Stub() {
                                         @Override
                                         public void onComplete(UpdateNicknameResult result) {
-                                            ((UpdateNicknameCommandCallback) callback)
-                                                    .onUpdateNicknameComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((UpdateNicknameCommandCallback) callback)
+                                                        .onUpdateNicknameComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -731,9 +762,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     new IEraseSubscriptionsCallback.Stub() {
                                         @Override
                                         public void onComplete(EraseResult result) {
-                                            ((EraseCommandCallback) callback)
-                                                    .onEraseComplete(result);
-                                            onCommandEnd();
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((EraseCommandCallback) callback)
+                                                        .onEraseComplete(result);
+                                                onCommandEnd(callback);
+                                            });
                                         }
                                     });
                             break;
@@ -741,8 +774,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                         default: {
                             Log.wtf(TAG, "Unimplemented eUICC command: " + message.what);
                             callback.onEuiccServiceUnavailable();
-                            onCommandEnd();
-                            break;
+                            onCommandEnd(callback);
+                            return HANDLED;
                         }
                     }
                 } catch (Exception e) {
@@ -751,7 +784,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                     // not let it crash the phone process.
                     Log.w(TAG, "Exception making binder call to EuiccService", e);
                     callback.onEuiccServiceUnavailable();
-                    onCommandEnd();
+                    onCommandEnd(callback);
                 }
 
                 return HANDLED;
@@ -763,6 +796,13 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         @Override
         public void exit() {
             removeMessages(CMD_LINGER_TIMEOUT);
+            // Dispatch callbacks for all in-flight commands; they will no longer succeed. (The
+            // remote process cannot possibly trigger a callback at this stage because the
+            // connection has dropped).
+            for (BaseEuiccCommandCallback callback : mActiveCommandCallbacks) {
+                callback.onEuiccServiceUnavailable();
+            }
+            mActiveCommandCallbacks.clear();
         }
     }
 
@@ -791,14 +831,17 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     }
 
     /** Call this at the beginning of the execution of any command. */
-    private void onCommandStart() {
-        mActiveCommandCount++;
+    private void onCommandStart(BaseEuiccCommandCallback callback) {
+        mActiveCommandCallbacks.add(callback);
         removeMessages(CMD_LINGER_TIMEOUT);
     }
 
     /** Call this at the end of execution of any command (whether or not it succeeded). */
-    private void onCommandEnd() {
-        if (--mActiveCommandCount == 0) {
+    private void onCommandEnd(BaseEuiccCommandCallback callback) {
+        if (!mActiveCommandCallbacks.remove(callback)) {
+            Log.wtf(TAG, "Callback already removed from mActiveCommandCallbacks");
+        }
+        if (mActiveCommandCallbacks.isEmpty()) {
             sendMessageDelayed(CMD_LINGER_TIMEOUT, LINGER_TIMEOUT_MILLIS);
         }
     }
@@ -954,6 +997,6 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         super.dump(fd, pw, args);
         pw.println("mSelectedComponent=" + mSelectedComponent);
         pw.println("mEuiccService=" + mEuiccService);
-        pw.println("mActiveCommandCount=" + mActiveCommandCount);
+        pw.println("mActiveCommandCount=" + mActiveCommandCallbacks.size());
     }
 }
