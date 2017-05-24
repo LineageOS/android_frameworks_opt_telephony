@@ -86,6 +86,8 @@ import java.util.concurrent.TimeUnit;
 public abstract class TelephonyTest {
     protected static String TAG;
 
+    private static final int MAX_INIT_WAIT_MS = 30000; // 30 seconds
+
     @Mock
     protected GsmCdmaPhone mPhone;
     @Mock
@@ -226,11 +228,14 @@ public abstract class TelephonyTest {
     }
 
     protected void waitUntilReady() {
-        while (true) {
-            synchronized (mLock) {
-                if (mReady) {
-                    break;
-                }
+        synchronized (mLock) {
+            try {
+                mLock.wait(MAX_INIT_WAIT_MS);
+            } catch (InterruptedException ie) {
+            }
+
+            if (!mReady) {
+                fail("Telephony tests failed to initialize");
             }
         }
     }
@@ -238,6 +243,7 @@ public abstract class TelephonyTest {
     protected void setReady(boolean ready) {
         synchronized (mLock) {
             mReady = ready;
+            mLock.notifyAll();
         }
     }
 
