@@ -791,14 +791,14 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     processCode() throws CallStateException {
         try {
             if (isShortCode()) {
-                Rlog.d(LOG_TAG, "isShortCode");
+                Rlog.d(LOG_TAG, "processCode: isShortCode");
                 // These just get treated as USSD.
                 sendUssd(mDialingNumber);
             } else if (mDialingNumber != null) {
                 // We should have no dialing numbers here
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
             } else if (mSc != null && mSc.equals(SC_CLIP)) {
-                Rlog.d(LOG_TAG, "is CLIP");
+                Rlog.d(LOG_TAG, "processCode: is CLIP");
                 if (isInterrogate()) {
                     mPhone.mCi.queryCLIP(
                             obtainMessage(EVENT_QUERY_COMPLETE, this));
@@ -806,7 +806,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
             } else if (mSc != null && mSc.equals(SC_CLIR)) {
-                Rlog.d(LOG_TAG, "is CLIR");
+                Rlog.d(LOG_TAG, "processCode: is CLIR");
                 if (isActivate()) {
                     mPhone.mCi.setCLIR(CommandsInterface.CLIR_INVOCATION,
                         obtainMessage(EVENT_SET_COMPLETE, this));
@@ -820,7 +820,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
             } else if (isServiceCodeCallForwarding(mSc)) {
-                Rlog.d(LOG_TAG, "is CF");
+                Rlog.d(LOG_TAG, "processCode: is CF");
 
                 String dialingNumber = mSia;
                 int serviceClass = siToServiceClass(mSib);
@@ -866,7 +866,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         ((cfAction == CommandsInterface.CF_ACTION_ENABLE) ||
                                 (cfAction == CommandsInterface.CF_ACTION_REGISTRATION)) ? 1 : 0;
 
-                    Rlog.d(LOG_TAG, "is CF setCallForward");
+                    Rlog.d(LOG_TAG, "processCode: is CF setCallForward");
                     mPhone.mCi.setCallForward(cfAction, reason, serviceClass,
                             dialingNumber, time, obtainMessage(
                                     EVENT_SET_CFF_COMPLETE,
@@ -957,7 +957,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         // Sim is puk-locked
                         handlePasswordError(com.android.internal.R.string.needPuk);
                     } else if (mUiccApplication != null) {
-                        Rlog.d(LOG_TAG, "process mmi service code using UiccApp sc=" + mSc);
+                        Rlog.d(LOG_TAG,
+                                "processCode: process mmi service code using UiccApp sc=" + mSc);
 
                         // We have an app and the pre-checks are OK
                         if (mSc.equals(SC_PIN)) {
@@ -984,11 +985,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             } else if (mPoundString != null) {
                 sendUssd(mPoundString);
             } else {
+                Rlog.d(LOG_TAG, "processCode: Invalid or Unsupported MMI Code");
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
             }
         } catch (RuntimeException exc) {
             mState = State.FAILED;
             mMessage = mContext.getText(com.android.internal.R.string.mmiError);
+            Rlog.d(LOG_TAG, "processCode: RuntimeException=" + exc);
             mPhone.onMMIDone(this);
         }
     }
@@ -1024,7 +1027,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             if (!isUssdRequest) {
                 mState = State.COMPLETE;
             }
-
+            Rlog.d(LOG_TAG, "onUssdFinished: ussdMessage=" + ussdMessage);
             mPhone.onMMIDone(this);
         }
     }
@@ -1040,7 +1043,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         if (mState == State.PENDING) {
             mState = State.FAILED;
             mMessage = mContext.getText(com.android.internal.R.string.mmiError);
-
+            Rlog.d(LOG_TAG, "onUssdFinishedError");
             mPhone.onMMIDone(this);
         }
     }
@@ -1059,7 +1062,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         if (mState == State.PENDING) {
             mState = State.COMPLETE;
             mMessage = null;
-
+            Rlog.d(LOG_TAG, "onUssdRelease");
             mPhone.onMMIDone(this);
         }
     }
@@ -1301,6 +1304,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onSetComplete mmi=" + this);
         mPhone.onMMIDone(this);
     }
 
@@ -1382,6 +1386,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onGetClirComplete: mmi=" + this);
         mPhone.onMMIDone(this);
     }
 
@@ -1534,6 +1539,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onQueryCfComplete: mmi=" + this);
         mPhone.onMMIDone(this);
 
     }
@@ -1571,6 +1577,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
 
         mMessage = sb;
+        Rlog.d(LOG_TAG, "onQueryComplete: mmi=" + this);
         mPhone.onMMIDone(this);
     }
 
