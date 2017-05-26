@@ -34,6 +34,7 @@ import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.hardware.radio.V1_1.IRadioResponse;
+import android.hardware.radio.V1_1.KeepaliveStatus;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -1216,6 +1217,22 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void setSimCardPowerResponse_1_1(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param keepaliveStatus status of the keepalive with a handle for the session
+     */
+    public void startKeepaliveResponse(RadioResponseInfo responseInfo,
+            KeepaliveStatus keepaliveStatus) {
+        throw new UnsupportedOperationException("startKeepaliveResponse not implemented");
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void stopKeepaliveResponse(RadioResponseInfo responseInfo) {
+        throw new UnsupportedOperationException("stopKeepaliveResponse not implemented");
     }
 
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
