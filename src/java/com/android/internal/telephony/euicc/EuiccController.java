@@ -26,6 +26,7 @@ import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.ServiceManager;
+import android.provider.Settings;
 import android.service.euicc.DeleteResult;
 import android.service.euicc.DownloadResult;
 import android.service.euicc.EraseResult;
@@ -377,6 +378,12 @@ public class EuiccController extends IEuiccController.Stub {
                         switch (result.result) {
                             case DownloadResult.RESULT_OK:
                                 resultCode = OK;
+                                // Now that a profile has been successfully downloaded, mark the
+                                // eUICC as provisioned so it appears in settings UI as appropriate.
+                                Settings.Global.putInt(
+                                        mContext.getContentResolver(),
+                                        Settings.Global.EUICC_PROVISIONED,
+                                        1);
                                 if (!switchAfterDownload) {
                                     // Since we're not switching, nothing will trigger a
                                     // subscription list refresh on its own, so request one here.
