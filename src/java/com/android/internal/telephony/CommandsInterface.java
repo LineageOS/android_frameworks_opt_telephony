@@ -2150,4 +2150,11 @@ public interface CommandsInterface {
     default public List<ClientRequestStats> getClientRequestStats() {
         return null;
     }
+
+    /**
+     * Get ATR (Answer To Reset; as per ISO/IEC 7816-4) from SIM card
+     *
+     * @param result Callback message
+     */
+    public void getAtr(Message result);
 }
