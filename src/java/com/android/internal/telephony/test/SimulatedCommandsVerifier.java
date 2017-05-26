@@ -1407,4 +1407,8 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void unregisterForCarrierInfoForImsiEncryption(Handler h) {
     }
+
+    @Override
+    public void getAtr(Message response) {
+    }
 }

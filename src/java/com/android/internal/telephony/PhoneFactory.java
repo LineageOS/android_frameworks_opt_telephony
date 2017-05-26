@@ -166,8 +166,8 @@ public class PhoneFactory {
                     networkModes[i] = RILConstants.PREFERRED_NETWORK_MODE;
 
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
-                    sCommandsInterfaces[i] = new RIL(context, networkModes[i],
-                            cdmaSubscription, i);
+                    sCommandsInterfaces[i] = telephonyComponentFactory.makeRIL(context,
+                            networkModes[i], cdmaSubscription, i);
                 }
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
                 telephonyComponentFactory.initSubscriptionController(
