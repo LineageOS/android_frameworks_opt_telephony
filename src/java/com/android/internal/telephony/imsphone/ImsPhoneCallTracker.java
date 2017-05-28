@@ -1189,6 +1189,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         ImsPhoneConnection foregroundConnection = mForegroundCall.getFirstConnection();
         if (foregroundConnection != null) {
             foregroundConnection.setConferenceConnectTime(conferenceConnectTime);
+            foregroundConnection.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_START,
+                    null);
+        }
+        ImsPhoneConnection backgroundConnection = findConnection(bgImsCall);
+        if (backgroundConnection != null) {
+            backgroundConnection.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_START,
+                    null);
         }
 
         try {
@@ -1720,8 +1727,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.BUSY;
 
             case ImsReasonInfo.CODE_USER_TERMINATED:
-            case ImsReasonInfo.CODE_LOCAL_ENDED_BY_CONFERENCE_MERGE:
                 return DisconnectCause.LOCAL;
+
+            case ImsReasonInfo.CODE_LOCAL_ENDED_BY_CONFERENCE_MERGE:
+                return DisconnectCause.IMS_MERGED_SUCCESSFULLY;
 
             case ImsReasonInfo.CODE_LOCAL_CALL_DECLINE:
             case ImsReasonInfo.CODE_REMOTE_CALL_DECLINE:
@@ -2293,6 +2302,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 conn.onConferenceMergeFailed();
+                conn.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_COMPLETE, null);
             }
         }
 
