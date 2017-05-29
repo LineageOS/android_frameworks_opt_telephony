@@ -2826,20 +2826,20 @@ public class ServiceStateTracker extends Handler {
                             TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
                             && ((SystemClock.uptimeMillis() & 1) == 0);
 
-                    ArrayList<TimeZone> uniqueZones = TimeUtils.getTimeZonesWithUniqueOffsets(iso);
-                    if ((uniqueZones.size() == 1) || testOneUniqueOffsetPath) {
-                        TimeZone zone = uniqueZones.get(0);
+                    List<String> uniqueZoneIds = TimeUtils.getTimeZoneIdsWithUniqueOffsets(iso);
+                    if ((uniqueZoneIds.size() == 1) || testOneUniqueOffsetPath) {
+                        String zoneId = uniqueZoneIds.get(0);
                         if (DBG) {
                             log("pollStateDone: no nitz but one TZ for iso-cc=" + iso
-                                    + " with zone.getID=" + zone.getID()
+                                    + " with zone.getID=" + zoneId
                                     + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
                         }
-                        mTimeZoneLog.log("pollStateDone: set time zone=" + zone.getID()
+                        mTimeZoneLog.log("pollStateDone: set time zone=" + zoneId
                                 + " mcc=" + mcc + " iso=" + iso);
-                        setAndBroadcastNetworkSetTimeZone(zone.getID());
+                        setAndBroadcastNetworkSetTimeZone(zoneId);
                     } else {
                         if (DBG) {
-                            log("pollStateDone: there are " + uniqueZones.size()
+                            log("pollStateDone: there are " + uniqueZoneIds.size()
                                     + " unique offsets for iso-cc='" + iso
                                     + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath
                                     + "', do nothing");

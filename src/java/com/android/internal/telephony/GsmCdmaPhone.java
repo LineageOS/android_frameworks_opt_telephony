@@ -1992,6 +1992,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void onNetworkInitiatedUssd(MmiCode mmi) {
+        Rlog.v(LOG_TAG, "onNetworkInitiatedUssd: mmi=" + mmi);
         mMmiCompleteRegistrants.notifyRegistrants(
             new AsyncResult(null, mmi, null));
     }
