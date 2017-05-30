@@ -30,6 +30,7 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.IccOpenLogicalChannelResponse;
+import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -1369,7 +1370,7 @@ public class SimulatedCommands extends BaseCommands
      * Starts a network scan
      */
     @Override
-    public void startNetworkScan(Message result) {
+    public void startNetworkScan(NetworkScanRequest nsr, Message result) {
         unimplemented(result);
     }
 
