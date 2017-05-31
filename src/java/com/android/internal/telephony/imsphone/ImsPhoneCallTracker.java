@@ -22,8 +22,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.NetworkStats;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -33,10 +35,12 @@ import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telecom.ConferenceParticipant;
+import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
@@ -86,6 +90,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
+import com.android.server.net.NetworkStatsService;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -93,6 +98,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 /**
@@ -205,6 +211,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     log("onReceive : Updating mAllowEmergencyVideoCalls = " +
                             mAllowEmergencyVideoCalls);
                 }
+            } else if (TelecomManager.ACTION_CHANGE_DEFAULT_DIALER.equals(intent.getAction())) {
+                mDefaultDialerUid.set(getPackageUid(context, intent.getStringExtra(
+                        TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME)));
             }
         }
     };
@@ -249,7 +258,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     // Hold aggregated video call data usage for each video call since boot.
     // The ImsCall's call id is the key of the map.
     private final HashMap<Integer, Long> mVtDataUsageMap = new HashMap<>();
-    private volatile long mTotalVtDataUsage = 0;
+
+    private volatile NetworkStats mVtDataUsageSnapshot = null;
+    private volatile NetworkStats mVtDataUsageUidSnapshot = null;
+
+    private final AtomicInteger mDefaultDialerUid = new AtomicInteger(NetworkStats.UID_ALL);
 
     private ImsPhoneConnection mPendingMO;
     private int mClirMode = CommandsInterface.CLIR_DEFAULT;
@@ -640,6 +653,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         IntentFilter intentfilter = new IntentFilter();
         intentfilter.addAction(ImsManager.ACTION_IMS_INCOMING_CALL);
         intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intentfilter.addAction(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER);
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
         cacheCarrierConfiguration(mPhone.getSubId());
 
@@ -647,9 +661,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 this, EVENT_DATA_ENABLED_CHANGED, null);
 
         mImsServiceRetryCount = 0;
+
+        final TelecomManager telecomManager =
+                (TelecomManager) mPhone.getContext().getSystemService(Context.TELECOM_SERVICE);
+        mDefaultDialerUid.set(
+                getPackageUid(mPhone.getContext(), telecomManager.getDefaultDialerPackage()));
+
+        long currentTime = SystemClock.elapsedRealtime();
+        mVtDataUsageSnapshot = new NetworkStats(currentTime, 1);
+        mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
+
         // Send a message to connect to the Ims Service and open a connection through
         // getImsService().
         sendEmptyMessage(EVENT_GET_IMS_SERVICE);
+    }
+
+    private int getPackageUid(Context context, String pkg) {
+        if (pkg == null) {
+            return NetworkStats.UID_ALL;
+        }
+
+        int uid = NetworkStats.UID_ALL;
+        try {
+            uid = context.getPackageManager().getPackageUid(pkg, 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            loge("Cannot find package uid. pkg = " + pkg);
+        }
+        return uid;
     }
 
     private PendingIntent createIncomingCallPendingIntent() {
@@ -1189,6 +1227,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         ImsPhoneConnection foregroundConnection = mForegroundCall.getFirstConnection();
         if (foregroundConnection != null) {
             foregroundConnection.setConferenceConnectTime(conferenceConnectTime);
+            foregroundConnection.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_START,
+                    null);
+        }
+        ImsPhoneConnection backgroundConnection = findConnection(bgImsCall);
+        if (backgroundConnection != null) {
+            backgroundConnection.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_START,
+                    null);
         }
 
         try {
@@ -1720,8 +1765,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.BUSY;
 
             case ImsReasonInfo.CODE_USER_TERMINATED:
-            case ImsReasonInfo.CODE_LOCAL_ENDED_BY_CONFERENCE_MERGE:
                 return DisconnectCause.LOCAL;
+
+            case ImsReasonInfo.CODE_LOCAL_ENDED_BY_CONFERENCE_MERGE:
+                return DisconnectCause.IMS_MERGED_SUCCESSFULLY;
 
             case ImsReasonInfo.CODE_LOCAL_CALL_DECLINE:
             case ImsReasonInfo.CODE_REMOTE_CALL_DECLINE:
@@ -1769,6 +1816,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             case ImsReasonInfo.CODE_FDN_BLOCKED:
                 return DisconnectCause.FDN_BLOCKED;
+
+            case ImsReasonInfo.CODE_IMEI_NOT_ACCEPTED:
+                return DisconnectCause.IMEI_NOT_ACCEPTED;
 
             case ImsReasonInfo.CODE_ANSWERED_ELSEWHERE:
                 return DisconnectCause.ANSWERED_ELSEWHERE;
@@ -2293,6 +2343,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 conn.onConferenceMergeFailed();
+                conn.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_COMPLETE, null);
             }
         }
 
@@ -2748,13 +2799,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 ImsCall call = (ImsCall) ar.userObj;
                 Long usage = (long) ar.result;
                 log("VT data usage update. usage = " + usage + ", imsCall = " + call);
-
-                Long oldUsage = 0L;
-                if (mVtDataUsageMap.containsKey(call.uniqueId)) {
-                    oldUsage = mVtDataUsageMap.get(call.uniqueId);
+                if (usage > 0) {
+                    updateVtDataUsage(call, usage);
                 }
-                mTotalVtDataUsage += (usage - oldUsage);
-                mVtDataUsageMap.put(call.uniqueId, usage);
                 break;
             case EVENT_DATA_ENABLED_CHANGED:
                 ar = (AsyncResult) msg.obj;
@@ -2784,6 +2831,50 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
                 break;
         }
+    }
+
+    /**
+     * Update video call data usage
+     *
+     * @param call The IMS call
+     * @param dataUsage The aggregated data usage for the call
+     */
+    private void updateVtDataUsage(ImsCall call, long dataUsage) {
+        long oldUsage = 0L;
+        if (mVtDataUsageMap.containsKey(call.uniqueId)) {
+            oldUsage = mVtDataUsageMap.get(call.uniqueId);
+        }
+
+        long delta = dataUsage - oldUsage;
+        mVtDataUsageMap.put(call.uniqueId, dataUsage);
+
+        log("updateVtDataUsage: call=" + call + ", delta=" + delta);
+
+        long currentTime = SystemClock.elapsedRealtime();
+        int isRoaming = mPhone.getServiceState().getDataRoaming() ? 1 : 0;
+
+        // Create the snapshot of total video call data usage.
+        NetworkStats vtDataUsageSnapshot = new NetworkStats(currentTime, 1);
+        vtDataUsageSnapshot.combineAllValues(mVtDataUsageSnapshot);
+        // Since the modem only reports the total vt data usage rather than rx/tx separately,
+        // the only thing we can do here is splitting the usage into half rx and half tx.
+        // Uid -1 indicates this is for the overall device data usage.
+        vtDataUsageSnapshot.combineValues(new NetworkStats.Entry(
+                NetworkStatsService.VT_INTERFACE, -1, NetworkStats.SET_FOREGROUND,
+                NetworkStats.TAG_NONE, 1, isRoaming, delta / 2, 0, delta / 2, 0, 0));
+        mVtDataUsageSnapshot = vtDataUsageSnapshot;
+
+        // Create the snapshot of video call data usage per dialer. combineValues will create
+        // a separate entry if uid is different from the previous snapshot.
+        NetworkStats vtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
+        vtDataUsageUidSnapshot.combineAllValues(mVtDataUsageUidSnapshot);
+        // Since the modem only reports the total vt data usage rather than rx/tx separately,
+        // the only thing we can do here is splitting the usage into half rx and half tx.
+        vtDataUsageUidSnapshot.combineValues(new NetworkStats.Entry(
+                NetworkStatsService.VT_INTERFACE, mDefaultDialerUid.get(),
+                NetworkStats.SET_FOREGROUND, NetworkStats.TAG_NONE, 1, isRoaming, delta / 2,
+                0, delta / 2, 0, 0));
+        mVtDataUsageUidSnapshot = vtDataUsageUidSnapshot;
     }
 
     @Override
@@ -2841,10 +2932,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             pw.println(" " + mImsFeatureStrings[i] + ": "
                     + ((mImsFeatureEnabled[i]) ? "enabled" : "disabled"));
         }
-        pw.println(" mTotalVtDataUsage=" + mTotalVtDataUsage);
-        for (Map.Entry<Integer, Long> entry : mVtDataUsageMap.entrySet()) {
-            pw.println("    id=" + entry.getKey() + " ,usage=" + entry.getValue());
-        }
+        pw.println(" mDefaultDialerUid=" + mDefaultDialerUid.get());
+        pw.println(" mVtDataUsageSnapshot=" + mVtDataUsageSnapshot);
+        pw.println(" mVtDataUsageUidSnapshot=" + mVtDataUsageUidSnapshot);
 
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
@@ -3091,11 +3181,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return isActiveCallVideo && isActiveCallOnWifi && isIncomingCallAudio && !isVoWifiEnabled;
     }
 
-    /** Get aggregated video call data usage since boot.
+    /**
+     * Get aggregated video call data usage since boot.
      *
-     * @return data usage in bytes
+     * @param perUidStats True if requesting data usage per uid, otherwise overall usage.
+     * @return Snapshot of video call data usage
      */
-    public long getVtDataUsage() {
+    public NetworkStats getVtDataUsage(boolean perUidStats) {
 
         // If there is an ongoing VT call, request the latest VT usage from the modem. The latest
         // usage will return asynchronously so it won't be counted in this round, but it will be
@@ -3109,7 +3201,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
         }
 
-        return mTotalVtDataUsage;
+        return perUidStats ? mVtDataUsageUidSnapshot : mVtDataUsageSnapshot;
     }
 
     public void registerPhoneStateListener(PhoneStateListener listener) {
