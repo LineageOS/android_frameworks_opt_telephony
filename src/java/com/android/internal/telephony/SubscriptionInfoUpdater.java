@@ -384,8 +384,8 @@ public class SubscriptionInfoUpdater extends Handler {
             for (int subId : subIds) {
                 TelephonyManager tm = TelephonyManager.getDefault();
 
-                String operator = tm.getSimOperatorNumeric(subId);
                 slotId = SubscriptionController.getInstance().getPhoneId(subId);
+                String operator = tm.getSimOperatorNumeric(subId);
 
                 if (!TextUtils.isEmpty(operator)) {
                     if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
