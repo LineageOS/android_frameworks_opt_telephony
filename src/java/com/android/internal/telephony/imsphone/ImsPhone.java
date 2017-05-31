@@ -16,6 +16,27 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAIC;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAICr;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOC;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOIC;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOICxH;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_ALL;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MO;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MT;
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ERASURE;
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_REGISTRATION;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_ALL;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_ALL_CONDITIONAL;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_NOT_REACHABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_NO_REPLY;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
+import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
+
 import android.app.Activity;
 import android.app.ActivityManagerNative;
 import android.app.Notification;
@@ -24,6 +45,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.NetworkStats;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -31,14 +53,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.ResultReceiver;
-import android.os.PowerManager.WakeLock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
-
-import android.provider.Telephony;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
@@ -55,33 +75,9 @@ import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
-import com.android.ims.ImsMultiEndpoint;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
-
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOC;
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOIC;
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOICxH;
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAIC;
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAICr;
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_ALL;
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MO;
-import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MT;
-
-import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
-import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
-import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ERASURE;
-import static com.android.internal.telephony.CommandsInterface.CF_ACTION_REGISTRATION;
-import static com.android.internal.telephony.CommandsInterface.CF_REASON_ALL;
-import static com.android.internal.telephony.CommandsInterface.CF_REASON_ALL_CONDITIONAL;
-import static com.android.internal.telephony.CommandsInterface.CF_REASON_NO_REPLY;
-import static com.android.internal.telephony.CommandsInterface.CF_REASON_NOT_REACHABLE;
-import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
-import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
-import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
-import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
-
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
@@ -1642,8 +1638,8 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public long getVtDataUsage() {
-        return mCT.getVtDataUsage();
+    public NetworkStats getVtDataUsage(boolean perUidStats) {
+        return mCT.getVtDataUsage(perUidStats);
     }
 
     private void updateRoamingState(boolean newRoaming) {
