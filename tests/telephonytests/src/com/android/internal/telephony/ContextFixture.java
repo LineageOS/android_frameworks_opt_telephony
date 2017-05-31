@@ -59,6 +59,7 @@ import android.os.UserManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony.ServiceStateTable;
+import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -234,6 +235,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mUsageStatManager;
                 case Context.BATTERY_SERVICE:
                     return mBatteryManager;
+                case Context.TELECOM_SERVICE:
+                    return mTelecomManager;
                 case Context.DISPLAY_SERVICE:
                 case Context.POWER_SERVICE:
                     // PowerManager and DisplayManager are final classes so cannot be mocked,
@@ -492,6 +495,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final UsageStatsManager mUsageStatManager = null;
     private final WifiManager mWifiManager = mock(WifiManager.class);
     private final BatteryManager mBatteryManager = mock(BatteryManager.class);
+    private final TelecomManager mTelecomManager = mock(TelecomManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 

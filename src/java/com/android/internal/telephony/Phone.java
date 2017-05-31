@@ -23,6 +23,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.net.NetworkStats;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
@@ -3412,9 +3413,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return this;
     }
 
-    public long getVtDataUsage() {
-        if (mImsPhone == null) return 0;
-        return mImsPhone.getVtDataUsage();
+    /**
+     * Get aggregated video call data usage since boot.
+     * Permissions android.Manifest.permission.READ_NETWORK_USAGE_HISTORY is required.
+     *
+     * @param perUidStats True if requesting data usage per uid, otherwise overall usage.
+     * @return Snapshot of video call data usage
+     */
+    public NetworkStats getVtDataUsage(boolean perUidStats) {
+        if (mImsPhone == null) return null;
+        return mImsPhone.getVtDataUsage(perUidStats);
     }
 
     /**
