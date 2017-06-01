@@ -721,6 +721,8 @@ public class PhoneNumberUtilsTest {
     @SmallTest
     @Test
     public void testIsInternational() {
+        assertFalse(PhoneNumberUtils.isInternationalNumber("", "US"));
+        assertFalse(PhoneNumberUtils.isInternationalNumber(null, "US"));
         assertFalse(PhoneNumberUtils.isInternationalNumber("+16505551212", "US"));
         assertTrue(PhoneNumberUtils.isInternationalNumber("+16505551212", "UK"));
         assertTrue(PhoneNumberUtils.isInternationalNumber("+16505551212", "JP"));
