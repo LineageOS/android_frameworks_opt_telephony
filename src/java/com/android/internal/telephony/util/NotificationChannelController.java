@@ -22,7 +22,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioAttributes;
+import android.net.Uri;
 import android.provider.Settings;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.R;
 
@@ -54,13 +56,6 @@ public class NotificationChannelController {
         alertChannel.setSound(Settings.System.DEFAULT_NOTIFICATION_URI,
                 new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
 
-        final NotificationChannel voiceMailChannel = new NotificationChannel(
-                CHANNEL_ID_VOICE_MAIL,
-                context.getText(R.string.notification_channel_voice_mail),
-                NotificationManager.IMPORTANCE_DEFAULT);
-        voiceMailChannel.setSound(Settings.System.DEFAULT_NOTIFICATION_URI,
-                new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
-
         context.getSystemService(NotificationManager.class)
                 .createNotificationChannels(Arrays.asList(
                 new NotificationChannel(CHANNEL_ID_CALL_FORWARD,
@@ -75,12 +70,18 @@ public class NotificationChannelController {
                 new NotificationChannel(CHANNEL_ID_WFC,
                         context.getText(R.string.notification_channel_wfc),
                         NotificationManager.IMPORTANCE_LOW),
-                alertChannel, voiceMailChannel));
+                alertChannel));
+        // only for update
+        if (getChannel(CHANNEL_ID_VOICE_MAIL, context) != null) {
+            migrateVoicemailNotificationSettings(context);
+        }
     }
 
     public NotificationChannelController(Context context) {
-        context.registerReceiver(mLocaleChangeReceiver,
-                new IntentFilter(Intent.ACTION_LOCALE_CHANGED));
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(Intent.ACTION_LOCALE_CHANGED);
+        intentFilter.addAction(Intent.ACTION_SIM_STATE_CHANGED);
+        context.registerReceiver(mBroadcastReceiver, intentFilter);
         createAll(context);
     }
 
@@ -89,11 +90,42 @@ public class NotificationChannelController {
                 .getNotificationChannel(channelId);
     }
 
-    // rename all registered channels on locale change
-    private BroadcastReceiver mLocaleChangeReceiver = new BroadcastReceiver() {
+    /**
+     * migrate deprecated voicemail notification settings to initial notification channel settings
+     * {@link VoicemailNotificationSettingsUtil#getRingTonePreference(Context)}}
+     * {@link VoicemailNotificationSettingsUtil#getVibrationPreference(Context)}
+     * notification settings are based on subId, only migrate if sub id matches.
+     * otherwise fallback to predefined voicemail channel settings.
+     * @param context
+     */
+    private static void migrateVoicemailNotificationSettings(Context context) {
+        final NotificationChannel voiceMailChannel = new NotificationChannel(
+                CHANNEL_ID_VOICE_MAIL,
+                context.getText(R.string.notification_channel_voice_mail),
+                NotificationManager.IMPORTANCE_DEFAULT);
+        voiceMailChannel.enableVibration(
+                VoicemailNotificationSettingsUtil.getVibrationPreference(context));
+        Uri sound = VoicemailNotificationSettingsUtil.getRingTonePreference(context);
+        voiceMailChannel.setSound(
+                (sound == null) ? Settings.System.DEFAULT_NOTIFICATION_URI : sound,
+                new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
+        context.getSystemService(NotificationManager.class)
+                .createNotificationChannel(voiceMailChannel);
+    }
+
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            createAll(context);
+            if (Intent.ACTION_LOCALE_CHANGED.equals(intent.getAction())) {
+                // rename all notification channels on locale change
+                createAll(context);
+            } else if (Intent.ACTION_SIM_STATE_CHANGED.equals(intent.getAction())) {
+                // migrate voicemail notification settings on sim load
+                if (SubscriptionManager.INVALID_SUBSCRIPTION_ID !=
+                        SubscriptionManager.getDefaultSubscriptionId()) {
+                    migrateVoicemailNotificationSettings(context);
+                }
+            }
         }
     };
 }
