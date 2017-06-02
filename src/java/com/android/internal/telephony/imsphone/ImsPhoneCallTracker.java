@@ -1824,6 +1824,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             case ImsReasonInfo.CODE_WIFI_LOST:
                 return DisconnectCause.WIFI_LOST;
+
+            case ImsReasonInfo.CODE_ACCESS_CLASS_BLOCKED:
+                return DisconnectCause.IMS_ACCESS_BLOCKED;
             default:
         }
 
