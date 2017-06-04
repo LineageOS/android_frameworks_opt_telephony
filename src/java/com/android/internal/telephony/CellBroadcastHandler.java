@@ -86,11 +86,17 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
         if (message.isEmergencyMessage()) {
             log("Dispatching emergency SMS CB, SmsCbMessage is: " + message);
             intent = new Intent(Telephony.Sms.Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
+            // Explicitly send the intent to the default cell broadcast receiver.
+            intent.setPackage(mContext.getResources().getString(
+                    com.android.internal.R.string.config_defaultCellBroadcastReceiverPkg));
             receiverPermission = Manifest.permission.RECEIVE_EMERGENCY_BROADCAST;
             appOp = AppOpsManager.OP_RECEIVE_EMERGECY_SMS;
         } else {
             log("Dispatching SMS CB, SmsCbMessage is: " + message);
             intent = new Intent(Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION);
+            // Send implicit intent since there are various 3rd party carrier apps listen to
+            // this intent.
+            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             receiverPermission = Manifest.permission.RECEIVE_SMS;
             appOp = AppOpsManager.OP_RECEIVE_SMS;
         }
@@ -112,8 +118,6 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             }
         }
 
-        intent.setPackage(mContext.getResources().getString(
-                com.android.internal.R.string.config_defaultCellBroadcastReceiverPkg));
         mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission, appOp,
                 mReceiver, getHandler(), Activity.RESULT_OK, null, null);
     }

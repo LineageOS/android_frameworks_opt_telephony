@@ -917,8 +917,8 @@ public class RuimRecords extends IccRecords {
             return;
         }
 
-        if (refreshResponse.aid != null &&
-                !refreshResponse.aid.equals(mParentApp.getAid())) {
+        if (!TextUtils.isEmpty(refreshResponse.aid)
+                && !refreshResponse.aid.equals(mParentApp.getAid())) {
             // This is for different app. Ignore.
             return;
         }

@@ -615,20 +615,11 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
-    @Override
-    public boolean isInEcm() {
-        if (isPhoneTypeGsm()) {
-            return false;
-        } else {
-            return mIsPhoneInEcmState;
-        }
-    }
-
     //CDMA
     private void sendEmergencyCallbackModeChange(){
         //Send an Intent
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
-        intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, mIsPhoneInEcmState);
+        intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
         ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
         if (DBG) logd("sendEmergencyCallbackModeChange");
@@ -2792,6 +2783,10 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void exitEmergencyCallbackMode() {
+        if (DBG) {
+            Rlog.d(LOG_TAG, "exitEmergencyCallbackMode: mImsPhone=" + mImsPhone
+                    + " isPhoneTypeGsm=" + isPhoneTypeGsm());
+        }
         if (isPhoneTypeGsm()) {
             if (mImsPhone != null) {
                 mImsPhone.exitEmergencyCallbackMode();
@@ -2808,11 +2803,11 @@ public class GsmCdmaPhone extends Phone {
     //CDMA
     private void handleEnterEmergencyCallbackMode(Message msg) {
         if (DBG) {
-            Rlog.d(LOG_TAG, "handleEnterEmergencyCallbackMode,mIsPhoneInEcmState= "
-                    + mIsPhoneInEcmState);
+            Rlog.d(LOG_TAG, "handleEnterEmergencyCallbackMode, isInEcm()="
+                    + isInEcm());
         }
         // if phone is not in Ecm mode, and it's changed to Ecm mode
-        if (!mIsPhoneInEcmState) {
+        if (!isInEcm()) {
             setIsInEcm(true);
 
             // notify change
@@ -2832,8 +2827,8 @@ public class GsmCdmaPhone extends Phone {
     private void handleExitEmergencyCallbackMode(Message msg) {
         AsyncResult ar = (AsyncResult)msg.obj;
         if (DBG) {
-            Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode,ar.exception , mIsPhoneInEcmState "
-                    + ar.exception + mIsPhoneInEcmState);
+            Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode,ar.exception , isInEcm="
+                    + ar.exception + isInEcm());
         }
         // Remove pending exit Ecm runnable, if any
         removeCallbacks(mExitEcmRunnable);
@@ -2843,7 +2838,7 @@ public class GsmCdmaPhone extends Phone {
         }
         // if exiting ecm success
         if (ar.exception == null) {
-            if (mIsPhoneInEcmState) {
+            if (isInEcm()) {
                 setIsInEcm(false);
             }
 
@@ -3278,7 +3273,7 @@ public class GsmCdmaPhone extends Phone {
         pw.println(" mCdmaSubscriptionSource=" + mCdmaSubscriptionSource);
         pw.println(" mEriManager=" + mEriManager);
         pw.println(" mWakeLock=" + mWakeLock);
-        pw.println(" mIsPhoneInEcmState=" + mIsPhoneInEcmState);
+        pw.println(" isInEcm()=" + isInEcm());
         if (VDBG) pw.println(" mEsn=" + mEsn);
         if (VDBG) pw.println(" mMeid=" + mMeid);
         pw.println(" mCarrierOtaSpNumSchema=" + mCarrierOtaSpNumSchema);

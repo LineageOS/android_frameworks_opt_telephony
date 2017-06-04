@@ -1376,7 +1376,7 @@ public class ImsPhone extends ImsPhoneBase {
         intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
         ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
-        if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallbackModeChange");
+        if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallbackModeChange: isInEcm=" + isInEcm());
     }
 
     @Override
