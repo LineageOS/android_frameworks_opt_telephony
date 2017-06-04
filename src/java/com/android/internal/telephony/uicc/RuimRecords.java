@@ -18,30 +18,30 @@ package com.android.internal.telephony.uicc;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_TEST_CSIM;
 
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Locale;
 import android.content.Context;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
-import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.Log;
-import android.content.res.Resources;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.SubscriptionController;
-
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.util.BitwiseInputStream;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Locale;
 
 /**
  * {@hide}
@@ -918,8 +918,8 @@ public class RuimRecords extends IccRecords {
             return;
         }
 
-        if (refreshResponse.aid != null &&
-                !refreshResponse.aid.equals(mParentApp.getAid())) {
+        if (!TextUtils.isEmpty(refreshResponse.aid)
+                && !refreshResponse.aid.equals(mParentApp.getAid())) {
             // This is for different app. Ignore.
             return;
         }
