@@ -38,7 +38,6 @@ import static org.mockito.Mockito.verify;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -52,7 +51,6 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.provider.Settings;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
@@ -70,7 +68,6 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.TestApplication;
 
 import org.junit.After;
 import org.junit.Before;
@@ -97,10 +94,13 @@ public class DcTrackerTest extends TelephonyTest {
 
     private final static List<String> sApnTypes = Arrays.asList(
             "default", "mms", "cbs", "fota", "supl", "ia", "emergency", "dun", "hipri", "ims");
-
+    private static final int LTE_BEARER_BITMASK = 1 << (ServiceState.RIL_RADIO_TECHNOLOGY_LTE - 1);
+    private static final int EHRPD_BEARER_BITMASK =
+            1 << (ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD - 1);
     public static final String FAKE_APN1 = "FAKE APN 1";
     public static final String FAKE_APN2 = "FAKE APN 2";
     public static final String FAKE_APN3 = "FAKE APN 3";
+    public static final String FAKE_APN4 = "FAKE APN 4";
     public static final String FAKE_IFNAME = "FAKE IFNAME";
     public static final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
     public static final String FAKE_GATEWAY = "11.22.33.44";
@@ -208,7 +208,7 @@ public class DcTrackerTest extends TelephonyTest {
                             "IP",                   // protocol
                             "IP",                   // roaming_protocol
                             1,                      // carrier_enabled
-                            0,                      // bearer
+                            ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
                             0,                      // modem_cognitive
@@ -237,7 +237,7 @@ public class DcTrackerTest extends TelephonyTest {
                             "IP",                   // protocol
                             "IP",                   // roaming_protocol
                             1,                      // carrier_enabled
-                            0,                      // bearer
+                            ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer,
                             0,                      // bearer_bitmask
                             0,                      // profile_id
                             0,                      // modem_cognitive
@@ -278,6 +278,35 @@ public class DcTrackerTest extends TelephonyTest {
                             ""                      // mnvo_match_data
                     });
 
+                    mc.addRow(new Object[]{
+                            2166,                   // id
+                            plmn,                   // numeric
+                            "sp-mode ehrpd",        // name
+                            FAKE_APN4,              // apn
+                            "",                     // proxy
+                            "",                     // port
+                            "",                     // mmsc
+                            "",                     // mmsproxy
+                            "",                     // mmsport
+                            "",                     // user
+                            "",                     // password
+                            -1,                     // authtype
+                            "default,supl",         // types
+                            "IP",                   // protocol
+                            "IP",                   // roaming_protocol
+                            1,                      // carrier_enabled
+                            ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD, // bearer
+                            0,                      // bearer_bitmask
+                            0,                      // profile_id
+                            0,                      // modem_cognitive
+                            0,                      // max_conns
+                            0,                      // wait_time
+                            0,                      // max_conns_time
+                            0,                      // mtu
+                            "",                     // mvno_type
+                            ""                      // mnvo_match_data
+                    });
+
                     return mc;
                 }
             }
@@ -293,6 +322,8 @@ public class DcTrackerTest extends TelephonyTest {
 
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
+                .getRilDataRadioTechnology();
         doReturn("44010").when(mSimRecords).getOperatorNumeric();
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
@@ -367,21 +398,21 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     private void verifyDataProfile(DataProfile dp, String apn, int profileId,
-                                   int supportedApnTypesBitmap) {
+                                   int supportedApnTypesBitmap, int type, int bearerBitmask) {
         assertEquals(profileId, dp.profileId);
         assertEquals(apn, dp.apn);
         assertEquals("IP", dp.protocol);
         assertEquals(0, dp.authType);
         assertEquals("", dp.user);
         assertEquals("", dp.password);
-        assertEquals(0, dp.type);
+        assertEquals(type, dp.type);
         assertEquals(0, dp.maxConnsTime);
         assertEquals(0, dp.maxConns);
         assertEquals(0, dp.waitTime);
         assertTrue(dp.enabled);
         assertEquals(supportedApnTypesBitmap, dp.supportedApnTypesBitmap);
         assertEquals("IP", dp.roamingProtocol);
-        assertEquals(0, dp.bearerBitmap);
+        assertEquals(bearerBitmask, dp.bearerBitmap);
         assertEquals(0, dp.mtu);
         assertEquals("", dp.mvnoType);
         assertEquals("", dp.mvnoMatchData);
@@ -476,9 +507,9 @@ public class DcTrackerTest extends TelephonyTest {
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
 
         verifyDataConnected(FAKE_APN1);
     }
@@ -542,9 +573,9 @@ public class DcTrackerTest extends TelephonyTest {
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
 
         // Make sure we never notify connected because the data call setup is supposed to fail.
         verify(mPhone, never()).notifyDataConnection(eq(Phone.REASON_CONNECTED),
@@ -568,9 +599,9 @@ public class DcTrackerTest extends TelephonyTest {
         dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN2, 0, 5);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN2, 0, 5, 1, LTE_BEARER_BITMASK);
 
         // Verify connected with APN2 setting.
         verifyDataConnected(FAKE_APN2);
@@ -601,9 +632,9 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
 
         logd("Sending DATA_DISABLED_CMD");
         mDct.setDataEnabled(false);
@@ -652,9 +683,9 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(300);
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
 
         //user is in roaming
         doReturn(true).when(mServiceState).getDataRoaming();
@@ -713,9 +744,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN3, 2, 64);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN3, 2, 64, 0, 0);
 
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
         assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
@@ -815,9 +846,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
 
         Message msg = mDct.obtainMessage(DctConstants.EVENT_SET_CARRIER_DATA_ENABLED);
@@ -859,7 +890,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
 
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), any(DataProfile.class),
+                eq(mServiceState.getRilDataRadioTechnology()), any(DataProfile.class),
                 eq(false), eq(false), any(Message.class));
     }
 
@@ -885,7 +916,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
 
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), any(DataProfile.class),
+                eq(mServiceState.getRilDataRadioTechnology()), any(DataProfile.class),
                 eq(false), eq(false), any(Message.class));
     }
 
@@ -1018,5 +1049,63 @@ public class DcTrackerTest extends TelephonyTest {
 
         verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(
                 anyInt(), any(DataProfile.class), eq(false), eq(false), any(Message.class));
+    }
+
+    // Test update waiting apn list when on data rat change
+    @Test
+    @SmallTest
+    public void testUpdateWaitingApnListOnDataRatChange() throws Exception {
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD).when(mServiceState)
+                .getRilDataRadioTechnology();
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+        mDct.setEnabled(0, true);
+        mDct.setDataEnabled(true);
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
+        // Verify if RIL command was sent properly.
+        verify(mSimulatedCommandsVerifier).setupDataCall(
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
+                eq(false), eq(false), any(Message.class));
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN4, 0, 5, 2, EHRPD_BEARER_BITMASK);
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+
+        //data rat change from ehrpd to lte
+        logd("Sending EVENT_DATA_RAT_CHANGED");
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
+                .getRilDataRadioTechnology();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
+        waitForMs(200);
+
+        // Verify the disconnected data call due to rat change and retry manger schedule another
+        // data call setup
+        verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(anyInt(), anyInt(),
+                any(Message.class));
+        verify(mAlarmManager, times(1)).setExact(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP),
+                anyLong(), any(PendingIntent.class));
+
+        // Simulate the timer expires.
+        Intent intent = new Intent("com.android.internal.telephony.data-reconnect.default");
+        intent.putExtra("reconnect_alarm_extra_type", PhoneConstants.APN_TYPE_DEFAULT);
+        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, 0);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        mContext.sendBroadcast(intent);
+        waitForMs(200);
+
+        // Verify if RIL command was sent properly.
+        verify(mSimulatedCommandsVerifier).setupDataCall(
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
+                eq(false), eq(false), any(Message.class));
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
     }
 }
