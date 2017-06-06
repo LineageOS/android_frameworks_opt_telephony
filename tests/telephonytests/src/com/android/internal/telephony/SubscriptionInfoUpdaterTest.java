@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
@@ -503,7 +505,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
                 new String[] { "1", "3"}, false /* removable */)).thenReturn(subInfoList);
 
-        mUpdater.updateEmbeddedSubscriptions();
+        assertTrue(mUpdater.updateEmbeddedSubscriptions());
 
         // 3 is new and so a new entry should have been created.
         verify(mSubscriptionController).insertEmptySubInfoRecord(
@@ -554,7 +556,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
                 new String[0], false /* removable */)).thenReturn(subInfoList);
 
-        mUpdater.updateEmbeddedSubscriptions();
+        assertTrue(mUpdater.updateEmbeddedSubscriptions());
 
         // No new entries should be created.
         verify(mSubscriptionController, times(0)).clearSubInfo();
@@ -573,5 +575,32 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 eq(SubscriptionManager.ICC_ID + " IN (\"2\")"), isNull());
         assertEquals(0,
                 iccid2Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateEmbeddedSubscriptions_emptyToEmpty() throws Exception {
+        when(mEuiccManager.isEnabled()).thenReturn(true);
+        when(mEuiccController.blockingGetEuiccProfileInfoList())
+                .thenReturn(new GetEuiccProfileInfoListResult(
+                        42, null /* subscriptions */, true /* removable */));
+
+        List<SubscriptionInfo> subInfoList = new ArrayList<>();
+        // 1: not embedded.
+        subInfoList.add(new SubscriptionInfo(
+                0, "1", 0, "", "", 0, 0, "", 0, null, 0, 0, "", false /* isEmbedded */,
+                null /* accessRules */));
+
+        when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
+                new String[0], false /* removable */)).thenReturn(subInfoList);
+
+        assertFalse(mUpdater.updateEmbeddedSubscriptions());
+
+        // No new entries should be created.
+        verify(mSubscriptionController, never()).insertEmptySubInfoRecord(anyString(), anyInt());
+
+        // No existing entries should have been updated.
+        verify(mContentProvider, never()).update(eq(SubscriptionManager.CONTENT_URI), any(),
+                any(), isNull());
     }
 }
