@@ -20,11 +20,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.BadParcelableException;
 import android.os.Build;
-import android.preference.PreferenceManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 
@@ -33,10 +31,10 @@ import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsConferenceState;
 import com.android.ims.ImsExternalCallState;
 import com.android.ims.ImsReasonInfo;
+import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
-import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.test.TestConferenceEventPackageParser;
 
 import java.io.File;
@@ -83,6 +81,17 @@ public class TelephonyTester {
     private static final String ACTION_TEST_HANDOVER_FAIL =
             "com.android.internal.telephony.TestHandoverFail";
 
+    /**
+     * Test-only intent used to trigger signalling of a
+     * {@link com.android.internal.telephony.gsm.SuppServiceNotification} to the {@link ImsPhone}.
+     * Use {@link #EXTRA_CODE} to specify the
+     * {@link com.android.internal.telephony.gsm.SuppServiceNotification#code}.
+     */
+    private static final String ACTION_TEST_SUPP_SRVC_NOTIFICATION =
+            "com.android.internal.telephony.TestSuppSrvcNotification";
+
+    private static final String EXTRA_CODE = "code";
+
     private static List<ImsExternalCallState> mImsExternalCallStates = null;
 
     private Phone mPhone;
@@ -111,6 +120,9 @@ public class TelephonyTester {
                 } else if (action.equals(ACTION_TEST_HANDOVER_FAIL)) {
                     log("handle handover fail test intent");
                     handleHandoverFailedIntent();
+                } else if (action.equals(ACTION_TEST_SUPP_SRVC_NOTIFICATION)) {
+                    log("handle supp service notification test intent");
+                    sendTestSuppServiceNotification(intent);
                 } else {
                     if (DBG) log("onReceive: unknown action=" + action);
                 }
@@ -137,6 +149,7 @@ public class TelephonyTester {
                 filter.addAction(ACTION_TEST_CONFERENCE_EVENT_PACKAGE);
                 filter.addAction(ACTION_TEST_DIALOG_EVENT_PACKAGE);
                 filter.addAction(ACTION_TEST_HANDOVER_FAIL);
+                filter.addAction(ACTION_TEST_SUPP_SRVC_NOTIFICATION);
                 mImsExternalCallStates = new ArrayList<ImsExternalCallState>();
             }
 
@@ -249,6 +262,20 @@ public class TelephonyTester {
                     false /* isHeld */
                     );
             mImsExternalCallStates.add(state);
+        }
+    }
+
+    private void sendTestSuppServiceNotification(Intent intent) {
+        if (intent.hasExtra(EXTRA_CODE)) {
+            int code = intent.getIntExtra(EXTRA_CODE, -1);
+            ImsPhone imsPhone = (ImsPhone) mPhone;
+            if (imsPhone == null) {
+                return;
+            }
+            log("Test supp service notification:" + code);
+            SuppServiceNotification suppServiceNotification = new SuppServiceNotification();
+            suppServiceNotification.code = code;
+            imsPhone.notifySuppSvcNotification(suppServiceNotification);
         }
     }
 }
