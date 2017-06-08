@@ -97,7 +97,21 @@ public final class MccTable {
         Locale locale = new Locale("", entry.mIso);
         String[] tz = TimeZoneNames.forLocale(locale);
         if (tz.length == 0) return null;
-        return tz[0];
+
+        String zoneName = tz[0];
+
+        /* Use Australia/Sydney instead of Australia/Lord_Howe for Australia.
+         * http://b/33228250
+         * Todo: remove the code, see b/62418027
+         */
+        if (mcc == 505  /* Australia / Norfolk Island */) {
+            for (String zone : tz) {
+                if (zone.contains("Sydney")) {
+                    zoneName = zone;
+                }
+            }
+        }
+        return zoneName;
     }
 
     /**
