@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Binder;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
@@ -78,13 +79,17 @@ public class CarrierSmsUtils {
             return null;
         }
 
-        PersistableBundle config = cm.getConfigForSubId(phone.getSubId());
-        if (config == null) {
-            if (VDBG) Rlog.v(TAG, "No CarrierConfig for subId:" + phone.getSubId());
-            return null;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            PersistableBundle config = cm.getConfigForSubId(phone.getSubId());
+            if (config == null) {
+                if (VDBG) Rlog.v(TAG, "No CarrierConfig for subId:" + phone.getSubId());
+                return null;
+            }
+            return config.getString(CARRIER_IMS_PACKAGE_KEY, null);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-
-        return config.getString(CARRIER_IMS_PACKAGE_KEY, null);
     }
 
     private CarrierSmsUtils() {}
