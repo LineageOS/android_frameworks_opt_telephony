@@ -4913,7 +4913,8 @@ public class ServiceStateTracker extends Handler {
     protected int getCombinedRegState() {
         int regState = mSS.getVoiceRegState();
         int dataRegState = mSS.getDataRegState();
-        if ((regState == ServiceState.STATE_OUT_OF_SERVICE)
+        if ((regState == ServiceState.STATE_OUT_OF_SERVICE
+                || regState == ServiceState.STATE_POWER_OFF)
                 && (dataRegState == ServiceState.STATE_IN_SERVICE)) {
             log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
             regState = dataRegState;
