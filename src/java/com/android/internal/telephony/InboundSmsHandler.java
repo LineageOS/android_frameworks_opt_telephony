@@ -1121,6 +1121,9 @@ public abstract class InboundSmsHandler extends StateMachine {
             Uri uri = Uri.parse("sms://localhost:" + destPort);
             intent.setData(uri);
             intent.setComponent(null);
+            // Allow registered broadcast receivers to get this intent even
+            // when they are in the background.
+            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         }
 
         Bundle options = handleSmsWhitelisting(intent.getComponent());
