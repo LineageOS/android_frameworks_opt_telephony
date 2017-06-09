@@ -146,7 +146,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Sent on exit from {@link WaitingState} to return to idle after sending all broadcasts. */
     private static final int EVENT_RETURN_TO_IDLE = 4;
 
-    /** Release wakelock after a short timeout when returning to idle state. */
+    /** Release wakelock after {@link mWakeLockTimeout} when returning to idle state. */
     private static final int EVENT_RELEASE_WAKELOCK = 5;
 
     /** Sent by {@link SmsBroadcastUndelivered} after cleaning the raw table. */
@@ -215,6 +215,9 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     private static String ACTION_OPEN_SMS_APP =
         "com.android.internal.telephony.OPEN_DEFAULT_SMS_APP";
+
+    /** Timeout for releasing wakelock */
+    private int mWakeLockTimeout;
 
     /**
      * Create a new SMS broadcast helper.
@@ -325,6 +328,14 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     private class StartupState extends State {
         @Override
+        public void enter() {
+            if (DBG) log("entering Startup state");
+            // Set wakelock timeout to 0 during startup, this will ensure that the wakelock is not
+            // held if there are no pending messages to be handled.
+            setWakeLockTimeout(0);
+        }
+
+        @Override
         public boolean processMessage(Message msg) {
             log("StartupState.processMessage:" + msg.what);
             switch (msg.what) {
@@ -356,7 +367,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public void enter() {
             if (DBG) log("entering Idle state");
-            sendMessageDelayed(EVENT_RELEASE_WAKELOCK, WAKELOCK_TIMEOUT);
+            sendMessageDelayed(EVENT_RELEASE_WAKELOCK, getWakeLockTimeout());
         }
 
         @Override
@@ -482,6 +493,14 @@ public abstract class InboundSmsHandler extends StateMachine {
      * {@link IdleState} after any deferred {@link #EVENT_BROADCAST_SMS} messages are handled.
      */
     private class WaitingState extends State {
+        @Override
+        public void exit() {
+            if (DBG) log("exiting Waiting state");
+            // Before moving to idle state, set wakelock timeout to WAKE_LOCK_TIMEOUT milliseconds
+            // to give any receivers time to take their own wake locks
+            setWakeLockTimeout(WAKELOCK_TIMEOUT);
+        }
+
         @Override
         public boolean processMessage(Message msg) {
             log("WaitingState.processMessage:" + msg.what);
@@ -1519,7 +1538,14 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     @VisibleForTesting
     public int getWakeLockTimeout() {
-        return WAKELOCK_TIMEOUT;
+        return mWakeLockTimeout;
+    }
+
+    /**
+    * Sets the wakelock timeout to {@link timeOut} milliseconds
+    */
+    private void setWakeLockTimeout(int timeOut) {
+        mWakeLockTimeout = timeOut;
     }
 
     /**
