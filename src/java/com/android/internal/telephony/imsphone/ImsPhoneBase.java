@@ -228,7 +228,7 @@ abstract class ImsPhoneBase extends Phone {
         mUnknownConnectionRegistrants.notifyResult(this);
     }
 
-    void notifySuppServiceFailed(SuppService code) {
+    public void notifySuppServiceFailed(SuppService code) {
         mSuppServiceFailedRegistrants.notifyResult(code);
     }
 
