@@ -16,8 +16,10 @@
 package com.android.internal.telephony.euicc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -114,6 +116,9 @@ public class EuiccControllerTest extends TelephonyTest {
         private int mResultCode;
         private Intent mExtrasIntent;
 
+        // Whether refreshSubscriptionsAndSendResult was called.
+        private boolean mCalledRefreshSubscriptionsAndSendResult;
+
         TestEuiccController(Context context, EuiccConnector connector) {
             super(context, connector);
         }
@@ -131,6 +136,13 @@ public class EuiccControllerTest extends TelephonyTest {
             mCallbackIntent = callbackIntent;
             mResultCode = resultCode;
             mExtrasIntent = extrasIntent;
+        }
+
+        @Override
+        public void refreshSubscriptionsAndSendResult(
+                PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+            mCalledRefreshSubscriptionsAndSendResult = true;
+            sendResult(callbackIntent, resultCode, extrasIntent);
         }
     }
 
@@ -339,6 +351,17 @@ public class EuiccControllerTest extends TelephonyTest {
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 EuiccService.RESULT_OK, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        // switchAfterDownload = true so no refresh should occur.
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    public void testDownloadSubscription_noSwitch_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -396,6 +419,8 @@ public class EuiccControllerTest extends TelephonyTest {
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 EuiccService.RESULT_OK, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        // switchAfterDownload = true so no refresh should occur.
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -478,6 +503,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 SUBSCRIPTION_ID, ICC_ID, true /* complete */,
                 EuiccService.RESULT_OK, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -499,6 +525,7 @@ public class EuiccControllerTest extends TelephonyTest {
         callDeleteSubscription(
                 SUBSCRIPTION_ID, ICC_ID, true /* complete */, EuiccService.RESULT_OK, PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -689,6 +716,7 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         callEraseSubscriptions(true /* complete */, EuiccService.RESULT_OK);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     private void setGetEidPermissions(

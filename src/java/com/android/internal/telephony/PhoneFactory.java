@@ -353,9 +353,14 @@ public class PhoneFactory {
         return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
     }
 
-    /** Request a refresh of the embedded subscription list. */
-    public static void refreshEmbeddedSubscriptionList() {
-        sSubInfoRecordUpdater.refreshEmbeddedSubscriptionList();
+    /**
+     * Request a refresh of the embedded subscription list.
+     *
+     * @param callback Optional callback to execute after the refresh completes. Must terminate
+     *     quickly as it will be called from SubscriptionInfoUpdater's handler thread.
+     */
+    public static void requestEmbeddedSubscriptionInfoListRefresh(@Nullable Runnable callback) {
+        sSubInfoRecordUpdater.requestEmbeddedSubscriptionInfoListRefresh(callback);
     }
 
     /**
