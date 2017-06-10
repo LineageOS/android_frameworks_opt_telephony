@@ -787,6 +787,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_MODEM_RESTART, reason);
 
         mRil.writeMetricsModemRestartEvent(reason);
+        mRil.mModemResetRegistrants.notifyRegistrants(new AsyncResult(null, reason, null));
     }
 
     /**
