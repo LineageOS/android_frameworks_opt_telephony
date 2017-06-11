@@ -176,6 +176,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 while (iterator.hasNext()) {
                     Map.Entry pair = (Map.Entry) iterator.next();
                     Intent i = (Intent)pair.getValue();
+                    i.putExtra(TelephonyIntents.EXTRA_REBROADCAST_ON_UNLOCK, true);
                     iterator.remove();
                     logd("Broadcasting intent ACTION_SIM_STATE_CHANGED for mCardIndex: " +
                             pair.getKey());
