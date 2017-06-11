@@ -77,6 +77,10 @@ public class CarrierActionAgent extends Handler {
             final String action = intent.getAction();
             final String iccState = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
             if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)){
+                if (intent.getBooleanExtra(TelephonyIntents.EXTRA_REBROADCAST_ON_UNLOCK, false)) {
+                    // ignore rebroadcast since carrier apps are direct boot aware.
+                    return;
+                }
                 if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(iccState) ||
                         IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(iccState)) {
                     sendEmptyMessage(CARRIER_ACTION_RESET);
