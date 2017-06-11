@@ -222,7 +222,10 @@ public class ImsPhone extends ImsPhoneBase {
                     .registerForDataRegStateOrRatChanged(this,
                             EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
         }
-        updateDataServiceState();
+        // Sets the Voice reg state to STATE_OUT_OF_SERVICE and also queries the data service
+        // state. We don't ever need the voice reg state to be anything other than in or out of
+        // service.
+        setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
 
         mDefaultPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
         // Force initial roaming state update later, on EVENT_CARRIER_CONFIG_CHANGED.
