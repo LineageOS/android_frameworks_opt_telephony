@@ -16,6 +16,16 @@
 
 package com.android.internal.telephony.uicc;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyObject;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -35,15 +45,6 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyObject;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class UiccStateChangedLauncherTest extends TelephonyTest {
     private static final String TAG = UiccStateChangedLauncherTest.class.getName();
@@ -101,7 +102,7 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
         // The first broadcast should be sent after initialization.
         UiccCard[] cards = new UiccCard[CARD_COUNT];
         cards[0] = new UiccCard(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_PRESENT));
+                makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */);
         when(UiccController.getInstance().getUiccCards()).thenReturn(cards);
         uiccLauncher.handleMessage(msg);
 

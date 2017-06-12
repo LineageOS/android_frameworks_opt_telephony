@@ -15,26 +15,33 @@
  */
 package com.android.internal.telephony.uicc;
 
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Message;
-import android.test.suitebuilder.annotation.SmallTest;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.cat.CatService;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import static org.mockito.Mockito.*;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
+import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.cat.CatService;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 
 public class UiccCardTest extends TelephonyTest {
     private UiccCard mUicccard;
@@ -69,7 +76,7 @@ public class UiccCardTest extends TelephonyTest {
         @Override
         public void onLooperPrepared() {
             mUicccard = new UiccCard(mContextFixture.getTestDouble(),
-                                     mSimulatedCommands, mIccCardStatus);
+                                     mSimulatedCommands, mIccCardStatus, 0 /* phoneId */);
             /* create a custom handler for the Handler Thread */
             mHandler = new Handler(mTestHandlerThread.getLooper()) {
                 @Override
