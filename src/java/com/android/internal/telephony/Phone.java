@@ -3318,8 +3318,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public boolean isVideoEnabled() {
         Phone imsPhone = mImsPhone;
-        if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+        if (imsPhone != null) {
             return imsPhone.isVideoEnabled();
         }
         return false;
