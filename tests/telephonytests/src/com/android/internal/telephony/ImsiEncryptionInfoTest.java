@@ -31,10 +31,12 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
+import java.util.Date;
 
 public class ImsiEncryptionInfoTest {
     private ImsiEncryptionInfo mImsiEncryptionInfo;
     private PublicKey mPublicKey;
+    private Date mDate = new Date(1496795015);
 
     private static final String TEST_CERT = ""
             + "MIIDsjCCAxugAwIBAgIJAPLf2gS0zYGUMA0GCSqGSIb3DQEBBQUAMIGYMQswCQYDVQQGEwJVUzET"
@@ -64,7 +66,7 @@ public class ImsiEncryptionInfoTest {
     public void setUp() throws Exception {
         mPublicKey = createPublicKey(TEST_CERT);
         mImsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", TelephonyManager.KEY_TYPE_WLAN,
-                "key1=value", mPublicKey);
+                "key1=value", mPublicKey, mDate);
     }
 
     private static PublicKey createPublicKey(String cert) throws Exception {
@@ -84,6 +86,8 @@ public class ImsiEncryptionInfoTest {
         assertEquals("270", mImsiEncryptionInfo.getMnc());
         assertEquals(TelephonyManager.KEY_TYPE_WLAN, mImsiEncryptionInfo.getKeyType());
         assertEquals("key1=value", mImsiEncryptionInfo.getKeyIdentifier());
+        Date date = mImsiEncryptionInfo.getExpirationTime();
+        assertEquals(mDate, mImsiEncryptionInfo.getExpirationTime());
     }
 
     /**
@@ -102,5 +106,6 @@ public class ImsiEncryptionInfoTest {
         assertEquals(TelephonyManager.KEY_TYPE_WLAN, mImsiEncryptionInfo.getKeyType());
         assertEquals("key1=value", mImsiEncryptionInfo.getKeyIdentifier());
         assertEquals(mPublicKey, mImsiEncryptionInfo.getPublicKey());
+        assertEquals(mDate, mImsiEncryptionInfo.getExpirationTime());
     }
 }
