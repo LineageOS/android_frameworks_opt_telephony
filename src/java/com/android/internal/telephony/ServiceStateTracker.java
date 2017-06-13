@@ -399,6 +399,15 @@ public class ServiceStateTracker extends Handler {
         }
     };
 
+    private ContentObserver mEuRoamingObserver = new ContentObserver(new Handler()) {
+        @Override
+        public void onChange(boolean selfChange) {
+            Rlog.i(LOG_TAG, "EU roaming state changed");
+            mEuRoamingEnabled = Settings.Global.getInt(mCr, Settings.Global.EU_ROAMING, 0) != 0;
+            updateRoamingState();
+        }
+    };
+
     //GSM
     private int mPreferredNetworkType;
     private int mMaxDataCalls = 1;
@@ -498,6 +507,8 @@ public class ServiceStateTracker extends Handler {
     private String mRegistrationDeniedReason;
     private String mCurrentCarrier = null;
 
+    private boolean mEuRoamingEnabled = false;
+
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         mPhone = phone;
         mCi = ci;
@@ -542,6 +553,10 @@ public class ServiceStateTracker extends Handler {
         mCr.registerContentObserver(
                 Settings.Global.getUriFor(Settings.Global.AUTO_TIME_ZONE), true,
                 mAutoTimeZoneObserver);
+        mCr.registerContentObserver(
+                Settings.Global.getUriFor(Settings.Global.EU_ROAMING), true,
+                mEuRoamingObserver);
+        mEuRoamingEnabled = Settings.Global.getInt(mCr, Settings.Global.EU_ROAMING, 0) != 0;
         setSignalStrengthDefaultValues();
 
         // Monitor locale change
@@ -4881,6 +4896,35 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    private boolean euOperatorInEuCountry(String operatorNumeric) {
+        if (TextUtils.isEmpty(operatorNumeric) || (operatorNumeric.length() < 5)) {
+            // Not a valid network
+            return false;
+        }
+        final String homeNumeric = getHomeOperatorNumeric();
+        if (TextUtils.isEmpty(homeNumeric) || (homeNumeric.length() < 5)) {
+            // Not a valid SIM MCC
+            return false;
+        }
+        final String networkMCC = operatorNumeric.substring(0, 3);
+        final String homeMCC = homeNumeric.substring(0, 3);
+        final String networkCountry = MccTable.countryCodeForMcc(Integer.parseInt(networkMCC));
+        final String homeCountry = MccTable.countryCodeForMcc(Integer.parseInt(homeMCC));
+        if (networkCountry.isEmpty() || homeCountry.isEmpty()) {
+            // Not a valid country
+            return false;
+        }
+        if (networkCountry.equals(homeCountry)) {
+            // Domestic roaming
+            return false;
+        }
+        List<String> euCountriesList = Arrays.asList(
+            "at", "be", "bg", "cy", "cz", "de", "dk", "ee", "el", "es", "fi", "fr", "hr", "hu",
+            "ie", "it", "lt", "lu", "lv", "mt", "nl", "pl", "pt", "ro", "se", "si", "sk", "uk"
+        );
+        return euCountriesList.contains(homeCountry) && euCountriesList.contains(networkCountry);
+    }
+
     /**
      * Check ISO country by MCC to see if phone is roaming in same registered country
      */
@@ -4930,6 +4974,9 @@ public class ServiceStateTracker extends Handler {
                     if (inSameCountry(currentServiceState.getVoiceOperatorNumeric())) {
                         currentServiceState.setVoiceRoamingType(
                                 ServiceState.ROAMING_TYPE_DOMESTIC);
+                    } else if (mEuRoamingEnabled &&
+                            euOperatorInEuCountry(currentServiceState.getVoiceOperatorNumeric())) {
+                        currentServiceState.setVoiceRoamingType(ServiceState.ROAMING_TYPE_EU);
                     } else {
                         currentServiceState.setVoiceRoamingType(
                                 ServiceState.ROAMING_TYPE_INTERNATIONAL);
@@ -4954,6 +5001,9 @@ public class ServiceStateTracker extends Handler {
                         if (inSameCountry(currentServiceState.getVoiceOperatorNumeric())) {
                             currentServiceState.setVoiceRoamingType(
                                     ServiceState.ROAMING_TYPE_DOMESTIC);
+                        } else if (mEuRoamingEnabled &&
+                                euOperatorInEuCountry(currentServiceState.getVoiceOperatorNumeric())) {
+                            currentServiceState.setVoiceRoamingType(ServiceState.ROAMING_TYPE_EU);
                         } else {
                             currentServiceState.setVoiceRoamingType(
                                     ServiceState.ROAMING_TYPE_INTERNATIONAL);
@@ -5000,6 +5050,9 @@ public class ServiceStateTracker extends Handler {
                         // take it as 3GPP roaming
                         if (inSameCountry(currentServiceState.getDataOperatorNumeric())) {
                             currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);
+                        } else if (mEuRoamingEnabled &&
+                                euOperatorInEuCountry(currentServiceState.getDataOperatorNumeric())) {
+                            currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_EU);
                         } else {
                             currentServiceState.setDataRoamingType(
                                     ServiceState.ROAMING_TYPE_INTERNATIONAL);
