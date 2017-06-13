@@ -781,6 +781,8 @@ public class EuiccController extends IEuiccController.Stub {
                     switch (result.result) {
                         case EraseResult.RESULT_OK:
                             resultCode = OK;
+                            SubscriptionController.getInstance()
+                                    .requestEmbeddedSubscriptionInfoListRefresh();
                             break;
                         case EraseResult.RESULT_GENERIC_ERROR:
                             resultCode = GENERIC_ERROR;
@@ -906,6 +908,9 @@ public class EuiccController extends IEuiccController.Stub {
     private boolean canManageActiveSubscription(String callingPackage) {
         // TODO(b/36260308): We should plumb a slot ID through here for multi-SIM devices.
         List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        if (subInfoList == null) {
+            return false;
+        }
         int size = subInfoList.size();
         for (int subIndex = 0; subIndex < size; subIndex++) {
             SubscriptionInfo subInfo = subInfoList.get(subIndex);
