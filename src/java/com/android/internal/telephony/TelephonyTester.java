@@ -78,6 +78,13 @@ public class TelephonyTester {
     private static final String EXTRA_CANPULL = "canPull";
 
     /**
+     * Test-only intent used to trigger supp service notification failure.
+     */
+    private static final String ACTION_TEST_SUPP_SRVC_FAIL =
+            "com.android.internal.telephony.TestSuppSrvcFail";
+    private static final String EXTRA_FAILURE_CODE = "failureCode";
+
+    /**
      * Test-only intent used to trigger the signalling which occurs when a handover to WIFI fails.
      */
     private static final String ACTION_TEST_HANDOVER_FAIL =
@@ -108,6 +115,9 @@ public class TelephonyTester {
                 } else if (action.equals(ACTION_TEST_DIALOG_EVENT_PACKAGE)) {
                     log("handle test dialog event package intent");
                     handleTestDialogEventPackageIntent(intent);
+                } else if (action.equals(ACTION_TEST_SUPP_SRVC_FAIL)) {
+                    log("handle test supp svc failed intent");
+                    handleSuppServiceFailedIntent(intent);
                 } else if (action.equals(ACTION_TEST_HANDOVER_FAIL)) {
                     log("handle handover fail test intent");
                     handleHandoverFailedIntent();
@@ -136,6 +146,7 @@ public class TelephonyTester {
                 log("register for intent action=" + ACTION_TEST_CONFERENCE_EVENT_PACKAGE);
                 filter.addAction(ACTION_TEST_CONFERENCE_EVENT_PACKAGE);
                 filter.addAction(ACTION_TEST_DIALOG_EVENT_PACKAGE);
+                filter.addAction(ACTION_TEST_SUPP_SRVC_FAIL);
                 filter.addAction(ACTION_TEST_HANDOVER_FAIL);
                 mImsExternalCallStates = new ArrayList<ImsExternalCallState>();
             }
@@ -152,6 +163,15 @@ public class TelephonyTester {
 
     private static void log(String s) {
         Rlog.d(LOG_TAG, s);
+    }
+
+    private void handleSuppServiceFailedIntent(Intent intent) {
+        ImsPhone imsPhone = (ImsPhone) mPhone;
+        if (imsPhone == null) {
+            return;
+        }
+        int code = intent.getIntExtra(EXTRA_FAILURE_CODE, 0);
+        imsPhone.notifySuppServiceFailed(PhoneInternalInterface.SuppService.values()[code]);
     }
 
     private void handleHandoverFailedIntent() {
