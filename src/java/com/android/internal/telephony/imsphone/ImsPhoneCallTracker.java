@@ -1155,7 +1155,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             // Swap the ImsCalls pointed to by the foreground and background ImsPhoneCalls.
             // If hold or resume later fails, we will swap them back.
-            boolean switchingWithWaitingCall = mBackgroundCall.getImsCall() == null &&
+            boolean switchingWithWaitingCall = !mBackgroundCall.getState().isAlive() &&
                     mRingingCall != null &&
                     mRingingCall.getState() == ImsPhoneCall.State.WAITING;
 
