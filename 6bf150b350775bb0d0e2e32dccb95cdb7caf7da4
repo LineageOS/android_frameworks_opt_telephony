@@ -16,6 +16,52 @@
       "revId": "6bf150b350775bb0d0e2e32dccb95cdb7caf7da4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da87b5cf_dd5c4728",
+        "filename": "src/java/com/android/internal/telephony/ServiceStateTracker.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 5005,
+      "author": {
+        "id": 13028
+      },
+      "writtenOn": "2017-06-14T08:11:39Z",
+      "side": 1,
+      "message": "line length",
+      "range": {
+        "startLine": 5005,
+        "startChar": 100,
+        "endLine": 5005,
+        "endChar": 103
+      },
+      "revId": "6bf150b350775bb0d0e2e32dccb95cdb7caf7da4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da87b5cf_7d417b38",
+        "filename": "src/java/com/android/internal/telephony/ServiceStateTracker.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 5054,
+      "author": {
+        "id": 13028
+      },
+      "writtenOn": "2017-06-14T08:11:39Z",
+      "side": 1,
+      "message": "line length",
+      "range": {
+        "startLine": 5054,
+        "startChar": 100,
+        "endLine": 5054,
+        "endChar": 102
+      },
+      "revId": "6bf150b350775bb0d0e2e32dccb95cdb7caf7da4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
