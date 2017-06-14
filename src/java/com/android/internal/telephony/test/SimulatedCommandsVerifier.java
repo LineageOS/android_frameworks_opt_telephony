@@ -20,6 +20,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.ImsiEncryptionInfo;
+import android.telephony.NetworkScanRequest;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.RadioCapability;
@@ -946,7 +947,7 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void startNetworkScan(Message response) {
+    public void startNetworkScan(NetworkScanRequest nsr, Message response) {
 
     }
 
