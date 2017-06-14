@@ -26,6 +26,7 @@ import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
+import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -228,7 +229,7 @@ abstract class ImsPhoneBase extends Phone {
         mUnknownConnectionRegistrants.notifyResult(this);
     }
 
-    void notifySuppServiceFailed(SuppService code) {
+    public void notifySuppServiceFailed(SuppService code) {
         mSuppServiceFailedRegistrants.notifyResult(code);
     }
 
@@ -427,7 +428,7 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
-    public void startNetworkScan(Message response) {
+    public void startNetworkScan(NetworkScanRequest nsr, Message response) {
     }
 
     @Override

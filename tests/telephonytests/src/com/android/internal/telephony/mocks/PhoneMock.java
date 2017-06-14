@@ -31,6 +31,7 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.DataConnectionRealTimeInfo;
+import android.telephony.NetworkScanRequest;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.VoLteServiceState;
@@ -1235,7 +1236,7 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public void startNetworkScan(Message response) {
+    public void startNetworkScan(NetworkScanRequest nsr, Message response) {
         throw new RuntimeException("not implemented");
     }
 
