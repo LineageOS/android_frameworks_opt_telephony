@@ -27,6 +27,7 @@ import android.os.ResultReceiver;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.telephony.CellLocation;
+import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -394,7 +395,7 @@ abstract class SipPhoneBase extends Phone {
     }
 
     @Override
-    public void startNetworkScan(Message response) {
+    public void startNetworkScan(NetworkScanRequest nsr, Message response) {
     }
 
     @Override
