@@ -41,6 +41,7 @@ import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.service.euicc.EuiccProfileInfo;
+import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
@@ -471,7 +472,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 new EuiccProfileInfo("3", null /* accessRules */, null /* nickname */),
         };
         when(mEuiccController.blockingGetEuiccProfileInfoList()).thenReturn(
-                GetEuiccProfileInfoListResult.success(euiccProfiles, false /* removable */));
+                new GetEuiccProfileInfoListResult(
+                        EuiccService.RESULT_OK, euiccProfiles, false /* removable */));
 
         List<SubscriptionInfo> subInfoList = new ArrayList<>();
         // 1: not embedded, but has matching iccid with an embedded subscription.
@@ -520,7 +522,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     public void testUpdateEmbeddedSubscriptions_listFailure() throws Exception {
         when(mEuiccManager.isEnabled()).thenReturn(true);
         when(mEuiccController.blockingGetEuiccProfileInfoList())
-                .thenReturn(GetEuiccProfileInfoListResult.genericError(42, false /* removable */));
+                .thenReturn(new GetEuiccProfileInfoListResult(
+                        42, null /* subscriptions */, false /* removable */));
 
         List<SubscriptionInfo> subInfoList = new ArrayList<>();
         // 1: not embedded, but has matching iccid with an embedded subscription.
