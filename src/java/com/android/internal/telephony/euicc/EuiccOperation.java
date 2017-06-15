@@ -342,7 +342,7 @@ public class EuiccOperation implements Parcelable {
     private static void fail(PendingIntent callbackIntent) {
         EuiccController.get().sendResult(
                 callbackIntent,
-                EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_GENERIC_ERROR,
+                EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 null /* extrasIntent */);
     }
 
