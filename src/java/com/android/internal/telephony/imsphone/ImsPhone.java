@@ -340,6 +340,11 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.mRingingCall;
     }
 
+    @Override
+    public boolean isImsAvailable() {
+        return mCT.isImsServiceReady();
+    }
+
     private boolean handleCallDeflectionIncallSupplementaryService(
             String dialString) {
         if (dialString.length() > 1) {
