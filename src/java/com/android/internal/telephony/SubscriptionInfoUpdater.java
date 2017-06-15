@@ -38,6 +38,7 @@ import android.os.UserManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.service.euicc.EuiccProfileInfo;
+import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
@@ -47,7 +48,6 @@ import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
@@ -697,16 +697,14 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         final EuiccProfileInfo[] embeddedProfiles;
-        if (result.result == GetEuiccProfileInfoListResult.RESULT_OK) {
+        if (result.result == EuiccService.RESULT_OK) {
             embeddedProfiles = result.profiles;
-        } else if (result.result == GetEuiccProfileInfoListResult.RESULT_GENERIC_ERROR) {
+        } else {
+            logd("updatedEmbeddedSubscriptions: error " + result.result + " listing profiles");
             // If there's an error listing profiles, treat it equivalently to a successful
             // listing which returned no profiles under the assumption that none are currently
             // accessible.
             embeddedProfiles = new EuiccProfileInfo[0];
-        } else {
-            Log.wtf(LOG_TAG, "Unknown result from getEuiccProfileInfoList: " + result.result);
-            return;
         }
         final boolean isRemovable = result.isRemovable;
 
