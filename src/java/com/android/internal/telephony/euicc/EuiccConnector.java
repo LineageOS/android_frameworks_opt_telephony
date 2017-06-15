@@ -33,9 +33,6 @@ import android.content.pm.ServiceInfo;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
-import android.service.euicc.DeleteResult;
-import android.service.euicc.DownloadResult;
-import android.service.euicc.EraseResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
@@ -51,8 +48,6 @@ import android.service.euicc.IGetEuiccInfoCallback;
 import android.service.euicc.IGetEuiccProfileInfoListCallback;
 import android.service.euicc.ISwitchToSubscriptionCallback;
 import android.service.euicc.IUpdateSubscriptionNicknameCallback;
-import android.service.euicc.SwitchResult;
-import android.service.euicc.UpdateNicknameResult;
 import android.telephony.SubscriptionManager;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccInfo;
@@ -198,7 +193,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public interface DownloadCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the download has completed (though it may have failed). */
-        void onDownloadComplete(DownloadResult result);
+        void onDownloadComplete(int result);
     }
 
     interface GetEuiccProfileInfoListCommandCallback extends BaseEuiccCommandCallback {
@@ -234,7 +229,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public interface DeleteCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the delete has completed (though it may have failed). */
-        void onDeleteComplete(DeleteResult result);
+        void onDeleteComplete(int result);
     }
 
     static class SwitchRequest {
@@ -247,7 +242,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public interface SwitchCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the switch has completed (though it may have failed). */
-        void onSwitchComplete(SwitchResult result);
+        void onSwitchComplete(int result);
     }
 
     static class UpdateNicknameRequest {
@@ -260,14 +255,14 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public interface UpdateNicknameCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the update has completed (though it may have failed). */
-        void onUpdateNicknameComplete(UpdateNicknameResult result);
+        void onUpdateNicknameComplete(int result);
     }
 
     /** Callback class for {@link #eraseSubscriptions}. */
     @VisibleForTesting(visibility = PACKAGE)
     public interface EraseCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the erase has completed (though it may have failed). */
-        void onEraseComplete(EraseResult result);
+        void onEraseComplete(int result);
     }
 
     private Context mContext;
@@ -653,7 +648,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     request.mForceDeactivateSim,
                                     new IDownloadSubscriptionCallback.Stub() {
                                         @Override
-                                        public void onComplete(DownloadResult result) {
+                                        public void onComplete(int result) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((DownloadCommandCallback) callback)
                                                         .onDownloadComplete(result);
@@ -715,7 +710,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                             mEuiccService.deleteSubscription(slotId, request.mIccid,
                                     new IDeleteSubscriptionCallback.Stub() {
                                         @Override
-                                        public void onComplete(DeleteResult result) {
+                                        public void onComplete(int result) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((DeleteCommandCallback) callback)
                                                         .onDeleteComplete(result);
@@ -731,7 +726,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     request.mForceDeactivateSim,
                                     new ISwitchToSubscriptionCallback.Stub() {
                                         @Override
-                                        public void onComplete(SwitchResult result) {
+                                        public void onComplete(int result) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((SwitchCommandCallback) callback)
                                                         .onSwitchComplete(result);
@@ -747,7 +742,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     request.mNickname,
                                     new IUpdateSubscriptionNicknameCallback.Stub() {
                                         @Override
-                                        public void onComplete(UpdateNicknameResult result) {
+                                        public void onComplete(int result) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((UpdateNicknameCommandCallback) callback)
                                                         .onUpdateNicknameComplete(result);
@@ -761,7 +756,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                             mEuiccService.eraseSubscriptions(slotId,
                                     new IEraseSubscriptionsCallback.Stub() {
                                         @Override
-                                        public void onComplete(EraseResult result) {
+                                        public void onComplete(int result) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((EraseCommandCallback) callback)
                                                         .onEraseComplete(result);
