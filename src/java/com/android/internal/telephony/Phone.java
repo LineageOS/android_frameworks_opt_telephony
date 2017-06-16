@@ -3309,6 +3309,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Determines if the connection to IMS services are available yet.
+     * @return {@code true} if the connection to IMS services are available.
+     */
+    public boolean isImsAvailable() {
+        if (mImsPhone == null) {
+            return false;
+        }
+
+        return mImsPhone.isImsAvailable();
+    }
+
+    /**
      * Determines if video calling is enabled for the phone.
      *
      * @return {@code true} if video calling is enabled, {@code false} otherwise.
