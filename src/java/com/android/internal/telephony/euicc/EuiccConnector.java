@@ -46,6 +46,7 @@ import android.service.euicc.IGetDownloadableSubscriptionMetadataCallback;
 import android.service.euicc.IGetEidCallback;
 import android.service.euicc.IGetEuiccInfoCallback;
 import android.service.euicc.IGetEuiccProfileInfoListCallback;
+import android.service.euicc.IRetainSubscriptionsForFactoryResetCallback;
 import android.service.euicc.ISwitchToSubscriptionCallback;
 import android.service.euicc.IUpdateSubscriptionNicknameCallback;
 import android.telephony.SubscriptionManager;
@@ -130,6 +131,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private static final int CMD_SWITCH_TO_SUBSCRIPTION = 107;
     private static final int CMD_UPDATE_SUBSCRIPTION_NICKNAME = 108;
     private static final int CMD_ERASE_SUBSCRIPTIONS = 109;
+    private static final int CMD_RETAIN_SUBSCRIPTIONS = 110;
 
     private static boolean isEuiccCommand(int what) {
         return what >= CMD_GET_EID;
@@ -263,6 +265,13 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     public interface EraseCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the erase has completed (though it may have failed). */
         void onEraseComplete(int result);
+    }
+
+    /** Callback class for {@link #retainSubscriptions}. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface RetainSubscriptionsCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the retain command has completed (though it may have failed). */
+        void onRetainSubscriptionsComplete(int result);
     }
 
     private Context mContext;
@@ -430,6 +439,12 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public void eraseSubscriptions(EraseCommandCallback callback) {
         sendMessage(CMD_ERASE_SUBSCRIPTIONS, callback);
+    }
+
+    /** Asynchronously ensure that all profiles will be retained on the next factory reset. */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void retainSubscriptions(RetainSubscriptionsCommandCallback callback) {
+        sendMessage(CMD_RETAIN_SUBSCRIPTIONS, callback);
     }
 
     /**
@@ -766,6 +781,20 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     });
                             break;
                         }
+                        case CMD_RETAIN_SUBSCRIPTIONS: {
+                            mEuiccService.retainSubscriptionsForFactoryReset(slotId,
+                                    new IRetainSubscriptionsForFactoryResetCallback.Stub() {
+                                        @Override
+                                        public void onComplete(int result) {
+                                            sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                                ((RetainSubscriptionsCommandCallback) callback)
+                                                        .onRetainSubscriptionsComplete(result);
+                                                onCommandEnd(callback);
+                                            });
+                                        }
+                                    });
+                            break;
+                        }
                         default: {
                             Log.wtf(TAG, "Unimplemented eUICC command: " + message.what);
                             callback.onEuiccServiceUnavailable();
@@ -807,6 +836,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
             case CMD_GET_EUICC_PROFILE_INFO_LIST:
             case CMD_GET_EUICC_INFO:
             case CMD_ERASE_SUBSCRIPTIONS:
+            case CMD_RETAIN_SUBSCRIPTIONS:
                 return (BaseEuiccCommandCallback) message.obj;
             case CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA:
                 return ((GetMetadataRequest) message.obj).mCallback;
