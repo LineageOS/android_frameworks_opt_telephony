@@ -926,27 +926,39 @@ public class SIMRecords extends IccRecords {
                     try {
                         isRecordLoadResponse = true;
 
-                        ar = (AsyncResult) msg.obj;
-                        data = (byte[]) ar.result;
+                        if (mCarrierTestOverride.isInTestMode() && getIMSI() != null) {
+                            imsi = getIMSI();
+                            try {
+                                int mcc = Integer.parseInt(imsi.substring(0, 3));
+                                mMncLength = MccTable.smallestDigitsMccForMnc(mcc);
+                                log("[TestMode] mMncLength=" + mMncLength);
+                            } catch (NumberFormatException e) {
+                                mMncLength = UNKNOWN;
+                                loge("[TestMode] Corrupt IMSI! mMncLength=" + mMncLength);
+                            }
+                        } else {
+                            ar = (AsyncResult) msg.obj;
+                            data = (byte[]) ar.result;
 
-                        if (ar.exception != null) {
-                            break;
+                            if (ar.exception != null) {
+                                break;
+                            }
+
+                            log("EF_AD: " + IccUtils.bytesToHexString(data));
+
+                            if (data.length < 3) {
+                                log("Corrupt AD data on SIM");
+                                break;
+                            }
+
+                            if (data.length == 3) {
+                                log("MNC length not present in EF_AD");
+                                break;
+                            }
+
+                            mMncLength = data[3] & 0xf;
+                            log("setting4 mMncLength=" + mMncLength);
                         }
-
-                        log("EF_AD: " + IccUtils.bytesToHexString(data));
-
-                        if (data.length < 3) {
-                            log("Corrupt AD data on SIM");
-                            break;
-                        }
-
-                        if (data.length == 3) {
-                            log("MNC length not present in EF_AD");
-                            break;
-                        }
-
-                        mMncLength = data[3] & 0xf;
-                        log("setting4 mMncLength=" + mMncLength);
 
                         if (mMncLength == 0xf) {
                             mMncLength = UNKNOWN;
