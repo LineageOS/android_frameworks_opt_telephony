@@ -1810,7 +1810,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void startNetworkScan(Message result) {
+    public void startNetworkScan(NetworkScanRequest nsr, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             android.hardware.radio.V1_1.IRadio radioProxy11 =
@@ -1822,7 +1822,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     result.sendToTarget();
                 }
             } else {
-                NetworkScanRequest nsr = (NetworkScanRequest) result.obj;
                 android.hardware.radio.V1_1.NetworkScanRequest request =
                         new android.hardware.radio.V1_1.NetworkScanRequest();
                 request.type = nsr.scanType;

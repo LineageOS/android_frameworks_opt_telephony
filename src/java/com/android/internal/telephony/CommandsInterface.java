@@ -21,6 +21,7 @@ import android.os.Message;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.ClientRequestStats;
+import android.telephony.NetworkScanRequest;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
@@ -1293,7 +1294,7 @@ public interface CommandsInterface {
      *
      * ((AsyncResult)response.obj).result is a NetworkScanResult object
      */
-    void startNetworkScan(Message response);
+    void startNetworkScan(NetworkScanRequest nsr, Message response);
 
     /**
      * Stops the ongoing network scan
