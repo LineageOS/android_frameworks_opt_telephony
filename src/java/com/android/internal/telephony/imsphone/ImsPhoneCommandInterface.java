@@ -20,6 +20,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.NetworkScanRequest;
 
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
@@ -334,7 +335,7 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
-    public void startNetworkScan(Message response) {
+    public void startNetworkScan(NetworkScanRequest nsr, Message response) {
     }
 
     @Override
