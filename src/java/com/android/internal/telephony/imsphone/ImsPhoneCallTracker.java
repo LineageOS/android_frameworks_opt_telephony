@@ -1237,13 +1237,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         ImsPhoneConnection foregroundConnection = mForegroundCall.getFirstConnection();
         if (foregroundConnection != null) {
             foregroundConnection.setConferenceConnectTime(conferenceConnectTime);
-            foregroundConnection.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_START,
-                    null);
+            foregroundConnection.handleMergeStart();
         }
         ImsPhoneConnection backgroundConnection = findConnection(bgImsCall);
         if (backgroundConnection != null) {
-            backgroundConnection.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_START,
-                    null);
+            backgroundConnection.handleMergeStart();
         }
 
         try {
@@ -2356,7 +2354,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 conn.onConferenceMergeFailed();
-                conn.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_COMPLETE, null);
+                conn.handleMergeComplete();
             }
         }
 
