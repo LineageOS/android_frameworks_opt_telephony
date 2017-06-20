@@ -2013,10 +2013,12 @@ public class ServiceStateTracker extends Handler {
                 }
             }
             // no matches found against the list!
+            log("isRoamIndForHomeSystem: No match found against list for roamInd=" + roamInd);
             return false;
         }
 
         // no system property found for the roaming indicators for home system
+        log("isRoamIndForHomeSystem: No list found");
         return false;
     }
 
