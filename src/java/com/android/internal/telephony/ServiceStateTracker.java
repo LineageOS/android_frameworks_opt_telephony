@@ -87,6 +87,7 @@ import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.NotificationChannelController;
+import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -3267,7 +3268,8 @@ public class ServiceStateTracker extends Handler {
     /**
      * Do not set roaming state in case of oprators considered non-roaming.
      *
-     * Can use mcc or mcc+mnc as item of config_operatorConsideredNonRoaming.
+     * Can use mcc or mcc+mnc as item of
+     * {@link CarrierConfigManager#KEY_NON_ROAMING_OPERATOR_STRING_ARRAY}.
      * For example, 302 or 21407. If mcc or mcc+mnc match with operator,
      * don't set roaming state.
      *
@@ -3276,10 +3278,17 @@ public class ServiceStateTracker extends Handler {
      */
     private boolean isOperatorConsideredNonRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray = mPhone.getContext().getResources().getStringArray(
-                com.android.internal.R.array.config_operatorConsideredNonRoaming);
-
-        if (numericArray.length == 0 || operatorNumeric == null) {
+        final CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        String[] numericArray = null;
+        if (configManager != null) {
+            PersistableBundle config = configManager.getConfigForSubId(mPhone.getSubId());
+            if (config != null) {
+                numericArray = config.getStringArray(
+                        CarrierConfigManager.KEY_NON_ROAMING_OPERATOR_STRING_ARRAY);
+            }
+        }
+        if (ArrayUtils.isEmpty(numericArray) || operatorNumeric == null) {
             return false;
         }
 
@@ -3293,10 +3302,17 @@ public class ServiceStateTracker extends Handler {
 
     private boolean isOperatorConsideredRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
-        String[] numericArray = mPhone.getContext().getResources().getStringArray(
-                com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
-
-        if (numericArray.length == 0 || operatorNumeric == null) {
+        final CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        String[] numericArray = null;
+        if (configManager != null) {
+            PersistableBundle config = configManager.getConfigForSubId(mPhone.getSubId());
+            if (config != null) {
+                numericArray = config.getStringArray(
+                        CarrierConfigManager.KEY_ROAMING_OPERATOR_STRING_ARRAY);
+            }
+        }
+        if (ArrayUtils.isEmpty(numericArray) || operatorNumeric == null) {
             return false;
         }
 
