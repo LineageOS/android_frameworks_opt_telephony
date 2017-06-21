@@ -3427,7 +3427,7 @@ public class ServiceStateTracker extends Handler {
     public CellLocation getCellLocation(WorkSource workSource) {
         if (((GsmCellLocation)mCellLoc).getLac() >= 0 &&
                 ((GsmCellLocation)mCellLoc).getCid() >= 0) {
-            if (DBG) log("getCellLocation(): X good mCellLoc=" + mCellLoc);
+            if (VDBG) log("getCellLocation(): X good mCellLoc=" + mCellLoc);
             return mCellLoc;
         } else {
             List<CellInfo> result = getAllCellInfo(workSource);
@@ -3452,7 +3452,7 @@ public class ServiceStateTracker extends Handler {
                         cellLocOther.setLacAndCid(cellIdentityGsm.getLac(),
                                 cellIdentityGsm.getCid());
                         cellLocOther.setPsc(cellIdentityGsm.getPsc());
-                        if (DBG) log("getCellLocation(): X ret GSM info=" + cellLocOther);
+                        if (VDBG) log("getCellLocation(): X ret GSM info=" + cellLocOther);
                         return cellLocOther;
                     } else if (ci instanceof CellInfoWcdma) {
                         CellInfoWcdma cellInfoWcdma = (CellInfoWcdma)ci;
@@ -3460,7 +3460,7 @@ public class ServiceStateTracker extends Handler {
                         cellLocOther.setLacAndCid(cellIdentityWcdma.getLac(),
                                 cellIdentityWcdma.getCid());
                         cellLocOther.setPsc(cellIdentityWcdma.getPsc());
-                        if (DBG) log("getCellLocation(): X ret WCDMA info=" + cellLocOther);
+                        if (VDBG) log("getCellLocation(): X ret WCDMA info=" + cellLocOther);
                         return cellLocOther;
                     } else if ((ci instanceof CellInfoLte) &&
                             ((cellLocOther.getLac() < 0) || (cellLocOther.getCid() < 0))) {
@@ -3472,18 +3472,18 @@ public class ServiceStateTracker extends Handler {
                             cellLocOther.setLacAndCid(cellIdentityLte.getTac(),
                                     cellIdentityLte.getCi());
                             cellLocOther.setPsc(0);
-                            if (DBG) {
+                            if (VDBG) {
                                 log("getCellLocation(): possible LTE cellLocOther=" + cellLocOther);
                             }
                         }
                     }
                 }
-                if (DBG) {
+                if (VDBG) {
                     log("getCellLocation(): X ret best answer cellLocOther=" + cellLocOther);
                 }
                 return cellLocOther;
             } else {
-                if (DBG) {
+                if (VDBG) {
                     log("getCellLocation(): X empty mCellLoc and CellInfo mCellLoc=" + mCellLoc);
                 }
                 return mCellLoc;
@@ -4585,8 +4585,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
-        pw.println(" mCellLoc=" + mCellLoc);
-        pw.println(" mNewCellLoc=" + mNewCellLoc);
+        pw.println(" mCellLoc=" + Rlog.pii(VDBG, mCellLoc));
+        pw.println(" mNewCellLoc=" + Rlog.pii(VDBG, mNewCellLoc));
         pw.println(" mLastCellInfoListTime=" + mLastCellInfoListTime);
         dumpCellInfoList(pw);
         pw.flush();
