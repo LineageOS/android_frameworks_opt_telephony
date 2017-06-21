@@ -842,6 +842,9 @@ public class ImsPhoneConnection extends Connection implements
                     }
 
                     if (!mShouldIgnoreVideoStateChanges) {
+                        if (mImsVideoCallProviderWrapper != null) {
+                            mImsVideoCallProviderWrapper.onVideoStateChanged(newVideoState);
+                        }
                         setVideoState(newVideoState);
                         changed = true;
                     } else {
