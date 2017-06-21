@@ -45,10 +45,12 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.Parcel;
+import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.support.test.filters.FlakyTest;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
@@ -87,6 +89,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     private ServiceStateTracker sst;
     private ServiceStateTrackerTestHandler mSSTTestHandler;
+    private PersistableBundle mBundle;
 
     private static final int EVENT_REGISTERED_TO_NETWORK = 1;
     private static final int EVENT_SUBSCRIPTION_INFO_READY = 2;
@@ -123,14 +126,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mPhone.mDcTracker = mDct;
 
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_ROAMING_OPERATOR_STRING_ARRAY, new String[]{"123456"});
 
-        mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming,
-                new String[]{"123456"});
-
-        mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_operatorConsideredNonRoaming,
-                new String[]{"123456"});
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_NON_ROAMING_OPERATOR_STRING_ARRAY, new String[]{"123456"});
 
         mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_HOME);
         mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA);

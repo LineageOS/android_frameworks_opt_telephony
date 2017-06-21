@@ -35,6 +35,8 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
 
+import com.android.ims.ImsCall;
+import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsException;
 import com.android.ims.ImsStreamMediaProfile;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
@@ -43,9 +45,6 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
-
-import com.android.ims.ImsCall;
-import com.android.ims.ImsCallProfile;
 
 import java.util.Objects;
 
@@ -106,6 +105,11 @@ public class ImsPhoneConnection extends Connection implements
 
     private ImsRttTextHandler mRttTextHandler;
     private android.telecom.Connection.RttTextStream mRttTextStream;
+
+    /**
+     * Used to indicate that this call is in the midst of being merged into a conference.
+     */
+    private boolean mIsMergeInProcess = false;
 
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
@@ -761,29 +765,39 @@ public class ImsPhoneConnection extends Connection implements
             int namep = ImsCallProfile.OIRToPresentation(
                     callProfile.getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
             if (Phone.DEBUG_PHONE) {
-                Rlog.d(LOG_TAG, "address = " + Rlog.pii(LOG_TAG, address) + " name = " + name +
-                        " nump = " + nump + " namep = " + namep);
+                Rlog.d(LOG_TAG, "callId = " + getTelecomCallId() + " address = " + Rlog.pii(LOG_TAG,
+                        address) + " name = " + name + " nump = " + nump + " namep = " + namep);
             }
-            if(!equalsBaseDialString(mAddress, address)) {
-                mAddress = address;
-                changed = true;
-            }
-            if (TextUtils.isEmpty(name)) {
-                if (!TextUtils.isEmpty(mCnapName)) {
-                    mCnapName = "";
+            if (!mIsMergeInProcess) {
+                // Only process changes to the name and address when a merge is not in process.
+                // When call A initiated a merge with call B to form a conference C, there is a
+                // point in time when the ImsCall transfers the conference call session into A,
+                // at which point the ImsConferenceController creates the conference in Telecom.
+                // For some carriers C will have a unique conference URI address.  Swapping the
+                // conference session into A, which is about to be disconnected, to be logged to
+                // the call log using the conference address.  To prevent this we suppress updates
+                // to the call address while a merge is in process.
+                if (!equalsBaseDialString(mAddress, address)) {
+                    mAddress = address;
                     changed = true;
                 }
-            } else if (!name.equals(mCnapName)) {
-                mCnapName = name;
-                changed = true;
-            }
-            if (mNumberPresentation != nump) {
-                mNumberPresentation = nump;
-                changed = true;
-            }
-            if (mCnapNamePresentation != namep) {
-                mCnapNamePresentation = namep;
-                changed = true;
+                if (TextUtils.isEmpty(name)) {
+                    if (!TextUtils.isEmpty(mCnapName)) {
+                        mCnapName = "";
+                        changed = true;
+                    }
+                } else if (!name.equals(mCnapName)) {
+                    mCnapName = name;
+                    changed = true;
+                }
+                if (mNumberPresentation != nump) {
+                    mNumberPresentation = nump;
+                    changed = true;
+                }
+                if (mCnapNamePresentation != namep) {
+                    mCnapNamePresentation = namep;
+                    changed = true;
+                }
             }
         }
         return changed;
@@ -1171,5 +1185,21 @@ public class ImsPhoneConnection extends Connection implements
         }
 
         return mImsVideoCallProviderWrapper.wasVideoPausedFromSource(source);
+    }
+
+    /**
+     * Mark the call as in the process of being merged and inform the UI of the merge start.
+     */
+    public void handleMergeStart() {
+        mIsMergeInProcess = true;
+        onConnectionEvent(android.telecom.Connection.EVENT_MERGE_START, null);
+    }
+
+    /**
+     * Mark the call as done merging and inform the UI of the merge start.
+     */
+    public void handleMergeComplete() {
+        mIsMergeInProcess = false;
+        onConnectionEvent(android.telecom.Connection.EVENT_MERGE_COMPLETE, null);
     }
 }
