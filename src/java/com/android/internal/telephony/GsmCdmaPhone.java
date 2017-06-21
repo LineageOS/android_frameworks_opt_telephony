@@ -1519,12 +1519,12 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType) {
-        return CarrierInfoManager.getCarrierInfoForImsiEncryption(keyType);
+        return CarrierInfoManager.getCarrierInfoForImsiEncryption(keyType, mContext);
     }
 
     @Override
     public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo) {
-        CarrierInfoManager.setCarrierInfoForImsiEncryption(imsiEncryptionInfo);
+        CarrierInfoManager.setCarrierInfoForImsiEncryption(imsiEncryptionInfo, mContext);
     }
 
     @Override
