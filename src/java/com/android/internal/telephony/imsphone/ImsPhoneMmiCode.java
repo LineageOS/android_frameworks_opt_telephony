@@ -998,7 +998,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     void
     onUssdFinished(String ussdMessage, boolean isUssdRequest) {
         if (mState == State.PENDING) {
-            if (ussdMessage == null) {
+            if (TextUtils.isEmpty(ussdMessage)) {
                 mMessage = mContext.getText(com.android.internal.R.string.mmiComplete);
                 Rlog.v(LOG_TAG, "onUssdFinished: no message; using: " + mMessage);
             } else {

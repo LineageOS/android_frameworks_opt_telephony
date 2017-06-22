@@ -530,10 +530,11 @@ public class SmsNumberUtils {
      *  Filter the destination number if using VZW sim card.
      */
     public static String filterDestAddr(Phone phone, String destAddr) {
-        if (DBG) Rlog.d(TAG, "enter filterDestAddr. destAddr=\"" + destAddr + "\"" );
+        if (DBG) Rlog.d(TAG, "enter filterDestAddr. destAddr=\"" + Rlog.pii(TAG, destAddr) + "\"" );
 
         if (destAddr == null || !PhoneNumberUtils.isGlobalPhoneNumber(destAddr)) {
-            Rlog.w(TAG, "destAddr" + destAddr + " is not a global phone number! Nothing changed.");
+            Rlog.w(TAG, "destAddr" + Rlog.pii(TAG, destAddr) +
+                    " is not a global phone number! Nothing changed.");
             return destAddr;
         }
 
@@ -553,7 +554,8 @@ public class SmsNumberUtils {
 
         if (DBG) {
             Rlog.d(TAG, "destAddr is " + ((result != null)?"formatted.":"not formatted."));
-            Rlog.d(TAG, "leave filterDestAddr, new destAddr=\"" + (result != null ? result : destAddr) + "\"" );
+            Rlog.d(TAG, "leave filterDestAddr, new destAddr=\"" + (result != null ? Rlog.pii(TAG,
+                    result) : Rlog.pii(TAG, destAddr)) + "\"");
         }
         return result != null ? result : destAddr;
     }
