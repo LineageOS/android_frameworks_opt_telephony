@@ -1425,7 +1425,8 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
-    private void handleExitEmergencyCallbackMode() {
+    @Override
+    protected void handleExitEmergencyCallbackMode() {
         if (DBG) {
             Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode: mIsPhoneInEcmState = "
                     + isInEcm());
