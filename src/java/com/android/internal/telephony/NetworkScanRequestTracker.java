@@ -237,6 +237,39 @@ public final class NetworkScanRequestTracker {
             }
         }
 
+        private int commandExceptionErrorToScanError(CommandException.Error error) {
+            switch (error) {
+                case RADIO_NOT_AVAILABLE:
+                    Log.e(TAG, "commandExceptionErrorToScanError: RADIO_NOT_AVAILABLE");
+                    return NetworkScan.ERROR_MODEM_ERROR;
+                case REQUEST_NOT_SUPPORTED:
+                    Log.e(TAG, "commandExceptionErrorToScanError: REQUEST_NOT_SUPPORTED");
+                    return NetworkScan.ERROR_UNSUPPORTED;
+                case NO_MEMORY:
+                    Log.e(TAG, "commandExceptionErrorToScanError: NO_MEMORY");
+                    return NetworkScan.ERROR_MODEM_ERROR;
+                case INTERNAL_ERR:
+                    Log.e(TAG, "commandExceptionErrorToScanError: INTERNAL_ERR");
+                    return NetworkScan.ERROR_MODEM_ERROR;
+                case MODEM_ERR:
+                    Log.e(TAG, "commandExceptionErrorToScanError: MODEM_ERR");
+                    return NetworkScan.ERROR_MODEM_ERROR;
+                case OPERATION_NOT_ALLOWED:
+                    Log.e(TAG, "commandExceptionErrorToScanError: OPERATION_NOT_ALLOWED");
+                    return NetworkScan.ERROR_MODEM_ERROR;
+                case INVALID_ARGUMENTS:
+                    Log.e(TAG, "commandExceptionErrorToScanError: INVALID_ARGUMENTS");
+                    return NetworkScan.ERROR_INVALID_SCAN;
+                case DEVICE_IN_USE:
+                    Log.e(TAG, "commandExceptionErrorToScanError: DEVICE_IN_USE");
+                    return NetworkScan.ERROR_MODEM_BUSY;
+                default:
+                    Log.e(TAG, "commandExceptionErrorToScanError: Unexpected CommandExceptionError "
+                            +  error);
+                    return NetworkScan.ERROR_RIL_ERROR;
+            }
+        }
+
         private void doStartScan(NetworkScanRequestInfo nsri) {
             if (nsri == null) {
                 Log.e(TAG, "CMD_START_NETWORK_SCAN: nsri is null");
@@ -272,17 +305,18 @@ public final class NetworkScanRequestTracker {
                 return;
             }
             if (ar.exception == null && ar.result != null) {
-                NetworkScanResult nsr = (NetworkScanResult) ar.result;
-                if (nsr.scanError == NetworkScan.SUCCESS) {
-                    // Register for the scan results if the scan started successfully.
-                    nsri.mPhone.mCi.registerForNetworkScanResult(mHandler,
-                            EVENT_RECEIVE_NETWORK_SCAN_RESULT, nsri);
-                } else {
-                    deleteScanAndMayNotify(nsri, rilErrorToScanError(nsr.scanError), true);
-                }
+                // Register for the scan results if the scan started successfully.
+                nsri.mPhone.mCi.registerForNetworkScanResult(mHandler,
+                        EVENT_RECEIVE_NETWORK_SCAN_RESULT, nsri);
             } else {
                 logEmptyResultOrException(ar);
-                deleteScanAndMayNotify(nsri, NetworkScan.ERROR_RIL_ERROR, true);
+                if (ar.exception != null) {
+                    CommandException.Error error =
+                            ((CommandException) (ar.exception)).getCommandError();
+                    deleteScanAndMayNotify(nsri, commandExceptionErrorToScanError(error), true);
+                } else {
+                    Log.wtf(TAG, "EVENT_START_NETWORK_SCAN_DONE: ar.exception can not be null!");
+                }
             }
         }
 
@@ -342,11 +376,16 @@ public final class NetworkScanRequestTracker {
                 return;
             }
             if (ar.exception == null && ar.result != null) {
-                NetworkScanResult nsr = (NetworkScanResult) ar.result;
-                deleteScanAndMayNotify(nsri, rilErrorToScanError(nsr.scanError), true);
+                deleteScanAndMayNotify(nsri, NetworkScan.SUCCESS, true);
             } else {
                 logEmptyResultOrException(ar);
-                deleteScanAndMayNotify(nsri, NetworkScan.ERROR_RIL_ERROR, true);
+                if (ar.exception != null) {
+                    CommandException.Error error =
+                            ((CommandException) (ar.exception)).getCommandError();
+                    deleteScanAndMayNotify(nsri, commandExceptionErrorToScanError(error), true);
+                } else {
+                    Log.wtf(TAG, "EVENT_STOP_NETWORK_SCAN_DONE: ar.exception can not be null!");
+                }
             }
             nsri.mPhone.mCi.unregisterForNetworkScanResult(mHandler);
         }
