@@ -4725,6 +4725,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_RESPONSE_ACKNOWLEDGEMENT";
             case RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION:
                 return "RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION";
+            case RIL_REQUEST_START_NETWORK_SCAN:
+                return "RIL_REQUEST_START_NETWORK_SCAN";
+            case RIL_REQUEST_STOP_NETWORK_SCAN:
+                return "RIL_REQUEST_STOP_NETWORK_SCAN";
             default: return "<unknown request>";
         }
     }
@@ -4827,6 +4831,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 return "UNSOL_MODEM_RESTART";
             case RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION:
                 return "RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION";
+            case RIL_UNSOL_NETWORK_SCAN_RESULT:
+                return "RIL_UNSOL_NETWORK_SCAN_RESULT";
             default:
                 return "<unknown response>";
         }
