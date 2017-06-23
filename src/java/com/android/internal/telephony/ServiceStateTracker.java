@@ -3147,8 +3147,6 @@ public class ServiceStateTracker extends Handler {
                 + mNeedFixZoneAfterNitz + " zone=" + (zone != null ? zone.getID() : "NULL");
         mTimeZoneLog.log(tmpLog);
 
-        mNeedFixZoneAfterNitz = false;
-
         if (zone != null) {
             log("fixTimeZone: zone != null zone.getID=" + zone.getID());
             if (getAutoTimeZone()) {
@@ -3156,10 +3154,13 @@ public class ServiceStateTracker extends Handler {
             } else {
                 log("fixTimeZone: skip changing zone as getAutoTimeZone was false");
             }
-            saveNitzTimeZone(zone.getID());
+            if (mNeedFixZoneAfterNitz) {
+                saveNitzTimeZone(zone.getID());
+            }
         } else {
             log("fixTimeZone: zone == null, do nothing for zone");
         }
+        mNeedFixZoneAfterNitz = false;
     }
 
     /**
