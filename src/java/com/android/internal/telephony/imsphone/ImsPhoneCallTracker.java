@@ -598,7 +598,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     /**
      * TODO: Remove this code; it is a workaround.
-     * When {@code true}, forces {@link ImsManager#updateImsServiceConfig(Context, int, boolean)} to
+     * When {@code true}, forces {@link ImsManager#updateImsServiceConfigForSlot(boolean)} to
      * be called when an ongoing video call is disconnected.  In some cases, where video pause is
      * supported by the carrier, when {@link #onDataEnabledChanged(boolean, int)} reports that data
      * has been disabled we will pause the video rather than disconnecting the call.  When this
@@ -780,6 +780,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             multiEndpoint.setExternalCallStateListener(
                     mPhone.getExternalCallTracker().getExternalCallStateListener());
         }
+
+        mImsManager.updateImsServiceConfigForSlot(true);
     }
 
     private void stopListeningForCalls() {
@@ -2216,7 +2218,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (mShouldUpdateImsConfigOnDisconnect) {
                 // Ensure we update the IMS config when the call is disconnected; we delayed this
                 // because a video call was paused.
-                ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+                mImsManager.updateImsServiceConfigForSlot(true);
                 mShouldUpdateImsConfigOnDisconnect = false;
             }
         }
