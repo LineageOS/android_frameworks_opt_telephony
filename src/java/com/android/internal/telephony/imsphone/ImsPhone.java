@@ -1678,7 +1678,7 @@ public class ImsPhone extends ImsPhoneBase {
             }
 
             // UX requirement is to disable WFC in case of "permanent" registration failures.
-            ImsManager.setWfcSetting(mContext, false);
+            ImsManager.getInstance(mContext, mPhoneId).setWfcSettingForSlot(false);
 
             // If WfcSettings are active then alert will be shown
             // otherwise notification will be added.
@@ -1724,8 +1724,8 @@ public class ImsPhone extends ImsPhoneBase {
         if (mCT.getState() == PhoneConstants.State.IDLE) {
             if (DBG) Rlog.d(LOG_TAG, "updateRoamingState now: " + newRoaming);
             mRoaming = newRoaming;
-            ImsManager.setWfcMode(mContext,
-                    ImsManager.getWfcMode(mContext, newRoaming), newRoaming);
+            ImsManager imsMgr = ImsManager.getInstance(mContext, mPhoneId);
+            imsMgr.setWfcModeForSlot(imsMgr.getWfcModeForSlot(newRoaming), newRoaming);
         } else {
             if (DBG) Rlog.d(LOG_TAG, "updateRoamingState postponed: " + newRoaming);
             mCT.registerForVoiceCallEnded(this,
