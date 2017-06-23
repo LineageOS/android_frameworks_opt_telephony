@@ -1203,8 +1203,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     public void
     conference() {
-        if (DBG) log("conference");
-
         ImsCall fgImsCall = mForegroundCall.getImsCall();
         if (fgImsCall == null) {
             log("conference no foreground ims call");
@@ -1214,6 +1212,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         ImsCall bgImsCall = mBackgroundCall.getImsCall();
         if (bgImsCall == null) {
             log("conference no background ims call");
+            return;
+        }
+
+        if (fgImsCall.isCallSessionMergePending()) {
+            log("conference: skip; foreground call already in process of merging.");
+            return;
+        }
+
+        if (bgImsCall.isCallSessionMergePending()) {
+            log("conference: skip; background call already in process of merging.");
             return;
         }
 
@@ -1234,15 +1242,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             conferenceConnectTime = backgroundConnectTime;
         }
 
+        String foregroundId = "";
         ImsPhoneConnection foregroundConnection = mForegroundCall.getFirstConnection();
         if (foregroundConnection != null) {
             foregroundConnection.setConferenceConnectTime(conferenceConnectTime);
             foregroundConnection.handleMergeStart();
+            foregroundId = foregroundConnection.getTelecomCallId();
         }
+        String backgroundId = "";
         ImsPhoneConnection backgroundConnection = findConnection(bgImsCall);
         if (backgroundConnection != null) {
             backgroundConnection.handleMergeStart();
+            backgroundId = backgroundConnection.getTelecomCallId();
         }
+        log("conference: fgCallId=" + foregroundId + ", bgCallId=" + backgroundId);
 
         try {
             fgImsCall.merge(bgImsCall);
