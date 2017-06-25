@@ -2077,6 +2077,22 @@ public interface CommandsInterface {
     public void unregisterForPcoData(Handler h);
 
     /**
+     * Register for modem reset indication.
+     *
+     * @param h  Handler for the notification message
+     * @param what User-defined message code
+     * @param obj User object
+     */
+    void registerForModemReset(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for modem reset
+     *
+     * @param h handler to be removed
+     */
+    void unregisterForModemReset(Handler h);
+
+    /**
      * Send the updated device state
      *
      * @param stateType Device state type
