@@ -253,6 +253,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE_ENTER, null);
         mCi.registerForExitEmergencyCallbackMode(this, EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE,
                 null);
+        mCi.registerForModemReset(this, EVENT_MODEM_RESET, null);
         // get the string that specifies the carrier OTA Sp number
         mCarrierOtaSpNumSchema = TelephonyManager.from(mContext).getOtaSpNumberSchemaForPhone(
                 getPhoneId(), "");
@@ -2133,6 +2134,21 @@ public class GsmCdmaPhone extends Phone {
 
             case  EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE:{
                 handleExitEmergencyCallbackMode(msg);
+            }
+            break;
+
+            case EVENT_MODEM_RESET: {
+                logd("Event EVENT_MODEM_RESET Received" + " isInEcm = " + isInEcm()
+                        + " isPhoneTypeGsm = " + isPhoneTypeGsm() + " mImsPhone = " + mImsPhone);
+                if (isInEcm()) {
+                    if (isPhoneTypeGsm()) {
+                        if (mImsPhone != null) {
+                            mImsPhone.handleExitEmergencyCallbackMode();
+                        }
+                    } else {
+                        handleExitEmergencyCallbackMode(msg);
+                    }
+                }
             }
             break;
 

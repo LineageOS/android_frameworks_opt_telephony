@@ -1425,7 +1425,8 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
-    private void handleExitEmergencyCallbackMode() {
+    @Override
+    protected void handleExitEmergencyCallbackMode() {
         if (DBG) {
             Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode: mIsPhoneInEcmState = "
                     + isInEcm());
@@ -1639,10 +1640,12 @@ public class ImsPhone extends ImsPhoneBase {
                     Rlog.e(LOG_TAG, "Invalid index: " + wfcOperatorErrorCodes[i]);
                     continue;
                 }
-                CharSequence messageAlert = imsReasonInfo.mExtraMessage;
+                String messageAlert = imsReasonInfo.mExtraMessage;
                 CharSequence messageNotification = imsReasonInfo.mExtraMessage;
                 if (!wfcOperatorErrorAlertMessages[idx].isEmpty()) {
-                    messageAlert = wfcOperatorErrorAlertMessages[idx];
+                    messageAlert = String.format(
+                        wfcOperatorErrorAlertMessages[idx],
+                        imsReasonInfo.mExtraMessage); // Fill IMS error code into alert message
                 }
                 if (!wfcOperatorErrorNotificationMessages[idx].isEmpty()) {
                     messageNotification = wfcOperatorErrorNotificationMessages[idx];

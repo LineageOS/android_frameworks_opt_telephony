@@ -342,7 +342,7 @@ public class UiccController extends Handler {
             if (requirePowerOffOnSimRefreshReset) {
                 mCis[index].setRadioPower(false, null);
             } else {
-                mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
+                mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, index));
             }
             mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
         }
