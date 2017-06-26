@@ -2043,13 +2043,15 @@ public class ServiceStateTracker extends Handler {
              * agreements and MVNO's.
              */
             boolean roaming = (mGsmRoaming || mDataRoaming);
+
+            // Save the data roaming state reported by modem registration before resource overlay or
+            // carrier config possibly overrides it.
+            mNewSS.setDataRoamingFromRegistration(roaming);
+
             if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS) &&
                     (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
                 roaming = false;
             }
-
-            // Save the roaming state before carrier config possibly overrides it.
-            mNewSS.setDataRoamingFromRegistration(roaming);
 
             CarrierConfigManager configLoader = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
