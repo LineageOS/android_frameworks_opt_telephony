@@ -76,7 +76,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_SIM_LOCKED_QUERY_ICCID_DONE = 1;
     private static final int EVENT_GET_NETWORK_SELECTION_MODE_DONE = 2;
     private static final int EVENT_SIM_LOADED = 3;
-    private static final int EVENT_SIM_ABSENT = 4;
+    private static final int EVENT_SIM_ABSENT_OR_NOT_READY = 4;
     private static final int EVENT_SIM_LOCKED = 5;
     private static final int EVENT_SIM_IO_ERROR = 6;
     private static final int EVENT_SIM_UNKNOWN = 7;
@@ -217,10 +217,14 @@ public class SubscriptionInfoUpdater extends Handler {
             String simStatus = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
             logd("simStatus: " + simStatus);
 
+            // TODO: All of the below should be converted to ACTION_INTERNAL_SIM_STATE_CHANGED to
+            // ensure that the SubscriptionInfo is updated before the broadcasts are sent out.
             if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
                 rebroadcastIntentsOnUnlock.put(slotIndex, intent);
-                if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
-                    sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotIndex, -1));
+                if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)
+                        || IccCardConstants.INTENT_VALUE_ICC_NOT_READY.equals(simStatus)) {
+                    sendMessage(obtainMessage(EVENT_SIM_ABSENT_OR_NOT_READY, slotIndex, -1,
+                            simStatus));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_UNKNOWN.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_UNKNOWN, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR.equals(simStatus)) {
@@ -329,8 +333,8 @@ public class SubscriptionInfoUpdater extends Handler {
                 handleSimLoaded(msg.arg1);
                 break;
 
-            case EVENT_SIM_ABSENT:
-                handleSimAbsent(msg.arg1);
+            case EVENT_SIM_ABSENT_OR_NOT_READY:
+                handleSimAbsentOrNotReady(msg.arg1, (String) msg.obj);
                 break;
 
             case EVENT_SIM_LOCKED:
@@ -514,7 +518,7 @@ public class SubscriptionInfoUpdater extends Handler {
         mCarrierServiceBindHelper.updateForPhoneId(slotId, simState);
     }
 
-    private void handleSimAbsent(int slotId) {
+    private void handleSimAbsentOrNotReady(int slotId, String simState) {
         if (mIccId[slotId] != null && !mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
             logd("SIM" + (slotId + 1) + " hot plug out");
         }
@@ -522,7 +526,7 @@ public class SubscriptionInfoUpdater extends Handler {
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
         }
-        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
+        updateCarrierServices(slotId, simState);
     }
 
     private void handleSimError(int slotId) {
