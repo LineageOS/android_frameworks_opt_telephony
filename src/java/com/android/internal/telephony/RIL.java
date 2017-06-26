@@ -1814,11 +1814,15 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                                     + " not supported!");
                             return;
                     }
-                    for (int band : ras.bands) {
-                        bands.add(band);
+                    if (ras.bands != null) {
+                        for (int band : ras.bands) {
+                            bands.add(band);
+                        }
                     }
-                    for (int channel : ras.channels) {
-                        s.channels.add(channel);
+                    if (ras.channels != null) {
+                        for (int channel : ras.channels) {
+                            s.channels.add(channel);
+                        }
                     }
                     request.specifiers.add(s);
                 }
