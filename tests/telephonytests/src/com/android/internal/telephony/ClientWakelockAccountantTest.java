@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
-import android.test.TestRunner;
 import android.os.Build;
 import android.util.Log;
 import android.telephony.Rlog;
