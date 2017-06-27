@@ -16,8 +16,10 @@
 package com.android.internal.telephony.euicc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -114,12 +116,16 @@ public class EuiccControllerTest extends TelephonyTest {
         private int mResultCode;
         private Intent mExtrasIntent;
 
+        // Whether refreshSubscriptionsAndSendResult was called.
+        private boolean mCalledRefreshSubscriptionsAndSendResult;
+
         TestEuiccController(Context context, EuiccConnector connector) {
             super(context, connector);
         }
 
         @Override
-        public void addResolutionIntent(Intent extrasIntent, String resolutionAction,
+        public void addResolutionIntent(
+                Intent extrasIntent, String resolutionAction, String callingPackage,
                 EuiccOperation op) {
             mResolutionAction = resolutionAction;
             mOp = op;
@@ -131,6 +137,13 @@ public class EuiccControllerTest extends TelephonyTest {
             mCallbackIntent = callbackIntent;
             mResultCode = resultCode;
             mExtrasIntent = extrasIntent;
+        }
+
+        @Override
+        public void refreshSubscriptionsAndSendResult(
+                PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+            mCalledRefreshSubscriptionsAndSendResult = true;
+            sendResult(callbackIntent, resultCode, extrasIntent);
         }
     }
 
@@ -339,6 +352,17 @@ public class EuiccControllerTest extends TelephonyTest {
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 EuiccService.RESULT_OK, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        // switchAfterDownload = true so no refresh should occur.
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    public void testDownloadSubscription_noSwitch_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -381,8 +405,10 @@ public class EuiccControllerTest extends TelephonyTest {
                 12345, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
-        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
-                EuiccOperation.ACTION_DOWNLOAD_DEACTIVATE_SIM);
+        // In this case we go with the potentially stronger NO_PRIVILEGES consent dialog to avoid
+        // double prompting.
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                EuiccOperation.ACTION_DOWNLOAD_NO_PRIVILEGES);
     }
 
     @Test
@@ -396,6 +422,8 @@ public class EuiccControllerTest extends TelephonyTest {
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 EuiccService.RESULT_OK, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        // switchAfterDownload = true so no refresh should occur.
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -478,6 +506,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 SUBSCRIPTION_ID, ICC_ID, true /* complete */,
                 EuiccService.RESULT_OK, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -499,6 +528,7 @@ public class EuiccControllerTest extends TelephonyTest {
         callDeleteSubscription(
                 SUBSCRIPTION_ID, ICC_ID, true /* complete */, EuiccService.RESULT_OK, PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     @Test
@@ -689,6 +719,7 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         callEraseSubscriptions(true /* complete */, EuiccService.RESULT_OK);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
     private void setGetEidPermissions(
@@ -776,7 +807,7 @@ public class EuiccControllerTest extends TelephonyTest {
             boolean complete, GetDownloadableSubscriptionMetadataResult result) {
         prepareGetDownloadableSubscriptionMetadataCall(complete, result);
         PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
-        mController.getDownloadableSubscriptionMetadata(subscription, resultCallback);
+        mController.getDownloadableSubscriptionMetadata(subscription, PACKAGE_NAME, resultCallback);
     }
 
     private void callGetDefaultDownloadableSubscriptionList(
@@ -794,7 +825,7 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).getDefaultDownloadableSubscriptionList(anyBoolean(), any());
         PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
-        mController.getDefaultDownloadableSubscriptionList(resultCallback);
+        mController.getDefaultDownloadableSubscriptionList(PACKAGE_NAME, resultCallback);
     }
 
     private void callDownloadSubscription(DownloadableSubscription subscription,

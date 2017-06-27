@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.Manifest;
+import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -813,10 +814,21 @@ public class SubscriptionController extends ISub.Stub {
                 "requestEmbeddedSubscriptionInfoListRefresh");
         long token = Binder.clearCallingIdentity();
         try {
-            PhoneFactory.refreshEmbeddedSubscriptionList();
+            PhoneFactory.requestEmbeddedSubscriptionInfoListRefresh(null /* callback */);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    /**
+     * Asynchronously refresh the embedded subscription info list.
+     *
+     * @param callback Optional callback to execute after the refresh completes. Must terminate
+     *     quickly as it will be called from SubscriptionInfoUpdater's handler thread.
+     */
+    // No permission check needed as this is not exposed via AIDL.
+    public void requestEmbeddedSubscriptionInfoListRefresh(@Nullable Runnable callback) {
+        PhoneFactory.requestEmbeddedSubscriptionInfoListRefresh(callback);
     }
 
     /**

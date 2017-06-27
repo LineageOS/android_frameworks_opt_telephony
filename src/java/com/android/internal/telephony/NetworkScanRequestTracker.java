@@ -104,6 +104,9 @@ public final class NetworkScanRequestTracker {
     }
 
     private boolean isValidScan(NetworkScanRequestInfo nsri) {
+        if (nsri.mRequest.specifiers == null) {
+            return false;
+        }
         if (nsri.mRequest.specifiers.length > NetworkScanRequest.MAX_RADIO_ACCESS_NETWORKS) {
             return false;
         }
@@ -112,8 +115,10 @@ public final class NetworkScanRequestTracker {
                     && ras.radioAccessNetwork != EUTRAN) {
                 return false;
             }
-            if (ras.bands.length > NetworkScanRequest.MAX_BANDS
-                    || ras.channels.length > NetworkScanRequest.MAX_CHANNELS) {
+            if (ras.bands != null && ras.bands.length > NetworkScanRequest.MAX_BANDS) {
+                return false;
+            }
+            if (ras.channels != null && ras.channels.length > NetworkScanRequest.MAX_CHANNELS) {
                 return false;
             }
         }
