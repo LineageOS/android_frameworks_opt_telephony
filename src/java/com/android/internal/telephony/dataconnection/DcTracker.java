@@ -2146,7 +2146,7 @@ public class DcTracker extends Handler {
             if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
 
             mPhone.mCi.setInitialAttachApn(new DataProfile(initialAttachApnSetting),
-                    mPhone.getServiceState().getDataRoaming(), null);
+                    mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
     }
 
@@ -3289,7 +3289,7 @@ public class DcTracker extends Handler {
             }
             if (dps.size() > 0) {
                 mPhone.mCi.setDataProfile(dps.toArray(new DataProfile[0]),
-                        mPhone.getServiceState().getDataRoaming(), null);
+                        mPhone.getServiceState().getDataRoamingFromRegistration(), null);
             }
         }
     }
