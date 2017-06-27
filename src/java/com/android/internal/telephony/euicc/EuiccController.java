@@ -170,21 +170,23 @@ public class EuiccController extends IEuiccController.Stub {
 
     @Override
     public void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
-            PendingIntent callbackIntent) {
+            String callingPackage, PendingIntent callbackIntent) {
         getDownloadableSubscriptionMetadata(
-                subscription, false /* forceDeactivateSim */, callbackIntent);
+                subscription, false /* forceDeactivateSim */, callingPackage, callbackIntent);
     }
 
     void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
-            boolean forceDeactivateSim, PendingIntent callbackIntent) {
+            boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException("Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get metadata");
         }
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
         long token = Binder.clearCallingIdentity();
         try {
             mConnector.getDownloadableSubscriptionMetadata(
                     subscription, forceDeactivateSim,
-                    new GetMetadataCommandCallback(token, subscription, callbackIntent));
+                    new GetMetadataCommandCallback(
+                            token, subscription, callingPackage, callbackIntent));
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -193,14 +195,17 @@ public class EuiccController extends IEuiccController.Stub {
     class GetMetadataCommandCallback implements EuiccConnector.GetMetadataCommandCallback {
         protected final long mCallingToken;
         protected final DownloadableSubscription mSubscription;
+        protected final String mCallingPackage;
         protected final PendingIntent mCallbackIntent;
 
         GetMetadataCommandCallback(
                 long callingToken,
                 DownloadableSubscription subscription,
+                String callingPackage,
                 PendingIntent callbackIntent) {
             mCallingToken = callingToken;
             mSubscription = subscription;
+            mCallingPackage = callingPackage;
             mCallbackIntent = callbackIntent;
         }
 
@@ -220,6 +225,7 @@ public class EuiccController extends IEuiccController.Stub {
                     resultCode = RESOLVABLE_ERROR;
                     addResolutionIntent(extrasIntent,
                             EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                            mCallingPackage,
                             getOperationForDeactivateSim());
                     break;
                 default:
@@ -239,7 +245,8 @@ public class EuiccController extends IEuiccController.Stub {
         }
 
         protected EuiccOperation getOperationForDeactivateSim() {
-            return EuiccOperation.forGetMetadataDeactivateSim(mCallingToken, mSubscription);
+            return EuiccOperation.forGetMetadataDeactivateSim(
+                    mCallingToken, mSubscription, mCallingPackage);
         }
     }
 
@@ -279,22 +286,33 @@ public class EuiccController extends IEuiccController.Stub {
 
     class DownloadSubscriptionGetMetadataCommandCallback extends GetMetadataCommandCallback {
         private final boolean mSwitchAfterDownload;
-        private final String mCallingPackage;
         private final boolean mForceDeactivateSim;
 
         DownloadSubscriptionGetMetadataCommandCallback(long callingToken,
                 DownloadableSubscription subscription, boolean switchAfterDownload,
                 String callingPackage, boolean forceDeactivateSim,
                 PendingIntent callbackIntent) {
-            super(callingToken, subscription, callbackIntent);
+            super(callingToken, subscription, callingPackage, callbackIntent);
             mSwitchAfterDownload = switchAfterDownload;
-            mCallingPackage = callingPackage;
             mForceDeactivateSim = forceDeactivateSim;
         }
 
         @Override
         public void onGetMetadataComplete(
                 GetDownloadableSubscriptionMetadataResult result) {
+            if (result.result == EuiccService.RESULT_MUST_DEACTIVATE_SIM) {
+                // If we need to deactivate the current SIM to even check permissions, go ahead and
+                // require that the user resolve the stronger permission dialog.
+                Intent extrasIntent = new Intent();
+                addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                        mCallingPackage,
+                        EuiccOperation.forDownloadNoPrivileges(
+                                mCallingToken, mSubscription, mSwitchAfterDownload,
+                                mCallingPackage));
+                sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
+                return;
+            }
+
             if (result.result != EuiccService.RESULT_OK) {
                 // Just propagate the error as normal.
                 super.onGetMetadataComplete(result);
@@ -335,6 +353,7 @@ public class EuiccController extends IEuiccController.Stub {
                     // Switch might still be permitted, but the user must consent first.
                     Intent extrasIntent = new Intent();
                     addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                            mCallingPackage,
                             EuiccOperation.forDownloadNoPrivileges(
                                     mCallingToken, subscription, mSwitchAfterDownload,
                                     mCallingPackage));
@@ -378,14 +397,16 @@ public class EuiccController extends IEuiccController.Stub {
                                 if (!switchAfterDownload) {
                                     // Since we're not switching, nothing will trigger a
                                     // subscription list refresh on its own, so request one here.
-                                    SubscriptionController.getInstance()
-                                            .requestEmbeddedSubscriptionInfoListRefresh();
+                                    refreshSubscriptionsAndSendResult(
+                                            callbackIntent, resultCode, extrasIntent);
+                                    return;
                                 }
                                 break;
                             case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
                                 resultCode = RESOLVABLE_ERROR;
                                 addResolutionIntent(extrasIntent,
                                         EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                                        callingPackage,
                                         EuiccOperation.forDownloadDeactivateSim(
                                                 callingToken, subscription, switchAfterDownload,
                                                 callingPackage));
@@ -439,31 +460,38 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void getDefaultDownloadableSubscriptionList(PendingIntent callbackIntent) {
-        getDefaultDownloadableSubscriptionList(false /* forceDeactivateSim */, callbackIntent);
+    public void getDefaultDownloadableSubscriptionList(
+            String callingPackage, PendingIntent callbackIntent) {
+        getDefaultDownloadableSubscriptionList(
+                false /* forceDeactivateSim */, callingPackage, callbackIntent);
     }
 
     void getDefaultDownloadableSubscriptionList(
-            boolean forceDeactivateSim, PendingIntent callbackIntent) {
+            boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException(
                     "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get default list");
         }
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
         long token = Binder.clearCallingIdentity();
         try {
             mConnector.getDefaultDownloadableSubscriptionList(
-                    forceDeactivateSim, new GetDefaultListCommandCallback(token, callbackIntent));
+                    forceDeactivateSim, new GetDefaultListCommandCallback(
+                            token, callingPackage, callbackIntent));
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
     class GetDefaultListCommandCallback implements EuiccConnector.GetDefaultListCommandCallback {
-        protected final long mCallingToken;
-        protected final PendingIntent mCallbackIntent;
+        final long mCallingToken;
+        final String mCallingPackage;
+        final PendingIntent mCallbackIntent;
 
-        GetDefaultListCommandCallback(long callingToken, PendingIntent callbackIntent) {
+        GetDefaultListCommandCallback(long callingToken, String callingPackage,
+                PendingIntent callbackIntent) {
             mCallingToken = callingToken;
+            mCallingPackage = callingPackage;
             mCallbackIntent = callbackIntent;
         }
 
@@ -482,7 +510,9 @@ public class EuiccController extends IEuiccController.Stub {
                     resultCode = RESOLVABLE_ERROR;
                     addResolutionIntent(extrasIntent,
                             EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
-                            EuiccOperation.forGetDefaultListDeactivateSim(mCallingToken));
+                            mCallingPackage,
+                            EuiccOperation.forGetDefaultListDeactivateSim(
+                                    mCallingToken, mCallingPackage));
                     break;
                 default:
                     resultCode = ERROR;
@@ -558,9 +588,9 @@ public class EuiccController extends IEuiccController.Stub {
                         switch (result) {
                             case EuiccService.RESULT_OK:
                                 resultCode = OK;
-                                SubscriptionController.getInstance()
-                                        .requestEmbeddedSubscriptionInfoListRefresh();
-                                break;
+                                refreshSubscriptionsAndSendResult(
+                                        callbackIntent, resultCode, extrasIntent);
+                                return;
                             default:
                                 resultCode = ERROR;
                                 extrasIntent.putExtra(
@@ -624,6 +654,7 @@ public class EuiccController extends IEuiccController.Stub {
                 Intent extrasIntent = new Intent();
                 addResolutionIntent(extrasIntent,
                         EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                        callingPackage,
                         EuiccOperation.forSwitchNoPrivileges(
                                 token, subscriptionId, callingPackage));
                 sendResult(callbackIntent, RESOLVABLE_ERROR, extrasIntent);
@@ -668,6 +699,7 @@ public class EuiccController extends IEuiccController.Stub {
                                 resultCode = RESOLVABLE_ERROR;
                                 addResolutionIntent(extrasIntent,
                                         EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
+                                        callingPackage,
                                         EuiccOperation.forSwitchDeactivateSim(
                                                 callingToken, subscriptionId, callingPackage));
                                 break;
@@ -752,9 +784,9 @@ public class EuiccController extends IEuiccController.Stub {
                     switch (result) {
                         case EuiccService.RESULT_OK:
                             resultCode = OK;
-                            SubscriptionController.getInstance()
-                                    .requestEmbeddedSubscriptionInfoListRefresh();
-                            break;
+                            refreshSubscriptionsAndSendResult(
+                                    callbackIntent, resultCode, extrasIntent);
+                            return;
                         default:
                             resultCode = ERROR;
                             extrasIntent.putExtra(
@@ -776,6 +808,14 @@ public class EuiccController extends IEuiccController.Stub {
         }
     }
 
+    /** Refresh the embedded subscription list and dispatch the given result upon completion. */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void refreshSubscriptionsAndSendResult(
+            PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+        SubscriptionController.getInstance()
+                .requestEmbeddedSubscriptionInfoListRefresh(
+                        () -> sendResult(callbackIntent, resultCode, extrasIntent));
+    }
 
     /** Dispatch the given callback intent with the given result code and data. */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -790,10 +830,11 @@ public class EuiccController extends IEuiccController.Stub {
     /** Add a resolution intent to the given extras intent. */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void addResolutionIntent(Intent extrasIntent, String resolutionAction,
-            EuiccOperation op) {
+            String callingPackage, EuiccOperation op) {
         Intent intent = new Intent(EuiccManager.ACTION_RESOLVE_ERROR);
         intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_ACTION,
                 resolutionAction);
+        intent.putExtra(EuiccService.EXTRA_RESOLUTION_CALLING_PACKAGE, callingPackage);
         intent.putExtra(EXTRA_OPERATION, op);
         PendingIntent resolutionIntent = PendingIntent.getActivity(
                 mContext, 0 /* requestCode */, intent, PendingIntent.FLAG_ONE_SHOT);
