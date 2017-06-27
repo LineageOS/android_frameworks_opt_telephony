@@ -155,6 +155,20 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         return bestComponent;
     }
 
+    /**
+     * Return the component info of the EuiccService to bind to, or null if none were found.
+     */
+    public static ComponentInfo findBestComponent(PackageManager packageManager) {
+        Intent intent = new Intent(EuiccService.EUICC_SERVICE_INTERFACE);
+        List<ResolveInfo> resolveInfoList =
+                packageManager.queryIntentServices(intent, EUICC_QUERY_FLAGS);
+        ComponentInfo bestComponent = findBestComponent(packageManager, resolveInfoList);
+        if (bestComponent == null) {
+            Log.w(TAG, "No valid EuiccService implementation found");
+        }
+        return bestComponent;
+    }
+
     /** Base class for all command callbacks. */
     @VisibleForTesting(visibility = PACKAGE)
     public interface BaseEuiccCommandCallback {
@@ -844,13 +858,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     /** Return the service info of the EuiccService to bind to, or null if none were found. */
     @Nullable
     private ServiceInfo findBestComponent() {
-        Intent intent = new Intent(EuiccService.EUICC_SERVICE_INTERFACE);
-        List<ResolveInfo> resolveInfoList = mPm.queryIntentServices(intent, EUICC_QUERY_FLAGS);
-        ServiceInfo bestComponent = (ServiceInfo) findBestComponent(mPm, resolveInfoList);
-        if (bestComponent == null) {
-            Log.w(TAG, "No valid EuiccService implementation found");
-        }
-        return bestComponent;
+        return (ServiceInfo) findBestComponent(mPm);
     }
 
     /**
