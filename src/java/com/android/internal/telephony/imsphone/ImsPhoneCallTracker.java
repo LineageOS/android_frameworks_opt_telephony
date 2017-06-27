@@ -3304,7 +3304,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mShouldUpdateImsConfigOnDisconnect = false;
         }
 
-        if (!mShouldUpdateImsConfigOnDisconnect) {
+
+        // We do not want to update the ImsConfig for REASON_REGISTERED, since it can happen before
+        // the carrier config has loaded and will deregister IMS.
+        if (!mShouldUpdateImsConfigOnDisconnect
+                && reason != DataEnabledSettings.REASON_REGISTERED) {
             // This will call into updateVideoCallFeatureValue and eventually all clients will be
             // asynchronously notified that the availability of VT over LTE has changed.
             ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
