@@ -23,7 +23,6 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.service.euicc.EuiccService;
-import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccManager;
 import android.util.Log;
@@ -91,18 +90,19 @@ public class EuiccOperation implements Parcelable {
 
     /**
      * {@link EuiccManager#getDownloadableSubscriptionMetadata} failed with
-     * {@link GetDownloadableSubscriptionMetadataResult#mustDeactivateSim}.
+     * {@link EuiccService#RESULT_MUST_DEACTIVATE_SIM}.
      */
     public static EuiccOperation forGetMetadataDeactivateSim(long callingToken,
-            DownloadableSubscription subscription) {
+            DownloadableSubscription subscription, String callingPackage) {
         return new EuiccOperation(ACTION_GET_METADATA_DEACTIVATE_SIM, callingToken,
                 subscription, 0 /* subscriptionId */, false /* switchAfterDownload */,
-                null /* callingPackage */);
+                callingPackage);
     }
 
     /**
-     * {@link EuiccManager#downloadSubscription} failed with a mustDeactivateSim error (either in
-     * the metadata lookup for unprivileged callers or the download itself for privileged ones).
+     * {@link EuiccManager#downloadSubscription} failed with a mustDeactivateSim error. Should only
+     * be used for privileged callers; for unprivileged callers, use
+     * {@link #forDownloadNoPrivileges} to avoid a double prompt.
      */
     public static EuiccOperation forDownloadDeactivateSim(long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
@@ -113,7 +113,8 @@ public class EuiccOperation implements Parcelable {
 
     /**
      * {@link EuiccManager#downloadSubscription} failed because the calling app does not have
-     * permission to manage the current active subscription.
+     * permission to manage the current active subscription, or because we cannot determine the
+     * privileges without deactivating the current SIM first.
      */
     public static EuiccOperation forDownloadNoPrivileges(long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
@@ -122,10 +123,10 @@ public class EuiccOperation implements Parcelable {
                 subscription,  0 /* subscriptionId */, switchAfterDownload, callingPackage);
     }
 
-    static EuiccOperation forGetDefaultListDeactivateSim(long callingToken) {
+    static EuiccOperation forGetDefaultListDeactivateSim(long callingToken, String callingPackage) {
         return new EuiccOperation(ACTION_GET_DEFAULT_LIST_DEACTIVATE_SIM, callingToken,
                 null /* downloadableSubscription */, 0 /* subscriptionId */,
-                false /* switchAfterDownload */, null /* callingPackage */);
+                false /* switchAfterDownload */, callingPackage);
     }
 
     static EuiccOperation forSwitchDeactivateSim(long callingToken, int subscriptionId,
@@ -233,6 +234,7 @@ public class EuiccOperation implements Parcelable {
             EuiccController.get().getDownloadableSubscriptionMetadata(
                     mDownloadableSubscription,
                     true /* forceDeactivateSim */,
+                    mCallingPackage,
                     callbackIntent);
         } else {
             // User has not consented; fail the operation.
@@ -265,9 +267,7 @@ public class EuiccOperation implements Parcelable {
                 // Note: We turn on "forceDeactivateSim" here under the assumption that the
                 // privilege prompt should also cover permission to deactivate an active SIM, as
                 // the privilege prompt makes it clear that we're switching from the current
-                // carrier. Also note that in practice, we'd need to deactivate the active SIM to
-                // even reach this point, because we cannot fetch the metadata needed to check the
-                // privileges without doing so.
+                // carrier.
                 EuiccController.get().downloadSubscriptionPrivileged(
                         token,
                         mDownloadableSubscription,
@@ -290,7 +290,7 @@ public class EuiccOperation implements Parcelable {
             // User has consented; perform the lookup, but this time, tell the LPA to deactivate any
             // required active SIMs.
             EuiccController.get().getDefaultDownloadableSubscriptionList(
-                    true /* forceDeactivateSim */, callbackIntent);
+                    true /* forceDeactivateSim */, mCallingPackage, callbackIntent);
         } else {
             // User has not consented; fail the operation.
             fail(callbackIntent);
