@@ -323,7 +323,7 @@ public class AdnRecord implements Parcelable {
             return null;
         }
 
-        byteTag = !TextUtils.isEmpty(mAlphaTag) ? GsmAlphabet.stringToGsm8BitPacked(mAlphaTag)
+        byteTag = !TextUtils.isEmpty(mAlphaTag) ? IccUtils.stringToAdnStringField(mAlphaTag)
                 : new byte[0];
 
         if (byteTag.length > footerOffset) {
