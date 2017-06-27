@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.UserSwitchObserver;
 import android.content.BroadcastReceiver;
@@ -353,6 +354,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     updateEmbeddedSubscriptions();
                     SubscriptionController.getInstance().notifySubscriptionInfoChanged();
                 }
+                if (msg.obj != null) {
+                    ((Runnable) msg.obj).run();
+                }
                 break;
 
             default:
@@ -360,8 +364,8 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    void refreshEmbeddedSubscriptionList() {
-        sendEmptyMessage(EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS);
+    void requestEmbeddedSubscriptionInfoListRefresh(@Nullable Runnable callback) {
+        sendMessage(obtainMessage(EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS, callback));
     }
 
     private static class QueryIccIdUserObj {

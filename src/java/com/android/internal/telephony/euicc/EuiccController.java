@@ -397,8 +397,9 @@ public class EuiccController extends IEuiccController.Stub {
                                 if (!switchAfterDownload) {
                                     // Since we're not switching, nothing will trigger a
                                     // subscription list refresh on its own, so request one here.
-                                    SubscriptionController.getInstance()
-                                            .requestEmbeddedSubscriptionInfoListRefresh();
+                                    refreshSubscriptionsAndSendResult(
+                                            callbackIntent, resultCode, extrasIntent);
+                                    return;
                                 }
                                 break;
                             case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
@@ -587,9 +588,9 @@ public class EuiccController extends IEuiccController.Stub {
                         switch (result) {
                             case EuiccService.RESULT_OK:
                                 resultCode = OK;
-                                SubscriptionController.getInstance()
-                                        .requestEmbeddedSubscriptionInfoListRefresh();
-                                break;
+                                refreshSubscriptionsAndSendResult(
+                                        callbackIntent, resultCode, extrasIntent);
+                                return;
                             default:
                                 resultCode = ERROR;
                                 extrasIntent.putExtra(
@@ -783,9 +784,9 @@ public class EuiccController extends IEuiccController.Stub {
                     switch (result) {
                         case EuiccService.RESULT_OK:
                             resultCode = OK;
-                            SubscriptionController.getInstance()
-                                    .requestEmbeddedSubscriptionInfoListRefresh();
-                            break;
+                            refreshSubscriptionsAndSendResult(
+                                    callbackIntent, resultCode, extrasIntent);
+                            return;
                         default:
                             resultCode = ERROR;
                             extrasIntent.putExtra(
@@ -807,6 +808,14 @@ public class EuiccController extends IEuiccController.Stub {
         }
     }
 
+    /** Refresh the embedded subscription list and dispatch the given result upon completion. */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void refreshSubscriptionsAndSendResult(
+            PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
+        SubscriptionController.getInstance()
+                .requestEmbeddedSubscriptionInfoListRefresh(
+                        () -> sendResult(callbackIntent, resultCode, extrasIntent));
+    }
 
     /** Dispatch the given callback intent with the given result code and data. */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
