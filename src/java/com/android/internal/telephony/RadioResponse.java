@@ -45,6 +45,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
@@ -1312,11 +1313,11 @@ public class RadioResponse extends IRadioResponse.Stub {
                     dc.uusInfo = new UUSInfo();
                     dc.uusInfo.setType(calls.get(i).uusInfo.get(0).uusType);
                     dc.uusInfo.setDcs(calls.get(i).uusInfo.get(0).uusDcs);
-                    if (calls.get(i).uusInfo.get(0).uusData != null) {
+                    if (!TextUtils.isEmpty(calls.get(i).uusInfo.get(0).uusData)) {
                         byte[] userData = calls.get(i).uusInfo.get(0).uusData.getBytes();
                         dc.uusInfo.setUserData(userData);
                     } else {
-                        mRil.riljLog("responseCurrentCalls: uusInfo data is null");
+                        mRil.riljLog("responseCurrentCalls: uusInfo data is null or empty");
                     }
 
                     mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
