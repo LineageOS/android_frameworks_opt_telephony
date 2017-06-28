@@ -184,6 +184,29 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testSimNotReady() throws Exception {
+        doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
+                .getSubInfoUsingSlotIndexWithCheck(eq(FAKE_SUB_ID_1), anyBoolean(), anyString());
+        Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
+                IccCardConstants.INTENT_VALUE_ICC_NOT_READY);
+        mIntent.putExtra(PhoneConstants.PHONE_KEY, FAKE_SUB_ID_1);
+
+        mContext.sendBroadcast(mIntent);
+
+        waitForMs(100);
+        verify(mSubscriptionContent).put(eq(SubscriptionManager.SIM_SLOT_INDEX),
+                eq(SubscriptionManager.INVALID_SIM_SLOT_INDEX));
+
+        CarrierConfigManager mConfigManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        verify(mConfigManager).updateConfigForPhoneId(eq(FAKE_SUB_ID_1),
+                eq(IccCardConstants.INTENT_VALUE_ICC_NOT_READY));
+        verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
+    }
+
+    @Test
+    @SmallTest
     public void testSimUnknown() throws Exception {
         Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
