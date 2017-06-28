@@ -26,7 +26,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,6 +65,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.mockito.stubbing.Stubber;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -722,6 +725,34 @@ public class EuiccControllerTest extends TelephonyTest {
         assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
+    @Test(expected = SecurityException.class)
+    public void testRetainSubscriptionsForFactoryReset_noPrivileges() throws Exception {
+        setHasMasterClearPermission(false);
+        callRetainSubscriptionsForFactoryReset(false /* complete */, 0 /* result */);
+    }
+
+    @Test
+    public void testRetainSubscriptionsForFactoryReset_serviceUnavailable() throws Exception {
+        setHasMasterClearPermission(true);
+        callRetainSubscriptionsForFactoryReset(false /* complete */, 0 /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR, 0 /* detailedCode */);
+        verify(mMockConnector).retainSubscriptions(any());
+    }
+
+    @Test
+    public void testRetainSubscriptionsForFactoryReset_error() throws Exception {
+        setHasMasterClearPermission(true);
+        callRetainSubscriptionsForFactoryReset(true /* complete */, 42 /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR, 42 /* detailedCode */);
+    }
+
+    @Test
+    public void testRetainSubscriptionsForFactoryReset_success() throws Exception {
+        setHasMasterClearPermission(true);
+        callRetainSubscriptionsForFactoryReset(true /* complete */, EuiccService.RESULT_OK);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
     private void setGetEidPermissions(
             boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges) {
         doReturn(hasPhoneStatePrivileged
@@ -736,6 +767,12 @@ public class EuiccControllerTest extends TelephonyTest {
                 ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED)
                 .when(mContext)
                 .checkCallingPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
+    }
+
+    private void setHasMasterClearPermission(boolean hasPermission) {
+        Stubber stubber = hasPermission ? doNothing() : doThrow(new SecurityException());
+        stubber.when(mContext).enforceCallingPermission(
+                eq(Manifest.permission.MASTER_CLEAR), anyString());
     }
 
     private void setHasCarrierPrivilegesOnActiveSubscription(boolean hasPrivileges)
@@ -922,6 +959,23 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).eraseSubscriptions(any());
         mController.eraseSubscriptions(resultCallback);
+    }
+
+    private void callRetainSubscriptionsForFactoryReset(final boolean complete, final int result) {
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.RetainSubscriptionsCommandCallback cb = invocation.getArgument(0);
+                if (complete) {
+                    cb.onRetainSubscriptionsComplete(result);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).retainSubscriptions(any());
+        mController.retainSubscriptionsForFactoryReset(resultCallback);
     }
 
     private void verifyResolutionIntent(String euiccUiAction, @EuiccOperation.Action int action) {
