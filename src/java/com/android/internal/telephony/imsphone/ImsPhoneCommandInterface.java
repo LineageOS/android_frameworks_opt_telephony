@@ -20,6 +20,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 
 import com.android.internal.telephony.BaseCommands;
@@ -30,7 +31,6 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
-import java.security.PublicKey;
 import java.util.List;
 
 /**
@@ -625,7 +625,7 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
-    public void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+    public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
                                                 Message result) {
     }
 
