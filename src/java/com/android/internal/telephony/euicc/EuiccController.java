@@ -808,6 +808,43 @@ public class EuiccController extends IEuiccController.Stub {
         }
     }
 
+    @Override
+    public void retainSubscriptionsForFactoryReset(PendingIntent callbackIntent) {
+        mContext.enforceCallingPermission(Manifest.permission.MASTER_CLEAR,
+                "Must have MASTER_CLEAR to retain subscriptions for factory reset");
+        long token = Binder.clearCallingIdentity();
+        try {
+            mConnector.retainSubscriptions(
+                    new EuiccConnector.RetainSubscriptionsCommandCallback() {
+                        @Override
+                        public void onRetainSubscriptionsComplete(int result) {
+                            Intent extrasIntent = new Intent();
+                            final int resultCode;
+                            switch (result) {
+                                case EuiccService.RESULT_OK:
+                                    resultCode = OK;
+                                    break;
+                                default:
+                                    resultCode = ERROR;
+                                    extrasIntent.putExtra(
+                                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
+                                            result);
+                                    break;
+                            }
+
+                            sendResult(callbackIntent, resultCode, extrasIntent);
+                        }
+
+                        @Override
+                        public void onEuiccServiceUnavailable() {
+                            sendResult(callbackIntent, ERROR, null /* extrasIntent */);
+                        }
+                    });
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
     /** Refresh the embedded subscription list and dispatch the given result upon completion. */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void refreshSubscriptionsAndSendResult(
