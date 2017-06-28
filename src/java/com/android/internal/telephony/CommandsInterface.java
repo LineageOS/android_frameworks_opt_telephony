@@ -21,6 +21,7 @@ import android.os.Message;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.ClientRequestStats;
+import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -28,7 +29,6 @@ import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
-import java.security.PublicKey;
 import java.util.List;
 
 /**
@@ -1461,7 +1461,7 @@ public interface CommandsInterface {
      *        specific.
      * @param response callback message
      */
-    void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+    void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
                                          Message response);
 
     void invokeOemRilRequestStrings(String[] strings, Message response);

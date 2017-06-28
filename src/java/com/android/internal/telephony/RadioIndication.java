@@ -81,6 +81,7 @@ import android.hardware.radio.V1_0.SsInfoData;
 import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_1.IRadioIndication;
+import android.hardware.radio.V1_1.KeepaliveStatus;
 import android.os.AsyncResult;
 import android.os.SystemProperties;
 import android.telephony.CellInfo;
@@ -801,6 +802,15 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         mRil.mCarrierInfoForImsiEncryptionRegistrants.notifyRegistrants(
                 new AsyncResult(null, null, null));
+    }
+
+    /**
+     * Indicates a change in the status of an ongoing Keepalive session
+     * @param indicationType RadioIndicationType
+     * @param keepaliveStatus Status of the ongoing Keepalive session
+     */
+    public void keepaliveStatus(int indicationType, KeepaliveStatus keepaliveStatus) {
+        throw new UnsupportedOperationException("keepaliveStatus Indications are not implemented");
     }
 
     private CommandsInterface.RadioState getRadioStateFromInt(int stateInt) {

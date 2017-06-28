@@ -68,6 +68,7 @@ import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
+import android.telephony.ImsiEncryptionInfo;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.NetworkScanRequest;
@@ -98,7 +99,6 @@ import java.io.DataInputStream;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -1846,11 +1846,15 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                                     + " not supported!");
                             return;
                     }
-                    for (int band : ras.bands) {
-                        bands.add(band);
+                    if (ras.bands != null) {
+                        for (int band : ras.bands) {
+                            bands.add(band);
+                        }
                     }
-                    for (int channel : ras.channels) {
-                        s.channels.add(channel);
+                    if (ras.channels != null) {
+                        for (int channel : ras.channels) {
+                            s.channels.add(channel);
+                        }
                     }
                     request.specifiers.add(s);
                 }
@@ -3778,8 +3782,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setCarrierInfoForImsiEncryption(PublicKey publicKey, String keyIdentifier,
+    public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
                                                 Message result) {
+        checkNotNull(imsiEncryptionInfo, "ImsiEncryptionInfo cannot be null.");
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             android.hardware.radio.V1_1.IRadio radioProxy11 =
@@ -3796,8 +3801,21 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
                 try {
+                    android.hardware.radio.V1_1.ImsiEncryptionInfo halImsiInfo =
+                            new android.hardware.radio.V1_1.ImsiEncryptionInfo();
+                    halImsiInfo.mnc = imsiEncryptionInfo.getMnc();
+                    halImsiInfo.mcc = imsiEncryptionInfo.getMcc();
+                    halImsiInfo.keyIdentifier = imsiEncryptionInfo.getKeyIdentifier();
+                    if (imsiEncryptionInfo.getExpirationTime() != null) {
+                        halImsiInfo.expirationTime =
+                                imsiEncryptionInfo.getExpirationTime().getTime();
+                    }
+                    for (byte b : imsiEncryptionInfo.getPublicKey().getEncoded()) {
+                        halImsiInfo.carrierKey.add(new Byte(b));
+                    }
+
                     radioProxy11.setCarrierInfoForImsiEncryption(
-                            rr.mSerial, publicKeyToArrayList(publicKey), keyIdentifier);
+                            rr.mSerial, halImsiInfo);
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "setCarrierInfoForImsiEncryption", e);
                 }
@@ -4902,19 +4920,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     public static ArrayList<Byte> primitiveArrayToArrayList(byte[] arr) {
         ArrayList<Byte> arrayList = new ArrayList<>(arr.length);
         for (byte b : arr) {
-            arrayList.add(b);
-        }
-        return arrayList;
-    }
-
-    /**
-     * Method to serialize the Public Key into ArrayList of bytes
-     * @param publicKey publicKey to be converted to ArrayList of bytes.
-     **/
-    public static ArrayList<Byte> publicKeyToArrayList(PublicKey publicKey) {
-        byte[] key = publicKey.getEncoded();
-        ArrayList<Byte> arrayList = new ArrayList<>(key.length);
-        for (byte b : key) {
             arrayList.add(b);
         }
         return arrayList;

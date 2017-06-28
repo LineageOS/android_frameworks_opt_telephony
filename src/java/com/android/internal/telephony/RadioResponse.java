@@ -34,6 +34,7 @@ import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.hardware.radio.V1_1.IRadioResponse;
+import android.hardware.radio.V1_1.KeepaliveStatus;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -45,6 +46,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
@@ -1216,6 +1218,22 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseVoid(responseInfo);
     }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param keepaliveStatus status of the keepalive with a handle for the session
+     */
+    public void startKeepaliveResponse(RadioResponseInfo responseInfo,
+            KeepaliveStatus keepaliveStatus) {
+        throw new UnsupportedOperationException("startKeepaliveResponse not implemented");
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void stopKeepaliveResponse(RadioResponseInfo responseInfo) {
+        throw new UnsupportedOperationException("stopKeepaliveResponse not implemented");
+    }
+
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
@@ -1312,11 +1330,11 @@ public class RadioResponse extends IRadioResponse.Stub {
                     dc.uusInfo = new UUSInfo();
                     dc.uusInfo.setType(calls.get(i).uusInfo.get(0).uusType);
                     dc.uusInfo.setDcs(calls.get(i).uusInfo.get(0).uusDcs);
-                    if (calls.get(i).uusInfo.get(0).uusData != null) {
+                    if (!TextUtils.isEmpty(calls.get(i).uusInfo.get(0).uusData)) {
                         byte[] userData = calls.get(i).uusInfo.get(0).uusData.getBytes();
                         dc.uusInfo.setUserData(userData);
                     } else {
-                        mRil.riljLog("responseCurrentCalls: uusInfo data is null");
+                        mRil.riljLog("responseCurrentCalls: uusInfo data is null or empty");
                     }
 
                     mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
