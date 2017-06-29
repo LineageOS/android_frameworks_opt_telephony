@@ -23,18 +23,21 @@ import static android.telephony.RadioNetworkConstants.RadioAccessNetworks.UTRAN;
 import android.hardware.radio.V1_0.RadioError;
 import android.os.AsyncResult;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.Process;
 import android.os.RemoteException;
+import android.telephony.CellInfo;
 import android.telephony.NetworkScan;
 import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.TelephonyScanManager;
 import android.util.Log;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -126,13 +129,21 @@ public final class NetworkScanRequestTracker {
     }
 
     /** Sends a message back to the application via its callback. */
-    private void notifyMessenger(NetworkScanRequestInfo nsri, int what, int err, Object result) {
+    private void notifyMessenger(NetworkScanRequestInfo nsri, int what, int err,
+            List<CellInfo> result) {
         Messenger messenger = nsri.mMessenger;
         Message message = Message.obtain();
         message.what = what;
         message.arg1 = err;
         message.arg2 = nsri.mScanId;
-        message.obj = result;
+        if (result != null) {
+            CellInfo[] ci = result.toArray(new CellInfo[result.size()]);
+            Bundle b = new Bundle();
+            b.putParcelableArray(TelephonyScanManager.SCAN_RESULT_KEY, ci);
+            message.setData(b);
+        } else {
+            message.obj = null;
+        }
         try {
             messenger.send(message);
         } catch (RemoteException e) {
