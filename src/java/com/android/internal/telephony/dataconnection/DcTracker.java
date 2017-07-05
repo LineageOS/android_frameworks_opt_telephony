@@ -856,11 +856,12 @@ public class DcTracker extends Handler {
                     if (dcac != null) {
                         final NetworkCapabilities netCaps = dcac.getNetworkCapabilitiesSync();
                         if (netCaps != null && !netCaps.hasCapability(NetworkCapabilities
-                                .NET_CAPABILITY_NOT_RESTRICTED)) {
+                                .NET_CAPABILITY_NOT_RESTRICTED) && !netCaps.hasCapability(
+                                NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) {
                             if (DBG) {
-                                log("Tearing down restricted net:" + apnContext);
+                                log("Tearing down restricted metered net:" + apnContext);
                             }
-                            // Tearing down the restricted data call (metered or unmetered) when
+                            // Tearing down the restricted metered data call when
                             // conditions change. This will allow reestablishing a new unrestricted
                             // data connection.
                             apnContext.setReason(Phone.REASON_DATA_ENABLED);
