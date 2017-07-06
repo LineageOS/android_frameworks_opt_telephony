@@ -580,19 +580,6 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testSwitchToSubscription_mustDeactivateSim() throws Exception {
-        setHasWriteEmbeddedPermission(true);
-        prepareOperationSubscription(false /* hasPrivileges */);
-        callSwitchToSubscription(
-                SUBSCRIPTION_ID, ICC_ID, true /* complete */,
-                EuiccService.RESULT_MUST_DEACTIVATE_SIM, "whatever" /* callingPackage */);
-        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
-                0 /* detailedCode */);
-        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
-                EuiccOperation.ACTION_SWITCH_DEACTIVATE_SIM);
-    }
-
-    @Test
     public void testSwitchToSubscription_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         prepareOperationSubscription(false /* hasPrivileges */);
