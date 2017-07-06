@@ -623,6 +623,13 @@ public class EuiccController extends IEuiccController.Stub {
 
         long token = Binder.clearCallingIdentity();
         try {
+            if (callerCanWriteEmbeddedSubscriptions) {
+                // Assume that if a privileged caller is calling us, we don't need to prompt the
+                // user about changing carriers, because the caller would only be acting in response
+                // to user action.
+                forceDeactivateSim = true;
+            }
+
             final String iccid;
             if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
                 // Switch to "no" subscription. Only the system can do this.
