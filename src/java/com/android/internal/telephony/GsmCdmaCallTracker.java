@@ -1662,4 +1662,13 @@ public class GsmCdmaCallTracker extends CallTracker {
                 MAX_CONNECTIONS_PER_CALL_GSM :
                 MAX_CONNECTIONS_PER_CALL_CDMA;
     }
+
+    /**
+     * Called to force the call tracker to cleanup any stale calls.  Does this by triggering
+     * {@code GET_CURRENT_CALLS} on the RIL.
+     */
+    @Override
+    public void cleanupCalls() {
+        pollCallsWhenSafe();
+    }
 }
