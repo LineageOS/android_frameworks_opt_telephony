@@ -50,6 +50,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
@@ -101,6 +102,7 @@ public class DcTrackerTest extends TelephonyTest {
     public static final String FAKE_APN2 = "FAKE APN 2";
     public static final String FAKE_APN3 = "FAKE APN 3";
     public static final String FAKE_APN4 = "FAKE APN 4";
+    public static final String FAKE_APN5 = "FAKE APN 5";
     public static final String FAKE_IFNAME = "FAKE IFNAME";
     public static final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
     public static final String FAKE_GATEWAY = "11.22.33.44";
@@ -307,6 +309,34 @@ public class DcTrackerTest extends TelephonyTest {
                             ""                      // mnvo_match_data
                     });
 
+                    mc.addRow(new Object[]{
+                            2166,                   // id
+                            plmn,                   // numeric
+                            "b-mobile for Nexus",   // name
+                            FAKE_APN5,              // apn
+                            "",                     // proxy
+                            "",                     // port
+                            "",                     // mmsc
+                            "",                     // mmsproxy
+                            "",                     // mmsport
+                            "",                     // user
+                            "",                     // password
+                            -1,                     // authtype
+                            "dun",                  // types
+                            "IP",                   // protocol
+                            "IP",                   // roaming_protocol
+                            1,                      // carrier_enabled
+                            0,                      // bearer
+                            0,                      // bearer_bitmask
+                            0,                      // profile_id
+                            0,                      // modem_cognitive
+                            0,                      // max_conns
+                            0,                      // wait_time
+                            0,                      // max_conns_time
+                            0,                      // mtu
+                            "",                     // mvno_type
+                            ""                      // mnvo_match_data
+                    });
                     return mc;
                 }
             }
@@ -1106,6 +1136,31 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(false), eq(false), any(Message.class));
         verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+    }
+
+    // Test for fetchDunApn()
+    @Test
+    @SmallTest
+    public void testFetchDunApn() {
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        String dunApnString = "[ApnSettingV3]HOT mobile PC,pc.hotm,,,,,,,,,440,10,,DUN,,,true,"
+                + "0,,,,,,,,";
+        ApnSetting dunApnExpected = ApnSetting.fromString(dunApnString);
+
+        Settings.Global.putString(mContext.getContentResolver(),
+                Settings.Global.TETHER_DUN_APN, dunApnString);
+        // should return APN from Setting
+        ApnSetting dunApn = mDct.fetchDunApn();
+        assertTrue(dunApnExpected.equals(dunApn));
+
+        Settings.Global.putString(mContext.getContentResolver(),
+                Settings.Global.TETHER_DUN_APN, null);
+        // should return APN from db
+        dunApn = mDct.fetchDunApn();
+        assertEquals(FAKE_APN5, dunApn.apn);
     }
 
     // Test oos
