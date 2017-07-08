@@ -36,6 +36,7 @@ import com.android.internal.telephony.CommandsInterface.RadioState;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.IccCardConstants.State;
+import com.android.internal.telephony.IntentBroadcaster;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -506,7 +507,7 @@ public class IccCardProxy extends Handler implements IccCard {
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
             log("broadcastIccStateChangedIntent intent ACTION_SIM_STATE_CHANGED value=" + value
                 + " reason=" + reason + " for mPhoneId=" + mPhoneId);
-            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
+            IntentBroadcaster.getInstance().broadcastStickyIntent(intent, mPhoneId);
         }
     }
 
