@@ -16,6 +16,19 @@
 
 package com.android.internal.telephony.cdma;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -40,24 +53,13 @@ import com.android.internal.util.StateMachine;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.anyBoolean;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     @Mock
@@ -177,6 +179,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     @FlakyTest
     @Test
     @MediumTest
+    @Ignore
     public void testNewSms() {
         transitionFromStartupToIdle();
 
