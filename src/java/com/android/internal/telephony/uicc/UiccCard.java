@@ -413,7 +413,8 @@ public class UiccCard {
                 r.getString(R.string.sim_removed_message);
             String buttonTxt = r.getString(R.string.sim_restart_button);
 
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
+            AlertDialog dialog = new AlertDialog.Builder(mContext, android.R.style
+                    .Theme_DeviceDefault_Light_Dialog_Alert)
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton(buttonTxt, listener)
