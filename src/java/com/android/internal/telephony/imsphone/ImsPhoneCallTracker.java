@@ -932,7 +932,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mSupportDowngradeVtToAudio = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_SUPPORT_DOWNGRADE_VT_TO_AUDIO_BOOL);
         mNotifyHandoverVideoFromWifiToLTE = carrierConfig.getBoolean(
-                CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
+                CarrierConfigManager.KEY_NOTIFY_HANDOVER_VIDEO_FROM_WIFI_TO_LTE_BOOL);
         mIgnoreDataEnabledChangedForVideoCalls = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_IGNORE_DATA_ENABLED_CHANGED_FOR_VIDEO_CALLS);
         mSupportPauseVideo = carrierConfig.getBoolean(
