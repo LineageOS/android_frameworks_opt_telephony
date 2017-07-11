@@ -469,6 +469,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private void unregisterUiccCardEvents() {
         if (mUiccCard != null) mUiccCard.unregisterForAbsent(this);
+        if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForReady(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForLocked(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForNetworkLocked(this);
