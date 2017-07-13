@@ -20,14 +20,18 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.content.Intent;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.provider.Settings;
+import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -95,16 +99,32 @@ public class CarrierActionAgentTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testCarrierActionResetOnAPM() {
-        Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
-        mFakeContentResolver.notifyChange(
-                Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON), null);
-        waitForMs(200);
-        ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
+        // setting observer register at sim loading
+        final Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
+                IccCardConstants.INTENT_VALUE_ICC_LOADED);
+        mContext.sendBroadcast(intent);
+        waitForMs(100);
 
+        // carrier actions triggered from sim loading
+        ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
         verify(mDataActionHandler).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
 
         verify(mRadioActionHandler).sendMessageAtTime(message.capture(), anyLong());
+        assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
+
+        // simulate APM change from off -> on
+        Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
+        mFakeContentResolver.notifyChange(
+                Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON), null);
+        waitForMs(200);
+
+        // carrier actions triggered from APM
+        verify(mDataActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
+        assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
+
+        verify(mRadioActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
     }
 
