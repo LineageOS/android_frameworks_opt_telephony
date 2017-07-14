@@ -296,7 +296,6 @@ public class DataConnectionTest extends TelephonyTest {
 
         assertFalse(getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
-        assertTrue(getNetworkInfo().isMetered());
     }
 
     @Test
@@ -312,6 +311,5 @@ public class DataConnectionTest extends TelephonyTest {
 
         assertTrue(getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
-        assertFalse(getNetworkInfo().isMetered());
     }
 }
