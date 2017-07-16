@@ -32,6 +32,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
@@ -40,6 +41,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.service.carrier.CarrierIdentifier;
 import android.telecom.VideoProfile;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
@@ -571,6 +573,30 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     updateImsPhone();
                 }
             }
+        }
+    }
+
+    /**
+     * Checks if device should convert CDMA Caller ID restriction related MMI codes to
+     * equivalent 3GPP MMI Codes that provide same functionality when device is roaming.
+     * This method should only return true on multi-mode devices when carrier requires this
+     * conversion to be done on the device.
+     *
+     * @return true when carrier config
+     * "KEY_CONVERT_CDMA_CALLER_ID_MMI_CODES_WHILE_ROAMING_ON_3GPP_BOOL" is set to true
+     */
+    public boolean supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming() {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configManager.getConfig();
+        if (b != null) {
+            return b.getBoolean(
+                    CarrierConfigManager
+                            .KEY_CONVERT_CDMA_CALLER_ID_MMI_CODES_WHILE_ROAMING_ON_3GPP_BOOL,
+                    false);
+        } else {
+            // Default value set in CarrierConfigManager
+            return false;
         }
     }
 
