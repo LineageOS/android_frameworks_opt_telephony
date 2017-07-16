@@ -518,6 +518,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     protected void onIccRefreshInit() {
         mAdnCache.reset();
+        mMncLength = UNINITIALIZED;
         UiccCardApplication parentApp = mParentApp;
         if ((parentApp != null) &&
                 (parentApp.getState() == AppState.APPSTATE_READY)) {
