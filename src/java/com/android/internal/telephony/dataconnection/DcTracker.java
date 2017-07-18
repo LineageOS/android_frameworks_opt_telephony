@@ -84,6 +84,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataAllowedReasonType;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataDisallowedReasonType;
@@ -312,46 +313,6 @@ public class DcTracker extends Handler {
                     }
                 }
             };
-
-    private static class SettingsObserver extends ContentObserver {
-        final private HashMap<Uri, Integer> mUriEventMap;
-        final private Context mContext;
-        final private Handler mHandler;
-        final private static String TAG = "DcTracker.SettingsObserver";
-
-        SettingsObserver(Context context, Handler handler) {
-            super(null);
-            mUriEventMap = new HashMap<Uri, Integer>();
-            mContext = context;
-            mHandler = handler;
-        }
-
-        void observe(Uri uri, int what) {
-            mUriEventMap.put(uri, what);
-            final ContentResolver resolver = mContext.getContentResolver();
-            resolver.registerContentObserver(uri, false, this);
-        }
-
-        void unobserve() {
-            final ContentResolver resolver = mContext.getContentResolver();
-            resolver.unregisterContentObserver(this);
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
-            Rlog.e(TAG, "Should never be reached.");
-        }
-
-        @Override
-        public void onChange(boolean selfChange, Uri uri) {
-            final Integer what = mUriEventMap.get(uri);
-            if (what != null) {
-                mHandler.obtainMessage(what.intValue()).sendToTarget();
-            } else {
-                Rlog.e(TAG, "No matching event to send for URI=" + uri);
-            }
-        }
-    }
 
     private final SettingsObserver mSettingsObserver;
 
