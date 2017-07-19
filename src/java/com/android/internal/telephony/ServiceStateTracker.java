@@ -2050,8 +2050,11 @@ public class ServiceStateTracker extends Handler {
             // carrier config possibly overrides it.
             mNewSS.setDataRoamingFromRegistration(roaming);
 
-            if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS) &&
-                    (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
+            if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS)
+                    && (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
+                log("updateRoamingState: resource override set non roaming.isSameNamedOperators="
+                        + isSameNamedOperators(mNewSS) + ",isOperatorConsideredNonRoaming="
+                        + isOperatorConsideredNonRoaming(mNewSS));
                 roaming = false;
             }
 
@@ -3304,7 +3307,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         for (String numeric : numericArray) {
-            if (operatorNumeric.startsWith(numeric)) {
+            if (!TextUtils.isEmpty(numeric) && operatorNumeric.startsWith(numeric)) {
                 return true;
             }
         }
@@ -3328,7 +3331,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         for (String numeric : numericArray) {
-            if (operatorNumeric.startsWith(numeric)) {
+            if (!TextUtils.isEmpty(numeric) && operatorNumeric.startsWith(numeric)) {
                 return true;
             }
         }
