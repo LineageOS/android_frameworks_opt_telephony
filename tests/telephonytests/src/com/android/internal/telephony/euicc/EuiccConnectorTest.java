@@ -129,6 +129,27 @@ public class EuiccConnectorTest extends TelephonyTest {
     }
 
     @Test
+    public void testInitialState_switchCommandRejected() {
+        prepareEuiccApp(false /* hasPermission */, false /* requiresBindPermission */,
+                false /* hasPriority */);
+        mConnector = new EuiccConnector(mContext, mLooper.getLooper());
+        final AtomicBoolean called = new AtomicBoolean(false);
+        mConnector.switchToSubscription("12345", true, new EuiccConnector.SwitchCommandCallback() {
+            @Override
+            public void onSwitchComplete(int result) {
+                fail("Command should have failed");
+            }
+
+            @Override
+            public void onEuiccServiceUnavailable() {
+                assertTrue("Callback called twice", called.compareAndSet(false, true));
+            }
+        });
+        mLooper.dispatchAll();
+        assertTrue(called.get());
+    }
+
+    @Test
     public void testInitialState_available() {
         prepareEuiccApp(true /* hasPermission */, true /* requiresBindPermission */,
                 true /* hasPriority */);
