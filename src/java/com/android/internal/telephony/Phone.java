@@ -143,6 +143,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // Key used to read/write "disable data connection on boot" pref (used for testing)
     public static final String DATA_DISABLED_ON_BOOT_KEY = "disabled_on_boot_key";
 
+    // Key used to read/write data_roaming_is_user_setting pref
+    public static final String DATA_ROAMING_IS_USER_SETTING_KEY = "data_roaming_is_user_setting_key";
+
     /* Event Constants */
     protected static final int EVENT_RADIO_AVAILABLE             = 1;
     /** Supplementary Service Notification received. */
