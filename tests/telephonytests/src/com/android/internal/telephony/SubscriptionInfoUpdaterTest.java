@@ -457,7 +457,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSimLockWIthIccId() throws Exception {
+    public void testSimLockWithIccId() throws Exception {
         /* no need for IccId query */
 
         replaceInstance(SubscriptionInfoUpdater.class, "mIccId", null,
