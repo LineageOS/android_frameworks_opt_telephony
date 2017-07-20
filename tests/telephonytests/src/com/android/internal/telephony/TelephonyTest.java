@@ -183,6 +183,8 @@ public abstract class TelephonyTest {
     protected AppSmsManager mAppSmsManager;
     @Mock
     protected DeviceStateMonitor mDeviceStateMonitor;
+    @Mock
+    protected IntentBroadcaster mIntentBroadcaster;
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
@@ -311,6 +313,7 @@ public abstract class TelephonyTest {
         replaceInstance(Singleton.class, "mInstance", mIActivityManagerSingleton,
                 mIActivityManager);
         replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
+        replaceInstance(IntentBroadcaster.class, "sIntentBroadcaster", null, mIntentBroadcaster);
 
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
