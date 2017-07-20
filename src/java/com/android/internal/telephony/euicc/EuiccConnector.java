@@ -483,7 +483,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                 }
                 return HANDLED;
             } else if (isEuiccCommand(message.what)) {
-                BaseEuiccCommandCallback callback = (BaseEuiccCommandCallback) message.obj;
+                BaseEuiccCommandCallback callback = getCallback(message);
                 callback.onEuiccServiceUnavailable();
                 return HANDLED;
             }
