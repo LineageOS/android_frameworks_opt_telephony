@@ -304,7 +304,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForMs(200);
 
         verifySmsIntentBroadcasts(0);
 

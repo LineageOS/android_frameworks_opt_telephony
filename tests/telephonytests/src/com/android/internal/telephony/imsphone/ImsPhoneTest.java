@@ -579,6 +579,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @FlakyTest
     @Test
     @SmallTest
+    @Ignore
     public void testProcessDisconnectReason() throws Exception {
         // set up CarrierConfig
         PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
