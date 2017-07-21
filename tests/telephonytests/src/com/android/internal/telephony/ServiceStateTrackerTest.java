@@ -576,7 +576,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(100);
 
-        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null);
+        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null, true);
 
         // Disable roaming
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -1000,7 +1000,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(200);
 
-        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null);
+        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null, true);
         sst.registerForVoiceRoamingOff(mTestHandler, EVENT_VOICE_ROAMING_OFF, null);
         sst.registerForDataConnectionDetached(mTestHandler, EVENT_DATA_CONNECTION_DETACHED, null);
 
