@@ -71,6 +71,7 @@ public class PhoneFactory {
 
     static private ProxyController sProxyController;
     static private UiccController sUiccController;
+    private static IntentBroadcaster sIntentBroadcaster;
     private static @Nullable EuiccController sEuiccController;
 
     static private CommandsInterface sCommandsInterface = null;
@@ -239,6 +240,8 @@ public class PhoneFactory {
 
                 sProxyController = ProxyController.getInstance(context, sPhones,
                         sUiccController, sCommandsInterfaces, sPhoneSwitcher);
+
+                sIntentBroadcaster = IntentBroadcaster.getInstance(context);
 
                 sNotificationChannelController = new NotificationChannelController(context);
 
