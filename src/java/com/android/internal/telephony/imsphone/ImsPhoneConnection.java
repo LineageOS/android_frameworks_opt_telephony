@@ -1228,6 +1228,7 @@ public class ImsPhoneConnection extends Connection implements
         Rlog.i(LOG_TAG, "ImsPhoneConnection: changeToPausedState - setting paused bit; "
                 + "newVideoState=" + VideoProfile.videoStateToString(newVideoState));
         updateVideoState(newVideoState);
+        mShouldIgnoreVideoStateChanges = true;
     }
 
     public void changeToUnPausedState() {
@@ -1235,5 +1236,6 @@ public class ImsPhoneConnection extends Connection implements
         Rlog.i(LOG_TAG, "ImsPhoneConnection: changeToUnPausedState - unsetting paused bit; "
                 + "newVideoState=" + VideoProfile.videoStateToString(newVideoState));
         updateVideoState(newVideoState);
+        mShouldIgnoreVideoStateChanges = false;
     }
 }
