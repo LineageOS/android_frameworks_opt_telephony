@@ -265,6 +265,9 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         assertTrue(mConnectionUT.isWifi());
     }
 
+    /**
+     * Test updates to address for incoming calls.
+     */
     @Test
     @SmallTest
     public void testAddressUpdate() {
@@ -283,10 +286,29 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         for (String[] testAddress : testAddressMappingSet) {
             mConnectionUT = new ImsPhoneConnection(mImsPhone, testAddress[0], mImsCT,
                     mForeGroundCall, false);
+            mConnectionUT.setIsIncoming(true);
             doReturn(testAddress[1]).when(mImsCallProfile)
                     .getCallExtra(eq(ImsCallProfile.EXTRA_OI));
             mConnectionUT.updateAddressDisplay(mImsCall);
             assertEquals(testAddress[2], mConnectionUT.getAddress());
         }
+    }
+
+    /**
+     * Ensure updates to the address for outgoing calls are ignored.
+     */
+    @Test
+    @SmallTest
+    public void testSetAddressOnOutgoing() {
+        String inputAddress = "12345";
+        String updateAddress = "6789";
+
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, inputAddress, mImsCT, mForeGroundCall,
+                false);
+        mConnectionUT.setIsIncoming(false);
+        doReturn(updateAddress).when(mImsCallProfile)
+                .getCallExtra(eq(ImsCallProfile.EXTRA_OI));
+        mConnectionUT.updateAddressDisplay(mImsCall);
+        assertEquals(inputAddress, mConnectionUT.getAddress());
     }
 }
