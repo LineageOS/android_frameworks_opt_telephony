@@ -348,6 +348,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testImsMOCallDial() {
