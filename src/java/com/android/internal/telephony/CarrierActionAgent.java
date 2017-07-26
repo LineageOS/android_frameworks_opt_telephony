@@ -59,6 +59,8 @@ public class CarrierActionAgent extends Handler {
     public static final int CARRIER_ACTION_RESET                         = 2;
     public static final int EVENT_APM_SETTINGS_CHANGED                   = 3;
     public static final int EVENT_MOBILE_DATA_SETTINGS_CHANGED           = 4;
+    public static final int EVENT_DATA_ROAMING_OFF                       = 5;
+    public static final int EVENT_SIM_STATE_CHANGED                      = 6;
 
     /** Member variables */
     private final Phone mPhone;
@@ -84,21 +86,7 @@ public class CarrierActionAgent extends Handler {
                     // ignore rebroadcast since carrier apps are direct boot aware.
                     return;
                 }
-                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(iccState)) {
-                    sendEmptyMessage(CARRIER_ACTION_RESET);
-                    String mobileData = Settings.Global.MOBILE_DATA;
-                    if (TelephonyManager.getDefault().getSimCount() != 1) {
-                        mobileData = mobileData + mPhone.getSubId();
-                    }
-                    mSettingsObserver.observe(Settings.Global.getUriFor(mobileData),
-                            EVENT_MOBILE_DATA_SETTINGS_CHANGED);
-                    mSettingsObserver.observe(
-                            Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON),
-                            EVENT_APM_SETTINGS_CHANGED);
-                } else if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(iccState)) {
-                    sendEmptyMessage(CARRIER_ACTION_RESET);
-                    mSettingsObserver.unobserve();
-                }
+                sendMessage(obtainMessage(EVENT_SIM_STATE_CHANGED, iccState));
             }
         }
     };
@@ -132,22 +120,46 @@ public class CarrierActionAgent extends Handler {
                 break;
             case CARRIER_ACTION_RESET:
                 log("CARRIER_ACTION_RESET");
-                carrierActionSetMeteredApnsEnabled(true);
-                carrierActionSetRadioEnabled(true);
-                // notify configured carrier apps for reset
-                mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(
-                        new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
+                carrierActionReset();
                 break;
             case EVENT_APM_SETTINGS_CHANGED:
                 log("EVENT_APM_SETTINGS_CHANGED");
                 if ((Settings.Global.getInt(mPhone.getContext().getContentResolver(),
                         Settings.Global.AIRPLANE_MODE_ON, 0) != 0)) {
-                    sendEmptyMessage(CARRIER_ACTION_RESET);
+                    carrierActionReset();
                 }
                 break;
             case EVENT_MOBILE_DATA_SETTINGS_CHANGED:
                 log("EVENT_MOBILE_DATA_SETTINGS_CHANGED");
-                if (!mPhone.getDataEnabled()) sendEmptyMessage(CARRIER_ACTION_RESET);
+                if (!mPhone.getDataEnabled()) carrierActionReset();
+                break;
+            case EVENT_DATA_ROAMING_OFF:
+                log("EVENT_DATA_ROAMING_OFF");
+                // reset carrier actions when exit roaming state.
+                carrierActionReset();
+                break;
+            case EVENT_SIM_STATE_CHANGED:
+                String iccState = (String) msg.obj;
+                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(iccState)) {
+                    log("EVENT_SIM_STATE_CHANGED status: " + iccState);
+                    carrierActionReset();
+                    String mobileData = Settings.Global.MOBILE_DATA;
+                    if (TelephonyManager.getDefault().getSimCount() != 1) {
+                        mobileData = mobileData + mPhone.getSubId();
+                    }
+                    mSettingsObserver.observe(Settings.Global.getUriFor(mobileData),
+                            EVENT_MOBILE_DATA_SETTINGS_CHANGED);
+                    mSettingsObserver.observe(
+                            Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON),
+                            EVENT_APM_SETTINGS_CHANGED);
+                    mPhone.getServiceStateTracker().registerForDataRoamingOff(
+                            this, EVENT_DATA_ROAMING_OFF, null, false);
+                } else if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(iccState)) {
+                    log("EVENT_SIM_STATE_CHANGED status: " + iccState);
+                    carrierActionReset();
+                    mSettingsObserver.unobserve();
+                    mPhone.getServiceStateTracker().unregisterForDataRoamingOff(this);
+                }
                 break;
             default:
                 loge("Unknown carrier action: " + msg.what);
@@ -177,6 +189,14 @@ public class CarrierActionAgent extends Handler {
      */
     public void carrierActionSetMeteredApnsEnabled(boolean enabled) {
         sendMessage(obtainMessage(CARRIER_ACTION_SET_METERED_APNS_ENABLED, enabled));
+    }
+
+    private void carrierActionReset() {
+        carrierActionSetMeteredApnsEnabled(true);
+        carrierActionSetRadioEnabled(true);
+        // notify configured carrier apps for reset
+        mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(
+                new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
     }
 
     private RegistrantList getRegistrantsFromAction(int action) {
