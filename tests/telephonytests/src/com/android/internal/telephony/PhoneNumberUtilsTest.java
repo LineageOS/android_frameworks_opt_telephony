@@ -428,6 +428,7 @@ public class PhoneNumberUtilsTest {
 
     // To run this test, the device has to be registered with network
     @FlakyTest
+    @Ignore
     public void testCheckAndProcessPlusCode() {
         assertEquals("0118475797000",
                 PhoneNumberUtils.cdmaCheckAndProcessPlusCode("+8475797000"));
