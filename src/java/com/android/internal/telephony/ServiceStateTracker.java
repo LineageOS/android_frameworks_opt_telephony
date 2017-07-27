@@ -842,12 +842,13 @@ public class ServiceStateTracker extends Handler {
      * @param h handler to notify
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
+     * @param notifyNow notify upon registration if data roaming is off
      */
-    public void registerForDataRoamingOff(Handler h, int what, Object obj) {
+    public void registerForDataRoamingOff(Handler h, int what, Object obj, boolean notifyNow) {
         Registrant r = new Registrant(h, what, obj);
         mDataRoamingOffRegistrants.add(r);
 
-        if (!mSS.getDataRoaming()) {
+        if (notifyNow && !mSS.getDataRoaming()) {
             r.notifyRegistrant();
         }
     }
