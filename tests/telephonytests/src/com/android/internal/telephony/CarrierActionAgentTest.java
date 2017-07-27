@@ -104,7 +104,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_LOADED);
         mContext.sendBroadcast(intent);
-        waitForMs(100);
+        waitForMs(200);
 
         // carrier actions triggered from sim loading
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
