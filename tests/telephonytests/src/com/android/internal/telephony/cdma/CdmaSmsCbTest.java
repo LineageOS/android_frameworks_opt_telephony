@@ -17,27 +17,24 @@
 package com.android.internal.telephony.cdma;
 
 import android.hardware.radio.V1_0.CdmaSmsMessage;
-import android.os.Parcel;
 import android.support.test.filters.FlakyTest;
+import android.telephony.Rlog;
 import android.telephony.SmsCbCmasInfo;
 import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.test.AndroidTestCase;
-import android.telephony.Rlog;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.cdma.SmsMessageConverter;
 import com.android.internal.telephony.cdma.sms.BearerData;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
-import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.BitwiseOutputStream;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -482,7 +479,9 @@ public class CdmaSmsCbTest extends AndroidTestCase {
     // VZW requirement is to discard message with unsupported charset. Verify that we return null
     // for this unsupported character set.
     @FlakyTest
-    @Test @SmallTest
+    @Ignore
+    @Test
+    @SmallTest
     public void testCmasUnsupportedCharSet() throws Exception {
         SmsMessage msg = createCmasSmsMessage(SmsEnvelope.SERVICE_CATEGORY_CMAS_EXTREME_THREAT,
                 12345, BearerData.PRIORITY_EMERGENCY, BearerData.LANGUAGE_ENGLISH,

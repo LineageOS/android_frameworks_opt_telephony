@@ -68,6 +68,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -239,6 +240,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testSpnUpdateShowPlmnOnly() {
@@ -577,7 +579,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(100);
 
-        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null);
+        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null, true);
 
         // Disable roaming
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -1001,7 +1003,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(200);
 
-        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null);
+        sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null, true);
         sst.registerForVoiceRoamingOff(mTestHandler, EVENT_VOICE_ROAMING_OFF, null);
         sst.registerForDataConnectionDetached(mTestHandler, EVENT_DATA_CONNECTION_DETACHED, null);
 

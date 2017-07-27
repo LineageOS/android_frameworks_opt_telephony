@@ -64,6 +64,7 @@ import com.android.internal.util.StateMachine;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -297,6 +298,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifyDataSmsIntentBroadcasts(1);
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testInjectSms() {
@@ -483,6 +486,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMultiPartSms() {
@@ -752,6 +756,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {
