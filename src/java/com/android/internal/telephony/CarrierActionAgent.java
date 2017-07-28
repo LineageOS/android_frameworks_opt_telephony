@@ -152,13 +152,17 @@ public class CarrierActionAgent extends Handler {
                     mSettingsObserver.observe(
                             Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON),
                             EVENT_APM_SETTINGS_CHANGED);
-                    mPhone.getServiceStateTracker().registerForDataRoamingOff(
-                            this, EVENT_DATA_ROAMING_OFF, null, false);
+                    if (mPhone.getServiceStateTracker() != null) {
+                        mPhone.getServiceStateTracker().registerForDataRoamingOff(
+                                this, EVENT_DATA_ROAMING_OFF, null, false);
+                    }
                 } else if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(iccState)) {
                     log("EVENT_SIM_STATE_CHANGED status: " + iccState);
                     carrierActionReset();
                     mSettingsObserver.unobserve();
-                    mPhone.getServiceStateTracker().unregisterForDataRoamingOff(this);
+                    if (mPhone.getServiceStateTracker() != null) {
+                        mPhone.getServiceStateTracker().unregisterForDataRoamingOff(this);
+                    }
                 }
                 break;
             default:
