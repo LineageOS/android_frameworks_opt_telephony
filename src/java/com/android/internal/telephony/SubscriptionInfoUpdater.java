@@ -533,8 +533,6 @@ public class SubscriptionInfoUpdater extends Handler {
     synchronized private void updateSubscriptionInfoByIccId() {
         logd("updateSubscriptionInfoByIccId:+ Start");
 
-        mSubscriptionManager.clearSubscriptionInfo();
-
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             mInsertSimState[i] = SIM_NOT_CHANGE;
         }
@@ -547,6 +545,13 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
         logd("insertedSimCount = " + insertedSimCount);
+
+        // We only clear the slot-to-sub map when one/some SIM was removed. Note this is a
+        // workaround for some race conditions that the empty map was accessed while we are
+        // rebuilding the map.
+        if (SubscriptionController.getInstance().getActiveSubIdList().length > insertedSimCount) {
+            SubscriptionController.getInstance().clearSubInfo();
+        }
 
         int index = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
