@@ -41,6 +41,7 @@ import android.text.TextUtils;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsReasonInfo;
+import com.android.ims.ImsSsData;
 import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.CallForwardInfo;
@@ -49,6 +50,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.regex.Matcher;
@@ -185,6 +187,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     private boolean mIsCallFwdReg;
     private State mState = State.PENDING;
     private CharSequence mMessage;
+    private boolean mIsSsInfo = false;
     //resgister/erasure of ICB (Specific DN)
     static final String IcbDnMmi = "Specific Incoming Call Barring";
     //ICB (Anonymous)
@@ -496,7 +499,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
     //***** Constructor
 
-    ImsPhoneMmiCode(ImsPhone phone) {
+    public ImsPhoneMmiCode(ImsPhone phone) {
         // The telephony unit-test cases may create ImsPhoneMmiCode's
         // in secondary threads
         super(phone.getHandler().getLooper());
@@ -1176,15 +1179,42 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     }
 
     private CharSequence getErrorMessage(AsyncResult ar) {
-        if (ar.exception instanceof CommandException) {
-            CommandException.Error err = ((CommandException) (ar.exception)).getCommandError();
-            if (err == CommandException.Error.FDN_CHECK_FAILURE) {
-                Rlog.i(LOG_TAG, "FDN_CHECK_FAILURE");
+        CharSequence errorMessage;
+        return ((errorMessage = getMmiErrorMessage(ar)) != null) ? errorMessage :
+                mContext.getText(com.android.internal.R.string.mmiError);
+    }
+
+    private CharSequence getMmiErrorMessage(AsyncResult ar) {
+        if (ar.exception instanceof ImsException) {
+            switch (((ImsException) ar.exception).getCode()) {
+                case ImsReasonInfo.CODE_FDN_BLOCKED:
+                    return mContext.getText(com.android.internal.R.string.mmiFdnError);
+                case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_DIAL:
+                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial);
+                case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_USSD:
+                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ussd);
+                case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_SS:
+                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ss);
+                case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_DIAL_VIDEO:
+                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial_video);
+                default:
+                    return null;
+            }
+        } else if (ar.exception instanceof CommandException) {
+            CommandException err = (CommandException) ar.exception;
+            if (err.getCommandError() == CommandException.Error.FDN_CHECK_FAILURE) {
                 return mContext.getText(com.android.internal.R.string.mmiFdnError);
+            } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_DIAL) {
+                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial);
+            } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_USSD) {
+                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ussd);
+            } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_SS) {
+                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ss);
+            } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_DIAL_VIDEO) {
+                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial_video);
             }
         }
-
-        return mContext.getText(com.android.internal.R.string.mmiError);
+        return null;
     }
 
     private CharSequence getScString() {
@@ -1225,11 +1255,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
             if (ar.exception instanceof CommandException) {
                 CommandException err = (CommandException) ar.exception;
+                CharSequence errorMessage;
                 if (err.getCommandError() == CommandException.Error.PASSWORD_INCORRECT) {
                     sb.append(mContext.getText(
                             com.android.internal.R.string.passwordIncorrect));
-                } else if (err.getCommandError() == CommandException.Error.FDN_CHECK_FAILURE) {
-                    sb.append(mContext.getText(com.android.internal.R.string.mmiFdnError));
+                } else if ((errorMessage = getMmiErrorMessage(ar)) != null) {
+                    sb.append(errorMessage);
                 } else if (err.getMessage() != null) {
                     sb.append(err.getMessage());
                 } else {
@@ -1379,7 +1410,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
             infos = (CallForwardInfo[]) ar.result;
 
-            if (infos.length == 0) {
+            if (infos == null || infos.length == 0) {
                 // Assume the default is not active
                 sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
 
@@ -1659,8 +1690,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
     private CharSequence getImsErrorMessage(AsyncResult ar) {
         ImsException error = (ImsException) ar.exception;
-        if (error.getCode() == ImsReasonInfo.CODE_FDN_BLOCKED) {
-            return mContext.getText(com.android.internal.R.string.mmiFdnError);
+        CharSequence errorMessage;
+        if ((errorMessage = getMmiErrorMessage(ar)) != null) {
+            return errorMessage;
         } else if (error.getMessage() != null) {
             return error.getMessage();
         } else {
@@ -1671,6 +1703,164 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     @Override
     public ResultReceiver getUssdCallbackReceiver() {
         return this.mCallbackReceiver;
+    }
+
+    /**
+     * Process IMS SS Data received.
+     */
+    public void processImsSsData(AsyncResult data) throws ImsException {
+        try {
+            ImsSsData ssData = (ImsSsData) data.result;
+            parseSsData(ssData);
+        } catch (ClassCastException | NullPointerException ex) {
+            throw new ImsException("Exception in parsing SS Data", 0);
+        }
+    }
+
+    void parseSsData(ImsSsData ssData) {
+        ImsException ex = (ssData.result != RILConstants.SUCCESS)
+                ? new ImsException(null, ssData.result) : null;
+        mSc = getScStringFromScType(ssData.serviceType);
+        mAction = getActionStringFromReqType(ssData.requestType);
+        Rlog.d(LOG_TAG, "parseSsData msc = " + mSc + ", action = " + mAction + ", ex = " + ex);
+
+        switch (ssData.requestType) {
+            case ImsSsData.SS_ACTIVATION:
+            case ImsSsData.SS_DEACTIVATION:
+            case ImsSsData.SS_REGISTRATION:
+            case ImsSsData.SS_ERASURE:
+                if ((ssData.result == RILConstants.SUCCESS)
+                        && ssData.isTypeUnConditional()) {
+                    /*
+                     * When ssData.serviceType is unconditional (SS_CFU or SS_CF_ALL) and
+                     * ssData.requestType is activate/register and
+                     * ServiceClass is Voice/Video/None, turn on voice call forwarding.
+                     */
+                    boolean cffEnabled = ((ssData.requestType == ImsSsData.SS_ACTIVATION
+                            || ssData.requestType == ImsSsData.SS_REGISTRATION)
+                            && isServiceClassVoiceVideoOrNone(ssData.serviceClass));
+
+                    Rlog.d(LOG_TAG, "setCallForwardingFlag cffEnabled: " + cffEnabled);
+                    if (mIccRecords != null) {
+                        Rlog.d(LOG_TAG, "setVoiceCallForwardingFlag done from SS Info.");
+                        //Only CF status is set here as part of activation/registration,
+                        //number is not available until interrogation.
+                        mPhone.setVoiceCallForwardingFlag(1, cffEnabled, null);
+                    } else {
+                        Rlog.e(LOG_TAG, "setCallForwardingFlag aborted. sim records is null.");
+                    }
+                }
+                onSetComplete(null, new AsyncResult(null, ssData.cfInfo, ex));
+                break;
+            case ImsSsData.SS_INTERROGATION:
+                if (ssData.isTypeClir()) {
+                    Rlog.d(LOG_TAG, "CLIR INTERROGATION");
+                    Bundle clirInfo = new Bundle();
+                    clirInfo.putIntArray(UT_BUNDLE_KEY_CLIR, ssData.ssInfo);
+                    onQueryClirComplete(new AsyncResult(null, clirInfo, ex));
+                } else if (ssData.isTypeCF()) {
+                    Rlog.d(LOG_TAG, "CALL FORWARD INTERROGATION");
+                    onQueryCfComplete(new AsyncResult(null, mPhone
+                            .handleCfQueryResult(ssData.cfInfo), ex));
+                } else if (ssData.isTypeBarring()) {
+                    onSuppSvcQueryComplete(new AsyncResult(null, ssData.ssInfo, ex));
+                } else if (ssData.isTypeColr() || ssData.isTypeClip() || ssData.isTypeColp()) {
+                    ImsSsInfo ssInfo = new ImsSsInfo();
+                    ssInfo.mStatus = ssData.ssInfo[0];
+                    Bundle clInfo = new Bundle();
+                    clInfo.putParcelable(UT_BUNDLE_KEY_SSINFO, ssInfo);
+                    onSuppSvcQueryComplete(new AsyncResult(null, clInfo, ex));
+                } else if (ssData.isTypeIcb()) {
+                    onIcbQueryComplete(new AsyncResult(null, ssData.imsSsInfo, ex));
+                } else {
+                    onQueryComplete(new AsyncResult(null, ssData.ssInfo, ex));
+                }
+                break;
+            default:
+                Rlog.e(LOG_TAG, "Invaid requestType in SSData : " + ssData.requestType);
+                break;
+        }
+    }
+
+    private String getScStringFromScType(int serviceType) {
+        switch (serviceType) {
+            case ImsSsData.SS_CFU:
+                return SC_CFU;
+            case ImsSsData.SS_CF_BUSY:
+                return SC_CFB;
+            case ImsSsData.SS_CF_NO_REPLY:
+                return SC_CFNRy;
+            case ImsSsData.SS_CF_NOT_REACHABLE:
+                return SC_CFNR;
+            case ImsSsData.SS_CF_ALL:
+                return SC_CF_All;
+            case ImsSsData.SS_CF_ALL_CONDITIONAL:
+                return SC_CF_All_Conditional;
+            case ImsSsData.SS_CLIP:
+                return SC_CLIP;
+            case ImsSsData.SS_CLIR:
+                return SC_CLIR;
+            case ImsSsData.SS_COLP:
+                return SC_COLP;
+            case ImsSsData.SS_COLR:
+                return SC_COLR;
+            case ImsSsData.SS_CNAP:
+                return SC_CNAP;
+            case ImsSsData.SS_WAIT:
+                return SC_WAIT;
+            case ImsSsData.SS_BAOC:
+                return SC_BAOC;
+            case ImsSsData.SS_BAOIC:
+                return SC_BAOIC;
+            case ImsSsData.SS_BAOIC_EXC_HOME:
+                return SC_BAOICxH;
+            case ImsSsData.SS_BAIC:
+                return SC_BAIC;
+            case ImsSsData.SS_BAIC_ROAMING:
+                return SC_BAICr;
+            case ImsSsData.SS_ALL_BARRING:
+                return SC_BA_ALL;
+            case ImsSsData.SS_OUTGOING_BARRING:
+                return SC_BA_MO;
+            case ImsSsData.SS_INCOMING_BARRING:
+                return SC_BA_MT;
+            case ImsSsData.SS_INCOMING_BARRING_DN:
+                return SC_BS_MT;
+            case ImsSsData.SS_INCOMING_BARRING_ANONYMOUS:
+                return SC_BAICa;
+            default:
+                return null;
+        }
+    }
+
+    private String getActionStringFromReqType(int requestType) {
+        switch (requestType) {
+            case ImsSsData.SS_ACTIVATION:
+                return ACTION_ACTIVATE;
+            case ImsSsData.SS_DEACTIVATION:
+                return ACTION_DEACTIVATE;
+            case ImsSsData.SS_INTERROGATION:
+                return ACTION_INTERROGATE;
+            case ImsSsData.SS_REGISTRATION:
+                return ACTION_REGISTER;
+            case ImsSsData.SS_ERASURE:
+                return ACTION_ERASURE;
+            default:
+                return null;
+        }
+    }
+
+    private boolean isServiceClassVoiceVideoOrNone(int serviceClass) {
+        return ((serviceClass == SERVICE_CLASS_NONE) || (serviceClass == SERVICE_CLASS_VOICE)
+                || (serviceClass == (SERVICE_CLASS_PACKET + SERVICE_CLASS_DATA_SYNC)));
+    }
+
+    public boolean isSsInfo() {
+        return mIsSsInfo;
+    }
+
+    public void setIsSsInfo(boolean isSsInfo) {
+        mIsSsInfo = isSsInfo;
     }
 
     /***
