@@ -131,6 +131,8 @@ public class SubscriptionController extends ISub.Stub {
 
     private AppOpsManager mAppOps;
 
+    private int mUserPreferredSmsSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static Map<Integer, Integer> sSlotIdxToSubId =
             new ConcurrentHashMap<Integer, Integer>();
@@ -811,10 +813,17 @@ public class SubscriptionController extends ISub.Stub {
                             if (phoneId < 0 || phoneId >= TelephonyManager.getDefault()
                                     .getPhoneCount()) {
                                 Rlog.i(LOG_TAG, "Subscription is invalid. Set default to " + subId);
+                                if (mUserPreferredSmsSubId ==
+                                        SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                                    mUserPreferredSmsSubId = getDefaultSmsSubId();
+                                }
                                 setDefaultSmsSubId(subId);
                                 PhoneFactory.setSMSPromptEnabled(subIdCountMax > 1);
+                            } else if (subId == mUserPreferredSmsSubId) {
+                                Rlog.i(LOG_TAG, "SMS subscription was different than user choice," +
+                                    " set to " + subId);
+                                setDefaultSmsSubId(subId);
                             }
-
                         } else {
                             if (DBG) {
                                 logdl("[addSubInfoRecord] currentSubId != null"
