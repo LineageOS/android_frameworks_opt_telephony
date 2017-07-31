@@ -136,6 +136,7 @@ public class SubscriptionController extends ISub.Stub {
             new ConcurrentHashMap<Integer, Integer>();
     protected static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     protected static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
+    private static int sDefaultSmsSubId = -1;
 
     private int[] colorArr;
 
@@ -701,6 +702,9 @@ public class SubscriptionController extends ISub.Stub {
     public int addSubInfoRecord(String iccId, int slotId) {
         if (DBG) logdl("[addSubInfoRecord]+ iccId:" + SubscriptionInfo.givePrintableIccid(iccId) +
                 " slotId:" + slotId);
+        if (sDefaultSmsSubId == -1) {
+            sDefaultSmsSubId = getDefaultSmsSubId();
+        }
 
         enforceModifyPhoneState("addSubInfoRecord");
 
@@ -813,8 +817,12 @@ public class SubscriptionController extends ISub.Stub {
                                 Rlog.i(LOG_TAG, "Subscription is invalid. Set default to " + subId);
                                 setDefaultSmsSubId(subId);
                                 PhoneFactory.setSMSPromptEnabled(subIdCountMax > 1);
+                            } else if (subId == sDefaultSmsSubId &&
+                                    getDefaultSmsSubId() != sDefaultSmsSubId) {
+                                Rlog.i(LOG_TAG, "SMS subscription was different than user choice," +
+                                    " set to " + subId);
+                                setDefaultSmsSubId(subId);
                             }
-
                         } else {
                             if (DBG) {
                                 logdl("[addSubInfoRecord] currentSubId != null"
