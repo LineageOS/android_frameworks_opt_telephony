@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "48024251_78cace09",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 817,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2017-07-31T19:34:58Z",
+      "side": 1,
+      "message": "I was wondering if this is needed. Probably this is needed in case the default SIM is swapped with a third SIM. I think that would cause phoneId to be invalid and we would update mUserPreferredSmsSubId with the fallback SIM, i.e. SIM1.",
+      "range": {
+        "startLine": 816,
+        "startChar": 0,
+        "endLine": 817,
+        "endChar": 86
+      },
+      "revId": "761d83c9ae63d96d5a5d8a9c91d339172be7848b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e2afd928_aae780f2",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 822,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2017-07-31T19:34:58Z",
+      "side": 1,
+      "message": "This is where I was thinking we might need to check mUserPreferredSmsSubId, but I don\u0027t think subId can be -1 (see the comments at the beginning of this class), so the check on mUserPreferredSmsSubId is implicit.",
+      "range": {
+        "startLine": 822,
+        "startChar": 39,
+        "endLine": 822,
+        "endChar": 70
+      },
+      "revId": "761d83c9ae63d96d5a5d8a9c91d339172be7848b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cbfdb16d_9155c1f7",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1400,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2017-07-31T19:34:58Z",
+      "side": 1,
+      "message": "Maybe you could add here the following line:\n\n    mUserPreferredSmsSubId \u003d subId\n\nThe case I\u0027m thinking of is:\n - Set SIM2 as default\n - Remove SIM2\n - Set SIM1 as default\n - Re-insert SIM2\n\nIn the above scenario, mUserPreferredSmsSubId still considers SIM2 as the default subid, so it ends up being the default one even though the user changed the default one.",
+      "revId": "761d83c9ae63d96d5a5d8a9c91d339172be7848b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
