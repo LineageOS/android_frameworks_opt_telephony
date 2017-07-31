@@ -80,6 +80,7 @@ public class SubscriptionController extends ISub.Stub {
     protected static final boolean VDBG = false;
     static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
     private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
+    protected static int mDefaultSmsSubId = -1;
 
     /**
      * Copied from android.util.LocalLog with flush() adding flush and line number
@@ -701,6 +702,9 @@ public class SubscriptionController extends ISub.Stub {
     public int addSubInfoRecord(String iccId, int slotId) {
         if (DBG) logdl("[addSubInfoRecord]+ iccId:" + SubscriptionInfo.givePrintableIccid(iccId) +
                 " slotId:" + slotId);
+        if (mDefaultSmsSubId == -1) {
+            mDefaultSmsSubId = getDefaultSmsSubId();
+        }
 
         enforceModifyPhoneState("addSubInfoRecord");
 
@@ -813,8 +817,12 @@ public class SubscriptionController extends ISub.Stub {
                                 Rlog.i(LOG_TAG, "Subscription is invalid. Set default to " + subId);
                                 setDefaultSmsSubId(subId);
                                 PhoneFactory.setSMSPromptEnabled(subIdCountMax > 1);
+                            } else if (subId == mDefaultSmsSubId &&
+                                    getDefaultSmsSubId() != mDefaultSmsSubId) {
+                                Rlog.i(LOG_TAG, "SMS subscription was different than user choice," +
+                                    " set to " + subId);
+                                setDefaultSmsSubId(subId);
                             }
-
                         } else {
                             if (DBG) {
                                 logdl("[addSubInfoRecord] currentSubId != null"
