@@ -62,6 +62,24 @@
       "revId": "761d83c9ae63d96d5a5d8a9c91d339172be7848b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f9c8adae_1d871a84",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1400,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2017-08-01T18:07:49Z",
+      "side": 1,
+      "message": "But this would require adding an extra argument to differentiate user changes from automatic changes, which is not really worth bothering with.",
+      "parentUuid": "cbfdb16d_9155c1f7",
+      "revId": "761d83c9ae63d96d5a5d8a9c91d339172be7848b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
