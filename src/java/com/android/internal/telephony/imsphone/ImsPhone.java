@@ -1641,14 +1641,16 @@ public class ImsPhone extends ImsPhoneBase {
                     continue;
                 }
                 String messageAlert = imsReasonInfo.mExtraMessage;
-                CharSequence messageNotification = imsReasonInfo.mExtraMessage;
+                String messageNotification = imsReasonInfo.mExtraMessage;
                 if (!wfcOperatorErrorAlertMessages[idx].isEmpty()) {
                     messageAlert = String.format(
                         wfcOperatorErrorAlertMessages[idx],
                         imsReasonInfo.mExtraMessage); // Fill IMS error code into alert message
                 }
                 if (!wfcOperatorErrorNotificationMessages[idx].isEmpty()) {
-                    messageNotification = wfcOperatorErrorNotificationMessages[idx];
+                    messageNotification = String.format(
+                        wfcOperatorErrorNotificationMessages[idx],
+                        imsReasonInfo.mExtraMessage); // Fill IMS error code into notification
                 }
 
                 // UX requirement is to disable WFC in case of "permanent" registration failures.
