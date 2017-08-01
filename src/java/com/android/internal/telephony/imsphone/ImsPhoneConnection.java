@@ -236,15 +236,6 @@ public class ImsPhoneConnection extends Connection implements
     public void dispose() {
     }
 
-    /**
-     * Sets whether this call is an incoming call or not.
-     * @param isIncoming {@code true} if the call is an incoming call, {@code false} if it is an
-     *                               outgoing call.
-     */
-    public void setIsIncoming(boolean isIncoming) {
-        mIsIncoming = isIncoming;
-    }
-
     static boolean
     equalsHandlesNulls (Object a, Object b) {
         return (a == null) ? (b == null) : a.equals (b);
