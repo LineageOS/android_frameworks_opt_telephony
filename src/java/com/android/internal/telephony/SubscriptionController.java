@@ -901,10 +901,11 @@ public class SubscriptionController extends ISub.Stub {
                     do {
                         int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
                                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
-                        // If sSlotIndexToSubId already has a valid subId for a slotIndex/phoneId,
-                        // do not add another subId for same slotIndex/phoneId.
+                        // If sSlotIndexToSubId already has the same subId for a slotIndex/phoneId,
+                        // do not add it.
                         Integer currentSubId = sSlotIndexToSubId.get(slotIndex);
                         if (currentSubId == null
+                                || currentSubId != subId
                                 || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
                             // TODO While two subs active, if user deactivats first
                             // one, need to update the default subId with second one.
