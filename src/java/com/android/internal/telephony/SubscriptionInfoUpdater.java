@@ -425,6 +425,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     contentResolver.update(SubscriptionManager.CONTENT_URI, number,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                                     + Long.toString(subId), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
 
                 SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
@@ -444,6 +447,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     contentResolver.update(SubscriptionManager.CONTENT_URI, name,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
                                     + "=" + Long.toString(subId), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
 
                 /* Update preferred network type and network selection mode on SIM change.
@@ -575,6 +581,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     contentResolver.update(SubscriptionManager.CONTENT_URI, value,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                             + Integer.toString(oldSubInfo.get(0).getSubscriptionId()), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
             } else {
                 if (mInsertSimState[i] == SIM_NOT_CHANGE) {
@@ -652,6 +661,9 @@ public class SubscriptionInfoUpdater extends Handler {
                 contentResolver.update(SubscriptionManager.CONTENT_URI, value,
                         SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                         + Integer.toString(temp.getSubscriptionId()), null);
+
+                // refresh Cached Active Subscription Info List
+                SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
             }
         }
 
@@ -724,6 +736,9 @@ public class SubscriptionInfoUpdater extends Handler {
             values.put(SubscriptionManager.NAME_SOURCE, SubscriptionManager.NAME_SOURCE_USER_INPUT);
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
                     SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.iccid + "\"", null);
+
+            // refresh Cached Active Subscription Info List
+            SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
 
         // Remove all remaining subscriptions which have embedded = true. We set embedded to false
@@ -743,6 +758,9 @@ public class SubscriptionInfoUpdater extends Handler {
             ContentValues values = new ContentValues();
             values.put(SubscriptionManager.IS_EMBEDDED, 0);
             contentResolver.update(SubscriptionManager.CONTENT_URI, values, whereClause, null);
+
+            // refresh Cached Active Subscription Info List
+            SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
     }
 

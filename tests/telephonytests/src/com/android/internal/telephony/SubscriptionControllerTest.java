@@ -243,6 +243,33 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test @SmallTest
+    public void testSetGetDisplayNameSrc() {
+        testInsertSim();
+
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList();
+        assertTrue(subIds != null && subIds.length != 0);
+        int subID = subIds[0];
+
+        /* Setting */
+        String disName = "TESTING";
+        long nameSource = 1;
+        mSubscriptionControllerUT.setDisplayNameUsingSrc(disName, subID, nameSource);
+        SubscriptionInfo subInfo = mSubscriptionControllerUT
+                .getActiveSubscriptionInfo(subID, mCallingPackage);
+        assertNotNull(subInfo);
+        assertEquals(disName, subInfo.getDisplayName());
+        assertEquals(nameSource, subInfo.getNameSource());
+
+        /* verify broadcast intent */
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
+        assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
+                captorIntent.getValue().getAction());
+
+    }
+
+    @Test @SmallTest
     public void testCleanUpSIM() {
         testInsertSim();
         assertFalse(mSubscriptionControllerUT.isActiveSubId(1));
