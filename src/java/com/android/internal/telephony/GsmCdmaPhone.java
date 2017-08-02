@@ -2278,17 +2278,16 @@ public class GsmCdmaPhone extends Phone {
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:
-                if (isPhoneTypeGsm()) {
-                    updateCurrentCarrierInProvider();
+                updateCurrentCarrierInProvider();
 
-                    // Check if this is a different SIM than the previous one. If so unset the
-                    // voice mail number.
-                    String imsi = getVmSimImsi();
-                    String imsiFromSIM = getSubscriberId();
-                    if (imsi != null && imsiFromSIM != null && !imsiFromSIM.equals(imsi)) {
-                        storeVoiceMailNumber(null);
-                        setVmSimImsi(null);
-                    }
+                // Check if this is a different SIM than the previous one. If so unset the
+                // voice mail number.
+                String imsi = getVmSimImsi();
+                String imsiFromSIM = getSubscriberId();
+                if ((!isPhoneTypeGsm() || imsi != null) && imsiFromSIM != null
+                        && !imsiFromSIM.equals(imsi)) {
+                    storeVoiceMailNumber(null);
+                    setVmSimImsi(null);
                 }
 
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
