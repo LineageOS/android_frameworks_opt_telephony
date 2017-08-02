@@ -253,14 +253,24 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public ServiceState
-    getServiceState() {
+    public ServiceState getServiceState() {
         return mSS;
     }
 
-    /* package */ void setServiceState(int state) {
-        mSS.setVoiceRegState(state);
+    @VisibleForTesting
+    public void setServiceState(int state) {
+        boolean isVoiceRegStateChanged = false;
+        synchronized (this) {
+            isVoiceRegStateChanged = mSS.getVoiceRegState() != state;
+            mSS.setVoiceRegState(state);
+        }
         updateDataServiceState();
+
+        // Notifies the service state to the listeners. The service state combined from ImsPhone
+        // and GsmCdmaPhone, it may be changed when the service state in ImsPhone is changed.
+        if (isVoiceRegStateChanged) {
+            mNotifier.notifyServiceState(mDefaultPhone);
+        }
     }
 
     @Override
