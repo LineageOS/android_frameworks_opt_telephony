@@ -1659,7 +1659,13 @@ public class ServiceStateTracker extends Handler {
 
                 // Setting SS Roaming (general)
                 if (mIsSubscriptionFromRuim) {
-                    mNewSS.setVoiceRoaming(isRoamingBetweenOperators(mNewSS.getVoiceRoaming(), mNewSS));
+                    boolean isRoamingBetweenOperators = isRoamingBetweenOperators(
+                            mNewSS.getVoiceRoaming(), mNewSS);
+                    if (isRoamingBetweenOperators != mNewSS.getVoiceRoaming()) {
+                        log("isRoamingBetweenOperators=" + isRoamingBetweenOperators
+                                + ". Override CDMA voice roaming to " + isRoamingBetweenOperators);
+                        mNewSS.setVoiceRoaming(isRoamingBetweenOperators);
+                    }
                 }
                 /**
                  * For CDMA, voice and data should have the same roaming status.
@@ -1672,15 +1678,25 @@ public class ServiceStateTracker extends Handler {
                     final boolean isVoiceInService =
                             (mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
                     if (isVoiceInService) {
-                        mNewSS.setDataRoaming(mNewSS.getVoiceRoaming());
+                        boolean isVoiceRoaming = mNewSS.getVoiceRoaming();
+                        if (mNewSS.getDataRoaming() != isVoiceRoaming) {
+                            log("Data roaming != Voice roaming. Override data roaming to "
+                                    + isVoiceRoaming);
+                            mNewSS.setDataRoaming(isVoiceRoaming);
+                        }
                     } else {
                         /**
                          * As per VoiceRegStateResult from radio types.hal the TSB58
                          * Roaming Indicator shall be sent if device is registered
                          * on a CDMA or EVDO system.
                          */
-                        mNewSS.setDataRoaming(
-                                !isRoamIndForHomeSystem(Integer.toString(mRoamingIndicator)));
+                        boolean isRoamIndForHomeSystem = isRoamIndForHomeSystem(
+                                Integer.toString(mRoamingIndicator));
+                        if (mNewSS.getDataRoaming() == isRoamIndForHomeSystem) {
+                            log("isRoamIndForHomeSystem=" + isRoamIndForHomeSystem
+                                    + ", override data roaming to " + !isRoamIndForHomeSystem);
+                            mNewSS.setDataRoaming(!isRoamIndForHomeSystem);
+                        }
                     }
                 }
 
@@ -1885,6 +1901,9 @@ public class ServiceStateTracker extends Handler {
                     mNewReasonDataDenied = dataRegStateResult.reasonDataDenied;
                     mNewMaxDataCalls = dataRegStateResult.maxDataCalls;
                     mDataRoaming = regCodeIsRoaming(regState);
+                    // Save the data roaming state reported by modem registration before resource
+                    // overlay or carrier config possibly overrides it.
+                    mNewSS.setDataRoamingFromRegistration(mDataRoaming);
 
                     if (DBG) {
                         log("handlPollStateResultMessage: GsmSST setDataRegState=" + dataRegState
@@ -1893,7 +1912,11 @@ public class ServiceStateTracker extends Handler {
                     }
                 } else if (mPhone.isPhoneTypeCdma()) {
 
-                    mNewSS.setDataRoaming(regCodeIsRoaming(regState));
+                    boolean isDataRoaming = regCodeIsRoaming(regState);
+                    mNewSS.setDataRoaming(isDataRoaming);
+                    // Save the data roaming state reported by modem registration before resource
+                    // overlay or carrier config possibly overrides it.
+                    mNewSS.setDataRoamingFromRegistration(isDataRoaming);
 
                     if (DBG) {
                         log("handlPollStateResultMessage: cdma setDataRegState=" + dataRegState
@@ -1918,11 +1941,15 @@ public class ServiceStateTracker extends Handler {
                     }
 
                     // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
-                    mNewSS.setDataRoaming(regCodeIsRoaming(regState));
+                    boolean isDataRoaming = regCodeIsRoaming(regState);
+                    mNewSS.setDataRoaming(isDataRoaming);
+                    // Save the data roaming state reported by modem registration before resource
+                    // overlay or carrier config possibly overrides it.
+                    mNewSS.setDataRoamingFromRegistration(isDataRoaming);
                     if (DBG) {
-                        log("handlPollStateResultMessage: CdmaLteSST setDataRegState=" + dataRegState
-                                + " regState=" + regState
-                                + " dataRadioTechnology=" + newDataRat);
+                        log("handlPollStateResultMessage: CdmaLteSST setDataRegState="
+                                + dataRegState + " regState=" + regState + " dataRadioTechnology="
+                                + newDataRat);
                     }
                 }
 
@@ -2012,10 +2039,9 @@ public class ServiceStateTracker extends Handler {
      */
     private boolean isRoamIndForHomeSystem(String roamInd) {
         // retrieve the carrier-specified list of ERIs for home system
-        log("isRoamIndForHomeSystem: " + Resources.getSystem()
-                .getConfiguration().toString());
         String[] homeRoamIndicators = Resources.getSystem()
                 .getStringArray(com.android.internal.R.array.config_cdma_home_system);
+        log("isRoamIndForHomeSystem: homeRoamIndicators=" + Arrays.toString(homeRoamIndicators));
 
         if (homeRoamIndicators != null) {
             // searches through the comma-separated list for a match,
@@ -2056,10 +2082,6 @@ public class ServiceStateTracker extends Handler {
              */
             boolean roaming = (mGsmRoaming || mDataRoaming);
 
-            // Save the data roaming state reported by modem registration before resource overlay or
-            // carrier config possibly overrides it.
-            mNewSS.setDataRoamingFromRegistration(roaming);
-
             if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS)
                     && (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
                 log("updateRoamingState: resource override set non roaming.isSameNamedOperators="
@@ -2097,9 +2119,6 @@ public class ServiceStateTracker extends Handler {
             mNewSS.setVoiceRoaming(roaming);
             mNewSS.setDataRoaming(roaming);
         } else {
-            // Save the roaming state before carrier config possibly overrides it.
-            mNewSS.setDataRoamingFromRegistration(mNewSS.getDataRoaming());
-
             CarrierConfigManager configLoader = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configLoader != null) {
