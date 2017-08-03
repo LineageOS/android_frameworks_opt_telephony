@@ -131,6 +131,8 @@ public class SubscriptionController extends ISub.Stub {
 
     private AppOpsManager mAppOps;
 
+    private int mUserPreferredSmsSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static Map<Integer, Integer> sSlotIdxToSubId =
             new ConcurrentHashMap<Integer, Integer>();
@@ -811,10 +813,15 @@ public class SubscriptionController extends ISub.Stub {
                             if (phoneId < 0 || phoneId >= TelephonyManager.getDefault()
                                     .getPhoneCount()) {
                                 Rlog.i(LOG_TAG, "Subscription is invalid. Set default to " + subId);
+                                mUserPreferredSmsSubId = getDefaultSmsSubId();
                                 setDefaultSmsSubId(subId);
                                 PhoneFactory.setSMSPromptEnabled(subIdCountMax > 1);
+                            } else if (subId == mUserPreferredSmsSubId) {
+                                Rlog.i(LOG_TAG, "SMS subscription was different than user choice");
+                                setDefaultSmsSubId(subId);
+                                mUserPreferredSmsSubId =
+                                        SubscriptionManager.INVALID_SUBSCRIPTION_ID;
                             }
-
                         } else {
                             if (DBG) {
                                 logdl("[addSubInfoRecord] currentSubId != null"
@@ -828,6 +835,12 @@ public class SubscriptionController extends ISub.Stub {
                 if (cursor != null) {
                     cursor.close();
                 }
+            }
+
+            // Reset user choice for defaultSmsSubId in case only one Sim is inserted
+            if (sSlotIdxToSubId.size() == 1) {
+                Rlog.i(LOG_TAG, "Only one SIM found, resetting user preferred SMS sub");
+                mUserPreferredSmsSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
             }
 
             // Set Display name after sub id is set above so as to get valid simCarrierName
