@@ -203,6 +203,13 @@ public class SubscriptionInfoUpdater extends Handler {
                     sendMessage(obtainMessage(EVENT_SIM_IO_ERROR, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_RESTRICTED, slotIndex, -1));
+                } else if (IccCardConstants.INTENT_VALUE_ICC_NOT_READY.equals(simStatus)) {
+                    // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
+                    // phase, the subscription list is accessible.
+                    // TODO(b/64216093): Clean up this special case, likely by treating NOT_READY
+                    // as equivalent to ABSENT, once the rest of the system can handle it. Currently
+                    // this breaks SystemUI which shows a "No SIM" icon.
+                    sendEmptyMessage(EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS);
                 } else {
                     logd("Ignoring simStatus: " + simStatus);
                 }
@@ -326,8 +333,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS:
-                if (isAllIccIdQueryDone()) {
-                    updateEmbeddedSubscriptions();
+                if (updateEmbeddedSubscriptions()) {
                     SubscriptionController.getInstance().notifySubscriptionInfoChanged();
                 }
                 if (msg.obj != null) {
@@ -425,6 +431,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     contentResolver.update(SubscriptionManager.CONTENT_URI, number,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                                     + Long.toString(subId), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
 
                 SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
@@ -444,6 +453,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     contentResolver.update(SubscriptionManager.CONTENT_URI, name,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
                                     + "=" + Long.toString(subId), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
 
                 /* Update preferred network type and network selection mode on SIM change.
@@ -519,8 +531,6 @@ public class SubscriptionInfoUpdater extends Handler {
     synchronized private void updateSubscriptionInfoByIccId() {
         logd("updateSubscriptionInfoByIccId:+ Start");
 
-        mSubscriptionManager.clearSubscriptionInfo();
-
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             mInsertSimState[i] = SIM_NOT_CHANGE;
         }
@@ -533,6 +543,13 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
         logd("insertedSimCount = " + insertedSimCount);
+
+        // We only clear the slot-to-sub map when one/some SIM was removed. Note this is a
+        // workaround for some race conditions that the empty map was accessed while we are
+        // rebuilding the map.
+        if (SubscriptionController.getInstance().getActiveSubIdList().length > insertedSimCount) {
+            SubscriptionController.getInstance().clearSubInfo();
+        }
 
         int index = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
@@ -570,6 +587,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     contentResolver.update(SubscriptionManager.CONTENT_URI, value,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                             + Integer.toString(oldSubInfo.get(0).getSubscriptionId()), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
             } else {
                 if (mInsertSimState[i] == SIM_NOT_CHANGE) {
@@ -647,6 +667,9 @@ public class SubscriptionInfoUpdater extends Handler {
                 contentResolver.update(SubscriptionManager.CONTENT_URI, value,
                         SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                         + Integer.toString(temp.getSubscriptionId()), null);
+
+                // refresh Cached Active Subscription Info List
+                SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
             }
         }
 
@@ -654,26 +677,33 @@ public class SubscriptionInfoUpdater extends Handler {
         mSubscriptionManager.setDefaultDataSubId(
                 mSubscriptionManager.getDefaultDataSubscriptionId());
 
+        // No need to check return value here as we notify for the above changes anyway.
         updateEmbeddedSubscriptions();
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SubscriptionInfo update complete");
     }
 
-    /** Update the cached list of embedded subscriptions. */
+    /**
+     * Update the cached list of embedded subscriptions.
+     *
+     * @return true if changes may have been made. This is not a guarantee that changes were made,
+     * but notifications about subscription changes may be skipped if this returns false as an
+     * optimization to avoid spurious notifications.
+     */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public void updateEmbeddedSubscriptions() {
+    public boolean updateEmbeddedSubscriptions() {
         // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but they
         // are filtered out of list calls as long as EuiccManager.isEnabled returns false).
         if (!mEuiccManager.isEnabled()) {
-            return;
+            return false;
         }
 
         GetEuiccProfileInfoListResult result =
                 EuiccController.get().blockingGetEuiccProfileInfoList();
         if (result == null) {
             // IPC to the eUICC controller failed.
-            return;
+            return false;
         }
 
         final EuiccProfileInfo[] embeddedProfiles;
@@ -692,6 +722,13 @@ public class SubscriptionInfoUpdater extends Handler {
         for (int i = 0; i < embeddedProfiles.length; i++) {
             embeddedIccids[i] = embeddedProfiles[i].iccid;
         }
+
+        // Note that this only tracks whether we make any writes to the DB. It's possible this will
+        // be set to true for an update even when the row contents remain exactly unchanged from
+        // before, since we don't compare against the previous value. Since this is only intended to
+        // avoid some spurious broadcasts (particularly for users who don't use eSIM at all), this
+        // is fine.
+        boolean hasChanges = false;
 
         // Update or insert records for all embedded subscriptions (except non-removable ones if the
         // current eUICC is non-removable, since we assume these are still accessible though not
@@ -717,8 +754,12 @@ public class SubscriptionInfoUpdater extends Handler {
             values.put(SubscriptionManager.IS_REMOVABLE, isRemovable);
             values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.nickname);
             values.put(SubscriptionManager.NAME_SOURCE, SubscriptionManager.NAME_SOURCE_USER_INPUT);
+            hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
                     SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.iccid + "\"", null);
+
+            // refresh Cached Active Subscription Info List
+            SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
 
         // Remove all remaining subscriptions which have embedded = true. We set embedded to false
@@ -737,8 +778,14 @@ public class SubscriptionInfoUpdater extends Handler {
                     + TextUtils.join(",", iccidsToRemove) + ")";
             ContentValues values = new ContentValues();
             values.put(SubscriptionManager.IS_EMBEDDED, 0);
+            hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values, whereClause, null);
+
+            // refresh Cached Active Subscription Info List
+            SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
+
+        return hasChanges;
     }
 
     private static int findSubscriptionInfoForIccid(List<SubscriptionInfo> list, String iccid) {

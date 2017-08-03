@@ -749,4 +749,67 @@ public class ApnSettingTest extends TelephonyTest {
             }
         }
     }
+
+    @Test
+    @SmallTest
+    public void testEqualsRoamingProtocol() throws Exception {
+        ApnSetting apn1 = new ApnSetting(
+                1234,
+                "310260",
+                "",
+                "ims",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                -1,
+                 new String[]{"ims"},
+                "IPV6",
+                "",
+                true,
+                0,
+                131071,
+                0,
+                false,
+                0,
+                0,
+                0,
+                1440,
+                "",
+                "");
+
+        ApnSetting apn2 = new ApnSetting(
+                1235,
+                "310260",
+                "",
+                "ims",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                -1,
+                new String[]{"ims"},
+                "IPV6",
+                "IPV6",
+                true,
+                0,
+                131072,
+                0,
+                false,
+                0,
+                0,
+                0,
+                1440,
+                "",
+                "");
+
+        assertTrue(apn1.equals(apn2, false));
+        assertFalse(apn1.equals(apn2, true));
+    }
 }
