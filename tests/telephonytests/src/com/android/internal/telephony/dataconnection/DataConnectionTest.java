@@ -312,4 +312,15 @@ public class DataConnectionTest extends TelephonyTest {
         assertTrue(getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
     }
+
+    @SmallTest
+    public void testIsIpAddress() throws Exception {
+        // IPv4
+        assertTrue(DataConnection.isIpAddress("1.2.3.4"));
+        assertTrue(DataConnection.isIpAddress("127.0.0.1"));
+
+        // IPv6
+        assertTrue(DataConnection.isIpAddress("::1"));
+        assertTrue(DataConnection.isIpAddress("2001:4860:800d::68"));
+    }
 }
