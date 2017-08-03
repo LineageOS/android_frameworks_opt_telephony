@@ -36,9 +36,9 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
-import android.util.Patterns;
 import android.util.TimeUtils;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CarrierSignalAgent;
 import com.android.internal.telephony.CommandException;
@@ -985,10 +985,14 @@ public class DataConnection extends StateMachine {
         return result;
     }
 
-    private boolean isIpAddress(String address) {
+    /**
+     * @return {@code} true iff. {@code address} is a literal IPv4 or IPv6 address.
+     */
+    @VisibleForTesting
+    public static boolean isIpAddress(String address) {
         if (address == null) return false;
 
-        return Patterns.IP_ADDRESS.matcher(address).matches();
+        return InetAddress.isNumeric(address);
     }
 
     private DataCallResponse.SetupResult setLinkProperties(DataCallResponse response,
