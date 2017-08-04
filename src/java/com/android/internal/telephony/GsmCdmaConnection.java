@@ -614,8 +614,7 @@ public class GsmCdmaConnection extends Connection {
         //Ignore dc.number and dc.name in case of a handover connection
         if (isPhoneTypeGsm() && mOrigConnection != null) {
             if (Phone.DEBUG_PHONE) log("update: mOrigConnection is not null");
-        } else {
-            log(" mNumberConverted " + mNumberConverted);
+        } else if (isIncoming()) {
             if (!equalsBaseDialString(mAddress, dc.number) && (!mNumberConverted
                     || !equalsBaseDialString(mConvertedNumber, dc.number))) {
                 if (Phone.DEBUG_PHONE) log("update: phone # changed!");
