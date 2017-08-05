@@ -74,6 +74,16 @@ public class DataConnectionReasons {
         return mDataDisallowedReasonSet.contains(reason);
     }
 
+    /**
+     * Check if only one disallowed reason prevent data connection.
+     *
+     * @param reason The given reason to check
+     * @return True if the given reason is the only one that prevents data connection
+     */
+    public boolean containsOnly(DataDisallowedReasonType reason) {
+        return mDataDisallowedReasonSet.size() == 1 && contains(reason);
+    }
+
     boolean contains(DataAllowedReasonType reason) {
         return reason == mDataAllowedReason;
     }
@@ -88,7 +98,7 @@ public class DataConnectionReasons {
     }
 
     // Disallowed reasons. There could be multiple reasons if data connection is not allowed.
-    enum DataDisallowedReasonType {
+    public enum DataDisallowedReasonType {
         // Soft failure reasons. Normally the reasons from users or policy settings.
         DATA_DISABLED(false),                   // Data is disabled by the user or policy.
         ROAMING_DISABLED(false),                // Data roaming is disabled by the user.
