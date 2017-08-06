@@ -207,9 +207,23 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         mDC.state = DriverCall.State.ALERTING;
         for (String[] testAddress : testAddressMappingSet) {
             connection = new GsmCdmaConnection(mPhone, testAddress[0], mCT, null, false);
+            connection.setIsIncoming(true);
             mDC.number = testAddress[1];
             connection.update(mDC);
             assertEquals(testAddress[2], connection.getAddress());
         }
+    }
+
+    /**
+     * Ensures outgoing calls do not apply address changes.
+     */
+    @Test @SmallTest
+    public void testAddressUpdateOutgoing() {
+        mDC.state = DriverCall.State.ALERTING;
+        connection = new GsmCdmaConnection(mPhone, "12345", mCT, null, false);
+        connection.setIsIncoming(false);
+        mDC.number = "678";
+        connection.update(mDC);
+        assertEquals("12345", connection.getAddress());
     }
 }

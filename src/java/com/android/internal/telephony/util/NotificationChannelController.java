@@ -38,12 +38,12 @@ public class NotificationChannelController {
      */
     public static final String CHANNEL_ID_ALERT = "alert";
     public static final String CHANNEL_ID_CALL_FORWARD = "callForward";
-    public static final String CHANNEL_ID_MOBILE_DATA_ALERT = "mobileDataAlertNew";
+    public static final String CHANNEL_ID_MOBILE_DATA_STATUS = "mobileDataAlertNew";
     public static final String CHANNEL_ID_SMS = "sms";
     public static final String CHANNEL_ID_VOICE_MAIL = "voiceMail";
     public static final String CHANNEL_ID_WFC = "wfc";
 
-    /** deprecated channel, replaced with @see #CHANNEL_ID_MOBILE_DATA_ALERT */
+    /** deprecated channel, replaced with @see #CHANNEL_ID_MOBILE_DATA_STATUS */
     private static final String CHANNEL_ID_MOBILE_DATA_ALERT_DEPRECATED = "mobileDataAlert";
 
     /**
@@ -63,8 +63,8 @@ public class NotificationChannelController {
                 new NotificationChannel(CHANNEL_ID_CALL_FORWARD,
                         context.getText(R.string.notification_channel_call_forward),
                         NotificationManager.IMPORTANCE_LOW),
-                new NotificationChannel(CHANNEL_ID_MOBILE_DATA_ALERT,
-                        context.getText(R.string.notification_channel_mobile_data_alert),
+                new NotificationChannel(CHANNEL_ID_MOBILE_DATA_STATUS,
+                        context.getText(R.string.notification_channel_mobile_data_status),
                         NotificationManager.IMPORTANCE_LOW),
                 new NotificationChannel(CHANNEL_ID_SMS,
                         context.getText(R.string.notification_channel_sms),
