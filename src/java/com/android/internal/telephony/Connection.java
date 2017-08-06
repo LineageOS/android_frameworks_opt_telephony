@@ -388,6 +388,15 @@ public abstract class Connection {
     }
 
     /**
+     * Sets whether this call is an incoming call or not.
+     * @param isIncoming {@code true} if the call is an incoming call, {@code false} if it is an
+     *                               outgoing call.
+     */
+    public void setIsIncoming(boolean isIncoming) {
+        mIsIncoming = isIncoming;
+    }
+
+    /**
      * If this Connection is connected, then it is associated with
      * a Call.
      *
