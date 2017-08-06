@@ -59,6 +59,7 @@ import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
+import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
@@ -2758,10 +2759,23 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Report on whether data connectivity is allowed.
+     *
+     * @return True if data is allowed to be established.
      */
     public boolean isDataAllowed() {
         return ((mDcTracker != null) && (mDcTracker.isDataAllowed(null)));
     }
+
+    /**
+     * Report on whether data connectivity is allowed.
+     *
+     * @param reasons The reasons that data can/can't be established. This is an output param.
+     * @return True if data is allowed to be established
+     */
+    public boolean isDataAllowed(DataConnectionReasons reasons) {
+        return ((mDcTracker != null) && (mDcTracker.isDataAllowed(reasons)));
+    }
+
 
     /**
      * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
