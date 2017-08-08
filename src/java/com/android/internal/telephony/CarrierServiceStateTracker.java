@@ -29,6 +29,7 @@ import android.os.PersistableBundle;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 
 import com.android.internal.telephony.util.NotificationChannelController;
 
@@ -69,7 +70,7 @@ public class CarrierServiceStateTracker extends Handler {
                 break;
             case CARRIER_EVENT_VOICE_DEREGISTRATION:
             case CARRIER_EVENT_DATA_DEREGISTRATION:
-                if (isGlobalModeOrRadioOffOrAirplaneMode()) {
+                if (isGlobalModeOrRadioOffOrAirplaneMode() || isPhoneStillRegistered()) {
                     break;
                 }
                 mIsPhoneRegistered = false;
@@ -79,6 +80,14 @@ public class CarrierServiceStateTracker extends Handler {
                 sendNotification();
                 break;
         }
+    }
+
+    private boolean isPhoneStillRegistered() {
+        if (mSST.mSS == null) {
+            return true; //something has gone wrong, return true and not show the notification.
+        }
+        return (mSST.mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
+                || mSST.mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE);
     }
 
     /**
@@ -109,7 +118,6 @@ public class CarrierServiceStateTracker extends Handler {
      * Contains logic to decide when to create/cancel notifications.
      */
     private void handleConfigChanges() {
-
         if (mDelay == UNINITIALIZED_DELAY_VALUE) {
             cancelNotification();
             return;
@@ -188,6 +196,7 @@ public class CarrierServiceStateTracker extends Handler {
     private void cancelNotification() {
         Context context = mPhone.getContext();
         mIsPhoneRegistered = true;
+        removeMessages(SHOW_NOTIFICATION);
         NotificationManager notificationManager = (NotificationManager)
                 context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancel(NOTIFICATION_ID);
