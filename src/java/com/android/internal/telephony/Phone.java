@@ -251,9 +251,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private boolean mDnsCheckDisabled;
     public DcTracker mDcTracker;
     /* Used for dispatching signals to configured carrier apps */
-    private CarrierSignalAgent mCarrierSignalAgent;
+    protected CarrierSignalAgent mCarrierSignalAgent;
     /* Used for dispatching carrier action from carrier apps */
-    private CarrierActionAgent mCarrierActionAgent;
+    protected CarrierActionAgent mCarrierActionAgent;
     private boolean mDoesRilSendMultipleCallRing;
     private int mCallRingContinueToken;
     private int mCallRingDelay;
@@ -535,8 +535,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mSmsUsageMonitor = mTelephonyComponentFactory.makeSmsUsageMonitor(context);
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
-        mCarrierSignalAgent = mTelephonyComponentFactory.makeCarrierSignalAgent(this);
-        mCarrierActionAgent = mTelephonyComponentFactory.makeCarrierActionAgent(this);
         mSimActivationTracker = mTelephonyComponentFactory.makeSimActivationTracker(this);
         if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {
             mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
@@ -2821,6 +2819,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void carrierActionSetRadioEnabled(boolean enabled) {
         mCarrierActionAgent.carrierActionSetRadioEnabled(enabled);
+    }
+
+    /**
+     * Action set from carrier app to start/stop reporting default network condition.
+     */
+    public void carrierActionReportDefaultNetworkStatus(boolean report) {
+        mCarrierActionAgent.carrierActionReportDefaultNetworkStatus(report);
     }
 
     /**

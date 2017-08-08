@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.net.Uri;
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -106,13 +107,21 @@ public class CarrierActionAgentTest extends TelephonyTest {
         mContext.sendBroadcast(intent);
         waitForMs(200);
 
-        // carrier actions triggered from sim loading
+        // no carrier actions triggered from sim loading since there are same as the current one
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
-        verify(mDataActionHandler).sendMessageAtTime(message.capture(), anyLong());
-        assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
+        verify(mDataActionHandler, times(0)).sendMessageAtTime(message.capture(), anyLong());
+        verify(mRadioActionHandler, times(0)).sendMessageAtTime(message.capture(), anyLong());
 
-        verify(mRadioActionHandler).sendMessageAtTime(message.capture(), anyLong());
+        // disable metered apns and radio
+        mCarrierActionAgentUT.carrierActionSetRadioEnabled(false);
+        mCarrierActionAgentUT.carrierActionSetMeteredApnsEnabled(false);
+        waitForMs(200);
+        verify(mDataActionHandler, times(1)).sendMessageAtTime(message.capture(), anyLong());
+        assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(false, ((AsyncResult) message.getValue().obj).result);
+        verify(mRadioActionHandler, times(1)).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(false, ((AsyncResult) message.getValue().obj).result);
 
         // simulate APM change from off -> on
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
@@ -123,9 +132,11 @@ public class CarrierActionAgentTest extends TelephonyTest {
         // carrier actions triggered from APM
         verify(mDataActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(true, ((AsyncResult) message.getValue().obj).result);
 
         verify(mRadioActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(true, ((AsyncResult) message.getValue().obj).result);
     }
 
     @After
