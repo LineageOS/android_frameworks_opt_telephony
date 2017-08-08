@@ -1576,99 +1576,107 @@ public class ImsPhone extends ImsPhoneBase {
     public void processDisconnectReason(ImsReasonInfo imsReasonInfo) {
         if (imsReasonInfo.mCode == imsReasonInfo.CODE_REGISTRATION_ERROR
                 && imsReasonInfo.mExtraMessage != null) {
-
-            CarrierConfigManager configManager =
-                    (CarrierConfigManager)mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            if (configManager == null) {
-                Rlog.e(LOG_TAG, "processDisconnectReason: CarrierConfigManager is not ready");
-                return;
+            // Suppress WFC Registration notifications if WFC is not enabled by the user.
+            if (ImsManager.isWfcEnabledByUser(mContext)) {
+                processWfcDisconnectForNotification(imsReasonInfo);
             }
-            PersistableBundle pb = configManager.getConfigForSubId(getSubId());
-            if (pb == null) {
-                Rlog.e(LOG_TAG, "processDisconnectReason: no config for subId " + getSubId());
-                return;
+        }
+    }
+
+    // Processes an IMS disconnect cause for possible WFC registration errors and optionally
+    // disable WFC.
+    private void processWfcDisconnectForNotification(ImsReasonInfo imsReasonInfo) {
+        CarrierConfigManager configManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager == null) {
+            Rlog.e(LOG_TAG, "processDisconnectReason: CarrierConfigManager is not ready");
+            return;
+        }
+        PersistableBundle pb = configManager.getConfigForSubId(getSubId());
+        if (pb == null) {
+            Rlog.e(LOG_TAG, "processDisconnectReason: no config for subId " + getSubId());
+            return;
+        }
+        final String[] wfcOperatorErrorCodes =
+                pb.getStringArray(
+                        CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY);
+        if (wfcOperatorErrorCodes == null) {
+            // no operator-specific error codes
+            return;
+        }
+
+        final String[] wfcOperatorErrorAlertMessages =
+                mContext.getResources().getStringArray(
+                        com.android.internal.R.array.wfcOperatorErrorAlertMessages);
+        final String[] wfcOperatorErrorNotificationMessages =
+                mContext.getResources().getStringArray(
+                        com.android.internal.R.array.wfcOperatorErrorNotificationMessages);
+
+        for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
+            String[] codes = wfcOperatorErrorCodes[i].split("\\|");
+            if (codes.length != 2) {
+                Rlog.e(LOG_TAG, "Invalid carrier config: " + wfcOperatorErrorCodes[i]);
+                continue;
             }
-            final String[] wfcOperatorErrorCodes =
-                    pb.getStringArray(
-                            CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY);
-            if (wfcOperatorErrorCodes == null) {
-                // no operator-specific error codes
-                return;
+
+            // Match error code.
+            if (!imsReasonInfo.mExtraMessage.startsWith(
+                    codes[0])) {
+                continue;
             }
-
-            final String[] wfcOperatorErrorAlertMessages =
-                    mContext.getResources().getStringArray(
-                            com.android.internal.R.array.wfcOperatorErrorAlertMessages);
-            final String[] wfcOperatorErrorNotificationMessages =
-                    mContext.getResources().getStringArray(
-                            com.android.internal.R.array.wfcOperatorErrorNotificationMessages);
-
-            for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
-                String[] codes = wfcOperatorErrorCodes[i].split("\\|");
-                if (codes.length != 2) {
-                    Rlog.e(LOG_TAG, "Invalid carrier config: " + wfcOperatorErrorCodes[i]);
-                    continue;
-                }
-
-                // Match error code.
-                if (!imsReasonInfo.mExtraMessage.startsWith(
-                        codes[0])) {
-                    continue;
-                }
-                // If there is no delimiter at the end of error code string
-                // then we need to verify that we are not matching partial code.
-                // EXAMPLE: "REG9" must not match "REG99".
-                // NOTE: Error code must not be empty.
-                int codeStringLength = codes[0].length();
-                char lastChar = codes[0].charAt(codeStringLength - 1);
-                if (Character.isLetterOrDigit(lastChar)) {
-                    if (imsReasonInfo.mExtraMessage.length() > codeStringLength) {
-                        char nextChar = imsReasonInfo.mExtraMessage.charAt(codeStringLength);
-                        if (Character.isLetterOrDigit(nextChar)) {
-                            continue;
-                        }
+            // If there is no delimiter at the end of error code string
+            // then we need to verify that we are not matching partial code.
+            // EXAMPLE: "REG9" must not match "REG99".
+            // NOTE: Error code must not be empty.
+            int codeStringLength = codes[0].length();
+            char lastChar = codes[0].charAt(codeStringLength - 1);
+            if (Character.isLetterOrDigit(lastChar)) {
+                if (imsReasonInfo.mExtraMessage.length() > codeStringLength) {
+                    char nextChar = imsReasonInfo.mExtraMessage.charAt(codeStringLength);
+                    if (Character.isLetterOrDigit(nextChar)) {
+                        continue;
                     }
                 }
+            }
 
-                final CharSequence title = mContext.getText(
-                        com.android.internal.R.string.wfcRegErrorTitle);
+            final CharSequence title = mContext.getText(
+                    com.android.internal.R.string.wfcRegErrorTitle);
 
-                int idx = Integer.parseInt(codes[1]);
-                if (idx < 0 ||
-                        idx >= wfcOperatorErrorAlertMessages.length ||
-                        idx >= wfcOperatorErrorNotificationMessages.length) {
-                    Rlog.e(LOG_TAG, "Invalid index: " + wfcOperatorErrorCodes[i]);
-                    continue;
-                }
-                String messageAlert = imsReasonInfo.mExtraMessage;
-                String messageNotification = imsReasonInfo.mExtraMessage;
-                if (!wfcOperatorErrorAlertMessages[idx].isEmpty()) {
-                    messageAlert = String.format(
+            int idx = Integer.parseInt(codes[1]);
+            if (idx < 0
+                    || idx >= wfcOperatorErrorAlertMessages.length
+                    || idx >= wfcOperatorErrorNotificationMessages.length) {
+                Rlog.e(LOG_TAG, "Invalid index: " + wfcOperatorErrorCodes[i]);
+                continue;
+            }
+            String messageAlert = imsReasonInfo.mExtraMessage;
+            String messageNotification = imsReasonInfo.mExtraMessage;
+            if (!wfcOperatorErrorAlertMessages[idx].isEmpty()) {
+                messageAlert = String.format(
                         wfcOperatorErrorAlertMessages[idx],
                         imsReasonInfo.mExtraMessage); // Fill IMS error code into alert message
-                }
-                if (!wfcOperatorErrorNotificationMessages[idx].isEmpty()) {
-                    messageNotification = String.format(
+            }
+            if (!wfcOperatorErrorNotificationMessages[idx].isEmpty()) {
+                messageNotification = String.format(
                         wfcOperatorErrorNotificationMessages[idx],
                         imsReasonInfo.mExtraMessage); // Fill IMS error code into notification
-                }
-
-                // UX requirement is to disable WFC in case of "permanent" registration failures.
-                ImsManager.setWfcSetting(mContext, false);
-
-                // If WfcSettings are active then alert will be shown
-                // otherwise notification will be added.
-                Intent intent = new Intent(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
-                intent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
-                intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, messageAlert);
-                intent.putExtra(EXTRA_KEY_NOTIFICATION_MESSAGE, messageNotification);
-                mContext.sendOrderedBroadcast(intent, null, mResultReceiver,
-                        null, Activity.RESULT_OK, null, null);
-
-                // We can only match a single error code
-                // so should break the loop after a successful match.
-                break;
             }
+
+            // UX requirement is to disable WFC in case of "permanent" registration failures.
+            ImsManager.setWfcSetting(mContext, false);
+
+            // If WfcSettings are active then alert will be shown
+            // otherwise notification will be added.
+            Intent intent = new Intent(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
+            intent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
+            intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, messageAlert);
+            intent.putExtra(EXTRA_KEY_NOTIFICATION_MESSAGE, messageNotification);
+            mContext.sendOrderedBroadcast(intent, null, mResultReceiver,
+                    null, Activity.RESULT_OK, null, null);
+
+            // We can only match a single error code
+            // so should break the loop after a successful match.
+            break;
         }
     }
 
