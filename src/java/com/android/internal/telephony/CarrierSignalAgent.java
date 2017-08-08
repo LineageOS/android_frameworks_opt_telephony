@@ -22,6 +22,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
@@ -49,7 +54,7 @@ import static android.telephony.CarrierConfigManager.KEY_CARRIER_APP_NO_WAKE_SIG
  * repeated polling and send the intent to the interested receivers.
  * Each CarrierSignalAgent is associated with a phone object.
  */
-public class CarrierSignalAgent {
+public class CarrierSignalAgent extends Handler {
 
     private static final String LOG_TAG = CarrierSignalAgent.class.getSimpleName();
     private static final boolean DBG = true;
@@ -63,6 +68,7 @@ public class CarrierSignalAgent {
 
     /** Member variables */
     private final Phone mPhone;
+    private boolean mDefaultNetworkAvail;
 
     /**
      * This is a map of intent action -> set of component name of statically registered
@@ -84,6 +90,8 @@ public class CarrierSignalAgent {
      */
     private Map<String, Set<ComponentName>> mCachedNoWakeSignalConfigs = new HashMap<>();
 
+    private static final int EVENT_REGISTER_DEFAULT_NETWORK_AVAIL = 0;
+
     /**
      * This is a list of supported signals from CarrierSignalAgent
      */
@@ -91,7 +99,8 @@ public class CarrierSignalAgent {
             TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE,
             TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED,
             TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
+            TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET,
+            TelephonyIntents.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE));
 
     private final LocalLog mErrorLocalLog = new LocalLog(20);
 
@@ -105,6 +114,8 @@ public class CarrierSignalAgent {
         }
     };
 
+    private ConnectivityManager.NetworkCallback mNetworkCallback;
+
     /** Constructor */
     public CarrierSignalAgent(Phone phone) {
         mPhone = phone;
@@ -112,6 +123,61 @@ public class CarrierSignalAgent {
         // reload configurations on CARRIER_CONFIG_CHANGED
         mPhone.getContext().registerReceiver(mReceiver,
                 new IntentFilter(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mPhone.getCarrierActionAgent().registerForCarrierAction(
+                CarrierActionAgent.CARRIER_ACTION_REPORT_DEFAULT_NETWORK_STATUS, this,
+                EVENT_REGISTER_DEFAULT_NETWORK_AVAIL, null, false);
+    }
+
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_REGISTER_DEFAULT_NETWORK_AVAIL:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    Rlog.e(LOG_TAG, "Register default network exception: " + ar.exception);
+                    return;
+                }
+                final ConnectivityManager connectivityMgr =  ConnectivityManager
+                        .from(mPhone.getContext());
+                if ((boolean) ar.result) {
+                    mNetworkCallback = new ConnectivityManager.NetworkCallback() {
+                        @Override
+                        public void onAvailable(Network network) {
+                            // an optimization to avoid signaling on every default network switch.
+                            if (!mDefaultNetworkAvail) {
+                                if (DBG) log("Default network available: " + network);
+                                Intent intent = new Intent(TelephonyIntents
+                                        .ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE);
+                                intent.putExtra(
+                                        TelephonyIntents.EXTRA_DEFAULT_NETWORK_AVAILABLE_KEY, true);
+                                notifyCarrierSignalReceivers(intent);
+                                mDefaultNetworkAvail = true;
+                            }
+                        }
+                        @Override
+                        public void onLost(Network network) {
+                            if (DBG) log("Default network lost: " + network);
+                            Intent intent = new Intent(TelephonyIntents
+                                    .ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE);
+                            intent.putExtra(
+                                    TelephonyIntents.EXTRA_DEFAULT_NETWORK_AVAILABLE_KEY, false);
+                            notifyCarrierSignalReceivers(intent);
+                            mDefaultNetworkAvail = false;
+                        }
+                    };
+                    connectivityMgr.registerDefaultNetworkCallback(mNetworkCallback, mPhone);
+                    log("Register default network");
+
+                } else if (mNetworkCallback != null) {
+                    connectivityMgr.unregisterNetworkCallback(mNetworkCallback);
+                    mNetworkCallback = null;
+                    mDefaultNetworkAvail = false;
+                    log("unregister default network");
+                }
+                break;
+            default:
+                break;
+        }
     }
 
     /**
@@ -315,6 +381,8 @@ public class CarrierSignalAgent {
             pw.println("signal: " + entry.getKey() + " componentName list: " + entry.getValue());
         }
         ipw.decreaseIndent();
+
+        pw.println("mDefaultNetworkAvail: " + mDefaultNetworkAvail);
 
         pw.println("error log:");
         ipw.increaseIndent();

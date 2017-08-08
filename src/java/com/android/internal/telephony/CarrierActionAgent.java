@@ -54,25 +54,29 @@ public class CarrierActionAgent extends Handler {
     private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
 
     /** A list of carrier actions */
-    public static final int CARRIER_ACTION_SET_METERED_APNS_ENABLED      = 0;
-    public static final int CARRIER_ACTION_SET_RADIO_ENABLED             = 1;
-    public static final int CARRIER_ACTION_RESET                         = 2;
-    public static final int EVENT_APM_SETTINGS_CHANGED                   = 3;
-    public static final int EVENT_MOBILE_DATA_SETTINGS_CHANGED           = 4;
-    public static final int EVENT_DATA_ROAMING_OFF                       = 5;
-    public static final int EVENT_SIM_STATE_CHANGED                      = 6;
+    public static final int CARRIER_ACTION_SET_METERED_APNS_ENABLED        = 0;
+    public static final int CARRIER_ACTION_SET_RADIO_ENABLED               = 1;
+    public static final int CARRIER_ACTION_RESET                           = 2;
+    public static final int CARRIER_ACTION_REPORT_DEFAULT_NETWORK_STATUS   = 3;
+    public static final int EVENT_APM_SETTINGS_CHANGED                     = 4;
+    public static final int EVENT_MOBILE_DATA_SETTINGS_CHANGED             = 5;
+    public static final int EVENT_DATA_ROAMING_OFF                         = 6;
+    public static final int EVENT_SIM_STATE_CHANGED                        = 7;
 
     /** Member variables */
     private final Phone mPhone;
     /** registrant list per carrier action */
     private RegistrantList mMeteredApnEnableRegistrants = new RegistrantList();
     private RegistrantList mRadioEnableRegistrants = new RegistrantList();
+    private RegistrantList mDefaultNetworkReportRegistrants = new RegistrantList();
     /** local log for carrier actions */
     private LocalLog mMeteredApnEnabledLog = new LocalLog(10);
     private LocalLog mRadioEnabledLog = new LocalLog(10);
-    /** carrier actions, true by default */
+    private LocalLog mReportDefaultNetworkStatusLog = new LocalLog(10);
+    /** carrier actions */
     private Boolean mCarrierActionOnMeteredApnEnabled = true;
     private Boolean mCarrierActionOnRadioEnabled = true;
+    private Boolean mCarrierActionReportDefaultNetworkStatus = false;
     /** content observer for APM change */
     private final SettingsObserver mSettingsObserver;
 
@@ -102,6 +106,9 @@ public class CarrierActionAgent extends Handler {
 
     @Override
     public void handleMessage(Message msg) {
+        // skip notification if the input carrier action is same as the current one.
+        Boolean enabled = getCarrierActionEnabled(msg.what);
+        if (enabled != null && enabled == (boolean) msg.obj) return;
         switch (msg.what) {
             case CARRIER_ACTION_SET_METERED_APNS_ENABLED:
                 mCarrierActionOnMeteredApnEnabled = (boolean) msg.obj;
@@ -117,6 +124,15 @@ public class CarrierActionAgent extends Handler {
                 mRadioEnabledLog.log("SET_RADIO_ENABLED: " + mCarrierActionOnRadioEnabled);
                 mRadioEnableRegistrants.notifyRegistrants(
                         new AsyncResult(null, mCarrierActionOnRadioEnabled, null));
+                break;
+            case CARRIER_ACTION_REPORT_DEFAULT_NETWORK_STATUS:
+                mCarrierActionReportDefaultNetworkStatus = (boolean) msg.obj;
+                log("CARRIER_ACTION_REPORT_AT_DEFAULT_NETWORK_STATUS: "
+                        + mCarrierActionReportDefaultNetworkStatus);
+                mReportDefaultNetworkStatusLog.log("REGISTER_DEFAULT_NETWORK_STATUS: "
+                        + mCarrierActionReportDefaultNetworkStatus);
+                mDefaultNetworkReportRegistrants.notifyRegistrants(
+                        new AsyncResult(null, mCarrierActionReportDefaultNetworkStatus, null));
                 break;
             case CARRIER_ACTION_RESET:
                 log("CARRIER_ACTION_RESET");
@@ -171,17 +187,6 @@ public class CarrierActionAgent extends Handler {
     }
 
     /**
-     * Return current carrier action values
-     */
-    public Object getCarrierActionValue(int action) {
-        Object val = getCarrierAction(action);
-        if (val == null) {
-            throw new IllegalArgumentException("invalid carrier action: " + action);
-        }
-        return val;
-    }
-
-    /**
      * Action set from carrier app to enable/disable radio
      */
     public void carrierActionSetRadioEnabled(boolean enabled) {
@@ -195,7 +200,15 @@ public class CarrierActionAgent extends Handler {
         sendMessage(obtainMessage(CARRIER_ACTION_SET_METERED_APNS_ENABLED, enabled));
     }
 
+    /**
+     * Action set from carrier app to start/stop reporting default network status.
+     */
+    public void carrierActionReportDefaultNetworkStatus(boolean report) {
+        sendMessage(obtainMessage(CARRIER_ACTION_REPORT_DEFAULT_NETWORK_STATUS, report));
+    }
+
     private void carrierActionReset() {
+        carrierActionReportDefaultNetworkStatus(false);
         carrierActionSetMeteredApnsEnabled(true);
         carrierActionSetRadioEnabled(true);
         // notify configured carrier apps for reset
@@ -209,18 +222,22 @@ public class CarrierActionAgent extends Handler {
                 return mMeteredApnEnableRegistrants;
             case CARRIER_ACTION_SET_RADIO_ENABLED:
                 return mRadioEnableRegistrants;
+            case CARRIER_ACTION_REPORT_DEFAULT_NETWORK_STATUS:
+                return mDefaultNetworkReportRegistrants;
             default:
                 loge("Unsupported action: " + action);
                 return null;
         }
     }
 
-    private Object getCarrierAction(int action) {
+    private Boolean getCarrierActionEnabled(int action) {
         switch (action) {
             case CARRIER_ACTION_SET_METERED_APNS_ENABLED:
                 return mCarrierActionOnMeteredApnEnabled;
             case CARRIER_ACTION_SET_RADIO_ENABLED:
                 return mCarrierActionOnRadioEnabled;
+            case CARRIER_ACTION_REPORT_DEFAULT_NETWORK_STATUS:
+                return mCarrierActionReportDefaultNetworkStatus;
             default:
                 loge("Unsupported action: " + action);
                 return null;
@@ -235,7 +252,7 @@ public class CarrierActionAgent extends Handler {
      */
     public void registerForCarrierAction(int action, Handler h, int what, Object obj,
                                          boolean notifyNow) {
-        Object carrierAction = getCarrierAction(action);
+        Boolean carrierAction = getCarrierActionEnabled(action);
         if (carrierAction == null) {
             throw new IllegalArgumentException("invalid carrier action: " + action);
         }
@@ -286,6 +303,11 @@ public class CarrierActionAgent extends Handler {
         pw.println(" mCarrierActionOnRadioEnabled Log:");
         ipw.increaseIndent();
         mRadioEnabledLog.dump(fd, ipw, args);
+        ipw.decreaseIndent();
+
+        pw.println(" mCarrierActionReportDefaultNetworkStatus Log:");
+        ipw.increaseIndent();
+        mReportDefaultNetworkStatusLog.dump(fd, ipw, args);
         ipw.decreaseIndent();
     }
 }
