@@ -467,9 +467,18 @@ public class DataConnection extends StateMachine {
 
         DataProfile dp = new DataProfile(mApnSetting, cp.mProfileId);
 
-        mPhone.mCi.setupDataCall(cp.mRilRat, dp,
-                mPhone.getServiceState().getDataRoamingFromRegistration(),
-                mPhone.getDataRoamingEnabled(), msg);
+        // We need to use the actual modem roaming state instead of the framework roaming state
+        // here. This flag is only passed down to ril_service for picking the correct protocol (for
+        // old modem backward compatibility).
+        boolean isModemRoaming = mPhone.getServiceState().getDataRoamingFromRegistration();
+
+        // Set this flag to true if the user turns on data roaming. Or if we override the roaming
+        // state in framework, we should set this flag to true as well so the modem will not reject
+        // the data call setup (because the modem actually thinks the device is roaming).
+        boolean allowRoaming = mPhone.getDataRoamingEnabled()
+                || (isModemRoaming && !mPhone.getServiceState().getDataRoaming());
+
+        mPhone.mCi.setupDataCall(cp.mRilRat, dp, isModemRoaming, allowRoaming, msg);
     }
 
     /**
