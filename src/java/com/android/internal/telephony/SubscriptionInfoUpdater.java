@@ -377,18 +377,18 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     private void handleSimLoaded(int slotId) {
-        logd("handleSimStateLoadedInternal: slotId: " + slotId);
+        logd("handleSimLoaded: slotId: " + slotId);
 
         // The SIM should be loaded at this state, but it is possible in cases such as SIM being
         // removed or a refresh RESET that the IccRecords could be null. The right behavior is to
         // not broadcast the SIM loaded.
         IccRecords records = mPhone[slotId].getIccCard().getIccRecords();
         if (records == null) {  // Possibly a race condition.
-            logd("onRecieve: IccRecords null");
+            logd("handleSimLoaded: IccRecords null");
             return;
         }
         if (records.getIccId() == null) {
-            logd("onRecieve: IccID null");
+            logd("handleSimLoaded: IccID null");
             return;
         }
         mIccId[slotId] = records.getIccId();

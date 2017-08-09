@@ -94,7 +94,7 @@ public class UiccCard {
     private static final int EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE = 17;
     private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 18;
     private static final int EVENT_SIM_IO_DONE = 19;
-    private static final int EVENT_CARRIER_PRIVILIGES_LOADED = 20;
+    private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 20;
 
     private static final LocalLog mLocalLog = new LocalLog(100);
 
@@ -158,7 +158,7 @@ public class UiccCard {
             log("Before privilege rules: " + mCarrierPrivilegeRules + " : " + mCardState);
             if (mCarrierPrivilegeRules == null && mCardState == CardState.CARDSTATE_PRESENT) {
                 mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(this,
-                        mHandler.obtainMessage(EVENT_CARRIER_PRIVILIGES_LOADED));
+                        mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
             } else if (mCarrierPrivilegeRules != null
                     && mCardState != CardState.CARDSTATE_PRESENT) {
                 mCarrierPrivilegeRules = null;
@@ -384,7 +384,7 @@ public class UiccCard {
                     AsyncResult.forMessage((Message)ar.userObj, ar.result, ar.exception);
                     ((Message)ar.userObj).sendToTarget();
                     break;
-                case EVENT_CARRIER_PRIVILIGES_LOADED:
+                case EVENT_CARRIER_PRIVILEGES_LOADED:
                     onCarrierPriviligesLoadedMessage();
                     break;
                 default:
