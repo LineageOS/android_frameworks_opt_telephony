@@ -205,6 +205,10 @@ public class GsmCdmaPhone extends Phone {
         mPrecisePhoneType = precisePhoneType;
         initOnce(ci);
         initRatSpecific(precisePhoneType);
+        // CarrierSignalAgent uses CarrierActionAgent in construction so it needs to be created
+        // after CarrierActionAgent.
+        mCarrierActionAgent = mTelephonyComponentFactory.makeCarrierActionAgent(this);
+        mCarrierSignalAgent = mTelephonyComponentFactory.makeCarrierSignalAgent(this);
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
         mDcTracker = mTelephonyComponentFactory.makeDcTracker(this);
