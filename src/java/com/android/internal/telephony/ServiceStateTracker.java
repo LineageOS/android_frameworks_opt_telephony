@@ -2815,7 +2815,13 @@ public class ServiceStateTracker extends Handler {
                 tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
                 mGotCountryCode = false;
                 mNitzUpdatedTime = false;
-            } else {
+            } else if (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
+                // Update time zone, ISO, and IDD.
+                //
+                // If the device is on IWLAN, modems manufacture a ServiceState with the MCC/MNC of
+                // the SIM as if we were talking to towers. Telephony code then uses that with
+                // mccTable to suggest a timezone. We shouldn't do that if the MCC/MNC is from IWLAN
+
                 String iso = "";
                 String mcc = "";
                 try {
