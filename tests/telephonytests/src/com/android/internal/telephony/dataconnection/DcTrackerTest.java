@@ -663,7 +663,7 @@ public class DcTrackerTest extends TelephonyTest {
         //user is in roaming
         doReturn(true).when(mServiceState).getDataRoaming();
         logd("Sending DISABLE_ROAMING_CMD");
-        mDct.setDataRoamingEnabled(false);
+        mDct.setDataRoamingEnabledByUser(false);
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_ROAMING_ON));
         waitForMs(200);
 
@@ -675,7 +675,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
 
         // reset roaming settings / data enabled settings at end of this test
-        mDct.setDataRoamingEnabled(roamingEnabled);
+        mDct.setDataRoamingEnabledByUser(roamingEnabled);
         mDct.setDataEnabled(dataEnabled);
         waitForMs(200);
     }
@@ -701,7 +701,7 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setDataEnabled(true);
 
         logd("Sending DISABLE_ROAMING_CMD");
-        mDct.setDataRoamingEnabled(false);
+        mDct.setDataRoamingEnabledByUser(false);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -724,6 +724,11 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
         assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
+
+        // reset roaming settings / data enabled settings at end of this test
+        mDct.setDataRoamingEnabledByUser(roamingEnabled);
+        mDct.setDataEnabled(dataEnabled);
+        waitForMs(200);
     }
 
     // Test the default data switch scenario.
