@@ -3226,7 +3226,13 @@ public class ServiceStateTracker extends Handler {
                     : TelephonyManager.NETWORK_TYPE_UNKNOWN;
             int newRAT = newNrs != null ? newNrs.getAccessNetworkTechnology()
                     : TelephonyManager.NETWORK_TYPE_UNKNOWN;
-            hasRilDataRadioTechnologyChanged.put(transport, oldRAT != newRAT);
+
+            boolean isOldCA = oldNrs != null ? (oldNrs.getDataSpecificInfo() != null
+                    ? oldNrs.getDataSpecificInfo().isUsingCarrierAggregation() : false) : false;
+            boolean isNewCA = newNrs != null ? (newNrs.getDataSpecificInfo() != null
+                    ? newNrs.getDataSpecificInfo().isUsingCarrierAggregation() : false) : false;
+
+            hasRilDataRadioTechnologyChanged.put(transport, oldRAT != newRAT || isOldCA != isNewCA);
             if (oldRAT != newRAT) {
                 anyDataRatChanged = true;
             }
