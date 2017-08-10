@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -35,6 +36,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static com.android.internal.telephony.TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED;
 import static com.android.internal.telephony.TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
@@ -102,11 +104,11 @@ public class CarrierSignalAgentTest extends TelephonyTest {
         logd(mCaptorIntent.getAllValues().toString());
         Intent capturedIntent = mCaptorIntent.getAllValues().get(1);
         assertEquals(ACTION_CARRIER_SIGNAL_PCO_VALUE, capturedIntent.getAction());
-        assertEquals(PCO_RECEIVER, capturedIntent.getComponent().flattenToString());
+        assertEquals(DC_ERROR_RECEIVER, capturedIntent.getComponent().flattenToString());
 
         capturedIntent = mCaptorIntent.getAllValues().get(2);
         assertEquals(ACTION_CARRIER_SIGNAL_PCO_VALUE, capturedIntent.getAction());
-        assertEquals(DC_ERROR_RECEIVER, capturedIntent.getComponent().flattenToString());
+        assertEquals(PCO_RECEIVER, capturedIntent.getComponent().flattenToString());
     }
 
     @Test
@@ -209,5 +211,44 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 new Intent(ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED));
         mCaptorIntent = ArgumentCaptor.forClass(Intent.class);
         verify(mContext, times(++count)).sendBroadcast(mCaptorIntent.capture());
+    }
+
+
+    @Test
+    @SmallTest
+    public void testCarrierConfigChange() {
+        // default config value
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY,
+                new String[]{ PCO_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_PCO_VALUE + ","
+                        + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED });
+        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        waitForMs(50);
+        // verify no reset action on initial config load
+        verify(mCarrierActionAgent, times(0)).sendMessageAtTime(any(Message.class), anyLong());
+
+        // new carrier config with different receiver intent order
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY,
+                new String[]{ PCO_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED
+                        + "," + ACTION_CARRIER_SIGNAL_PCO_VALUE});
+        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        waitForMs(50);
+        // verify no reset action for the same config (different order)
+        verify(mCarrierActionAgent, times(0)).sendMessageAtTime(any(Message.class), anyLong());
+
+        // new different config value
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY,
+                new String[]{ DC_ERROR_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED
+                        + "," + ACTION_CARRIER_SIGNAL_PCO_VALUE});
+        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        waitForMs(50);
+        // verify there is no reset action
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mCarrierActionAgent, times(1))
+                .sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        assertEquals(CarrierActionAgent.CARRIER_ACTION_RESET,
+                messageArgumentCaptor.getValue().what);
     }
 }
