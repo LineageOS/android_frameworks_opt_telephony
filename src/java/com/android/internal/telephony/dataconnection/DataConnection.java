@@ -497,21 +497,12 @@ public class DataConnection extends StateMachine {
                 discReason = RILConstants.DEACTIVATE_REASON_PDP_RESET;
             }
         }
-        if (mPhone.mCi.getRadioState().isOn()
-                || (mPhone.getServiceState().getRilDataRadioTechnology()
-                        == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN )) {
-            String str = "tearDownData radio is on, call deactivateDataCall";
-            if (DBG) log(str);
-            if (apnContext != null) apnContext.requestLog(str);
-            mPhone.mCi.deactivateDataCall(mCid, discReason,
-                    obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, o));
-        } else {
-            String str = "tearDownData radio is off sendMessage EVENT_DEACTIVATE_DONE immediately";
-            if (DBG) log(str);
-            if (apnContext != null) apnContext.requestLog(str);
-            AsyncResult ar = new AsyncResult(o, null, null);
-            sendMessage(obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, ar));
-        }
+
+        String str = "tearDownData. mCid=" + mCid + ", reason=" + discReason;
+        if (DBG) log(str);
+        if (apnContext != null) apnContext.requestLog(str);
+        mPhone.mCi.deactivateDataCall(mCid, discReason,
+                obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, o));
     }
 
     private void notifyAllWithEvent(ApnContext alreadySent, int event, String reason) {
