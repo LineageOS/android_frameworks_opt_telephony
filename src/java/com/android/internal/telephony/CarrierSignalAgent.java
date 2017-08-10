@@ -34,11 +34,9 @@ import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -67,22 +65,24 @@ public class CarrierSignalAgent {
     private final Phone mPhone;
 
     /**
-     * This is a map of intent action -> array list of component name of statically registered
+     * This is a map of intent action -> set of component name of statically registered
      * carrier signal receivers(wakeup receivers).
      * Those intents are declared in the Manifest files, aiming to wakeup broadcast receivers.
      * Carrier apps should be careful when configuring the wake signal list to avoid unnecessary
-     * wakeup.
+     * wakeup. Note we use Set as the entry value to compare config directly regardless of element
+     * order.
      * @see CarrierConfigManager#KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY
      */
-    private final Map<String, List<ComponentName>> mCachedWakeSignalConfigs = new HashMap<>();
+    private Map<String, Set<ComponentName>> mCachedWakeSignalConfigs = new HashMap<>();
 
     /**
-     * This is a map of intent action -> array list of component name of dynamically registered
+     * This is a map of intent action -> set of component name of dynamically registered
      * carrier signal receivers(non-wakeup receivers). Those intents will not wake up the apps.
      * Note Carrier apps should avoid configuring no wake signals in there Manifest files.
+     * Note we use Set as the entry value to compare config directly regardless of element order.
      * @see CarrierConfigManager#KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY
      */
-    private final Map<String, List<ComponentName>> mCachedNoWakeSignalConfigs = new HashMap<>();
+    private Map<String, Set<ComponentName>> mCachedNoWakeSignalConfigs = new HashMap<>();
 
     /**
      * This is a list of supported signals from CarrierSignalAgent
@@ -100,12 +100,6 @@ public class CarrierSignalAgent {
             String action = intent.getAction();
             if (DBG) log("CarrierSignalAgent receiver action: " + action);
             if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                // notify carrier apps before cache get purged
-                if (mPhone.getIccCard() != null
-                        && IccCardConstants.State.ABSENT == mPhone.getIccCard().getState()) {
-                    notifyCarrierSignalReceivers(
-                            new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
-                }
                 loadCarrierConfig();
             }
         }
@@ -132,18 +126,36 @@ public class CarrierSignalAgent {
         }
         if (b != null) {
             synchronized (mCachedWakeSignalConfigs) {
-                mCachedWakeSignalConfigs.clear();
                 log("Loading carrier config: " + KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY);
-                parseAndCache(b.getStringArray(KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY),
-                        mCachedWakeSignalConfigs);
+                Map<String, Set<ComponentName>> config = parseAndCache(
+                        b.getStringArray(KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY));
+                // In some rare cases, up-to-date config could be fetched with delay and all signals
+                // have already been delivered the receivers from the default carrier config.
+                // To handle this raciness, we should notify those receivers (from old configs)
+                // and reset carrier actions. This should be done before cached Config got purged
+                // and written with the up-to-date value, Otherwise those receivers from the
+                // old config might lingers without properly clean-up.
+                if (!mCachedWakeSignalConfigs.isEmpty()
+                        && !config.equals(mCachedWakeSignalConfigs)) {
+                    if (VDBG) log("carrier config changed, reset receivers from old config");
+                    mPhone.getCarrierActionAgent().sendEmptyMessage(
+                            CarrierActionAgent.CARRIER_ACTION_RESET);
+                }
+                mCachedWakeSignalConfigs = config;
             }
 
             synchronized (mCachedNoWakeSignalConfigs) {
-                mCachedNoWakeSignalConfigs.clear();
                 log("Loading carrier config: "
                         + KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY);
-                parseAndCache(b.getStringArray(KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY),
-                        mCachedNoWakeSignalConfigs);
+                Map<String, Set<ComponentName>> config = parseAndCache(
+                        b.getStringArray(KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY));
+                if (!mCachedNoWakeSignalConfigs.isEmpty()
+                        && !config.equals(mCachedNoWakeSignalConfigs)) {
+                    if (VDBG) log("carrier config changed, reset receivers from old config");
+                    mPhone.getCarrierActionAgent().sendEmptyMessage(
+                            CarrierActionAgent.CARRIER_ACTION_RESET);
+                }
+                mCachedNoWakeSignalConfigs = config;
             }
         }
     }
@@ -155,8 +167,8 @@ public class CarrierSignalAgent {
      * @see #COMPONENT_NAME_DELIMITER
      * @param configs raw information from carrier config
      */
-    private void parseAndCache(String[] configs,
-                               Map<String, List<ComponentName>> cachedConfigs) {
+    private Map<String, Set<ComponentName>> parseAndCache(String[] configs) {
+        Map<String, Set<ComponentName>> newCachedWakeSignalConfigs = new HashMap<>();
         if (!ArrayUtils.isEmpty(configs)) {
             for (String config : configs) {
                 if (!TextUtils.isEmpty(config)) {
@@ -174,10 +186,10 @@ public class CarrierSignalAgent {
                                 loge("Invalid signal name: " + s);
                                 continue;
                             }
-                            List<ComponentName> componentList = cachedConfigs.get(s);
+                            Set<ComponentName> componentList = newCachedWakeSignalConfigs.get(s);
                             if (componentList == null) {
-                                componentList = new ArrayList<>();
-                                cachedConfigs.put(s, componentList);
+                                componentList = new HashSet<>();
+                                newCachedWakeSignalConfigs.put(s, componentList);
                             }
                             componentList.add(componentName);
                             if (VDBG) {
@@ -191,6 +203,7 @@ public class CarrierSignalAgent {
                 }
             }
         }
+        return newCachedWakeSignalConfigs;
     }
 
     /**
@@ -215,7 +228,7 @@ public class CarrierSignalAgent {
      *                  registered during run-time.
      * @param wakeup true indicate wakeup receivers otherwise non-wakeup receivers
      */
-    private void broadcast(Intent intent, List<ComponentName> receivers, boolean wakeup) {
+    private void broadcast(Intent intent, Set<ComponentName> receivers, boolean wakeup) {
         final PackageManager packageManager = mPhone.getContext().getPackageManager();
         for (ComponentName name : receivers) {
             Intent signal = new Intent(intent);
@@ -257,19 +270,19 @@ public class CarrierSignalAgent {
      *
      */
     public void notifyCarrierSignalReceivers(Intent intent) {
-        List<ComponentName> receiverList;
+        Set<ComponentName> receiverSet;
 
         synchronized (mCachedWakeSignalConfigs) {
-            receiverList = mCachedWakeSignalConfigs.get(intent.getAction());
-            if (!ArrayUtils.isEmpty(receiverList)) {
-                broadcast(intent, receiverList, WAKE);
+            receiverSet = mCachedWakeSignalConfigs.get(intent.getAction());
+            if (!ArrayUtils.isEmpty(receiverSet)) {
+                broadcast(intent, receiverSet, WAKE);
             }
         }
 
         synchronized (mCachedNoWakeSignalConfigs) {
-            receiverList = mCachedNoWakeSignalConfigs.get(intent.getAction());
-            if (!ArrayUtils.isEmpty(receiverList)) {
-                broadcast(intent, receiverList, NO_WAKE);
+            receiverSet = mCachedNoWakeSignalConfigs.get(intent.getAction());
+            if (!ArrayUtils.isEmpty(receiverSet)) {
+                broadcast(intent, receiverSet, NO_WAKE);
             }
         }
     }
@@ -291,14 +304,14 @@ public class CarrierSignalAgent {
         IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
         pw.println("mCachedWakeSignalConfigs:");
         ipw.increaseIndent();
-        for (Map.Entry<String, List<ComponentName>> entry : mCachedWakeSignalConfigs.entrySet()) {
+        for (Map.Entry<String, Set<ComponentName>> entry : mCachedWakeSignalConfigs.entrySet()) {
             pw.println("signal: " + entry.getKey() + " componentName list: " + entry.getValue());
         }
         ipw.decreaseIndent();
 
         pw.println("mCachedNoWakeSignalConfigs:");
         ipw.increaseIndent();
-        for (Map.Entry<String, List<ComponentName>> entry : mCachedNoWakeSignalConfigs.entrySet()) {
+        for (Map.Entry<String, Set<ComponentName>> entry : mCachedNoWakeSignalConfigs.entrySet()) {
             pw.println("signal: " + entry.getKey() + " componentName list: " + entry.getValue());
         }
         ipw.decreaseIndent();
