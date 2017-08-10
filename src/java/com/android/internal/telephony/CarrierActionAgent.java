@@ -27,6 +27,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.provider.Settings;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.Log;
 
@@ -56,6 +57,8 @@ public class CarrierActionAgent extends Handler {
     public static final int CARRIER_ACTION_SET_METERED_APNS_ENABLED      = 0;
     public static final int CARRIER_ACTION_SET_RADIO_ENABLED             = 1;
     public static final int CARRIER_ACTION_RESET                         = 2;
+    public static final int EVENT_APM_SETTINGS_CHANGED                   = 3;
+    public static final int EVENT_MOBILE_DATA_SETTINGS_CHANGED           = 4;
 
     /** Member variables */
     private final Phone mPhone;
@@ -77,37 +80,31 @@ public class CarrierActionAgent extends Handler {
             final String action = intent.getAction();
             final String iccState = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
             if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)){
-                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(iccState) ||
-                        IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(iccState)) {
+                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(iccState)) {
                     sendEmptyMessage(CARRIER_ACTION_RESET);
+                    String mobileData = Settings.Global.MOBILE_DATA;
+                    if (TelephonyManager.getDefault().getSimCount() != 1) {
+                        mobileData = mobileData + mPhone.getSubId();
+                    }
+                    mSettingsObserver.observe(Settings.Global.getUriFor(mobileData),
+                            EVENT_MOBILE_DATA_SETTINGS_CHANGED);
+                    mSettingsObserver.observe(
+                            Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON),
+                            EVENT_APM_SETTINGS_CHANGED);
+                } else if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(iccState)) {
+                    sendEmptyMessage(CARRIER_ACTION_RESET);
+                    mSettingsObserver.unobserve();
                 }
             }
         }
     };
-
-    private class SettingsObserver extends ContentObserver {
-        SettingsObserver() {
-            super(null);
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
-            if (Settings.Global.getInt(mPhone.getContext().getContentResolver(),
-                    Settings.Global.AIRPLANE_MODE_ON, 0) != 0) {
-                sendEmptyMessage(CARRIER_ACTION_RESET);
-            }
-        }
-    }
 
     /** Constructor */
     public CarrierActionAgent(Phone phone) {
         mPhone = phone;
         mPhone.getContext().registerReceiver(mReceiver,
                 new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED));
-        mSettingsObserver = new SettingsObserver();
-        mPhone.getContext().getContentResolver().registerContentObserver(
-                Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON),
-                false, mSettingsObserver);
+        mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         if (DBG) log("Creating CarrierActionAgent");
     }
 
@@ -136,6 +133,17 @@ public class CarrierActionAgent extends Handler {
                 // notify configured carrier apps for reset
                 mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(
                         new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
+                break;
+            case EVENT_APM_SETTINGS_CHANGED:
+                log("EVENT_APM_SETTINGS_CHANGED");
+                if ((Settings.Global.getInt(mPhone.getContext().getContentResolver(),
+                        Settings.Global.AIRPLANE_MODE_ON, 0) != 0)) {
+                    sendEmptyMessage(CARRIER_ACTION_RESET);
+                }
+                break;
+            case EVENT_MOBILE_DATA_SETTINGS_CHANGED:
+                log("EVENT_MOBILE_DATA_SETTINGS_CHANGED");
+                if (!mPhone.getDataEnabled()) sendEmptyMessage(CARRIER_ACTION_RESET);
                 break;
             default:
                 loge("Unknown carrier action: " + msg.what);
