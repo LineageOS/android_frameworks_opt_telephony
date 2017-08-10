@@ -1138,7 +1138,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
     }
 
-    // Test for fetchDunApn()
+// Test for fetchDunApn()
     @Test
     @SmallTest
     public void testFetchDunApn() {
@@ -1162,7 +1162,6 @@ public class DcTrackerTest extends TelephonyTest {
         dunApn = mDct.fetchDunApn();
         assertEquals(FAKE_APN5, dunApn.apn);
     }
-
     // Test oos
     @Test
     @SmallTest
