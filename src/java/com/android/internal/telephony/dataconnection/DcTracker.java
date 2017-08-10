@@ -101,7 +101,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -3379,7 +3378,7 @@ public class DcTracker extends Handler {
             int j = i + 1;
             while (j < mAllApnSettings.size()) {
                 second = mAllApnSettings.get(j);
-                if (apnsSimilar(first, second)) {
+                if (first.similar(second)) {
                     ApnSetting newApn = mergeApns(first, second);
                     mAllApnSettings.set(i, newApn);
                     first = newApn;
@@ -3390,66 +3389,6 @@ public class DcTracker extends Handler {
             }
             i++;
         }
-    }
-
-    //check whether the types of two APN same (even only one type of each APN is same)
-    private boolean apnTypeSameAny(ApnSetting first, ApnSetting second) {
-        if(VDBG) {
-            StringBuilder apnType1 = new StringBuilder(first.apn + ": ");
-            for(int index1 = 0; index1 < first.types.length; index1++) {
-                apnType1.append(first.types[index1]);
-                apnType1.append(",");
-            }
-
-            StringBuilder apnType2 = new StringBuilder(second.apn + ": ");
-            for(int index1 = 0; index1 < second.types.length; index1++) {
-                apnType2.append(second.types[index1]);
-                apnType2.append(",");
-            }
-            log("APN1: is " + apnType1);
-            log("APN2: is " + apnType2);
-        }
-
-        for(int index1 = 0; index1 < first.types.length; index1++) {
-            for(int index2 = 0; index2 < second.types.length; index2++) {
-                if(first.types[index1].equals(PhoneConstants.APN_TYPE_ALL) ||
-                        second.types[index2].equals(PhoneConstants.APN_TYPE_ALL) ||
-                        first.types[index1].equals(second.types[index2])) {
-                    if(VDBG)log("apnTypeSameAny: return true");
-                    return true;
-                }
-            }
-        }
-
-        if(VDBG)log("apnTypeSameAny: return false");
-        return false;
-    }
-
-    // Check if neither mention DUN and are substantially similar
-    private boolean apnsSimilar(ApnSetting first, ApnSetting second) {
-        return (!first.canHandleType(PhoneConstants.APN_TYPE_DUN)
-                && !second.canHandleType(PhoneConstants.APN_TYPE_DUN)
-                && Objects.equals(first.apn, second.apn)
-                && !apnTypeSameAny(first, second)
-                && xorEquals(first.proxy, second.proxy)
-                && xorEquals(first.port, second.port)
-                && xorEquals(first.protocol, second.protocol)
-                && xorEquals(first.roamingProtocol, second.roamingProtocol)
-                && first.carrierEnabled == second.carrierEnabled
-                && first.bearerBitmask == second.bearerBitmask
-                && first.profileId == second.profileId
-                && Objects.equals(first.mvnoType, second.mvnoType)
-                && Objects.equals(first.mvnoMatchData, second.mvnoMatchData)
-                && xorEquals(first.mmsc, second.mmsc)
-                && xorEquals(first.mmsProxy, second.mmsProxy)
-                && xorEquals(first.mmsPort, second.mmsPort));
-    }
-
-    // equal or one is not specified
-    private boolean xorEquals(String first, String second) {
-        return (Objects.equals(first, second) ||
-                TextUtils.isEmpty(first) ||
-                TextUtils.isEmpty(second));
     }
 
     private ApnSetting mergeApns(ApnSetting dest, ApnSetting src) {
@@ -4382,6 +4321,23 @@ public class DcTracker extends Handler {
         }
     }
 
+    private boolean containsAllApns(ArrayList<ApnSetting> oldApnList,
+                                    ArrayList<ApnSetting> newApnList) {
+        for (ApnSetting newApnSetting : newApnList) {
+            boolean canHandle = false;
+            for (ApnSetting oldApnSetting : oldApnList) {
+                // Make sure at least one of the APN from old list can cover the new APN
+                if (oldApnSetting.equals(newApnSetting,
+                        mPhone.getServiceState().getDataRoamingFromRegistration())) {
+                    canHandle = true;
+                    break;
+                }
+            }
+            if (!canHandle) return false;
+        }
+        return true;
+    }
+
     private void cleanUpConnectionsOnUpdatedApns(boolean tearDown, String reason) {
         if (DBG) log("cleanUpConnectionsOnUpdatedApns: tearDown=" + tearDown);
         if (mAllApnSettings != null && mAllApnSettings.isEmpty()) {
@@ -4401,7 +4357,10 @@ public class DcTracker extends Handler {
                 if (VDBG) log("new waitingApns:" + waitingApns);
                 if ((currentWaitingApns != null)
                         && ((waitingApns.size() != currentWaitingApns.size())
-                        || (!currentWaitingApns.containsAll(waitingApns)))) {
+                        // Check if the existing waiting APN list can cover the newly built APN
+                        // list. If yes, then we don't need to tear down the existing data call.
+                        // TODO: We probably need to rebuild APN list when roaming status changes.
+                        || !containsAllApns(currentWaitingApns, waitingApns))) {
                     if (VDBG) log("new waiting apn is different for " + apnContext);
                     apnContext.setWaitingApns(waitingApns);
                     if (!apnContext.isDisconnected()) {
