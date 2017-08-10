@@ -2721,26 +2721,35 @@ public class GsmCdmaPhone extends Phone {
         return (r != null) ? r.isCspPlmnEnabled() : false;
     }
 
-    public boolean isManualNetSelAllowed() {
+    /**
+     * Whether manual select is now allowed and we should set
+     * to auto network select mode.
+     */
+    public boolean shouldForceAutoNetworkSelect() {
 
         int nwMode = Phone.PREFERRED_NT_MODE;
         int subId = getSubId();
 
+        // If it's invalid subId, we shouldn't force to auto network select mode.
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            return false;
+        }
+
         nwMode = android.provider.Settings.Global.getInt(mContext.getContentResolver(),
                     android.provider.Settings.Global.PREFERRED_NETWORK_MODE + subId, nwMode);
 
-        logd("isManualNetSelAllowed in mode = " + nwMode);
+        logd("shouldForceAutoNetworkSelect in mode = " + nwMode);
         /*
          *  For multimode targets in global mode manual network
-         *  selection is disallowed
+         *  selection is disallowed. So we should force auto select mode.
          */
         if (isManualSelProhibitedInGlobalMode()
                 && ((nwMode == Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA)
                         || (nwMode == Phone.NT_MODE_GLOBAL)) ){
-            logd("Manual selection not supported in mode = " + nwMode);
-            return false;
+            logd("Should force auto network select mode = " + nwMode);
+            return true;
         } else {
-            logd("Manual selection is supported in mode = " + nwMode);
+            logd("Should not force auto network select mode = " + nwMode);
         }
 
         /*
@@ -2750,7 +2759,7 @@ public class GsmCdmaPhone extends Phone {
          *  Note: the actual enabling/disabling manual selection for these
          *  cases will be controlled by csp
          */
-        return true;
+        return false;
     }
 
     private boolean isManualSelProhibitedInGlobalMode() {
