@@ -331,62 +331,102 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
 
-    public String getIsimImpi() {
-        Phone phone = getPhone(getDefaultSubscription());
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-        IsimRecords isim = phone.getIsimRecords();
-        if (isim != null) {
-            return isim.getIsimImpi();
+    /**
+    * get the Isim Impi based on subId
+    */
+    public String getIsimImpi(int subId) {
+        Phone phone = getPhone(subId);
+        if (phone != null) {
+            mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
+                    "Requires READ_PRIVILEGED_PHONE_STATE");
+            IsimRecords isim = phone.getIsimRecords();
+            if (isim != null) {
+                return isim.getIsimImpi();
+            } else {
+                return null;
+            }
         } else {
+            loge("getIsimImpi phone is null for Subscription:" + subId);
             return null;
         }
     }
 
-    public String getIsimDomain() {
-        Phone phone = getPhone(getDefaultSubscription());
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-        IsimRecords isim = phone.getIsimRecords();
-        if (isim != null) {
-            return isim.getIsimDomain();
+    /**
+    * get the Isim Domain based on subId
+    */
+    public String getIsimDomain(int subId) {
+        Phone phone = getPhone(subId);
+        if (phone != null) {
+            mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
+                    "Requires READ_PRIVILEGED_PHONE_STATE");
+            IsimRecords isim = phone.getIsimRecords();
+            if (isim != null) {
+                return isim.getIsimDomain();
+            } else {
+                return null;
+            }
         } else {
+            loge("getIsimDomain phone is null for Subscription:" + subId);
             return null;
         }
     }
 
-    public String[] getIsimImpu() {
-        Phone phone = getPhone(getDefaultSubscription());
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-        IsimRecords isim = phone.getIsimRecords();
-        if (isim != null) {
-            return isim.getIsimImpu();
+    /**
+    * get the Isim Impu based on subId
+    */
+    public String[] getIsimImpu(int subId) {
+        Phone phone = getPhone(subId);
+        if (phone != null) {
+            mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
+                    "Requires READ_PRIVILEGED_PHONE_STATE");
+            IsimRecords isim = phone.getIsimRecords();
+            if (isim != null) {
+                return isim.getIsimImpu();
+            } else {
+                return null;
+            }
         } else {
+            loge("getIsimImpu phone is null for Subscription:" + subId);
             return null;
         }
     }
 
-    public String getIsimIst() throws RemoteException {
-        Phone phone = getPhone(getDefaultSubscription());
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-        IsimRecords isim = phone.getIsimRecords();
-        if (isim != null) {
-            return isim.getIsimIst();
+    /**
+    * get the Isim Ist based on subId
+    */
+    public String getIsimIst(int subId) throws RemoteException {
+        Phone phone = getPhone(subId);
+        if (phone != null) {
+            mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
+                    "Requires READ_PRIVILEGED_PHONE_STATE");
+            IsimRecords isim = phone.getIsimRecords();
+            if (isim != null) {
+                return isim.getIsimIst();
+            } else {
+                return null;
+            }
         } else {
+            loge("getIsimIst phone is null for Subscription:" + subId);
             return null;
         }
     }
 
-    public String[] getIsimPcscf() throws RemoteException {
-        Phone phone = getPhone(getDefaultSubscription());
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-        IsimRecords isim = phone.getIsimRecords();
-        if (isim != null) {
-            return isim.getIsimPcscf();
+    /**
+    * get the Isim Pcscf based on subId
+    */
+    public String[] getIsimPcscf(int subId) throws RemoteException {
+        Phone phone = getPhone(subId);
+        if (phone != null) {
+            mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
+                    "Requires READ_PRIVILEGED_PHONE_STATE");
+            IsimRecords isim = phone.getIsimRecords();
+            if (isim != null) {
+                return isim.getIsimPcscf();
+            } else {
+                return null;
+            }
         } else {
+            loge("getIsimPcscf phone is null for Subscription:" + subId);
             return null;
         }
     }
