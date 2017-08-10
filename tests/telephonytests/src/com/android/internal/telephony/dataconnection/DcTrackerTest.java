@@ -1107,4 +1107,54 @@ public class DcTrackerTest extends TelephonyTest {
         verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
     }
+
+    // Test oos
+    @Test
+    @SmallTest
+    public void testDataRatChangeOOS() throws Exception {
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD).when(mServiceState)
+                .getRilDataRadioTechnology();
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+        mDct.setEnabled(0, true);
+        mDct.setDataEnabled(true);
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
+        // Verify if RIL command was sent properly.
+        verify(mSimulatedCommandsVerifier).setupDataCall(
+                eq(mServiceState.getRilDataRadioTechnology()), dpCaptor.capture(),
+                eq(false), eq(false), any(Message.class));
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN4, 0, 5, 2, EHRPD_BEARER_BITMASK);
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+
+        // Data rat change from ehrpd to unknown due to OOS
+        logd("Sending EVENT_DATA_RAT_CHANGED");
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN).when(mServiceState)
+                .getRilDataRadioTechnology();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
+        waitForMs(200);
+
+        // Verify data connection is on
+        verify(mSimulatedCommandsVerifier, times(0)).deactivateDataCall(anyInt(), anyInt(),
+                any(Message.class));
+
+        // Data rat resume from unknown to ehrpd
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD).when(mServiceState)
+                .getRilDataRadioTechnology();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
+        waitForMs(200);
+
+        // Verify the same data connection
+        assertEquals(FAKE_APN4, mDct.getActiveApnString(PhoneConstants.APN_TYPE_DEFAULT));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+    }
 }
