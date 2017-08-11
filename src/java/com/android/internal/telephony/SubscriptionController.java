@@ -46,6 +46,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -1643,7 +1644,7 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int[] getActiveSubIdList() {
-        Set<Entry<Integer, Integer>> simInfoSet = sSlotIndexToSubId.entrySet();
+        Set<Entry<Integer, Integer>> simInfoSet = new HashSet<>(sSlotIndexToSubId.entrySet());
 
         int[] subIdArr = new int[simInfoSet.size()];
         int i = 0;
