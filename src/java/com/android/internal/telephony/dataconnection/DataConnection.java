@@ -1053,7 +1053,7 @@ public class DataConnection extends StateMachine {
             mPhone.getServiceStateTracker().registerForDataRoamingOn(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_ROAM_ON, null);
             mPhone.getServiceStateTracker().registerForDataRoamingOff(getHandler(),
-                    DataConnection.EVENT_DATA_CONNECTION_ROAM_OFF, null);
+                    DataConnection.EVENT_DATA_CONNECTION_ROAM_OFF, null, true);
 
             // Add ourselves to the list of data connections
             mDcController.addDc(DataConnection.this);

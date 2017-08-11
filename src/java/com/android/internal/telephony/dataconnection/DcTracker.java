@@ -681,7 +681,7 @@ public class DcTracker extends Handler {
         mPhone.getServiceStateTracker().registerForDataRoamingOn(this,
                 DctConstants.EVENT_ROAMING_ON, null);
         mPhone.getServiceStateTracker().registerForDataRoamingOff(this,
-                DctConstants.EVENT_ROAMING_OFF, null);
+                DctConstants.EVENT_ROAMING_OFF, null, true);
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 DctConstants.EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
