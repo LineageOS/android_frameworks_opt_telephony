@@ -40,6 +40,7 @@ import android.os.SystemClock;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyHistogram;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
@@ -1007,10 +1008,10 @@ public class TelephonyMetrics {
         for (int i = 0; i < dcsList.size(); i++) {
             dataCalls[i] = new RilDataCall();
             dataCalls[i].setCid(dcsList.get(i).cid);
-            if (dcsList.get(i).ifname != null) {
+            if (!TextUtils.isEmpty(dcsList.get(i).ifname)) {
                 dataCalls[i].setIframe(dcsList.get(i).ifname);
             }
-            if (dcsList.get(i).type != null) {
+            if (!TextUtils.isEmpty(dcsList.get(i).type)) {
                 dataCalls[i].setType(toPdpType(dcsList.get(i).type));
             }
         }
@@ -1249,11 +1250,11 @@ public class TelephonyMetrics {
             setupDataCallResponse.setSuggestedRetryTimeMillis(response.suggestedRetryTime);
 
             dataCall.setCid(response.cid);
-            if (response.type != null) {
+            if (!TextUtils.isEmpty(response.type)) {
                 dataCall.setType(toPdpType(response.type));
             }
 
-            if (response.ifname != null) {
+            if (!TextUtils.isEmpty(response.ifname)) {
                 dataCall.setIframe(response.ifname);
             }
         }
