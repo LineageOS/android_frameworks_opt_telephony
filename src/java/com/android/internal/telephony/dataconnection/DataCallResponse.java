@@ -174,7 +174,24 @@ public class DataCallResponse {
                 }
 
                 // set dns servers
-                if (dnses != null && dnses.length > 0) {
+                String userDnsServers[] = new String[2];
+                userDnsServers[0] = SystemProperties.get(propertyPrefix + "user_dns1");
+                userDnsServers[1] = SystemProperties.get(propertyPrefix + "user_dns2");
+                if (!userDnsServers[0].isEmpty() || !userDnsServers[1].isEmpty()) {
+                    for (String dnsAddr : userDnsServers) {
+                        dnsAddr = dnsAddr.trim();
+                        if (dnsAddr.isEmpty()) continue;
+                        InetAddress ia;
+                        try {
+                            ia = NetworkUtils.numericToInetAddress(dnsAddr);
+                        } catch (IllegalArgumentException e) {
+                            throw new UnknownHostException("Non-numeric dns addr=" + dnsAddr);
+                        }
+                        if (! ia.isAnyLocalAddress()) {
+                            linkProperties.addDnsServer(ia);
+                        }
+                    }
+                } else if (dnses != null && dnses.length > 0) {
                     for (String addr : dnses) {
                         addr = addr.trim();
                         if (addr.isEmpty()) continue;
