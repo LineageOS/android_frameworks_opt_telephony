@@ -251,6 +251,7 @@ public class SIMRecords extends IccRecords {
         mCi.unSetOnSmsOnSim(this);
         mParentApp.unregisterForReady(this);
         mParentApp.unregisterForLocked(this);
+        mContext.unregisterReceiver(mReceiver);
         resetRecords();
         super.dispose();
     }
