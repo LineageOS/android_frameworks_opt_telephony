@@ -174,21 +174,7 @@ public class DataCallResponse {
                 }
 
                 // set dns servers
-                if (dnses != null && dnses.length > 0) {
-                    for (String addr : dnses) {
-                        addr = addr.trim();
-                        if (addr.isEmpty()) continue;
-                        InetAddress ia;
-                        try {
-                            ia = NetworkUtils.numericToInetAddress(addr);
-                        } catch (IllegalArgumentException e) {
-                            throw new UnknownHostException("Non-numeric dns addr=" + addr);
-                        }
-                        if (! ia.isAnyLocalAddress()) {
-                            linkProperties.addDnsServer(ia);
-                        }
-                    }
-                } else if (okToUseSystemPropertyDns){
+                if (okToUseSystemPropertyDns){
                     String dnsServers[] = new String[2];
                     dnsServers[0] = SystemProperties.get(propertyPrefix + "dns1");
                     dnsServers[1] = SystemProperties.get(propertyPrefix + "dns2");
@@ -200,6 +186,20 @@ public class DataCallResponse {
                             ia = NetworkUtils.numericToInetAddress(dnsAddr);
                         } catch (IllegalArgumentException e) {
                             throw new UnknownHostException("Non-numeric dns addr=" + dnsAddr);
+                        }
+                        if (! ia.isAnyLocalAddress()) {
+                            linkProperties.addDnsServer(ia);
+                        }
+                    }
+                } else if (dnses != null && dnses.length > 0) {
+                    for (String addr : dnses) {
+                        addr = addr.trim();
+                        if (addr.isEmpty()) continue;
+                        InetAddress ia;
+                        try {
+                            ia = NetworkUtils.numericToInetAddress(addr);
+                        } catch (IllegalArgumentException e) {
+                            throw new UnknownHostException("Non-numeric dns addr=" + addr);
                         }
                         if (! ia.isAnyLocalAddress()) {
                             linkProperties.addDnsServer(ia);
