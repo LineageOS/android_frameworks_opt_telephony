@@ -1653,7 +1653,7 @@ public class TelephonyMetrics {
      * @param tech SMS RAT
      * @param format SMS format. Either 3GPP or 3GPP2.
      */
-    public void writeRilSendSms(int phoneId, int rilSerial, int tech, int format) {
+    public synchronized void writeRilSendSms(int phoneId, int rilSerial, int tech, int format) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
 
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_SEND)
@@ -1672,12 +1672,48 @@ public class TelephonyMetrics {
      * @param tech SMS RAT
      * @param format SMS format. Either 3GPP or 3GPP2.
      */
-    public void writeRilNewSms(int phoneId, int tech, int format) {
+    public synchronized void writeRilNewSms(int phoneId, int tech, int format) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
 
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
                 .setTech(tech)
                 .setFormat(format)
+        );
+
+        finishSmsSessionIfNeeded(smsSession);
+    }
+
+    /**
+     * Write incoming Broadcast SMS event
+     *
+     * @param phoneId Phone id
+     * @param format CB msg format
+     * @param priority CB msg priority
+     * @param isCMAS true if msg is CMAS
+     * @param isETWS true if msg is ETWS
+     * @param serviceCategory Service category of CB msg
+     */
+    public synchronized void writeNewCBSms(int phoneId, int format, int priority, boolean isCMAS,
+                                           boolean isETWS, int serviceCategory) {
+        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
+
+        int type;
+        if (isCMAS) {
+            type = SmsSession.Event.CBMessageType.CMAS;
+        } else if (isETWS) {
+            type = SmsSession.Event.CBMessageType.ETWS;
+        } else {
+            type = SmsSession.Event.CBMessageType.OTHER;
+        }
+
+        SmsSession.Event.CBMessage cbm = new SmsSession.Event.CBMessage();
+        cbm.msgFormat = format;
+        cbm.msgPriority = priority + 1;
+        cbm.msgType = type;
+        cbm.serviceCategory = serviceCategory;
+
+        smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.CB_SMS_RECEIVED)
+                .setCellBroadcastMessage(cbm)
         );
 
         finishSmsSessionIfNeeded(smsSession);

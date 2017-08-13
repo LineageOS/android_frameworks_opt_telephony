@@ -4353,6 +4353,13 @@ public class DcTracker extends Handler {
         if (mAllApnSettings != null && mAllApnSettings.isEmpty()) {
             cleanUpAllConnections(tearDown, Phone.REASON_APN_CHANGED);
         } else {
+            int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+            if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
+                // unknown rat is an exception for data rat change. Its only received when out of
+                // service and is not applicable for apn bearer bitmask. We should bypass the check
+                // of waiting apn list and keep the data connection on.
+                return;
+            }
             for (ApnContext apnContext : mApnContexts.values()) {
                 ArrayList<ApnSetting> currentWaitingApns = apnContext.getWaitingApns();
                 ArrayList<ApnSetting> waitingApns = buildWaitingApns(

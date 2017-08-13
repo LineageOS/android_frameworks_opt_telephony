@@ -1165,6 +1165,9 @@ message SmsSession {
 
       // Notification about received SMS
       SMS_RECEIVED = 8;
+
+      // CB message received
+      CB_SMS_RECEIVED = 9;
     }
 
     // Formats used to encode SMS messages
@@ -1188,6 +1191,51 @@ message SmsSession {
       SMS_CDMA = 2;
 
       SMS_IMS = 3;
+    }
+
+    message CBMessage {
+      // CB message format
+      optional Format msgFormat = 1;
+
+      // CB message priority
+      optional CBPriority msgPriority = 2;
+
+      // Type of CB msg
+      optional CBMessageType msgType = 3;
+
+      // Service category of CB message
+      optional int32 serviceCategory = 4;
+    }
+
+    enum CBMessageType {
+      // Unknown type
+      TYPE_UNKNOWN = 0;
+
+      // ETWS CB msg
+      ETWS = 1;
+
+      // CMAS CB msg
+      CMAS = 2;
+
+      // CB msg other than ETWS and CMAS
+      OTHER = 3;
+    }
+
+    enum CBPriority {
+      // Unknown priority
+      PRIORITY_UNKNOWN = 0;
+
+      // NORMAL priority
+      NORMAL = 1;
+
+      // Interactive priority
+      INTERACTIVE = 2;
+
+      // Urgent priority
+      URGENT = 3;
+
+      // Emergency priority
+      EMERGENCY = 4;
     }
 
     // Event type
@@ -1227,6 +1275,9 @@ message SmsSession {
 
     // Numeric ID
     optional int32 ril_request_id = 12;
+
+    // Cellbroadcast message content
+    optional CBMessage cell_broadcast_message = 13;
   }
 
   // Time when session has started, in minutes since epoch,
