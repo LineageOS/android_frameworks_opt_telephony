@@ -2064,10 +2064,6 @@ public class GsmCdmaPhone extends Phone {
                 }
             }
         }
-        Phone imsPhone = mImsPhone;
-        if (imsPhone != null) {
-            imsPhone.getServiceState().setStateOff();
-        }
         mRadioOffOrNotAvailableRegistrants.notifyRegistrants();
     }
 
