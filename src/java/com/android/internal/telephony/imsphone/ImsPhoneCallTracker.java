@@ -897,6 +897,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return mPendingMO;
     }
 
+    boolean isImsServiceReady() {
+        if (mImsManager == null) {
+            return false;
+        }
+
+        return mImsManager.isServiceAvailable();
+    }
+
     /**
      * Caches frequently used carrier configuration items locally.
      *

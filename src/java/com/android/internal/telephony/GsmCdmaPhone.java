@@ -1067,7 +1067,7 @@ public class GsmCdmaPhone extends Phone {
                 && isEmergency
                 && alwaysTryImsForEmergencyCarrierConfig
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
-                && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
+                && imsPhone.isImsAvailable();
 
         String dialPart = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
                 stripSeparators(dialString));
@@ -1101,7 +1101,12 @@ public class GsmCdmaPhone extends Phone {
             } catch (CallStateException e) {
                 if (DBG) logd("IMS PS call exception " + e +
                         "imsUseEnabled =" + imsUseEnabled + ", imsPhone =" + imsPhone);
-                if (!Phone.CS_FALLBACK.equals(e.getMessage())) {
+                // Do not throw a CallStateException and instead fall back to Circuit switch
+                // for emergency calls and MMI codes.
+                if (Phone.CS_FALLBACK.equals(e.getMessage()) || isEmergency) {
+                    logi("IMS call failed with Exception: " + e.getMessage() + ". Falling back "
+                            + "to CS.");
+                } else {
                     CallStateException ce = new CallStateException(e.getMessage());
                     ce.setStackTrace(e.getStackTrace());
                     throw ce;
@@ -3393,6 +3398,10 @@ public class GsmCdmaPhone extends Phone {
 
     private void logd(String s) {
         Rlog.d(LOG_TAG, "[GsmCdmaPhone] " + s);
+    }
+
+    private void logi(String s) {
+        Rlog.i(LOG_TAG, "[GsmCdmaPhone] " + s);
     }
 
     private void loge(String s) {
