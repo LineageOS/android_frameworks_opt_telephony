@@ -597,8 +597,6 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int getActiveSubInfoCount(String callingPackage) {
-        if (DBG) logd("[getActiveSubInfoCount]+");
-
         if (!canReadPhoneState(callingPackage, "getActiveSubInfoCount")) {
             return 0;
         }
@@ -609,10 +607,10 @@ public class SubscriptionController extends ISub.Stub {
             List<SubscriptionInfo> records = getActiveSubscriptionInfoList(
                     mContext.getOpPackageName());
             if (records == null) {
-                if (DBG) logd("[getActiveSubInfoCount] records null");
+                if (VDBG) logd("[getActiveSubInfoCount] records null");
                 return 0;
             }
-            if (DBG) logd("[getActiveSubInfoCount]- count: " + records.size());
+            if (VDBG) logd("[getActiveSubInfoCount]- count: " + records.size());
             return records.size();
         } finally {
             Binder.restoreCallingIdentity(identity);
