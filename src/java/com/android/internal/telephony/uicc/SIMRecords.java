@@ -250,6 +250,7 @@ public class SIMRecords extends IccRecords {
         mCi.unSetOnSmsOnSim(this);
         mParentApp.unregisterForReady(this);
         mParentApp.unregisterForLocked(this);
+        mContext.unregisterReceiver(mReceiver);
         resetRecords();
         super.dispose();
     }
@@ -2052,7 +2053,7 @@ public class SIMRecords extends IccRecords {
             plmnCode = IccUtils.bcdPlmnToString(plmnEntries, i);
 
             // Valid operator codes are 5 or 6 digits
-            if (plmnCode.length() >= 5) {
+            if (plmnCode != null && plmnCode.length() >= 5) {
                 log("EF_SPDI network: " + plmnCode);
                 mSpdiNetworks.add(plmnCode);
             }
