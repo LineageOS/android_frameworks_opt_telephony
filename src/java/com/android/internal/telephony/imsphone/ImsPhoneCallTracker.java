@@ -1276,19 +1276,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             && !mForegroundCall.isFull();
     }
 
-    public boolean
-    canDial() {
+    public boolean canDial() {
         boolean ret;
-        int serviceState = mPhone.getServiceState().getState();
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 
-        ret = (serviceState != ServiceState.STATE_POWER_OFF)
-            && mPendingMO == null
-            && !mRingingCall.isRinging()
-            && !disableCall.equals("true")
-            && (!mForegroundCall.getState().isAlive()
-                    || !mBackgroundCall.getState().isAlive());
+        ret = mPendingMO == null
+                && !mRingingCall.isRinging()
+                && !disableCall.equals("true")
+                && (!mForegroundCall.getState().isAlive()
+                        || !mBackgroundCall.getState().isAlive());
 
         return ret;
     }
