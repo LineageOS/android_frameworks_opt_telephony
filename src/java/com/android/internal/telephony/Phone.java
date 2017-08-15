@@ -2162,8 +2162,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return {@code true} if we are in emergency call back mode. This is a period where the phone
      * should be using as little power as possible and be ready to receive an incoming call from the
      * emergency operator.
-     *
-     * This method is overridden for GSM phones to return false always
      */
     public boolean isInEcm() {
         return mIsPhoneInEcmState;
