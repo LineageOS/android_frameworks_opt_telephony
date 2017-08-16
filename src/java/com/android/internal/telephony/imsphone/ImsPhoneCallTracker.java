@@ -2544,8 +2544,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private ImsConnectionStateListener mImsConnectionStateListener =
         new ImsConnectionStateListener() {
         @Override
-        public void onImsConnected() {
-            if (DBG) log("onImsConnected");
+        public void onImsConnected(int imsRadioTech) {
+            if (DBG) log("onImsConnected imsRadioTech=" + imsRadioTech);
             mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
             mPhone.setImsRegistered(true);
             mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
@@ -2563,8 +2563,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         @Override
-        public void onImsProgressing() {
-            if (DBG) log("onImsProgressing");
+        public void onImsProgressing(int imsRadioTech) {
+            if (DBG) log("onImsProgressing imsRadioTech=" + imsRadioTech);
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
             mPhone.setImsRegistered(false);
             mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
