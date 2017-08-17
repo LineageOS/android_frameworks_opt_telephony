@@ -3178,7 +3178,7 @@ public class DcTracker extends Handler {
             // we're not tying up the RIL command channel.
             // This also helps in any external dependency to turn off the context.
             if (DBG) log("onDisconnectDone: attached, ready and retry after disconnect");
-            long delay = apnContext.getInterApnDelay(mFailFast);
+            long delay = apnContext.getRetryAfterDisconnectDelay();
             if (delay > 0) {
                 // Data connection is in IDLE state, so when we reconnect later, we'll rebuild
                 // the waiting APN list, which will also reset/reconfigure the retry manager.
