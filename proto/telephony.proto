@@ -473,6 +473,96 @@ enum RilErrno {
 
   // LCE service not supported
   RIL_E_LCE_NOT_SUPPORTED_NEW = 37;
+
+  // Not sufficient memory to process the request
+  RIL_E_NO_MEMORY = 38;
+
+  // Modem hit unexpected error scenario while handling this request
+  RIL_E_INTERNAL_ERR = 39;
+
+  // Hit platform or system error
+  RIL_E_SYSTEM_ERR = 40;
+
+  // Vendor RIL got unexpected or incorrect response from modem for this request
+  RIL_E_MODEM_ERR = 41;
+
+  // Unexpected request for the current state
+  RIL_E_INVALID_STATE = 42;
+
+  // Not sufficient resource to process the request
+  RIL_E_NO_RESOURCES = 43;
+
+  // Received error from SIM card
+  RIL_E_SIM_ERR = 44;
+
+  // Received invalid arguments in request
+  RIL_E_INVALID_ARGUMENTS = 45;
+
+  // Cannot process the request in current SIM state
+  RIL_E_INVALID_SIM_STATE = 46;
+
+  // Cannot process the request in current Modem state
+  RIL_E_INVALID_MODEM_STATE = 47;
+
+  // Received invalid call id in request
+  RIL_E_INVALID_CALL_ID = 48;
+
+  // ACK received when there is no SMS to ack
+  RIL_E_NO_SMS_TO_ACK = 49;
+
+  // Received error from network
+  RIL_E_NETWORK_ERR = 50;
+
+  // Operation denied due to overly-frequent requests
+  RIL_E_REQUEST_RATE_LIMITED = 51;
+
+  // SIM is busy
+  RIL_E_SIM_BUSY = 52;
+
+  // The target EF is full
+  RIL_E_SIM_FULL = 53;
+
+  // Request is rejected by network
+  RIL_E_NETWORK_REJECT = 54;
+
+  // Not allowed the request now
+  RIL_E_OPERATION_NOT_ALLOWED = 55;
+
+  // The request record is empty
+  RIL_E_EMPTY_RECORD = 56;
+
+  // Invalid sms format
+  RIL_E_INVALID_SMS_FORMAT = 57;
+
+  // Message not encoded properly
+  RIL_E_ENCODING_ERR = 58;
+
+  // SMSC address specified is invalid
+  RIL_E_INVALID_SMSC_ADDRESS = 59;
+
+  // No such entry present to perform the request
+  RIL_E_NO_SUCH_ENTRY = 60;
+
+  // Network is not ready to perform the request
+  RIL_E_NETWORK_NOT_READY = 61;
+
+  // Device does not have this value provisioned
+  RIL_E_NOT_PROVISIONED = 62;
+
+  // Device does not have subscription
+  RIL_E_NO_SUBSCRIPTION = 63;
+
+  // Network cannot be found
+  RIL_E_NO_NETWORK_FOUND = 64;
+
+  // Operation cannot be performed because the device is currently in use
+  RIL_E_DEVICE_IN_USE = 65;
+
+  // Operation aborted
+  RIL_E_ABORTED = 66;
+
+  // Invalid response sent by vendor code
+  RIL_E_INVALID_RESPONSE = 67;
 }
 
 // PDP_type values in TS 27.007 section 10.1.1.
@@ -1195,16 +1285,16 @@ message SmsSession {
 
     message CBMessage {
       // CB message format
-      optional Format msgFormat = 1;
+      optional Format msg_format = 1;
 
       // CB message priority
-      optional CBPriority msgPriority = 2;
+      optional CBPriority msg_priority = 2;
 
       // Type of CB msg
-      optional CBMessageType msgType = 3;
+      optional CBMessageType msg_type = 3;
 
       // Service category of CB message
-      optional int32 serviceCategory = 4;
+      optional int32 service_category = 4;
     }
 
     enum CBMessageType {
