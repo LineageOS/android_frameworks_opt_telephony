@@ -1795,8 +1795,10 @@ public class ServiceStateTracker extends Handler {
             case EVENT_POLL_STATE_REGISTRATION: {
                 VoiceRegStateResult voiceRegStateResult = (VoiceRegStateResult) ar.result;
                 int registrationState = getRegStateFromHalRegState(voiceRegStateResult.regState);
+                int cssIndicator = voiceRegStateResult.cssSupported ? 1 : 0;
 
                 mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
+                mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setRilVoiceRadioTechnology(voiceRegStateResult.rat);
 
                 //Denial reason if registrationState = 3
@@ -1822,8 +1824,6 @@ public class ServiceStateTracker extends Handler {
                         mEmergencyOnly = false;
                     }
                 } else {
-                    //init with 0, because it is treated as a boolean
-                    int cssIndicator = voiceRegStateResult.cssSupported ? 1 : 0;
                     int roamingIndicator = voiceRegStateResult.roamingIndicator;
 
                     //Indicates if current system is in PR
@@ -1841,7 +1841,6 @@ public class ServiceStateTracker extends Handler {
                                     && !isRoamIndForHomeSystem(
                                             Integer.toString(roamingIndicator));
                     mNewSS.setVoiceRoaming(cdmaRoaming);
-                    mNewSS.setCssIndicator(cssIndicator);
                     mRoamingIndicator = roamingIndicator;
                     mIsInPrl = (systemIsInPrl == 0) ? false : true;
                     mDefaultRoamingIndicator = defaultRoamingIndicator;
@@ -2498,16 +2497,13 @@ public class ServiceStateTracker extends Handler {
      * that could support voice and data simultaneously.
      */
     public boolean isConcurrentVoiceAndDataAllowed() {
-        if (mPhone.isPhoneTypeGsm()) {
-            return (mSS.getRilVoiceRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
-        } else if (mPhone.isPhoneTypeCdma()) {
-            // Note: it needs to be confirmed which CDMA network types
-            // can support voice and data calls concurrently.
-            // For the time-being, the return value will be false.
-            return false;
+        if (mSS.getCssIndicator() == 1) {
+            // Checking the Concurrent Service Supported flag first for all phone types.
+            return true;
+        } else if (mPhone.isPhoneTypeGsm()) {
+            return (mSS.getRilDataRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         } else {
-            // Using the Conncurrent Service Supported flag for CdmaLte devices.
-            return mSS.getCssIndicator() == 1;
+            return false;
         }
     }
 
@@ -2680,6 +2676,8 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasRejectCauseChanged = mRejectCode != mNewRejectCode;
 
+        boolean hasCssIndicatorChanged = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
+
         boolean has4gHandoff = false;
         boolean hasMultiApnSupport = false;
         boolean hasLostMultiApnSupport = false;
@@ -2725,7 +2723,8 @@ public class ServiceStateTracker extends Handler {
                     + " hasLocationChanged=" + hasLocationChanged
                     + " has4gHandoff = " + has4gHandoff
                     + " hasMultiApnSupport=" + hasMultiApnSupport
-                    + " hasLostMultiApnSupport=" + hasLostMultiApnSupport);
+                    + " hasLostMultiApnSupport=" + hasLostMultiApnSupport
+                    + " hasCssIndicatorChanged=" + hasCssIndicatorChanged);
         }
 
         // Add an event log when connection state changes
@@ -2760,6 +2759,11 @@ public class ServiceStateTracker extends Handler {
                             mNewSS.getRilVoiceRadioTechnology()) + " at cell " + cid);
                 }
             }
+
+            if (hasCssIndicatorChanged) {
+                mPhone.notifyDataConnection(Phone.REASON_CSS_INDICATOR_CHANGED);
+            }
+
             mReasonDataDenied = mNewReasonDataDenied;
             mMaxDataCalls = mNewMaxDataCalls;
             mRejectCode = mNewRejectCode;
