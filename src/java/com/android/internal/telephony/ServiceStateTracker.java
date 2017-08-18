@@ -2866,31 +2866,7 @@ public class ServiceStateTracker extends Handler {
 
                 if (!mNitzUpdatedTime && !mcc.equals("000") && !TextUtils.isEmpty(iso)
                         && getAutoTimeZone()) {
-
-                    // Test both paths if ignore nitz is true
-                    boolean testOneUniqueOffsetPath = SystemProperties.getBoolean(
-                            TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
-                            && ((SystemClock.uptimeMillis() & 1) == 0);
-
-                    List<String> uniqueZoneIds = TimeUtils.getTimeZoneIdsWithUniqueOffsets(iso);
-                    if ((uniqueZoneIds.size() == 1) || testOneUniqueOffsetPath) {
-                        String zoneId = uniqueZoneIds.get(0);
-                        if (DBG) {
-                            log("pollStateDone: no nitz but one TZ for iso-cc=" + iso
-                                    + " with zone.getID=" + zoneId
-                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
-                        }
-                        mTimeZoneLog.log("pollStateDone: set time zone=" + zoneId
-                                + " mcc=" + mcc + " iso=" + iso);
-                        setAndBroadcastNetworkSetTimeZone(zoneId);
-                    } else {
-                        if (DBG) {
-                            log("pollStateDone: there are " + uniqueZoneIds.size()
-                                    + " unique offsets for iso-cc='" + iso
-                                    + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath
-                                    + "', do nothing");
-                        }
-                    }
+                    updateTimeZoneByNetworkCountryCode(iso);
                 }
 
                 if (!mPhone.isPhoneTypeGsm()) {
@@ -3840,6 +3816,12 @@ public class ServiceStateTracker extends Handler {
         mTimeZoneLog.log(tmpLog);
         if (mSavedTimeZone != null) {
             setAndBroadcastNetworkSetTimeZone(mSavedTimeZone);
+        } else {
+            String iso = ((TelephonyManager) mPhone.getContext().getSystemService(
+                    Context.TELEPHONY_SERVICE)).getNetworkCountryIsoForPhone(mPhone.getPhoneId());
+            if (!TextUtils.isEmpty(iso)) {
+                updateTimeZoneByNetworkCountryCode(iso);
+            }
         }
     }
 
@@ -4994,5 +4976,36 @@ public class ServiceStateTracker extends Handler {
             regState = dataRegState;
         }
         return regState;
+    }
+
+    /**
+     * Update time zone by network country code, works on countries which only have one time zone.
+     * @param iso Country code from network MCC
+     */
+    private void updateTimeZoneByNetworkCountryCode(String iso) {
+        // Test both paths if ignore nitz is true
+        boolean testOneUniqueOffsetPath = SystemProperties.getBoolean(
+                TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
+                && ((SystemClock.uptimeMillis() & 1) == 0);
+
+        List<String> uniqueZoneIds = TimeUtils.getTimeZoneIdsWithUniqueOffsets(iso);
+        if ((uniqueZoneIds.size() == 1) || testOneUniqueOffsetPath) {
+            String zoneId = uniqueZoneIds.get(0);
+            if (DBG) {
+                log("updateTimeZoneByNetworkCountryCode: no nitz but one TZ for iso-cc=" + iso
+                        + " with zone.getID=" + zoneId
+                        + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
+            }
+            mTimeZoneLog.log("updateTimeZoneByNetworkCountryCode: set time zone=" + zoneId
+                    + " iso=" + iso);
+            setAndBroadcastNetworkSetTimeZone(zoneId);
+        } else {
+            if (DBG) {
+                log("updateTimeZoneByNetworkCountryCode: there are " + uniqueZoneIds.size()
+                        + " unique offsets for iso-cc='" + iso
+                        + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath
+                        + "', do nothing");
+            }
+        }
     }
 }
