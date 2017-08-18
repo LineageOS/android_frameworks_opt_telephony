@@ -712,6 +712,12 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void setTTYMode(int ttyMode, Message onComplete) {
+        super.setTTYMode(ttyMode, onComplete);
+        mCT.setTtyMode(ttyMode);
+    }
+
+    @Override
     public void setUiTTYMode(int uiTtyMode, Message onComplete) {
         mCT.setUiTTYMode(uiTtyMode, onComplete);
     }
