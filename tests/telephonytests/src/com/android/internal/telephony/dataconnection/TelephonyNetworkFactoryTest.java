@@ -22,7 +22,6 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.StringNetworkSpecifier;
 import android.os.Binder;
-import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
@@ -66,18 +65,29 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
         final Looper looper;
         DcTrackerMock dcTrackerMock;
         final Context contextMock;
+        private Object mLock = new Object();
+        private static final int MAX_INIT_WAIT_MS = 30000; // 30 seconds
 
         TestSetup(int numPhones) {
-            handlerThread = new HandlerThread("TelephonyNetworkFactoryTest");
-            handlerThread.start();
-            looper = handlerThread.getLooper();
-
-            Handler myHandler = new Handler(looper) {
-                public void handleMessage(Message msg) {
-                    if (dcTrackerMock == null) dcTrackerMock = new DcTrackerMock();
+            handlerThread = new HandlerThread("TelephonyNetworkFactoryTest") {
+                @Override
+                public void onLooperPrepared() {
+                    synchronized (mLock) {
+                        if (dcTrackerMock == null) dcTrackerMock = new DcTrackerMock();
+                        mLock.notifyAll();
+                    }
                 }
             };
-            myHandler.obtainMessage(0).sendToTarget();
+            handlerThread.start();
+            // wait until dct created
+            synchronized (mLock) {
+                try {
+                    mLock.wait(MAX_INIT_WAIT_MS);
+                } catch (InterruptedException ie) {
+                }
+                if (dcTrackerMock == null) fail("failed to initialize dct");
+            }
+            looper = handlerThread.getLooper();
 
             final ContextFixture contextFixture = new ContextFixture();
             String[] networkConfigString = getContext().getResources().getStringArray(
@@ -132,7 +142,6 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
      * Test that phone active changes cause the DcTracker to get poked.
      */
     @FlakyTest
-    @Ignore
     @SmallTest
     public void testActive() throws Exception {
         mTestName = "testActive";

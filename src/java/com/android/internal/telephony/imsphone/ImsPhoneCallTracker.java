@@ -1393,7 +1393,27 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     //***** Called from ImsPhone
+    /**
+     * Set the TTY mode. This is the actual tty mode (varies depending on peripheral status)
+     */
+    public void setTtyMode(int ttyMode) {
+        if (mImsManager == null) {
+            Log.w(LOG_TAG, "ImsManager is null when setting TTY mode");
+            return;
+        }
 
+        try {
+            mImsManager.setTtyMode(ttyMode);
+        } catch (ImsException e) {
+            loge("setTtyMode : " + e);
+            retryGetImsService();
+        }
+    }
+
+    /**
+     * Sets the UI TTY mode. This is the preferred TTY mode that the user sets in the call
+     * settings screen.
+     */
     public void setUiTTYMode(int uiTtyMode, Message onComplete) {
         if (mImsManager == null) {
             mPhone.sendErrorResponse(onComplete, getImsManagerIsNullException());
@@ -1403,7 +1423,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         try {
             mImsManager.setUiTTYMode(mPhone.getContext(), uiTtyMode, onComplete);
         } catch (ImsException e) {
-            loge("setTTYMode : " + e);
+            loge("setUITTYMode : " + e);
             mPhone.sendErrorResponse(onComplete, e);
             retryGetImsService();
         }

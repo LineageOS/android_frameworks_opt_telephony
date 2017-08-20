@@ -1058,21 +1058,19 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testIsConcurrentVoiceAndDataAllowed() {
-        // Verify all 3 branches in the function isConcurrentVoiceAndDataAllowed
-        doReturn(true).when(mPhone).isPhoneTypeGsm();
-        sst.mSS.setRilVoiceRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_HSPA);
-        assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
-
         doReturn(false).when(mPhone).isPhoneTypeGsm();
-        doReturn(true).when(mPhone).isPhoneTypeCdma();
-        assertEquals(false, sst.isConcurrentVoiceAndDataAllowed());
-
-        doReturn(false).when(mPhone).isPhoneTypeGsm();
-        doReturn(false).when(mPhone).isPhoneTypeCdma();
         sst.mSS.setCssIndicator(1);
         assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
         sst.mSS.setCssIndicator(0);
         assertEquals(false, sst.isConcurrentVoiceAndDataAllowed());
+
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        sst.mSS.setRilDataRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_HSPA);
+        assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
+        sst.mSS.setRilDataRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_GPRS);
+        assertEquals(false, sst.isConcurrentVoiceAndDataAllowed());
+        sst.mSS.setCssIndicator(1);
+        assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
     }
 
     @Test
