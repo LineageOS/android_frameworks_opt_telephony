@@ -1851,6 +1851,13 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public void setTTYMode(int ttyMode, Message onComplete) {
+        if (mImsPhone != null) {
+            mImsPhone.setTTYMode(ttyMode, onComplete);
+        }
+    }
+
+    @Override
     public void setUiTTYMode(int uiTtyMode, Message onComplete) {
        if (mImsPhone != null) {
            mImsPhone.setUiTTYMode(uiTtyMode, onComplete);
