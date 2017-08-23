@@ -3946,6 +3946,7 @@ public class ServiceStateTracker extends Handler {
                 .setColor(context.getResources().getColor(
                         com.android.internal.R.color.system_notification_accent_color))
                 .setContentTitle(title)
+                .setStyle(new Notification.BigTextStyle().bigText(details))
                 .setContentText(details)
                 .setChannel(NotificationChannelController.CHANNEL_ID_ALERT)
                 .build();
