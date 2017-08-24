@@ -311,6 +311,15 @@ public abstract class Connection {
     }
 
     /**
+     * Sets the Connection connect time in {@link SystemClock#elapsedRealtime()} format.
+     *
+     * @param connectTimeReal the new connect time.
+     */
+    public void setConnectTimeReal(long connectTimeReal) {
+        mConnectTimeReal = connectTimeReal;
+    }
+
+    /**
      * Connection connect time in elapsedRealtime() format.
      * For outgoing calls: Begins at (DIALING|ALERTING) -> ACTIVE transition.
      * For incoming calls: Begins at (INCOMING|WAITING) -> ACTIVE transition.
