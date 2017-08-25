@@ -131,7 +131,7 @@ public class CarrierServiceStateTracker extends Handler {
         public void onReceive(Context context, Intent intent) {
             CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
                     context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            PersistableBundle b = carrierConfigManager.getConfig();
+            PersistableBundle b = carrierConfigManager.getConfigForSubId(mPhone.getSubId());
             mDelay = b.getInt(CarrierConfigManager.KEY_PREF_NETWORK_NOTIFICATION_DELAY_INT);
             Rlog.i(LOG_TAG, "reading time to delay notification: " + mDelay);
             handleConfigChanges();
