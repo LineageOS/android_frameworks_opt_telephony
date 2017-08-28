@@ -862,6 +862,7 @@ public class DataConnection extends StateMachine {
         result.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
 
         if (mApnSetting != null) {
+            ApnSetting securedDunApn = mDct.fetchDunApn();
             for (String type : mApnSetting.types) {
                 if (!mRestrictedNetworkOverride
                         && (mConnectionParams != null && mConnectionParams.mUnmeteredUseOnly)
@@ -878,6 +879,11 @@ public class DataConnection extends StateMachine {
                         result.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
                         result.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
                         result.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+                        // check if this is the DUN apn as well as returned by fetchDunApn().
+                        // If yes, add DUN capability too.
+                        if (mApnSetting.equals(securedDunApn)) {
+                            result.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+                        }
                         break;
                     }
                     case PhoneConstants.APN_TYPE_DEFAULT: {
@@ -893,7 +899,6 @@ public class DataConnection extends StateMachine {
                         break;
                     }
                     case PhoneConstants.APN_TYPE_DUN: {
-                        ApnSetting securedDunApn = mDct.fetchDunApn();
                         if (securedDunApn == null || securedDunApn.equals(mApnSetting)) {
                             result.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
                         }
