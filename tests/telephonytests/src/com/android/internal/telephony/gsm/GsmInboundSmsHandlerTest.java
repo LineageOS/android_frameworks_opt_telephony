@@ -64,6 +64,7 @@ import com.android.internal.util.StateMachine;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -225,6 +226,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testNewSms() {
