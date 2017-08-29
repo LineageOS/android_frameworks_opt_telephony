@@ -168,6 +168,11 @@ public class GsmCdmaCallTracker extends CallTracker {
         if (mPhone.isPhoneTypeGsm()) {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_GSM];
             mCi.unregisterForCallWaitingInfo(this);
+            // Prior to phone switch to GSM, if CDMA has any emergency call
+            // data will be in disabled state, after switching to GSM enable data.
+            if (mIsInEmergencyCall) {
+                mPhone.mDcTracker.setInternalDataEnabled(true);
+            }
         } else {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_CDMA];
             mPendingCallInEcm = false;
