@@ -92,6 +92,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private static final String TAG_PKG_REF_DO = "CA";
     private static final String TAG_AR_DO = "E3";
     private static final String TAG_PERM_AR_DO = "DB";
+    private static final String TAG_AID_REF_DO = "4F";
+    private static final String CARRIER_PRIVILEGE_AID = "FFFFFFFFFFFF";
 
     private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 1;
     private static final int EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE = 2;
@@ -541,37 +543,52 @@ public class UiccCarrierPrivilegeRules extends Handler {
             if (rule.startsWith(TAG_REF_DO)) {
                 TLV refDo = new TLV(TAG_REF_DO); //E1
                 rule = refDo.parse(rule, false);
-
-                // Skip unrelated rules.
-                if (!refDo.value.startsWith(TAG_DEVICE_APP_ID_REF_DO)) {
+                // Allow 4F tag with a default value "FF FF FF FF FF FF" to be compatible with
+                // devices having GP access control enforcer:
+                //  - If no 4F tag is present, it's a CP rule.
+                //  - If 4F tag has value "FF FF FF FF FF FF", it's a CP rule.
+                //  - If 4F tag has other values, it's not a CP rule and Android should ignore it.
+                TLV deviceDo = new TLV(TAG_DEVICE_APP_ID_REF_DO); //C1
+                if (refDo.value.startsWith(TAG_AID_REF_DO)) {
+                    TLV cpDo = new TLV(TAG_AID_REF_DO); //4F
+                    String remain = cpDo.parse(refDo.value, false);
+                    if (!cpDo.lengthBytes.equals("06") || !cpDo.value.equals(CARRIER_PRIVILEGE_AID)
+                            || remain.isEmpty() || !remain.startsWith(TAG_DEVICE_APP_ID_REF_DO)) {
+                        return null;
+                    }
+                    tmp = deviceDo.parse(remain, false);
+                    certificateHash = deviceDo.value;
+                } else if (refDo.value.startsWith(TAG_DEVICE_APP_ID_REF_DO)) {
+                    tmp = deviceDo.parse(refDo.value, false);
+                    certificateHash = deviceDo.value;
+                } else {
                     return null;
                 }
-
-                TLV deviceDo = new TLV(TAG_DEVICE_APP_ID_REF_DO); //C1
-                tmp = deviceDo.parse(refDo.value, false);
-                certificateHash = deviceDo.value;
-
                 if (!tmp.isEmpty()) {
-                  if (!tmp.startsWith(TAG_PKG_REF_DO)) {
-                      return null;
-                  }
-                  TLV pkgDo = new TLV(TAG_PKG_REF_DO); //CA
-                  pkgDo.parse(tmp, true);
-                  packageName = new String(IccUtils.hexStringToBytes(pkgDo.value));
+                    if (!tmp.startsWith(TAG_PKG_REF_DO)) {
+                        return null;
+                    }
+                    TLV pkgDo = new TLV(TAG_PKG_REF_DO); //CA
+                    pkgDo.parse(tmp, true);
+                    packageName = new String(IccUtils.hexStringToBytes(pkgDo.value));
                 } else {
-                  packageName = null;
+                    packageName = null;
                 }
             } else if (rule.startsWith(TAG_AR_DO)) {
                 TLV arDo = new TLV(TAG_AR_DO); //E3
                 rule = arDo.parse(rule, false);
-
-                // Skip unrelated rules.
-                if (!arDo.value.startsWith(TAG_PERM_AR_DO)) {
+                // Skip all the irrelevant tags (All the optional tags here are two bytes
+                // according to the spec GlobalPlatform Secure Element Access Control).
+                String remain = arDo.value;
+                while (!remain.isEmpty() && !remain.startsWith(TAG_PERM_AR_DO)) {
+                    TLV tmpDo = new TLV(remain.substring(0, 2));
+                    remain = tmpDo.parse(remain, false);
+                }
+                if (remain.isEmpty()) {
                     return null;
                 }
-
                 TLV permDo = new TLV(TAG_PERM_AR_DO); //DB
-                permDo.parse(arDo.value, true);
+                permDo.parse(remain, true);
             } else  {
                 // Spec requires it must be either TAG_REF_DO or TAG_AR_DO.
                 throw new RuntimeException("Invalid Rule type");
