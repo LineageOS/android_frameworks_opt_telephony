@@ -67,6 +67,7 @@ import com.android.ims.internal.IImsVideoCallProvider;
 import com.android.ims.internal.ImsCallSession;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.ims.internal.VideoPauseTracker;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -100,6 +101,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     public interface PhoneStateListener {
         void onPhoneStateChanged(PhoneConstants.State oldState, PhoneConstants.State newState);
+    }
+
+    public interface SharedPreferenceProxy {
+        SharedPreferences getDefaultSharedPreferences(Context context);
     }
 
     private static final boolean DBG = true;
@@ -346,6 +351,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      */
     private boolean mShouldUpdateImsConfigOnDisconnect = false;
 
+    /**
+     * Default implementation for retrieving shared preferences; uses the actual PreferencesManager.
+     */
+    private SharedPreferenceProxy mSharedPreferenceProxy = (Context context) -> {
+        return PreferenceManager.getDefaultSharedPreferences(context);
+    };
+
     //***** Events
 
 
@@ -369,6 +381,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Send a message to connect to the Ims Service and open a connection through
         // getImsService().
         sendEmptyMessage(EVENT_GET_IMS_SERVICE);
+    }
+
+    /**
+     * Test-only method used to mock out access to the shared preferences through the
+     * {@link PreferenceManager}.
+     * @param sharedPreferenceProxy
+     */
+    @VisibleForTesting
+    public void setSharedPreferenceProxy(SharedPreferenceProxy sharedPreferenceProxy) {
+        mSharedPreferenceProxy = sharedPreferenceProxy;
     }
 
     private PendingIntent createIncomingCallPendingIntent() {
@@ -451,8 +473,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     public Connection dial(String dialString, int videoState, Bundle intentExtras) throws
             CallStateException {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        int oirMode = sp.getInt(Phone.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
+        int oirMode;
+        if (mSharedPreferenceProxy != null && mPhone.getDefaultPhone() != null) {
+            SharedPreferences sp = mSharedPreferenceProxy.getDefaultSharedPreferences(
+                    mPhone.getContext());
+            oirMode = sp.getInt(Phone.CLIR_KEY + mPhone.getDefaultPhone().getPhoneId(),
+                    CommandsInterface.CLIR_DEFAULT);
+        } else {
+            loge("dial; could not get default CLIR mode.");
+            oirMode = CommandsInterface.CLIR_DEFAULT;
+        }
         return dial(dialString, oirMode, videoState, intentExtras);
     }
 
