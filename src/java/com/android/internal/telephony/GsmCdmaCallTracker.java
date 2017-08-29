@@ -40,6 +40,7 @@ import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 
@@ -68,7 +69,8 @@ public class GsmCdmaCallTracker extends CallTracker {
     private static final int MAX_CONNECTIONS_PER_CALL_CDMA = 1; //only 1 connection allowed per call
 
     //***** Instance Variables
-    private GsmCdmaConnection mConnections[];
+    @VisibleForTesting
+    public GsmCdmaConnection[] mConnections;
     private RegistrantList mVoiceCallEndedRegistrants = new RegistrantList();
     private RegistrantList mVoiceCallStartedRegistrants = new RegistrantList();
 
@@ -182,10 +184,9 @@ public class GsmCdmaCallTracker extends CallTracker {
     private void reset() {
         Rlog.d(LOG_TAG, "reset");
 
-        clearDisconnected();
-
         for (GsmCdmaConnection gsmCdmaConnection : mConnections) {
             if (gsmCdmaConnection != null) {
+                gsmCdmaConnection.onDisconnect(DisconnectCause.ERROR_UNSPECIFIED);
                 gsmCdmaConnection.dispose();
             }
         }
@@ -196,7 +197,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
         mConnections = null;
         mPendingMO = null;
-        mState = PhoneConstants.State.IDLE;
+        clearDisconnected();
     }
 
     @Override
