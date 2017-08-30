@@ -16,9 +16,14 @@
 
 package com.android.internal.telephony.gsm;
 
+import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED;
+
+import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE;
+import static com.android.internal.telephony.SmsUsageMonitor.PREMIUM_SMS_PERMISSION_NEVER_ALLOW;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -35,6 +40,7 @@ import android.location.CountryDetector;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
 import android.telephony.SmsManager;
@@ -42,8 +48,10 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Singleton;
 
+import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.ImsSMSDispatcher;
+import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.TestApplication;
@@ -51,7 +59,10 @@ import com.android.internal.telephony.TestApplication;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+
+import java.util.HashMap;
 
 public class GsmSmsDispatcherTest extends TelephonyTest {
     @Mock
@@ -64,6 +75,8 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
     @Mock
     private CountryDetector mCountryDetector;
+    @Mock
+    private SMSDispatcher.SmsTracker mSmsTracker;
     @Mock
     private ISub.Stub mISubStub;
     private Object mLock = new Object();
@@ -190,5 +203,36 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
             assertEquals(true, mReceivedTestIntent);
             assertEquals(SmsManager.RESULT_ERROR_NULL_PDU, mTestReceiver.getResultCode());
         }
+    }
+
+    @Test
+    public void testSendRawPduWithEventStopSending() throws Exception {
+        setupMockPackagePermissionChecks();
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+
+        // return a fake value to pass getData()
+        HashMap data = new HashMap<String, String>();
+        data.put("pdu", new byte[1]);
+        when(mSmsTracker.getData()).thenReturn(data);
+
+        // Set values to return to simulate EVENT_STOP_SENDING
+        when(mSmsUsageMonitor.checkDestination(any(), any()))
+                .thenReturn(CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE);
+        when(mSmsUsageMonitor.getPremiumSmsPermission(any()))
+                .thenReturn(PREMIUM_SMS_PERMISSION_NEVER_ALLOW);
+        when(mSmsTracker.getAppPackageName()).thenReturn("");
+
+        // Settings.Global.DEVICE_PROVISIONED to 1
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 1);
+
+        mGsmSmsDispatcher.sendRawPdu(mSmsTracker);
+
+        verify(mSmsUsageMonitor, times(1)).checkDestination(any(), any());
+        verify(mSmsUsageMonitor, times(1)).getPremiumSmsPermission(any());
+        ArgumentCaptor<Integer> argumentCaptor = ArgumentCaptor
+                .forClass(Integer.class);
+        verify(mSmsTracker, times(1)).onFailed(any(), argumentCaptor.capture(), anyInt());
+        assertEquals(RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED, (int) argumentCaptor.getValue());
     }
 }
