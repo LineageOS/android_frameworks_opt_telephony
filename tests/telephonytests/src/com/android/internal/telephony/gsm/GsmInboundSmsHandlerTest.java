@@ -226,6 +226,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testNewSms() {
