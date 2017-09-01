@@ -726,6 +726,7 @@ public class ServiceStateTracker extends Handler {
             try {
                 mPhone.notifySignalStrength();
                 notified = true;
+                mLastSignalStrength = mSignalStrength;
             } catch (NullPointerException ex) {
                 loge("updateSignalStrength() Phone already destroyed: " + ex
                         + "SignalStrength not notified");
