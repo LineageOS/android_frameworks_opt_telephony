@@ -453,6 +453,9 @@ public abstract class TelephonyTest {
         mSST.mSS = mServiceState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
 
+        //SIM
+        doReturn(1).when(mTelephonyManager).getSimCount();
+
         setReady(false);
     }
 
