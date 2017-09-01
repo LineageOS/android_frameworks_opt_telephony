@@ -117,6 +117,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         SharedPreferences getDefaultSharedPreferences(Context context);
     }
 
+    public interface PhoneNumberUtilsProxy {
+        boolean isEmergencyNumber(String number);
+    }
+
     private static final boolean DBG = true;
 
     // When true, dumps the state of ImsPhoneCallTracker after changes to foreground and background
@@ -609,6 +613,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return PreferenceManager.getDefaultSharedPreferences(context);
     };
 
+    /**
+     * Default implementation for determining if a number is an emergency number.  Uses the real
+     * PhoneNumberUtils.
+     */
+    private PhoneNumberUtilsProxy mPhoneNumberUtilsProxy = (String string) -> {
+        return PhoneNumberUtils.isEmergencyNumber(string);
+    };
+
     // Callback fires when ImsManager MMTel Feature changes state
     private ImsServiceProxy.INotifyStatusChanged mNotifyStatusChangedCallback = () -> {
         try {
@@ -697,6 +709,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public void setSharedPreferenceProxy(SharedPreferenceProxy sharedPreferenceProxy) {
         mSharedPreferenceProxy = sharedPreferenceProxy;
+    }
+
+    /**
+     * Test-only method used to mock out access to the phone number utils class.
+     * @param phoneNumberUtilsProxy
+     */
+    @VisibleForTesting
+    public void setPhoneNumberUtilsProxy(PhoneNumberUtilsProxy phoneNumberUtilsProxy) {
+        mPhoneNumberUtilsProxy = phoneNumberUtilsProxy;
     }
 
     private int getPackageUid(Context context, String pkg) {
@@ -837,9 +858,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     dial(String dialString, int clirMode, int videoState, Bundle intentExtras)
             throws CallStateException {
         boolean isPhoneInEcmMode = isPhoneInEcbMode();
-        boolean isEmergencyNumber = PhoneNumberUtils.isEmergencyNumber(dialString);
+        boolean isEmergencyNumber = mPhoneNumberUtilsProxy.isEmergencyNumber(dialString);
 
         if (DBG) log("dial clirMode=" + clirMode);
+        if (isEmergencyNumber) {
+            clirMode = CommandsInterface.CLIR_SUPPRESSION;
+            if (DBG) log("dial emergency call, set clirModIe=" + clirMode);
+        }
 
         // note that this triggers call state changed notif
         clearDisconnected();
@@ -1043,7 +1068,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         // Always unmute when initiating a new call
         setMute(false);
-        int serviceType = PhoneNumberUtils.isEmergencyNumber(conn.getAddress()) ?
+        int serviceType = mPhoneNumberUtilsProxy.isEmergencyNumber(conn.getAddress()) ?
                 ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
         int callType = ImsCallProfile.getCallTypeFromVideoState(videoState);
         //TODO(vt): Is this sufficient?  At what point do we know the video state of the call?
