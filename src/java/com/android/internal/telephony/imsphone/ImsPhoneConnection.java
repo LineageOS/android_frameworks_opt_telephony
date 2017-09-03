@@ -111,6 +111,14 @@ public class ImsPhoneConnection extends Connection implements
      */
     private boolean mIsMergeInProcess = false;
 
+    /**
+     * Used as an override to determine whether video is locally available for this call.
+     * This allows video availability to be overridden in the case that the modem says video is
+     * currently available, but mobile data is off and the carrier is metering data for video
+     * calls.
+     */
+    private boolean mIsVideoEnabled = true;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -246,11 +254,15 @@ public class ImsPhoneConnection extends Connection implements
         return (a == null) ? (b == null) : (b != null && a.startsWith (b));
     }
 
-    private static int applyLocalCallCapabilities(ImsCallProfile localProfile, int capabilities) {
-        Rlog.w(LOG_TAG, "applyLocalCallCapabilities - localProfile = "+localProfile);
+    private int applyLocalCallCapabilities(ImsCallProfile localProfile, int capabilities) {
+        Rlog.i(LOG_TAG, "applyLocalCallCapabilities - localProfile = " + localProfile);
         capabilities = removeCapability(capabilities,
                 Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
 
+        if (!mIsVideoEnabled) {
+            Rlog.i(LOG_TAG, "applyLocalCallCapabilities - disabling video (overidden)");
+            return capabilities;
+        }
         switch (localProfile.mCallType) {
             case ImsCallProfile.CALL_TYPE_VT:
                 // Fall-through
@@ -1228,5 +1240,16 @@ public class ImsPhoneConnection extends Connection implements
                 + "newVideoState=" + VideoProfile.videoStateToString(newVideoState));
         updateVideoState(newVideoState);
         mShouldIgnoreVideoStateChanges = false;
+    }
+
+    public void handleDataEnabledChange(boolean isDataEnabled) {
+        mIsVideoEnabled = isDataEnabled;
+        Rlog.i(LOG_TAG, "handleDataEnabledChange: isDataEnabled=" + isDataEnabled
+                + "; updating local video availability.");
+        updateMediaCapabilities(getImsCall());
+        if (mImsVideoCallProviderWrapper != null) {
+            mImsVideoCallProviderWrapper.setIsVideoEnabled(
+                    hasCapabilities(Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL));
+        }
     }
 }
