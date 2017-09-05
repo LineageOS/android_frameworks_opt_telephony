@@ -76,6 +76,7 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
@@ -970,7 +971,8 @@ public abstract class SMSDispatcher extends Handler {
      *  raw pdu of the status report is in the extended data ("pdu").
      * -param destAddr the destination phone number (for short code confirmation)
      */
-    protected void sendRawPdu(SmsTracker tracker) {
+    @VisibleForTesting
+    public void sendRawPdu(SmsTracker tracker) {
         HashMap map = tracker.getData();
         byte pdu[] = (byte[]) map.get("pdu");
 
@@ -1075,7 +1077,7 @@ public abstract class SMSDispatcher extends Handler {
 
             // Wait for user confirmation unless the user has set permission to always allow/deny
             int premiumSmsPermission = mUsageMonitor.getPremiumSmsPermission(
-                    tracker.mAppInfo.packageName);
+                    tracker.getAppPackageName());
             if (premiumSmsPermission == SmsUsageMonitor.PREMIUM_SMS_PERMISSION_UNKNOWN) {
                 // First time trying to send to premium SMS.
                 premiumSmsPermission = SmsUsageMonitor.PREMIUM_SMS_PERMISSION_ASK_USER;
@@ -1150,7 +1152,7 @@ public abstract class SMSDispatcher extends Handler {
             return;     // queue limit reached; error was returned to caller
         }
 
-        CharSequence appLabel = getAppLabel(tracker.mAppInfo.packageName, tracker.mUserId);
+        CharSequence appLabel = getAppLabel(tracker.getAppPackageName(), tracker.mUserId);
         Resources r = Resources.getSystem();
         Spanned messageText = Html.fromHtml(r.getString(R.string.sms_control_message, appLabel));
 
@@ -1188,7 +1190,7 @@ public abstract class SMSDispatcher extends Handler {
             detailsId = R.string.sms_short_code_details;
         }
 
-        CharSequence appLabel = getAppLabel(tracker.mAppInfo.packageName, tracker.mUserId);
+        CharSequence appLabel = getAppLabel(tracker.getAppPackageName(), tracker.mUserId);
         Resources r = Resources.getSystem();
         Spanned messageText = Html.fromHtml(r.getString(R.string.sms_short_code_confirm_message,
                 appLabel, tracker.mDestAddress));
@@ -1398,6 +1400,14 @@ public abstract class SMSDispatcher extends Handler {
 
         public HashMap<String, Object> getData() {
             return mData;
+        }
+
+        /**
+         * Get the App package name
+         * @return App package name info
+         */
+        public String getAppPackageName() {
+            return mAppInfo != null ? mAppInfo.packageName : null;
         }
 
         /**
@@ -1710,7 +1720,7 @@ public abstract class SMSDispatcher extends Handler {
                 }
                 sendMessage(msg);
             }
-            setPremiumSmsPermission(mTracker.mAppInfo.packageName, newSmsPermission);
+            setPremiumSmsPermission(mTracker.getAppPackageName(), newSmsPermission);
         }
 
         @Override
