@@ -442,7 +442,14 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public int checkCallingOrSelfPermission(String permission) {
-            return PackageManager.PERMISSION_GRANTED;
+            if (mPermissionTable.contains(permission)
+                    || mPermissionTable.contains(PERMISSION_ENABLE_ALL)) {
+                logd("checkCallingOrSelfPermission: " + permission + " return GRANTED");
+                return PackageManager.PERMISSION_GRANTED;
+            } else {
+                logd("checkCallingOrSelfPermission: " + permission + " return DENIED");
+                return PackageManager.PERMISSION_DENIED;
+            }
         }
 
         @Override
