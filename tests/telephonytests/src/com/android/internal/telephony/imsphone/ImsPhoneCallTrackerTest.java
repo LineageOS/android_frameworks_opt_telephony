@@ -380,6 +380,45 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals("clir_key0", mStringCaptor.getValue());
     }
 
+    /**
+     * Ensures for an emergency call that the dial method will default the CLIR to
+     * {@link CommandsInterface#CLIR_SUPPRESSION}, ensuring the caller's ID is shown.
+     */
+    @Test
+    @SmallTest
+    public void testEmergencyDialSuppressClir() {
+        mCTUT.setSharedPreferenceProxy((Context context) -> {
+            return mSharedPreferences;
+        });
+        // Mock implementation of phone number utils treats everything as an emergency.
+        mCTUT.setPhoneNumberUtilsProxy((String string) -> {
+            return true;
+        });
+        // Set preference to hide caller ID.
+        ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
+        doReturn(CommandsInterface.CLIR_INVOCATION).when(mSharedPreferences).getInt(
+                stringCaptor.capture(), anyInt());
+
+        try {
+            mCTUT.dial("+17005554141", VideoProfile.STATE_AUDIO_ONLY, null);
+
+            ArgumentCaptor<ImsCallProfile> profileCaptor = ArgumentCaptor.forClass(
+                    ImsCallProfile.class);
+            verify(mImsManager, times(1)).makeCall(eq(0), eq(mImsCallProfile),
+                    eq(new String[]{"+17005554141"}), (ImsCall.Listener) any());
+
+            // Because this is an emergency call, we expect caller id to be visible now.
+            verify(mImsCallProfile).setCallExtraInt(ImsCallProfile.EXTRA_OIR,
+                    CommandsInterface.CLIR_SUPPRESSION);
+        } catch (CallStateException cse) {
+            cse.printStackTrace();
+            Assert.fail("unexpected exception thrown" + cse.getMessage());
+        } catch (ImsException ie) {
+            ie.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ie.getMessage());
+        }
+    }
+
     @FlakyTest
     @Ignore
     @Test
