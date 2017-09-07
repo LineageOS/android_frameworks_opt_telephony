@@ -62,6 +62,7 @@ public interface IccConstants {
     // CDMA RUIM file ids from 3GPP2 C.S0023-0
     static final int EF_CST = 0x6F32;
     static final int EF_RUIM_SPN =0x6F41;
+    static final int EF_RUIM_ID = 0x6F31;
 
     // ETSI TS.102.221
     static final int EF_PL = 0x2F05;
