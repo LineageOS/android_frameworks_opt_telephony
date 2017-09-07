@@ -26,6 +26,7 @@ import android.support.test.filters.FlakyTest;
 import android.telephony.PhoneNumberUtils;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.SpannableStringBuilder;
+import android.text.style.TtsSpan;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -750,5 +751,22 @@ public class PhoneNumberUtilsTest {
         assertEquals("john", PhoneNumberUtils.getUsernameFromUriNumber("john@myorg.com"));
         assertEquals("tim_123", PhoneNumberUtils.getUsernameFromUriNumber("tim_123@zzz.org"));
         assertEquals("5103331245", PhoneNumberUtils.getUsernameFromUriNumber("5103331245"));
+    }
+
+    @SmallTest
+    @Test
+    public void testCreateTtsSpan() {
+        checkTtsNumber("650 555 1212", "650-555-1212");
+        checkTtsNumber("6505551212", "+1-650-555-1212");
+        checkTtsNumber("232", "232");
+        checkTtsNumber("*232", "*232");
+        checkTtsNumber("*232#", "*232#");
+        checkTtsNumber("*650 555 1212#", "*650-555-1212#");
+    }
+
+    private void checkTtsNumber(String expected, String sourceNumber) {
+        TtsSpan ttsSpan = PhoneNumberUtils.createTtsSpan(sourceNumber);
+        assertEquals(TtsSpan.TYPE_TELEPHONE, ttsSpan.getType());
+        assertEquals(expected, ttsSpan.getArgs().getString(TtsSpan.ARG_NUMBER_PARTS));
     }
 }
