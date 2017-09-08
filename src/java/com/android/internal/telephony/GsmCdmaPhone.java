@@ -1855,6 +1855,8 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void setTTYMode(int ttyMode, Message onComplete) {
+        // Send out the TTY Mode change over RIL as well
+        super.setTTYMode(ttyMode, onComplete);
         if (mImsPhone != null) {
             mImsPhone.setTTYMode(ttyMode, onComplete);
         }
