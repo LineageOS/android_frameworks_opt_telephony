@@ -760,6 +760,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private void stopListeningForCalls() {
         try {
+            resetImsCapabilities();
             // Only close on valid session.
             if (mImsManager != null && mServiceId > 0) {
                 mImsManager.close(mServiceId);
