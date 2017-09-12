@@ -2332,8 +2332,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mPhone.stopOnHoldTone(conn);
                     mOnHoldToneStarted = false;
                 }
-
                 conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
+            }
+
+            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
+            if (useVideoPauseWorkaround && mSupportPauseVideo &&
+                    VideoProfile.isVideo(conn.getVideoState())) {
+                // If we are using the video pause workaround, the vendor IMS code has issues
+                // with video pause signalling.  In this case, when a call is remotely
+                // held, the modem does not reliably change the video state of the call to be
+                // paused.
+                // As a workaround, we will turn on that bit now.
+                conn.changeToUnPausedState();
             }
 
             SuppServiceNotification supp = new SuppServiceNotification();
@@ -2357,8 +2368,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mOnHoldToneStarted = true;
                     mOnHoldToneId = System.identityHashCode(conn);
                 }
-
                 conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
+
+                boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
+                        com.android.internal.R.bool.config_useVideoPauseWorkaround);
+                if (useVideoPauseWorkaround && mSupportPauseVideo &&
+                        VideoProfile.isVideo(conn.getVideoState())) {
+                    // If we are using the video pause workaround, the vendor IMS code has issues
+                    // with video pause signalling.  In this case, when a call is remotely
+                    // held, the modem does not reliably change the video state of the call to be
+                    // paused.
+                    // As a workaround, we will turn on that bit now.
+                    conn.changeToPausedState();
+                }
             }
 
             SuppServiceNotification supp = new SuppServiceNotification();
