@@ -98,7 +98,9 @@ public class IccCardApplicationStatus {
         PERSOSUBSTATE_SIM_SP_EHPLMN(102),
         PERSOSUBSTATE_SIM_SP_EHPLMN_PUK(103),
         PERSOSUBSTATE_SIM_ICCID(104),
-        PERSOSUBSTATE_SIM_ICCID_PUK(105);
+        PERSOSUBSTATE_SIM_ICCID_PUK(105),
+        PERSOSUBSTATE_SIM_IMPI(106),
+        PERSOSUBSTATE_SIM_IMPI_PUK(107);
 
         private int State;
 
@@ -202,6 +204,8 @@ public class IccCardApplicationStatus {
             case 103: newSubState = PersoSubState.PERSOSUBSTATE_SIM_SP_EHPLMN_PUK; break;
             case 104: newSubState = PersoSubState.PERSOSUBSTATE_SIM_ICCID; break;
             case 105: newSubState = PersoSubState.PERSOSUBSTATE_SIM_ICCID_PUK; break;
+            case 106: newSubState = PersoSubState.PERSOSUBSTATE_SIM_IMPI; break;
+            case 107: newSubState = PersoSubState.PERSOSUBSTATE_SIM_IMPI_PUK; break;
             default:
                 newSubState = PersoSubState.PERSOSUBSTATE_UNKNOWN;
                 loge("PersoSubstateFromRILInt: bad substate: " + substate
