@@ -20,6 +20,8 @@ import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListCon
         .IDLE_SCREEN_AVAILABLE_EVENT;
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants
         .LANGUAGE_SELECTION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants
+        .USER_ACTIVITY_EVENT;
 
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
@@ -350,6 +352,7 @@ public class CatService extends Handler implements AppInterface {
                  * Language Selection.  */
                 case IDLE_SCREEN_AVAILABLE_EVENT:
                 case LANGUAGE_SELECTION_EVENT:
+                case USER_ACTIVITY_EVENT:
                     break;
                 default:
                     flag = false;
@@ -762,6 +765,8 @@ public class CatService extends Handler implements AppInterface {
                 buf.write(tag);
                 // Language length should be 2 byte
                 buf.write(0x02);
+                break;
+            case USER_ACTIVITY_EVENT:
                 break;
             default:
                 break;
