@@ -136,6 +136,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             "UTLTE", "UTWiFi"};
 
     private TelephonyMetrics mMetrics;
+    private boolean mCarrierConfigLoaded = false;
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -220,6 +221,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     log("onReceive : Updating mAllowEmergencyVideoCalls = " +
                             mAllowEmergencyVideoCalls);
                 }
+                mCarrierConfigLoaded  = true;
             } else if (TelecomManager.ACTION_CHANGE_DEFAULT_DIALER.equals(intent.getAction())) {
                 mDefaultDialerUid.set(getPackageUid(context, intent.getStringExtra(
                         TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME)));
@@ -779,6 +781,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (multiEndpoint != null) {
             multiEndpoint.setExternalCallStateListener(
                     mPhone.getExternalCallTracker().getExternalCallStateListener());
+        }
+
+        if (mCarrierConfigLoaded) {
+            ImsManager.updateImsServiceConfig(mPhone.getContext(),
+                    mPhone.getPhoneId(), true);
         }
     }
 
