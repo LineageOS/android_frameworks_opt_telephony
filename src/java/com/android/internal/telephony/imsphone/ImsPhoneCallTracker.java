@@ -704,6 +704,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return NetworkStats.UID_ALL;
         }
 
+        // Initialize to UID_ALL so at least it can be counted to overall data usage if
+        // the dialer's package uid is not available.
         int uid = NetworkStats.UID_ALL;
         try {
             uid = context.getPackageManager().getPackageUid(pkg, 0);
@@ -2970,6 +2972,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // a separate entry if uid is different from the previous snapshot.
         NetworkStats vtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
         vtDataUsageUidSnapshot.combineAllValues(mVtDataUsageUidSnapshot);
+
+        // The dialer uid might not be initialized correctly during boot up due to telecom service
+        // not ready or its default dialer cache not ready. So we double check again here to see if
+        // default dialer uid is really not available.
+        if (mDefaultDialerUid.get() == NetworkStats.UID_ALL) {
+            final TelecomManager telecomManager =
+                    (TelecomManager) mPhone.getContext().getSystemService(Context.TELECOM_SERVICE);
+            mDefaultDialerUid.set(
+                    getPackageUid(mPhone.getContext(), telecomManager.getDefaultDialerPackage()));
+        }
+
         // Since the modem only reports the total vt data usage rather than rx/tx separately,
         // the only thing we can do here is splitting the usage into half rx and half tx.
         vtDataUsageUidSnapshot.combineValues(new NetworkStats.Entry(
