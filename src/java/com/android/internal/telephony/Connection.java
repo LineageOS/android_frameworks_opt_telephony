@@ -237,6 +237,7 @@ public abstract class Connection {
     private int mPhoneType;
     private boolean mAnsweringDisconnectsActiveCall;
     private boolean mAllowAddCallDuringVideoCall;
+    private boolean mAllowHoldingVideoCall;
 
     private boolean mIsEmergencyCall;
 
@@ -1065,6 +1066,13 @@ public abstract class Connection {
         mAllowAddCallDuringVideoCall = allowAddCallDuringVideoCall;
     }
 
+    public boolean shouldAllowHoldingVideoCall() {
+        return mAllowHoldingVideoCall;
+    }
+
+    public void setAllowHoldingVideoCall(boolean allowHoldingVideoCall) {
+        mAllowHoldingVideoCall = allowHoldingVideoCall;
+    }
     /**
      * Sets whether the connection is the result of an external call which was pulled to the local
      * device.
