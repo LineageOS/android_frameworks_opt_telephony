@@ -41,6 +41,10 @@ public class GsmSmsTest extends AndroidTestCase {
         assertEquals("+14155551212", sms.getServiceCenterAddress());
         assertEquals("+16505551111", sms.getOriginatingAddress());
         assertEquals("(Subject)Test", sms.getMessageBody());
+
+        pdu = "07914151551512F20409E1BADCBE5AF100006060605130308A04D4F29C0E";
+        sms = SmsMessage.createFromPdu(HexDump.hexStringToByteArray(pdu));
+        assertEquals("*#abc#*51", sms.getOriginatingAddress());
     }
 
     @SmallTest
