@@ -208,9 +208,9 @@ public class UiccCardTest extends TelephonyTest {
         waitForMs(50);
 
         assertTrue(mUicccard.areCarrierPriviligeRulesLoaded());
-        verify(mSimulatedCommandsVerifier, times(1)).iccOpenLogicalChannel(isA(String.class),
+        verify(mSimulatedCommandsVerifier, times(2)).iccOpenLogicalChannel(isA(String.class),
                 anyInt(), isA(Message.class));
-        verify(mSimulatedCommandsVerifier, times(1)).iccTransmitApduLogicalChannel(
+        verify(mSimulatedCommandsVerifier, times(2)).iccTransmitApduLogicalChannel(
                 eq(mChannelId), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyString(),
                 isA(Message.class)
         );
