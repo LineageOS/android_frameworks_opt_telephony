@@ -202,6 +202,20 @@ public class PhoneNumberUtilsTest {
 
     @SmallTest
     @Test
+    public void testNonIntegerAddress() {
+        byte[] b = new byte[6];
+        b[0] = (byte) 0x81; b[1] = (byte) 0xba; b[2] = (byte) 0xdc; b[3] = (byte) 0xbe;
+        b[4] = (byte) 0x5a; b[5] = (byte) 0xf1;
+        assertEquals("*#abc#*51",
+                PhoneNumberUtils.calledPartyBCDToString(
+                        b, 0, 6, PhoneNumberUtils.BCD_EXTENDED_TYPE_CALLED_PARTY));
+        assertEquals("*#,N;#*51",
+                PhoneNumberUtils.calledPartyBCDToString(
+                        b, 0, 6, PhoneNumberUtils.BCD_EXTENDED_TYPE_EF_ADN));
+    }
+
+    @SmallTest
+    @Test
     public void testExtractNetworkPortionAlt() throws Exception {
         assertEquals(
                 "+17005554141",
