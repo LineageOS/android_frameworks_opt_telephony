@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -124,6 +125,14 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
                 anyInt(), anyInt(), anyString(), any(Message.class));
 
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
         Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
         setReady(false);
@@ -133,7 +142,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleMessage_Normal() {
+    public void testParseRule_Normal() {
         /**
          * FF40 45
          *   E2 43
@@ -150,7 +159,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         testHelper(hexString);
 
         assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
-        assertEquals(1, mUiccCarrierPrivilegeRules.getPackageNames().size());
+        assertEquals(2, mUiccCarrierPrivilegeRules.getPackageNames().size());
         assertEquals("com.google.android.apps.myapp",
                 mUiccCarrierPrivilegeRules.getPackageNames().get(0));
         Signature signature = new Signature("abcd92cbb156b280fa4e1429a6eceeb6e5c1bfe4");
@@ -160,7 +169,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleMessage_With4FD0D1() {
+    public void testParseRule_With4FD0D1() {
         /**
          * FF40 34
          *   E2 32
@@ -183,7 +192,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleMessage_With4FD0() {
+    public void testParseRule_With4FD0() {
         /**
          * FF40 31
          *   E2 2F
@@ -205,7 +214,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleMessage_TwoMessages() {
+    public void testParseRule_TwoMessages() {
         /**
          * FF40 68
          *   E2 39
@@ -232,7 +241,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         testHelper(hexString);
 
         assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
-        assertEquals(2, mUiccCarrierPrivilegeRules.getPackageNames().size());
+        assertEquals(4, mUiccCarrierPrivilegeRules.getPackageNames().size());
         assertEquals("com.google.android.apps.myapp",
                 mUiccCarrierPrivilegeRules.getPackageNames().get(0));
         Signature signature1 = new Signature("b61b");
@@ -248,7 +257,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleMessage_InvalidRulesWith4F00() {
+    public void testParseRule_InvalidRulesWith4F00() {
         /**
          * FF40 24
          *   E2 22
@@ -270,7 +279,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleMessage_InvalidRulesWithoutDB() {
+    public void testParseRule_InvalidRulesWithoutDB() {
         /**
          * FF40 2A
          *   E2 28
@@ -288,5 +297,324 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
         assertTrue(!mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
         assertEquals(0, mUiccCarrierPrivilegeRules.getPackageNames().size());
+    }
+
+    private static final String ARAM = "A00000015141434C00";
+    private static final String ARAD = "A00000015144414300";
+    private static final String PKCS15_AID = "A000000063504B43532D3135";
+
+    @Test
+    @SmallTest
+    public void testAID_OnlyARAM() {
+        final String hexString =
+                "FF4045E243E135C114ABCD92CBB156B280FA4E1429A6ECEEB6E5C1BFE4CA1D636F6D2E676F6F676"
+                        + "C652E616E64726F69642E617070732E6D79617070E30ADB080000000000000001";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                String aid = (String) invocation.getArguments()[0];
+                Message message = (Message) invocation.getArguments()[2];
+                if (aid.equals(ARAM)) {
+                    AsyncResult ar = new AsyncResult(null, new int[]{0}, null);
+                    message.obj = ar;
+                    message.arg2 = 1;
+                    message.sendToTarget();
+                } else {
+                    AsyncResult ar = new AsyncResult(null, null, null);
+                    message.obj = ar;
+                    message.sendToTarget();
+                }
+                return null;
+            }
+        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(hexString));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+                anyInt(), anyInt(), anyString(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+
+
+        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
+        setReady(false);
+        mCardOpenLogicalChannel.sendToTarget();
+        waitUntilReady();
+
+        assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
+        assertEquals(1, mUiccCarrierPrivilegeRules.getPackageNames().size());
+        assertEquals("com.google.android.apps.myapp",
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0));
+        Signature signature = new Signature("abcd92cbb156b280fa4e1429a6eceeb6e5c1bfe4");
+        assertEquals(0, mUiccCarrierPrivilegeRules.getCarrierPrivilegeStatus(signature,
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0)));
+    }
+
+    @Test
+    @SmallTest
+    public void testAID_OnlyARAD() {
+        final String hexString =
+                "FF4045E243E135C114ABCD92CBB156B280FA4E1429A6ECEEB6E5C1BFE4CA1D636F6D2E676F6F676"
+                        + "C652E616E64726F69642E617070732E6D79617070E30ADB080000000000000001";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                String aid = (String) invocation.getArguments()[0];
+                Message message = (Message) invocation.getArguments()[2];
+                if (aid.equals(ARAD)) {
+                    AsyncResult ar = new AsyncResult(null, new int[]{0}, null);
+                    message.obj = ar;
+                    message.arg2 = 0;
+                    message.sendToTarget();
+                } else {
+                    AsyncResult ar = new AsyncResult(null, null, null);
+                    message.obj = ar;
+                    message.arg2 = 1;
+                    message.sendToTarget();
+                }
+                return null;
+            }
+        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(hexString));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+                anyInt(), anyInt(), anyString(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+
+
+        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
+        setReady(false);
+        mCardOpenLogicalChannel.sendToTarget();
+        waitUntilReady();
+
+        assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
+        assertEquals(1, mUiccCarrierPrivilegeRules.getPackageNames().size());
+        assertEquals("com.google.android.apps.myapp",
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0));
+        Signature signature = new Signature("abcd92cbb156b280fa4e1429a6eceeb6e5c1bfe4");
+        assertEquals(0, mUiccCarrierPrivilegeRules.getCarrierPrivilegeStatus(signature,
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0)));
+    }
+
+    @Test
+    @SmallTest
+    public void testAID_BothARAMandARAD() {
+        final String hexString =
+                "FF4045E243E135C114ABCD92CBB156B280FA4E1429A6ECEEB6E5C1BFE4CA1D636F6D2E676F6F676"
+                        + "C652E616E64726F69642E617070732E6D79617070E30ADB080000000000000001";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                String aid = (String) invocation.getArguments()[0];
+                Message message = (Message) invocation.getArguments()[2];
+                AsyncResult ar = new AsyncResult(null, new int[]{0}, null);
+                message.obj = ar;
+                if (aid.equals(ARAD)) {
+                    message.arg2 = 0;
+                } else {
+                    message.arg2 = 1;
+                }
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(hexString));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+                anyInt(), anyInt(), anyString(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+
+
+        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
+        setReady(false);
+        mCardOpenLogicalChannel.sendToTarget();
+        waitUntilReady();
+
+        Signature signature = new Signature("abcd92cbb156b280fa4e1429a6eceeb6e5c1bfe4");
+        assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
+        assertEquals(2, mUiccCarrierPrivilegeRules.getPackageNames().size());
+        assertEquals("com.google.android.apps.myapp",
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0));
+        assertEquals(0, mUiccCarrierPrivilegeRules.getCarrierPrivilegeStatus(signature,
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0)));
+        assertEquals("com.google.android.apps.myapp",
+                mUiccCarrierPrivilegeRules.getPackageNames().get(1));
+        assertEquals(0, mUiccCarrierPrivilegeRules.getCarrierPrivilegeStatus(signature,
+                mUiccCarrierPrivilegeRules.getPackageNames().get(1)));
+    }
+
+    @Test
+    @SmallTest
+    public void testAID_NeitherARAMorARAD() {
+        final String hexString =
+                "FF4045E243E135C114ABCD92CBB156B280FA4E1429A6ECEEB6E5C1BFE4CA1D636F6D2E676F6F676"
+                        + "C652E616E64726F69642E617070732E6D79617070E30ADB080000000000000001";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                String aid = (String) invocation.getArguments()[0];
+                Message message = (Message) invocation.getArguments()[2];
+                AsyncResult ar = new AsyncResult(null, null, null);
+                if (aid.equals(ARAM)) {
+                    message.arg2 = 1;
+                } else if (aid.equals(ARAD)) {
+                    message.arg2 = 0;
+                } else {
+                    // PKCS15
+                    ar = new AsyncResult(null, null, new Throwable());
+                }
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+
+        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
+        setReady(false);
+        mCardOpenLogicalChannel.sendToTarget();
+        waitUntilReady();
+
+        assertTrue(!mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
+    }
+
+    private static final int P2 = 0x40;
+    private static final int P2_EXTENDED_DATA = 0x60;
+    @Test
+    @SmallTest
+    public void testAID_RetransmitLogicalChannel() {
+        final String hexString1 =
+                "FF4045E243E135C114ABCD92CBB156B280FA4E1429A6ECEEB6E5C1BFE4CA1D636F6D2E676F6F676"
+                        + "C652E616E64726F69642E617070732E6D79617070E30A";
+
+        final String hexString2 =
+                "DB080000000000000001";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                String aid = (String) invocation.getArguments()[0];
+                Message message = (Message) invocation.getArguments()[2];
+                if (aid.equals(ARAD)) {
+                    AsyncResult ar = new AsyncResult(null, new int[]{0}, null);
+                    message.obj = ar;
+                    message.arg2 = 0;
+                    message.sendToTarget();
+                } else {
+                    AsyncResult ar = new AsyncResult(null, null, null);
+                    message.obj = ar;
+                    message.arg2 = 1;
+                    message.sendToTarget();
+                }
+                return null;
+            }
+        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00,
+                        IccUtils.hexStringToBytes(hexString1));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+                eq(P2), anyInt(), anyString(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00,
+                        IccUtils.hexStringToBytes(hexString2));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+                eq(P2_EXTENDED_DATA), anyInt(), anyString(), any(Message.class));
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+
+
+        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
+        setReady(false);
+        mCardOpenLogicalChannel.sendToTarget();
+        waitUntilReady();
+
+        assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
+        assertEquals(1, mUiccCarrierPrivilegeRules.getPackageNames().size());
+        assertEquals("com.google.android.apps.myapp",
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0));
+        Signature signature = new Signature("abcd92cbb156b280fa4e1429a6eceeb6e5c1bfe4");
+        assertEquals(0, mUiccCarrierPrivilegeRules.getCarrierPrivilegeStatus(signature,
+                mUiccCarrierPrivilegeRules.getPackageNames().get(0)));
     }
 }
