@@ -563,7 +563,8 @@ public class SIMRecords extends IccRecords {
                 // Spec reference for EF_CFIS contents, TS 51.011 section 10.3.46.
                 if (enable && !TextUtils.isEmpty(dialNumber)) {
                     logv("EF_CFIS: updating cf number, " + Rlog.pii(LOG_TAG, dialNumber));
-                    byte[] bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(dialNumber);
+                    byte[] bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(
+                            dialNumber, PhoneNumberUtils.BCD_EXTENDED_TYPE_EF_ADN);
 
                     System.arraycopy(bcdNumber, 0, mEfCfis, CFIS_TON_NPI_OFFSET, bcdNumber.length);
 
