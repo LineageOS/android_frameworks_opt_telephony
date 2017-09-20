@@ -525,7 +525,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 // note this is not persisting
                 WifiManager wM = (WifiManager)
                         mContext.getSystemService(Context.WIFI_SERVICE);
-                wM.setCountryCode(country, false);
+                wM.setCountryCode(country);
             }
         }
 
