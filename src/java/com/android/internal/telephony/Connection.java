@@ -34,6 +34,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * {@hide}
  */
 public abstract class Connection {
+    private static final String TAG = "Connection";
 
     public interface PostDialListener {
         void onPostDialWait();
@@ -836,6 +837,16 @@ public abstract class Connection {
     public void setConnectionExtras(Bundle extras) {
         if (extras != null) {
             mExtras = new Bundle(extras);
+
+            int previousCount = mExtras.size();
+            // Prevent vendors from passing in extras other than primitive types and android API
+            // parcelables.
+            mExtras = mExtras.filterValues();
+            int filteredCount = mExtras.size();
+            if (filteredCount != previousCount) {
+                Rlog.i(TAG, "setConnectionExtras: filtering " + (previousCount - filteredCount)
+                        + " invalid extras.");
+            }
         } else {
             mExtras = null;
         }
