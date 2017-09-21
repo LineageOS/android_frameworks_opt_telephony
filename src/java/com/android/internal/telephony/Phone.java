@@ -56,6 +56,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
@@ -1789,7 +1790,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         int status = enable ? IccRecords.CALL_FORWARDING_STATUS_ENABLED :
                 IccRecords.CALL_FORWARDING_STATUS_DISABLED;
         int subId = getSubId();
-        Rlog.d(LOG_TAG, "setCallForwardingIndicatorInSharedPref: Storing status = " + status +
+        Rlog.i(LOG_TAG, "setCallForwardingIndicatorInSharedPref: Storing status = " + status +
                 " in pref " + CF_STATUS + subId);
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
@@ -1831,6 +1832,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_UNKNOWN) {
             callForwardingIndicator = getCallForwardingIndicatorFromSharedPref();
         }
+        Rlog.v(LOG_TAG, "getCallForwardingIndicator: iccForwardingFlag=" + (r != null
+                    ? r.getVoiceCallForwardingFlag() : "null") + ", sharedPrefFlag="
+                    + getCallForwardingIndicatorFromSharedPref());
         return (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_ENABLED);
     }
 
