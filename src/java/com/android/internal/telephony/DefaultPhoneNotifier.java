@@ -125,6 +125,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         int subId = sender.getSubId();
         try {
             if (mRegistry != null) {
+                Rlog.d(LOG_TAG, "notifyCallForwardingChanged: subId=" + subId + ", isCFActive="
+                        + sender.getCallForwardingIndicator());
+
                 mRegistry.notifyCallForwardingChangedForSubscriber(subId,
                         sender.getCallForwardingIndicator());
             }
