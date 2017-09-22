@@ -2541,7 +2541,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                 && targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
                                 && targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
                 if (isHandoverFromWifi && imsCall.isVideoCall()) {
-                    if (mNotifyHandoverVideoFromWifiToLTE) {
+                    if (mNotifyHandoverVideoFromWifiToLTE && mIsDataEnabled) {
                         log("onCallHandover :: notifying of WIFI to LTE handover.");
                         conn.onConnectionEvent(
                                 TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE, null);
@@ -2550,7 +2550,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (!mIsDataEnabled && mIsViLteDataMetered) {
                         // Call was downgraded from WIFI to LTE and data is metered; downgrade the
                         // call now.
-                        downgradeVideoCall(ImsReasonInfo.CODE_DATA_DISABLED, conn);
+                        downgradeVideoCall(ImsReasonInfo.CODE_WIFI_LOST, conn);
                     }
                 }
             } else {
@@ -3510,8 +3510,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // If the carrier supports downgrading to voice, then we can simply issue a
                 // downgrade to voice instead of terminating the call.
                 modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
-            } else if (mSupportPauseVideo) {
-                // The carrier supports video pause signalling, so pause the video.
+            } else if (mSupportPauseVideo && reasonCode != ImsReasonInfo.CODE_WIFI_LOST) {
+                // The carrier supports video pause signalling, so pause the video if we didn't just
+                // lose wifi; in that case just disconnect.
                 mShouldUpdateImsConfigOnDisconnect = true;
                 conn.pauseVideo(VideoPauseTracker.SOURCE_DATA_ENABLED);
             } else {
