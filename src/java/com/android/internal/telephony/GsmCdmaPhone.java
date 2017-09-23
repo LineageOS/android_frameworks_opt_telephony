@@ -286,7 +286,7 @@ public class GsmCdmaPhone extends Phone {
             tm.setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_GSM);
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         } else {
-            mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
+            mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
             // This is needed to handle phone process crashes
             mIsPhoneInEcmState = getInEcmMode();
             if (mIsPhoneInEcmState) {
@@ -505,7 +505,7 @@ public class GsmCdmaPhone extends Phone {
 
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else if (mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE
-                && (isPhoneTypeCdma() ||
+                && (isPhoneTypeCdma() || isPhoneTypeCdmaLte() ||
                 (isPhoneTypeGsm() && !apnType.equals(PhoneConstants.APN_TYPE_EMERGENCY)))) {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
