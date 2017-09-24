@@ -68,7 +68,8 @@ public class CarrierKeyDownloadManager {
     private static final String INTENT_KEY_RENEWAL_ALARM_PREFIX =
             "com.android.internal.telephony.carrier_key_download_alarm";
 
-    private int mKeyAvailability = 0;
+    @VisibleForTesting
+    public int mKeyAvailability = 0;
 
     public static final String MNC = "MNC";
     public static final String MCC = "MCC";
@@ -89,7 +90,7 @@ public class CarrierKeyDownloadManager {
 
     private final Phone mPhone;
     private final Context mContext;
-    private final DownloadManager mDownloadManager;
+    public final DownloadManager mDownloadManager;
     private String mURL;
 
     public CarrierKeyDownloadManager(Phone phone) {
@@ -173,14 +174,11 @@ public class CarrierKeyDownloadManager {
     }
 
     /**
-     * this method resets the alarm. Starts by cleaning up the existing alarms.
-     * We look at the earliest expiration date, and setup an alarms X days prior.
-     * If the expiration date is in the past, we'll setup an alarm to run the next day. This
-     * could happen if the download has failed.
+     * this method returns the date to be used to decide on when to start downloading the key.
+     * from the carrier.
      **/
-    private void resetRenewalAlarm() {
-        cleanupRenewalAlarms();
-        int slotId = mPhone.getPhoneId();
+    @VisibleForTesting
+    public long getExpirationDate()  {
         long minExpirationDate = Long.MAX_VALUE;
         for (int key_type : CARRIER_KEY_TYPES) {
             if (!isKeyEnabled(key_type)) {
@@ -204,6 +202,20 @@ public class CarrierKeyDownloadManager {
         } else {
             minExpirationDate = minExpirationDate - DEFAULT_RENEWAL_WINDOW_DAYS * DAY_IN_MILLIS;
         }
+        return minExpirationDate;
+    }
+
+    /**
+     * this method resets the alarm. Starts by cleaning up the existing alarms.
+     * We look at the earliest expiration date, and setup an alarms X days prior.
+     * If the expiration date is in the past, we'll setup an alarm to run the next day. This
+     * could happen if the download has failed.
+     **/
+    @VisibleForTesting
+    public void resetRenewalAlarm() {
+        cleanupRenewalAlarms();
+        int slotId = mPhone.getPhoneId();
+        long minExpirationDate = getExpirationDate();
         Log.d(LOG_TAG, "minExpirationDate: " + new Date(minExpirationDate));
         final AlarmManager alarmManager = (AlarmManager) mContext.getSystemService(
                 Context.ALARM_SERVICE);
@@ -225,19 +237,28 @@ public class CarrierKeyDownloadManager {
     }
 
     /**
+     * Returns the network operator.
+     **/
+    @VisibleForTesting
+    public String getNetworkOperator() {
+        final TelephonyManager telephonyManager =
+                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        return telephonyManager.getNetworkOperator(mPhone.getSubId());
+    }
+
+    /**
      *  checks if the download was sent by this particular instance. We do this by including the
      *  slot id in the key. If no value is found, we know that the download was not for this
      *  instance of the phone.
      **/
-    private boolean isValidDownload(String mccMnc) {
+    @VisibleForTesting
+    public boolean isValidDownload(String mccMnc) {
         String mccCurrent = "";
         String mncCurrent = "";
         String mccSource = "";
         String mncSource = "";
-        final TelephonyManager telephonyManager =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        String networkOperator = telephonyManager.getNetworkOperator(mPhone.getSubId());
 
+        String networkOperator = getNetworkOperator();
         if (TextUtils.isEmpty(networkOperator) || TextUtils.isEmpty(mccMnc)) {
             Log.e(LOG_TAG, "networkOperator or mcc/mnc is empty");
             return false;
@@ -356,7 +377,8 @@ public class CarrierKeyDownloadManager {
      * @param jsonStr the json string.
      * @param mccMnc contains the mcc, mnc
      */
-    private void parseJsonAndPersistKey(String jsonStr, String mccMnc) {
+    @VisibleForTesting
+    public void parseJsonAndPersistKey(String jsonStr, String mccMnc) {
         if (TextUtils.isEmpty(jsonStr) || TextUtils.isEmpty(mccMnc)) {
             Log.e(LOG_TAG, "jsonStr or mcc, mnc: is empty");
             return;
@@ -394,8 +416,8 @@ public class CarrierKeyDownloadManager {
      * introspects the mKeyAvailability bitmask
      * @return true if the digit at position k is 1, else false.
      */
-
-    private boolean isKeyEnabled(int keyType) {
+    @VisibleForTesting
+    public boolean isKeyEnabled(int keyType) {
         //since keytype has values of 1, 2.... we need to subtract 1 from the keytype.
         int returnValue = (mKeyAvailability >> (keyType - 1)) & 1;
         return (returnValue == 1) ? true : false;
@@ -461,7 +483,17 @@ public class CarrierKeyDownloadManager {
         return true;
     }
 
-    private void savePublicKey(String key, int type, String identifier, long expirationDate,
+    /**
+     * Save the public key
+     * @param key public key that is base64 encoded.
+     * @param type key-type.
+     * @param identifier which is an opaque string.
+     * @param expirationDate expiration date of the key.
+     * @param mcc
+     * @param mnc
+     */
+    @VisibleForTesting
+    public void savePublicKey(String key, int type, String identifier, long expirationDate,
                                String mcc, String mnc) {
         byte[] keyBytes = Base64.decode(key.getBytes(), Base64.DEFAULT);
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo(mcc, mnc, type, identifier,
