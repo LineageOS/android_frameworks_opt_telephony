@@ -838,7 +838,7 @@ public class SubscriptionController extends ISub.Stub {
             }
 
             // Reset user choice for defaultSmsSubId in case only one Sim is inserted
-            if (sSlotIdxToSubId.size() == 1) {
+            if (getActiveSubInfoCountMax() == 1) {
                 Rlog.i(LOG_TAG, "Only one SIM found, resetting user preferred SMS sub");
                 mUserPreferredSmsSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
             }
