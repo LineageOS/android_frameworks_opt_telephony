@@ -36,6 +36,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 
@@ -44,10 +45,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.security.PublicKey;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.util.Date;
 
 /**
@@ -75,10 +80,9 @@ public class CarrierKeyDownloadManager {
     public static final String MCC = "MCC";
     private static final String SEPARATOR = ":";
 
-    private static final String JSON_KEY = "key";
+    private static final String JSON_CERTIFICATE = "certificate";
     private static final String JSON_TYPE = "type";
     private static final String JSON_IDENTIFIER = "identifier";
-    private static final String JSON_EXPIRATION_DATE = "expiration-date";
     private static final String JSON_CARRIER_KEYS = "carrier-keys";
     private static final String JSON_TYPE_VALUE_WLAN = "WLAN";
     private static final String JSON_TYPE_VALUE_EPDG = "EPDG";
@@ -237,13 +241,13 @@ public class CarrierKeyDownloadManager {
     }
 
     /**
-     * Returns the network operator.
+     * Returns the sim operator.
      **/
     @VisibleForTesting
-    public String getNetworkOperator() {
+    public String getSimOperator() {
         final TelephonyManager telephonyManager =
                 (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        return telephonyManager.getNetworkOperator(mPhone.getSubId());
+        return telephonyManager.getSimOperator(mPhone.getSubId());
     }
 
     /**
@@ -258,9 +262,9 @@ public class CarrierKeyDownloadManager {
         String mccSource = "";
         String mncSource = "";
 
-        String networkOperator = getNetworkOperator();
-        if (TextUtils.isEmpty(networkOperator) || TextUtils.isEmpty(mccMnc)) {
-            Log.e(LOG_TAG, "networkOperator or mcc/mnc is empty");
+        String simOperator = getSimOperator();
+        if (TextUtils.isEmpty(simOperator) || TextUtils.isEmpty(mccMnc)) {
+            Log.e(LOG_TAG, "simOperator or mcc/mnc is empty");
             return false;
         }
 
@@ -269,8 +273,8 @@ public class CarrierKeyDownloadManager {
         mncSource = splitValue[1];
         Log.d(LOG_TAG, "values from sharedPrefs mcc, mnc: " + mccSource + "," + mncSource);
 
-        mccCurrent = networkOperator.substring(0, 3);
-        mncCurrent = networkOperator.substring(3);
+        mccCurrent = simOperator.substring(0, 3);
+        mncCurrent = simOperator.substring(3);
         Log.d(LOG_TAG, "using values for mcc, mnc: " + mccCurrent + "," + mncCurrent);
 
         if (TextUtils.equals(mncSource, mncCurrent) &&  TextUtils.equals(mccSource, mccCurrent)) {
@@ -370,9 +374,8 @@ public class CarrierKeyDownloadManager {
      * including the Carrier public key, the key type and the key identifier. Once the nodes have
      * been extracted, they get persisted to the database. Sample:
      *      "carrier-keys": [ { "key": "",
-     *                         "type": WLAN,
-     *                         "identifier": "",
-     *                         "expiration-date": 1502577746000
+     *                         "type": "WLAN",
+     *                         "identifier": ""
      *                        } ]
      * @param jsonStr the json string.
      * @param mccMnc contains the mcc, mnc
@@ -394,7 +397,7 @@ public class CarrierKeyDownloadManager {
 
             for (int i = 0; i < keys.length(); i++) {
                 JSONObject key = keys.getJSONObject(i);
-                String carrierKey = key.getString(JSON_KEY);
+                String cert = key.getString(JSON_CERTIFICATE);
                 String typeString = key.getString(JSON_TYPE);
                 int type = UNINITIALIZED_KEY_TYPE;
                 if (typeString.equals(JSON_TYPE_VALUE_WLAN)) {
@@ -402,13 +405,14 @@ public class CarrierKeyDownloadManager {
                 } else if (typeString.equals(JSON_TYPE_VALUE_EPDG)) {
                     type = TelephonyManager.KEY_TYPE_EPDG;
                 }
-                long expiration_date = key.getLong(JSON_EXPIRATION_DATE);
                 String identifier = key.getString(JSON_IDENTIFIER);
-                savePublicKey(carrierKey, type, identifier, expiration_date,
-                        mcc, mnc);
+                Pair<PublicKey, Long> keyInfo = getKeyInformation(cert);
+                savePublicKey(keyInfo.first, type, identifier, keyInfo.second, mcc, mnc);
             }
         } catch (final JSONException e) {
             Log.e(LOG_TAG, "Json parsing error: " + e.getMessage());
+        } catch (final Exception e) {
+            Log.e(LOG_TAG, "Exception getting certificate: " + e);
         }
     }
 
@@ -449,15 +453,13 @@ public class CarrierKeyDownloadManager {
 
     private boolean downloadKey() {
         Log.d(LOG_TAG, "starting download from: " + mURL);
-        final TelephonyManager telephonyManager =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         String mcc = "";
         String mnc = "";
-        String networkOperator = telephonyManager.getNetworkOperator(mPhone.getSubId());
+        String simOperator = getSimOperator();
 
-        if (!TextUtils.isEmpty(networkOperator)) {
-            mcc = networkOperator.substring(0, 3);
-            mnc = networkOperator.substring(3);
+        if (!TextUtils.isEmpty(simOperator)) {
+            mcc = simOperator.substring(0, 3);
+            mnc = simOperator.substring(3);
             Log.d(LOG_TAG, "using values for mcc, mnc: " + mcc + "," + mnc);
         } else {
             Log.e(LOG_TAG, "mcc, mnc: is empty");
@@ -485,19 +487,34 @@ public class CarrierKeyDownloadManager {
 
     /**
      * Save the public key
-     * @param key public key that is base64 encoded.
+     * @param certificate certificate that contains the public key.
+     * @return Pair containing the Public Key and the expiration date.
+     **/
+    @VisibleForTesting
+    public static Pair<PublicKey, Long> getKeyInformation(String certificate) throws Exception {
+        byte[] derCert = Base64.decode(certificate.getBytes(), Base64.DEFAULT);
+        InputStream inStream = new ByteArrayInputStream(derCert);
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        X509Certificate cert = (X509Certificate) cf.generateCertificate(inStream);
+        Pair<PublicKey, Long> keyInformation =
+                new Pair(cert.getPublicKey(), cert.getNotAfter().getTime());
+        return keyInformation;
+    }
+
+    /**
+     * Save the public key
+     * @param publicKey public key.
      * @param type key-type.
      * @param identifier which is an opaque string.
      * @param expirationDate expiration date of the key.
      * @param mcc
      * @param mnc
-     */
+     **/
     @VisibleForTesting
-    public void savePublicKey(String key, int type, String identifier, long expirationDate,
+    public void savePublicKey(PublicKey publicKey, int type, String identifier, long expirationDate,
                                String mcc, String mnc) {
-        byte[] keyBytes = Base64.decode(key.getBytes(), Base64.DEFAULT);
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo(mcc, mnc, type, identifier,
-                keyBytes, new Date(expirationDate));
+                publicKey, new Date(expirationDate));
         mPhone.setCarrierInfoForImsiEncryption(imsiEncryptionInfo);
     }
 }
