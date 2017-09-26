@@ -149,8 +149,6 @@ public class DcTracker extends Handler {
     private static final boolean DATA_STALL_SUSPECTED = true;
     private static final boolean DATA_STALL_NOT_SUSPECTED = false;
 
-    private String RADIO_RESET_PROPERTY = "gsm.radioreset";
-
     private static final String INTENT_RECONNECT_ALARM =
             "com.android.internal.telephony.data-reconnect";
     private static final String INTENT_RECONNECT_ALARM_EXTRA_TYPE = "reconnect_alarm_extra_type";
@@ -4592,13 +4590,11 @@ public class DcTracker extends Handler {
         public static final int CLEANUP                 = 1;
         public static final int REREGISTER              = 2;
         public static final int RADIO_RESTART           = 3;
-        public static final int RADIO_RESTART_WITH_PROP = 4;
 
         private static boolean isAggressiveRecovery(int value) {
             return ((value == RecoveryAction.CLEANUP) ||
                     (value == RecoveryAction.REREGISTER) ||
-                    (value == RecoveryAction.RADIO_RESTART) ||
-                    (value == RecoveryAction.RADIO_RESTART_WITH_PROP));
+                    (value == RecoveryAction.RADIO_RESTART));
         }
     }
 
@@ -4644,23 +4640,6 @@ public class DcTracker extends Handler {
                 EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_RADIO_RESTART,
                         mSentSinceLastRecv);
                 if (DBG) log("restarting radio");
-                putRecoveryAction(RecoveryAction.RADIO_RESTART_WITH_PROP);
-                restartRadio();
-                break;
-            case RecoveryAction.RADIO_RESTART_WITH_PROP:
-                // This is in case radio restart has not recovered the data.
-                // It will set an additional "gsm.radioreset" property to tell
-                // RIL or system to take further action.
-                // The implementation of hard reset recovery action is up to OEM product.
-                // Once RADIO_RESET property is consumed, it is expected to set back
-                // to false by RIL.
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_RADIO_RESTART_WITH_PROP, -1);
-                if (DBG) log("restarting radio with gsm.radioreset to true");
-                SystemProperties.set(RADIO_RESET_PROPERTY, "true");
-                // give 1 sec so property change can be notified.
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {}
                 restartRadio();
                 putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
                 break;
