@@ -574,7 +574,7 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
-    public boolean isTetheringSupported() {
+    public boolean isTetheringSupported(String callerPkg) {
         throw new RuntimeException("not implemented");
     }
 
