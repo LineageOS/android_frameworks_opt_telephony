@@ -15,6 +15,8 @@
  */
 package com.android.internal.telephony;
 
+import static android.preference.PreferenceManager.getDefaultSharedPreferences;
+
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
@@ -24,7 +26,7 @@ import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Base64;
+import android.util.Pair;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,14 +34,15 @@ import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.MockitoAnnotations;
 
+import java.security.PublicKey;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
-import static android.preference.PreferenceManager.getDefaultSharedPreferences;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.times;
@@ -48,12 +51,14 @@ import static org.mockito.Mockito.when;
 
 public class CarrierKeyDownloadMgrTest extends TelephonyTest {
 
+    private static final String LOG_TAG = "CarrierKeyDownloadManager";
+
     private CarrierKeyDownloadManager mCarrierKeyDM;
     private CarrierActionAgentHandler mCarrierActionAgentHandler;
 
     private String mURL = "http://www.google.com";
 
-    private String mJsonStr = "{ \"carrier-keys\": [ { \"key\": \"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCjGGHATBYlmas+0sEECkno8LZ1KPglb/mfe6VpCT3GhSr+7br7NG/ZwGZnEhLqE7YIH4fxltHmQC3Tz+jM1YN+kMaQgRRjo/LBCJdOKaMwUbkVynAH6OYsKevjrOPk8lfM5SFQzJMGsA9+Tfopr5xg0BwZ1vA/+E3mE7Tr3M2UvwIDAQAB\", \"type\": \"WLAN\", \"identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }, { \"key\": \"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCjGGHATBYlmas+0sEECkno8LZ1KPglb/mfe6VpCT3GhSr+7br7NG/ZwGZnEhLqE7YIH4fxltHmQC3Tz+jM1YN+kMaQgRRjo/LBCJdOKaMwUbkVynAH6OYsKevjrOPk8lfM5SFQzJMGsA9+Tfopr5xg0BwZ1vA/+E3mE7Tr3M2UvwIDAQAB\", \"type\": \"WLAN\", \"identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }]}";
+    private String mJsonStr = "{ \"carrier-keys\": [ { \"certificate\": \"MIIFjzCCBHegAwIBAgIUPxj3SLif82Ky1RlUy8p2EWJCh8MwDQYJKoZIhvcNAQELBQAwgY0xCzAJBgNVBAYTAk5MMRIwEAYDVQQHEwlBbXN0ZXJkYW0xJTAjBgNVBAoTHFZlcml6b24gRW50ZXJwcmlzZSBTb2x1dGlvbnMxEzARBgNVBAsTCkN5YmVydHJ1c3QxLjAsBgNVBAMTJVZlcml6b24gUHVibGljIFN1cmVTZXJ2ZXIgQ0EgRzE0LVNIQTIwHhcNMTcwODE0MTc0MzM4WhcNMTkwODE0MTc0MzM4WjCBmTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFjAUBgNVBAcTDUJhc2tpbmcgUmlkZ2UxIjAgBgNVBAoTGVZlcml6b24gRGF0YSBTZXJ2aWNlcyBMTEMxHzAdBgNVBAsTFk5ldHdvcmsgU3lzdGVtIFN1cHBvcnQxGDAWBgNVBAMTD3ZpMWx2Lmltc3ZtLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALUQKWTHi4Hjpd1LQwJ87RXa0Rs3rVonvVevliqdUH5BikjhAzvIqwPSXeRQqkaRTFIyp0NKcNqGdjAaHRo43gdHeWSH331sS6CMZDg988gZznskzCqJJo6ii5FuLC8qe2YDsHxT+CefXev2rn6Bj1ei2X74uZsy5KlkBRZfFHtPdK6/EK5TpzrvcXfDyOK1rn8FTno1bQOTAhL39GPcLhdrXV7AN+lu+EBpdCqlTdcoDxsqavi/91MwUIVEzxJmycKloT6OWfU44r7+L5SYYgc88NTaGL/BvCFwHRIa1ZgYSGeAPes45792MGG7tfr/ttAGp9UEwTv2zWTxzWnRP/UCAwEAAaOCAdcwggHTMAwGA1UdEwEB/wQCMAAwTAYDVR0gBEUwQzBBBgkrBgEEAbE+ATIwNDAyBggrBgEFBQcCARYmaHR0cHM6Ly9zZWN1cmUub21uaXJvb3QuY29tL3JlcG9zaXRvcnkwgakGCCsGAQUFBwEBBIGcMIGZMC0GCCsGAQUFBzABhiFodHRwOi8vdnBzc2cxNDIub2NzcC5vbW5pcm9vdC5jb20wMwYIKwYBBQUHMAKGJ2h0dHA6Ly9jYWNlcnQub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNydDAzBggrBgEFBQcwAoYnaHR0cDovL2NhY2VydC5vbW5pcm9vdC5jb20vdnBzc2cxNDIuZGVyMBoGA1UdEQQTMBGCD3ZpMWx2Lmltc3ZtLmNvbTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMB8GA1UdIwQYMBaAFOQtu5EBZSYftHo/oxUlpM6MRDM7MD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly92cHNzZzE0Mi5jcmwub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNybDAdBgNVHQ4EFgQUv5SaSyNM/yXw1v0N9TNpjsFCaPcwDQYJKoZIhvcNAQELBQADggEBACNJusTULj1KyV4RwiskKfp4wI9Hsz3ESbZS/ijF9D57BQ0UwkELU9r6rEAhsYLUvMq4sDhDbYIdupgP4MBzFnjkKult7VQm5W3nCcuHgXYFAJ9Y1a4OZAo/4hrHj70W9TsQ1ioSMjUT4F8bDUYZI0kcyH8e/+2DaTsLUpHw3L+Keu8PsJVBLnvcKJjWrZD/Bgd6JuaTX2G84i0rY0GJuO9CxLNJa6n61Mz5cqLYIuwKgiVgTA2n71YITyFICOFPFX1vSx35AWvD6aVYblxtC8mpCdF2h4s1iyrpXeji2GCJLwsNVtTtNQ4zWX3Gnq683wzkYZeyOHUyftIgAQZ+HsY=\", \"type\": \"WLAN\", \"identifier\": \"key1=value\"}]}";
 
     private class CarrierActionAgentHandler extends HandlerThread {
 
@@ -129,7 +134,6 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
         assertTrue(dt.format(expirationDate).equals(dateExpected));
     }
-
     /**
      * Checks if the json is parse correctly.
      * Verify if the savePublicKey method is called with the right params.
@@ -137,14 +141,19 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testParseJson() {
-        Date expirationDate = new Date(1502577746000L);
-        String key = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCjGGHATBYlmas+0sEECkno8LZ1KPglb/mfe6VpCT3GhSr+7br7NG/ZwGZnEhLqE7YIH4fxltHmQC3Tz+jM1YN+kMaQgRRjo/LBCJdOKaMwUbkVynAH6OYsKevjrOPk8lfM5SFQzJMGsA9+Tfopr5xg0BwZ1vA/+E3mE7Tr3M2UvwIDAQAB";
-        byte[] keyBytes = Base64.decode(key.getBytes(), Base64.DEFAULT);
+        String certificate = "MIIFjzCCBHegAwIBAgIUPxj3SLif82Ky1RlUy8p2EWJCh8MwDQYJKoZIhvcNAQELBQAwgY0xCzAJBgNVBAYTAk5MMRIwEAYDVQQHEwlBbXN0ZXJkYW0xJTAjBgNVBAoTHFZlcml6b24gRW50ZXJwcmlzZSBTb2x1dGlvbnMxEzARBgNVBAsTCkN5YmVydHJ1c3QxLjAsBgNVBAMTJVZlcml6b24gUHVibGljIFN1cmVTZXJ2ZXIgQ0EgRzE0LVNIQTIwHhcNMTcwODE0MTc0MzM4WhcNMTkwODE0MTc0MzM4WjCBmTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFjAUBgNVBAcTDUJhc2tpbmcgUmlkZ2UxIjAgBgNVBAoTGVZlcml6b24gRGF0YSBTZXJ2aWNlcyBMTEMxHzAdBgNVBAsTFk5ldHdvcmsgU3lzdGVtIFN1cHBvcnQxGDAWBgNVBAMTD3ZpMWx2Lmltc3ZtLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALUQKWTHi4Hjpd1LQwJ87RXa0Rs3rVonvVevliqdUH5BikjhAzvIqwPSXeRQqkaRTFIyp0NKcNqGdjAaHRo43gdHeWSH331sS6CMZDg988gZznskzCqJJo6ii5FuLC8qe2YDsHxT+CefXev2rn6Bj1ei2X74uZsy5KlkBRZfFHtPdK6/EK5TpzrvcXfDyOK1rn8FTno1bQOTAhL39GPcLhdrXV7AN+lu+EBpdCqlTdcoDxsqavi/91MwUIVEzxJmycKloT6OWfU44r7+L5SYYgc88NTaGL/BvCFwHRIa1ZgYSGeAPes45792MGG7tfr/ttAGp9UEwTv2zWTxzWnRP/UCAwEAAaOCAdcwggHTMAwGA1UdEwEB/wQCMAAwTAYDVR0gBEUwQzBBBgkrBgEEAbE+ATIwNDAyBggrBgEFBQcCARYmaHR0cHM6Ly9zZWN1cmUub21uaXJvb3QuY29tL3JlcG9zaXRvcnkwgakGCCsGAQUFBwEBBIGcMIGZMC0GCCsGAQUFBzABhiFodHRwOi8vdnBzc2cxNDIub2NzcC5vbW5pcm9vdC5jb20wMwYIKwYBBQUHMAKGJ2h0dHA6Ly9jYWNlcnQub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNydDAzBggrBgEFBQcwAoYnaHR0cDovL2NhY2VydC5vbW5pcm9vdC5jb20vdnBzc2cxNDIuZGVyMBoGA1UdEQQTMBGCD3ZpMWx2Lmltc3ZtLmNvbTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMB8GA1UdIwQYMBaAFOQtu5EBZSYftHo/oxUlpM6MRDM7MD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly92cHNzZzE0Mi5jcmwub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNybDAdBgNVHQ4EFgQUv5SaSyNM/yXw1v0N9TNpjsFCaPcwDQYJKoZIhvcNAQELBQADggEBACNJusTULj1KyV4RwiskKfp4wI9Hsz3ESbZS/ijF9D57BQ0UwkELU9r6rEAhsYLUvMq4sDhDbYIdupgP4MBzFnjkKult7VQm5W3nCcuHgXYFAJ9Y1a4OZAo/4hrHj70W9TsQ1ioSMjUT4F8bDUYZI0kcyH8e/+2DaTsLUpHw3L+Keu8PsJVBLnvcKJjWrZD/Bgd6JuaTX2G84i0rY0GJuO9CxLNJa6n61Mz5cqLYIuwKgiVgTA2n71YITyFICOFPFX1vSx35AWvD6aVYblxtC8mpCdF2h4s1iyrpXeji2GCJLwsNVtTtNQ4zWX3Gnq683wzkYZeyOHUyftIgAQZ+HsY=";
+        Pair<PublicKey, Long> keyInfo = null;
+        try {
+            keyInfo = CarrierKeyDownloadManager.getKeyInformation(certificate);
+        } catch (Exception e) {
+            fail(LOG_TAG + "exception creating public key");
+        }
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", 2,
-                "key1=value", keyBytes, expirationDate);
+                "key1=value", keyInfo.first, new Date(keyInfo.second));
         String mccMnc = "310:270";
         mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr, mccMnc);
-        verify(mPhone, times(2)).setCarrierInfoForImsiEncryption((Matchers.refEq(imsiEncryptionInfo)));
+        verify(mPhone, times(1)).setCarrierInfoForImsiEncryption(
+                (Matchers.refEq(imsiEncryptionInfo)));
     }
 
     /**
@@ -168,7 +177,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @SmallTest
     public void testIsValidDownload() {
         String mccMnc = "310:260";
-        when(mTelephonyManager.getNetworkOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         assertTrue(mCarrierKeyDM.isValidDownload(mccMnc));
     }
 
@@ -180,7 +189,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @SmallTest
     public void testIsValidDownloadFail() {
         String mccMnc = "310:290";
-        when(mTelephonyManager.getNetworkOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         assertFalse(mCarrierKeyDM.isValidDownload(mccMnc));
     }
 
@@ -220,7 +229,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         expectedCal.add(Calendar.DATE, 1);
         String dateExpected = dt.format(expectedCal.getTime());
 
-        when(mTelephonyManager.getNetworkOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         Intent mIntent = new Intent(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         mContext.sendBroadcast(mIntent);
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
@@ -241,7 +250,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         bundle.putInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT, 3);
         bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, mURL);
 
-        when(mTelephonyManager.getNetworkOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         Intent mIntent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
         mContext.sendBroadcast(mIntent);
@@ -264,7 +273,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         bundle.putInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT, 3);
         bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, mURL);
 
-        when(mTelephonyManager.getNetworkOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         Intent mIntent = new Intent("com.android.internal.telephony.carrier_key_download_alarm"
                 + slotId);
         mContext.sendBroadcast(mIntent);
