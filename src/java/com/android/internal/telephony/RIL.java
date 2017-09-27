@@ -55,6 +55,7 @@ import android.hardware.radio.V1_0.UusInfo;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HwBinder;
 import android.os.Message;
@@ -1379,12 +1380,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> iccIO: "
-                        + requestToString(rr.mRequest) + " command = 0x"
-                        + Integer.toHexString(command) + " fileId = 0x"
-                        + Integer.toHexString(fileId) + " path = " + path + " p1 = "
-                        + p1 + " p2 = " + p2 + " p3 = " + " data = " + data
-                        + " aid = " + aid);
+                if (Build.IS_DEBUGGABLE) {
+                    riljLog(rr.serialString() + "> iccIO: "
+                            + requestToString(rr.mRequest) + " command = 0x"
+                            + Integer.toHexString(command) + " fileId = 0x"
+                            + Integer.toHexString(fileId) + " path = " + path + " p1 = "
+                            + p1 + " p2 = " + p2 + " p3 = " + " data = " + data
+                            + " aid = " + aid);
+                } else {
+                    riljLog(rr.serialString() + "> iccIO: " + requestToString(rr.mRequest));
+                }
             }
 
             IccIo iccIo = new IccIo();
@@ -3176,9 +3181,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + " cla = " + cla + " instruction = " + instruction
-                        + " p1 = " + p1 + " p2 = " + " p3 = " + p3 + " data = " + data);
+                if (Build.IS_DEBUGGABLE) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                            + " cla = " + cla + " instruction = " + instruction
+                            + " p1 = " + p1 + " p2 = " + " p3 = " + p3 + " data = " + data);
+                } else {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
             }
 
             SimApdu msg = createSimApdu(0, cla, instruction, p1, p2, p3, data);
@@ -3198,8 +3207,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " aid = " + aid
-                        + " p2 = " + p2);
+                if (Build.IS_DEBUGGABLE) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " aid = " + aid
+                            + " p2 = " + p2);
+                } else {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
             }
 
             try {
@@ -3245,9 +3258,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " channel = "
-                        + channel + " cla = " + cla + " instruction = " + instruction
-                        + " p1 = " + p1 + " p2 = " + " p3 = " + p3 + " data = " + data);
+                if (Build.IS_DEBUGGABLE) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " channel = "
+                            + channel + " cla = " + cla + " instruction = " + instruction
+                            + " p1 = " + p1 + " p2 = " + " p3 = " + p3 + " data = " + data);
+                } else {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
             }
 
             SimApdu msg = createSimApdu(channel, cla, instruction, p1, p2, p3, data);
