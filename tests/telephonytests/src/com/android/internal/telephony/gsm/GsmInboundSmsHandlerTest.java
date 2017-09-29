@@ -47,8 +47,8 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
+import android.support.test.filters.MediumTest;
 import android.test.mock.MockContentResolver;
-import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
@@ -780,5 +780,29 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         waitForMs(100);
 
         verifySmsIntentBroadcasts(0);
+    }
+
+    @FlakyTest
+    @Ignore
+    @Test
+    @MediumTest
+    public void testWaitingStateTimeout() throws Exception {
+        transitionFromStartupToIdle();
+
+        // send new SMS to state machine and verify that triggers SMS_DELIVER_ACTION
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
+                new AsyncResult(null, mSmsMessage, null));
+        waitForMs(100);
+
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(1)).sendBroadcast(
+                intentArgumentCaptor.capture());
+        assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
+                intentArgumentCaptor.getAllValues().get(0).getAction());
+        assertEquals("WaitingState", getCurrentState().getName());
+
+        waitForMs(InboundSmsHandler.STATE_TIMEOUT + 300);
+
+        assertEquals("IdleState", getCurrentState().getName());
     }
 }
