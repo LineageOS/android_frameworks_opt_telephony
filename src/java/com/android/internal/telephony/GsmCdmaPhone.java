@@ -1062,7 +1062,7 @@ public class GsmCdmaPhone extends Phone {
         boolean alwaysTryImsForEmergencyCarrierConfig = configManager.getConfigForSubId(getSubId())
                 .getBoolean(CarrierConfigManager.KEY_CARRIER_USE_IMS_FIRST_FOR_EMERGENCY_BOOL);
 
-        boolean imsUseEnabled = isImsUseEnabled()
+        boolean useImsForCall = isImsUseEnabled()
                  && imsPhone != null
                  && (imsPhone.isVolteEnabled() || imsPhone.isWifiCallingEnabled() ||
                  (imsPhone.isVideoEnabled() && VideoProfile.isVideo(videoState)))
@@ -1082,7 +1082,7 @@ public class GsmCdmaPhone extends Phone {
         boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled();
 
         if (DBG) {
-            logd("imsUseEnabled=" + imsUseEnabled
+            logd("useImsForCall=" + useImsForCall
                     + ", useImsForEmergency=" + useImsForEmergency
                     + ", useImsForUt=" + useImsForUt
                     + ", isUt=" + isUt
@@ -1099,13 +1099,13 @@ public class GsmCdmaPhone extends Phone {
 
         Phone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mContext);
 
-        if ((imsUseEnabled && (!isUt || useImsForUt)) || useImsForEmergency) {
+        if ((useImsForCall && !isUt) || (isUt && useImsForUt) || useImsForEmergency) {
             try {
                 if (DBG) logd("Trying IMS PS call");
                 return imsPhone.dial(dialString, uusInfo, videoState, intentExtras);
             } catch (CallStateException e) {
                 if (DBG) logd("IMS PS call exception " + e +
-                        "imsUseEnabled =" + imsUseEnabled + ", imsPhone =" + imsPhone);
+                        "useImsForCall =" + useImsForCall + ", imsPhone =" + imsPhone);
                 // Do not throw a CallStateException and instead fall back to Circuit switch
                 // for emergency calls and MMI codes.
                 if (Phone.CS_FALLBACK.equals(e.getMessage()) || isEmergency) {
