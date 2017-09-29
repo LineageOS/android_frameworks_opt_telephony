@@ -79,13 +79,8 @@ public class CarrierServiceStateTracker extends Handler {
         switch (msg.what) {
             case CARRIER_EVENT_VOICE_REGISTRATION:
             case CARRIER_EVENT_DATA_REGISTRATION:
-                handleConfigChanges();
-                break;
             case CARRIER_EVENT_VOICE_DEREGISTRATION:
             case CARRIER_EVENT_DATA_DEREGISTRATION:
-                if (isRadioOffOrAirplaneMode()) {
-                    break;
-                }
                 handleConfigChanges();
                 break;
             case NOTIFICATION_EMERGENCY_NETWORK:
@@ -317,8 +312,8 @@ public class CarrierServiceStateTracker extends Handler {
             Rlog.i(LOG_TAG, "PrefNetworkNotification: sendMessage() w/values: "
                     + "," + isPhoneStillRegistered() + "," + mDelay + "," + isGlobalMode()
                     + "," + mSST.isRadioOn());
-            if (mDelay == UNINITIALIZED_DELAY_VALUE ||  isPhoneStillRegistered()
-                    || isGlobalMode()) {
+            if (mDelay == UNINITIALIZED_DELAY_VALUE ||  isPhoneStillRegistered() || isGlobalMode()
+                    || isRadioOffOrAirplaneMode()) {
                 return false;
             }
             return true;
