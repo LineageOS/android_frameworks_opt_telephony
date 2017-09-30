@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.preference.PreferenceManager.getDefaultSharedPreferences;
-
 import android.app.AlarmManager;
 import android.app.DownloadManager;
 import android.app.PendingIntent;
@@ -34,11 +32,11 @@ import android.telephony.ImsiEncryptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.org.bouncycastle.util.io.pem.PemReader;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -50,10 +48,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Date;
+
+import static android.preference.PreferenceManager.getDefaultSharedPreferences;
 
 /**
  * This class contains logic to get Certificates and keep them current.
@@ -81,8 +82,11 @@ public class CarrierKeyDownloadManager {
     private static final String SEPARATOR = ":";
 
     private static final String JSON_CERTIFICATE = "certificate";
-    private static final String JSON_TYPE = "type";
-    private static final String JSON_IDENTIFIER = "identifier";
+    // This is a hack to accomodate Verizon. Verizon insists on using the public-key
+    // field to store the certificate. We'll just use which-ever is not null.
+    private static final String JSON_CERTIFICATE_ALTERNATE = "public-key";
+    private static final String JSON_TYPE = "key-type";
+    private static final String JSON_IDENTIFIER = "key-identifier";
     private static final String JSON_CARRIER_KEYS = "carrier-keys";
     private static final String JSON_TYPE_VALUE_WLAN = "WLAN";
     private static final String JSON_TYPE_VALUE_EPDG = "EPDG";
@@ -373,12 +377,12 @@ public class CarrierKeyDownloadManager {
      * Converts the string into a json object to retreive the nodes. The Json should have 3 nodes,
      * including the Carrier public key, the key type and the key identifier. Once the nodes have
      * been extracted, they get persisted to the database. Sample:
-     *      "carrier-keys": [ { "key": "",
-     *                         "type": "WLAN",
-     *                         "identifier": ""
+     *      "carrier-keys": [ { "certificate": "",
+     *                         "key-type": "WLAN",
+     *                         "key-identifier": ""
      *                        } ]
      * @param jsonStr the json string.
-     * @param mccMnc contains the mcc, mnc
+     * @param mccMnc contains the mcc, mnc.
      */
     @VisibleForTesting
     public void parseJsonAndPersistKey(String jsonStr, String mccMnc) {
@@ -386,6 +390,7 @@ public class CarrierKeyDownloadManager {
             Log.e(LOG_TAG, "jsonStr or mcc, mnc: is empty");
             return;
         }
+        PemReader reader = null;
         try {
             String mcc = "";
             String mnc = "";
@@ -394,10 +399,16 @@ public class CarrierKeyDownloadManager {
             mnc = splitValue[1];
             JSONObject jsonObj = new JSONObject(jsonStr);
             JSONArray keys = jsonObj.getJSONArray(JSON_CARRIER_KEYS);
-
             for (int i = 0; i < keys.length(); i++) {
                 JSONObject key = keys.getJSONObject(i);
-                String cert = key.getString(JSON_CERTIFICATE);
+                // This is a hack to accomodate Verizon. Verizon insists on using the public-key
+                // field to store the certificate. We'll just use which-ever is not null.
+                String cert = null;
+                if (key.has(JSON_CERTIFICATE)) {
+                    cert = key.getString(JSON_CERTIFICATE);
+                } else {
+                    cert = key.getString(JSON_CERTIFICATE_ALTERNATE);
+                }
                 String typeString = key.getString(JSON_TYPE);
                 int type = UNINITIALIZED_KEY_TYPE;
                 if (typeString.equals(JSON_TYPE_VALUE_WLAN)) {
@@ -406,13 +417,26 @@ public class CarrierKeyDownloadManager {
                     type = TelephonyManager.KEY_TYPE_EPDG;
                 }
                 String identifier = key.getString(JSON_IDENTIFIER);
-                Pair<PublicKey, Long> keyInfo = getKeyInformation(cert);
+                ByteArrayInputStream inStream = new ByteArrayInputStream(cert.getBytes());
+                Reader fReader = new BufferedReader(new InputStreamReader(inStream));
+                reader = new PemReader(fReader);
+                Pair<PublicKey, Long> keyInfo =
+                        getKeyInformation(reader.readPemObject().getContent());
+                reader.close();
                 savePublicKey(keyInfo.first, type, identifier, keyInfo.second, mcc, mnc);
             }
         } catch (final JSONException e) {
             Log.e(LOG_TAG, "Json parsing error: " + e.getMessage());
         } catch (final Exception e) {
             Log.e(LOG_TAG, "Exception getting certificate: " + e);
+        } finally {
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (final Exception e) {
+                Log.e(LOG_TAG, "Exception getting certificate: " + e);
+            }
         }
     }
 
@@ -491,9 +515,8 @@ public class CarrierKeyDownloadManager {
      * @return Pair containing the Public Key and the expiration date.
      **/
     @VisibleForTesting
-    public static Pair<PublicKey, Long> getKeyInformation(String certificate) throws Exception {
-        byte[] derCert = Base64.decode(certificate.getBytes(), Base64.DEFAULT);
-        InputStream inStream = new ByteArrayInputStream(derCert);
+    public static Pair<PublicKey, Long> getKeyInformation(byte[] certificate) throws Exception {
+        InputStream inStream = new ByteArrayInputStream(certificate);
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
         X509Certificate cert = (X509Certificate) cf.generateCertificate(inStream);
         Pair<PublicKey, Long> keyInformation =

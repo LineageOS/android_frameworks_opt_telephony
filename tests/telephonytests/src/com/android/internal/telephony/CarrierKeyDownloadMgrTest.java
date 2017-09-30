@@ -15,8 +15,6 @@
  */
 package com.android.internal.telephony;
 
-import static android.preference.PreferenceManager.getDefaultSharedPreferences;
-
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
@@ -28,18 +26,25 @@ import android.telephony.ImsiEncryptionInfo;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
 
+import com.android.org.bouncycastle.util.io.pem.PemReader;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.MockitoAnnotations;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.security.PublicKey;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
+import static android.preference.PreferenceManager.getDefaultSharedPreferences;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -58,7 +63,12 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
 
     private String mURL = "http://www.google.com";
 
-    private String mJsonStr = "{ \"carrier-keys\": [ { \"certificate\": \"MIIFjzCCBHegAwIBAgIUPxj3SLif82Ky1RlUy8p2EWJCh8MwDQYJKoZIhvcNAQELBQAwgY0xCzAJBgNVBAYTAk5MMRIwEAYDVQQHEwlBbXN0ZXJkYW0xJTAjBgNVBAoTHFZlcml6b24gRW50ZXJwcmlzZSBTb2x1dGlvbnMxEzARBgNVBAsTCkN5YmVydHJ1c3QxLjAsBgNVBAMTJVZlcml6b24gUHVibGljIFN1cmVTZXJ2ZXIgQ0EgRzE0LVNIQTIwHhcNMTcwODE0MTc0MzM4WhcNMTkwODE0MTc0MzM4WjCBmTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFjAUBgNVBAcTDUJhc2tpbmcgUmlkZ2UxIjAgBgNVBAoTGVZlcml6b24gRGF0YSBTZXJ2aWNlcyBMTEMxHzAdBgNVBAsTFk5ldHdvcmsgU3lzdGVtIFN1cHBvcnQxGDAWBgNVBAMTD3ZpMWx2Lmltc3ZtLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALUQKWTHi4Hjpd1LQwJ87RXa0Rs3rVonvVevliqdUH5BikjhAzvIqwPSXeRQqkaRTFIyp0NKcNqGdjAaHRo43gdHeWSH331sS6CMZDg988gZznskzCqJJo6ii5FuLC8qe2YDsHxT+CefXev2rn6Bj1ei2X74uZsy5KlkBRZfFHtPdK6/EK5TpzrvcXfDyOK1rn8FTno1bQOTAhL39GPcLhdrXV7AN+lu+EBpdCqlTdcoDxsqavi/91MwUIVEzxJmycKloT6OWfU44r7+L5SYYgc88NTaGL/BvCFwHRIa1ZgYSGeAPes45792MGG7tfr/ttAGp9UEwTv2zWTxzWnRP/UCAwEAAaOCAdcwggHTMAwGA1UdEwEB/wQCMAAwTAYDVR0gBEUwQzBBBgkrBgEEAbE+ATIwNDAyBggrBgEFBQcCARYmaHR0cHM6Ly9zZWN1cmUub21uaXJvb3QuY29tL3JlcG9zaXRvcnkwgakGCCsGAQUFBwEBBIGcMIGZMC0GCCsGAQUFBzABhiFodHRwOi8vdnBzc2cxNDIub2NzcC5vbW5pcm9vdC5jb20wMwYIKwYBBQUHMAKGJ2h0dHA6Ly9jYWNlcnQub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNydDAzBggrBgEFBQcwAoYnaHR0cDovL2NhY2VydC5vbW5pcm9vdC5jb20vdnBzc2cxNDIuZGVyMBoGA1UdEQQTMBGCD3ZpMWx2Lmltc3ZtLmNvbTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMB8GA1UdIwQYMBaAFOQtu5EBZSYftHo/oxUlpM6MRDM7MD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly92cHNzZzE0Mi5jcmwub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNybDAdBgNVHQ4EFgQUv5SaSyNM/yXw1v0N9TNpjsFCaPcwDQYJKoZIhvcNAQELBQADggEBACNJusTULj1KyV4RwiskKfp4wI9Hsz3ESbZS/ijF9D57BQ0UwkELU9r6rEAhsYLUvMq4sDhDbYIdupgP4MBzFnjkKult7VQm5W3nCcuHgXYFAJ9Y1a4OZAo/4hrHj70W9TsQ1ioSMjUT4F8bDUYZI0kcyH8e/+2DaTsLUpHw3L+Keu8PsJVBLnvcKJjWrZD/Bgd6JuaTX2G84i0rY0GJuO9CxLNJa6n61Mz5cqLYIuwKgiVgTA2n71YITyFICOFPFX1vSx35AWvD6aVYblxtC8mpCdF2h4s1iyrpXeji2GCJLwsNVtTtNQ4zWX3Gnq683wzkYZeyOHUyftIgAQZ+HsY=\", \"type\": \"WLAN\", \"identifier\": \"key1=value\"}]}";
+    private static final String CERT = "-----BEGIN CERTIFICATE-----\r\nMIIFjzCCBHegAwIBAgIUPxj3SLif82Ky1RlUy8p2EWJCh8MwDQYJKoZIhvcNAQELBQAwgY0xCzAJBgNVBAYTAk5MMRIwEAYDVQQHEwlBbXN0ZXJkYW0xJTAjBgNVBAoTHFZlcml6b24gRW50ZXJwcmlzZSBTb2x1dGlvbnMxEzARBgNVBAsTCkN5YmVydHJ1c3QxLjAsBgNVBAMTJVZlcml6b24gUHVibGljIFN1cmVTZXJ2ZXIgQ0EgRzE0LVNIQTIwHhcNMTcwODE0MTc0MzM4WhcNMTkwODE0MTc0MzM4WjCBmTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFjAUBgNVBAcTDUJhc2tpbmcgUmlkZ2UxIjAgBgNVBAoTGVZlcml6b24gRGF0YSBTZXJ2aWNlcyBMTEMxHzAdBgNVBAsTFk5ldHdvcmsgU3lzdGVtIFN1cHBvcnQxGDAWBgNVBAMTD3ZpMWx2Lmltc3ZtLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALUQKWTHi4Hjpd1LQwJ87RXa0Rs3rVonvVevliqdUH5BikjhAzvIqwPSXeRQqkaRTFIyp0NKcNqGdjAaHRo43gdHeWSH331sS6CMZDg988gZznskzCqJJo6ii5FuLC8qe2YDsHxT+CefXev2rn6Bj1ei2X74uZsy5KlkBRZfFHtPdK6/EK5TpzrvcXfDyOK1rn8FTno1bQOTAhL39GPcLhdrXV7AN+lu+EBpdCqlTdcoDxsqavi/91MwUIVEzxJmycKloT6OWfU44r7+L5SYYgc88NTaGL/BvCFwHRIa1ZgYSGeAPes45792MGG7tfr/ttAGp9UEwTv2zWTxzWnRP/UCAwEAAaOCAdcwggHTMAwGA1UdEwEB/wQCMAAwTAYDVR0gBEUwQzBBBgkrBgEEAbE+ATIwNDAyBggrBgEFBQcCARYmaHR0cHM6Ly9zZWN1cmUub21uaXJvb3QuY29tL3JlcG9zaXRvcnkwgakGCCsGAQUFBwEBBIGcMIGZMC0GCCsGAQUFBzABhiFodHRwOi8vdnBzc2cxNDIub2NzcC5vbW5pcm9vdC5jb20wMwYIKwYBBQUHMAKGJ2h0dHA6Ly9jYWNlcnQub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNydDAzBggrBgEFBQcwAoYnaHR0cDovL2NhY2VydC5vbW5pcm9vdC5jb20vdnBzc2cxNDIuZGVyMBoGA1UdEQQTMBGCD3ZpMWx2Lmltc3ZtLmNvbTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMB8GA1UdIwQYMBaAFOQtu5EBZSYftHo/oxUlpM6MRDM7MD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly92cHNzZzE0Mi5jcmwub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNybDAdBgNVHQ4EFgQUv5SaSyNM/yXw1v0N9TNpjsFCaPcwDQYJKoZIhvcNAQELBQADggEBACNJusTULj1KyV4RwiskKfp4wI9Hsz3ESbZS/ijF9D57BQ0UwkELU9r6rEAhsYLUvMq4sDhDbYIdupgP4MBzFnjkKult7VQm5W3nCcuHgXYFAJ9Y1a4OZAo/4hrHj70W9TsQ1ioSMjUT4F8bDUYZI0kcyH8e/+2DaTsLUpHw3L+Keu8PsJVBLnvcKJjWrZD/Bgd6JuaTX2G84i0rY0GJuO9CxLNJa6n61Mz5cqLYIuwKgiVgTA2n71YITyFICOFPFX1vSx35AWvD6aVYblxtC8mpCdF2h4s1iyrpXeji2GCJLwsNVtTtNQ4zWX3Gnq683wzkYZeyOHUyftIgAQZ+HsY=\r\n-----END CERTIFICATE-----";
+
+
+    private String mJsonStr = "{ \"carrier-keys\": [ { \"certificate\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }, { \"certificate\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }]}";
+
+    private String mJsonStr1 = "{ \"carrier-keys\": [ { \"public-key\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }, { \"public-key\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }]}";
 
     private class CarrierActionAgentHandler extends HandlerThread {
 
@@ -134,17 +144,20 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
         assertTrue(dt.format(expirationDate).equals(dateExpected));
     }
+
     /**
      * Checks if the json is parse correctly.
-     * Verify if the savePublicKey method is called with the right params.
+     * Verify that setCarrierInfoForImsiEncryption is called with the right params
      **/
     @Test
     @SmallTest
     public void testParseJson() {
-        String certificate = "MIIFjzCCBHegAwIBAgIUPxj3SLif82Ky1RlUy8p2EWJCh8MwDQYJKoZIhvcNAQELBQAwgY0xCzAJBgNVBAYTAk5MMRIwEAYDVQQHEwlBbXN0ZXJkYW0xJTAjBgNVBAoTHFZlcml6b24gRW50ZXJwcmlzZSBTb2x1dGlvbnMxEzARBgNVBAsTCkN5YmVydHJ1c3QxLjAsBgNVBAMTJVZlcml6b24gUHVibGljIFN1cmVTZXJ2ZXIgQ0EgRzE0LVNIQTIwHhcNMTcwODE0MTc0MzM4WhcNMTkwODE0MTc0MzM4WjCBmTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFjAUBgNVBAcTDUJhc2tpbmcgUmlkZ2UxIjAgBgNVBAoTGVZlcml6b24gRGF0YSBTZXJ2aWNlcyBMTEMxHzAdBgNVBAsTFk5ldHdvcmsgU3lzdGVtIFN1cHBvcnQxGDAWBgNVBAMTD3ZpMWx2Lmltc3ZtLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALUQKWTHi4Hjpd1LQwJ87RXa0Rs3rVonvVevliqdUH5BikjhAzvIqwPSXeRQqkaRTFIyp0NKcNqGdjAaHRo43gdHeWSH331sS6CMZDg988gZznskzCqJJo6ii5FuLC8qe2YDsHxT+CefXev2rn6Bj1ei2X74uZsy5KlkBRZfFHtPdK6/EK5TpzrvcXfDyOK1rn8FTno1bQOTAhL39GPcLhdrXV7AN+lu+EBpdCqlTdcoDxsqavi/91MwUIVEzxJmycKloT6OWfU44r7+L5SYYgc88NTaGL/BvCFwHRIa1ZgYSGeAPes45792MGG7tfr/ttAGp9UEwTv2zWTxzWnRP/UCAwEAAaOCAdcwggHTMAwGA1UdEwEB/wQCMAAwTAYDVR0gBEUwQzBBBgkrBgEEAbE+ATIwNDAyBggrBgEFBQcCARYmaHR0cHM6Ly9zZWN1cmUub21uaXJvb3QuY29tL3JlcG9zaXRvcnkwgakGCCsGAQUFBwEBBIGcMIGZMC0GCCsGAQUFBzABhiFodHRwOi8vdnBzc2cxNDIub2NzcC5vbW5pcm9vdC5jb20wMwYIKwYBBQUHMAKGJ2h0dHA6Ly9jYWNlcnQub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNydDAzBggrBgEFBQcwAoYnaHR0cDovL2NhY2VydC5vbW5pcm9vdC5jb20vdnBzc2cxNDIuZGVyMBoGA1UdEQQTMBGCD3ZpMWx2Lmltc3ZtLmNvbTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMB8GA1UdIwQYMBaAFOQtu5EBZSYftHo/oxUlpM6MRDM7MD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly92cHNzZzE0Mi5jcmwub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNybDAdBgNVHQ4EFgQUv5SaSyNM/yXw1v0N9TNpjsFCaPcwDQYJKoZIhvcNAQELBQADggEBACNJusTULj1KyV4RwiskKfp4wI9Hsz3ESbZS/ijF9D57BQ0UwkELU9r6rEAhsYLUvMq4sDhDbYIdupgP4MBzFnjkKult7VQm5W3nCcuHgXYFAJ9Y1a4OZAo/4hrHj70W9TsQ1ioSMjUT4F8bDUYZI0kcyH8e/+2DaTsLUpHw3L+Keu8PsJVBLnvcKJjWrZD/Bgd6JuaTX2G84i0rY0GJuO9CxLNJa6n61Mz5cqLYIuwKgiVgTA2n71YITyFICOFPFX1vSx35AWvD6aVYblxtC8mpCdF2h4s1iyrpXeji2GCJLwsNVtTtNQ4zWX3Gnq683wzkYZeyOHUyftIgAQZ+HsY=";
+        ByteArrayInputStream certBytes = new ByteArrayInputStream(CERT.getBytes());
+        Reader fRd = new BufferedReader(new InputStreamReader(certBytes));
+        PemReader reader = new PemReader(fRd);
         Pair<PublicKey, Long> keyInfo = null;
         try {
-            keyInfo = CarrierKeyDownloadManager.getKeyInformation(certificate);
+            keyInfo = mCarrierKeyDM.getKeyInformation(reader.readPemObject().getContent());
         } catch (Exception e) {
             fail(LOG_TAG + "exception creating public key");
         }
@@ -152,7 +165,31 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
                 "key1=value", keyInfo.first, new Date(keyInfo.second));
         String mccMnc = "310:270";
         mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr, mccMnc);
-        verify(mPhone, times(1)).setCarrierInfoForImsiEncryption(
+        verify(mPhone, times(2)).setCarrierInfoForImsiEncryption(
+                (Matchers.refEq(imsiEncryptionInfo)));
+    }
+
+    /**
+     * Checks if the json is parse correctly.
+     * Same as testParseJason, except that the test looks for the "public-key" field.
+     **/
+    @Test
+    @SmallTest
+    public void testParseJsonPublicKey() {
+        ByteArrayInputStream certBytes = new ByteArrayInputStream(CERT.getBytes());
+        Reader fRd = new BufferedReader(new InputStreamReader(certBytes));
+        PemReader reader = new PemReader(fRd);
+        Pair<PublicKey, Long> keyInfo = null;
+        try {
+            keyInfo = mCarrierKeyDM.getKeyInformation(reader.readPemObject().getContent());
+        } catch (Exception e) {
+            fail(LOG_TAG + "exception creating public key");
+        }
+        ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", 2,
+                "key1=value", keyInfo.first, new Date(keyInfo.second));
+        String mccMnc = "310:270";
+        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr1, mccMnc);
+        verify(mPhone, times(2)).setCarrierInfoForImsiEncryption(
                 (Matchers.refEq(imsiEncryptionInfo)));
     }
 
