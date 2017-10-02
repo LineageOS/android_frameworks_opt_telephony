@@ -73,25 +73,31 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 SubscriptionManager.CB_ETWS_TEST_ALERT, SubscriptionManager.CB_CHANNEL_50_ALERT,
                 SubscriptionManager.CB_CMAS_TEST_ALERT, SubscriptionManager.CB_OPT_OUT_DIALOG,
                 SubscriptionManager.SIM_PROVISIONING_STATUS, SubscriptionManager.IS_EMBEDDED,
-                SubscriptionManager.ACCESS_RULES};
+                SubscriptionManager.ACCESS_RULES, SubscriptionManager.ENHANCED_4G_MODE_ENABLED,
+                SubscriptionManager.VT_IMS_ENABLED, SubscriptionManager.WFC_IMS_ENABLED,
+                SubscriptionManager.WFC_IMS_MODE, SubscriptionManager.WFC_IMS_ROAMING_MODE,
+                SubscriptionManager.WFC_IMS_ROAMING_ENABLED};
 
         /* internal util function */
-        private MatrixCursor convertFromContentToCursor(ContentValues initialValues) {
+        private MatrixCursor convertFromContentToCursor(ContentValues initialValues,
+                String[] projection) {
             MatrixCursor cursor = null;
             ArrayList<Object> values = new ArrayList<Object>();
-
-            if (initialValues != null && mKeyMappingSet.length != 0) {
-                cursor = new MatrixCursor(mKeyMappingSet);
+            if (projection == null) {
+                projection = mKeyMappingSet;
+            }
+            if (initialValues != null && projection.length != 0) {
+                cursor = new MatrixCursor(projection);
                 /* push value from contentValues to matrixCursors */
-                for (String key : mKeyMappingSet) {
+                for (String key : projection) {
                     if (initialValues.containsKey(key)) {
                         values.add(initialValues.get(key));
                     } else {
                         values.add(null);
                     }
                 }
-                cursor.addRow(values.toArray());
             }
+            cursor.addRow(values.toArray());
             return cursor;
         }
 
@@ -115,7 +121,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
                             String sortOrder) {
             if (mSubscriptionArray.size() > 0) {
-                return convertFromContentToCursor(mSubscriptionArray.get(0));
+                return convertFromContentToCursor(mSubscriptionArray.get(0), projection);
             }
             return null;
         }
@@ -336,5 +342,83 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         assertTrue(b.containsKey(PhoneConstants.SUBSCRIPTION_KEY));
         assertEquals(1, b.getInt(PhoneConstants.SUBSCRIPTION_KEY));
+    }
+
+    @Test
+    @SmallTest
+    public void testMigrateImsSettings() throws Exception {
+        testInsertSim();
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList();
+        assertTrue(subIds != null && subIds.length != 0);
+        int subID = subIds[0];
+
+        // Set default void subId.
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                subID);
+
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.ENHANCED_4G_MODE_ENABLED,
+                1);
+
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.VT_IMS_ENABLED,
+                0);
+
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_ENABLED,
+                1);
+
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_MODE,
+                2);
+
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_ROAMING_MODE,
+                3);
+
+        mSubscriptionControllerUT.migrateImsSettings();
+
+        // Global settings should be all set.
+        assertEquals(-1,  Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.ENHANCED_4G_MODE_ENABLED));
+
+        assertEquals(-1,  Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.VT_IMS_ENABLED));
+
+        assertEquals(-1,  Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_ENABLED));
+
+        assertEquals(-1,  Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_MODE));
+
+        assertEquals(-1,  Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_ROAMING_MODE));
+
+        // The values should be migrated to its DB.
+        assertEquals("1", mSubscriptionControllerUT.getSubscriptionProperty(
+                subID,
+                SubscriptionManager.ENHANCED_4G_MODE_ENABLED,
+                mCallingPackage));
+
+        assertEquals("0", mSubscriptionControllerUT.getSubscriptionProperty(
+                subID,
+                SubscriptionManager.VT_IMS_ENABLED,
+                mCallingPackage));
+
+        assertEquals("1", mSubscriptionControllerUT.getSubscriptionProperty(
+                subID,
+                SubscriptionManager.WFC_IMS_ENABLED,
+                mCallingPackage));
+
+        assertEquals("2", mSubscriptionControllerUT.getSubscriptionProperty(
+                subID,
+                SubscriptionManager.WFC_IMS_MODE,
+                mCallingPackage));
+
+        assertEquals("3", mSubscriptionControllerUT.getSubscriptionProperty(
+                subID,
+                SubscriptionManager.WFC_IMS_ROAMING_MODE,
+                mCallingPackage));
     }
 }
