@@ -101,9 +101,7 @@ import com.android.internal.telephony.util.NotificationChannelController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 
 /**
@@ -1030,6 +1028,9 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
             case ImsReasonInfo.CODE_UT_SERVICE_UNAVAILABLE:
                 error = CommandException.Error.RADIO_NOT_AVAILABLE;
+                break;
+            case ImsReasonInfo.CODE_FDN_BLOCKED:
+                error = CommandException.Error.FDN_CHECK_FAILURE;
             default:
                 break;
         }
