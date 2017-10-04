@@ -139,6 +139,48 @@ public class CarrierActionAgentTest extends TelephonyTest {
         assertEquals(true, ((AsyncResult) message.getValue().obj).result);
     }
 
+    @Test
+    @SmallTest
+    public void testCarrierActionResetOnAPNChange() {
+        // Setting observer register at sim loading
+        final Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
+                IccCardConstants.INTENT_VALUE_ICC_LOADED);
+        mContext.sendBroadcast(intent);
+        waitForMs(200);
+
+        // no carrier actions triggered from sim loading since there are same as the current one
+        ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
+        verify(mDataActionHandler, times(0)).sendMessageAtTime(message.capture(), anyLong());
+        verify(mRadioActionHandler, times(0)).sendMessageAtTime(message.capture(), anyLong());
+
+        // disable metered apns and radio
+        mCarrierActionAgentUT.carrierActionSetRadioEnabled(false);
+        mCarrierActionAgentUT.carrierActionSetMeteredApnsEnabled(false);
+        waitForMs(200);
+
+        verify(mDataActionHandler, times(1)).sendMessageAtTime(message.capture(), anyLong());
+        assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(false, ((AsyncResult) message.getValue().obj).result);
+
+        verify(mRadioActionHandler, times(1)).sendMessageAtTime(message.capture(), anyLong());
+        assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(false, ((AsyncResult) message.getValue().obj).result);
+
+        // Simulate APN change
+        mFakeContentResolver.notifyChange(Telephony.Carriers.CONTENT_URI, null);
+        waitForMs(200);
+
+        // Carrier actions triggered from APN change
+        verify(mDataActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
+        assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(true, ((AsyncResult) message.getValue().obj).result);
+
+        verify(mRadioActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
+        assertEquals(RADIO_CARRIER_ACTION_EVENT, message.getValue().what);
+        assertEquals(true, ((AsyncResult) message.getValue().obj).result);
+    }
+
     @After
     public void tearDown() throws Exception {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
