@@ -40,6 +40,7 @@ import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 
 import com.android.ims.ImsException;
+import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.CallForwardInfo;
