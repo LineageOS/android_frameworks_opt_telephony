@@ -210,6 +210,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_ALL_DATA_DISCONNECTED             = 49;
     protected static final int EVENT_PHONE_TYPE_SWITCHED               = 50;
     protected static final int EVENT_RADIO_POWER_FROM_CARRIER          = 51;
+    protected static final int EVENT_SIM_NOT_INSERTED                  = 52;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -354,6 +355,14 @@ public class ServiceStateTracker extends Handler {
                 }
                 // update voicemail count and notify message waiting changed
                 mPhone.updateVoiceMail();
+
+                // cancel notifications if we see SIM_NOT_INSERTED (This happens on bootup before
+                // the SIM is first detected and then subsequently on SIM removals)
+                if (mSubscriptionController.getSlotIndex(subId)
+                        == SubscriptionManager.SIM_NOT_INSERTED) {
+                    // this is handled on the main thread to mitigate racing with setNotification().
+                    sendMessage(obtainMessage(EVENT_SIM_NOT_INSERTED));
+                }
             }
         }
     };
@@ -446,12 +455,15 @@ public class ServiceStateTracker extends Handler {
     public static final int CS_NORMAL_ENABLED = 1005;     // Access Control blocks normal voice/sms service
     public static final int CS_EMERGENCY_ENABLED = 1006;  // Access Control blocks emergency call service
     public static final int CS_REJECT_CAUSE_ENABLED = 2001;     // Notify MM rejection cause
-    public static final int CS_REJECT_CAUSE_DISABLED = 2002;    // Cancel MM rejection cause
     /** Notification id. */
     public static final int PS_NOTIFICATION = 888;  // Id to update and cancel PS restricted
     public static final int CS_NOTIFICATION = 999;  // Id to update and cancel CS restricted
     public static final int CS_REJECT_CAUSE_NOTIFICATION = 111; // Id to update and cancel MM
                                                                 // rejection cause
+
+    /** To identify whether EVENT_SIM_READY is received or not */
+    private boolean mIsSimReady = false;
+
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1064,6 +1076,11 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_ICC_CHANGED:
                 onUpdateIccAvailability();
+                if (mUiccApplcation != null
+                        && mUiccApplcation.getState() != AppState.APPSTATE_READY) {
+                    mIsSimReady = false;
+                    updateSpnDisplay();
+                }
                 break;
 
             case EVENT_GET_CELL_INFO_LIST: {
@@ -1121,6 +1138,7 @@ public class ServiceStateTracker extends Handler {
                 // Reset the mPreviousSubId so we treat a SIM power bounce
                 // as a first boot.  See b/19194287
                 mOnSubscriptionsChangedListener.mPreviousSubId.set(-1);
+                mIsSimReady = true;
                 pollState();
                 // Signal strength polling stops when radio is off
                 queueNextSignalStrengthPoll();
@@ -1296,6 +1314,11 @@ public class ServiceStateTracker extends Handler {
 
                     onRestrictedStateChanged(ar);
                 }
+                break;
+
+            case EVENT_SIM_NOT_INSERTED:
+                if (DBG) log("EVENT_SIM_NOT_INSERTED, cancelling notifications.");
+                cancelAllNotifications();
                 break;
 
             case EVENT_ALL_DATA_DISCONNECTED:
@@ -2222,7 +2245,12 @@ public class ServiceStateTracker extends Handler {
             if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE
                     || combinedRegState == ServiceState.STATE_EMERGENCY_ONLY) {
                 showPlmn = true;
-                if (mEmergencyOnly) {
+
+                // Force display no service
+                final boolean forceDisplayNoService = mPhone.getContext().getResources().getBoolean(
+                        com.android.internal.R.bool.config_display_no_service_when_sim_unready)
+                                && !mIsSimReady;
+                if (mEmergencyOnly && !forceDisplayNoService) {
                     // No service but emergency call allowed
                     plmn = Resources.getSystem().
                             getText(com.android.internal.R.string.emergency_calls_only).toString();
@@ -2825,7 +2853,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (hasRejectCauseChanged) {
-            setNotification(mRejectCode == 0 ? CS_REJECT_CAUSE_DISABLED : CS_REJECT_CAUSE_ENABLED);
+            setNotification(CS_REJECT_CAUSE_ENABLED);
         }
 
         if (hasChanged) {
@@ -3833,6 +3861,17 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
+     * Cancels all notifications posted to NotificationManager. These notifications for restricted
+     * state and rejection cause for cs registration are no longer valid after the SIM has been
+     * removed.
+     */
+    private void cancelAllNotifications() {
+        NotificationManager notificationManager = (NotificationManager)
+                mPhone.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancelAll();
+    }
+
+    /**
      * Post a notification to NotificationManager for restricted state and
      * rejection cause for cs registration
      *
@@ -3907,16 +3946,13 @@ public class ServiceStateTracker extends Handler {
                 notificationId = CS_REJECT_CAUSE_NOTIFICATION;
                 int resId = selectResourceForRejectCode(mRejectCode);
                 if (0 == resId) {
-                    // cancel notification because current reject code is not handled.
-                    notifyType = CS_REJECT_CAUSE_DISABLED;
+                    loge("setNotification: mRejectCode=" + mRejectCode + " is not handled.");
+                    return;
                 } else {
                     icon = com.android.internal.R.drawable.stat_notify_mmcc_indication_icn;
                     title = Resources.getSystem().getString(resId);
                     details = null;
                 }
-                break;
-            case CS_REJECT_CAUSE_DISABLED:
-                notificationId = CS_REJECT_CAUSE_NOTIFICATION;
                 break;
         }
 
@@ -3941,8 +3977,7 @@ public class ServiceStateTracker extends Handler {
         NotificationManager notificationManager = (NotificationManager)
                 context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        if (notifyType == PS_DISABLED || notifyType == CS_DISABLED
-                || notifyType == CS_REJECT_CAUSE_DISABLED) {
+        if (notifyType == PS_DISABLED || notifyType == CS_DISABLED) {
             // cancel previous post notification
             notificationManager.cancel(notificationId);
         } else {

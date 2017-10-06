@@ -40,6 +40,7 @@ import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 
 import com.android.ims.ImsException;
+import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.CallForwardInfo;
@@ -1172,6 +1173,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     }
 
     private CharSequence getErrorMessage(AsyncResult ar) {
+        if (ar.exception instanceof CommandException) {
+            CommandException.Error err = ((CommandException) (ar.exception)).getCommandError();
+            if (err == CommandException.Error.FDN_CHECK_FAILURE) {
+                Rlog.i(LOG_TAG, "FDN_CHECK_FAILURE");
+                return mContext.getText(com.android.internal.R.string.mmiFdnError);
+            }
+        }
+
         return mContext.getText(com.android.internal.R.string.mmiError);
     }
 
@@ -1216,18 +1225,15 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 if (err.getCommandError() == CommandException.Error.PASSWORD_INCORRECT) {
                     sb.append(mContext.getText(
                             com.android.internal.R.string.passwordIncorrect));
+                } else if (err.getCommandError() == CommandException.Error.FDN_CHECK_FAILURE) {
+                    sb.append(mContext.getText(com.android.internal.R.string.mmiFdnError));
                 } else if (err.getMessage() != null) {
                     sb.append(err.getMessage());
                 } else {
                     sb.append(mContext.getText(com.android.internal.R.string.mmiError));
                 }
-            } else {
-                ImsException error = (ImsException) ar.exception;
-                if (error.getMessage() != null) {
-                    sb.append(error.getMessage());
-                } else {
-                    sb.append(getErrorMessage(ar));
-                }
+            } else if (ar.exception instanceof ImsException) {
+                sb.append(getImsErrorMessage(ar));
             }
         } else if (isActivate()) {
             mState = State.COMPLETE;
@@ -1360,12 +1366,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             mState = State.FAILED;
 
             if (ar.exception instanceof ImsException) {
-                ImsException error = (ImsException) ar.exception;
-                if (error.getMessage() != null) {
-                    sb.append(error.getMessage());
-                } else {
-                    sb.append(getErrorMessage(ar));
-                }
+                sb.append(getImsErrorMessage(ar));
             }
             else {
                 sb.append(getErrorMessage(ar));
@@ -1421,21 +1422,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         StringBuilder sb = new StringBuilder(getScString());
         sb.append("\n");
 
+        mState = State.FAILED;
         if (ar.exception != null) {
-            mState = State.FAILED;
-
             if (ar.exception instanceof ImsException) {
-                ImsException error = (ImsException) ar.exception;
-                if (error.getMessage() != null) {
-                    sb.append(error.getMessage());
-                } else {
-                    sb.append(getErrorMessage(ar));
-                }
+                sb.append(getImsErrorMessage(ar));
             } else {
                 sb.append(getErrorMessage(ar));
             }
         } else {
-            mState = State.FAILED;
             ImsSsInfo ssInfo = null;
             if (ar.result instanceof Bundle) {
                 Rlog.d(LOG_TAG, "onSuppSvcQueryComplete: Received CLIP/COLP/COLR Response.");
@@ -1486,12 +1480,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             mState = State.FAILED;
 
             if (ar.exception instanceof ImsException) {
-                ImsException error = (ImsException) ar.exception;
-                if (error.getMessage() != null) {
-                    sb.append(error.getMessage());
-                } else {
-                    sb.append(getErrorMessage(ar));
-                }
+                sb.append(getImsErrorMessage(ar));
             } else {
                 sb.append(getErrorMessage(ar));
             }
@@ -1525,14 +1514,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         mState = State.FAILED;
 
         if (ar.exception != null) {
-
             if (ar.exception instanceof ImsException) {
-                ImsException error = (ImsException) ar.exception;
-                if (error.getMessage() != null) {
-                    sb.append(error.getMessage());
-                } else {
-                    sb.append(getErrorMessage(ar));
-                }
+                sb.append(getImsErrorMessage(ar));
             }
         } else {
             Bundle ssInfo = (Bundle) ar.result;
@@ -1623,12 +1606,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             mState = State.FAILED;
 
             if (ar.exception instanceof ImsException) {
-                ImsException error = (ImsException) ar.exception;
-                if (error.getMessage() != null) {
-                    sb.append(error.getMessage());
-                } else {
-                    sb.append(getErrorMessage(ar));
-                }
+                sb.append(getImsErrorMessage(ar));
             } else {
                 sb.append(getErrorMessage(ar));
             }
@@ -1674,6 +1652,17 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             }
         }
         return sb;
+    }
+
+    private CharSequence getImsErrorMessage(AsyncResult ar) {
+        ImsException error = (ImsException) ar.exception;
+        if (error.getCode() == ImsReasonInfo.CODE_FDN_BLOCKED) {
+            return mContext.getText(com.android.internal.R.string.mmiFdnError);
+        } else if (error.getMessage() != null) {
+            return error.getMessage();
+        } else {
+            return getErrorMessage(ar);
+        }
     }
 
     @Override
