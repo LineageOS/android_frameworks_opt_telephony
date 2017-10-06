@@ -7,7 +7,7 @@ LOCAL_SRC_FILES := $(call all-subdir-java-files)
 
 #LOCAL_STATIC_JAVA_LIBRARIES := librilproto-java
 
-LOCAL_JAVA_LIBRARIES := android.test.runner telephony-common ims-common services.core
+LOCAL_JAVA_LIBRARIES := android.test.runner telephony-common ims-common services.core bouncycastle
 LOCAL_STATIC_JAVA_LIBRARIES := guava \
                                frameworks-base-testutils \
                                mockito-target-minus-junit4 \
