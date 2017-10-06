@@ -460,6 +460,10 @@ public class ServiceStateTracker extends Handler {
     public static final int CS_NOTIFICATION = 999;  // Id to update and cancel CS restricted
     public static final int CS_REJECT_CAUSE_NOTIFICATION = 111; // Id to update and cancel MM
                                                                 // rejection cause
+
+    /** To identify whether EVENT_SIM_READY is received or not */
+    private boolean mIsSimReady = false;
+
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1072,6 +1076,11 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_ICC_CHANGED:
                 onUpdateIccAvailability();
+                if (mUiccApplcation != null
+                        && mUiccApplcation.getState() != AppState.APPSTATE_READY) {
+                    mIsSimReady = false;
+                    updateSpnDisplay();
+                }
                 break;
 
             case EVENT_GET_CELL_INFO_LIST: {
@@ -1129,6 +1138,7 @@ public class ServiceStateTracker extends Handler {
                 // Reset the mPreviousSubId so we treat a SIM power bounce
                 // as a first boot.  See b/19194287
                 mOnSubscriptionsChangedListener.mPreviousSubId.set(-1);
+                mIsSimReady = true;
                 pollState();
                 // Signal strength polling stops when radio is off
                 queueNextSignalStrengthPoll();
@@ -2235,7 +2245,12 @@ public class ServiceStateTracker extends Handler {
             if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE
                     || combinedRegState == ServiceState.STATE_EMERGENCY_ONLY) {
                 showPlmn = true;
-                if (mEmergencyOnly) {
+
+                // Force display no service
+                final boolean forceDisplayNoService = mPhone.getContext().getResources().getBoolean(
+                        com.android.internal.R.bool.config_display_no_service_when_sim_unready)
+                                && !mIsSimReady;
+                if (mEmergencyOnly && !forceDisplayNoService) {
                     // No service but emergency call allowed
                     plmn = Resources.getSystem().
                             getText(com.android.internal.R.string.emergency_calls_only).toString();
