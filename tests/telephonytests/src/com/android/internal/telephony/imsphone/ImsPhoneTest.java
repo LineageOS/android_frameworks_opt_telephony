@@ -488,23 +488,21 @@ public class ImsPhoneTest extends TelephonyTest {
     }
 
     @Test
-    @SmallTest
     public void testShouldSendNotificationWhenServiceStateIsChanged() {
         mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
-        reset(mNotifier);
+        reset(mSST);
 
         mImsPhoneUT.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
-        verify(mNotifier).notifyServiceState(mPhone);
+        verify(mSST).onImsServiceStateChanged();
     }
 
     @Test
-    @SmallTest
     public void testShouldNotSendNotificationWhenServiceStateIsNotChanged() {
         mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
-        reset(mNotifier);
+        reset(mSST);
 
         mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
-        verify(mNotifier, never()).notifyServiceState(mPhone);
+        verify(mSST, never()).onImsServiceStateChanged();
     }
 
     @Test
