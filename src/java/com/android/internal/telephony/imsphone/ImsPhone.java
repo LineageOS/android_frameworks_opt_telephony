@@ -258,9 +258,21 @@ public class ImsPhone extends ImsPhoneBase {
         return mSS;
     }
 
-    /* package */ void setServiceState(int state) {
-        mSS.setVoiceRegState(state);
+    @VisibleForTesting
+    public void setServiceState(int state) {
+        boolean isVoiceRegStateChanged = false;
+
+        synchronized (this) {
+            isVoiceRegStateChanged = mSS.getVoiceRegState() != state;
+            mSS.setVoiceRegState(state);
+        }
         updateDataServiceState();
+
+        if (isVoiceRegStateChanged) {
+            if (mDefaultPhone.getServiceStateTracker() != null) {
+                mDefaultPhone.getServiceStateTracker().onImsServiceStateChanged();
+            }
+        }
     }
 
     @Override
