@@ -4774,7 +4774,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
         pw.println(" mLastNITZTimeInfo=" + Arrays.toString(mLastNITZTimeInfo));
         pw.println(" mTestingEmergencyCall=" + mTestingEmergencyCall.get());
-        mClientWakelockTracker.dumpClientRequestTracker();
+        mClientWakelockTracker.dumpClientRequestTracker(pw);
     }
 
     public List<ClientRequestStats> getClientRequestStats() {
