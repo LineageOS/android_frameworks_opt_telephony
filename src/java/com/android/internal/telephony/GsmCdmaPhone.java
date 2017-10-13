@@ -2491,10 +2491,10 @@ public class GsmCdmaPhone extends Phone {
                 // Force update IMS service if it is available, if it isn't the config will be
                 // updated when ImsPhoneCallTracker opens a connection.
                 ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
-                if (imsManager.isServiceAvailable()) {
+                if (imsManager.isServiceAvailable() && getIccRecordsLoaded()) {
                     imsManager.updateImsServiceConfig(true);
                 } else {
-                    logd("ImsManager is not available to update CarrierConfig.");
+                    logd("ImsManager/IccRecords Loaded are not available to update CarrierConfig.");
                 }
 
                 // Update broadcastEmergencyCallStateChanges
