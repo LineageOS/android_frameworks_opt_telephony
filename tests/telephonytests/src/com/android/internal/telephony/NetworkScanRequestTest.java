@@ -28,6 +28,8 @@ import android.telephony.RadioNetworkConstants.RadioAccessNetworks;
 
 import org.junit.Test;
 
+import java.util.ArrayList;
+
 /** Unit tests for {@link NetworkScanRequest}. */
 
 public class NetworkScanRequestTest {
@@ -44,7 +46,16 @@ public class NetworkScanRequestTest {
         int[] lteChannels = {5, 6, 7, 8};
         RadioAccessSpecifier lte = new RadioAccessSpecifier(ranLte, lteBands, lteChannels);
         RadioAccessSpecifier[] ras = {gsm, lte};
-        NetworkScanRequest nsq = new NetworkScanRequest(NetworkScanRequest.SCAN_TYPE_ONE_SHOT, ras);
+        int searchPeriodicity = 70;
+        int maxSearchTime = 200;
+        boolean incrementalResults = true;
+        int incrementalResultsPeriodicity = 7;
+        ArrayList<String> mccmncs = new ArrayList<String>();
+        mccmncs.add("310480");
+        mccmncs.add("21002");
+        NetworkScanRequest nsq = new NetworkScanRequest(NetworkScanRequest.SCAN_TYPE_ONE_SHOT, ras,
+                  searchPeriodicity, maxSearchTime, incrementalResults,
+                  incrementalResultsPeriodicity, mccmncs);
 
         Parcel p = Parcel.obtain();
         nsq.writeToParcel(p, 0);
