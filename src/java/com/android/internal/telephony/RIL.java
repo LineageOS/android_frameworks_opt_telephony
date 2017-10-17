@@ -1809,56 +1809,69 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    private android.hardware.radio.V1_1.RadioAccessSpecifier convertRadioAccessSpecifierToRadioHAL(
+            RadioAccessSpecifier ras) {
+        android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
+                new android.hardware.radio.V1_1.RadioAccessSpecifier();
+        rasInHalFormat.radioAccessNetwork = ras.radioAccessNetwork;
+        List<Integer> bands = null;
+        switch (ras.radioAccessNetwork) {
+            case RadioAccessNetworks.GERAN:
+                bands = rasInHalFormat.geranBands;
+                break;
+            case RadioAccessNetworks.UTRAN:
+                bands = rasInHalFormat.utranBands;
+                break;
+            case RadioAccessNetworks.EUTRAN:
+                bands = rasInHalFormat.eutranBands;
+                break;
+            default:
+                Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.radioAccessNetwork
+                        + " not supported!");
+                return null;
+        }
+
+        if (ras.bands != null) {
+            for (int band : ras.bands) {
+                bands.add(band);
+            }
+        }
+        if (ras.channels != null) {
+            for (int channel : ras.channels) {
+                rasInHalFormat.channels.add(channel);
+            }
+        }
+
+        return rasInHalFormat;
+    }
+
     @Override
     public void startNetworkScan(NetworkScanRequest nsr, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
-            android.hardware.radio.V1_1.IRadio radioProxy11 =
-                    android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
-            if (radioProxy11 == null) {
-                if (result != null) {
-                    AsyncResult.forMessage(result, null,
-                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                    result.sendToTarget();
-                }
-            } else {
-                android.hardware.radio.V1_1.NetworkScanRequest request =
-                        new android.hardware.radio.V1_1.NetworkScanRequest();
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+            if (radioProxy12 != null) {
+                android.hardware.radio.V1_2.NetworkScanRequest request =
+                        new android.hardware.radio.V1_2.NetworkScanRequest();
                 request.type = nsr.scanType;
-                request.interval = 60;
+                request.interval = nsr.searchPeriodicity;
+                request.maxSearchTime = nsr.maxSearchTime;
+                request.incrementalResultsPeriodicity = nsr.incrementalResultsPeriodicity;
+                request.incrementalResults = nsr.incrementalResults;
+
                 for (RadioAccessSpecifier ras : nsr.specifiers) {
-                    android.hardware.radio.V1_1.RadioAccessSpecifier s =
-                            new android.hardware.radio.V1_1.RadioAccessSpecifier();
-                    s.radioAccessNetwork = ras.radioAccessNetwork;
-                    List<Integer> bands = null;
-                    switch (ras.radioAccessNetwork) {
-                        case RadioAccessNetworks.GERAN:
-                            bands = s.geranBands;
-                            break;
-                        case RadioAccessNetworks.UTRAN:
-                            bands = s.utranBands;
-                            break;
-                        case RadioAccessNetworks.EUTRAN:
-                            bands = s.eutranBands;
-                            break;
-                        default:
-                            Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.radioAccessNetwork
-                                    + " not supported!");
-                            return;
+
+                    android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
+                            convertRadioAccessSpecifierToRadioHAL(ras);
+                    if (rasInHalFormat == null) {
+                        return;
                     }
-                    if (ras.bands != null) {
-                        for (int band : ras.bands) {
-                            bands.add(band);
-                        }
-                    }
-                    if (ras.channels != null) {
-                        for (int channel : ras.channels) {
-                            s.channels.add(channel);
-                        }
-                    }
-                    request.specifiers.add(s);
+
+                    request.specifiers.add(rasInHalFormat);
                 }
 
+                request.mccMncs.addAll(nsr.mccMncs);
                 RILRequest rr = obtainRequest(RIL_REQUEST_START_NETWORK_SCAN, result,
                         mRILDefaultWorkSource);
 
@@ -1867,9 +1880,46 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 }
 
                 try {
-                    radioProxy11.startNetworkScan(rr.mSerial, request);
+                    radioProxy12.startNetworkScan_1_2(rr.mSerial, request);
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "startNetworkScan", e);
+                }
+            } else {
+                android.hardware.radio.V1_1.IRadio radioProxy11 =
+                        android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
+                if (radioProxy11 == null) {
+                    if (result != null) {
+                        AsyncResult.forMessage(result, null,
+                                CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                        result.sendToTarget();
+                    }
+                } else {
+                    android.hardware.radio.V1_1.NetworkScanRequest request =
+                            new android.hardware.radio.V1_1.NetworkScanRequest();
+                    request.type = nsr.scanType;
+                    request.interval = nsr.searchPeriodicity;
+                    for (RadioAccessSpecifier ras : nsr.specifiers) {
+                        android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
+                                convertRadioAccessSpecifierToRadioHAL(ras);
+                        if (rasInHalFormat == null) {
+                            return;
+                        }
+
+                        request.specifiers.add(rasInHalFormat);
+                    }
+
+                    RILRequest rr = obtainRequest(RIL_REQUEST_START_NETWORK_SCAN, result,
+                            mRILDefaultWorkSource);
+
+                    if (RILJ_LOGD) {
+                        riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                    }
+
+                    try {
+                        radioProxy11.startNetworkScan(rr.mSerial, request);
+                    } catch (RemoteException | RuntimeException e) {
+                        handleRadioProxyExceptionForRR(rr, "startNetworkScan", e);
+                    }
                 }
             }
         }
