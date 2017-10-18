@@ -188,6 +188,7 @@ class CommandParamsFactory extends Handler {
                  break;
              case SEND_DTMF:
              case SEND_SMS:
+             case RUN_AT:
              case SEND_SS:
              case SEND_USSD:
                  cmdPending = processEventNotify(cmdDet, ctlvs);

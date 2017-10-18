@@ -82,6 +82,7 @@ public class CatCmdMessage implements Parcelable {
         case SET_UP_IDLE_MODE_TEXT:
         case SEND_DTMF:
         case SEND_SMS:
+        case RUN_AT:
         case SEND_SS:
         case SEND_USSD:
             mTextMsg = ((DisplayTextParams) cmdParams).mTextMsg;
