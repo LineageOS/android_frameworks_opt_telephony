@@ -382,11 +382,8 @@ public class UiccCardApplication {
                 case EVENT_CHANGE_PIN2_DONE:
                     // a PIN/PUK/PIN2/PUK2 complete
                     // request has completed. ar.userObj is the response Message
-                    int attemptsRemaining = -1;
                     ar = (AsyncResult)msg.obj;
-                    if ((ar.exception != null) && (ar.result != null)) {
-                        attemptsRemaining = parsePinPukErrorResult(ar);
-                    }
+                    int attemptsRemaining = parsePinPukErrorResult(ar);
                     Message response = (Message)ar.userObj;
                     AsyncResult.forMessage(response).exception = ar.exception;
                     response.arg1 = attemptsRemaining;

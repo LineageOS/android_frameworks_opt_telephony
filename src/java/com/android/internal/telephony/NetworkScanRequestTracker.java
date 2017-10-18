@@ -125,6 +125,34 @@ public final class NetworkScanRequestTracker {
                 return false;
             }
         }
+
+        if ((nsri.mRequest.searchPeriodicity < NetworkScanRequest.MIN_SEARCH_PERIODICITY_SEC)
+                || (nsri.mRequest.searchPeriodicity
+                > NetworkScanRequest.MAX_SEARCH_PERIODICITY_SEC)) {
+            return false;
+        }
+
+        if ((nsri.mRequest.maxSearchTime < NetworkScanRequest.MIN_SEARCH_MAX_SEC)
+                || (nsri.mRequest.maxSearchTime > NetworkScanRequest.MAX_SEARCH_MAX_SEC)) {
+            return false;
+        }
+
+        if ((nsri.mRequest.incrementalResultsPeriodicity
+                < NetworkScanRequest.MIN_INCREMENTAL_PERIODICITY_SEC)
+                || (nsri.mRequest.incrementalResultsPeriodicity
+                > NetworkScanRequest.MAX_INCREMENTAL_PERIODICITY_SEC)) {
+            return false;
+        }
+
+        if ((nsri.mRequest.searchPeriodicity > nsri.mRequest.maxSearchTime)
+                || (nsri.mRequest.incrementalResultsPeriodicity > nsri.mRequest.maxSearchTime)) {
+            return false;
+        }
+
+        if ((nsri.mRequest.mccMncs != null)
+                && (nsri.mRequest.mccMncs.size() > NetworkScanRequest.MAX_MCC_MNC_LIST_SIZE)) {
+            return false;
+        }
         return true;
     }
 
