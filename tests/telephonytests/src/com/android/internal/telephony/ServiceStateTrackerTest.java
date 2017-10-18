@@ -334,6 +334,31 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testOnImsServiceStateChanged() {
+        // The service state of GsmCdmaPhone is STATE_OUT_OF_SERVICE, and IMS is unregistered.
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_OUT_OF_SERVICE);
+        sst.mSS = ss;
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_IMS_SERVICE_STATE_CHANGED));
+        waitForMs(200);
+
+        // The listener will be notified that the service state was changed.
+        verify(mPhone).notifyServiceStateChanged(any(ServiceState.class));
+
+        // The service state of GsmCdmaPhone is STATE_IN_SERVICE, and IMS is registered.
+        ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        sst.mSS = ss;
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_IMS_SERVICE_STATE_CHANGED));
+        waitForMs(200);
+
+        // Nothing happened because the IMS service state was not affected the merged service state.
+        verify(mPhone, times(1)).notifyServiceStateChanged(any(ServiceState.class));
+    }
+
+    @Test
     @MediumTest
     public void testSignalStrength() {
         SignalStrength ss = new SignalStrength(
