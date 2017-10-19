@@ -3147,9 +3147,9 @@ public class GsmCdmaPhone extends Phone {
             }
         }
 
-        if(mRilVersion == 6 && getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+        if(mRilVersion >= 6 && getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
             /*
-             * On v6 RIL, when LTE_ON_CDMA is TRUE, always create CDMALTEPhone
+             * On RIL >= v6, when LTE_ON_CDMA is TRUE, always create CDMALTEPhone
              * irrespective of the voice radio tech reported.
              */
             if (getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
