@@ -30,6 +30,8 @@ import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -47,6 +49,7 @@ import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
+import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCallProfile;
@@ -482,6 +485,24 @@ public class ImsPhoneTest extends TelephonyTest {
         verify(mImsUtInterface).updateCallWaiting(eq(true),
                 eq(CommandsInterface.SERVICE_CLASS_VOICE), messageArgumentCaptor.capture());
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
+    }
+
+    @Test
+    public void testShouldSendNotificationWhenServiceStateIsChanged() {
+        mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
+        reset(mSST);
+
+        mImsPhoneUT.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        verify(mSST).onImsServiceStateChanged();
+    }
+
+    @Test
+    public void testShouldNotSendNotificationWhenServiceStateIsNotChanged() {
+        mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
+        reset(mSST);
+
+        mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
+        verify(mSST, never()).onImsServiceStateChanged();
     }
 
     @Test

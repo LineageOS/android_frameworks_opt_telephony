@@ -211,6 +211,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_PHONE_TYPE_SWITCHED               = 50;
     protected static final int EVENT_RADIO_POWER_FROM_CARRIER          = 51;
     protected static final int EVENT_SIM_NOT_INSERTED                  = 52;
+    protected static final int EVENT_IMS_SERVICE_STATE_CHANGED         = 53;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -1344,6 +1345,15 @@ public class ServiceStateTracker extends Handler {
             case EVENT_IMS_CAPABILITY_CHANGED:
                 if (DBG) log("EVENT_IMS_CAPABILITY_CHANGED");
                 updateSpnDisplay();
+                break;
+
+            case EVENT_IMS_SERVICE_STATE_CHANGED:
+                if (DBG) log("EVENT_IMS_SERVICE_STATE_CHANGED");
+                // IMS state will only affect the merged service state if the service state of
+                // GsmCdma phone is not STATE_IN_SERVICE.
+                if (mSS.getState() != ServiceState.STATE_IN_SERVICE) {
+                    mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                }
                 break;
 
             //CDMA
@@ -2536,6 +2546,11 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    /** Called when the service state of ImsPhone is changed. */
+    public void onImsServiceStateChanged() {
+        sendMessage(obtainMessage(EVENT_IMS_SERVICE_STATE_CHANGED));
+    }
+
     public void setImsRegistrationState(boolean registered) {
         log("ImsRegistrationState - registered : " + registered);
 
@@ -2798,6 +2813,8 @@ public class ServiceStateTracker extends Handler {
             mRejectCode = mNewRejectCode;
         }
 
+        ServiceState oldMergedSS = mPhone.getServiceState();
+
         // swap mSS and mNewSS to put new state in mSS
         ServiceState tss = mSS;
         mSS = mNewSS;
@@ -2909,7 +2926,10 @@ public class ServiceStateTracker extends Handler {
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             // notify using PhoneStateListener and the legacy intent ACTION_SERVICE_STATE_CHANGED
-            mPhone.notifyServiceStateChanged(mSS);
+            // notify service state changed only if the merged service state is changed.
+            if (!oldMergedSS.equals(mPhone.getServiceState())) {
+                mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+            }
 
             // insert into ServiceStateProvider. This will trigger apps to wake through JobScheduler
             mPhone.getContext().getContentResolver()
