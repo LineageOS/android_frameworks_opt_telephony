@@ -35,6 +35,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.LocalLog;
 import android.util.Pair;
 import android.util.TimeUtils;
 
@@ -50,6 +51,7 @@ import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -168,6 +170,8 @@ public class DataConnection extends StateMachine {
     private int mDataRegState = Integer.MAX_VALUE;
     private NetworkInfo mNetworkInfo;
     private NetworkAgent mNetworkAgent;
+    private NetworkCapabilities mNetworkCapabilities;
+    private LocalLog mLocalLog = new LocalLog(50);
 
     int mTag;
     public int mCid;
@@ -1880,6 +1884,21 @@ public class DataConnection extends StateMachine {
                 msg.sendToTarget();
             }
         }
+
+        @Override
+        public void sendNetworkCapabilities(NetworkCapabilities networkCapabilities) {
+            if (!networkCapabilities.equals(mNetworkCapabilities)) {
+                String logStr = "Changed from " + mNetworkCapabilities + " to "
+                        + networkCapabilities + ", Data RAT="
+                        + mPhone.getServiceState().getRilDataRadioTechnology()
+                        + ", DUN APN=\"" + mDct.fetchDunApn() + "\""
+                        + ", mApnSetting=" + mApnSetting;
+                mLocalLog.log(logStr);
+                log(logStr);
+                mNetworkCapabilities = networkCapabilities;
+            }
+            super.sendNetworkCapabilities(networkCapabilities);
+        }
     }
 
     // ******* "public" interface
@@ -2088,34 +2107,39 @@ public class DataConnection extends StateMachine {
      * @param args
      */
     @Override
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, " ");
         pw.print("DataConnection ");
         super.dump(fd, pw, args);
-        pw.println(" mApnContexts.size=" + mApnContexts.size());
-        pw.println(" mApnContexts=" + mApnContexts);
         pw.flush();
-        pw.println(" mDataConnectionTracker=" + mDct);
-        pw.println(" mApnSetting=" + mApnSetting);
-        pw.println(" mTag=" + mTag);
-        pw.println(" mCid=" + mCid);
-        pw.println(" mConnectionParams=" + mConnectionParams);
-        pw.println(" mDisconnectParams=" + mDisconnectParams);
-        pw.println(" mDcFailCause=" + mDcFailCause);
+        pw.increaseIndent();
+        pw.println("mApnContexts.size=" + mApnContexts.size());
+        pw.println("mApnContexts=" + mApnContexts);
+        pw.println("mDataConnectionTracker=" + mDct);
+        pw.println("mApnSetting=" + mApnSetting);
+        pw.println("mTag=" + mTag);
+        pw.println("mCid=" + mCid);
+        pw.println("mConnectionParams=" + mConnectionParams);
+        pw.println("mDisconnectParams=" + mDisconnectParams);
+        pw.println("mDcFailCause=" + mDcFailCause);
+        pw.println("mPhone=" + mPhone);
+        pw.println("mLinkProperties=" + mLinkProperties);
         pw.flush();
-        pw.println(" mPhone=" + mPhone);
-        pw.flush();
-        pw.println(" mLinkProperties=" + mLinkProperties);
-        pw.flush();
-        pw.println(" mDataRegState=" + mDataRegState);
-        pw.println(" mRilRat=" + mRilRat);
-        pw.println(" mNetworkCapabilities=" + getNetworkCapabilities());
-        pw.println(" mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
-        pw.println(" mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
-        pw.println(" mLastFailCause=" + mLastFailCause);
-        pw.flush();
-        pw.println(" mUserData=" + mUserData);
-        pw.println(" mInstanceNumber=" + mInstanceNumber);
-        pw.println(" mAc=" + mAc);
+        pw.println("mDataRegState=" + mDataRegState);
+        pw.println("mRilRat=" + mRilRat);
+        pw.println("mNetworkCapabilities=" + mNetworkCapabilities);
+        pw.println("mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
+        pw.println("mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
+        pw.println("mLastFailCause=" + mLastFailCause);
+        pw.println("mUserData=" + mUserData);
+        pw.println("mInstanceNumber=" + mInstanceNumber);
+        pw.println("mAc=" + mAc);
+        pw.println("Network capabilities changed history:");
+        pw.increaseIndent();
+        mLocalLog.dump(fd, pw, args);
+        pw.decreaseIndent();
+        pw.decreaseIndent();
+        pw.println();
         pw.flush();
     }
 }
