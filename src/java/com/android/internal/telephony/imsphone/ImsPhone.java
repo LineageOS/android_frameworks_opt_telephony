@@ -266,10 +266,10 @@ public class ImsPhone extends ImsPhoneBase {
         }
         updateDataServiceState();
 
-        // Notifies the service state to the listeners. The service state combined from ImsPhone
-        // and GsmCdmaPhone, it may be changed when the service state in ImsPhone is changed.
         if (isVoiceRegStateChanged) {
-            mNotifier.notifyServiceState(mDefaultPhone);
+            if (mDefaultPhone.getServiceStateTracker() != null) {
+                mDefaultPhone.getServiceStateTracker().onImsServiceStateChanged();
+            }
         }
     }
 
