@@ -2072,10 +2072,14 @@ public class SIMRecords extends IccRecords {
             return null;
         }
         int numPlmns = data.length / packedBcdPlmnLenBytes;
-        String[] ret = new String[numPlmns];
+        int numValidPlmns = 0;
+        String[] parsed = new String[numPlmns];
         for (int i = 0; i < numPlmns; i++) {
-            ret[i] = IccUtils.bcdPlmnToString(data, i * packedBcdPlmnLenBytes);
+            parsed[numValidPlmns] = IccUtils.bcdPlmnToString(data, i * packedBcdPlmnLenBytes);
+            // we count the valid (non empty) records and only increment if valid
+            if (!TextUtils.isEmpty(parsed[numValidPlmns])) numValidPlmns++;
         }
+        String[] ret = Arrays.copyOf(parsed, numValidPlmns);
         if (VDBG) logv(description + " PLMNs: " + Arrays.toString(ret));
         return ret;
     }
