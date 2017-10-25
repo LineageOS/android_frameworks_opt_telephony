@@ -188,7 +188,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private static final int EVENT_SRVCC_STATE_CHANGED              = 31;
     private static final int EVENT_INITIATE_SILENT_REDIAL           = 32;
     private static final int EVENT_RADIO_NOT_AVAILABLE              = 33;
-    private static final int EVENT_UNSOL_OEM_HOOK_RAW               = 34;
     protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
     protected static final int EVENT_SS                             = 36;
     private static final int EVENT_CONFIG_LCE                       = 37;
@@ -541,7 +540,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {
             mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         }
-        mCi.setOnUnsolOemHookRaw(this, EVENT_UNSOL_OEM_HOOK_RAW, null);
         mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
                 obtainMessage(EVENT_CONFIG_LCE));
     }
@@ -674,16 +672,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     handleSrvccStateChanged((int[]) ar.result);
                 } else {
                     Rlog.e(LOG_TAG, "Srvcc exception: " + ar.exception);
-                }
-                break;
-
-            case EVENT_UNSOL_OEM_HOOK_RAW:
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception == null) {
-                    byte[] data = (byte[])ar.result;
-                    mNotifier.notifyOemHookRawEventForSubscriber(getSubId(), data);
-                } else {
-                    Rlog.e(LOG_TAG, "OEM hook raw exception: " + ar.exception);
                 }
                 break;
 
@@ -2047,45 +2035,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void queryAvailableBandMode(Message response) {
         mCi.queryAvailableBandMode(response);
-    }
-
-    /**
-     * Invokes RIL_REQUEST_OEM_HOOK_RAW on RIL implementation.
-     *
-     * @param data The data for the request.
-     * @param response <strong>On success</strong>,
-     * (byte[])(((AsyncResult)response.obj).result)
-     * <strong>On failure</strong>,
-     * (((AsyncResult)response.obj).result) == null and
-     * (((AsyncResult)response.obj).exception) being an instance of
-     * com.android.internal.telephony.gsm.CommandException
-     *
-     * @see #invokeOemRilRequestRaw(byte[], android.os.Message)
-     * @deprecated OEM needs a vendor-extension hal and their apps should use that instead
-     */
-    @Deprecated
-    public void invokeOemRilRequestRaw(byte[] data, Message response) {
-        mCi.invokeOemRilRequestRaw(data, response);
-    }
-
-    /**
-     * Invokes RIL_REQUEST_OEM_HOOK_Strings on RIL implementation.
-     *
-     * @param strings The strings to make available as the request data.
-     * @param response <strong>On success</strong>, "response" bytes is
-     * made available as:
-     * (String[])(((AsyncResult)response.obj).result).
-     * <strong>On failure</strong>,
-     * (((AsyncResult)response.obj).result) == null and
-     * (((AsyncResult)response.obj).exception) being an instance of
-     * com.android.internal.telephony.gsm.CommandException
-     *
-     * @see #invokeOemRilRequestStrings(java.lang.String[], android.os.Message)
-     * @deprecated OEM needs a vendor-extension hal and their apps should use that instead
-     */
-    @Deprecated
-    public void invokeOemRilRequestStrings(String[] strings, Message response) {
-        mCi.invokeOemRilRequestStrings(strings, response);
     }
 
     /**
