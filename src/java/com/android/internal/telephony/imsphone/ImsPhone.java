@@ -1468,6 +1468,7 @@ public class ImsPhone extends ImsPhoneBase {
 
         // send an Intent
         sendEmergencyCallbackModeChange();
+        ((GsmCdmaPhone) mDefaultPhone).notifyEmergencyCallRegistrants(false);
     }
 
     /**
