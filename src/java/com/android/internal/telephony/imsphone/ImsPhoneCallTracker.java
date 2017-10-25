@@ -2485,6 +2485,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             // based on the user facing UI.
             mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
 
+            call.resetIsMergeRequestedByConf(false);
+
             // Start plumbing this even through Telecom so other components can take
             // appropriate action.
             ImsPhoneConnection conn = findConnection(call);
