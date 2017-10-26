@@ -2675,6 +2675,10 @@ public class ServiceStateTracker extends Handler {
         useDataRegStateForDataOnlyDevices();
         resetServiceStateInIwlanMode();
 
+        if (Build.IS_DEBUGGABLE && mPhone.mTelephonyTester != null) {
+            mPhone.mTelephonyTester.overrideServiceState(mNewSS);
+        }
+
         if (DBG) {
             log("Poll ServiceState done: "
                     + " oldSS=[" + mSS + "] newSS=[" + mNewSS + "]"
