@@ -981,6 +981,12 @@ public class DataConnection extends StateMachine {
 
         result.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(mPhone.getSubId())));
 
+        if (!mPhone.getServiceState().getDataRoaming()) {
+            result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
+        } else {
+            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
+        }
+
         return result;
     }
 
@@ -1218,26 +1224,22 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    ServiceState ss = mPhone.getServiceState();
-                    int networkType = ss.getDataNetworkType();
-                    mNetworkInfo.setSubtype(networkType,
-                            TelephonyManager.getNetworkTypeName(networkType));
+                    updateNetworkInfo();
+                    updateNetworkInfoSuspendState();
                     if (mNetworkAgent != null) {
-                        updateNetworkInfoSuspendState();
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                         mNetworkAgent.sendLinkProperties(mLinkProperties);
                     }
                     break;
-
                 case EVENT_DATA_CONNECTION_ROAM_ON:
-                    mNetworkInfo.setRoaming(true);
-                    break;
-
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
-                    mNetworkInfo.setRoaming(false);
+                    updateNetworkInfo();
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                    }
                     break;
-
                 default:
                     if (DBG) {
                         log("DcDefaultState: shouldn't happen but ignore msg.what="
@@ -1250,9 +1252,14 @@ public class DataConnection extends StateMachine {
         }
     }
 
-    private boolean updateNetworkInfoSuspendState() {
-        final NetworkInfo.DetailedState oldState = mNetworkInfo.getDetailedState();
+    private void updateNetworkInfo() {
+        final ServiceState state = mPhone.getServiceState();
+        final int subtype = state.getDataNetworkType();
+        mNetworkInfo.setSubtype(subtype, TelephonyManager.getNetworkTypeName(subtype));
+        mNetworkInfo.setRoaming(state.getDataRoaming());
+    }
 
+    private void updateNetworkInfoSuspendState() {
         // this is only called when we are either connected or suspended.  Decide which.
         if (mNetworkAgent == null) {
             Rlog.e(getName(), "Setting suspend state without a NetworkAgent");
@@ -1270,13 +1277,12 @@ public class DataConnection extends StateMachine {
                 if (ct.getState() != PhoneConstants.State.IDLE) {
                     mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null,
                             mNetworkInfo.getExtraInfo());
-                    return (oldState != NetworkInfo.DetailedState.SUSPENDED);
+                    return;
                 }
             }
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null,
                     mNetworkInfo.getExtraInfo());
         }
-        return (oldState != mNetworkInfo.getDetailedState());
     }
 
     private DcDefaultState mDefaultState = new DcDefaultState();
@@ -1547,22 +1553,7 @@ public class DataConnection extends StateMachine {
         @Override public void enter() {
             if (DBG) log("DcActiveState: enter dc=" + DataConnection.this);
 
-            // verify and get updated information in case these things
-            // are obsolete
-            ServiceState ss = mPhone.getServiceState();
-            final int networkType = ss.getDataNetworkType();
-            if (mNetworkInfo.getSubtype() != networkType) {
-                log("DcActiveState with incorrect subtype (" + mNetworkInfo.getSubtype()
-                        + ", " + networkType + "), updating.");
-            }
-            mNetworkInfo.setSubtype(networkType, TelephonyManager.getNetworkTypeName(networkType));
-            final boolean roaming = ss.getDataRoaming();
-            if (roaming != mNetworkInfo.isRoaming()) {
-                log("DcActiveState with incorrect roaming (" + mNetworkInfo.isRoaming()
-                        + ", " + roaming + "), updating.");
-            }
-
-            mNetworkInfo.setRoaming(roaming);
+            updateNetworkInfo();
 
             // If we were retrying there maybe more than one, otherwise they'll only be one.
             notifyAllOfConnected(Phone.REASON_CONNECTED);
@@ -1690,17 +1681,11 @@ public class DataConnection extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
-                case EVENT_DATA_CONNECTION_ROAM_ON: {
-                    mNetworkInfo.setRoaming(true);
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo);
-                    }
-                    retVal = HANDLED;
-                    break;
-                }
+                case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF: {
-                    mNetworkInfo.setRoaming(false);
+                    updateNetworkInfo();
                     if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                     }
                     retVal = HANDLED;
@@ -1726,8 +1711,10 @@ public class DataConnection extends StateMachine {
                 }
                 case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
                 case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
-                    if (updateNetworkInfoSuspendState() && mNetworkAgent != null) {
-                        // state changed
+                    updateNetworkInfo();
+                    updateNetworkInfoSuspendState();
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                     }
                     retVal = HANDLED;
