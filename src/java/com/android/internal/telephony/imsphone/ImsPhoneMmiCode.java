@@ -723,7 +723,6 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     boolean
     isSupportedOverImsPhone() {
         if (isShortCode()) return true;
-        else if (mDialingNumber != null) return false;
         else if (isServiceCodeCallForwarding(mSc)
                 || isServiceCodeCallBarring(mSc)
                 || (mSc != null && mSc.equals(SC_WAIT))
