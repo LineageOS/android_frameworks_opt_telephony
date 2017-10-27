@@ -25,6 +25,7 @@ import android.os.RegistrantList;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -57,6 +58,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected RegistrantList mRecordsEventsRegistrants = new RegistrantList();
     protected RegistrantList mNewSmsRegistrants = new RegistrantList();
     protected RegistrantList mNetworkSelectionModeAutomaticRegistrants = new RegistrantList();
+    protected RegistrantList mSpnUpdatedRegistrants = new RegistrantList();
 
     protected int mRecordsToLoad;  // number of pending load requests
 
@@ -91,6 +93,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mFakeGid1;
     protected String mGid2;
     protected String mFakeGid2;
+
+    protected String mPnnHomeName;
+    protected String mFakePnnHomeName;
 
     protected String mPrefLang;
 
@@ -146,12 +151,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " mCi=" + mCi
                 + " mFh=" + mFh
                 + " mParentApp=" + mParentApp
-                + " recordsLoadedRegistrants=" + mRecordsLoadedRegistrants
-                + " mImsiReadyRegistrants=" + mImsiReadyRegistrants
-                + " mRecordsEventsRegistrants=" + mRecordsEventsRegistrants
-                + " mNewSmsRegistrants=" + mNewSmsRegistrants
-                + " mNetworkSelectionModeAutomaticRegistrants="
-                        + mNetworkSelectionModeAutomaticRegistrants
                 + " recordsToLoad=" + mRecordsToLoad
                 + " adnCache=" + mAdnCache
                 + " recordsRequested=" + mRecordsRequested
@@ -164,13 +163,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " isVoiceMailFixed=" + mIsVoiceMailFixed
                 + " mImsi=" + ((mImsi != null) ?
                 mImsi.substring(0, 6) + Rlog.pii(VDBG, mImsi.substring(6)) : "null")
-                + (mCarrierTestOverride.isInTestMode()
-                ? (" mFakeImsi=" + ((mFakeImsi != null) ? mFakeImsi : "null")) : "")
+                + (mCarrierTestOverride.isInTestMode() ? " mFakeImsi=" + mFakeImsi : "")
                 + " mncLength=" + mMncLength
                 + " mailboxIndex=" + mMailboxIndex
                 + " spn=" + mSpn
-                + (mCarrierTestOverride.isInTestMode()
-                ? (" mFakeSpn=" + ((mFakeSpn != null) ? mFakeSpn : "null")) : "");
+                + (mCarrierTestOverride.isInTestMode() ? " mFakeSpn=" + mFakeSpn : "");
 
     }
 
@@ -213,6 +210,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
             mFakeSpn = mCarrierTestOverride.getFakeSpn();
             log("load mFakeSpn: " + mFakeSpn);
+
+            mFakePnnHomeName = mCarrierTestOverride.getFakePnnHomeName();
+            log("load mFakePnnHomeName: " + mFakePnnHomeName);
         }
     }
 
@@ -314,6 +314,22 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mImsiReadyRegistrants.remove(h);
     }
 
+    public void registerForSpnUpdate(Handler h, int what, Object obj) {
+        if (mDestroyed.get()) {
+            return;
+        }
+
+        Registrant r = new Registrant(h, what, obj);
+        mSpnUpdatedRegistrants.add(r);
+
+        if (!TextUtils.isEmpty(mSpn)) {
+            r.notifyRegistrant(new AsyncResult(null, null, null));
+        }
+    }
+    public void unregisterForSpnUpdate(Handler h) {
+        mSpnUpdatedRegistrants.remove(h);
+    }
+
     public void registerForRecordsEvents(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mRecordsEventsRegistrants.add(r);
@@ -406,6 +422,18 @@ public abstract class IccRecords extends Handler implements IccConstants {
         }
     }
 
+    /**
+     * Get the PLMN network name on a SIM.
+     * @return null if SIM is not yet ready
+     */
+    public String getPnnHomeName() {
+        if (mCarrierTestOverride.isInTestMode() && mFakePnnHomeName != null) {
+            return mFakePnnHomeName;
+        } else {
+            return mPnnHomeName;
+        }
+    }
+
     public void setMsisdnNumber(String alphaTag, String number,
             Message onComplete) {
         loge("setMsisdn() should not be invoked on base IccRecords");
@@ -457,7 +485,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     protected void setServiceProviderName(String spn) {
-        mSpn = spn;
+        if (!TextUtils.equals(mSpn, spn)) {
+            mSpnUpdatedRegistrants.notifyRegistrants();
+            mSpn = spn;
+        }
     }
 
     /**
@@ -821,13 +852,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mImsi=" + ((mImsi != null) ?
                 mImsi.substring(0, 6) + Rlog.pii(VDBG, mImsi.substring(6)) : "null"));
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeImsi=" + ((mFakeImsi != null) ? mFakeImsi : "null"));
+            pw.println(" mFakeImsi=" + mFakeImsi);
         }
         pw.println(" mMncLength=" + mMncLength);
         pw.println(" mMailboxIndex=" + mMailboxIndex);
         pw.println(" mSpn=" + mSpn);
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeSpn=" + ((mFakeSpn != null) ? mFakeSpn : "null"));
+            pw.println(" mFakeSpn=" + mFakeSpn);
         }
         pw.flush();
     }

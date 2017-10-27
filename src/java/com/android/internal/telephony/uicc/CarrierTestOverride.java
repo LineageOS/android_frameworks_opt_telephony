@@ -47,6 +47,7 @@ public class CarrierTestOverride {
        <carrierTestOverride key="gid2" value="ffffffffffffffff"/>
        <carrierTestOverride key="imsi" value="310010123456789"/>
        <carrierTestOverride key="spn" value="Verizon"/>
+       <carrierTestOverride key="pnn" value="Verizon network"/>
        </carrierTestOverrides>
      */
     static final String DATA_CARRIER_TEST_OVERRIDE_PATH =
@@ -60,6 +61,7 @@ public class CarrierTestOverride {
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_GID2 = "gid2";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_IMSI = "imsi";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_SPN = "spn";
+    static final String CARRIER_TEST_XML_ITEM_KEY_STRING_PNN = "pnn";
 
     private HashMap<String, String> mCarrierTestParamMap;
 
@@ -114,6 +116,17 @@ public class CarrierTestOverride {
             return gid2;
         } catch (NullPointerException e) {
             Rlog.w(LOG_TAG, "No gid2 in CarrierTestConfig file ");
+            return null;
+        }
+    }
+
+    String getFakePnnHomeName() {
+        try {
+            String pnn = mCarrierTestParamMap.get(CARRIER_TEST_XML_ITEM_KEY_STRING_PNN);
+            Rlog.d(LOG_TAG, "reading pnn from CarrierTestConfig file: " + pnn);
+            return pnn;
+        } catch (NullPointerException e) {
+            Rlog.w(LOG_TAG, "No pnn in CarrierTestConfig file ");
             return null;
         }
     }
