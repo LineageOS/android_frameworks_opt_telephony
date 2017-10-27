@@ -170,7 +170,6 @@ public class DataConnection extends StateMachine {
     private int mDataRegState = Integer.MAX_VALUE;
     private NetworkInfo mNetworkInfo;
     private NetworkAgent mNetworkAgent;
-    private NetworkCapabilities mNetworkCapabilities;
     private LocalLog mLocalLog = new LocalLog(50);
 
     int mTag;
@@ -1839,9 +1838,14 @@ public class DataConnection extends StateMachine {
 
 
     private class DcNetworkAgent extends NetworkAgent {
+
+        private NetworkCapabilities mNetworkCapabilities;
+
         public DcNetworkAgent(Looper l, Context c, String TAG, NetworkInfo ni,
                 NetworkCapabilities nc, LinkProperties lp, int score, NetworkMisc misc) {
             super(l, c, TAG, ni, nc, lp, score, misc);
+            mLocalLog.log("New network agent created. capabilities=" + nc);
+            mNetworkCapabilities = nc;
         }
 
         @Override
@@ -2127,7 +2131,7 @@ public class DataConnection extends StateMachine {
         pw.flush();
         pw.println("mDataRegState=" + mDataRegState);
         pw.println("mRilRat=" + mRilRat);
-        pw.println("mNetworkCapabilities=" + mNetworkCapabilities);
+        pw.println("mNetworkCapabilities=" + getNetworkCapabilities());
         pw.println("mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
         pw.println("mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
         pw.println("mLastFailCause=" + mLastFailCause);
