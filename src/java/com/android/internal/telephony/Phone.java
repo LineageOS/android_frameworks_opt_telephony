@@ -277,8 +277,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public SmsUsageMonitor mSmsUsageMonitor;
     protected AtomicReference<UiccCardApplication> mUiccApplication =
             new AtomicReference<UiccCardApplication>();
-
-    private TelephonyTester mTelephonyTester;
+    TelephonyTester mTelephonyTester;
     private String mName;
     private final String mActionDetached;
     private final String mActionAttached;
