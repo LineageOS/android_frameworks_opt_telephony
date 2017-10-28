@@ -170,7 +170,7 @@ public class DataConnection extends StateMachine {
     private int mDataRegState = Integer.MAX_VALUE;
     private NetworkInfo mNetworkInfo;
     private NetworkAgent mNetworkAgent;
-    private LocalLog mLocalLog = new LocalLog(50);
+    private LocalLog mNetCapsLocalLog = new LocalLog(50);
 
     int mTag;
     public int mCid;
@@ -1849,7 +1849,7 @@ public class DataConnection extends StateMachine {
         public DcNetworkAgent(Looper l, Context c, String TAG, NetworkInfo ni,
                 NetworkCapabilities nc, LinkProperties lp, int score, NetworkMisc misc) {
             super(l, c, TAG, ni, nc, lp, score, misc);
-            mLocalLog.log("New network agent created. capabilities=" + nc);
+            mNetCapsLocalLog.log("New network agent created. capabilities=" + nc);
             mNetworkCapabilities = nc;
         }
 
@@ -1902,7 +1902,7 @@ public class DataConnection extends StateMachine {
                         + mPhone.getServiceState().getRilDataRadioTechnology()
                         + ", DUN APN=\"" + mDct.fetchDunApn() + "\""
                         + ", mApnSetting=" + mApnSetting;
-                mLocalLog.log(logStr);
+                mNetCapsLocalLog.log(logStr);
                 log(logStr);
                 mNetworkCapabilities = networkCapabilities;
             }
@@ -2145,7 +2145,7 @@ public class DataConnection extends StateMachine {
         pw.println("mAc=" + mAc);
         pw.println("Network capabilities changed history:");
         pw.increaseIndent();
-        mLocalLog.dump(fd, pw, args);
+        mNetCapsLocalLog.dump(fd, pw, args);
         pw.decreaseIndent();
         pw.decreaseIndent();
         pw.println();
