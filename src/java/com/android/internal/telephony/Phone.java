@@ -2881,6 +2881,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Retrieves the EF_PNN from the UICC For GSM/UMTS phones.
+     */
+    public String getPlmn() {
+        return null;
+    }
+
+    /**
      * Get the current for the default apn DataState. No change notification
      * exists at this interface -- use
      * {@link android.telephony.PhoneStateListener} instead.
@@ -2983,6 +2990,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo) {
         return;
+    }
+
+    public int getCarrierId() {
+        // TODO remove hardcoding and expose a public API for INVALID CARRIER ID
+        return -1;
+    }
+
+    public String getCarrierName() {
+        return null;
     }
 
     /**
