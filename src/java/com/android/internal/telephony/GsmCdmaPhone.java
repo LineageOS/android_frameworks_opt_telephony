@@ -157,6 +157,8 @@ public class GsmCdmaPhone extends Phone {
     private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
     private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     private DeviceStateMonitor mDeviceStateMonitor;
+    // Used for identify the carrier of current subscription
+    private CarrierIdentifier mCarrerIdentifier;
 
     private int mPrecisePhoneType;
 
@@ -212,6 +214,8 @@ public class GsmCdmaPhone extends Phone {
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
         mDcTracker = mTelephonyComponentFactory.makeDcTracker(this);
+        mCarrerIdentifier = mTelephonyComponentFactory.makeCarrierIdentifier(this);
+
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mDeviceStateMonitor = mTelephonyComponentFactory.makeDeviceStateMonitor(this);
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
@@ -1533,6 +1537,16 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public int getCarrierId() {
+        return mCarrerIdentifier.getCarrierId();
+    }
+
+    @Override
+    public String getCarrierName() {
+        return mCarrerIdentifier.getCarrierName();
+    }
+
+    @Override
     public String getGroupIdLevel1() {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
@@ -1565,6 +1579,19 @@ public class GsmCdmaPhone extends Phone {
             return (r != null) ? r.getMsisdnNumber() : null;
         } else {
             return mSST.getMdnNumber();
+        }
+    }
+
+    @Override
+    public String getPlmn() {
+        if (isPhoneTypeGsm()) {
+            IccRecords r = mIccRecords.get();
+            return (r != null) ? r.getPnnHomeName() : null;
+        } else if (isPhoneTypeCdma()) {
+            loge("Plmn is not available in CDMA");
+            return null;
+        } else { //isPhoneTypeCdmaLte()
+            return (mSimRecords != null) ? mSimRecords.getPnnHomeName() : null;
         }
     }
 
