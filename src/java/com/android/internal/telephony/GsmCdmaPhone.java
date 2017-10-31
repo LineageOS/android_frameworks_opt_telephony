@@ -2236,14 +2236,14 @@ public class GsmCdmaPhone extends Phone {
                     int current_cdma_roaming_mode =
                             Settings.Global.getInt(getContext().getContentResolver(),
                             Settings.Global.CDMA_ROAMING_MODE,
-                            CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT);
+                            TelephonyManager.CDMA_ROAMING_MODE_RADIO_DEFAULT);
                     switch (config_cdma_roaming_mode) {
                         // Carrier's cdma_roaming_mode will overwrite the user's previous settings
                         // Keep the user's previous setting in global variable which will be used
                         // when carrier's setting is turn off.
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_HOME:
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_AFFILIATED:
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_ANY:
+                        case TelephonyManager.CDMA_ROAMING_MODE_HOME:
+                        case TelephonyManager.CDMA_ROAMING_MODE_AFFILIATED:
+                        case TelephonyManager.CDMA_ROAMING_MODE_ANY:
                             logd("cdma_roaming_mode is going to changed to "
                                     + config_cdma_roaming_mode);
                             setCdmaRoamingPreference(config_cdma_roaming_mode,
@@ -2252,7 +2252,7 @@ public class GsmCdmaPhone extends Phone {
 
                         // When carrier's setting is turn off, change the cdma_roaming_mode to the
                         // previous user's setting
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT:
+                        case TelephonyManager.CDMA_ROAMING_MODE_RADIO_DEFAULT:
                             if (current_cdma_roaming_mode != config_cdma_roaming_mode) {
                                 logd("cdma_roaming_mode is going to changed to "
                                         + current_cdma_roaming_mode);
