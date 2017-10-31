@@ -86,14 +86,14 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
     @Test @SmallTest
     public void testSendText() {
         mCdmaSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
-                null, null, null, null, false);
+                null, null, null, null, false, -1, false, -1);
         verify(mSimulatedCommandsVerifier).sendCdmaSms(any(byte[].class), any(Message.class));
     }
 
     @Test @SmallTest
     public void testSendTextWithOutDesAddr() {
         mCdmaSmsDispatcher.sendText(null, "222" /*scAddr*/, TAG,
-                null, null, null, null, false);
+                null, null, null, null, false, -1, false, -1);
         verify(mSimulatedCommandsVerifier, times(0)).sendImsGsmSms(anyString(), anyString(),
                 anyInt(), anyInt(), any(Message.class));
     }

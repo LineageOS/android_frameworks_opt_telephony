@@ -91,8 +91,6 @@ public class SIMRecords extends IccRecords {
     // Numeric network codes listed in TS 51.011 EF[SPDI]
     ArrayList<String> mSpdiNetworks = null;
 
-    String mPnnHomeName = null;
-
     UsimServiceTable mUsimServiceTable;
 
     @Override
@@ -1068,6 +1066,7 @@ public class SIMRecords extends IccRecords {
                         if (tlv.getTag() == TAG_FULL_NETWORK_NAME) {
                             mPnnHomeName = IccUtils.networkNameToString(
                                     tlv.getData(), 0, tlv.getData().length);
+                            log("PNN: " + mPnnHomeName);
                             break;
                         }
                     }
@@ -2210,11 +2209,15 @@ public class SIMRecords extends IccRecords {
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeGid1=" + ((mFakeGid1 != null) ? mFakeGid1 : "null"));
+            pw.println(" mFakeGid1=" + mFakeGid1);
         }
         pw.println(" mGid2=" + mGid2);
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeGid2=" + ((mFakeGid2 != null) ? mFakeGid2 : "null"));
+            pw.println(" mFakeGid2=" + mFakeGid2);
+        }
+        pw.println(" mPnnHomeName=" + mPnnHomeName);
+        if (mCarrierTestOverride.isInTestMode()) {
+            pw.println(" mFakePnnHomeName=" + mFakePnnHomeName);
         }
         pw.println(" mPlmnActRecords[]=" + Arrays.toString(mPlmnActRecords));
         pw.println(" mOplmnActRecords[]=" + Arrays.toString(mOplmnActRecords));
