@@ -165,9 +165,9 @@ public abstract class InboundSmsHandler extends StateMachine {
      * state */
     private static final int EVENT_STATE_TIMEOUT = 10;
 
-    /** Timeout duration for EVENT_STATE_TIMEOUT */
+    /** Timeout duration for EVENT_STATE_TIMEOUT (5 minutes) */
     @VisibleForTesting
-    public static final int STATE_TIMEOUT = 30000;
+    public static final int STATE_TIMEOUT = 5 * 60 * 1000;
 
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
