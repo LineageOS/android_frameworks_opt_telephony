@@ -45,6 +45,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -854,8 +855,10 @@ public class SubscriptionController extends ISub.Stub {
             ContentResolver resolver = mContext.getContentResolver();
             Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
                     new String[]{SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
-                            SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE},
-                    SubscriptionManager.ICC_ID + "=?", new String[]{iccId}, null);
+                            SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE,
+                            SubscriptionManager.ICC_ID},
+                    SubscriptionManager.ICC_ID + "=?" + " OR " + SubscriptionManager.ICC_ID + "=?",
+                            new String[]{iccId, IccUtils.getDecimalSubstring(iccId)}, null);
 
             boolean setDisplayName = false;
             try {
@@ -867,6 +870,7 @@ public class SubscriptionController extends ISub.Stub {
                     int subId = cursor.getInt(0);
                     int oldSimInfoId = cursor.getInt(1);
                     int nameSource = cursor.getInt(2);
+                    String oldIccId = cursor.getString(3);
                     ContentValues value = new ContentValues();
 
                     if (slotIndex != oldSimInfoId) {
@@ -875,6 +879,11 @@ public class SubscriptionController extends ISub.Stub {
 
                     if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                         setDisplayName = true;
+                    }
+
+                    if (oldIccId != null && oldIccId.length() < iccId.length()
+                            && (oldIccId.equals(IccUtils.getDecimalSubstring(iccId)))) {
+                        value.put(SubscriptionManager.ICC_ID, iccId);
                     }
 
                     if (value.size() > 0) {
