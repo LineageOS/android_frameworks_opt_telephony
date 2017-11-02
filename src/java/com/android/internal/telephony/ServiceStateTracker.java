@@ -4443,6 +4443,7 @@ public class ServiceStateTracker extends Handler {
                 mSignalStrength.setGsm(isGsm);
             }
             mSignalStrength.setLteRsrpBoost(mSS.getLteEarfcnRsrpBoost());
+            mSignalStrength.setUseOnlyRsrpForLteLevel(isUseOnlyRsrpForLteLevel());
         } else {
             log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
             mSignalStrength = new SignalStrength(isGsm);
@@ -5084,5 +5085,26 @@ public class ServiceStateTracker extends Handler {
                         + "', do nothing");
             }
         }
+    }
+
+    /**
+     * Check whether to use only RSRP for the number of LTE signal bar.
+     *
+     * @return true if it should use only RSRP for the number of LTE signal bar.
+     */
+    private boolean isUseOnlyRsrpForLteLevel() {
+        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            // If an invalid subId is used, this bundle will contain default values.
+            PersistableBundle config = configManager.getConfigForSubId(mPhone.getSubId());
+            if (config != null) {
+                return config.getBoolean(
+                        CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL);
+            }
+        }
+        // Return static default defined in CarrierConfigManager.
+        return CarrierConfigManager.getDefaultConfig().getBoolean(
+                CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL);
     }
 }
