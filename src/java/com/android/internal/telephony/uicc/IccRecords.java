@@ -55,6 +55,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected TelephonyManager mTelephonyManager;
 
     protected RegistrantList mRecordsLoadedRegistrants = new RegistrantList();
+    protected RegistrantList mLockedRecordsLoadedRegistrants = new RegistrantList();
     protected RegistrantList mImsiReadyRegistrants = new RegistrantList();
     protected RegistrantList mRecordsEventsRegistrants = new RegistrantList();
     protected RegistrantList mNewSmsRegistrants = new RegistrantList();
@@ -68,6 +69,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // ***** Cached SIM State; cleared on channel close
 
     protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
+    protected boolean mLockedRecordsRequested = false; // true if parent app is locked and we've
+                                                       // made requests for the sim records
 
     protected String mIccId;  // Includes only decimals (no hex)
     protected String mFullIccId;  // Includes hex characters in ICCID
@@ -155,6 +158,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsToLoad=" + mRecordsToLoad
                 + " adnCache=" + mAdnCache
                 + " recordsRequested=" + mRecordsRequested
+                + " lockedRecordsRequested=" + mLockedRecordsRequested
                 + " iccid=" + iccIdToPrint
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + Rlog.pii(VDBG, mVoiceMailNum)
@@ -291,12 +295,35 @@ public abstract class IccRecords extends Handler implements IccConstants {
         Registrant r = new Registrant(h, what, obj);
         mRecordsLoadedRegistrants.add(r);
 
-        if (mRecordsToLoad == 0 && mRecordsRequested == true) {
+        if (getRecordsLoaded()) {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
     public void unregisterForRecordsLoaded(Handler h) {
         mRecordsLoadedRegistrants.remove(h);
+    }
+
+    /**
+     * Register to be notified when records are loaded for a locked SIM
+     */
+    public void registerForLockedRecordsLoaded(Handler h, int what, Object obj) {
+        if (mDestroyed.get()) {
+            return;
+        }
+
+        Registrant r = new Registrant(h, what, obj);
+        mLockedRecordsLoadedRegistrants.add(r);
+
+        if (getLockedRecordsLoaded()) {
+            r.notifyRegistrant(new AsyncResult(null, null, null));
+        }
+    }
+
+    /**
+     * Unregister corresponding to registerForLockedRecordsLoaded()
+     */
+    public void unregisterForLockedRecordsLoaded(Handler h) {
+        mLockedRecordsLoadedRegistrants.remove(h);
     }
 
     public void registerForImsiReady(Handler h, int what, Object obj) {
@@ -560,11 +587,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     public boolean getRecordsLoaded() {
-        if (mRecordsToLoad == 0 && mRecordsRequested == true) {
-            return true;
-        } else {
-            return false;
-        }
+        return mRecordsToLoad == 0 && mRecordsRequested;
+    }
+
+    protected boolean getLockedRecordsLoaded() {
+        return mRecordsToLoad == 0 && mLockedRecordsRequested;
     }
 
     //***** Overridden from Handler
@@ -822,6 +849,12 @@ public abstract class IccRecords extends Handler implements IccConstants {
             pw.println("  recordsLoadedRegistrants[" + i + "]="
                     + ((Registrant)mRecordsLoadedRegistrants.get(i)).getHandler());
         }
+        pw.println(" mLockedRecordsLoadedRegistrants: size="
+                + mLockedRecordsLoadedRegistrants.size());
+        for (int i = 0; i < mLockedRecordsLoadedRegistrants.size(); i++) {
+            pw.println("  mLockedRecordsLoadedRegistrants[" + i + "]="
+                    + ((Registrant) mLockedRecordsLoadedRegistrants.get(i)).getHandler());
+        }
         pw.println(" mImsiReadyRegistrants: size=" + mImsiReadyRegistrants.size());
         for (int i = 0; i < mImsiReadyRegistrants.size(); i++) {
             pw.println("  mImsiReadyRegistrants[" + i + "]="
@@ -844,6 +877,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                     + ((Registrant)mNetworkSelectionModeAutomaticRegistrants.get(i)).getHandler());
         }
         pw.println(" mRecordsRequested=" + mRecordsRequested);
+        pw.println(" mLockedRecordsRequested=" + mLockedRecordsRequested);
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
 
