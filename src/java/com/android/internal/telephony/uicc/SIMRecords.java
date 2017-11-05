@@ -482,7 +482,7 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    // Validate data is !null.
+    // Validate data is not null and not empty.
     private boolean validEfCfis(byte[] data) {
         if (data != null) {
             if (data[0] < 1 || data[0] > 4) {
@@ -490,7 +490,12 @@ public class SIMRecords extends IccRecords {
                 // 1 and 4 according to ETSI TS 131 102 v11.3.0 section 4.2.64.
                 logw("MSP byte: " + data[0] + " is not between 1 and 4", null);
             }
-            return true;
+            // empty EF_CFIS should be considered as call forward disabled
+            for (byte b : data) {
+                if (b != (byte) 0xFF) {
+                    return true;
+                }
+            }
         }
         return false;
     }
