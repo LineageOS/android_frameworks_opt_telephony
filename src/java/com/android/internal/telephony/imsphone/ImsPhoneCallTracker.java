@@ -972,7 +972,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return false;
         }
 
-        return mImsManager.isServiceAvailable();
+        return mImsManager.isServiceReady();
     }
 
     /**
