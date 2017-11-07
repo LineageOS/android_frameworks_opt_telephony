@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "520832fe_30d9be0b",
+        "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 17941
+      },
+      "writtenOn": "2017-11-07T19:34:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "507e6743_cec718e7",
+      "range": {
+        "startLine": 155,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 2
+      },
+      "revId": "1589722942111b4b249f64fe2dca61256e1f092b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "81b6cec8_fb401327",
         "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2017-11-07T17:54:28Z",
       "side": 1,
       "message": "One space more.",
+      "range": {
+        "startLine": 164,
+        "startChar": 19,
+        "endLine": 164,
+        "endChar": 21
+      },
+      "revId": "1589722942111b4b249f64fe2dca61256e1f092b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "187bda5f_892188fa",
+        "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 17941
+      },
+      "writtenOn": "2017-11-07T19:34:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "81b6cec8_fb401327",
       "range": {
         "startLine": 164,
         "startChar": 19,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "63691e01_49aba59a",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 17941
+      },
+      "writtenOn": "2017-11-07T19:34:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9436a7af_dff6d14f",
+      "range": {
+        "startLine": 268,
+        "startChar": 7,
+        "endLine": 268,
+        "endChar": 8
+      },
+      "revId": "1589722942111b4b249f64fe2dca61256e1f092b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bc1b6399_8bf3b785",
         "filename": "src/java/com/android/internal/telephony/RIL.java",
         "patchSetId": 4
@@ -82,6 +154,30 @@
       "writtenOn": "2017-11-07T17:54:28Z",
       "side": 1,
       "message": "This change doesn\u0027t belong here.",
+      "range": {
+        "startLine": 273,
+        "startChar": 25,
+        "endLine": 273,
+        "endChar": 34
+      },
+      "revId": "1589722942111b4b249f64fe2dca61256e1f092b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9007bce4_8f8bdc1b",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 17941
+      },
+      "writtenOn": "2017-11-07T19:34:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bc1b6399_8bf3b785",
       "range": {
         "startLine": 273,
         "startChar": 25,
