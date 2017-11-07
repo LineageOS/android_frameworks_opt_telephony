@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "e97a715b_63a5eb0c",
+        "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 15604
+      },
+      "writtenOn": "2017-11-07T23:59:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "507e6743_cec718e7",
+      "range": {
+        "startLine": 155,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 2
+      },
+      "revId": "1589722942111b4b249f64fe2dca61256e1f092b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "81b6cec8_fb401327",
         "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
         "patchSetId": 4
@@ -81,6 +105,30 @@
         "id": 17941
       },
       "writtenOn": "2017-11-07T19:34:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "81b6cec8_fb401327",
+      "range": {
+        "startLine": 164,
+        "startChar": 19,
+        "endLine": 164,
+        "endChar": 21
+      },
+      "revId": "1589722942111b4b249f64fe2dca61256e1f092b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa867340_f1d770f5",
+        "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 15604
+      },
+      "writtenOn": "2017-11-07T23:59:52Z",
       "side": 1,
       "message": "Done",
       "parentUuid": "81b6cec8_fb401327",
