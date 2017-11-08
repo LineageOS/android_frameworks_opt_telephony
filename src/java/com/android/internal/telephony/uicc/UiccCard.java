@@ -33,11 +33,13 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -47,6 +49,7 @@ import android.view.WindowManager;
 import com.android.internal.R;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.CommandsInterface.RadioState;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -744,7 +747,21 @@ public class UiccCard {
             return null;
         }
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        return sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
+        String brandName = sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
+        if (brandName == null) {
+            // Check if  CarrierConfig sets carrier name
+            CarrierConfigManager manager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            int subId = SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
+            if (manager != null) {
+                PersistableBundle bundle = manager.getConfigForSubId(subId);
+                if (bundle != null && bundle.getBoolean(
+                        CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL)) {
+                    brandName = bundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+                }
+            }
+        }
+        return brandName;
     }
 
     public String getIccId() {
