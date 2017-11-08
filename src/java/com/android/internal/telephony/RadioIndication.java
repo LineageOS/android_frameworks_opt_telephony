@@ -640,6 +640,12 @@ public class RadioIndication extends IRadioIndication.Stub {
         responseCellInfos(indicationType, result);
     }
 
+    /** Incremental network scan results */
+    public void networkScanResult_1_2(int indicationType,
+                                      android.hardware.radio.V1_2.NetworkScanResult result) {
+        responseCellInfos_1_2(indicationType, result);
+    }
+
     public void imsNetworkStateChanged(int indicationType) {
         mRil.processIndication(indicationType);
 
@@ -838,6 +844,17 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         NetworkScanResult nsr = null;
         ArrayList<CellInfo> infos = RIL.convertHalCellInfoList(result.networkInfos);
+        nsr = new NetworkScanResult(result.status, result.error, infos);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
+        mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
+    }
+
+    private void responseCellInfos_1_2(int indicationType,
+                                       android.hardware.radio.V1_2.NetworkScanResult result) {
+        mRil.processIndication(indicationType);
+
+        NetworkScanResult nsr = null;
+        ArrayList<CellInfo> infos = RIL.convertHalCellInfoList_1_2(result.networkInfos);
         nsr = new NetworkScanResult(result.status, result.error, infos);
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
