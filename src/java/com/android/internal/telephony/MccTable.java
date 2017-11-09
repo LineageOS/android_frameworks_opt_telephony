@@ -359,7 +359,7 @@ public final class MccTable {
      * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
      */
     private static void setTimezoneFromMccIfNeeded(Context context, int mcc) {
-        String timezone = SystemProperties.get(ServiceStateTracker.TIMEZONE_PROPERTY);
+        String timezone = SystemProperties.get(NitzStateMachine.TIMEZONE_PROPERTY);
         // timezone.equals("GMT") will be true and only true if the timezone was
         // set to a default value by the system server (when starting, system server.
         // sets the persist.sys.timezone to "GMT" if it's not set)."GMT" is not used by
