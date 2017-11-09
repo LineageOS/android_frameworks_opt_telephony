@@ -193,9 +193,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     static final int IRADIO_GET_SERVICE_DELAY_MILLIS = 4 * 1000;
 
-    static final String EMPTY_ALPHA_LONG = "";
-    static final String EMPTY_ALPHA_SHORT = "";
-
     public static List<TelephonyHistogram> getTelephonyRILTimingHistograms() {
         List<TelephonyHistogram> list;
         synchronized (mRilTimeHistograms) {
@@ -4925,12 +4922,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return capacityResponse;
     }
 
-    /**
-     * Convert CellInfo defined in 1.0/types.hal to CellInfo type.
-     * @param records List of CellInfo defined in 1.0/types.hal
-     * @return List of converted CellInfo object
-     */
-    public static ArrayList<CellInfo> convertHalCellInfoList(
+    static ArrayList<CellInfo> convertHalCellInfoList(
             ArrayList<android.hardware.radio.V1_0.CellInfo> records) {
         ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
 
@@ -4944,14 +4936,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             switch (record.cellInfoType) {
                 case CellInfoType.GSM: {
                     CellInfoGsm cellInfoGsm = record.gsm.get(0);
+                    p.writeInt(Integer.parseInt(cellInfoGsm.cellIdentityGsm.mcc));
+                    p.writeInt(Integer.parseInt(cellInfoGsm.cellIdentityGsm.mnc));
                     p.writeInt(cellInfoGsm.cellIdentityGsm.lac);
                     p.writeInt(cellInfoGsm.cellIdentityGsm.cid);
                     p.writeInt(cellInfoGsm.cellIdentityGsm.arfcn);
                     p.writeInt(Byte.toUnsignedInt(cellInfoGsm.cellIdentityGsm.bsic));
-                    p.writeString(cellInfoGsm.cellIdentityGsm.mcc);
-                    p.writeString(cellInfoGsm.cellIdentityGsm.mnc);
-                    p.writeString(EMPTY_ALPHA_LONG);
-                    p.writeString(EMPTY_ALPHA_SHORT);
                     p.writeInt(cellInfoGsm.signalStrengthGsm.signalStrength);
                     p.writeInt(cellInfoGsm.signalStrengthGsm.bitErrorRate);
                     p.writeInt(cellInfoGsm.signalStrengthGsm.timingAdvance);
@@ -4965,8 +4955,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     p.writeInt(cellInfoCdma.cellIdentityCdma.baseStationId);
                     p.writeInt(cellInfoCdma.cellIdentityCdma.longitude);
                     p.writeInt(cellInfoCdma.cellIdentityCdma.latitude);
-                    p.writeString(EMPTY_ALPHA_LONG);
-                    p.writeString(EMPTY_ALPHA_SHORT);
                     p.writeInt(cellInfoCdma.signalStrengthCdma.dbm);
                     p.writeInt(cellInfoCdma.signalStrengthCdma.ecio);
                     p.writeInt(cellInfoCdma.signalStrengthEvdo.dbm);
@@ -4977,14 +4965,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                 case CellInfoType.LTE: {
                     CellInfoLte cellInfoLte = record.lte.get(0);
+                    p.writeInt(Integer.parseInt(cellInfoLte.cellIdentityLte.mcc));
+                    p.writeInt(Integer.parseInt(cellInfoLte.cellIdentityLte.mnc));
                     p.writeInt(cellInfoLte.cellIdentityLte.ci);
                     p.writeInt(cellInfoLte.cellIdentityLte.pci);
                     p.writeInt(cellInfoLte.cellIdentityLte.tac);
                     p.writeInt(cellInfoLte.cellIdentityLte.earfcn);
-                    p.writeString(cellInfoLte.cellIdentityLte.mcc);
-                    p.writeString(cellInfoLte.cellIdentityLte.mnc);
-                    p.writeString(EMPTY_ALPHA_LONG);
-                    p.writeString(EMPTY_ALPHA_SHORT);
                     p.writeInt(cellInfoLte.signalStrengthLte.signalStrength);
                     p.writeInt(cellInfoLte.signalStrengthLte.rsrp);
                     p.writeInt(cellInfoLte.signalStrengthLte.rsrq);
@@ -4996,111 +4982,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                 case CellInfoType.WCDMA: {
                     CellInfoWcdma cellInfoWcdma = record.wcdma.get(0);
+                    p.writeInt(Integer.parseInt(cellInfoWcdma.cellIdentityWcdma.mcc));
+                    p.writeInt(Integer.parseInt(cellInfoWcdma.cellIdentityWcdma.mnc));
                     p.writeInt(cellInfoWcdma.cellIdentityWcdma.lac);
                     p.writeInt(cellInfoWcdma.cellIdentityWcdma.cid);
                     p.writeInt(cellInfoWcdma.cellIdentityWcdma.psc);
                     p.writeInt(cellInfoWcdma.cellIdentityWcdma.uarfcn);
-                    p.writeString(cellInfoWcdma.cellIdentityWcdma.mcc);
-                    p.writeString(cellInfoWcdma.cellIdentityWcdma.mnc);
-                    p.writeString(EMPTY_ALPHA_LONG);
-                    p.writeString(EMPTY_ALPHA_SHORT);
-                    p.writeInt(cellInfoWcdma.signalStrengthWcdma.signalStrength);
-                    p.writeInt(cellInfoWcdma.signalStrengthWcdma.bitErrorRate);
-                    break;
-                }
-
-                default:
-                    throw new RuntimeException("unexpected cellinfotype: " + record.cellInfoType);
-            }
-
-            p.setDataPosition(0);
-            CellInfo InfoRec = CellInfo.CREATOR.createFromParcel(p);
-            p.recycle();
-            response.add(InfoRec);
-        }
-
-        return response;
-    }
-
-    /**
-     * Convert CellInfo defined in 1.2/types.hal to CellInfo type.
-     * @param records List of CellInfo defined in 1.2/types.hal
-     * @return List of converted CellInfo object
-     */
-    public static ArrayList<CellInfo> convertHalCellInfoList_1_2(
-            ArrayList<android.hardware.radio.V1_2.CellInfo> records) {
-        ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
-
-        for (android.hardware.radio.V1_2.CellInfo record : records) {
-            // first convert RIL CellInfo to Parcel
-            Parcel p = Parcel.obtain();
-            p.writeInt(record.cellInfoType);
-            p.writeInt(record.registered ? 1 : 0);
-            p.writeInt(record.timeStampType);
-            p.writeLong(record.timeStamp);
-            switch (record.cellInfoType) {
-                case CellInfoType.GSM: {
-                    android.hardware.radio.V1_2.CellInfoGsm cellInfoGsm = record.gsm.get(0);
-                    p.writeInt(cellInfoGsm.cellIdentityGsm.base.lac);
-                    p.writeInt(cellInfoGsm.cellIdentityGsm.base.cid);
-                    p.writeInt(cellInfoGsm.cellIdentityGsm.base.arfcn);
-                    p.writeInt(Byte.toUnsignedInt(cellInfoGsm.cellIdentityGsm.base.bsic));
-                    p.writeString(cellInfoGsm.cellIdentityGsm.base.mcc);
-                    p.writeString(cellInfoGsm.cellIdentityGsm.base.mnc);
-                    p.writeString(cellInfoGsm.cellIdentityGsm.operatorNames.alphaLong);
-                    p.writeString(cellInfoGsm.cellIdentityGsm.operatorNames.alphaShort);
-                    p.writeInt(cellInfoGsm.signalStrengthGsm.signalStrength);
-                    p.writeInt(cellInfoGsm.signalStrengthGsm.bitErrorRate);
-                    p.writeInt(cellInfoGsm.signalStrengthGsm.timingAdvance);
-                    break;
-                }
-
-                case CellInfoType.CDMA: {
-                    android.hardware.radio.V1_2.CellInfoCdma cellInfoCdma = record.cdma.get(0);
-                    p.writeInt(cellInfoCdma.cellIdentityCdma.base.networkId);
-                    p.writeInt(cellInfoCdma.cellIdentityCdma.base.systemId);
-                    p.writeInt(cellInfoCdma.cellIdentityCdma.base.baseStationId);
-                    p.writeInt(cellInfoCdma.cellIdentityCdma.base.longitude);
-                    p.writeInt(cellInfoCdma.cellIdentityCdma.base.latitude);
-                    p.writeString(cellInfoCdma.cellIdentityCdma.operatorNames.alphaLong);
-                    p.writeString(cellInfoCdma.cellIdentityCdma.operatorNames.alphaShort);
-                    p.writeInt(cellInfoCdma.signalStrengthCdma.dbm);
-                    p.writeInt(cellInfoCdma.signalStrengthCdma.ecio);
-                    p.writeInt(cellInfoCdma.signalStrengthEvdo.dbm);
-                    p.writeInt(cellInfoCdma.signalStrengthEvdo.ecio);
-                    p.writeInt(cellInfoCdma.signalStrengthEvdo.signalNoiseRatio);
-                    break;
-                }
-
-                case CellInfoType.LTE: {
-                    android.hardware.radio.V1_2.CellInfoLte cellInfoLte = record.lte.get(0);
-                    p.writeInt(cellInfoLte.cellIdentityLte.base.ci);
-                    p.writeInt(cellInfoLte.cellIdentityLte.base.pci);
-                    p.writeInt(cellInfoLte.cellIdentityLte.base.tac);
-                    p.writeInt(cellInfoLte.cellIdentityLte.base.earfcn);
-                    p.writeString(cellInfoLte.cellIdentityLte.base.mcc);
-                    p.writeString(cellInfoLte.cellIdentityLte.base.mnc);
-                    p.writeString(cellInfoLte.cellIdentityLte.operatorNames.alphaLong);
-                    p.writeString(cellInfoLte.cellIdentityLte.operatorNames.alphaShort);
-                    p.writeInt(cellInfoLte.signalStrengthLte.signalStrength);
-                    p.writeInt(cellInfoLte.signalStrengthLte.rsrp);
-                    p.writeInt(cellInfoLte.signalStrengthLte.rsrq);
-                    p.writeInt(cellInfoLte.signalStrengthLte.rssnr);
-                    p.writeInt(cellInfoLte.signalStrengthLte.cqi);
-                    p.writeInt(cellInfoLte.signalStrengthLte.timingAdvance);
-                    break;
-                }
-
-                case CellInfoType.WCDMA: {
-                    android.hardware.radio.V1_2.CellInfoWcdma cellInfoWcdma = record.wcdma.get(0);
-                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.base.lac);
-                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.base.cid);
-                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.base.psc);
-                    p.writeInt(cellInfoWcdma.cellIdentityWcdma.base.uarfcn);
-                    p.writeString(cellInfoWcdma.cellIdentityWcdma.base.mcc);
-                    p.writeString(cellInfoWcdma.cellIdentityWcdma.base.mnc);
-                    p.writeString(cellInfoWcdma.cellIdentityWcdma.operatorNames.alphaLong);
-                    p.writeString(cellInfoWcdma.cellIdentityWcdma.operatorNames.alphaShort);
                     p.writeInt(cellInfoWcdma.signalStrengthWcdma.signalStrength);
                     p.writeInt(cellInfoWcdma.signalStrengthWcdma.bitErrorRate);
                     break;
