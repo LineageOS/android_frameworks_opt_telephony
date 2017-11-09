@@ -172,4 +172,21 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         CellIdentityGsm newCi = CellIdentityGsm.CREATOR.createFromParcel(p);
         assertEquals(ci, newCi);
     }
+
+    @SmallTest
+    public void testParcelWithUnknowMccMnc() {
+        CellIdentityGsm ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, null, null);
+
+        Parcel p = Parcel.obtain();
+        p.writeInt(LAC);
+        p.writeInt(CID);
+        p.writeInt(ARFCN);
+        p.writeInt(BSIC);
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.setDataPosition(0);
+
+        CellIdentityGsm newCi = CellIdentityGsm.CREATOR.createFromParcel(p);
+        assertEquals(ci, newCi);
+    }
 }
