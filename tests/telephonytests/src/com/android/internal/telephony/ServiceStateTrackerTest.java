@@ -242,7 +242,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testSpnUpdateShowPlmnOnly() {
-        doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
+        doReturn(0x02).when(mSimRecords).getDisplayRule(new ServiceState());
         doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).
                 when(mUiccCardApplication3gpp).getState();
 
