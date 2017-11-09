@@ -23,9 +23,11 @@ import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -1844,14 +1846,20 @@ public class SIMRecords extends IccRecords {
 
     /**
      * Returns the SpnDisplayRule based on settings on the SIM and the
-     * specified plmn (currently-registered PLMN).  See TS 22.101 Annex A
-     * and TS 51.011 10.3.11 for details.
+     * current service state. See TS 22.101 Annex A and TS 51.011 10.3.11
+     * for details.
      *
      * If the SPN is not found on the SIM or is empty, the rule is
      * always PLMN_ONLY.
+     *
+     * @param serviceState Service state
+     * @return the display rule
+     *
+     * @see #SPN_RULE_SHOW_SPN
+     * @see #SPN_RULE_SHOW_PLMN
      */
     @Override
-    public int getDisplayRule(String plmn) {
+    public int getDisplayRule(ServiceState serviceState) {
         int rule;
 
         if (mParentApp != null && mParentApp.getUiccCard() != null &&
@@ -1861,7 +1869,8 @@ public class SIMRecords extends IccRecords {
         } else if (TextUtils.isEmpty(getServiceProviderName()) || mSpnDisplayCondition == -1) {
             // No EF_SPN content was found on the SIM, or not yet loaded.  Just show ONS.
             rule = SPN_RULE_SHOW_PLMN;
-        } else if (isOnMatchingPlmn(plmn)) {
+        } else if (useRoamingFromServiceState() ? !serviceState.getRoaming()
+                : isOnMatchingPlmn(serviceState.getOperatorNumeric())) {
             rule = SPN_RULE_SHOW_SPN;
             if ((mSpnDisplayCondition & 0x01) == 0x01) {
                 // ONS required when registered to HPLMN or PLMN in EF_SPDI
@@ -1875,6 +1884,21 @@ public class SIMRecords extends IccRecords {
             }
         }
         return rule;
+    }
+
+    private boolean useRoamingFromServiceState() {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            PersistableBundle b = configManager.getConfigForSubId(
+                    SubscriptionController.getInstance().getSubIdUsingPhoneId(
+                    mParentApp.getPhoneId()));
+            if (b != null && b.getBoolean(CarrierConfigManager
+                    .KEY_SPN_DISPLAY_RULE_USE_ROAMING_FROM_SERVICE_STATE_BOOL)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
