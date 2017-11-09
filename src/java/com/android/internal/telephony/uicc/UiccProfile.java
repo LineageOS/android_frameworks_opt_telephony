@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2012 The Android Open Source Project
+ * Copyright 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@ package com.android.internal.telephony.uicc;
 
 import android.app.AlertDialog;
 import android.app.usage.UsageStatsManager;
-import android.content.ActivityNotFoundException;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -33,13 +31,10 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
-import android.os.PersistableBundle;
-import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -48,11 +43,8 @@ import android.view.WindowManager;
 
 import com.android.internal.R;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.CommandsInterface.RadioState;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
-import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 
 import java.io.FileDescriptor;
@@ -62,36 +54,38 @@ import java.util.HashSet;
 import java.util.List;
 
 /**
+ * This class represents the carrier profiles in the {@link UiccCard}. Each profile contains
+ * multiple {@link UiccCardApplication}, one {@link UiccCarrierPrivilegeRules} and one
+ * {@link CatService}.
+ *
+ * Profile is related to {@link android.telephony.SubscriptionInfo} but those two concepts are
+ * different. {@link android.telephony.SubscriptionInfo} contains all the subscription information
+ * while Profile contains all the {@link UiccCardApplication} which will be used to fetch those
+ * subscription information from the {@link UiccCard}.
+ *
  * {@hide}
  */
-public class UiccCard {
-    protected static final String LOG_TAG = "UiccCard";
+public class UiccProfile {
+    protected static final String LOG_TAG = "UiccProfile";
     protected static final boolean DBG = true;
-
-    public static final String EXTRA_ICC_CARD_ADDED =
-            "com.android.internal.telephony.uicc.ICC_CARD_ADDED";
 
     private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
 
     private final Object mLock = new Object();
-    private CardState mCardState;
     private PinState mUniversalPinState;
     private int mGsmUmtsSubscriptionAppIndex;
     private int mCdmaSubscriptionAppIndex;
     private int mImsSubscriptionAppIndex;
     private UiccCardApplication[] mUiccApplications =
-            new UiccCardApplication[IccCardStatus.CARD_MAX_APPS];
+        new UiccCardApplication[IccCardStatus.CARD_MAX_APPS];
     private Context mContext;
     private CommandsInterface mCi;
+    private UiccCard mUiccCard; //parent
     private CatService mCatService;
-    private RadioState mLastRadioState =  RadioState.RADIO_UNAVAILABLE;
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
 
-    private RegistrantList mAbsentRegistrants = new RegistrantList();
     private RegistrantList mCarrierPrivilegeRegistrants = new RegistrantList();
 
-    private static final int EVENT_CARD_REMOVED = 13;
-    private static final int EVENT_CARD_ADDED = 14;
     private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 15;
     private static final int EVENT_CLOSE_LOGICAL_CHANNEL_DONE = 16;
     private static final int EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE = 17;
@@ -99,20 +93,21 @@ public class UiccCard {
     private static final int EVENT_SIM_IO_DONE = 19;
     private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 20;
 
-    private static final LocalLog mLocalLog = new LocalLog(100);
+    private static final LocalLog sLocalLog = new LocalLog(100);
 
     private final int mPhoneId;
 
-    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId) {
-        if (DBG) log("Creating");
-        mCardState = ics.mCardState;
+    public UiccProfile(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId,
+            UiccCard uiccCard) {
+        if (DBG) log("Creating profile");
+        mUiccCard = uiccCard;
         mPhoneId = phoneId;
         update(c, ci, ics);
     }
 
-    public void dispose() {
+    void dispose() {
         synchronized (mLock) {
-            if (DBG) log("Disposing card");
+            if (DBG) log("Disposing profile");
             if (mCatService != null) mCatService.dispose();
             for (UiccCardApplication app : mUiccApplications) {
                 if (app != null) {
@@ -125,10 +120,8 @@ public class UiccCard {
         }
     }
 
-    public void update(Context c, CommandsInterface ci, IccCardStatus ics) {
+    void update(Context c, CommandsInterface ci, IccCardStatus ics) {
         synchronized (mLock) {
-            CardState oldState = mCardState;
-            mCardState = ics.mCardState;
             mUniversalPinState = ics.mUniversalPinState;
             mGsmUmtsSubscriptionAppIndex = ics.mGsmUmtsSubscriptionAppIndex;
             mCdmaSubscriptionAppIndex = ics.mCdmaSubscriptionAppIndex;
@@ -138,11 +131,11 @@ public class UiccCard {
 
             //update applications
             if (DBG) log(ics.mApplications.length + " applications");
-            for ( int i = 0; i < mUiccApplications.length; i++) {
+            for (int i = 0; i < mUiccApplications.length; i++) {
                 if (mUiccApplications[i] == null) {
                     //Create newly added Applications
                     if (i < ics.mApplications.length) {
-                        mUiccApplications[i] = new UiccCardApplication(this,
+                        mUiccApplications[i] = new UiccCardApplication(mUiccCard,
                                 ics.mApplications[i], mContext, mCi);
                     }
                 } else if (i >= ics.mApplications.length) {
@@ -157,35 +150,13 @@ public class UiccCard {
 
             createAndUpdateCatServiceLocked();
 
-            // Reload the carrier privilege rules if necessary.
-            log("Before privilege rules: " + mCarrierPrivilegeRules + " : " + mCardState);
-            if (mCarrierPrivilegeRules == null && mCardState == CardState.CARDSTATE_PRESENT) {
-                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(this,
+            log("Before privilege rules: " + mCarrierPrivilegeRules);
+            if (mCarrierPrivilegeRules == null) {
+                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccCard,
                         mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
-            } else if (mCarrierPrivilegeRules != null
-                    && mCardState != CardState.CARDSTATE_PRESENT) {
-                mCarrierPrivilegeRules = null;
             }
 
             sanitizeApplicationIndexesLocked();
-
-            RadioState radioState = mCi.getRadioState();
-            if (DBG) log("update: radioState=" + radioState + " mLastRadioState="
-                    + mLastRadioState);
-            // No notifications while radio is off or we just powering up
-            if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
-                if (oldState != CardState.CARDSTATE_ABSENT &&
-                        mCardState == CardState.CARDSTATE_ABSENT) {
-                    if (DBG) log("update: notify card removed");
-                    mAbsentRegistrants.notifyRegistrants();
-                    mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_REMOVED, null));
-                } else if (oldState == CardState.CARDSTATE_ABSENT &&
-                        mCardState != CardState.CARDSTATE_ABSENT) {
-                    if (DBG) log("update: notify card added");
-                    mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
-                }
-            }
-            mLastRadioState = radioState;
         }
     }
 
@@ -193,9 +164,9 @@ public class UiccCard {
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
             // Initialize or Reinitialize CatService
             if (mCatService == null) {
-                mCatService = CatService.getInstance(mCi, mContext, this, mPhoneId);
+                mCatService = CatService.getInstance(mCi, mContext, mUiccCard, mPhoneId);
             } else {
-                mCatService.update(mCi, mContext, this);
+                mCatService.update(mCi, mContext, mUiccCard);
             }
         } else {
             if (mCatService != null) {
@@ -207,7 +178,7 @@ public class UiccCard {
 
     @Override
     protected void finalize() {
-        if (DBG) log("UiccCard finalized");
+        if (DBG) log("UiccProfile finalized");
     }
 
     /**
@@ -237,10 +208,10 @@ public class UiccCard {
             return -1;
         }
 
-        if (mUiccApplications[index].getType() != expectedAppType &&
-            mUiccApplications[index].getType() != altExpectedAppType) {
-            loge("App index " + index + " is invalid since it's not " +
-                    expectedAppType + " and not " + altExpectedAppType);
+        if (mUiccApplications[index].getType() != expectedAppType
+                && mUiccApplications[index].getType() != altExpectedAppType) {
+            loge("App index " + index + " is invalid since it's not "
+                    + expectedAppType + " and not " + altExpectedAppType);
             return -1;
         }
 
@@ -249,32 +220,15 @@ public class UiccCard {
     }
 
     /**
-     * Notifies handler of any transition into State.ABSENT
-     */
-    public void registerForAbsent(Handler h, int what, Object obj) {
-        synchronized (mLock) {
-            Registrant r = new Registrant (h, what, obj);
-
-            mAbsentRegistrants.add(r);
-
-            if (mCardState == CardState.CARDSTATE_ABSENT) {
-                r.notifyRegistrant();
-            }
-        }
-    }
-
-    public void unregisterForAbsent(Handler h) {
-        synchronized (mLock) {
-            mAbsentRegistrants.remove(h);
-        }
-    }
-
-    /**
-     * Notifies handler when carrier privilege rules are loaded.
+     * Registers the handler when carrier privilege rules are loaded.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
      */
     public void registerForCarrierPrivilegeRulesLoaded(Handler h, int what, Object obj) {
         synchronized (mLock) {
-            Registrant r = new Registrant (h, what, obj);
+            Registrant r = new Registrant(h, what, obj);
 
             mCarrierPrivilegeRegistrants.add(r);
 
@@ -284,108 +238,33 @@ public class UiccCard {
         }
     }
 
+    /**
+     * Unregister for notifications when carrier privilege rules are loaded.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
     public void unregisterForCarrierPrivilegeRulesLoaded(Handler h) {
         synchronized (mLock) {
             mCarrierPrivilegeRegistrants.remove(h);
         }
     }
 
-    private void onIccSwap(boolean isAdded) {
-
-        boolean isHotSwapSupported = mContext.getResources().getBoolean(
-                R.bool.config_hotswapCapable);
-
-        if (isHotSwapSupported) {
-            log("onIccSwap: isHotSwapSupported is true, don't prompt for rebooting");
-            return;
-        }
-        log("onIccSwap: isHotSwapSupported is false, prompt for rebooting");
-
-        promptForRestart(isAdded);
-    }
-
-    private void promptForRestart(boolean isAdded) {
-        synchronized (mLock) {
-            final Resources res = mContext.getResources();
-            final String dialogComponent = res.getString(
-                    R.string.config_iccHotswapPromptForRestartDialogComponent);
-            if (dialogComponent != null) {
-                Intent intent = new Intent().setComponent(ComponentName.unflattenFromString(
-                        dialogComponent)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        .putExtra(EXTRA_ICC_CARD_ADDED, isAdded);
-                try {
-                    mContext.startActivity(intent);
-                    return;
-                } catch (ActivityNotFoundException e) {
-                    loge("Unable to find ICC hotswap prompt for restart activity: " + e);
-                }
-            }
-
-            // TODO: Here we assume the device can't handle SIM hot-swap
-            //      and has to reboot. We may want to add a property,
-            //      e.g. REBOOT_ON_SIM_SWAP, to indicate if modem support
-            //      hot-swap.
-            DialogInterface.OnClickListener listener = null;
-
-
-            // TODO: SimRecords is not reset while SIM ABSENT (only reset while
-            //       Radio_off_or_not_available). Have to reset in both both
-            //       added or removed situation.
-            listener = new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    synchronized (mLock) {
-                        if (which == DialogInterface.BUTTON_POSITIVE) {
-                            if (DBG) log("Reboot due to SIM swap");
-                            PowerManager pm = (PowerManager) mContext
-                                    .getSystemService(Context.POWER_SERVICE);
-                            pm.reboot("SIM is added.");
-                        }
-                    }
-                }
-
-            };
-
-            Resources r = Resources.getSystem();
-
-            String title = (isAdded) ? r.getString(R.string.sim_added_title) :
-                r.getString(R.string.sim_removed_title);
-            String message = (isAdded) ? r.getString(R.string.sim_added_message) :
-                r.getString(R.string.sim_removed_message);
-            String buttonTxt = r.getString(R.string.sim_restart_button);
-
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
-            .setTitle(title)
-            .setMessage(message)
-            .setPositiveButton(buttonTxt, listener)
-            .create();
-            dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
-            dialog.show();
-        }
-    }
-
     protected Handler mHandler = new Handler() {
         @Override
-        public void handleMessage(Message msg){
+        public void handleMessage(Message msg) {
             switch (msg.what) {
-                case EVENT_CARD_REMOVED:
-                    onIccSwap(false);
-                    break;
-                case EVENT_CARD_ADDED:
-                    onIccSwap(true);
-                    break;
                 case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
                 case EVENT_CLOSE_LOGICAL_CHANNEL_DONE:
                 case EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE:
                 case EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE:
                 case EVENT_SIM_IO_DONE:
-                    AsyncResult ar = (AsyncResult)msg.obj;
+                    AsyncResult ar = (AsyncResult) msg.obj;
                     if (ar.exception != null) {
                         loglocal("Exception: " + ar.exception);
                         log("Error in SIM access with exception" + ar.exception);
                     }
-                    AsyncResult.forMessage((Message)ar.userObj, ar.result, ar.exception);
-                    ((Message)ar.userObj).sendToTarget();
+                    AsyncResult.forMessage((Message) ar.userObj, ar.result, ar.exception);
+                    ((Message) ar.userObj).sendToTarget();
                     break;
                 case EVENT_CARRIER_PRIVILEGES_LOADED:
                     onCarrierPriviligesLoadedMessage();
@@ -409,16 +288,16 @@ public class UiccCard {
     }
 
     private class ClickListener implements DialogInterface.OnClickListener {
-        String pkgName;
-        public ClickListener(String pkgName) {
-            this.pkgName = pkgName;
+        String mPkgName;
+        ClickListener(String pkgName) {
+            this.mPkgName = pkgName;
         }
         @Override
         public void onClick(DialogInterface dialog, int which) {
             synchronized (mLock) {
                 if (which == DialogInterface.BUTTON_POSITIVE) {
                     Intent market = new Intent(Intent.ACTION_VIEW);
-                    market.setData(Uri.parse("market://details?id=" + pkgName));
+                    market.setData(Uri.parse("market://details?id=" + mPkgName));
                     market.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     mContext.startActivity(market);
                 } else if (which == DialogInterface.BUTTON_NEGATIVE) {
@@ -437,10 +316,10 @@ public class UiccCard {
         String notNowTxt = r.getString(R.string.carrier_app_dialog_not_now);
 
         AlertDialog dialog = new AlertDialog.Builder(mContext)
-        .setMessage(message)
-        .setNegativeButton(notNowTxt, listener)
-        .setPositiveButton(buttonTxt, listener)
-        .create();
+                .setMessage(message)
+                .setNegativeButton(notNowTxt, listener)
+                .setPositiveButton(buttonTxt, listener)
+                .create();
         dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
         dialog.show();
     }
@@ -474,9 +353,14 @@ public class UiccCard {
         }
     }
 
+    /**
+     * Check whether the specified type of application exists in the profile.
+     *
+     * @param type UICC application type.
+     */
     public boolean isApplicationOnIcc(IccCardApplicationStatus.AppType type) {
         synchronized (mLock) {
-            for (int i = 0 ; i < mUiccApplications.length; i++) {
+            for (int i = 0; i < mUiccApplications.length; i++) {
                 if (mUiccApplications[i] != null && mUiccApplications[i].getType() == type) {
                     return true;
                 }
@@ -485,18 +369,21 @@ public class UiccCard {
         }
     }
 
-    public CardState getCardState() {
-        synchronized (mLock) {
-            return mCardState;
-        }
-    }
-
+    /**
+     * Return the universal pin state of the profile.
+     */
     public PinState getUniversalPinState() {
         synchronized (mLock) {
             return mUniversalPinState;
         }
     }
 
+    /**
+     * Return the application of the specified family.
+     *
+     * @param family UICC application family.
+     * @return application corresponding to family or a null if no match found
+     */
     public UiccCardApplication getApplication(int family) {
         synchronized (mLock) {
             int index = IccCardStatus.CARD_MAX_APPS;
@@ -518,6 +405,12 @@ public class UiccCard {
         }
     }
 
+    /**
+     * Return the application with the index of the array.
+     *
+     * @param index Index of the application array.
+     * @return application corresponding to index or a null if no match found
+     */
     public UiccCardApplication getApplicationIndex(int index) {
         synchronized (mLock) {
             if (index >= 0 && index < mUiccApplications.length) {
@@ -530,14 +423,15 @@ public class UiccCard {
     /**
      * Returns the SIM application of the specified type.
      *
-     * @param type ICC application type (@see com.android.internal.telephony.PhoneConstants#APPTYPE_xxx)
+     * @param type ICC application type
+     * (@see com.android.internal.telephony.PhoneConstants#APPTYPE_xxx)
      * @return application corresponding to type or a null if no match found
      */
     public UiccCardApplication getApplicationByType(int type) {
         synchronized (mLock) {
-            for (int i = 0 ; i < mUiccApplications.length; i++) {
-                if (mUiccApplications[i] != null &&
-                        mUiccApplications[i].getType().ordinal() == type) {
+            for (int i = 0; i < mUiccApplications.length; i++) {
+                if (mUiccApplications[i] != null
+                        && mUiccApplications[i].getType().ordinal() == type) {
                     return mUiccApplications[i];
                 }
             }
@@ -580,10 +474,10 @@ public class UiccCard {
     /**
      * Exposes {@link CommandsInterface#iccOpenLogicalChannel}
      */
-    public void iccOpenLogicalChannel(String AID, int p2, Message response) {
-        loglocal("Open Logical Channel: " + AID + " , " + p2 + " by pid:" + Binder.getCallingPid()
+    public void iccOpenLogicalChannel(String aid, int p2, Message response) {
+        loglocal("Open Logical Channel: " + aid + " , " + p2 + " by pid:" + Binder.getCallingPid()
                 + " uid:" + Binder.getCallingUid());
-        mCi.iccOpenLogicalChannel(AID, p2,
+        mCi.iccOpenLogicalChannel(aid, p2,
                 mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, response));
     }
 
@@ -630,7 +524,9 @@ public class UiccCard {
         mCi.sendEnvelopeWithStatus(contents, response);
     }
 
-    /* Returns number of applications on this card */
+    /**
+     * Returns number of applications on this card
+     */
     public int getNumApplications() {
         int count = 0;
         for (UiccCardApplication a : mUiccApplications) {
@@ -641,6 +537,9 @@ public class UiccCard {
         return count;
     }
 
+    /**
+     * Returns the id of the phone which is associated with this profile.
+     */
     public int getPhoneId() {
         return mPhoneId;
     }
@@ -721,6 +620,9 @@ public class UiccCard {
         }
     }
 
+    /**
+     * Sets the overridden operator brand.
+     */
     public boolean setOperatorBrandOverride(String brand) {
         log("setOperatorBrandOverride: " + brand);
         log("current iccId: " + getIccId());
@@ -741,29 +643,21 @@ public class UiccCard {
         return true;
     }
 
+    /**
+     * Returns the overridden operator brand.
+     */
     public String getOperatorBrandOverride() {
         String iccId = getIccId();
         if (TextUtils.isEmpty(iccId)) {
             return null;
         }
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String brandName = sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
-        if (brandName == null) {
-            // Check if  CarrierConfig sets carrier name
-            CarrierConfigManager manager = (CarrierConfigManager)
-                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            int subId = SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
-            if (manager != null) {
-                PersistableBundle bundle = manager.getConfigForSubId(subId);
-                if (bundle != null && bundle.getBoolean(
-                        CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL)) {
-                    brandName = bundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
-                }
-            }
-        }
-        return brandName;
+        return sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
     }
 
+    /**
+     * Returns the iccid of the profile.
+     */
     public String getIccId() {
         // ICCID should be same across all the apps.
         for (UiccCardApplication app : mUiccApplications) {
@@ -786,28 +680,23 @@ public class UiccCard {
     }
 
     private void loglocal(String msg) {
-        if (DBG) mLocalLog.log(msg);
+        if (DBG) sLocalLog.log(msg);
     }
 
+    /**
+     * Dump
+     */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("UiccCard:");
+        pw.println("UiccProfile:");
         pw.println(" mCi=" + mCi);
-        pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mCatService=" + mCatService);
-        pw.println(" mAbsentRegistrants: size=" + mAbsentRegistrants.size());
-        for (int i = 0; i < mAbsentRegistrants.size(); i++) {
-            pw.println("  mAbsentRegistrants[" + i + "]="
-                    + ((Registrant)mAbsentRegistrants.get(i)).getHandler());
-        }
         for (int i = 0; i < mCarrierPrivilegeRegistrants.size(); i++) {
             pw.println("  mCarrierPrivilegeRegistrants[" + i + "]="
-                    + ((Registrant)mCarrierPrivilegeRegistrants.get(i)).getHandler());
+                    + ((Registrant) mCarrierPrivilegeRegistrants.get(i)).getHandler());
         }
-        pw.println(" mCardState=" + mCardState);
         pw.println(" mUniversalPinState=" + mUniversalPinState);
         pw.println(" mGsmUmtsSubscriptionAppIndex=" + mGsmUmtsSubscriptionAppIndex);
         pw.println(" mCdmaSubscriptionAppIndex=" + mCdmaSubscriptionAppIndex);
-        pw.println(" mImsSubscriptionAppIndex=" + mImsSubscriptionAppIndex);
         pw.println(" mImsSubscriptionAppIndex=" + mImsSubscriptionAppIndex);
         pw.println(" mUiccApplications: length=" + mUiccApplications.length);
         for (int i = 0; i < mUiccApplications.length; i++) {
@@ -846,11 +735,11 @@ public class UiccCard {
         pw.println(" mCarrierPrivilegeRegistrants: size=" + mCarrierPrivilegeRegistrants.size());
         for (int i = 0; i < mCarrierPrivilegeRegistrants.size(); i++) {
             pw.println("  mCarrierPrivilegeRegistrants[" + i + "]="
-                    + ((Registrant)mCarrierPrivilegeRegistrants.get(i)).getHandler());
+                    + ((Registrant) mCarrierPrivilegeRegistrants.get(i)).getHandler());
         }
         pw.flush();
-        pw.println("mLocalLog:");
-        mLocalLog.dump(fd, pw, args);
+        pw.println("sLocalLog:");
+        sLocalLog.dump(fd, pw, args);
         pw.flush();
     }
 }
