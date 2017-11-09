@@ -23,6 +23,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -666,13 +667,19 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     /**
      * Returns the SpnDisplayRule based on settings on the SIM and the
-     * specified plmn (currently-registered PLMN).  See TS 22.101 Annex A
-     * and TS 51.011 10.3.11 for details.
+     * current service state. See TS 22.101 Annex A and TS 51.011 10.3.11
+     * for details.
      *
      * If the SPN is not found on the SIM, the rule is always PLMN_ONLY.
      * Generally used for GSM/UMTS and the like SIMs.
+     *
+     * @param serviceState Service state
+     * @return the display rule
+     *
+     * @see #SPN_RULE_SHOW_SPN
+     * @see #SPN_RULE_SHOW_PLMN
      */
-    public abstract int getDisplayRule(String plmn);
+    public abstract int getDisplayRule(ServiceState serviceState);
 
     /**
      * Return true if "Restriction of menu options for manual PLMN selection"
