@@ -327,7 +327,11 @@ public class UiccSmsController extends ISms.Stub {
             }
         }
 
-        return !canCurrentAppHandleAlwaysAsk;
+        if (telephonyManager.getSimCount() > 1) {
+            return !canCurrentAppHandleAlwaysAsk;
+        }
+
+        return false;
     }
 
     @Override
