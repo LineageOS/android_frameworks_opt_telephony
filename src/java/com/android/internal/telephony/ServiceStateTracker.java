@@ -2254,7 +2254,7 @@ public class ServiceStateTracker extends Handler {
             IccRecords iccRecords = mIccRecords;
             String plmn = null;
             boolean showPlmn = false;
-            int rule = (iccRecords != null) ? iccRecords.getDisplayRule(mSS.getOperatorNumeric()) : 0;
+            int rule = (iccRecords != null) ? iccRecords.getDisplayRule(mSS) : 0;
             if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE
                     || combinedRegState == ServiceState.STATE_EMERGENCY_ONLY) {
                 showPlmn = true;
