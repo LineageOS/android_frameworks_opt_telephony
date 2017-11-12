@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "408958c2_6238cf75",
+        "filename": "src/java/com/android/internal/telephony/UiccSmsController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 11883
+      },
+      "writtenOn": "2017-11-12T14:44:44Z",
+      "side": 1,
+      "message": "IMO, we should just return false if we can\u0027t \n get subInfoList",
+      "range": {
+        "startLine": 330,
+        "startChar": 0,
+        "endLine": 334,
+        "endChar": 21
+      },
+      "revId": "879e7292dc6b28191a331d99275568f7fd8408c8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
