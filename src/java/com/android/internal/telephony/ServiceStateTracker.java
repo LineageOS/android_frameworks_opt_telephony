@@ -2530,11 +2530,11 @@ public class ServiceStateTracker extends Handler {
         mRatLog.log(mSS.toString());
     }
 
-    protected void log(String s) {
+    protected final void log(String s) {
         Rlog.d(LOG_TAG, s);
     }
 
-    protected void loge(String s) {
+    protected final void loge(String s) {
         Rlog.e(LOG_TAG, s);
     }
 
@@ -3132,12 +3132,12 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    protected boolean isInvalidOperatorNumeric(String operatorNumeric) {
+    private boolean isInvalidOperatorNumeric(String operatorNumeric) {
         return operatorNumeric == null || operatorNumeric.length() < 5 ||
                 operatorNumeric.startsWith(INVALID_MCC);
     }
 
-    protected String fixUnknownMcc(String operatorNumeric, int sid) {
+    private String fixUnknownMcc(String operatorNumeric, int sid) {
         if (sid <= 0) {
             // no cdma information is available, do nothing
             return operatorNumeric;
@@ -3168,7 +3168,7 @@ public class ServiceStateTracker extends Handler {
         return operatorNumeric;
     }
 
-    protected void fixTimeZone(String isoCountryCode) {
+    private void fixTimeZone(String isoCountryCode) {
         TimeZone zone = null;
         // If the offset is (0, false) and the time zone property
         // is set, use the time zone property rather than GMT.
@@ -4483,7 +4483,7 @@ public class ServiceStateTracker extends Handler {
      * @param needToFixTimeZone
      * @return true if time zone needs to be fixed
      */
-    protected boolean shouldFixTimeZoneNow(Phone phone, String operatorNumeric,
+    private boolean shouldFixTimeZoneNow(Phone phone, String operatorNumeric,
             String prevOperatorNumeric, boolean needToFixTimeZone) {
         // Return false if the mcc isn't valid as we don't know where we are.
         // Return true if we have an IccCard and the mcc changed or we
