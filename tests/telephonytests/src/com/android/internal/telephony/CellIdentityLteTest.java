@@ -168,4 +168,21 @@ public class CellIdentityLteTest extends AndroidTestCase {
         CellIdentityLte newCi = CellIdentityLte.CREATOR.createFromParcel(p);
         assertEquals(ci, newCi);
     }
+
+    @SmallTest
+    public void testParcelWithUnknowMccMnc() {
+        CellIdentityLte ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, null, null, null, null);
+
+        Parcel p = Parcel.obtain();
+        p.writeInt(CI);
+        p.writeInt(PCI);
+        p.writeInt(TAC);
+        p.writeInt(EARFCN);
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.setDataPosition(0);
+
+        CellIdentityLte newCi = CellIdentityLte.CREATOR.createFromParcel(p);
+        assertEquals(ci, newCi);
+    }
 }
