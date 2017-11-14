@@ -105,7 +105,10 @@ public class UiccProfile {
         update(c, ci, ics);
     }
 
-    void dispose() {
+    /**
+     * Dispose the UiccProfile.
+     */
+    public void dispose() {
         synchronized (mLock) {
             if (DBG) log("Disposing profile");
             if (mCatService != null) mCatService.dispose();
@@ -120,7 +123,10 @@ public class UiccProfile {
         }
     }
 
-    void update(Context c, CommandsInterface ci, IccCardStatus ics) {
+    /**
+     * Update the UiccProfile.
+     */
+    public void update(Context c, CommandsInterface ci, IccCardStatus ics) {
         synchronized (mLock) {
             mUniversalPinState = ics.mUniversalPinState;
             mGsmUmtsSubscriptionAppIndex = ics.mGsmUmtsSubscriptionAppIndex;
