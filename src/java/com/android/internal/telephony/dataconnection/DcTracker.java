@@ -215,6 +215,8 @@ public class DcTracker extends Handler {
 
     private AsyncChannel mReplyAc = new AsyncChannel();
 
+    private final LocalLog mDataRoamingLeakageLog = new LocalLog(50);
+
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver () {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -326,7 +328,7 @@ public class DcTracker extends Handler {
 
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DATA_ROAMING + simSuffix),
-                DctConstants.EVENT_ROAMING_ON);
+                DctConstants.EVENT_ROAMING_SETTING_CHANGE);
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
                 DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE);
@@ -2772,14 +2774,18 @@ public class DcTracker extends Handler {
     // This method is called
     // 1. When the data roaming status changes from non-roaming to roaming.
     // 2. When allowed data roaming settings is changed by the user.
-    private void onDataRoamingOnOrSettingsChanged() {
+    private void onDataRoamingOnOrSettingsChanged(int messageType) {
         if (DBG) log("onDataRoamingOnOrSettingsChanged");
+        // Used to differentiate data roaming turned on vs settings changed.
+        boolean settingChanged = (messageType == DctConstants.EVENT_ROAMING_SETTING_CHANGE);
 
         // Check if the device is actually data roaming
         if (!mPhone.getServiceState().getDataRoaming()) {
             if (DBG) log("device is not roaming. ignored the request.");
             return;
         }
+
+        checkDataRoamingStatus(settingChanged);
 
         if (getDataRoamingEnabled()) {
             if (DBG) log("onDataRoamingOnOrSettingsChanged: setup data on roaming");
@@ -2793,6 +2799,22 @@ public class DcTracker extends Handler {
             if (DBG) log("onDataRoamingOnOrSettingsChanged: Tear down data connection on roaming.");
             cleanUpAllConnections(true, Phone.REASON_ROAMING_ON);
             notifyOffApnsOfAvailability(Phone.REASON_ROAMING_ON);
+        }
+    }
+
+    // We want to track possible roaming data leakage. Which is, if roaming setting
+    // is disabled, yet we still setup a roaming data connection or have a connected ApnContext
+    // switched to roaming. When this happens, we log it in a local log.
+    private void checkDataRoamingStatus(boolean settingChanged) {
+        if (!settingChanged && !getDataRoamingEnabled()
+                && mPhone.getServiceState().getDataRoaming()) {
+            for (ApnContext apnContext : mApnContexts.values()) {
+                if (apnContext.getState() == DctConstants.State.CONNECTED) {
+                    mDataRoamingLeakageLog.log("PossibleRoamingLeakage "
+                            + " connection params: " + (apnContext.getDcAc() != null
+                            ? apnContext.getDcAc().mLastConnectionParams : ""));
+                }
+            }
         }
     }
 
@@ -2925,7 +2947,7 @@ public class DcTracker extends Handler {
                 }
 
                 // everything is setup
-                if(TextUtils.equals(apnContext.getApnType(),PhoneConstants.APN_TYPE_DEFAULT)) {
+                if (TextUtils.equals(apnContext.getApnType(), PhoneConstants.APN_TYPE_DEFAULT)) {
                     try {
                         SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "true");
                     } catch (RuntimeException ex) {
@@ -2948,6 +2970,8 @@ public class DcTracker extends Handler {
 
                 // A connection is setup
                 apnContext.setState(DctConstants.State.CONNECTED);
+
+                checkDataRoamingStatus(false);
 
                 boolean isProvApn = apnContext.isProvisioningApn();
                 final ConnectivityManager cm = ConnectivityManager.from(mPhone.getContext());
@@ -3760,7 +3784,8 @@ public class DcTracker extends Handler {
                 break;
 
             case DctConstants.EVENT_ROAMING_ON:
-                onDataRoamingOnOrSettingsChanged();
+            case DctConstants.EVENT_ROAMING_SETTING_CHANGE:
+                onDataRoamingOnOrSettingsChanged(msg.what);
                 break;
 
             case DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE:
@@ -4174,6 +4199,8 @@ public class DcTracker extends Handler {
         pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
+        pw.println(" mDataRoamingLeakageLog= ");
+        mDataRoamingLeakageLog.dump(fd, pw, args);
         pw.flush();
         pw.println(" ***************************************");
         DcController dcc = mDcc;

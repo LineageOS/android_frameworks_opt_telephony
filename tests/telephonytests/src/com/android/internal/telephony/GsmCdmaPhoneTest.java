@@ -513,6 +513,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
      * received when obj is created and that are received on phone type switch
      */
     @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testHandleInitialMessages() {

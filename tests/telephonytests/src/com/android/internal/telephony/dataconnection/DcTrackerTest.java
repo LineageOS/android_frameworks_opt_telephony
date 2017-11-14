@@ -849,6 +849,7 @@ public class DcTrackerTest extends TelephonyTest {
 
     // Test for API carrierActionSetMeteredApnsEnabled.
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testCarrierActionSetMeteredApnsEnabled() throws Exception {

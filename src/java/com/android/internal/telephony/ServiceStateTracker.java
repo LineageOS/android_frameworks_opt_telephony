@@ -1318,8 +1318,11 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_SIM_NOT_INSERTED:
-                if (DBG) log("EVENT_SIM_NOT_INSERTED, cancelling notifications.");
+                if (DBG) log("EVENT_SIM_NOT_INSERTED");
                 cancelAllNotifications();
+                mMdn = null;
+                mMin = null;
+                mIsMinInfoReady = false;
                 break;
 
             case EVENT_ALL_DATA_DISCONNECTED:
@@ -3890,6 +3893,7 @@ public class ServiceStateTracker extends Handler {
      * removed.
      */
     private void cancelAllNotifications() {
+        if (DBG) log("setNotification: cancelAllNotifications");
         NotificationManager notificationManager = (NotificationManager)
                 mPhone.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancelAll();
@@ -3993,6 +3997,7 @@ public class ServiceStateTracker extends Handler {
                 .setColor(context.getResources().getColor(
                         com.android.internal.R.color.system_notification_accent_color))
                 .setContentTitle(title)
+                .setStyle(new Notification.BigTextStyle().bigText(details))
                 .setContentText(details)
                 .setChannel(NotificationChannelController.CHANNEL_ID_ALERT)
                 .build();

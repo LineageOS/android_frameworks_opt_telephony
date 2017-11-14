@@ -16,40 +16,32 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.verify;
+
+import android.net.Uri;
+import android.support.test.filters.FlakyTest;
+
 import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsExternalCallState;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import android.net.Uri;
-import android.support.test.filters.FlakyTest;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for the {@link ImsExternalCallTracker}.
  */
+@Ignore
 public class ImsExternalCallTrackerTest {
     private static final Uri TEST_ADDRESS = Uri.parse("tel:6505551212");
     private static final int CALL_ID = 1;
