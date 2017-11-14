@@ -16,19 +16,17 @@
 
 package com.android.internal.telephony.mocks;
 
+import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.UserHandle;
 import android.os.RemoteException;
+import android.os.UserHandle;
 import android.telephony.SubscriptionInfo;
-import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.ITelephonyRegistry;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -37,12 +35,13 @@ import com.android.internal.telephony.TelephonyIntents;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 // must extend SubscriptionController as some people use it directly within-process
 public class SubscriptionControllerMock extends SubscriptionController {
     final AtomicInteger mDefaultDataSubId = new AtomicInteger(INVALID_SUBSCRIPTION_ID);
+    final AtomicInteger mDefaultVoiceSubId = new AtomicInteger(INVALID_SUBSCRIPTION_ID);
     final ITelephonyRegistry.Stub mTelephonyRegistry;
     final int[][] mSlotIndexToSubId;
 
@@ -232,11 +231,19 @@ public class SubscriptionControllerMock extends SubscriptionController {
     }
     @Override
     public void setDefaultVoiceSubId(int subId) {
-        throw new RuntimeException("not implemented");
+        if (subId == DEFAULT_SUBSCRIPTION_ID) {
+            throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
+        }
+        mDefaultVoiceSubId.set(subId);
+        broadcastDefaultVoiceSubIdChanged(subId);
     }
     @Override
     public int getDefaultVoiceSubId() {
-        throw new RuntimeException("not implemented");
+        if (mDefaultVoiceSubId != null) {
+            return mDefaultVoiceSubId.get();
+        } else {
+            return INVALID_SUBSCRIPTION_ID;
+        }
     }
     @Override
     public void clearDefaultsForInactiveSubIds() {
