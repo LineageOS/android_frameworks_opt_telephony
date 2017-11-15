@@ -41,6 +41,7 @@ import android.support.test.runner.AndroidJUnit4;
 import android.util.Pair;
 
 import com.android.ims.internal.IImsServiceFeatureListener;
+import com.android.internal.telephony.ims.ImsServiceController.RebindRetry;
 
 import org.junit.After;
 import org.junit.Before;
@@ -60,7 +61,17 @@ import java.util.HashSet;
 @Ignore
 public class ImsServiceControllerTest extends ImsTestBase {
 
-    private static final int RETRY_TIMEOUT = 50; // ms
+    private static final RebindRetry REBIND_RETRY = new RebindRetry() {
+        @Override
+        public long getStartDelay() {
+            return 50;
+        }
+
+        @Override
+        public long getMaximumDelay() {
+            return 1000;
+        }
+    };
 
     @Spy TestImsServiceControllerAdapter mMockServiceControllerBinder;
     @Mock IBinder mMockBinder;
@@ -69,15 +80,15 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Mock Context mMockContext;
     private final ComponentName mTestComponentName = new ComponentName("TestPkg",
             "ImsServiceControllerTest");
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private ImsServiceController mTestImsServiceController;
-    private final Handler mTestHandler = new Handler(Looper.getMainLooper());
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
         mTestImsServiceController = new ImsServiceController(mMockContext, mTestComponentName,
-                mMockCallbacks, mTestHandler);
+                mMockCallbacks, mHandler, REBIND_RETRY);
         mTestImsServiceController.addImsServiceFeatureListener(mMockProxyCallbacks);
         when(mMockContext.bindService(any(), any(), anyInt())).thenReturn(true);
     }
@@ -86,7 +97,6 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @After
     @Override
     public void tearDown() throws Exception {
-        mTestHandler.removeCallbacksAndMessages(null);
         mTestImsServiceController = null;
         super.tearDown();
     }
@@ -354,13 +364,12 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new Pair<>(1, 1));
         testFeatures.add(new Pair<>(1, 2));
         bindAndConnectService(testFeatures);
-        mTestImsServiceController.setRebindRetryTime(() -> RETRY_TIMEOUT);
 
         getDeathRecipient().binderDied();
 
-        waitForHandlerActionDelayed(mTestImsServiceController.getHandler(), RETRY_TIMEOUT,
-                2 * RETRY_TIMEOUT);
-        // The service should autobind after RETRY_TIMEOUT occurs
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
+        // The service should autobind after rebind event occurs
         verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
     }
 
@@ -374,7 +383,6 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new Pair<>(1, 1));
         testFeatures.add(new Pair<>(1, 2));
         bindAndConnectService(testFeatures);
-        mTestImsServiceController.setRebindRetryTime(() -> RETRY_TIMEOUT);
 
         getDeathRecipient().binderDied();
 
@@ -392,13 +400,13 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new Pair<>(1, 1));
         testFeatures.add(new Pair<>(1, 2));
         bindAndConnectService(testFeatures);
-        mTestImsServiceController.setRebindRetryTime(() -> RETRY_TIMEOUT);
 
         getDeathRecipient().binderDied();
         mTestImsServiceController.unbind();
 
-        waitForHandlerActionDelayed(mTestImsServiceController.getHandler(), RETRY_TIMEOUT,
-                2 * RETRY_TIMEOUT);
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
+
         // Unbind should stop the autobind from occurring.
         verify(mMockContext, times(1)).bindService(any(), any(), anyInt());
     }
@@ -414,12 +422,11 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new Pair<>(1, 1));
         testFeatures.add(new Pair<>(1, 2));
         bindAndConnectService(testFeatures);
-        mTestImsServiceController.setRebindRetryTime(() -> RETRY_TIMEOUT);
         getDeathRecipient().binderDied();
         mTestImsServiceController.bind(testFeatures);
 
-        waitForHandlerActionDelayed(mTestImsServiceController.getHandler(), RETRY_TIMEOUT,
-                2 * RETRY_TIMEOUT);
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         // Should only see two binds, not three from the auto rebind that occurs.
         verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
     }

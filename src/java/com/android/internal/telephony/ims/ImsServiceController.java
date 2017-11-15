@@ -33,6 +33,7 @@ import com.android.ims.internal.IImsFeatureStatusCallback;
 import com.android.ims.internal.IImsServiceController;
 import com.android.ims.internal.IImsServiceFeatureListener;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.ExponentialBackoff;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -76,6 +77,7 @@ public class ImsServiceController {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            mBackoff.stop();
             synchronized (mLock) {
                 mIsBound = true;
                 mIsBinding = false;
@@ -142,21 +144,28 @@ public class ImsServiceController {
     @VisibleForTesting
     public interface RebindRetry {
         /**
-         * Return a long in ms indiciating how long the ImsServiceController should wait before
-         * rebinding.
+         * Returns a long in ms indicating how long the ImsServiceController should wait before
+         * rebinding for the first time.
          */
-        long getRetryTimeout();
+        long getStartDelay();
+
+        /**
+         * Returns a long in ms indicating the maximum time the ImsServiceController should wait
+         * before rebinding.
+         */
+        long getMaximumDelay();
     }
 
     private static final String LOG_TAG = "ImsServiceController";
-    private static final int REBIND_RETRY_TIME = 5000;
+    private static final int REBIND_START_DELAY_MS = 2 * 1000; // 2 seconds
+    private static final int REBIND_MAXIMUM_DELAY_MS = 60 * 1000; // 1 minute
     private final Context mContext;
     private final ComponentName mComponentName;
     private final Object mLock = new Object();
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
     private final IPackageManager mPackageManager;
     private ImsServiceControllerCallbacks mCallbacks;
-    private Handler mHandler;
+    private ExponentialBackoff mBackoff;
 
     private boolean mIsBound = false;
     private boolean mIsBinding = false;
@@ -213,17 +222,17 @@ public class ImsServiceController {
         }
     };
 
-    private RebindRetry mRebindRetry = () -> REBIND_RETRY_TIME;
+    private RebindRetry mRebindRetry = new RebindRetry() {
+        @Override
+        public long getStartDelay() {
+            return REBIND_START_DELAY_MS;
+        }
 
-    @VisibleForTesting
-    public void setRebindRetryTime(RebindRetry retry) {
-        mRebindRetry = retry;
-    }
-
-    @VisibleForTesting
-    public Handler getHandler() {
-        return mHandler;
-    }
+        @Override
+        public long getMaximumDelay() {
+            return REBIND_MAXIMUM_DELAY_MS;
+        }
+    };
 
     public ImsServiceController(Context context, ComponentName componentName,
             ImsServiceControllerCallbacks callbacks) {
@@ -231,7 +240,12 @@ public class ImsServiceController {
         mComponentName = componentName;
         mCallbacks = callbacks;
         mHandlerThread.start();
-        mHandler = new Handler(mHandlerThread.getLooper());
+        mBackoff = new ExponentialBackoff(
+                mRebindRetry.getStartDelay(),
+                mRebindRetry.getMaximumDelay(),
+                2, /* multiplier */
+                mHandlerThread.getLooper(),
+                mRestartImsServiceRunnable);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
     }
 
@@ -239,11 +253,16 @@ public class ImsServiceController {
     // Creating a new HandlerThread and background handler for each test causes a segfault, so for
     // testing, use a handler supplied by the testing system.
     public ImsServiceController(Context context, ComponentName componentName,
-            ImsServiceControllerCallbacks callbacks, Handler testHandler) {
+            ImsServiceControllerCallbacks callbacks, Handler handler, RebindRetry rebindRetry) {
         mContext = context;
         mComponentName = componentName;
         mCallbacks = callbacks;
-        mHandler = testHandler;
+        mBackoff = new ExponentialBackoff(
+                rebindRetry.getStartDelay(),
+                rebindRetry.getMaximumDelay(),
+                2, /* multiplier */
+                handler,
+                mRestartImsServiceRunnable);
         mPackageManager = null;
     }
 
@@ -258,8 +277,6 @@ public class ImsServiceController {
      */
     public boolean bind(HashSet<Pair<Integer, Integer>> imsFeatureSet) {
         synchronized (mLock) {
-            // Remove pending rebind retry
-            mHandler.removeCallbacks(mRestartImsServiceRunnable);
             if (!mIsBound && !mIsBinding) {
                 mIsBinding = true;
                 mImsFeatures = imsFeatureSet;
@@ -273,8 +290,10 @@ public class ImsServiceController {
                     return mContext.bindService(imsServiceIntent, mImsServiceConnection,
                             serviceFlags);
                 } catch (Exception e) {
+                    mBackoff.notifyFailed();
                     Log.e(LOG_TAG, "Error binding (" + mComponentName + ") with exception: "
-                            + e.getMessage());
+                            + e.getMessage() + ", rebinding in " + mBackoff.getCurrentDelay()
+                            + " ms");
                     return false;
                 }
             } else {
@@ -289,8 +308,7 @@ public class ImsServiceController {
      */
     public void unbind() throws RemoteException {
         synchronized (mLock) {
-            // Remove pending rebind retry
-            mHandler.removeCallbacks(mRestartImsServiceRunnable);
+            mBackoff.stop();
             if (mImsServiceConnection == null || mImsDeathRecipient == null) {
                 return;
             }
@@ -343,6 +361,11 @@ public class ImsServiceController {
         return mImsServiceControllerBinder;
     }
 
+    @VisibleForTesting
+    public long getRebindDelay() {
+        return mBackoff.getCurrentDelay();
+    }
+
     public ComponentName getComponentName() {
         return mComponentName;
     }
@@ -364,9 +387,7 @@ public class ImsServiceController {
 
     // Only add a new rebind if there are no pending rebinds waiting.
     private void startDelayedRebindToService() {
-        if (!mHandler.hasCallbacks(mRestartImsServiceRunnable)) {
-            mHandler.postDelayed(mRestartImsServiceRunnable, mRebindRetry.getRetryTimeout());
-        }
+        mBackoff.start();
     }
 
     // Grant runtime permissions to ImsService. PackageManager ensures that the ImsService is
