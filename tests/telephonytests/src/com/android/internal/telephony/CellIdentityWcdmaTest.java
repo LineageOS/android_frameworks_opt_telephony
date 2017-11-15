@@ -167,21 +167,4 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
         CellIdentityWcdma newCi = CellIdentityWcdma.CREATOR.createFromParcel(p);
         assertEquals(ci, newCi);
     }
-
-    @SmallTest
-    public void testParcelWithUnknowMccMnc() {
-        CellIdentityWcdma ci = new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, null, null);
-
-        Parcel p = Parcel.obtain();
-        p.writeInt(LAC);
-        p.writeInt(CID);
-        p.writeInt(PSC);
-        p.writeInt(UARFCN);
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
-        p.setDataPosition(0);
-
-        CellIdentityWcdma newCi = CellIdentityWcdma.CREATOR.createFromParcel(p);
-        assertEquals(ci, newCi);
-    }
 }
