@@ -273,7 +273,8 @@ public class SubscriptionInfoUpdater extends Handler {
                 if (ar.exception == null) {
                     if (ar.result != null) {
                         byte[] data = (byte[])ar.result;
-                        mIccId[slotId] = IccUtils.bchToString(data, 0, data.length);
+                        mIccId[slotId] = stripIccIdSuffix(
+                                IccUtils.bchToString(data, 0, data.length));
                     } else {
                         logd("Null ar");
                         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
@@ -399,11 +400,11 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("handleSimLoaded: IccRecords null");
             return;
         }
-        if (records.getFullIccId() == null) {
+        if (stripIccIdSuffix(records.getFullIccId()) == null) {
             logd("onRecieve: IccID null");
             return;
         }
-        mIccId[slotId] = records.getFullIccId();
+        mIccId[slotId] = stripIccIdSuffix(records.getFullIccId());
 
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
@@ -832,6 +833,15 @@ public class SubscriptionInfoUpdater extends Handler {
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
              " for mCardIndex: " + slotId);
         IntentBroadcaster.getInstance().broadcastStickyIntent(i, slotId);
+    }
+
+    // Remove trailing F's from full hexadecimal IccId, as they should be considered padding
+    private String stripIccIdSuffix(String hexIccId) {
+        if (hexIccId == null) {
+            return null;
+        } else {
+            return hexIccId.replaceAll("(?i)f*$", "");
+        }
     }
 
     public void dispose() {
