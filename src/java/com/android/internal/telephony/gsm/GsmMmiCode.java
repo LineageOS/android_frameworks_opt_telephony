@@ -863,6 +863,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return mIsSsInfo;
     }
 
+    public static boolean isVoiceUnconditionalForwarding(int reason, int serviceClass) {
+        return (((reason == CommandsInterface.CF_REASON_UNCONDITIONAL)
+                || (reason == CommandsInterface.CF_REASON_ALL))
+                && (((serviceClass & CommandsInterface.SERVICE_CLASS_VOICE) != 0)
+                || (serviceClass == CommandsInterface.SERVICE_CLASS_NONE)));
+    }
+
     /** Process a MMI code or short code...anything that isn't a dialing number */
     public void
     processCode() throws CallStateException {
@@ -933,12 +940,6 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         throw new RuntimeException ("invalid action");
                     }
 
-                    int isSettingUnconditionalVoice =
-                        (((reason == CommandsInterface.CF_REASON_UNCONDITIONAL) ||
-                                (reason == CommandsInterface.CF_REASON_ALL)) &&
-                                (((serviceClass & CommandsInterface.SERVICE_CLASS_VOICE) != 0) ||
-                                 (serviceClass == CommandsInterface.SERVICE_CLASS_NONE))) ? 1 : 0;
-
                     int isEnableDesired =
                         ((cfAction == CommandsInterface.CF_ACTION_ENABLE) ||
                                 (cfAction == CommandsInterface.CF_ACTION_REGISTRATION)) ? 1 : 0;
@@ -947,7 +948,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     mPhone.mCi.setCallForward(cfAction, reason, serviceClass,
                             dialingNumber, time, obtainMessage(
                                     EVENT_SET_CFF_COMPLETE,
-                                    isSettingUnconditionalVoice,
+                                    isVoiceUnconditionalForwarding(reason, serviceClass) ? 1 : 0,
                                     isEnableDesired, this));
                 }
             } else if (isServiceCodeCallBarring(mSc)) {
