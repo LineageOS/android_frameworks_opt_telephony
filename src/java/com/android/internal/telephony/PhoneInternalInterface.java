@@ -852,4 +852,9 @@ public interface PhoneInternalInterface {
      *        decrypt the permanent identity.
      */
     public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType);
+
+    /**
+     * Resets the Carrier Keys, by deleting them from the database and sending a download intent.
+     */
+    public void resetCarrierKeysForImsiEncryption();
 }
