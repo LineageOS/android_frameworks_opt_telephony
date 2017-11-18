@@ -19,6 +19,7 @@
 package com.android.internal.telephony;
 
 import static android.Manifest.permission.CALL_PRIVILEGED;
+import static android.Manifest.permission.MODIFY_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 
 import android.app.AppOpsManager;
@@ -104,7 +105,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int subId, int keyType,
-            String callingPackage) {
+                                                              String callingPackage) {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
@@ -127,9 +128,29 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                     mContext, subId, callingPackage, "setCarrierInfoForImsiEncryption")) {
                 return;
             }
+            enforceModifyPermission();
             phone.setCarrierInfoForImsiEncryption(imsiEncryptionInfo);
         } else {
             loge("setCarrierInfoForImsiEncryption phone is null for Subscription:" + subId);
+            return;
+        }
+    }
+
+    /**
+     *  Resets the Carrier Keys in the database. This involves 2 steps:
+     *  1. Delete the keys from the database.
+     *  2. Send an intent to download new Certificates.
+     *  @param subId
+     *  @param callingPackage
+     */
+    public void resetCarrierKeysForImsiEncryption(int subId, String callingPackage) {
+        Phone phone = getPhone(subId);
+        if (phone != null) {
+            enforceModifyPermission();
+            phone.resetCarrierKeysForImsiEncryption();
+            return;
+        } else {
+            loge("resetCarrierKeysForImsiEncryption phone is null for Subscription:" + subId);
             return;
         }
     }
@@ -327,6 +348,14 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         }
         if (VDBG) log("No read privileged phone permission, check carrier privilege next.");
         TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(subId, message);
+    }
+
+    /**
+     * Make sure caller has modify phone state permission.
+     */
+    private void enforceModifyPermission() {
+        mContext.enforceCallingOrSelfPermission(MODIFY_PHONE_STATE,
+                "Requires MODIFY_PHONE_STATE");
     }
 
     private int getDefaultSubscription() {
