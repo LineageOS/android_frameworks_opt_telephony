@@ -38,30 +38,30 @@ public class CarrierInfoManager {
     /**
      * Returns Carrier specific information that will be used to encrypt the IMSI and IMPI.
      * @param keyType whether the key is being used for WLAN or ePDG.
-     * @param mContext
+     * @param context
      * @return ImsiEncryptionInfo which contains the information, including the public key, to be
      *         used for encryption.
      */
     public static ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType,
-                                                                     Context mContext) {
+                                                                     Context context) {
         String mcc = "";
         String mnc = "";
         final TelephonyManager telephonyManager =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        String networkOperator = telephonyManager.getNetworkOperator();
-        if (!TextUtils.isEmpty(networkOperator)) {
-            mcc = networkOperator.substring(0, 3);
-            mnc = networkOperator.substring(3);
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        String simOperator = telephonyManager.getSimOperator();
+        if (!TextUtils.isEmpty(simOperator)) {
+            mcc = simOperator.substring(0, 3);
+            mnc = simOperator.substring(3);
             Log.i(LOG_TAG, "using values for mnc, mcc: " + mnc + "," + mcc);
         } else {
-            Log.e(LOG_TAG, "Invalid networkOperator: " + networkOperator);
+            Log.e(LOG_TAG, "Invalid networkOperator: " + simOperator);
             return null;
         }
         Cursor findCursor = null;
         try {
             // In the current design, MVNOs are not supported. If we decide to support them,
             // we'll need to add to this CL.
-            ContentResolver mContentResolver = mContext.getContentResolver();
+            ContentResolver mContentResolver = context.getContentResolver();
             String[] columns = {Telephony.CarrierColumns.PUBLIC_KEY,
                     Telephony.CarrierColumns.EXPIRATION_TIME,
                     Telephony.CarrierColumns.KEY_IDENTIFIER};
@@ -95,12 +95,12 @@ public class CarrierInfoManager {
     /**
      * Inserts or update the Carrier Key in the database
      * @param imsiEncryptionInfo ImsiEncryptionInfo object.
-     * @param mContext Context.
+     * @param context Context.
      */
     public static void updateOrInsertCarrierKey(ImsiEncryptionInfo imsiEncryptionInfo,
-                                                Context mContext) {
+                                                Context context) {
         byte[] keyBytes = imsiEncryptionInfo.getPublicKey().getEncoded();
-        ContentResolver mContentResolver = mContext.getContentResolver();
+        ContentResolver mContentResolver = context.getContentResolver();
         // In the current design, MVNOs are not supported. If we decide to support them,
         // we'll need to add to this CL.
         ContentValues contentValues = new ContentValues();
@@ -150,12 +150,54 @@ public class CarrierInfoManager {
      *        {@link java.security.PublicKey} and the Key Identifier.
      *        The keyIdentifier Attribute value pair that helps a server locate
      *        the private key to decrypt the permanent identity.
-     * @param mContext Context.
+     * @param context Context.
      */
     public static void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
-                                                       Context mContext) {
+                                                       Context context) {
         Log.i(LOG_TAG, "inserting carrier key: " + imsiEncryptionInfo);
-        updateOrInsertCarrierKey(imsiEncryptionInfo, mContext);
+        updateOrInsertCarrierKey(imsiEncryptionInfo, context);
         //todo send key to modem. Will be done in a subsequent CL.
+    }
+
+    /**
+     * Deletes all the keys for a given Carrier from the device keystore.
+     * @param context Context
+     */
+    public static void deleteCarrierInfoForImsiEncryption(Context context) {
+        Log.i(LOG_TAG, "deleting carrier key from db");
+        String mcc = "";
+        String mnc = "";
+        final TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        String simOperator = telephonyManager.getSimOperator();
+        if (!TextUtils.isEmpty(simOperator)) {
+            mcc = simOperator.substring(0, 3);
+            mnc = simOperator.substring(3);
+        } else {
+            Log.e(LOG_TAG, "Invalid networkOperator: " + simOperator);
+            return;
+        }
+        ContentResolver mContentResolver = context.getContentResolver();
+        try {
+            String whereClause = "mcc=? and mnc=?";
+            String[] whereArgs = new String[] { mcc, mnc };
+            mContentResolver.delete(Telephony.CarrierColumns.CONTENT_URI, whereClause, whereArgs);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Delete failed" + e);
+        }
+    }
+
+    /**
+     * Deletes all the keys from the device keystore.
+     * @param context Context
+     */
+    public static void deleteAllCarrierKeysForImsiEncryption(Context context) {
+        Log.i(LOG_TAG, "deleting ALL carrier keys from db");
+        ContentResolver mContentResolver = context.getContentResolver();
+        try {
+            mContentResolver.delete(Telephony.CarrierColumns.CONTENT_URI, null, null);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Delete failed" + e);
+        }
     }
 }
