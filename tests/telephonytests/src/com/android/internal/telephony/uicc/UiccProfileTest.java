@@ -139,6 +139,10 @@ public class UiccProfileTest extends TelephonyTest {
         mTestHandlerThread.start();
 
         waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
+
         replaceInstance(UiccProfile.class, "mCatService", mUiccProfile, mCAT);
     }
 
@@ -220,6 +224,9 @@ public class UiccProfileTest extends TelephonyTest {
         mProfileUpdate.sendToTarget();
 
         waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
 
         assertEquals(3, mUiccProfile.getNumApplications());
         assertTrue(mUiccProfile.isApplicationOnIcc(IccCardApplicationStatus.AppType.APPTYPE_CSIM));
