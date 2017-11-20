@@ -65,6 +65,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
+import android.telephony.data.DataProfile;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
@@ -2102,7 +2103,7 @@ public class DcTracker extends Handler {
         } else {
             if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
 
-            mPhone.mCi.setInitialAttachApn(new DataProfile(initialAttachApnSetting),
+            mPhone.mCi.setInitialAttachApn(createDataProfile(initialAttachApnSetting),
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
     }
@@ -3303,7 +3304,7 @@ public class DcTracker extends Handler {
             ArrayList<DataProfile> dps = new ArrayList<DataProfile>();
             for (ApnSetting apn : mAllApnSettings) {
                 if (apn.modemCognitive) {
-                    DataProfile dp = new DataProfile(apn);
+                    DataProfile dp = createDataProfile(apn);
                     if (!dps.contains(dp)) {
                         dps.add(dp);
                     }
@@ -4819,4 +4820,25 @@ public class DcTracker extends Handler {
         }
     }
 
+    private static DataProfile createDataProfile(ApnSetting apn) {
+        return createDataProfile(apn, apn.profileId);
+    }
+
+    @VisibleForTesting
+    public static DataProfile createDataProfile(ApnSetting apn, int profileId) {
+        int profileType;
+        if (apn.bearerBitmask == 0) {
+            profileType = DataProfile.TYPE_COMMON;
+        } else if (ServiceState.bearerBitmapHasCdma(apn.bearerBitmask)) {
+            profileType = DataProfile.TYPE_3GPP2;
+        } else {
+            profileType = DataProfile.TYPE_3GPP;
+        }
+
+        return new DataProfile(profileId, apn.apn, apn.protocol,
+                apn.authType, apn.user, apn.password, profileType,
+                apn.maxConnsTime, apn.maxConns, apn.waitTime, apn.carrierEnabled, apn.typesBitmap,
+                apn.roamingProtocol, apn.bearerBitmask, apn.mtu, apn.mvnoType, apn.mvnoMatchData,
+                apn.modemCognitive);
+    }
 }
