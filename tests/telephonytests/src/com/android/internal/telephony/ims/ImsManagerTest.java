@@ -49,7 +49,6 @@ import java.util.Hashtable;
 public class ImsManagerTest extends TelephonyTest {
     private static final String UNSET_PROVISIONED_STRING = "unset";
     private static final boolean ENHANCED_4G_MODE_DEFAULT_VAL = true;
-    private static final boolean ENHANCED_4G_ENABLE_DEFAULT_VAL = true;
     private static final boolean ENHANCED_4G_MODE_EDITABLE = true;
     private static final boolean WFC_IMS_ENABLE_DEFAULT_VAL = false;
     private static final boolean WFC_IMS_ROAMING_ENABLE_DEFAULT_VAL = true;
@@ -97,7 +96,7 @@ public class ImsManagerTest extends TelephonyTest {
 
     private void setDefaultValues() {
         mBundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL,
-                ENHANCED_4G_ENABLE_DEFAULT_VAL);
+                ENHANCED_4G_MODE_EDITABLE);
         mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_ENABLED_BOOL,
                 WFC_IMS_ENABLE_DEFAULT_VAL);
         mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_ROAMING_ENABLED_BOOL,
@@ -124,7 +123,7 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(SubscriptionManager.WFC_IMS_ENABLED),
                 anyString());
 
-        assertEquals(ENHANCED_4G_ENABLE_DEFAULT_VAL,
+        assertEquals(ENHANCED_4G_MODE_DEFAULT_VAL,
                 imsManager.isEnhanced4gLteModeSettingEnabledByUser());
         verify(mSubscriptionController, times(1)).getSubscriptionProperty(
                 anyInt(),
