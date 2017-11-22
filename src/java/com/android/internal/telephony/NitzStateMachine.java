@@ -16,16 +16,11 @@
 
 package com.android.internal.telephony;
 
-import android.app.AlarmManager;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
-import android.database.ContentObserver;
-import android.os.Handler;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
-import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
@@ -33,6 +28,7 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.TimeUtils;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -45,11 +41,82 @@ import java.util.TimeZone;
 /**
  * {@hide}
  */
-public final class NitzStateMachine {
+// Non-final to allow mocking.
+public class NitzStateMachine {
+
+    /**
+     * A proxy over device state that allows things like system properties, system clock
+     * to be faked for tests.
+     */
+    // Non-final to allow mocking.
+    public static class DeviceState {
+        private static final int NITZ_UPDATE_SPACING_DEFAULT = 1000 * 60 * 10;
+        private final int mNitzUpdateSpacing;
+
+        private static final int NITZ_UPDATE_DIFF_DEFAULT = 2000;
+        private final int mNitzUpdateDiff;
+
+        private final ContentResolver mCr;
+
+        public DeviceState(Context context) {
+            mCr = context.getContentResolver();
+            mNitzUpdateSpacing = SystemProperties
+                    .getInt("ro.nitz_update_spacing", NITZ_UPDATE_SPACING_DEFAULT);
+            mNitzUpdateDiff = SystemProperties
+                    .getInt("ro.nitz_update_diff", NITZ_UPDATE_DIFF_DEFAULT);
+        }
+
+        /**
+         * If time between NITZ updates is less than {@link #getNitzUpdateSpacingMillis()} the
+         * update may be ignored.
+         */
+        public int getNitzUpdateSpacingMillis() {
+            return Settings.Global.getInt(mCr, Settings.Global.NITZ_UPDATE_SPACING,
+                    mNitzUpdateSpacing);
+        }
+
+        /**
+         * If {@link #getNitzUpdateSpacingMillis()} hasn't been exceeded but update is >
+         * {@link #getNitzUpdateDiffMillis()} do the update
+         */
+        public int getNitzUpdateDiffMillis() {
+            return Settings.Global.getInt(mCr, Settings.Global.NITZ_UPDATE_DIFF, mNitzUpdateDiff);
+        }
+
+        /**
+         * Returns true if the {@code gsm.ignore-nitz} system property is set to "yes".
+         */
+        public boolean getIgnoreNitz() {
+            String ignoreNitz = SystemProperties.get("gsm.ignore-nitz");
+            return ignoreNitz != null && ignoreNitz.equals("yes");
+        }
+
+        /**
+         * Returns true if the {@code telephony.test.ignore.nitz} system property is set to
+         * 'y', 'yes', '1', 'true' or 'on' AND the current uptime is an odd number.
+         */
+        public boolean getIgnoreNitzForTests() {
+            return SystemProperties.getBoolean(TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
+                    && ((SystemClock.uptimeMillis() & 1) == 0);
+        }
+
+        /**
+         * Sets the {@code gsm.nitz.time} system property.
+         */
+        public void setNitzTimeProperty(long timeMillis) {
+            SystemProperties.set("gsm.nitz.time", String.valueOf(timeMillis));
+        }
+
+        /**
+         * Returns the same value as {@link SystemClock#elapsedRealtime()}.
+         */
+        public long elapsedRealtime() {
+            return SystemClock.elapsedRealtime();
+        }
+    }
+
     private static final String LOG_TAG = ServiceStateTracker.LOG_TAG;
     private static final boolean DBG = ServiceStateTracker.DBG;
-
-    protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
     /**
      * List of ISO codes for countries that can have an offset of
@@ -100,39 +167,24 @@ public final class NitzStateMachine {
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "NitzStateMachine";
     private final ContentResolver mCr;
-    private final ContentObserver mAutoTimeObserver = new ContentObserver(new Handler()) {
-        @Override
-        public void onChange(boolean selfChange) {
-            Rlog.i(LOG_TAG, "Auto time state changed");
-            revertToNitzTime();
-        }
-    };
-
-    private final ContentObserver mAutoTimeZoneObserver = new ContentObserver(new Handler()) {
-        @Override
-        public void onChange(boolean selfChange) {
-            Rlog.i(LOG_TAG, "Auto time zone state changed");
-            revertToNitzTimeZone();
-        }
-    };
 
     /** Boolean is true if setTimeFromNITZ was called */
     private boolean mNitzUpdatedTime = false;
 
-    /** if time between NITZ updates is less than mNitzUpdateSpacing the update may be ignored. */
-    private static final int NITZ_UPDATE_SPACING_DEFAULT = 1000 * 60 * 10;
-    private final int mNitzUpdateSpacing = SystemProperties.getInt("ro.nitz_update_spacing",
-            NITZ_UPDATE_SPACING_DEFAULT);
-
-    /** If mNitzUpdateSpacing hasn't been exceeded but update is > mNitzUpdate do the update */
-    private static final int NITZ_UPDATE_DIFF_DEFAULT = 2000;
-    private final int mNitzUpdateDiff = SystemProperties.getInt("ro.nitz_update_diff",
-            NITZ_UPDATE_DIFF_DEFAULT);
-
     private final Context mContext;
     private final GsmCdmaPhone mPhone;
+    private final DeviceState mDeviceState;
+    private final TimeServiceHelper mTimeServiceHelper;
 
     public NitzStateMachine(GsmCdmaPhone phone) {
+        this(phone,
+                TelephonyComponentFactory.getInstance().makeTimeServiceHelper(phone.getContext()),
+                new DeviceState(phone.getContext()));
+    }
+
+    @VisibleForTesting
+    public NitzStateMachine(GsmCdmaPhone phone, TimeServiceHelper timeServiceHelper,
+            DeviceState deviceState) {
         mPhone = phone;
         Context context = phone.getContext();
         mContext = context;
@@ -142,12 +194,24 @@ public final class NitzStateMachine {
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG);
 
         mCr = context.getContentResolver();
-        mCr.registerContentObserver(
-                Settings.Global.getUriFor(Settings.Global.AUTO_TIME), true,
-                mAutoTimeObserver);
-        mCr.registerContentObserver(
-                Settings.Global.getUriFor(Settings.Global.AUTO_TIME_ZONE), true,
-                mAutoTimeZoneObserver);
+
+        mDeviceState = deviceState;
+        mTimeServiceHelper = timeServiceHelper;
+        mTimeServiceHelper.setListener(new TimeServiceHelper.Listener() {
+            @Override
+            public void onTimeDetectionChange(boolean enabled) {
+                if (enabled) {
+                    revertToNitzTime();
+                }
+            }
+
+            @Override
+            public void onTimeZoneDetectionChange(boolean enabled) {
+                if (enabled) {
+                    revertToNitzTimeZone();
+                }
+            }
+        });
     }
 
     /**
@@ -158,10 +222,12 @@ public final class NitzStateMachine {
         // Capture the time zone property. This allows us to tell whether the device has a time zone
         // set. TimeZone.getDefault() returns a default zone (GMT) even when time zone is not
         // explicitly set making the system property a better indicator.
-        final String zoneName = SystemProperties.get(TIMEZONE_PROPERTY);
+        final boolean isTimeZoneSettingInitialized =
+                mTimeServiceHelper.isTimeZoneSettingInitialized();
         if (DBG) {
-            Rlog.d(LOG_TAG, "fixTimeZone zoneName='" + zoneName
-                    + "' mNitzData=" + mNitzData
+            Rlog.d(LOG_TAG, "fixTimeZone"
+                    + " isTimeZoneSettingInitialized=" + isTimeZoneSettingInitialized
+                    + " mNitzData=" + mNitzData
                     + " iso-cc='" + isoCountryCode
                     + "' iso-cc-idx=" + Arrays.binarySearch(GMT_COUNTRY_CODES, isoCountryCode));
         }
@@ -178,7 +244,7 @@ public final class NitzStateMachine {
                         + (zone == null ? zone : zone.getID()));
             }
         } else if ((mNitzData == null || nitzOffsetMightBeBogus(mNitzData))
-                && (zoneName != null && zoneName.length() > 0)
+                && isTimeZoneSettingInitialized
                 && (Arrays.binarySearch(GMT_COUNTRY_CODES, isoCountryCode) < 0)) {
 
             // This case means that (1) the device received no NITZ signal yet or received an NITZ
@@ -201,7 +267,7 @@ public final class NitzStateMachine {
                     Rlog.d(LOG_TAG, "fixTimeZone: tzOffset=" + tzOffset
                             + " ltod=" + TimeUtils.logTimeOfDay(ctm));
                 }
-                if (getAutoTime()) {
+                if (mTimeServiceHelper.isTimeDetectionEnabled()) {
                     long adj = ctm - tzOffset;
                     if (DBG) {
                         Rlog.d(LOG_TAG, "fixTimeZone: adj ltod=" + TimeUtils.logTimeOfDay(adj));
@@ -234,14 +300,17 @@ public final class NitzStateMachine {
                 Rlog.d(LOG_TAG, "fixTimeZone: using getTimeZone(off, dst, time, iso)");
             }
         }
-        final String tmpLog = "fixTimeZone zoneName=" + zoneName + " mNitzData=" + mNitzData
-                + " iso-cc=" + isoCountryCode + " mNeedFixZoneAfterNitz="
-                + mNeedFixZoneAfterNitz + " zone=" + (zone != null ? zone.getID() : "NULL");
+        final String tmpLog = "fixTimeZone:"
+                + " isTimeZoneSettingInitialized=" + isTimeZoneSettingInitialized
+                + " mNitzData=" + mNitzData
+                + " iso-cc=" + isoCountryCode
+                + " mNeedFixZoneAfterNitz=" + mNeedFixZoneAfterNitz
+                + " zone=" + (zone != null ? zone.getID() : "NULL");
         mTimeZoneLog.log(tmpLog);
 
         if (zone != null) {
             Rlog.d(LOG_TAG, "fixTimeZone: zone != null zone.getID=" + zone.getID());
-            if (getAutoTimeZone()) {
+            if (mTimeServiceHelper.isTimeZoneDetectionEnabled()) {
                 setAndBroadcastNetworkSetTimeZone(zone.getID());
             } else {
                 Rlog.d(LOG_TAG, "fixTimeZone: skip changing zone as getAutoTimeZone was false");
@@ -273,10 +342,7 @@ public final class NitzStateMachine {
 
     private void setTimeZoneFromNitz(NitzData newNitzData, long nitzReceiveTime) {
         try {
-            String iso = ((TelephonyManager) mContext
-                    .getSystemService(Context.TELEPHONY_SERVICE))
-                    .getNetworkCountryIsoForPhone(mPhone.getPhoneId());
-
+            String iso = getNetworkCountryIsoForPhone();
             TimeZone zone;
             if (newNitzData.getEmulatorHostTimeZone() != null) {
                 zone = newNitzData.getEmulatorHostTimeZone();
@@ -328,14 +394,15 @@ public final class NitzStateMachine {
                     + " zone=" + (zone != null ? zone.getID() : "NULL")
                     + " iso=" + iso + " mGotCountryCode=" + mGotCountryCode
                     + " mNeedFixZoneAfterNitz=" + mNeedFixZoneAfterNitz
-                    + " getAutoTimeZone()=" + getAutoTimeZone();
+                    + " isTimeZoneDetectionEnabled()="
+                    + mTimeServiceHelper.isTimeZoneDetectionEnabled();
             if (DBG) {
                 Rlog.d(LOG_TAG, tmpLog);
             }
             mTimeZoneLog.log(tmpLog);
 
             if (zone != null) {
-                if (getAutoTimeZone()) {
+                if (mTimeServiceHelper.isTimeZoneDetectionEnabled()) {
                     setAndBroadcastNetworkSetTimeZone(zone.getID());
                 }
                 saveNitzTimeZone(zone.getID());
@@ -347,8 +414,8 @@ public final class NitzStateMachine {
 
     private void setTimeFromNitz(NitzData newNitzData, long nitzReceiveTime) {
         try {
-            String ignore = SystemProperties.get("gsm.ignore-nitz");
-            if (ignore != null && ignore.equals("yes")) {
+            boolean ignoreNitz = mDeviceState.getIgnoreNitz();
+            if (ignoreNitz) {
                 Rlog.d(LOG_TAG, "NITZ: Not setting clock because gsm.ignore-nitz is set");
                 return;
             }
@@ -356,7 +423,7 @@ public final class NitzStateMachine {
             try {
                 mWakeLock.acquire();
 
-                long millisSinceNitzReceived = SystemClock.elapsedRealtime() - nitzReceiveTime;
+                long millisSinceNitzReceived = mDeviceState.elapsedRealtime() - nitzReceiveTime;
                 if (millisSinceNitzReceived < 0) {
                     // Sanity check: something is wrong
                     if (DBG) {
@@ -381,7 +448,7 @@ public final class NitzStateMachine {
                 long adjustedCurrentTimeMillis = newNitzData.getCurrentTimeInMillis();
                 adjustedCurrentTimeMillis += millisSinceNitzReceived;
 
-                if (!mPhone.isPhoneTypeGsm() || getAutoTime()) {
+                if (!mPhone.isPhoneTypeGsm() || mTimeServiceHelper.isTimeDetectionEnabled()) {
                     String tmpLog = "NITZ: newNitaData=" + newNitzData
                             + " nitzReceiveTime=" + nitzReceiveTime
                             + " Setting time of day to " + adjustedCurrentTimeMillis
@@ -396,15 +463,13 @@ public final class NitzStateMachine {
                         setAndBroadcastNetworkSetTime(adjustedCurrentTimeMillis);
                         Rlog.i(LOG_TAG, "NITZ: after Setting time of day");
                     } else {
-                        if (getAutoTime()) {
+                        if (mTimeServiceHelper.isTimeDetectionEnabled()) {
                             // Update system time automatically
                             long gained = adjustedCurrentTimeMillis - System.currentTimeMillis();
-                            long timeSinceLastUpdate = SystemClock.elapsedRealtime() - mSavedAtTime;
-                            int nitzUpdateSpacing = Settings.Global.getInt(mCr,
-                                    Settings.Global.NITZ_UPDATE_SPACING, mNitzUpdateSpacing);
-                            int nitzUpdateDiff = Settings.Global.getInt(mCr,
-                                    Settings.Global.NITZ_UPDATE_DIFF, mNitzUpdateDiff);
-
+                            long timeSinceLastUpdate =
+                                    mDeviceState.elapsedRealtime() - mSavedAtTime;
+                            int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
+                            int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
                             if ((mSavedAtTime == 0) || (timeSinceLastUpdate > nitzUpdateSpacing)
                                     || (Math.abs(gained) > nitzUpdateDiff)) {
                                 if (DBG) {
@@ -435,50 +500,22 @@ public final class NitzStateMachine {
         }
     }
 
-    private boolean getAutoTime() {
-        try {
-            return Settings.Global.getInt(mCr, Settings.Global.AUTO_TIME) > 0;
-        } catch (Settings.SettingNotFoundException snfe) {
-            return true;
-        }
-    }
-
-    private boolean getAutoTimeZone() {
-        try {
-            return Settings.Global.getInt(mCr, Settings.Global.AUTO_TIME_ZONE) > 0;
-        } catch (Settings.SettingNotFoundException snfe) {
-            return true;
-        }
-    }
-
     private void saveNitzTimeZone(String zoneId) {
         mSavedTimeZoneId = zoneId;
     }
 
     private void saveNitzTime(long time) {
-        SystemProperties.set("gsm.nitz.time", String.valueOf(time));
+        mDeviceState.setNitzTimeProperty(time);
         mSavedTime = time;
-        mSavedAtTime = SystemClock.elapsedRealtime();
+        mSavedAtTime = mDeviceState.elapsedRealtime();
         mNitzUpdatedTime = true;
     }
 
-    /**
-     * Set the timezone and send out a sticky broadcast so the system can
-     * determine if the timezone was set by the carrier.
-     *
-     * @param zoneId timezone set by carrier
-     */
     private void setAndBroadcastNetworkSetTimeZone(String zoneId) {
         if (DBG) {
             Rlog.d(LOG_TAG, "setAndBroadcastNetworkSetTimeZone: setTimeZone=" + zoneId);
         }
-        AlarmManager alarm =
-                (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
-        alarm.setTimeZone(zoneId);
-        Intent intent = new Intent(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        intent.putExtra("time-zone", zoneId);
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        mTimeServiceHelper.setDeviceTimeZone(zoneId);
         if (DBG) {
             Rlog.d(LOG_TAG,
                     "setAndBroadcastNetworkSetTimeZone: call alarm.setTimeZone and broadcast"
@@ -486,35 +523,21 @@ public final class NitzStateMachine {
         }
     }
 
-    /**
-     * Set the time and Send out a sticky broadcast so the system can determine
-     * if the time was set by the carrier.
-     *
-     * @param time time set by network
-     */
     private void setAndBroadcastNetworkSetTime(long time) {
         if (DBG) {
             Rlog.d(LOG_TAG, "setAndBroadcastNetworkSetTime: time=" + time + "ms");
         }
-        SystemClock.setCurrentTimeMillis(time);
-        Intent intent = new Intent(TelephonyIntents.ACTION_NETWORK_SET_TIME);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        intent.putExtra("time", time);
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-
+        mTimeServiceHelper.setDeviceTime(time);
         TelephonyMetrics.getInstance().writeNITZEvent(mPhone.getPhoneId(), time);
     }
 
     private void revertToNitzTime() {
-        if (!getAutoTime()) {
-            return;
-        }
         if (DBG) {
             Rlog.d(LOG_TAG, "Reverting to NITZ Time: mSavedTime=" + mSavedTime
                     + " mSavedAtTime=" + mSavedAtTime);
         }
         if (mSavedTime != 0 && mSavedAtTime != 0) {
-            long currTime = SystemClock.elapsedRealtime();
+            long currTime = mDeviceState.elapsedRealtime();
             mTimeLog.log("Reverting to NITZ time, currTime=" + currTime
                     + " mSavedAtTime=" + mSavedAtTime + " mSavedTime=" + mSavedTime);
             setAndBroadcastNetworkSetTime(mSavedTime + (currTime - mSavedAtTime));
@@ -522,9 +545,6 @@ public final class NitzStateMachine {
     }
 
     private void revertToNitzTimeZone() {
-        if (!getAutoTimeZone()) {
-            return;
-        }
         String tmpLog = "Reverting to NITZ TimeZone: tz=" + mSavedTimeZoneId;
         if (DBG) {
             Rlog.d(LOG_TAG, tmpLog);
@@ -533,8 +553,7 @@ public final class NitzStateMachine {
         if (mSavedTimeZoneId != null) {
             setAndBroadcastNetworkSetTimeZone(mSavedTimeZoneId);
         } else {
-            String iso = ((TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE))
-                    .getNetworkCountryIsoForPhone(mPhone.getPhoneId());
+            String iso = getNetworkCountryIsoForPhone();
             if (!TextUtils.isEmpty(iso)) {
                 updateTimeZoneByNetworkCountryCode(iso);
             }
@@ -577,10 +596,8 @@ public final class NitzStateMachine {
      * @param iso Country code from network MCC
      */
     public void updateTimeZoneByNetworkCountryCode(String iso) {
-        // Test both paths if ignore nitz is true
-        boolean testOneUniqueOffsetPath = SystemProperties.getBoolean(
-                TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
-                && ((SystemClock.uptimeMillis() & 1) == 0);
+        // Test both paths if ignore nitz for tests is true
+        boolean testOneUniqueOffsetPath = mDeviceState.getIgnoreNitzForTests();
 
         List<String> uniqueZoneIds = TimeUtils.getTimeZoneIdsWithUniqueOffsets(iso);
         if ((uniqueZoneIds.size() == 1) || testOneUniqueOffsetPath) {
@@ -630,7 +647,7 @@ public final class NitzStateMachine {
      * Returns true if mNitzUpdatedTime and automatic time zone detection is enabled.
      */
     public boolean shouldUpdateTimeZoneUsingCountryCode() {
-        return !mNitzUpdatedTime && getAutoTimeZone();
+        return !mNitzUpdatedTime && mTimeServiceHelper.isTimeZoneDetectionEnabled();
     }
 
     /**
@@ -653,5 +670,11 @@ public final class NitzStateMachine {
      */
     public boolean fixTimeZoneCallNeeded() {
         return mNeedFixZoneAfterNitz;
+    }
+
+    // public so it can be used by tests for spying / setting up return values with Mockito.
+    public String getNetworkCountryIsoForPhone() {
+        return ((TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE))
+                .getNetworkCountryIsoForPhone(mPhone.getPhoneId());
     }
 }

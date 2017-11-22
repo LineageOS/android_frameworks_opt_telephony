@@ -462,7 +462,7 @@ public class ServiceStateTracker extends Handler {
     private static final int INVALID_LTE_EARFCN = -1;
 
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
-        mNitzState = new NitzStateMachine(phone);
+        mNitzState = TelephonyComponentFactory.getInstance().makeNitzStateMachine(phone);
         mPhone = phone;
         mCi = ci;
 
