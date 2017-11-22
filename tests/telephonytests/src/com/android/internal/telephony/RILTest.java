@@ -1067,4 +1067,337 @@ public class RILTest extends TelephonyTest {
         expected.setCellSignalStrength(cs);
         assertEquals(expected, cellInfoCdma);
     }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForLTE() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForLTE(MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoLte cellInfoLte = (CellInfoLte) ret.get(0);
+        CellInfoLte expected = new CellInfoLte();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityLte cil = new CellIdentityLte(
+                CI, PCI, TAC, EARFCN, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthLte css = new CellSignalStrengthLte(
+                SIGNAL_STRENGTH, -RSRP, -RSRQ, RSSNR, CQI, TIME_ADVANCE);
+        expected.setCellIdentity(cil);
+        expected.setCellSignalStrength(css);
+        assertEquals(expected, cellInfoLte);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2_ForLTEWithEmptyOperatorInfo() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForLTE(
+                MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoLte cellInfoLte = (CellInfoLte) ret.get(0);
+        CellInfoLte expected = new CellInfoLte();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityLte cil = new CellIdentityLte(
+                CI, PCI, TAC, EARFCN, MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+        CellSignalStrengthLte css = new CellSignalStrengthLte(
+                SIGNAL_STRENGTH, -RSRP, -RSRQ, RSSNR, CQI, TIME_ADVANCE);
+        expected.setCellIdentity(cil);
+        expected.setCellSignalStrength(css);
+        assertEquals(expected, cellInfoLte);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForLTEWithEmptyMccMnc() throws Exception {
+        // MCC/MNC will be set as INT_MAX if unknown
+        ArrayList<CellInfo> ret = getCellInfoListForLTE(
+                String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MAX_VALUE),
+                ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoLte cellInfoLte = (CellInfoLte) ret.get(0);
+        CellInfoLte expected = new CellInfoLte();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityLte cil = new CellIdentityLte(
+                CI, PCI, TAC, EARFCN, null, null, ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthLte css = new CellSignalStrengthLte(
+                SIGNAL_STRENGTH, -RSRP, -RSRQ, RSSNR, CQI, TIME_ADVANCE);
+        expected.setCellIdentity(cil);
+        expected.setCellSignalStrength(css);
+        assertEquals(expected, cellInfoLte);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForGSM() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForGSM(MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoGsm cellInfoGsm = (CellInfoGsm) ret.get(0);
+        CellInfoGsm expected = new CellInfoGsm();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityGsm ci = new CellIdentityGsm(
+                LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthGsm cs = new CellSignalStrengthGsm();
+        cs.initialize(SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoGsm);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForGSMWithEmptyOperatorInfo() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForGSM(
+                MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoGsm cellInfoGsm = (CellInfoGsm) ret.get(0);
+        CellInfoGsm expected = new CellInfoGsm();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityGsm ci = new CellIdentityGsm(
+                LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+        CellSignalStrengthGsm cs = new CellSignalStrengthGsm();
+        cs.initialize(SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoGsm);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForGSMWithEmptyMccMnc() throws Exception {
+        // MCC/MNC will be set as INT_MAX if unknown
+        ArrayList<CellInfo> ret = getCellInfoListForGSM(
+                String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MAX_VALUE),
+                ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoGsm cellInfoGsm = (CellInfoGsm) ret.get(0);
+        CellInfoGsm expected = new CellInfoGsm();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityGsm ci = new CellIdentityGsm(
+                LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthGsm cs = new CellSignalStrengthGsm();
+        cs.initialize(SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoGsm);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForWcdma() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForWcdma(
+                MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoWcdma cellInfoWcdma = (CellInfoWcdma) ret.get(0);
+        CellInfoWcdma expected = new CellInfoWcdma();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityWcdma ci = new CellIdentityWcdma(
+                LAC, CID, PSC, UARFCN, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthWcdma cs = new CellSignalStrengthWcdma(SIGNAL_STRENGTH, BIT_ERROR_RATE);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoWcdma);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForWcdmaWithEmptyOperatorInfo() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForWcdma(
+                MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoWcdma cellInfoWcdma = (CellInfoWcdma) ret.get(0);
+        CellInfoWcdma expected = new CellInfoWcdma();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityWcdma ci = new CellIdentityWcdma(
+                LAC, CID, PSC, UARFCN, MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+        CellSignalStrengthWcdma cs = new CellSignalStrengthWcdma(SIGNAL_STRENGTH, BIT_ERROR_RATE);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoWcdma);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForWcdmaWithEmptyMccMnc() throws Exception {
+        // MCC/MNC will be set as INT_MAX if unknown
+        ArrayList<CellInfo> ret = getCellInfoListForWcdma(
+                String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MAX_VALUE),
+                ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoWcdma cellInfoWcdma = (CellInfoWcdma) ret.get(0);
+        CellInfoWcdma expected = new CellInfoWcdma();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityWcdma ci = new CellIdentityWcdma(
+                LAC, CID, PSC, UARFCN, null, null, ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthWcdma cs = new CellSignalStrengthWcdma(SIGNAL_STRENGTH, BIT_ERROR_RATE);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoWcdma);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForCdma() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForCdma(ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoCdma cellInfoCdma = (CellInfoCdma) ret.get(0);
+        CellInfoCdma expected = new CellInfoCdma();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityCdma ci = new CellIdentityCdma(
+                NETWORK_ID, SYSTEM_ID, BASESTATION_ID, LONGITUDE, LATITUDE,
+                ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthCdma cs = new CellSignalStrengthCdma(
+                -DBM, -ECIO, -DBM, -ECIO, SIGNAL_NOICE_RATIO);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoCdma);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_2ForCdmaWithEmptyOperatorInfd() throws Exception {
+        ArrayList<CellInfo> ret = getCellInfoListForCdma(EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+
+        assertEquals(1, ret.size());
+        CellInfoCdma cellInfoCdma = (CellInfoCdma) ret.get(0);
+        CellInfoCdma expected = new CellInfoCdma();
+        expected.setRegistered(false);
+        expected.setTimeStamp(TIMESTAMP);
+        expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
+        CellIdentityCdma ci = new CellIdentityCdma(
+                NETWORK_ID, SYSTEM_ID, BASESTATION_ID, LONGITUDE, LATITUDE,
+                EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
+        CellSignalStrengthCdma cs = new CellSignalStrengthCdma(
+                -DBM, -ECIO, -DBM, -ECIO, SIGNAL_NOICE_RATIO);
+        expected.setCellIdentity(ci);
+        expected.setCellSignalStrength(cs);
+        assertEquals(expected, cellInfoCdma);
+    }
+
+    private ArrayList<CellInfo> getCellInfoListForLTE(
+            String mcc, String mnc, String alphaLong, String alphaShort) {
+        android.hardware.radio.V1_2.CellInfoLte lte = new android.hardware.radio.V1_2.CellInfoLte();
+        lte.cellIdentityLte.base.ci = CI;
+        lte.cellIdentityLte.base.pci = PCI;
+        lte.cellIdentityLte.base.tac = TAC;
+        lte.cellIdentityLte.base.earfcn = EARFCN;
+        lte.cellIdentityLte.base.mcc = mcc;
+        lte.cellIdentityLte.base.mnc = mnc;
+        lte.cellIdentityLte.operatorNames.alphaLong = alphaLong;
+        lte.cellIdentityLte.operatorNames.alphaShort = alphaShort;
+        lte.signalStrengthLte.signalStrength = SIGNAL_STRENGTH;
+        lte.signalStrengthLte.rsrp = RSRP;
+        lte.signalStrengthLte.rsrq = RSRQ;
+        lte.signalStrengthLte.rssnr = RSSNR;
+        lte.signalStrengthLte.cqi = CQI;
+        lte.signalStrengthLte.timingAdvance = TIME_ADVANCE;
+        android.hardware.radio.V1_2.CellInfo record = new android.hardware.radio.V1_2.CellInfo();
+        record.cellInfoType = TYPE_LTE;
+        record.registered = false;
+        record.timeStampType = RIL_TIMESTAMP_TYPE_OEM_RIL;
+        record.timeStamp = TIMESTAMP;
+        record.lte.add(lte);
+        ArrayList<android.hardware.radio.V1_2.CellInfo> records =
+                new ArrayList<android.hardware.radio.V1_2.CellInfo>();
+        records.add(record);
+        return RIL.convertHalCellInfoList_1_2(records);
+    }
+
+    private ArrayList<CellInfo> getCellInfoListForGSM(
+            String mcc, String mnc, String alphaLong, String alphaShort) {
+        android.hardware.radio.V1_2.CellInfoGsm cellinfo =
+                new android.hardware.radio.V1_2.CellInfoGsm();
+        cellinfo.cellIdentityGsm.base.lac = LAC;
+        cellinfo.cellIdentityGsm.base.cid = CID;
+        cellinfo.cellIdentityGsm.base.bsic = BSIC;
+        cellinfo.cellIdentityGsm.base.arfcn = ARFCN;
+        cellinfo.cellIdentityGsm.base.mcc = mcc;
+        cellinfo.cellIdentityGsm.base.mnc = mnc;
+        cellinfo.cellIdentityGsm.operatorNames.alphaLong = alphaLong;
+        cellinfo.cellIdentityGsm.operatorNames.alphaShort = alphaShort;
+        cellinfo.signalStrengthGsm.signalStrength = SIGNAL_STRENGTH;
+        cellinfo.signalStrengthGsm.bitErrorRate = BIT_ERROR_RATE;
+        cellinfo.signalStrengthGsm.timingAdvance = TIME_ADVANCE;
+        android.hardware.radio.V1_2.CellInfo record = new android.hardware.radio.V1_2.CellInfo();
+        record.cellInfoType = TYPE_GSM;
+        record.registered = false;
+        record.timeStampType = RIL_TIMESTAMP_TYPE_OEM_RIL;
+        record.timeStamp = TIMESTAMP;
+        record.gsm.add(cellinfo);
+        ArrayList<android.hardware.radio.V1_2.CellInfo> records =
+                new ArrayList<android.hardware.radio.V1_2.CellInfo>();
+        records.add(record);
+
+        return RIL.convertHalCellInfoList_1_2(records);
+    }
+
+    private ArrayList<CellInfo> getCellInfoListForWcdma(
+            String mcc, String mnc, String alphaLong, String alphaShort) {
+        android.hardware.radio.V1_2.CellInfoWcdma cellinfo =
+                new android.hardware.radio.V1_2.CellInfoWcdma();
+        cellinfo.cellIdentityWcdma.base.lac = LAC;
+        cellinfo.cellIdentityWcdma.base.cid = CID;
+        cellinfo.cellIdentityWcdma.base.psc = PSC;
+        cellinfo.cellIdentityWcdma.base.uarfcn = UARFCN;
+        cellinfo.cellIdentityWcdma.base.mcc = mcc;
+        cellinfo.cellIdentityWcdma.base.mnc = mnc;
+        cellinfo.cellIdentityWcdma.operatorNames.alphaLong = alphaLong;
+        cellinfo.cellIdentityWcdma.operatorNames.alphaShort = alphaShort;
+        cellinfo.signalStrengthWcdma.signalStrength = SIGNAL_STRENGTH;
+        cellinfo.signalStrengthWcdma.bitErrorRate = BIT_ERROR_RATE;
+        android.hardware.radio.V1_2.CellInfo record = new android.hardware.radio.V1_2.CellInfo();
+        record.cellInfoType = TYPE_WCDMA;
+        record.registered = false;
+        record.timeStampType = RIL_TIMESTAMP_TYPE_OEM_RIL;
+        record.timeStamp = TIMESTAMP;
+        record.wcdma.add(cellinfo);
+        ArrayList<android.hardware.radio.V1_2.CellInfo> records =
+                new ArrayList<android.hardware.radio.V1_2.CellInfo>();
+        records.add(record);
+
+        return RIL.convertHalCellInfoList_1_2(records);
+    }
+
+    private ArrayList<CellInfo> getCellInfoListForCdma(String alphaLong, String alphaShort) {
+        android.hardware.radio.V1_2.CellInfoCdma cellinfo =
+                new android.hardware.radio.V1_2.CellInfoCdma();
+        cellinfo.cellIdentityCdma.base.networkId = NETWORK_ID;
+        cellinfo.cellIdentityCdma.base.systemId = SYSTEM_ID;
+        cellinfo.cellIdentityCdma.base.baseStationId = BASESTATION_ID;
+        cellinfo.cellIdentityCdma.base.longitude = LONGITUDE;
+        cellinfo.cellIdentityCdma.base.latitude = LATITUDE;
+        cellinfo.cellIdentityCdma.operatorNames.alphaLong = alphaLong;
+        cellinfo.cellIdentityCdma.operatorNames.alphaShort = alphaShort;
+        cellinfo.signalStrengthCdma.dbm = DBM;
+        cellinfo.signalStrengthCdma.ecio = ECIO;
+        cellinfo.signalStrengthEvdo.dbm = DBM;
+        cellinfo.signalStrengthEvdo.ecio = ECIO;
+        cellinfo.signalStrengthEvdo.signalNoiseRatio = SIGNAL_NOICE_RATIO;
+        android.hardware.radio.V1_2.CellInfo record = new android.hardware.radio.V1_2.CellInfo();
+        record.cellInfoType = TYPE_CDMA;
+        record.registered = false;
+        record.timeStampType = RIL_TIMESTAMP_TYPE_OEM_RIL;
+        record.timeStamp = TIMESTAMP;
+        record.cdma.add(cellinfo);
+        ArrayList<android.hardware.radio.V1_2.CellInfo> records =
+                new ArrayList<android.hardware.radio.V1_2.CellInfo>();
+        records.add(record);
+
+        return RIL.convertHalCellInfoList_1_2(records);
+    }
 }
