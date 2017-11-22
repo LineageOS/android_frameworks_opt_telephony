@@ -185,6 +185,10 @@ public abstract class TelephonyTest {
     protected DeviceStateMonitor mDeviceStateMonitor;
     @Mock
     protected IntentBroadcaster mIntentBroadcaster;
+    @Mock
+    protected NitzStateMachine mNitzStateMachine;
+    @Mock
+    protected TimeServiceHelper mTimeServiceHelper;
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
@@ -375,6 +379,10 @@ public abstract class TelephonyTest {
                 .makeCarrierActionAgent(nullable(Phone.class));
         doReturn(mDeviceStateMonitor).when(mTelephonyComponentFactory)
                 .makeDeviceStateMonitor(nullable(Phone.class));
+        doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
+                .makeNitzStateMachine(nullable(GsmCdmaPhone.class));
+        doReturn(mTimeServiceHelper).when(mTelephonyComponentFactory)
+                .makeTimeServiceHelper(nullable(Context.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
