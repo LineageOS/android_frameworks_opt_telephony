@@ -24,9 +24,16 @@ import android.telephony.ims.feature.MMTelFeature;
 
 public class TestMMTelFeature extends MMTelFeature {
 
+    public boolean isConnectedCalled = false;
+
+    @Override
+    public boolean isConnected(int callSessionType, int callType) {
+        isConnectedCalled = true;
+        return true;
+    }
+
     @Override
     public void onFeatureRemoved() {
-
     }
 
     public void sendSetFeatureState(int state) {
