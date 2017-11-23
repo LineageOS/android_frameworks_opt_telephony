@@ -16,6 +16,14 @@
 
 package com.android.internal.telephony;
 
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -31,18 +39,9 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.isA;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * Unit tests for {@link com.android.internal.telephony.CarrierServiceStateTracker}.
  */
-@SmallTest
 public class CarrierServiceStateTrackerTest extends TelephonyTest {
     public static final String LOG_TAG = "CSST";
     public static final int TEST_TIMEOUT = 5000;

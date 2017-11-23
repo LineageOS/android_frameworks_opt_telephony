@@ -34,7 +34,6 @@ import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
 
-import com.android.ims.internal.IImsServiceController;
 import com.android.internal.telephony.PhoneConstants;
 
 import org.junit.After;
@@ -279,11 +278,7 @@ public class ImsResolverTest extends ImsTestBase {
     public void testGetDeviceCarrierFeatures() throws RemoteException {
         setupResolver(2/*numSlots*/);
         ImsServiceController deviceController = mock(ImsServiceController.class);
-        IImsServiceController iDeviceController = mock(IImsServiceController.class);
-        when(deviceController.getImsServiceController()).thenReturn(iDeviceController);
         ImsServiceController carrierController = mock(ImsServiceController.class);
-        IImsServiceController iCarrierController = mock(IImsServiceController.class);
-        when(carrierController.getImsServiceController()).thenReturn(iCarrierController);
         mTestImsResolver.populateCacheAndStartBind();
 
         // Callback from mock ImsServiceControllers
@@ -297,17 +292,17 @@ public class ImsResolverTest extends ImsTestBase {
         mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.MMTEL, carrierController);
         mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.RCS, carrierController);
         // Get the IImsServiceControllers for each feature on each slot and verify they are correct.
-        assertEquals(iDeviceController, mTestImsResolver.getImsServiceControllerAndListen(
+        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
                 1/*Slot id*/, ImsFeature.EMERGENCY_MMTEL, null));
-        assertEquals(iDeviceController, mTestImsResolver.getImsServiceControllerAndListen(
+        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
                 1 /*Slot id*/, ImsFeature.MMTEL, null));
-        assertEquals(iDeviceController, mTestImsResolver.getImsServiceControllerAndListen(
+        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
                 1 /*Slot id*/, ImsFeature.RCS, null));
-        assertEquals(iDeviceController, mTestImsResolver.getImsServiceControllerAndListen(
+        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
                 1 /*Slot id*/, ImsFeature.EMERGENCY_MMTEL, null));
-        assertEquals(iCarrierController, mTestImsResolver.getImsServiceControllerAndListen(
+        assertEquals(carrierController, mTestImsResolver.getImsServiceControllerAndListen(
                 0 /*Slot id*/, ImsFeature.MMTEL, null));
-        assertEquals(iCarrierController, mTestImsResolver.getImsServiceControllerAndListen(
+        assertEquals(carrierController, mTestImsResolver.getImsServiceControllerAndListen(
                 0 /*Slot id*/, ImsFeature.RCS, null));
     }
 

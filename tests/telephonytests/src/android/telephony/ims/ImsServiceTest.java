@@ -16,44 +16,33 @@
 
 package android.telephony.ims;
 
-import static android.Manifest.permission.MODIFY_PHONE_STATE;
-import static android.Manifest.permission.READ_PHONE_STATE;
-import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
-
 import static com.android.internal.telephony.ims.ImsResolver.SERVICE_INTERFACE;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
 
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.nullable;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.RemoteException;
-import android.support.test.filters.FlakyTest;
 import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.feature.MMTelFeature;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.SparseArray;
 
 import com.android.ims.ImsManager;
 import com.android.ims.internal.IImsFeatureStatusCallback;
+import com.android.ims.internal.IImsMMTelFeature;
 import com.android.ims.internal.IImsServiceController;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -94,88 +83,45 @@ public class ImsServiceTest {
     @Test
     @SmallTest
     public void testCreateMMTelFeature() throws RemoteException {
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
-        when(mTestImsService.mSpyMMTelFeature.getFeatureState()).thenReturn(
-                ImsFeature.STATE_READY);
+        IImsMMTelFeature f = mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
+        mTestImsService.mTestMMTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
 
-        SparseArray<ImsFeature> features = mTestImsService.getImsFeatureMap(TEST_SLOT_0);
-        assertEquals(mTestImsService.mSpyMMTelFeature,
-                mTestImsService.getImsFeatureFromType(features, ImsFeature.MMTEL));
+        SparseArray<ImsFeature> features = mTestImsService.getFeatures(TEST_SLOT_0);
+        ImsFeature featureToVerify = features.get(ImsFeature.MMTEL);
+        MMTelFeature testMMTelFeature = null;
+        if (featureToVerify instanceof MMTelFeature) {
+            testMMTelFeature = (MMTelFeature) featureToVerify;
+        } else {
+            fail();
+        }
+        assertEquals(mTestImsService.mSpyMMTelFeature, testMMTelFeature);
         // Verify that upon creating a feature, we assign the callback and get the set feature state
         // when querying it.
         verify(mTestImsService.mSpyMMTelFeature).addImsFeatureStatusCallback(eq(mTestCallback));
-        assertEquals(ImsFeature.STATE_READY, mTestImsServiceBinder.getFeatureStatus(TEST_SLOT_0,
-                ImsFeature.MMTEL));
+        assertEquals(ImsFeature.STATE_READY, f.getFeatureStatus());
     }
 
     @Test
     @SmallTest
     public void testRemoveMMTelFeature() throws RemoteException {
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
+        mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
 
         mTestImsServiceBinder.removeImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
 
-        verify(mTestImsService.mSpyMMTelFeature).notifyFeatureRemoved(eq(0));
+        verify(mTestImsService.mSpyMMTelFeature).onFeatureRemoved();
         verify(mTestImsService.mSpyMMTelFeature).removeImsFeatureStatusCallback(mTestCallback);
-        SparseArray<ImsFeature> features = mTestImsService.getImsFeatureMap(TEST_SLOT_0);
-        assertNull(mTestImsService.getImsFeatureFromType(features, ImsFeature.MMTEL));
+        SparseArray<ImsFeature> features = mTestImsService.getFeatures(TEST_SLOT_0);
+        assertNull(features.get(ImsFeature.MMTEL));
     }
 
     @Test
     @SmallTest
     public void testCallMethodOnCreatedFeature() throws RemoteException {
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
+        IImsMMTelFeature f = mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
 
-        mTestImsServiceBinder.isConnected(TEST_SLOT_0, ImsFeature.MMTEL, 0 /*callSessionType*/,
-                0 /*callType*/);
+        f.isConnected(0/*callSessionType*/, 0 /*callType*/);
 
-        verify(mTestImsService.mSpyMMTelFeature).isConnected(anyInt(), anyInt());
-    }
-
-    @Test
-    @SmallTest
-    public void testCallMethodWithNoCreatedFeature() throws RemoteException {
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
-
-        mTestImsServiceBinder.isConnected(TEST_SLOT_1, ImsFeature.MMTEL, 0 /*callSessionType*/,
-                0 /*callType*/);
-
-        verify(mTestImsService.mSpyMMTelFeature, never()).isConnected(anyInt(), anyInt());
-    }
-
-    @Test
-    @SmallTest
-    public void testCreateFeatureWithNoPermissions() throws RemoteException {
-        doThrow(new SecurityException()).when(mMockContext).enforceCallingOrSelfPermission(
-                eq(MODIFY_PHONE_STATE), anyString());
-
-        try {
-            mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
-            fail();
-        } catch (SecurityException e) {
-            // Expected
-        }
-    }
-
-    @FlakyTest
-    @Ignore
-    @Test
-    public void testMethodWithNoPermissions() throws RemoteException {
-        when(mMockContext.checkCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE)).thenReturn(
-                PackageManager.PERMISSION_DENIED);
-        doThrow(new SecurityException()).when(mMockContext).enforceCallingOrSelfPermission(
-                eq(READ_PHONE_STATE), nullable(String.class));
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
-
-        try {
-            mTestImsServiceBinder.isConnected(TEST_SLOT_1, ImsFeature.MMTEL, 0 /*callSessionType*/,
-                    0 /*callType*/);
-            fail();
-        } catch (SecurityException e) {
-            // Expected
-        }
-
-        verify(mTestImsService.mSpyMMTelFeature, never()).isConnected(anyInt(), anyInt());
+        assertTrue(mTestImsService.mTestMMTelFeature.isConnectedCalled);
     }
 
     /**
@@ -185,7 +131,7 @@ public class ImsServiceTest {
     @Test
     @SmallTest
     public void testImsServiceUpSentCompat() throws RemoteException {
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
+        mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
 
         mTestImsService.mSpyMMTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
 
@@ -207,7 +153,7 @@ public class ImsServiceTest {
     @Test
     @SmallTest
     public void testImsServiceDownSentCompatInitializing() throws RemoteException {
-        mTestImsServiceBinder.createImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
+        mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
 
         mTestImsService.mSpyMMTelFeature.sendSetFeatureState(ImsFeature.STATE_INITIALIZING);
 

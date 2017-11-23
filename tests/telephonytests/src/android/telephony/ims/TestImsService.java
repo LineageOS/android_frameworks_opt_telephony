@@ -21,7 +21,6 @@ import android.telephony.ims.feature.MMTelFeature;
 import android.telephony.ims.feature.RcsFeature;
 
 import org.mockito.MockitoAnnotations;
-import org.mockito.Spy;
 
 import static org.mockito.Mockito.spy;
 
@@ -32,7 +31,7 @@ import static org.mockito.Mockito.spy;
 public class TestImsService extends ImsService {
 
     public TestMMTelFeature mSpyMMTelFeature;
-    private TestMMTelFeature mTestMMTelFeature;
+    public TestMMTelFeature mTestMMTelFeature;
 
     public TestImsService(Context context) {
         attachBaseContext(context);
