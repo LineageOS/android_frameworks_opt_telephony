@@ -49,7 +49,7 @@ public class TimeServiceHelper {
         void onTimeZoneDetectionChange(boolean enabled);
     }
 
-    public static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
+    private static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
     private final Context mContext;
     private final ContentResolver mCr;
@@ -94,8 +94,16 @@ public class TimeServiceHelper {
      * Returns true if the device has an explicit time zone set.
      */
     public boolean isTimeZoneSettingInitialized() {
+        // timezone.equals("GMT") will be true and only true if the timezone was
+        // set to a default value by the system server (when starting, system server
+        // sets the persist.sys.timezone to "GMT" if it's not set). "GMT" is not used by
+        // any code that sets it explicitly (in case where something sets GMT explicitly,
+        // "Etc/GMT" Olsen ID would be used).
+        // TODO(b/64056758): Remove "timezone.equals("GMT")" hack when there's a
+        // better way of telling if the value has been defaulted.
+
         String timeZoneId = SystemProperties.get(TIMEZONE_PROPERTY);
-        return timeZoneId != null && timeZoneId.length() > 0;
+        return timeZoneId != null && timeZoneId.length() > 0 && !timeZoneId.equals("GMT");
     }
 
     /**

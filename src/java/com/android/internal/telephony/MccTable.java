@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import android.app.ActivityManager;
-import android.app.AlarmManager;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.net.wifi.WifiManager;
@@ -359,21 +358,13 @@ public final class MccTable {
      * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
      */
     private static void setTimezoneFromMccIfNeeded(Context context, int mcc) {
-        String timezone = SystemProperties.get(TimeServiceHelper.TIMEZONE_PROPERTY);
-        // timezone.equals("GMT") will be true and only true if the timezone was
-        // set to a default value by the system server (when starting, system server.
-        // sets the persist.sys.timezone to "GMT" if it's not set)."GMT" is not used by
-        // any code that sets it explicitly (in case where something sets GMT explicitly,
-        // "Etc/GMT" Olsen ID would be used).
-        // TODO(b/64056758): Remove "timezone.equals("GMT")" hack when there's a
-        // better way of telling if the value has been defaulted.
-        if (timezone == null || timezone.length() == 0 || timezone.equals("GMT")) {
+        TimeServiceHelper timeServiceHelper =
+                TelephonyComponentFactory.getInstance().makeTimeServiceHelper(context);
+        if (!timeServiceHelper.isTimeZoneSettingInitialized()) {
             String zoneId = defaultTimeZoneForMcc(mcc);
             if (zoneId != null && zoneId.length() > 0) {
                 // Set time zone based on MCC
-                AlarmManager alarm =
-                        (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                alarm.setTimeZone(zoneId);
+                timeServiceHelper.setDeviceTimeZone(zoneId);
                 Slog.d(LOG_TAG, "timezone set to " + zoneId);
             }
         }
