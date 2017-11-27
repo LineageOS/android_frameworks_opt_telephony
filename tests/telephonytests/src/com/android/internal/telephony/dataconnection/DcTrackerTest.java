@@ -58,6 +58,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.data.DataProfile;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -430,24 +431,24 @@ public class DcTrackerTest extends TelephonyTest {
 
     private void verifyDataProfile(DataProfile dp, String apn, int profileId,
                                    int supportedApnTypesBitmap, int type, int bearerBitmask) {
-        assertEquals(profileId, dp.profileId);
-        assertEquals(apn, dp.apn);
-        assertEquals("IP", dp.protocol);
-        assertEquals(0, dp.authType);
-        assertEquals("", dp.user);
-        assertEquals("", dp.password);
-        assertEquals(type, dp.type);
-        assertEquals(0, dp.maxConnsTime);
-        assertEquals(0, dp.maxConns);
-        assertEquals(0, dp.waitTime);
-        assertTrue(dp.enabled);
-        assertEquals(supportedApnTypesBitmap, dp.supportedApnTypesBitmap);
-        assertEquals("IP", dp.roamingProtocol);
-        assertEquals(bearerBitmask, dp.bearerBitmap);
-        assertEquals(0, dp.mtu);
-        assertEquals("", dp.mvnoType);
-        assertEquals("", dp.mvnoMatchData);
-        assertFalse(dp.modemCognitive);
+        assertEquals(profileId, dp.getProfileId());
+        assertEquals(apn, dp.getApn());
+        assertEquals("IP", dp.getProtocol());
+        assertEquals(0, dp.getAuthType());
+        assertEquals("", dp.getUserName());
+        assertEquals("", dp.getPassword());
+        assertEquals(type, dp.getType());
+        assertEquals(0, dp.getMaxConnsTime());
+        assertEquals(0, dp.getMaxConns());
+        assertEquals(0, dp.getWaitTime());
+        assertTrue(dp.isEnabled());
+        assertEquals(supportedApnTypesBitmap, dp.getSupportedApnTypesBitmap());
+        assertEquals("IP", dp.getRoamingProtocol());
+        assertEquals(bearerBitmask, dp.getBearerBitmap());
+        assertEquals(0, dp.getMtu());
+        assertEquals("", dp.getMvnoType());
+        assertEquals("", dp.getMvnoMatchData());
+        assertFalse(dp.isModemCognitive());
     }
 
     private void verifyDataConnected(final String apnSetting) {
