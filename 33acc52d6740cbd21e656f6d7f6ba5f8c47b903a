@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b28b07eb_2f330e73",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1624,
+      "author": {
+        "id": 3075
+      },
+      "writtenOn": "2017-11-27T04:57:00Z",
+      "side": 1,
+      "message": "Is this the right logic here ?  It reads that it\u0027ll always disable data if the bool is not true.\n\nLooking at the same place in cm-14.1, if I\u0027ve read correctly, all the bool did at this point was disable checking whether or not data was disabled in settings.\n\nReverting this gerrit seems to solve a recent issue where mms no longer send/recv if wifi is connected.  (razorloves suggested it might be this patch)",
+      "revId": "33acc52d6740cbd21e656f6d7f6ba5f8c47b903a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
