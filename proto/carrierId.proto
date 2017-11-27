@@ -73,5 +73,9 @@ message CarrierAttribute {
   // "content://telephony/carriers/preferapn" on device.
   // Sample values: fast.t-mobile.com, internet
   repeated string preferred_apn = 7;
+
+  // [Optional] Prefix of Integrated Circuit Card Identifier. Read from subscription EF_ICCID.
+  // Sample values: 894430, 894410
+  repeated string iccid_prefix = 8;
 };
 
