@@ -1593,6 +1593,15 @@ public class DcTracker extends Handler {
                 // If the data is turned off, we should not allow a data connection.
                 isDataAllowed = false;
 
+                if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS)) {
+                    CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                            .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                    PersistableBundle pb = configManager.getConfigForSubId(mPhone.getSubId());
+                    if (pb != null) {
+                        isDataAllowed = pb.getBoolean("config_enable_mms_with_mobile_data_off");
+                    }
+                }
+
                 // But there are some exceptions we should allow data even when data is turned off.
                 if (!apnContext.hasNoRestrictedRequests(true /*exclude DUN */)) {
                     // A restricted request can request data even when data is turned off.
@@ -1613,15 +1622,6 @@ public class DcTracker extends Handler {
                     // metered purposes such as internet.
                     unmeteredUseOnly = true;
                 }
-            }
-        }
-
-        if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS)) {
-            CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
-                    .getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            PersistableBundle pb = configManager.getConfigForSubId(mPhone.getSubId());
-            if (pb != null) {
-                isDataAllowed = pb.getBoolean("config_enable_mms_with_mobile_data_off");
             }
         }
 
