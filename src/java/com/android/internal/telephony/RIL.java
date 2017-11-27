@@ -86,6 +86,8 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.cat.ComprehensionTlv;
+import com.android.internal.telephony.cat.ComprehensionTlvTag;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
@@ -2035,7 +2037,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " contents = "
-                        + contents);
+                        + (Build.IS_DEBUGGABLE ? contents : censoredTerminalResponse(contents)));
             }
 
             try {
@@ -2045,6 +2047,33 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 handleRadioProxyExceptionForRR(rr, "sendTerminalResponse", e);
             }
         }
+    }
+
+    private String censoredTerminalResponse(String terminalResponse) {
+        try {
+            byte[] bytes = IccUtils.hexStringToBytes(terminalResponse);
+            if (bytes != null) {
+                List<ComprehensionTlv> ctlvs = ComprehensionTlv.decodeMany(bytes, 0);
+                int from = 0;
+                for (ComprehensionTlv ctlv : ctlvs) {
+                    // Find text strings which might be personal information input by user,
+                    // then replace it with "********".
+                    if (ComprehensionTlvTag.TEXT_STRING.value() == ctlv.getTag()) {
+                        byte[] target = Arrays.copyOfRange(ctlv.getRawValue(), from,
+                                ctlv.getValueIndex() + ctlv.getLength());
+                        terminalResponse = terminalResponse.toLowerCase().replace(
+                                IccUtils.bytesToHexString(target), "********");
+                    }
+                    // The text string tag and the length field should also be hidden.
+                    from = ctlv.getValueIndex() + ctlv.getLength();
+                }
+            }
+        } catch (Exception e) {
+            Rlog.e(RILJ_LOG_TAG, "Could not censor the terminal response: " + e);
+            terminalResponse = null;
+        }
+
+        return terminalResponse;
     }
 
     @Override
