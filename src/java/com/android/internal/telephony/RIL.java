@@ -81,15 +81,17 @@ import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataProfile;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.cat.ComprehensionTlv;
+import com.android.internal.telephony.cat.ComprehensionTlvTag;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
@@ -1065,23 +1067,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static DataProfileInfo convertToHalDataProfile(DataProfile dp) {
         DataProfileInfo dpi = new DataProfileInfo();
 
-        dpi.profileId = dp.profileId;
-        dpi.apn = dp.apn;
-        dpi.protocol = dp.protocol;
-        dpi.roamingProtocol = dp.roamingProtocol;
-        dpi.authType = dp.authType;
-        dpi.user = dp.user;
-        dpi.password = dp.password;
-        dpi.type = dp.type;
-        dpi.maxConnsTime = dp.maxConnsTime;
-        dpi.maxConns = dp.maxConns;
-        dpi.waitTime = dp.waitTime;
-        dpi.enabled = dp.enabled;
-        dpi.supportedApnTypesBitmap = dp.supportedApnTypesBitmap;
-        dpi.bearerBitmap = dp.bearerBitmap;
-        dpi.mtu = dp.mtu;
-        dpi.mvnoType = convertToHalMvnoType(dp.mvnoType);
-        dpi.mvnoMatchData = dp.mvnoMatchData;
+        dpi.profileId = dp.getProfileId();
+        dpi.apn = dp.getApn();
+        dpi.protocol = dp.getProtocol();
+        dpi.roamingProtocol = dp.getRoamingProtocol();
+        dpi.authType = dp.getAuthType();
+        dpi.user = dp.getUserName();
+        dpi.password = dp.getPassword();
+        dpi.type = dp.getType();
+        dpi.maxConnsTime = dp.getMaxConnsTime();
+        dpi.maxConns = dp.getMaxConns();
+        dpi.waitTime = dp.getWaitTime();
+        dpi.enabled = dp.isEnabled();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
+        dpi.bearerBitmap = dp.getBearerBitmap();
+        dpi.mtu = dp.getMtu();
+        dpi.mvnoType = convertToHalMvnoType(dp.getMvnoType());
+        dpi.mvnoMatchData = dp.getMvnoMatchData();
 
         return dpi;
     }
@@ -1147,7 +1149,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             try {
                 radioProxy.setupDataCall(rr.mSerial, radioTechnology, dpi,
-                        dataProfile.modemCognitive, allowRoaming, isRoaming);
+                        dataProfile.isModemCognitive(), allowRoaming, isRoaming);
                 mMetrics.writeRilSetupDataCall(mPhoneId, rr.mSerial, radioTechnology, dpi.profileId,
                         dpi.apn, dpi.authType, dpi.protocol);
             } catch (RemoteException | RuntimeException e) {
@@ -2035,7 +2037,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " contents = "
-                        + contents);
+                        + (Build.IS_DEBUGGABLE ? contents : censoredTerminalResponse(contents)));
             }
 
             try {
@@ -2045,6 +2047,33 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 handleRadioProxyExceptionForRR(rr, "sendTerminalResponse", e);
             }
         }
+    }
+
+    private String censoredTerminalResponse(String terminalResponse) {
+        try {
+            byte[] bytes = IccUtils.hexStringToBytes(terminalResponse);
+            if (bytes != null) {
+                List<ComprehensionTlv> ctlvs = ComprehensionTlv.decodeMany(bytes, 0);
+                int from = 0;
+                for (ComprehensionTlv ctlv : ctlvs) {
+                    // Find text strings which might be personal information input by user,
+                    // then replace it with "********".
+                    if (ComprehensionTlvTag.TEXT_STRING.value() == ctlv.getTag()) {
+                        byte[] target = Arrays.copyOfRange(ctlv.getRawValue(), from,
+                                ctlv.getValueIndex() + ctlv.getLength());
+                        terminalResponse = terminalResponse.toLowerCase().replace(
+                                IccUtils.bytesToHexString(target), "********");
+                    }
+                    // The text string tag and the length field should also be hidden.
+                    from = ctlv.getValueIndex() + ctlv.getLength();
+                }
+            }
+        } catch (Exception e) {
+            Rlog.e(RILJ_LOG_TAG, "Could not censor the terminal response: " + e);
+            terminalResponse = null;
+        }
+
+        return terminalResponse;
     }
 
     @Override
@@ -2872,7 +2901,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             try {
                 radioProxy.setInitialAttachApn(rr.mSerial, convertToHalDataProfile(dataProfile),
-                        dataProfile.modemCognitive, isRoaming);
+                        dataProfile.isModemCognitive(), isRoaming);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setInitialAttachApn", e);
             }
