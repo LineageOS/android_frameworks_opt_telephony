@@ -81,6 +81,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataProfile;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
@@ -91,7 +92,6 @@ import com.android.internal.telephony.cat.ComprehensionTlvTag;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
@@ -1067,23 +1067,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static DataProfileInfo convertToHalDataProfile(DataProfile dp) {
         DataProfileInfo dpi = new DataProfileInfo();
 
-        dpi.profileId = dp.profileId;
-        dpi.apn = dp.apn;
-        dpi.protocol = dp.protocol;
-        dpi.roamingProtocol = dp.roamingProtocol;
-        dpi.authType = dp.authType;
-        dpi.user = dp.user;
-        dpi.password = dp.password;
-        dpi.type = dp.type;
-        dpi.maxConnsTime = dp.maxConnsTime;
-        dpi.maxConns = dp.maxConns;
-        dpi.waitTime = dp.waitTime;
-        dpi.enabled = dp.enabled;
-        dpi.supportedApnTypesBitmap = dp.supportedApnTypesBitmap;
-        dpi.bearerBitmap = dp.bearerBitmap;
-        dpi.mtu = dp.mtu;
-        dpi.mvnoType = convertToHalMvnoType(dp.mvnoType);
-        dpi.mvnoMatchData = dp.mvnoMatchData;
+        dpi.profileId = dp.getProfileId();
+        dpi.apn = dp.getApn();
+        dpi.protocol = dp.getProtocol();
+        dpi.roamingProtocol = dp.getRoamingProtocol();
+        dpi.authType = dp.getAuthType();
+        dpi.user = dp.getUserName();
+        dpi.password = dp.getPassword();
+        dpi.type = dp.getType();
+        dpi.maxConnsTime = dp.getMaxConnsTime();
+        dpi.maxConns = dp.getMaxConns();
+        dpi.waitTime = dp.getWaitTime();
+        dpi.enabled = dp.isEnabled();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
+        dpi.bearerBitmap = dp.getBearerBitmap();
+        dpi.mtu = dp.getMtu();
+        dpi.mvnoType = convertToHalMvnoType(dp.getMvnoType());
+        dpi.mvnoMatchData = dp.getMvnoMatchData();
 
         return dpi;
     }
@@ -1149,7 +1149,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             try {
                 radioProxy.setupDataCall(rr.mSerial, radioTechnology, dpi,
-                        dataProfile.modemCognitive, allowRoaming, isRoaming);
+                        dataProfile.isModemCognitive(), allowRoaming, isRoaming);
                 mMetrics.writeRilSetupDataCall(mPhoneId, rr.mSerial, radioTechnology, dpi.profileId,
                         dpi.apn, dpi.authType, dpi.protocol);
             } catch (RemoteException | RuntimeException e) {
@@ -2901,7 +2901,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             try {
                 radioProxy.setInitialAttachApn(rr.mSerial, convertToHalDataProfile(dataProfile),
-                        dataProfile.modemCognitive, isRoaming);
+                        dataProfile.isModemCognitive(), isRoaming);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setInitialAttachApn", e);
             }
