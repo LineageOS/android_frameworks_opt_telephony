@@ -32,6 +32,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.os.AsyncResult;
@@ -49,6 +50,7 @@ import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
+import com.android.internal.telephony.dataconnection.DataConnection.SetupResult;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
@@ -181,6 +183,17 @@ public class DataConnectionTest extends TelephonyTest {
         Method method = DataConnection.class.getDeclaredMethod("getSuggestedRetryDelay", cArgs);
         method.setAccessible(true);
         return (long) method.invoke(mDc, ar);
+    }
+
+    private SetupResult setLinkProperties(DataCallResponse response,
+                                                         LinkProperties linkProperties)
+            throws Exception {
+        Class[] cArgs = new Class[2];
+        cArgs[0] = DataCallResponse.class;
+        cArgs[1] = LinkProperties.class;
+        Method method = DataConnection.class.getDeclaredMethod("setLinkProperties", cArgs);
+        method.setAccessible(true);
+        return (SetupResult) method.invoke(mDc, response, linkProperties);
     }
 
     @Test
@@ -325,5 +338,51 @@ public class DataConnectionTest extends TelephonyTest {
         // IPv6
         assertTrue(DataConnection.isIpAddress("::1"));
         assertTrue(DataConnection.isIpAddress("2001:4860:800d::68"));
+    }
+
+    @Test
+    @SmallTest
+    public void testSetLinkProperties() throws Exception {
+
+        DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
+                FAKE_ADDRESS, FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
+
+        LinkProperties linkProperties = new LinkProperties();
+        assertEquals(SetupResult.SUCCESS, setLinkProperties(response,
+                linkProperties));
+        logd(linkProperties.toString());
+        assertEquals(response.ifname, linkProperties.getInterfaceName());
+        assertEquals(response.addresses.length, linkProperties.getAddresses().size());
+        for (int i = 0; i < response.addresses.length; ++i) {
+            assertEquals(response.addresses[i],
+                    linkProperties.getLinkAddresses().get(i).getAddress().getHostAddress());
+        }
+
+        assertEquals(response.dnses.length, linkProperties.getDnsServers().size());
+        for (int i = 0; i < response.dnses.length; ++i) {
+            assertEquals("i = " + i, response.dnses[i],
+                    linkProperties.getDnsServers().get(i).getHostAddress());
+        }
+
+        assertEquals(response.gateways.length, linkProperties.getRoutes().size());
+        for (int i = 0; i < response.gateways.length; ++i) {
+            assertEquals("i = " + i, response.gateways[i],
+                    linkProperties.getRoutes().get(i).getGateway().getHostAddress());
+        }
+
+        assertEquals(response.mtu, linkProperties.getMtu());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetLinkPropertiesInvalidAddress() throws Exception {
+
+        // 224.224.224.224 is an invalid address.
+        DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
+                "224.224.224.224", FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
+
+        LinkProperties linkProperties = new LinkProperties();
+        assertEquals(SetupResult.ERR_UnacceptableParameter,
+                setLinkProperties(response, linkProperties));
     }
 }
