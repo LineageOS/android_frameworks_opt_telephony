@@ -121,11 +121,10 @@ import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.RIL.RilHandler;
 import com.android.internal.telephony.dataconnection.ApnSetting;
-import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.dataconnection.DataProfile;
 
 import org.junit.After;
 import org.junit.Before;
@@ -636,7 +635,7 @@ public class RILTest extends TelephonyTest {
                 -1, "22210", "Vodafone IT", "web.omnitel.it", "", "",
                 "", "", "", "", "", 0, new String[]{"DUN"}, "IP", "IP", true, 0, 0,
                 0, false, 0, 0, 0, 0, "", "");
-        DataProfile dataProfile = DcTracker.createDataProfile(apnSetting, apnSetting.profileId);
+        DataProfile dataProfile = new DataProfile(apnSetting);
         boolean isRoaming = false;
 
         mRILUnderTest.setInitialAttachApn(dataProfile, isRoaming, obtainMessage());
@@ -647,7 +646,7 @@ public class RILTest extends TelephonyTest {
                         "convertToHalDataProfile",
                         new Class<?>[] {DataProfile.class},
                         new Object[] {dataProfile})),
-                eq(dataProfile.isModemCognitive()),
+                eq(dataProfile.modemCognitive),
                 eq(isRoaming));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_INITIAL_ATTACH_APN);
