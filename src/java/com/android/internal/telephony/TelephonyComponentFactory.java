@@ -31,15 +31,11 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardProxy;
 
 import dalvik.system.PathClassLoader;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.Constructor;
-import java.io.File;
 
 /**
  * This class has one-line methods to instantiate objects only. The purpose is to make code
@@ -56,28 +52,18 @@ public class TelephonyComponentFactory {
             String fullClsName = "com.qualcomm.qti.internal.telephony.QtiTelephonyComponentFactory";
             String libPath = "/system/framework/qti-telephony-common.jar";
 
-            PathClassLoader classLoader = new PathClassLoader(libPath,
-                    ClassLoader.getSystemClassLoader());
-            Rlog.d(LOG_TAG, "classLoader = " + classLoader);
-
-            if (fullClsName == null || fullClsName.length() == 0) {
-                Rlog.d(LOG_TAG, "no customized TelephonyPlugin available, fallback to default");
-                fullClsName = "com.android.internal.telephony.TelephonyComponentFactory";
-            }
-            Class<?> cls = null;
             try {
-                cls = Class.forName(fullClsName, false, classLoader);
-                Rlog.d(LOG_TAG, "cls = " + cls);
+                PathClassLoader classLoader = new PathClassLoader(libPath,
+                        ClassLoader.getSystemClassLoader());
+                Class<?> cls = Class.forName(fullClsName, false, classLoader);
                 Constructor custMethod = cls.getConstructor();
-                Rlog.d(LOG_TAG, "constructor method = " + custMethod);
                 sInstance = (TelephonyComponentFactory) custMethod.newInstance();
-            } catch (NoClassDefFoundError e) {
-                e.printStackTrace();
-                Rlog.e(LOG_TAG, "error loading TelephonyComponentFactory");
+                Rlog.i(LOG_TAG, "Using QtiTelephonyComponentFactory");
+            } catch (NoClassDefFoundError | ClassNotFoundException e) {
+                Rlog.e(LOG_TAG, "QtiTelephonyComponentFactory not used - fallback to default");
                 sInstance = new TelephonyComponentFactory();
             } catch (Exception  e) {
-                e.printStackTrace();
-                Rlog.e(LOG_TAG, "Error loading TelephonyComponentFactory");
+                Rlog.e(LOG_TAG, "Error loading QtiTelephonyComponentFactory - fallback to default");
                 sInstance = new TelephonyComponentFactory();
             }
         }
