@@ -54,6 +54,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
 
@@ -2993,8 +2994,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public int getCarrierId() {
-        // TODO remove hardcoding and expose a public API for INVALID CARRIER ID
-        return -1;
+        return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
     public String getCarrierName() {
