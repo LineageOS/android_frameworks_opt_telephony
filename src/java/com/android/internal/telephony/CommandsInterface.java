@@ -23,9 +23,9 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
-import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
