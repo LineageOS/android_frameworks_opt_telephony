@@ -747,12 +747,17 @@ public interface PhoneInternalInterface {
     /**
      * @return true if user has enabled data
      */
-    boolean getDataEnabled();
+    boolean isUserDataEnabled();
+
+    /**
+     * @return true if data is enabled considering all factors
+     */
+    boolean isDataEnabled();
 
     /**
      * @param @enable set {@code true} if enable data connection
      */
-    void setDataEnabled(boolean enable);
+    void setUserDataEnabled(boolean enable);
 
     /**
      * Retrieves the unique device ID, e.g., IMEI for GSM phones and MEID for CDMA phones.
