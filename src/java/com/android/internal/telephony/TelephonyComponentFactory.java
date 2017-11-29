@@ -77,6 +77,10 @@ public class TelephonyComponentFactory {
         return new CarrierActionAgent(phone);
     }
 
+    public CarrierIdentifier makeCarrierIdentifier(Phone phone) {
+        return new CarrierIdentifier(phone);
+    }
+
     public IccPhoneBookInterfaceManager makeIccPhoneBookInterfaceManager(Phone phone) {
         return new IccPhoneBookInterfaceManager(phone);
     }
