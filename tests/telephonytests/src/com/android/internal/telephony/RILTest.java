@@ -106,6 +106,7 @@ import android.os.IPowerManager;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.WorkSource;
+import android.support.test.filters.FlakyTest;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
@@ -251,6 +252,7 @@ public class RILTest extends TelephonyTest {
         mTestHandler.quit();
     }
 
+    @FlakyTest
     @Test
     public void testGetIccCardStatus() throws Exception {
         mRILUnderTest.getIccCardStatus(obtainMessage());
@@ -259,6 +261,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_SIM_STATUS);
     }
 
+    @FlakyTest
     @Test
     public void testSupplyIccPinForApp() throws Exception {
         String pin = "1234";
@@ -268,6 +271,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_ENTER_SIM_PIN);
     }
 
+    @FlakyTest
     @Test
     public void testSupplyIccPukForApp() throws Exception {
         String puk = "pukcode";
@@ -279,6 +283,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_ENTER_SIM_PUK);
     }
 
+    @FlakyTest
     @Test
     public void testSupplyIccPin2ForApp() throws Exception {
         String pin = "1234";
@@ -290,6 +295,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_ENTER_SIM_PIN2);
     }
 
+    @FlakyTest
     @Test
     public void testSupplyIccPuk2ForApp() throws Exception {
         String puk = "pukcode";
@@ -302,6 +308,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_ENTER_SIM_PUK2);
     }
 
+    @FlakyTest
     @Test
     public void testChangeIccPinForApp() throws Exception {
         String oldPin = "1234";
@@ -314,6 +321,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_CHANGE_SIM_PIN);
     }
 
+    @FlakyTest
     @Test
     public void testChangeIccPin2ForApp() throws Exception {
         String oldPin2 = "1234";
@@ -326,6 +334,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_CHANGE_SIM_PIN2);
     }
 
+    @FlakyTest
     @Test
     public void testSupplyNetworkDepersonalization() throws Exception {
         String netpin = "1234";
@@ -338,6 +347,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION);
     }
 
+    @FlakyTest
     @Test
     public void testGetCurrentCalls() throws Exception {
         mRILUnderTest.getCurrentCalls(obtainMessage());
@@ -346,6 +356,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_CURRENT_CALLS);
     }
 
+    @FlakyTest
     @Test
     public void testGetIMSIForApp() throws Exception {
         String aid = "1234";
@@ -354,6 +365,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_IMSI);
     }
 
+    @FlakyTest
     @Test
     public void testHangupWaitingOrBackground() throws Exception {
         mRILUnderTest.hangupWaitingOrBackground(obtainMessage());
@@ -364,6 +376,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND);
     }
 
+    @FlakyTest
     @Test
     public void testHangupForegroundResumeBackground() throws Exception {
         mRILUnderTest.hangupForegroundResumeBackground(obtainMessage());
@@ -374,6 +387,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND);
     }
 
+    @FlakyTest
     @Test
     public void testHangupConnection() throws Exception {
         int gsmIndex = 0;
@@ -382,6 +396,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_HANGUP);
     }
 
+    @FlakyTest
     @Test
     public void testSwitchWaitingOrHoldingAndActive() throws Exception {
         mRILUnderTest.switchWaitingOrHoldingAndActive(obtainMessage());
@@ -392,6 +407,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE);
     }
 
+    @FlakyTest
     @Test
     public void testConference() throws Exception {
         mRILUnderTest.conference(obtainMessage());
@@ -400,6 +416,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_CONFERENCE);
     }
 
+    @FlakyTest
     @Test
     public void testRejectCall() throws Exception {
         mRILUnderTest.rejectCall(obtainMessage());
@@ -408,6 +425,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_UDUB);
     }
 
+    @FlakyTest
     @Test
     public void testGetLastCallFailCause() throws Exception {
         mRILUnderTest.getLastCallFailCause(obtainMessage());
@@ -416,6 +434,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_LAST_CALL_FAIL_CAUSE);
     }
 
+    @FlakyTest
     @Test
     public void testGetSignalStrength() throws Exception {
         mRILUnderTest.getSignalStrength(obtainMessage());
@@ -424,6 +443,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SIGNAL_STRENGTH);
     }
 
+    @FlakyTest
     @Test
     public void testGetVoiceRegistrationState() throws Exception {
         mRILUnderTest.getVoiceRegistrationState(obtainMessage());
@@ -434,6 +454,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_VOICE_REGISTRATION_STATE);
     }
 
+    @FlakyTest
     @Test
     public void testGetDataRegistrationState() throws Exception {
         mRILUnderTest.getDataRegistrationState(obtainMessage());
@@ -442,6 +463,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_DATA_REGISTRATION_STATE);
     }
 
+    @FlakyTest
     @Test
     public void testGetOperator() throws Exception {
         mRILUnderTest.getOperator(obtainMessage());
@@ -449,6 +471,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_OPERATOR);
     }
 
+    @FlakyTest
     @Test
     public void testSetRadioPower() throws Exception {
         boolean on = true;
@@ -457,6 +480,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_RADIO_POWER);
     }
 
+    @FlakyTest
     @Test
     public void testSendDtmf() throws Exception {
         char c = 'c';
@@ -465,6 +489,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_DTMF);
     }
 
+    @FlakyTest
     @Test
     public void testSendSMS() throws Exception {
         String smscPdu = "smscPdu";
@@ -477,6 +502,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_SMS);
     }
 
+    @FlakyTest
     @Test
     public void testSendSMSExpectMore() throws Exception {
         String smscPdu = "smscPdu";
@@ -490,6 +516,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_SMS_EXPECT_MORE);
     }
 
+    @FlakyTest
     @Test
     public void testWriteSmsToSim() throws Exception {
         String smscPdu = "smscPdu";
@@ -505,6 +532,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_WRITE_SMS_TO_SIM);
     }
 
+    @FlakyTest
     @Test
     public void testDeleteSmsOnSim() throws Exception {
         int index = 0;
@@ -514,6 +542,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_DELETE_SMS_ON_SIM);
     }
 
+    @FlakyTest
     @Test
     public void testGetDeviceIdentity() throws Exception {
         mRILUnderTest.getDeviceIdentity(obtainMessage());
@@ -522,6 +551,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_DEVICE_IDENTITY);
     }
 
+    @FlakyTest
     @Test
     public void testExitEmergencyCallbackMode() throws Exception {
         mRILUnderTest.exitEmergencyCallbackMode(obtainMessage());
@@ -532,6 +562,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_EXIT_EMERGENCY_CALLBACK_MODE);
     }
 
+    @FlakyTest
     @Test
     public void testGetSmscAddress() throws Exception {
         mRILUnderTest.getSmscAddress(obtainMessage());
@@ -540,6 +571,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_SMSC_ADDRESS);
     }
 
+    @FlakyTest
     @Test
     public void testSetSmscAddress() throws Exception {
         String address = "address";
@@ -549,6 +581,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_SMSC_ADDRESS);
     }
 
+    @FlakyTest
     @Test
     public void testReportSmsMemoryStatus() throws Exception {
         boolean available = true;
@@ -560,6 +593,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_REPORT_SMS_MEMORY_STATUS);
     }
 
+    @FlakyTest
     @Test
     public void testReportStkServiceIsRunning() throws Exception {
         mRILUnderTest.reportStkServiceIsRunning(obtainMessage());
@@ -570,6 +604,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING);
     }
 
+    @FlakyTest
     @Test
     public void testGetCdmaSubscriptionSource() throws Exception {
         mRILUnderTest.getCdmaSubscriptionSource(obtainMessage());
@@ -580,6 +615,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE);
     }
 
+    @FlakyTest
     @Test
     public void testRequestIsimAuthentication() throws Exception {
         String nonce = "nonce";
@@ -589,6 +625,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_ISIM_AUTHENTICATION);
     }
 
+    @FlakyTest
     @Test
     public void testAcknowledgeIncomingGsmSmsWithPdu() throws Exception {
         boolean success = true;
@@ -602,6 +639,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU);
     }
 
+    @FlakyTest
     @Test
     public void testGetVoiceRadioTechnology() throws Exception {
         mRILUnderTest.getVoiceRadioTechnology(obtainMessage());
@@ -610,6 +648,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_VOICE_RADIO_TECH);
     }
 
+    @FlakyTest
     @Test
     public void testGetCellInfoList() throws Exception {
         mRILUnderTest.getCellInfoList(obtainMessage(), null);
@@ -618,6 +657,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_CELL_INFO_LIST);
     }
 
+    @FlakyTest
     @Test
     public void testSetCellInfoListRate() throws Exception {
         int rateInMillis = 1000;
@@ -629,6 +669,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE);
     }
 
+    @FlakyTest
     @Test
     public void testSetInitialAttachApn() throws Exception {
         ApnSetting apnSetting = new ApnSetting(
@@ -652,6 +693,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_INITIAL_ATTACH_APN);
     }
 
+    @FlakyTest
     @Test
     public void testGetImsRegistrationState() throws Exception {
         mRILUnderTest.getImsRegistrationState(obtainMessage());
@@ -660,6 +702,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_IMS_REGISTRATION_STATE);
     }
 
+    @FlakyTest
     @Test
     public void testIccOpenLogicalChannel() throws Exception {
         String aid = "aid";
@@ -670,6 +713,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SIM_OPEN_CHANNEL);
     }
 
+    @FlakyTest
     @Test
     public void testIccCloseLogicalChannel() throws Exception {
         int channel = 1;
@@ -679,6 +723,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SIM_CLOSE_CHANNEL);
     }
 
+    @FlakyTest
     @Test
     public void testNvWriteItem() throws Exception {
         int itemId = 1;
@@ -692,6 +737,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_NV_WRITE_ITEM);
     }
 
+    @FlakyTest
     @Test
     public void testNvReadItem() throws Exception {
         int itemId = 1;
@@ -701,6 +747,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_NV_READ_ITEM);
     }
 
+    @FlakyTest
     @Test
     public void testNvResetConfig() throws Exception {
         int resetType = 1;
@@ -716,6 +763,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_NV_RESET_CONFIG);
     }
 
+    @FlakyTest
     @Test
     public void testSetDataAllowed() throws Exception {
         boolean allowed = true;
@@ -724,6 +772,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_ALLOW_DATA);
     }
 
+    @FlakyTest
     @Test
     public void testGetHardwareConfig() throws Exception {
         mRILUnderTest.getHardwareConfig(obtainMessage());
@@ -732,6 +781,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_HARDWARE_CONFIG);
     }
 
+    @FlakyTest
     @Test
     public void testRequestIccSimAuthentication() throws Exception {
         int authContext = 1;
@@ -744,6 +794,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SIM_AUTHENTICATION);
     }
 
+    @FlakyTest
     @Test
     public void testRequestShutdown() throws Exception {
         mRILUnderTest.requestShutdown(obtainMessage());
@@ -751,6 +802,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SHUTDOWN);
     }
 
+    @FlakyTest
     @Test
     public void testGetRadioCapability() throws Exception {
         mRILUnderTest.getRadioCapability(obtainMessage());
@@ -759,6 +811,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_RADIO_CAPABILITY);
     }
 
+    @FlakyTest
     @Test
     public void testStartLceService() throws Exception {
         int reportIntervalMs = 1000;
@@ -769,6 +822,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_START_LCE);
     }
 
+    @FlakyTest
     @Test
     public void testStopLceService() throws Exception {
         mRILUnderTest.stopLceService(obtainMessage());
@@ -776,6 +830,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_STOP_LCE);
     }
 
+    @FlakyTest
     @Test
     public void testPullLceData() throws Exception {
         mRILUnderTest.pullLceData(obtainMessage());
@@ -783,6 +838,7 @@ public class RILTest extends TelephonyTest {
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_PULL_LCEDATA);
     }
 
+    @FlakyTest
     @Test
     public void testGetModemActivityInfo() throws Exception {
         mRILUnderTest.getModemActivityInfo(obtainMessage());
@@ -791,6 +847,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_ACTIVITY_INFO);
     }
 
+    @FlakyTest
     @Test
     public void testGetModemActivityInfoTimeout() {
         mRILUnderTest.getModemActivityInfo(obtainMessage());
@@ -799,6 +856,7 @@ public class RILTest extends TelephonyTest {
         assertEquals(0, mRILUnderTest.getRilRequestList().size());
     }
 
+    @FlakyTest
     @Test
     public void testSendDeviceState() throws Exception {
         int stateType = 1;
@@ -810,6 +868,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_DEVICE_STATE);
     }
 
+    @FlakyTest
     @Test
     public void testSetUnsolResponseFilter() throws Exception {
         int filter = 1;
@@ -821,6 +880,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER);
     }
 
+    @FlakyTest
     @Test
     public void testSetSimCardPowerForPowerDownState() throws Exception {
         mRILUnderTest.setSimCardPower(TelephonyManager.CARD_POWER_DOWN, obtainMessage());
@@ -829,6 +889,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_SIM_CARD_POWER);
     }
 
+    @FlakyTest
     @Test
     public void testSetSimCardPowerForPowerUpState() throws Exception {
         mRILUnderTest.setSimCardPower(TelephonyManager.CARD_POWER_UP, obtainMessage());
@@ -837,6 +898,7 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_SIM_CARD_POWER);
     }
 
+    @FlakyTest
     @Test
     public void testHandleCallSetupRequestFromSim() throws Exception {
         boolean accept = true;
@@ -849,6 +911,7 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM);
     }
 
+    @FlakyTest
     @Test
     public void testWakeLockTimeout() throws Exception {
         invokeMethod(
