@@ -60,9 +60,6 @@ public class SIMRecords extends IccRecords {
 
     VoiceMailConstants mVmConfig;
 
-
-    SpnOverride mSpnOverride;
-
     // ***** Cached SIM State; cleared on channel close
 
     private int mCallForwardingStatus;
@@ -99,7 +96,6 @@ public class SIMRecords extends IccRecords {
     public String toString() {
         return "SimRecords: " + super.toString()
                 + " mVmConfig" + mVmConfig
-                + " mSpnOverride=" + mSpnOverride
                 + " callForwardingEnabled=" + mCallForwardingStatus
                 + " spnState=" + mSpnState
                 + " mCphsInfo=" + mCphsInfo
@@ -214,7 +210,6 @@ public class SIMRecords extends IccRecords {
         mAdnCache = new AdnRecordCache(mFh);
 
         mVmConfig = new VoiceMailConstants();
-        mSpnOverride = new SpnOverride();
 
         mRecordsRequested = false;  // No load request is made till SIM ready
 
@@ -1640,56 +1635,62 @@ public class SIMRecords extends IccRecords {
 
     //***** Private methods
 
+    /**
+     * Override the carrier name with either carrier config or SPN
+     * if an override is provided.
+     */
     private void handleCarrierNameOverride() {
-        CarrierConfigManager configLoader = (CarrierConfigManager)
-                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        if (configLoader != null && configLoader.getConfig().getBoolean(
-                CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL)) {
-            String carrierName = configLoader.getConfig().getString(
-                    CarrierConfigManager.KEY_CARRIER_NAME_STRING);
-            setServiceProviderName(carrierName);
-            mTelephonyManager.setSimOperatorNameForPhone(mParentApp.getPhoneId(),
-                    carrierName);
-        } else {
-            setSpnFromConfig(getOperatorNumeric());
-        }
-
-        /* update display name with carrier override */
-        setDisplayName();
-    }
-
-    private void setDisplayName() {
-        SubscriptionManager subManager = SubscriptionManager.from(mContext);
-        int[] subId = subManager.getSubId(mParentApp.getPhoneId());
-
-        if ((subId == null) || subId.length <= 0) {
-            log("subId not valid for Phone " + mParentApp.getPhoneId());
+        final int phoneId = mParentApp.getPhoneId();
+        SubscriptionController subCon = SubscriptionController.getInstance();
+        final int subId = subCon.getSubIdUsingPhoneId(phoneId);
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            loge("subId not valid for Phone " + phoneId);
             return;
         }
 
-        SubscriptionInfo subInfo = subManager.getActiveSubscriptionInfo(subId[0]);
-        if (subInfo != null && subInfo.getNameSource()
-                    != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-            CharSequence oldSubName = subInfo.getDisplayName();
-            String newCarrierName = mTelephonyManager.getSimOperatorName(subId[0]);
-
-            if (!TextUtils.isEmpty(newCarrierName) && !newCarrierName.equals(oldSubName)) {
-                log("sim name[" + mParentApp.getPhoneId() + "] = " + newCarrierName);
-                SubscriptionController.getInstance().setDisplayName(newCarrierName, subId[0]);
-            }
-        } else {
-            log("SUB[" + mParentApp.getPhoneId() + "] " + subId[0] + " SubInfo not created yet");
+        CarrierConfigManager configLoader = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configLoader == null) {
+            loge("Failed to load a Carrier Config");
+            return;
         }
+
+        PersistableBundle config = configLoader.getConfigForSubId(subId);
+        boolean preferCcName = config.getBoolean(
+                CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, false);
+        String ccName = config.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+        // If carrier config is priority, use it regardless - the preference
+        // and the name were both set by the carrier, so this is safe;
+        // otherwise, if the SPN is priority but we don't have one *and* we have
+        // a name in carrier config, use the carrier config name as a backup.
+        if (preferCcName || (TextUtils.isEmpty(getServiceProviderName())
+                             && !TextUtils.isEmpty(ccName))) {
+            setServiceProviderName(ccName);
+            mTelephonyManager.setSimOperatorNameForPhone(phoneId, ccName);
+        }
+
+        updateCarrierNameForSubscription(subCon, subId);
     }
 
-    private void setSpnFromConfig(String carrier) {
-        if (mSpnOverride.containsCarrier(carrier)) {
-            setServiceProviderName(mSpnOverride.getSpn(carrier));
-            mTelephonyManager.setSimOperatorNameForPhone(
-                    mParentApp.getPhoneId(), getServiceProviderName());
+    private void updateCarrierNameForSubscription(SubscriptionController subCon, int subId) {
+        /* update display name with carrier override */
+        SubscriptionInfo subInfo = subCon.getActiveSubscriptionInfo(
+                subId, mContext.getOpPackageName());
+
+        if (subInfo == null || subInfo.getNameSource()
+                == SubscriptionManager.NAME_SOURCE_USER_INPUT) {
+            // either way, there is no subinfo to update
+            return;
+        }
+
+        CharSequence oldSubName = subInfo.getDisplayName();
+        String newCarrierName = mTelephonyManager.getSimOperatorName(subId);
+
+        if (!TextUtils.isEmpty(newCarrierName) && !newCarrierName.equals(oldSubName)) {
+            log("sim name[" + mParentApp.getPhoneId() + "] = " + newCarrierName);
+            subCon.setDisplayName(newCarrierName, subId);
         }
     }
-
 
     private void setVoiceMailByCountry (String spn) {
         if (mVmConfig.containsCarrier(spn)) {
@@ -2223,7 +2224,6 @@ public class SIMRecords extends IccRecords {
         pw.println(" extends:");
         super.dump(fd, pw, args);
         pw.println(" mVmConfig=" + mVmConfig);
-        pw.println(" mSpnOverride=" + mSpnOverride);
         pw.println(" mCallForwardingStatus=" + mCallForwardingStatus);
         pw.println(" mSpnState=" + mSpnState);
         pw.println(" mCphsInfo=" + mCphsInfo);
