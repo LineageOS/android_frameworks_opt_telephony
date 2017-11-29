@@ -1616,15 +1616,6 @@ public class DcTracker extends Handler {
             }
         }
 
-        if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS)) {
-            CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
-                    .getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            PersistableBundle pb = configManager.getConfigForSubId(mPhone.getSubId());
-            if (pb != null) {
-                isDataAllowed = pb.getBoolean("config_enable_mms_with_mobile_data_off");
-            }
-        }
-
         if (apnContext.isConnectable()
                 && (isEmergencyApn
                 || (isDataAllowed && isDataAllowedForApn(apnContext) && !isEmergency()))) {
@@ -2588,13 +2579,6 @@ public class DcTracker extends Handler {
                 }
             } else if (met) {
                 apnContext.setReason(Phone.REASON_DATA_DISABLED);
-                CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
-                        .getSystemService(Context.CARRIER_CONFIG_SERVICE);
-                PersistableBundle pb = configManager.getConfigForSubId(mPhone.getSubId());
-                boolean mmsWithMobileDataOff = false;
-                if (pb != null) {
-                    mmsWithMobileDataOff = pb.getBoolean("config_enable_mms_with_mobile_data_off");
-                }
                 // If ConnectivityService has disabled this network, stop trying to bring
                 // it up, but do not tear it down - ConnectivityService will do that
                 // directly by talking with the DataConnection.
@@ -2604,10 +2588,7 @@ public class DcTracker extends Handler {
                 // request goes away.  This applies to both CDMA and GSM because they both
                 // can declare the DUN APN sharable by default traffic, thus still satisfying
                 // those requests and not torn down organically.
-                if ((apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun())
-                        || apnContext.getState() != DctConstants.State.CONNECTED
-                        || (mmsWithMobileDataOff
-                                    && apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS))) {
+                if (apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun()) {
                     cleanup = true;
                 } else {
                     cleanup = false;
