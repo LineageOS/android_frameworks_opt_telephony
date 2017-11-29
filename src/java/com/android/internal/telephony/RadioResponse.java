@@ -180,6 +180,15 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param calls Current call list
+     */
+    public void getCurrentCallsResponse_1_2(RadioResponseInfo responseInfo,
+                                        ArrayList<android.hardware.radio.V1_2.Call> calls) {
+        responseCurrentCalls_1_2(responseInfo, calls);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void dialResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
@@ -1415,6 +1424,88 @@ public class RadioResponse extends IRadioResponse.Stub {
             mRil.processResponseDone(rr, responseInfo, dcCalls);
         }
     }
+
+    private void responseCurrentCalls_1_2(RadioResponseInfo responseInfo,
+                                      ArrayList<android.hardware.radio.V1_2.Call> calls) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            int num = calls.size();
+            ArrayList<DriverCall> dcCalls = new ArrayList<DriverCall>(num);
+            DriverCall dc;
+
+            for (int i = 0; i < num; i++) {
+                dc = new DriverCall();
+                // TODO: change name of function stateFromCLCC() in DriverCall.java to name
+                // clarifying what is CLCC
+                dc.state = DriverCall.stateFromCLCC((int) (calls.get(i).base.state));
+                dc.index = calls.get(i).base.index;
+                dc.TOA = calls.get(i).base.toa;
+                dc.isMpty = calls.get(i).base.isMpty;
+                dc.isMT = calls.get(i).base.isMT;
+                dc.als = calls.get(i).base.als;
+                dc.isVoice = calls.get(i).base.isVoice;
+                dc.isVoicePrivacy = calls.get(i).base.isVoicePrivacy;
+                dc.number = calls.get(i).base.number;
+                dc.numberPresentation =
+                        DriverCall.presentationFromCLIP(
+                                (int) (calls.get(i).base.numberPresentation));
+                dc.name = calls.get(i).base.name;
+                dc.namePresentation =
+                        DriverCall.presentationFromCLIP((int) (calls.get(i).base.namePresentation));
+                if (calls.get(i).base.uusInfo.size() == 1) {
+                    dc.uusInfo = new UUSInfo();
+                    dc.uusInfo.setType(calls.get(i).base.uusInfo.get(0).uusType);
+                    dc.uusInfo.setDcs(calls.get(i).base.uusInfo.get(0).uusDcs);
+                    if (!TextUtils.isEmpty(calls.get(i).base.uusInfo.get(0).uusData)) {
+                        byte[] userData = calls.get(i).base.uusInfo.get(0).uusData.getBytes();
+                        dc.uusInfo.setUserData(userData);
+                    } else {
+                        mRil.riljLog("responseCurrentCalls: uusInfo data is null or empty");
+                    }
+
+                    mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
+                            dc.uusInfo.getType(), dc.uusInfo.getDcs(),
+                            dc.uusInfo.getUserData().length));
+                    mRil.riljLogv("Incoming UUS : data (hex): "
+                            + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
+                } else {
+                    mRil.riljLogv("Incoming UUS : NOT present!");
+                }
+
+                // Make sure there's a leading + on addresses with a TOA of 145
+                dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
+
+                dc.audioQuality = (int) (calls.get(i).audioQuality);
+
+                dcCalls.add(dc);
+
+                if (dc.isVoicePrivacy) {
+                    mRil.mVoicePrivacyOnRegistrants.notifyRegistrants();
+                    mRil.riljLog("InCall VoicePrivacy is enabled");
+                } else {
+                    mRil.mVoicePrivacyOffRegistrants.notifyRegistrants();
+                    mRil.riljLog("InCall VoicePrivacy is disabled");
+                }
+            }
+
+            Collections.sort(dcCalls);
+
+            if ((num == 0) && mRil.mTestingEmergencyCall.getAndSet(false)) {
+                if (mRil.mEmergencyCallbackModeRegistrant != null) {
+                    mRil.riljLog("responseCurrentCalls: call ended, testing emergency call,"
+                            + " notify ECM Registrants");
+                    mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
+                }
+            }
+
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dcCalls);
+            }
+            mRil.processResponseDone(rr, responseInfo, dcCalls);
+        }
+    }
+
 
     private void responseVoid(RadioResponseInfo responseInfo) {
         RILRequest rr = mRil.processResponse(responseInfo);

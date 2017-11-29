@@ -141,6 +141,8 @@ public class GsmCdmaConnection extends Connection {
         mParent.attach(this, dc);
 
         fetchDtmfToneDelay(phone);
+
+        setAudioQuality(getAudioQualityFromDC(dc.audioQuality));
     }
 
     /** This is an MO call, created when dialing */
@@ -634,6 +636,17 @@ public class GsmCdmaConnection extends Connection {
             }
         }
 
+        int newAudioQuality = getAudioQualityFromDC(dc.audioQuality);
+        if (getAudioQuality() != newAudioQuality) {
+            if (Phone.DEBUG_PHONE) {
+                log("update: audioQuality # changed!:  "
+                        + (newAudioQuality == Connection.AUDIO_QUALITY_HIGH_DEFINITION
+                        ? "high" : "standard"));
+            }
+            setAudioQuality(newAudioQuality);
+            changed = true;
+        }
+
         // A null cnapName should be the same as ""
         if (TextUtils.isEmpty(dc.name)) {
             if (!TextUtils.isEmpty(mCnapName)) {
@@ -923,6 +936,16 @@ public class GsmCdmaConnection extends Connection {
 
             default:
                 throw new RuntimeException("illegal call state: " + state);
+        }
+    }
+
+    private int getAudioQualityFromDC(int audioQuality) {
+        switch (audioQuality) {
+            case DriverCall.AUDIO_QUALITY_AMR_WB:
+            case DriverCall.AUDIO_QUALITY_EVRC_NW:
+                return Connection.AUDIO_QUALITY_HIGH_DEFINITION;
+            default:
+                return Connection.AUDIO_QUALITY_STANDARD;
         }
     }
 
