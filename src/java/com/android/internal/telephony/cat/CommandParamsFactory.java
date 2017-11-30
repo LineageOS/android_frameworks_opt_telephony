@@ -549,6 +549,11 @@ class CommandParamsFactory extends Handler {
             input.iconSelfExplanatory = iconId.selfExplanatory;
         }
 
+        ctlv = searchForTag(ComprehensionTlvTag.DURATION, ctlvs);
+        if (ctlv != null) {
+            input.duration = ValueParser.retrieveDuration(ctlv);
+        }
+
         input.digitOnly = (cmdDet.commandQualifier & 0x01) == 0;
         input.ucs2 = (cmdDet.commandQualifier & 0x02) != 0;
         input.echo = (cmdDet.commandQualifier & 0x04) == 0;
