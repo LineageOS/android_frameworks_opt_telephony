@@ -18,6 +18,7 @@ package com.android.internal.telephony.test;
 
 import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
+import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -35,7 +36,9 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.InterfaceAddress;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.BaseCommands;
@@ -49,13 +52,13 @@ import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
-import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1104,8 +1107,15 @@ public class SimulatedCommands extends BaseCommands
                 isRoaming, allowRoaming, result);
 
         if (mDcResponse == null) {
-            mDcResponse = new DataCallResponse(0, -1, 1, 2, "IP", "rmnet_data7",
-                    "12.34.56.78", "98.76.54.32", "11.22.33.44", "", 1440);
+            try {
+                mDcResponse = new DataCallResponse(0, -1, 1, 2, "IP", "rmnet_data7",
+                        Arrays.asList(new InterfaceAddress("12.34.56.78", 0)),
+                        Arrays.asList(NetworkUtils.numericToInetAddress("98.76.54.32")),
+                        Arrays.asList(NetworkUtils.numericToInetAddress("11.22.33.44")),
+                        null, 1440);
+            } catch (Exception e) {
+
+            }
         }
 
         if (mDcSuccess) {
