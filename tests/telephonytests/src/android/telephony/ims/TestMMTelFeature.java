@@ -33,6 +33,10 @@ public class TestMMTelFeature extends MMTelFeature {
     }
 
     @Override
+    public void onFeatureReady() {
+    }
+
+    @Override
     public void onFeatureRemoved() {
     }
 
