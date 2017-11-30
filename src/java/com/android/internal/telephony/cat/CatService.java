@@ -625,10 +625,12 @@ public class CatService extends Handler implements AppInterface {
         CommandType cmdType = AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
         if (cmdType != null) {
             switch (cmdType) {
+                case GET_INPUT:
                 case GET_INKEY:
-                    // ETSI TS 102 384,27.22.4.2.8.4.2.
-                    // If it is a response for GET_INKEY command and the response timeout
-                    // occured, then add DURATION TLV for variable timeout case.
+                    // Please refer to the clause 6.8.21 of ETSI 102.223.
+                    // The terminal shall supply the command execution duration
+                    // when it issues TERMINAL RESPONSE for GET INKEY command with variable timeout.
+                    // GET INPUT command should also be handled in the same manner.
                     if ((resultCode.value() == ResultCode.NO_RESPONSE_FROM_USER.value()) &&
                         (cmdInput != null) && (cmdInput.duration != null)) {
                         getInKeyResponse(buf, cmdInput);
