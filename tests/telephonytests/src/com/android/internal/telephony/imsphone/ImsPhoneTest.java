@@ -509,23 +509,26 @@ public class ImsPhoneTest extends TelephonyTest {
     @SmallTest
     public void testCellBarring() throws Exception {
         Message msg = mTestHandler.obtainMessage();
-        mImsPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BAOC, msg);
+        mImsPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BAOC, msg,
+                CommandsInterface.SERVICE_CLASS_NONE);
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mImsUtInterface).queryCallBarring(eq(ImsUtInterface.CB_BAOC),
-                messageArgumentCaptor.capture());
+                messageArgumentCaptor.capture(), eq(CommandsInterface.SERVICE_CLASS_NONE));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
 
-        mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOIC, true, "abc", msg);
+        mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOIC, true, "abc", msg,
+                CommandsInterface.SERVICE_CLASS_NONE);
         verify(mImsUtInterface).updateCallBarring(eq(ImsUtInterface.CB_BOIC),
                 eq(CommandsInterface.CF_ACTION_ENABLE), messageArgumentCaptor.capture(),
-                (String[]) eq(null));
+                (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
 
-        mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOICxH, false, "abc", msg);
+        mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOICxH, false, "abc", msg,
+                CommandsInterface.SERVICE_CLASS_NONE);
         verify(mImsUtInterface).updateCallBarring(eq(ImsUtInterface.CB_BOIC_EXHC),
                 eq(CommandsInterface.CF_ACTION_DISABLE), messageArgumentCaptor.capture(),
-                (String[])eq(null));
+                (String[])eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
