@@ -4002,6 +4002,7 @@ public class ServiceStateTracker extends Handler {
             }
             mSignalStrength.setLteRsrpBoost(mSS.getLteEarfcnRsrpBoost());
             mSignalStrength.setUseOnlyRsrpForLteLevel(isUseOnlyRsrpForLteLevel());
+            mSignalStrength.setLteRsrpThresholds(getLteRsrpThresholds());
         } else {
             log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
             mSignalStrength = new SignalStrength(isGsm);
@@ -4593,18 +4594,37 @@ public class ServiceStateTracker extends Handler {
      * @return true if it should use only RSRP for the number of LTE signal bar.
      */
     private boolean isUseOnlyRsrpForLteLevel() {
+        return getCarrierConfig().getBoolean(
+                CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL);
+    }
+
+    /**
+     * Gets the threshold array for determining the display level of LTE signal bar.
+     *
+     * @return int array for determining the display level.
+     */
+    private int[] getLteRsrpThresholds() {
+        return getCarrierConfig().getIntArray(
+                CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY);
+    }
+
+    /**
+     * Gets the carrier configuration values for a particular subscription.
+     *
+     * @return A {@link PersistableBundle} containing the config for the given subId,
+     *         or default values for an invalid subId.
+     */
+    private PersistableBundle getCarrierConfig() {
         CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
                 .getSystemService(Context.CARRIER_CONFIG_SERVICE);
         if (configManager != null) {
             // If an invalid subId is used, this bundle will contain default values.
             PersistableBundle config = configManager.getConfigForSubId(mPhone.getSubId());
             if (config != null) {
-                return config.getBoolean(
-                        CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL);
+                return config;
             }
         }
         // Return static default defined in CarrierConfigManager.
-        return CarrierConfigManager.getDefaultConfig().getBoolean(
-                CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL);
+        return CarrierConfigManager.getDefaultConfig();
     }
 }
