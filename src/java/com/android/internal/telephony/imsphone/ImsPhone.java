@@ -951,23 +951,28 @@ public class ImsPhone extends ImsPhoneBase {
         return 0;
     }
 
-    public void getCallBarring(String facility, Message onComplete) {
-        if (DBG) Rlog.d(LOG_TAG, "getCallBarring facility=" + facility);
+    public void getCallBarring(String facility, Message onComplete, int serviceClass) {
+        if (DBG) {
+            Rlog.d(LOG_TAG, "getCallBarring facility=" + facility
+                    + ", serviceClass = " + serviceClass);
+        }
         Message resp;
         resp = obtainMessage(EVENT_GET_CALL_BARRING_DONE, onComplete);
 
         try {
             ImsUtInterface ut = mCT.getUtInterface();
-            ut.queryCallBarring(getCBTypeFromFacility(facility), resp);
+            ut.queryCallBarring(getCBTypeFromFacility(facility), resp, serviceClass);
         } catch (ImsException e) {
             sendErrorResponse(onComplete, e);
         }
     }
 
-    public void setCallBarring(String facility, boolean lockState, String password, Message
-            onComplete) {
-        if (DBG) Rlog.d(LOG_TAG, "setCallBarring facility=" + facility
-                + ", lockState=" + lockState);
+    public void setCallBarring(String facility, boolean lockState, String password,
+            Message onComplete,  int serviceClass) {
+        if (DBG) {
+            Rlog.d(LOG_TAG, "setCallBarring facility=" + facility
+                    + ", lockState=" + lockState + ", serviceClass = " + serviceClass);
+        }
         Message resp;
         resp = obtainMessage(EVENT_SET_CALL_BARRING_DONE, onComplete);
 
@@ -982,7 +987,8 @@ public class ImsPhone extends ImsPhoneBase {
         try {
             ImsUtInterface ut = mCT.getUtInterface();
             // password is not required with Ut interface
-            ut.updateCallBarring(getCBTypeFromFacility(facility), action, resp, null);
+            ut.updateCallBarring(getCBTypeFromFacility(facility), action,
+                    resp, null,  serviceClass);
         } catch (ImsException e) {
             sendErrorResponse(onComplete, e);
         }
