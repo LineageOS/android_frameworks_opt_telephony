@@ -951,6 +951,10 @@ public class ImsPhone extends ImsPhoneBase {
         return 0;
     }
 
+    public void getCallBarring(String facility, Message onComplete) {
+        getCallBarring(facility, onComplete, CommandsInterface.SERVICE_CLASS_NONE);
+    }
+
     public void getCallBarring(String facility, Message onComplete, int serviceClass) {
         if (DBG) {
             Rlog.d(LOG_TAG, "getCallBarring facility=" + facility
@@ -965,6 +969,12 @@ public class ImsPhone extends ImsPhoneBase {
         } catch (ImsException e) {
             sendErrorResponse(onComplete, e);
         }
+    }
+
+    public void setCallBarring(String facility, boolean lockState, String password,
+            Message onComplete) {
+        setCallBarring(facility, lockState, password, onComplete,
+                CommandsInterface.SERVICE_CLASS_NONE);
     }
 
     public void setCallBarring(String facility, boolean lockState, String password,
