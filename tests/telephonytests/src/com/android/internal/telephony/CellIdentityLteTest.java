@@ -96,25 +96,33 @@ public class CellIdentityLteTest extends AndroidTestCase {
 
         assertEquals(Integer.MAX_VALUE, ci.getMcc());
         assertEquals(Integer.MAX_VALUE, ci.getMnc());
-        assertEquals(null, ci.getMccStr());
-        assertEquals(null, ci.getMncStr());
-        assertEquals(null, ci.getMobileNetworkOperator());
+        assertNull(ci.getMccStr());
+        assertNull(ci.getMncStr());
+        assertNull(ci.getMobileNetworkOperator());
 
         ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, MCC_STR, null, ALPHA_LONG, ALPHA_SHORT);
 
         assertEquals(MCC, ci.getMcc());
         assertEquals(Integer.MAX_VALUE, ci.getMnc());
         assertEquals(MCC_STR, ci.getMccStr());
-        assertEquals(null, ci.getMncStr());
-        assertEquals(null, ci.getMobileNetworkOperator());
+        assertNull(ci.getMncStr());
+        assertNull(ci.getMobileNetworkOperator());
+
+        ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(MNC, ci.getMnc());
+        assertEquals(Integer.MAX_VALUE, ci.getMcc());
+        assertEquals(MNC_STR, ci.getMncStr());
+        assertNull(ci.getMccStr());
+        assertNull(ci.getMobileNetworkOperator());
 
         ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, "", "", ALPHA_LONG, ALPHA_SHORT);
 
         assertEquals(Integer.MAX_VALUE, ci.getMcc());
         assertEquals(Integer.MAX_VALUE, ci.getMnc());
-        assertEquals(null, ci.getMccStr());
-        assertEquals(null, ci.getMncStr());
-        assertEquals(null, ci.getMobileNetworkOperator());
+        assertNull(ci.getMccStr());
+        assertNull(ci.getMncStr());
+        assertNull(ci.getMobileNetworkOperator());
     }
 
     @SmallTest
