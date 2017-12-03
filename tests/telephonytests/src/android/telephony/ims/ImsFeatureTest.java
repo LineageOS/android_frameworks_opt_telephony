@@ -16,6 +16,11 @@
 
 package android.telephony.ims;
 
+import static junit.framework.Assert.assertEquals;
+
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.verify;
+
 import android.os.IInterface;
 import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.feature.ImsFeature;
@@ -29,10 +34,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import static junit.framework.Assert.assertEquals;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.verify;
 
 @RunWith(AndroidJUnit4.class)
 public class ImsFeatureTest {
@@ -48,6 +49,11 @@ public class ImsFeatureTest {
 
         public void testSetFeatureState(int featureState) {
             setFeatureState(featureState);
+        }
+
+        @Override
+        public void onFeatureReady() {
+
         }
 
         @Override

@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -48,22 +49,39 @@ public class CarrierSignalAgentTest extends TelephonyTest {
 
     private CarrierSignalAgent mCarrierSignalAgentUT;
     private PersistableBundle mBundle;
+    private CarrierSignalAgentHandler mCarrierSignalAgentHandler;
     private static final String PCO_RECEIVER = "pak/PCO_RECEIVER";
     private static final String DC_ERROR_RECEIVER = "pak/DC_ERROR_RECEIVER";
     @Mock
     ResolveInfo mResolveInfo;
 
+    private class CarrierSignalAgentHandler extends HandlerThread {
+
+        private CarrierSignalAgentHandler(String name) {
+            super(name);
+        }
+
+        @Override
+        public void onLooperPrepared() {
+            mCarrierSignalAgentUT = new CarrierSignalAgent(mPhone);
+            setReady(true);
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
         logd("CarrierSignalAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
-        mCarrierSignalAgentUT = new CarrierSignalAgent(mPhone);
         mBundle = mContextFixture.getCarrierConfigBundle();
+        mCarrierSignalAgentHandler = new CarrierSignalAgentHandler(getClass().getSimpleName());
+        mCarrierSignalAgentHandler.start();
+        waitUntilReady();
         logd("CarrierSignalAgentTest -Setup!");
     }
 
     @After
     public void tearDown() throws Exception {
+        mCarrierSignalAgentHandler.quit();
         super.tearDown();
     }
 
