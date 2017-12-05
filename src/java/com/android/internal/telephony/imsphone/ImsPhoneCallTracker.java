@@ -2552,9 +2552,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                 && targetAccessTech != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
                 if (isHandoverFromWifi && imsCall.isVideoCall()) {
                     if (mNotifyHandoverVideoFromWifiToLTE && mIsDataEnabled) {
-                        log("onCallHandover :: notifying of WIFI to LTE handover.");
-                        conn.onConnectionEvent(
-                                TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE, null);
+                        if (conn.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
+                            log("onCallHandover :: notifying of WIFI to LTE handover.");
+                            conn.onConnectionEvent(
+                                    TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE, null);
+                        } else {
+                            // Call has already had a disconnect request issued by the user or is
+                            // in the process of disconnecting; do not inform the UI of this as it
+                            // is not relevant.
+                            log("onCallHandover :: skip notify of WIFI to LTE handover for "
+                                    + "disconnected call.");
+                        }
                     }
 
                     if (!mIsDataEnabled && mIsViLteDataMetered) {
