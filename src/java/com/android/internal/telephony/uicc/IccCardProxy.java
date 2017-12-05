@@ -96,8 +96,6 @@ public class IccCardProxy extends Handler implements IccCard {
     private CommandsInterface mCi;
     private TelephonyManager mTelephonyManager;
 
-    private RegistrantList mAbsentRegistrants = new RegistrantList();
-    private RegistrantList mPinLockedRegistrants = new RegistrantList();
     private RegistrantList mNetworkLockedRegistrants = new RegistrantList();
 
     private int mCurrentAppType = UiccController.APP_FAM_3GPP; //default to 3gpp?
@@ -244,7 +242,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 }
                 break;
             case EVENT_ICC_ABSENT:
-                mAbsentRegistrants.notifyRegistrants();
                 setExternalState(State.ABSENT);
                 break;
             case EVENT_ICC_LOCKED:
@@ -570,10 +567,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 broadcastIccStateChangedIntent(getIccStateIntentString(mExternalState),
                         getIccStateReason(mExternalState));
             }
-            // TODO: Need to notify registrants for other states as well.
-            if ( State.ABSENT == mExternalState) {
-                mAbsentRegistrants.notifyRegistrants();
-            }
         }
     }
 
@@ -592,7 +585,6 @@ public class IccCardProxy extends Handler implements IccCard {
             AppState appState = mUiccApplication.getState();
             switch (appState) {
                 case APPSTATE_PIN:
-                    mPinLockedRegistrants.notifyRegistrants();
                     setExternalState(State.PIN_REQUIRED);
                     break;
                 case APPSTATE_PUK:
@@ -678,29 +670,6 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     /**
-     * Notifies handler of any transition into State.ABSENT
-     */
-    @Override
-    public void registerForAbsent(Handler h, int what, Object obj) {
-        synchronized (mLock) {
-            Registrant r = new Registrant (h, what, obj);
-
-            mAbsentRegistrants.add(r);
-
-            if (getState() == State.ABSENT) {
-                r.notifyRegistrant();
-            }
-        }
-    }
-
-    @Override
-    public void unregisterForAbsent(Handler h) {
-        synchronized (mLock) {
-            mAbsentRegistrants.remove(h);
-        }
-    }
-
-    /**
      * Notifies handler of any transition into State.NETWORK_LOCKED
      */
     @Override
@@ -720,29 +689,6 @@ public class IccCardProxy extends Handler implements IccCard {
     public void unregisterForNetworkLocked(Handler h) {
         synchronized (mLock) {
             mNetworkLockedRegistrants.remove(h);
-        }
-    }
-
-    /**
-     * Notifies handler of any transition into State.isPinLocked()
-     */
-    @Override
-    public void registerForLocked(Handler h, int what, Object obj) {
-        synchronized (mLock) {
-            Registrant r = new Registrant (h, what, obj);
-
-            mPinLockedRegistrants.add(r);
-
-            if (getState().isPinLocked()) {
-                r.notifyRegistrant();
-            }
-        }
-    }
-
-    @Override
-    public void unregisterForLocked(Handler h) {
-        synchronized (mLock) {
-            mPinLockedRegistrants.remove(h);
         }
     }
 
@@ -936,13 +882,6 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
-    private void setSystemProperty(String property, String value) {
-        TelephonyManager.setTelephonyProperty(mPhoneId, property, value);
-    }
-
-    public IccRecords getIccRecord() {
-        return mIccRecords;
-    }
     private void log(String s) {
         Rlog.d(LOG_TAG, s);
     }
@@ -955,16 +894,6 @@ public class IccCardProxy extends Handler implements IccCard {
         pw.println("IccCardProxy: " + this);
         pw.println(" mContext=" + mContext);
         pw.println(" mCi=" + mCi);
-        pw.println(" mAbsentRegistrants: size=" + mAbsentRegistrants.size());
-        for (int i = 0; i < mAbsentRegistrants.size(); i++) {
-            pw.println("  mAbsentRegistrants[" + i + "]="
-                    + ((Registrant)mAbsentRegistrants.get(i)).getHandler());
-        }
-        pw.println(" mPinLockedRegistrants: size=" + mPinLockedRegistrants.size());
-        for (int i = 0; i < mPinLockedRegistrants.size(); i++) {
-            pw.println("  mPinLockedRegistrants[" + i + "]="
-                    + ((Registrant)mPinLockedRegistrants.get(i)).getHandler());
-        }
         pw.println(" mNetworkLockedRegistrants: size=" + mNetworkLockedRegistrants.size());
         for (int i = 0; i < mNetworkLockedRegistrants.size(); i++) {
             pw.println("  mNetworkLockedRegistrants[" + i + "]="
