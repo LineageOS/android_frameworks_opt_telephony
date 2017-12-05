@@ -55,22 +55,10 @@ public interface IccCard {
     public IccFileHandler getIccFileHandler();
 
     /**
-     * Notifies handler of any transition into IccCardConstants.State.ABSENT
-     */
-    public void registerForAbsent(Handler h, int what, Object obj);
-    public void unregisterForAbsent(Handler h);
-
-    /**
      * Notifies handler of any transition into IccCardConstants.State.NETWORK_LOCKED
      */
     public void registerForNetworkLocked(Handler h, int what, Object obj);
     public void unregisterForNetworkLocked(Handler h);
-
-    /**
-     * Notifies handler of any transition into IccCardConstants.State.isPinLocked()
-     */
-    public void registerForLocked(Handler h, int what, Object obj);
-    public void unregisterForLocked(Handler h);
 
     /**
      * Supply the ICC PIN to the ICC
