@@ -51,8 +51,6 @@ import android.text.TextUtils;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.uicc.IccCardProxy;
-import com.android.internal.telephony.uicc.IccConstants;
-import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 
@@ -68,7 +66,6 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
 
-    private static final int EVENT_SIM_LOCKED_QUERY_ICCID_DONE = 1;
     private static final int EVENT_GET_NETWORK_SELECTION_MODE_DONE = 2;
     private static final int EVENT_SIM_LOADED = 3;
     private static final int EVENT_SIM_ABSENT = 4;
@@ -240,61 +237,9 @@ public class SubscriptionInfoUpdater extends Handler {
         return true;
     }
 
-    public void setDisplayNameForNewSub(String newSubName, int subId, int newNameSource) {
-        SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
-        if (subInfo != null) {
-            // overwrite SIM display name if it is not assigned by user
-            int oldNameSource = subInfo.getNameSource();
-            CharSequence oldSubName = subInfo.getDisplayName();
-            logd("[setDisplayNameForNewSub] subId = " + subInfo.getSubscriptionId()
-                    + ", oldSimName = " + oldSubName + ", oldNameSource = " + oldNameSource
-                    + ", newSubName = " + newSubName + ", newNameSource = " + newNameSource);
-            if (oldSubName == null ||
-                (oldNameSource ==
-                    SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE && newSubName != null) ||
-                (oldNameSource == SubscriptionManager.NAME_SOURCE_SIM_SOURCE && newSubName != null
-                        && !newSubName.equals(oldSubName))) {
-                mSubscriptionManager.setDisplayName(newSubName, subInfo.getSubscriptionId(),
-                        newNameSource);
-            }
-        } else {
-            logd("SUB" + (subId + 1) + " SubInfo not created yet");
-        }
-    }
-
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
-            case EVENT_SIM_LOCKED_QUERY_ICCID_DONE: {
-                AsyncResult ar = (AsyncResult)msg.obj;
-                QueryIccIdUserObj uObj = (QueryIccIdUserObj) ar.userObj;
-                int slotId = uObj.slotId;
-                logd("handleMessage : <EVENT_SIM_LOCKED_QUERY_ICCID_DONE> SIM" + (slotId + 1));
-                if (ar.exception == null) {
-                    if (ar.result != null) {
-                        byte[] data = (byte[])ar.result;
-                        mIccId[slotId] = stripIccIdSuffix(
-                                IccUtils.bchToString(data, 0, data.length));
-                    } else {
-                        logd("Null ar");
-                        mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-                    }
-                } else {
-                    mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-                    logd("Query IccId fail: " + ar.exception);
-                }
-                logd("sIccId[" + slotId + "] = " + mIccId[slotId]);
-                if (isAllIccIdQueryDone()) {
-                    updateSubscriptionInfoByIccId();
-                }
-                broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED,
-                                         uObj.reason);
-                if (!ICCID_STRING_FOR_NO_SIM.equals(mIccId[slotId])) {
-                    updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
-                }
-                break;
-            }
-
             case EVENT_GET_NETWORK_SELECTION_MODE_DONE: {
                 AsyncResult ar = (AsyncResult)msg.obj;
                 Integer slotId = (Integer)ar.userObj;
@@ -367,25 +312,24 @@ public class SubscriptionInfoUpdater extends Handler {
             mIccId[slotId] = null;
         }
 
-
-        IccFileHandler fileHandler = mPhone[slotId].getIccCard() == null ? null :
-                mPhone[slotId].getIccCard().getIccFileHandler();
-
-        if (fileHandler != null) {
-            String iccId = mIccId[slotId];
-            if (iccId == null) {
-                logd("Querying IccId");
-                fileHandler.loadEFTransparent(IccConstants.EF_ICCID,
-                        obtainMessage(EVENT_SIM_LOCKED_QUERY_ICCID_DONE,
-                                new QueryIccIdUserObj(reason, slotId)));
-            } else {
-                logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
-                updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
-                broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
+        String iccId = mIccId[slotId];
+        if (iccId == null) {
+            IccRecords records = mPhone[slotId].getIccCard().getIccRecords();
+            if (stripIccIdSuffix(records.getFullIccId()) == null) {
+                logd("handleSimLocked: IccID null");
+                return;
             }
+            mIccId[slotId] = stripIccIdSuffix(records.getFullIccId());
         } else {
-            logd("sFh[" + slotId + "] is null, ignore");
+            logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
         }
+
+        if (isAllIccIdQueryDone()) {
+            updateSubscriptionInfoByIccId();
+        }
+
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
+        broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
     }
 
     private void handleSimLoaded(int slotId) {
@@ -401,7 +345,7 @@ public class SubscriptionInfoUpdater extends Handler {
             return;
         }
         if (stripIccIdSuffix(records.getFullIccId()) == null) {
-            logd("onRecieve: IccID null");
+            logd("handleSimLoaded: IccID null");
             return;
         }
         mIccId[slotId] = stripIccIdSuffix(records.getFullIccId());
