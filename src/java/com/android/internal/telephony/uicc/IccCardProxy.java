@@ -437,17 +437,6 @@ public class IccCardProxy extends Handler implements IccCard {
             case APPSTATE_DETECTED:
                 HandleDetectedState();
                 break;
-            case APPSTATE_PIN:
-                setExternalState(State.PIN_REQUIRED);
-                break;
-            case APPSTATE_PUK:
-                PinState pin1State = mUiccApplication.getPin1State();
-                if (pin1State.isPermBlocked()) {
-                    setExternalState(State.PERM_DISABLED);
-                    return;
-                }
-                setExternalState(State.PUK_REQUIRED);
-                break;
             case APPSTATE_SUBSCRIPTION_PERSO:
                 if (mUiccApplication.getPersoSubState() ==
                         PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
@@ -467,12 +456,12 @@ public class IccCardProxy extends Handler implements IccCard {
         }
         if (mUiccApplication != null) {
             mUiccApplication.registerForReady(this, EVENT_APP_READY, null);
-            mUiccApplication.registerForLocked(this, EVENT_ICC_LOCKED, null);
             mUiccApplication.registerForNetworkLocked(this, EVENT_NETWORK_LOCKED, null);
         }
         if (mIccRecords != null) {
             mIccRecords.registerForImsiReady(this, EVENT_IMSI_READY, null);
             mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
+            mIccRecords.registerForLockedRecordsLoaded(this, EVENT_ICC_LOCKED, null);
             mIccRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
         }
     }

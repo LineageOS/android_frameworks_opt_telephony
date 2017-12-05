@@ -25,7 +25,6 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
@@ -39,9 +38,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.UserInfo;
 import android.net.Uri;
-import android.os.AsyncResult;
 import android.os.HandlerThread;
-import android.os.Message;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
@@ -56,7 +53,6 @@ import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
-import com.android.internal.telephony.uicc.IccUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -350,17 +346,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     public void testSimLockedWithOutIccId() throws Exception {
         /* mock no IccId Info present and try to query IccId
          after IccId query, update subscriptionDB */
-        doReturn(mIccFileHandler).when(mIccCardProxy).getIccFileHandler();
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message msg = (Message) invocation.getArguments()[1];
-                AsyncResult.forMessage(msg).result = IccUtils
-                        .hexStringToBytes("89012604200000000000");
-                msg.sendToTarget();
-                return null;
-            }
-        }).when(mIccFileHandler).loadEFTransparent(anyInt(), any(Message.class));
+        doReturn("98106240020000000000").when(mIccRecord).getFullIccId();
 
         doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
                 .getSubInfoUsingSlotIndexWithCheck(eq(FAKE_SUB_ID_1), anyBoolean(), anyString());
@@ -455,7 +441,6 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
         replaceInstance(SubscriptionInfoUpdater.class, "mIccId", null,
                 new String[]{"89012604200000000000"});
-        doReturn(mIccFileHandler).when(mIccCardProxy).getIccFileHandler();
 
         Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
@@ -466,11 +451,10 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mContext.sendBroadcast(mIntent);
         waitForMs(100);
 
-        verify(mIccFileHandler, times(0)).loadEFTransparent(anyInt(), any(Message.class));
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
-        verify(mSubscriptionManager, times(0)).addSubscriptionInfoRecord(
+        verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(
                 anyString(), eq(FAKE_SUB_ID_1));
-        verify(mSubscriptionController, times(0)).notifySubscriptionInfoChanged();
+        verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
         verify(mSubscriptionController, times(0)).clearSubInfo();
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
