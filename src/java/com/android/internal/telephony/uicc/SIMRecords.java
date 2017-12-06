@@ -38,7 +38,6 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.SimTlv;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 
 import java.io.FileDescriptor;
@@ -212,6 +211,7 @@ public class SIMRecords extends IccRecords {
         mVmConfig = new VoiceMailConstants();
 
         mRecordsRequested = false;  // No load request is made till SIM ready
+        mLockedRecordsRequested = false;
 
         // recordsToLoad is set to 0 because no requests are made yet
         mRecordsToLoad = 0;
@@ -291,6 +291,7 @@ public class SIMRecords extends IccRecords {
         // read requests made so far are not valid. This is set to
         // true only when fresh set of read requests are made.
         mRecordsRequested = false;
+        mLockedRecordsRequested = false;
     }
 
     //***** Public Methods
@@ -916,7 +917,6 @@ public class SIMRecords extends IccRecords {
 
                     log("iccid: " + SubscriptionInfo.givePrintableIccid(mFullIccId));
                     break;
-
 
                 case EVENT_GET_AD_DONE:
                     try {
@@ -1559,8 +1559,10 @@ public class SIMRecords extends IccRecords {
         mRecordsToLoad -= 1;
         if (DBG) log("onRecordLoaded " + mRecordsToLoad + " requested: " + mRecordsRequested);
 
-        if (mRecordsToLoad == 0 && mRecordsRequested == true) {
+        if (getRecordsLoaded()) {
             onAllRecordsLoaded();
+        } else if (getLockedRecordsLoaded()) {
+            onLockedAllRecordsLoaded();
         } else if (mRecordsToLoad < 0) {
             loge("recordsToLoad <0, programmer error suspected");
             mRecordsToLoad = 0;
@@ -1583,26 +1585,26 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    @Override
-    protected void onAllRecordsLoaded() {
-        if (DBG) log("record load complete");
-
+    private void setSimLanguageFromEF() {
         Resources resource = Resources.getSystem();
         if (resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
             setSimLanguage(mEfLi, mEfPl);
         } else {
             if (DBG) log ("Not using EF LI/EF PL");
         }
+    }
 
+    private void onLockedAllRecordsLoaded() {
+        setSimLanguageFromEF();
+        mLockedRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+    }
+
+    @Override
+    protected void onAllRecordsLoaded() {
+        if (DBG) log("record load complete");
+
+        setSimLanguageFromEF();
         setVoiceCallForwardingFlagFromSimRecords();
-
-        if (mParentApp.getState() == AppState.APPSTATE_PIN ||
-               mParentApp.getState() == AppState.APPSTATE_PUK) {
-            // reset recordsRequested, since sim is not loaded really
-            mRecordsRequested = false;
-            // lock state, only update language
-            return ;
-        }
 
         // Some fields require more than one SIM record to set
 
@@ -1629,8 +1631,7 @@ public class SIMRecords extends IccRecords {
 
         setVoiceMailByCountry(operator);
 
-        mRecordsLoadedRegistrants.notifyRegistrants(
-            new AsyncResult(null, null, null));
+        mRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
     }
 
     //***** Private methods
@@ -1716,13 +1717,17 @@ public class SIMRecords extends IccRecords {
     }
 
     private void onLocked() {
-        if (DBG) log("only fetch EF_LI and EF_PL in lock state");
+        if (DBG) log("only fetch EF_LI, EF_PL and EF_ICCID in locked state");
+        mLockedRecordsRequested = true;
+
         loadEfLiAndEfPl();
+
+        mFh.loadEFTransparent(EF_ICCID, obtainMessage(EVENT_GET_ICCID_DONE));
+        mRecordsToLoad++;
     }
 
     private void loadEfLiAndEfPl() {
         if (mParentApp.getType() == AppType.APPTYPE_USIM) {
-            mRecordsRequested = true;
             mFh.loadEFTransparent(EF_LI,
                     obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfUsimLiLoaded()));
             mRecordsToLoad++;

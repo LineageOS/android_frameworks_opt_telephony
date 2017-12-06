@@ -82,6 +82,9 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         super(app, c, ci);
 
         mRecordsRequested = false;  // No load request is made till SIM ready
+        //todo: currently locked state for ISIM is not handled well and may cause app state to not
+        //be broadcast
+        mLockedRecordsRequested = false;
 
         // recordsToLoad is set to 0 because no requests are made yet
         mRecordsToLoad = 0;
@@ -196,6 +199,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         auth_rsp = null;
 
         mRecordsRequested = false;
+        mLockedRecordsRequested = false;
     }
 
     private class EfIsimImpiLoaded implements IccRecords.IccRecordLoaded {
@@ -291,19 +295,25 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         mRecordsToLoad -= 1;
         if (DBG) log("onRecordLoaded " + mRecordsToLoad + " requested: " + mRecordsRequested);
 
-        if (mRecordsToLoad == 0 && mRecordsRequested == true) {
+        if (getRecordsLoaded()) {
             onAllRecordsLoaded();
+        } else if (getLockedRecordsLoaded()) {
+            onLockedAllRecordsLoaded();
         } else if (mRecordsToLoad < 0) {
             loge("recordsToLoad <0, programmer error suspected");
             mRecordsToLoad = 0;
         }
     }
 
+    private void onLockedAllRecordsLoaded() {
+        if (DBG) log("SIM locked; record load complete");
+        mLockedRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+    }
+
     @Override
     protected void onAllRecordsLoaded() {
        if (DBG) log("record load complete");
-        mRecordsLoadedRegistrants.notifyRegistrants(
-                new AsyncResult(null, null, null));
+        mRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
     }
 
     private void handleFileUpdate(int efid) {
