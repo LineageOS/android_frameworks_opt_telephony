@@ -38,11 +38,9 @@ import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.IntentBroadcaster;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -82,7 +80,6 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_RECORDS_LOADED = 7;
     private static final int EVENT_IMSI_READY = 8;
     private static final int EVENT_NETWORK_LOCKED = 9;
-    private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 11;
 
     private static final int EVENT_ICC_RECORD_EVENTS = 500;
     private static final int EVENT_SUBSCRIPTION_ACTIVATED = 501;
@@ -103,10 +100,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private UiccCard mUiccCard = null;
     private UiccCardApplication mUiccApplication = null;
     private IccRecords mIccRecords = null;
-    private CdmaSubscriptionSourceManager mCdmaSSM = null;
     private RadioState mRadioState = RadioState.RADIO_UNAVAILABLE;
-    private boolean mQuietMode = false; // when set to true IccCardProxy will not broadcast
-                                        // ACTION_SIM_STATE_CHANGED intents
     private boolean mInitialized = false;
     private State mExternalState = State.UNKNOWN;
 
@@ -119,8 +113,6 @@ public class IccCardProxy extends Handler implements IccCard {
         mPhoneId = phoneId;
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(
                 Context.TELEPHONY_SERVICE);
-        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context,
-                ci, this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         ci.registerForOn(this,EVENT_RADIO_ON, null);
@@ -137,7 +129,6 @@ public class IccCardProxy extends Handler implements IccCard {
             mUiccController = null;
             mCi.unregisterForOn(this);
             mCi.unregisterForOffOrNotAvailable(this);
-            mCdmaSSM.dispose(this);
         }
     }
 
@@ -155,64 +146,31 @@ public class IccCardProxy extends Handler implements IccCard {
             } else {
                 mCurrentAppType = UiccController.APP_FAM_3GPP2;
             }
-            updateQuietMode();
+            updateCurrentAppType();
         }
     }
 
     /**
-     * In case of 3gpp2 we need to find out if subscription used is coming from
-     * NV in which case we shouldn't broadcast any sim states changes.
+     * Update current app type and post EVENT_ICC_CHANGED.
      */
-    private void updateQuietMode() {
+    private void updateCurrentAppType() {
         synchronized (mLock) {
-            boolean oldQuietMode = mQuietMode;
-            boolean newQuietMode;
-            int cdmaSource = Phone.CDMA_SUBSCRIPTION_UNKNOWN;
             boolean isLteOnCdmaMode = TelephonyManager.getLteOnCdmaModeStatic()
                     == PhoneConstants.LTE_ON_CDMA_TRUE;
-            if (mCurrentAppType == UiccController.APP_FAM_3GPP) {
-                newQuietMode = false;
-                if (DBG) log("updateQuietMode: 3GPP subscription -> newQuietMode=" + newQuietMode);
-            } else {
+            if (mCurrentAppType == UiccController.APP_FAM_3GPP2) {
                 if (isLteOnCdmaMode) {
-                    log("updateQuietMode: is cdma/lte device, force IccCardProxy into 3gpp mode");
+                    log("updateCurrentAppType: is cdma/lte device, force IccCardProxy into 3gpp"
+                            + " mode");
                     mCurrentAppType = UiccController.APP_FAM_3GPP;
                 }
-                cdmaSource = mCdmaSSM != null ?
-                        mCdmaSSM.getCdmaSubscriptionSource() : Phone.CDMA_SUBSCRIPTION_UNKNOWN;
 
-                newQuietMode = (cdmaSource == Phone.CDMA_SUBSCRIPTION_NV)
-                        && (mCurrentAppType == UiccController.APP_FAM_3GPP2)
-                        && !isLteOnCdmaMode;
                 if (DBG) {
-                    log("updateQuietMode: cdmaSource=" + cdmaSource
+                    log("updateCurrentAppType: "
                             + " mCurrentAppType=" + mCurrentAppType
-                            + " isLteOnCdmaMode=" + isLteOnCdmaMode
-                            + " newQuietMode=" + newQuietMode);
+                            + " isLteOnCdmaMode=" + isLteOnCdmaMode);
                 }
             }
 
-            if (mQuietMode == false && newQuietMode == true) {
-                // Last thing to do before switching to quiet mode is
-                // broadcast ICC_READY
-                log("Switching to QuietMode.");
-                setExternalState(State.READY);
-                mQuietMode = newQuietMode;
-            } else if (mQuietMode == true && newQuietMode == false) {
-                if (DBG) {
-                    log("updateQuietMode: Switching out from QuietMode."
-                            + " Force broadcast of current state=" + mExternalState);
-                }
-                mQuietMode = newQuietMode;
-                setExternalState(mExternalState, true);
-            } else {
-                if (DBG) log("updateQuietMode: no changes don't setExternalState");
-            }
-            if (DBG) {
-                log("updateQuietMode: QuietMode is " + mQuietMode + " (app_type="
-                    + mCurrentAppType + " isLteOnCdmaMode=" + isLteOnCdmaMode
-                    + " cdmaSource=" + cdmaSource + ")");
-            }
             mInitialized = true;
             sendMessage(obtainMessage(EVENT_ICC_CHANGED));
         }
@@ -228,9 +186,9 @@ public class IccCardProxy extends Handler implements IccCard {
             case EVENT_RADIO_ON:
                 mRadioState = RadioState.RADIO_ON;
                 if (!mInitialized) {
-                    updateQuietMode();
+                    updateCurrentAppType();
                 } else {
-                    // updateQuietMode() triggers ICC_CHANGED, which eventually
+                    // updateCurrentAppType() triggers ICC_CHANGED, which eventually
                     // calls updateExternalState; thus, we don't need this in the
                     // above case
                     updateExternalState();
@@ -282,9 +240,6 @@ public class IccCardProxy extends Handler implements IccCard {
             case EVENT_NETWORK_LOCKED:
                 mNetworkLockedRegistrants.notifyRegistrants();
                 setExternalState(State.NETWORK_LOCKED);
-                break;
-            case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
-                updateQuietMode();
                 break;
             case EVENT_SUBSCRIPTION_ACTIVATED:
                 log("EVENT_SUBSCRIPTION_ACTIVATED");
@@ -486,13 +441,6 @@ public class IccCardProxy extends Handler implements IccCard {
             if (mPhoneId == null || !SubscriptionManager.isValidSlotIndex(mPhoneId)) {
                 loge("broadcastIccStateChangedIntent: mPhoneId=" + mPhoneId
                         + " is invalid; Return!!");
-                return;
-            }
-
-            if (mQuietMode) {
-                log("broadcastIccStateChangedIntent: QuietMode"
-                        + " NOT Broadcasting intent ACTION_SIM_STATE_CHANGED "
-                        + " value=" +  value + " reason=" + reason);
                 return;
             }
 
@@ -893,9 +841,7 @@ public class IccCardProxy extends Handler implements IccCard {
         pw.println(" mUiccCard=" + mUiccCard);
         pw.println(" mUiccApplication=" + mUiccApplication);
         pw.println(" mIccRecords=" + mIccRecords);
-        pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mRadioState=" + mRadioState);
-        pw.println(" mQuietMode=" + mQuietMode);
         pw.println(" mInitialized=" + mInitialized);
         pw.println(" mExternalState=" + mExternalState);
 
