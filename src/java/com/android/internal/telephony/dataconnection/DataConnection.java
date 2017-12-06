@@ -37,7 +37,6 @@ import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataProfile;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
@@ -443,9 +442,6 @@ public class DataConnection extends StateMachine {
                 networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
         mNetworkInfo.setRoaming(ss.getDataRoaming());
         mNetworkInfo.setIsAvailable(true);
-        // The network should be by default metered until we find it has NET_CAPABILITY_NOT_METERED
-        // capability.
-        mNetworkInfo.setMetered(true);
 
         addState(mDefaultState);
             addState(mInactiveState, mDefaultState);
@@ -497,7 +493,7 @@ public class DataConnection extends StateMachine {
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
 
-        DataProfile dp = DcTracker.createDataProfile(mApnSetting, cp.mProfileId);
+        DataProfile dp = new DataProfile(mApnSetting, cp.mProfileId);
 
         // We need to use the actual modem roaming state instead of the framework roaming state
         // here. This flag is only passed down to ril_service for picking the correct protocol (for
@@ -970,10 +966,8 @@ public class DataConnection extends StateMachine {
                     && !mRestrictedNetworkOverride)
                     || !mApnSetting.isMetered(mPhone)) {
                 result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
-                mNetworkInfo.setMetered(false);
             } else {
                 result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
-                mNetworkInfo.setMetered(true);
             }
 
             result.maybeMarkCapabilitiesRestricted();

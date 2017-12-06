@@ -185,6 +185,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMOCallPendingHangUp() {
@@ -295,6 +296,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMOCallSwitchHangupForeGround() {

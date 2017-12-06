@@ -38,6 +38,7 @@ import com.android.internal.telephony.mocks.SubscriptionControllerMock;
 import com.android.internal.telephony.mocks.SubscriptionMonitorMock;
 import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 
+import org.junit.Ignore;
 
 public class TelephonyNetworkFactoryTest extends AndroidTestCase {
     private final static String LOG_TAG = "TelephonyNetworkFactoryTest";

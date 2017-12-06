@@ -16,6 +16,14 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -25,16 +33,9 @@ import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 public class ImsPhoneCallTest extends TelephonyTest {
     @Mock
@@ -61,6 +62,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testAttachDetach() {
@@ -84,6 +86,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testConnectionDisconnected() {
@@ -102,6 +105,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testHangup() {
@@ -114,6 +118,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testUpdateRingBackTone() {
@@ -146,6 +151,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testMultiParty() {

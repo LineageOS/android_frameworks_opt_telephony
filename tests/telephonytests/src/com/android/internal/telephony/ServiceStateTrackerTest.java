@@ -68,6 +68,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -239,6 +240,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testSpnUpdateShowPlmnOnly() {

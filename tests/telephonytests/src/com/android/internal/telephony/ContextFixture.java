@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 
 import android.app.AlarmManager;
 import android.app.AppOpsManager;
+import android.app.DownloadManager;
 import android.app.NotificationManager;
 import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
@@ -240,6 +241,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mEuiccManager;
                 case Context.TELECOM_SERVICE:
                     return mTelecomManager;
+                case Context.DOWNLOAD_SERVICE:
+                    return mDownloadManager;
                 case Context.DISPLAY_SERVICE:
                 case Context.POWER_SERVICE:
                     // PowerManager and DisplayManager are final classes so cannot be mocked,
@@ -496,6 +499,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final Resources mResources = mock(Resources.class);
     private final PackageManager mPackageManager = mock(PackageManager.class);
     private final TelephonyManager mTelephonyManager = mock(TelephonyManager.class);
+    private final DownloadManager mDownloadManager = mock(DownloadManager.class);
     private final AppOpsManager mAppOpsManager = mock(AppOpsManager.class);
     private final NotificationManager mNotificationManager = mock(NotificationManager.class);
     private final UserManager mUserManager = mock(UserManager.class);

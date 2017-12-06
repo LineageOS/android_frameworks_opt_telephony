@@ -41,7 +41,6 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
-import android.telephony.data.DataProfile;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.PhoneConstants;
@@ -220,7 +219,7 @@ public class DataConnectionTest extends TelephonyTest {
                 eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
                 eq(false), eq(false), any(Message.class));
 
-        assertEquals("spmode.ne.jp", dpCaptor.getValue().getApn());
+        assertEquals("spmode.ne.jp", dpCaptor.getValue().apn);
 
         assertEquals("DcActiveState", getCurrentState().getName());
     }
@@ -310,7 +309,6 @@ public class DataConnectionTest extends TelephonyTest {
 
         assertFalse(getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
-        assertTrue(getNetworkInfo().isMetered());
     }
 
     @Test
@@ -326,7 +324,6 @@ public class DataConnectionTest extends TelephonyTest {
 
         assertTrue(getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED));
-        assertFalse(getNetworkInfo().isMetered());
     }
 
     @SmallTest
