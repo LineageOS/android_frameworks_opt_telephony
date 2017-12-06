@@ -64,6 +64,7 @@ public class ImsiEncryptionInfoTest {
 
     @Before
     public void setUp() throws Exception {
+
         mPublicKey = createPublicKey(TEST_CERT);
         mImsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", TelephonyManager.KEY_TYPE_WLAN,
                 "key1=value", mPublicKey, mDate);

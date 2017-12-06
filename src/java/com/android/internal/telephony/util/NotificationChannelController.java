@@ -38,12 +38,12 @@ public class NotificationChannelController {
      */
     public static final String CHANNEL_ID_ALERT = "alert";
     public static final String CHANNEL_ID_CALL_FORWARD = "callForward";
-    public static final String CHANNEL_ID_MOBILE_DATA_ALERT = "mobileDataAlertNew";
+    public static final String CHANNEL_ID_MOBILE_DATA_STATUS = "mobileDataAlertNew";
     public static final String CHANNEL_ID_SMS = "sms";
     public static final String CHANNEL_ID_VOICE_MAIL = "voiceMail";
     public static final String CHANNEL_ID_WFC = "wfc";
 
-    /** deprecated channel, replaced with @see #CHANNEL_ID_MOBILE_DATA_ALERT */
+    /** deprecated channel, replaced with @see #CHANNEL_ID_MOBILE_DATA_STATUS */
     private static final String CHANNEL_ID_MOBILE_DATA_ALERT_DEPRECATED = "mobileDataAlert";
 
     /**
@@ -58,13 +58,17 @@ public class NotificationChannelController {
         alertChannel.setSound(Settings.System.DEFAULT_NOTIFICATION_URI,
                 new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
 
+        final NotificationChannel mobileDataStatusChannel = new NotificationChannel(
+                CHANNEL_ID_MOBILE_DATA_STATUS,
+                context.getText(R.string.notification_channel_mobile_data_status),
+                NotificationManager.IMPORTANCE_LOW);
+        // allow users to block notifications from system
+        mobileDataStatusChannel.setBlockableSystem(true);
+
         context.getSystemService(NotificationManager.class)
                 .createNotificationChannels(Arrays.asList(
                 new NotificationChannel(CHANNEL_ID_CALL_FORWARD,
                         context.getText(R.string.notification_channel_call_forward),
-                        NotificationManager.IMPORTANCE_LOW),
-                new NotificationChannel(CHANNEL_ID_MOBILE_DATA_ALERT,
-                        context.getText(R.string.notification_channel_mobile_data_alert),
                         NotificationManager.IMPORTANCE_LOW),
                 new NotificationChannel(CHANNEL_ID_SMS,
                         context.getText(R.string.notification_channel_sms),
@@ -72,7 +76,8 @@ public class NotificationChannelController {
                 new NotificationChannel(CHANNEL_ID_WFC,
                         context.getText(R.string.notification_channel_wfc),
                         NotificationManager.IMPORTANCE_LOW),
-                alertChannel));
+                alertChannel,
+                mobileDataStatusChannel));
         // only for update
         if (getChannel(CHANNEL_ID_VOICE_MAIL, context) != null) {
             migrateVoicemailNotificationSettings(context);

@@ -372,12 +372,20 @@ public class SubscriptionInfoUpdater extends Handler {
                 ContentResolver contentResolver = mContext.getContentResolver();
 
                 if (msisdn != null) {
-                    SubscriptionController.getInstance().setDisplayNumber(msisdn, subId);
+                    ContentValues number = new ContentValues(1);
+                    number.put(SubscriptionManager.NUMBER, msisdn);
+                    contentResolver.update(SubscriptionManager.CONTENT_URI, number,
+                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
+                                    + Long.toString(subId), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
 
                 SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
                 String nameToSet;
                 String simCarrierName = tm.getSimOperatorName(subId);
+                ContentValues name = new ContentValues(1);
 
                 if (subInfo != null && subInfo.getNameSource() !=
                         SubscriptionManager.NAME_SOURCE_USER_INPUT) {
@@ -386,8 +394,14 @@ public class SubscriptionInfoUpdater extends Handler {
                     } else {
                         nameToSet = "CARD " + Integer.toString(slotId + 1);
                     }
+                    name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                     logd("sim name = " + nameToSet);
-                    SubscriptionController.getInstance().setDisplayName(nameToSet, subId);
+                    contentResolver.update(SubscriptionManager.CONTENT_URI, name,
+                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                                    + "=" + Long.toString(subId), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
 
                 /* Update preferred network type and network selection mode on SIM change.
@@ -522,6 +536,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     contentResolver.update(SubscriptionManager.CONTENT_URI, value,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                             + Integer.toString(oldSubInfo.get(0).getSubscriptionId()), null);
+
+                    // refresh Cached Active Subscription Info List
+                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
                 }
             } else {
                 if (mInsertSimState[i] == SIM_NOT_CHANGE) {
@@ -599,6 +616,9 @@ public class SubscriptionInfoUpdater extends Handler {
                 contentResolver.update(SubscriptionManager.CONTENT_URI, value,
                         SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                         + Integer.toString(temp.getSubscriptionId()), null);
+
+                // refresh Cached Active Subscription Info List
+                SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
             }
         }
 
@@ -686,6 +706,9 @@ public class SubscriptionInfoUpdater extends Handler {
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
                     SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.iccid + "\"", null);
+
+            // refresh Cached Active Subscription Info List
+            SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
 
         // Remove all remaining subscriptions which have embedded = true. We set embedded to false
@@ -706,6 +729,9 @@ public class SubscriptionInfoUpdater extends Handler {
             values.put(SubscriptionManager.IS_EMBEDDED, 0);
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values, whereClause, null);
+
+            // refresh Cached Active Subscription Info List
+            SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
 
         return hasChanges;

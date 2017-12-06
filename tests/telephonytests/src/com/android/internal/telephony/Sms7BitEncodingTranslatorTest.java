@@ -16,21 +16,23 @@
 
 package com.android.internal.telephony;
 
-import android.support.test.filters.FlakyTest;
-import android.test.suitebuilder.annotation.SmallTest;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-
-import java.io.UnsupportedEncodingException;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 
+import android.support.test.filters.FlakyTest;
+import android.test.suitebuilder.annotation.SmallTest;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.mockito.Mock;
+
+import java.io.UnsupportedEncodingException;
+
+@Ignore
 public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
 
     @Mock

@@ -301,6 +301,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifyDataSmsIntentBroadcasts(1);
     }
 
+    @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testInjectSms() {
@@ -487,6 +489,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testMultiPartSms() {
@@ -756,6 +759,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {

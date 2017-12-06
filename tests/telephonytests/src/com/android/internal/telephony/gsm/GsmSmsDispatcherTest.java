@@ -21,6 +21,7 @@ import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE;
 import static com.android.internal.telephony.SmsUsageMonitor.PREMIUM_SMS_PERMISSION_NEVER_ALLOW;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
@@ -58,6 +59,7 @@ import com.android.internal.telephony.TestApplication;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -156,6 +158,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     }
 
     @FlakyTest
+    @Ignore
     @Test @MediumTest
     public void testSendSmsToEmergencyNumber_notifiesBlockedNumberProvider() throws Exception {
         setupMockPackagePermissionChecks();
@@ -193,7 +196,10 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         }
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
+    @FlakyTest
+    @Ignore
     public void testSendTextWithInvalidDestAddr() throws Exception {
         // unmock ActivityManager to be able to register receiver, create real PendingIntent and
         // receive TEST_INTENT
