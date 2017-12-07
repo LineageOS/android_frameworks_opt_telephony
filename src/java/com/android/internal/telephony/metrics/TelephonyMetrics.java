@@ -23,8 +23,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DIAL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP;
-import static com.android.internal.telephony.RILConstants
-        .RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
@@ -41,6 +40,7 @@ import android.os.SystemClock;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyHistogram;
+import android.telephony.data.DataCallResponse;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
@@ -54,7 +54,6 @@ import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
@@ -1059,12 +1058,12 @@ public class TelephonyMetrics {
 
         for (int i = 0; i < dcsList.size(); i++) {
             dataCalls[i] = new RilDataCall();
-            dataCalls[i].cid = dcsList.get(i).cid;
-            if (!TextUtils.isEmpty(dcsList.get(i).ifname)) {
-                dataCalls[i].iframe = dcsList.get(i).ifname;
+            dataCalls[i].cid = dcsList.get(i).getCallId();
+            if (!TextUtils.isEmpty(dcsList.get(i).getIfname())) {
+                dataCalls[i].iframe = dcsList.get(i).getIfname();
             }
-            if (!TextUtils.isEmpty(dcsList.get(i).type)) {
-                dataCalls[i].type = toPdpType(dcsList.get(i).type);
+            if (!TextUtils.isEmpty(dcsList.get(i).getType())) {
+                dataCalls[i].type = toPdpType(dcsList.get(i).getType());
             }
         }
 
@@ -1307,17 +1306,17 @@ public class TelephonyMetrics {
         RilDataCall dataCall = new RilDataCall();
 
         if (response != null) {
-            setupDataCallResponse.status =
-                    (response.status == 0 ? RilDataCallFailCause.PDP_FAIL_NONE : response.status);
-            setupDataCallResponse.suggestedRetryTimeMillis = response.suggestedRetryTime;
+            setupDataCallResponse.status = (response.getStatus() == 0
+                    ? RilDataCallFailCause.PDP_FAIL_NONE : response.getStatus());
+            setupDataCallResponse.suggestedRetryTimeMillis = response.getSuggestedRetryTime();
 
-            dataCall.cid = response.cid;
-            if (!TextUtils.isEmpty(response.type)) {
-                dataCall.type = toPdpType(response.type);
+            dataCall.cid = response.getCallId();
+            if (!TextUtils.isEmpty(response.getType())) {
+                dataCall.type = toPdpType(response.getType());
             }
 
-            if (!TextUtils.isEmpty(response.ifname)) {
-                dataCall.iframe = response.ifname;
+            if (!TextUtils.isEmpty(response.getIfname())) {
+                dataCall.iframe = response.getIfname();
             }
         }
         setupDataCallResponse.call = dataCall;

@@ -32,9 +32,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.net.LinkProperties;
+import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.telephony.data.DataCallResponse;
+import android.telephony.data.InterfaceAddress;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.DctConstants;
@@ -51,6 +54,7 @@ import org.mockito.Mock;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class DcControllerTest extends TelephonyTest {
@@ -120,12 +124,17 @@ public class DcControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testDataDormant() {
+    public void testDataDormant() throws Exception {
         assertEquals("DccDefaultState", getCurrentState().getName());
         ArrayList<DataCallResponse> l = new ArrayList<DataCallResponse>();
         DataCallResponse dcResponse = new DataCallResponse(0, -1, 1,
                 DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT, "IP", FAKE_IFNAME,
-                FAKE_ADDRESS, FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
+                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
+                Arrays.asList(FAKE_PCSCF_ADDRESS),
+                1440);
+
         l.add(dcResponse);
 
         mDc.mCid = 1;
