@@ -164,6 +164,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mNetworkDetachedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
+    private RegistrantList mImsCapabilityChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -565,6 +566,8 @@ public class ServiceStateTracker extends Handler {
                 CarrierServiceStateTracker.CARRIER_EVENT_DATA_REGISTRATION, null);
         registerForDataConnectionDetached(mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_DATA_DEREGISTRATION, null);
+        registerForImsCapabilityChanged(mCSST,
+                CarrierServiceStateTracker.CARRIER_EVENT_IMS_CAPABILITIES_CHANGED, null);
     }
 
     @VisibleForTesting
@@ -1303,6 +1306,7 @@ public class ServiceStateTracker extends Handler {
             case EVENT_IMS_CAPABILITY_CHANGED:
                 if (DBG) log("EVENT_IMS_CAPABILITY_CHANGED");
                 updateSpnDisplay();
+                mImsCapabilityChangedRegistrants.notifyRegistrants();
                 break;
 
             case EVENT_IMS_SERVICE_STATE_CHANGED:
@@ -3940,6 +3944,25 @@ public class ServiceStateTracker extends Handler {
 
     public void unregisterForPsRestrictedDisabled(Handler h) {
         mPsRestrictDisabledRegistrants.remove(h);
+    }
+
+    /**
+     * Registers for IMS capability changed.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForImsCapabilityChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mImsCapabilityChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregisters for IMS capability changed.
+     * @param h handler to notify
+     */
+    public void unregisterForImsCapabilityChanged(Handler h) {
+        mImsCapabilityChangedRegistrants.remove(h);
     }
 
     /**
