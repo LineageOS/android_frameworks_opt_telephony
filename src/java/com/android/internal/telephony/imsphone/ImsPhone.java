@@ -1057,6 +1057,19 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
             case ImsReasonInfo.CODE_FDN_BLOCKED:
                 error = CommandException.Error.FDN_CHECK_FAILURE;
+                break;
+            case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_DIAL:
+                error = CommandException.Error.SS_MODIFIED_TO_DIAL;
+                break;
+            case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_USSD:
+                error = CommandException.Error.SS_MODIFIED_TO_USSD;
+                break;
+            case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_SS:
+                error = CommandException.Error.SS_MODIFIED_TO_SS;
+                break;
+            case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_DIAL_VIDEO:
+                error = CommandException.Error.SS_MODIFIED_TO_DIAL_VIDEO;
+                break;
             default:
                 break;
         }
@@ -1138,7 +1151,7 @@ public class ImsPhone extends ImsPhoneBase {
          * not on the list.
          */
         Rlog.d(LOG_TAG, "onMMIDone: mmi=" + mmi);
-        if (mPendingMMIs.remove(mmi) || mmi.isUssdRequest()) {
+        if (mPendingMMIs.remove(mmi) || mmi.isUssdRequest() || mmi.isSsInfo()) {
             ResultReceiver receiverCallback = mmi.getUssdCallbackReceiver();
             if (receiverCallback != null) {
                 int returnCode = (mmi.getState() ==  MmiCode.State.COMPLETE) ?
@@ -1224,7 +1237,11 @@ public class ImsPhone extends ImsPhoneBase {
         return cfInfo;
     }
 
-    private CallForwardInfo[] handleCfQueryResult(ImsCallForwardInfo[] infos) {
+    /**
+     * Used to Convert ImsCallForwardInfo[] to CallForwardInfo[].
+     * Update received call forward status to default IccRecords.
+     */
+    public CallForwardInfo[] handleCfQueryResult(ImsCallForwardInfo[] infos) {
         CallForwardInfo[] cfInfos = null;
 
         if (infos != null && infos.length != 0) {
