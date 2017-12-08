@@ -1252,6 +1252,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             } else if (err == CommandException.Error.SS_MODIFIED_TO_SS) {
                 Rlog.i(LOG_TAG, "SS_MODIFIED_TO_SS");
                 return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ss);
+            } else if (err == CommandException.Error.OEM_ERROR_1) {
+                Rlog.i(LOG_TAG, "OEM_ERROR_1 USSD_MODIFIED_TO_DIAL_VIDEO");
+                return mContext.getText(com.android.internal.R.string.stk_cc_ussd_to_dial_video);
             }
         }
 
