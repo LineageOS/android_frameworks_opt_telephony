@@ -427,4 +427,21 @@ public class DataConnectionTest extends TelephonyTest {
         assertEquals(SetupResult.ERR_UnacceptableParameter,
                 setLinkProperties(response, linkProperties));
     }
+
+    @Test
+    @SmallTest
+    public void testSetLinkPropertiesEmptyDns() throws Exception {
+
+        // Empty dns entry.
+        DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
+                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                null,
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
+                Arrays.asList(FAKE_PCSCF_ADDRESS),
+                1440);
+
+        // Make sure no exception was thrown
+        LinkProperties linkProperties = new LinkProperties();
+        assertEquals(SetupResult.SUCCESS, setLinkProperties(response, linkProperties));
+    }
 }
