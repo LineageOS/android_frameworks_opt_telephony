@@ -3181,9 +3181,9 @@ public class ServiceStateTracker extends Handler {
     }
 
     private void fixTimeZone(String isoCountryCode) {
-        TimeZone zone = null;
-        // If the offset is (0, false) and the time zone property
-        // is set, use the time zone property rather than GMT.
+        // Capture the time zone property. This allows us to tell whether the device has a time zone
+        // set. TimeZone.getDefault() returns a default zone (GMT) even when time zone is not
+        // explicitly set making the system property a better indicator.
         final String zoneName = SystemProperties.get(TIMEZONE_PROPERTY);
         if (DBG) {
             log("fixTimeZone zoneName='" + zoneName
@@ -3191,6 +3191,7 @@ public class ServiceStateTracker extends Handler {
                     + " iso-cc='" + isoCountryCode
                     + "' iso-cc-idx=" + Arrays.binarySearch(GMT_COUNTRY_CODES, isoCountryCode));
         }
+        TimeZone zone;
         if ("".equals(isoCountryCode) && mNeedFixZoneAfterNitz) {
             // Country code not found.  This is likely a test network.
             // Get a TimeZone based only on the NITZ parameters (best guess).
@@ -3198,45 +3199,66 @@ public class ServiceStateTracker extends Handler {
             // mNeedFixZoneAfterNitz is only set to true when mNitzData is set so there's no need to
             // check mNitzData == null.
             zone = NitzData.guessTimeZone(mNitzData);
-            if (DBG) log("pollStateDone: using NITZ TimeZone");
-        } else if ((mNitzData == null
-                        || (mNitzData.getLocalOffsetMillis() == 0 && !mNitzData.isDst()))
-                && (zoneName != null) && (zoneName.length() > 0)
+            if (DBG) {
+                log("pollStateDone: using NITZ information only:" + mNitzData);
+            }
+        } else if ((mNitzData == null || nitzOffsetMightBeBogus(mNitzData))
+                && (zoneName != null && zoneName.length() > 0)
                 && (Arrays.binarySearch(GMT_COUNTRY_CODES, isoCountryCode) < 0)) {
-            // For NITZ string without time zone,
-            // need adjust time to reflect default time zone setting
+
+            // This case means that (1) the device received no NITZ signal yet or received an NITZ
+            // signal that looks bogus due to having a zero offset from UTC, (2) the device has a
+            // time zone set explicitly, and (3) the iso tells us the country is NOT one that uses a
+            // zero offset. This is interpreted as being NITZ incorrectly reporting a local time and
+            // not a UTC time. The zone is left as the current device's zone setting, and the time
+            // may be adjusted by assuming the current zone setting is correct.
             zone = TimeZone.getDefault();
+
+            // Note that mNeedFixZoneAfterNitz => (implies) { mNitzData != null }. Therefore, if
+            // mNitzData == null, mNeedFixZoneAfterNitz cannot be true. The code in this section
+            // therefore means that when mNitzData == null (and the country is one that doesn't use
+            // a zero UTC offset) the device will retain the existing time zone setting and not try
+            // to derive one from the isoCountryCode.
             if (mNeedFixZoneAfterNitz) {
                 long ctm = System.currentTimeMillis();
                 long tzOffset = zone.getOffset(ctm);
                 if (DBG) {
-                    log("fixTimeZone: tzOffset=" + tzOffset +
-                            " ltod=" + TimeUtils.logTimeOfDay(ctm));
+                    log("fixTimeZone: tzOffset=" + tzOffset
+                            + " ltod=" + TimeUtils.logTimeOfDay(ctm));
                 }
                 if (getAutoTime()) {
                     long adj = ctm - tzOffset;
-                    if (DBG) log("fixTimeZone: adj ltod=" + TimeUtils.logTimeOfDay(adj));
+                    if (DBG) {
+                        log("fixTimeZone: adj ltod=" + TimeUtils.logTimeOfDay(adj));
+                    }
                     setAndBroadcastNetworkSetTime(adj);
                 } else {
                     // Adjust the saved NITZ time to account for tzOffset.
                     mSavedTime = mSavedTime - tzOffset;
-                    if (DBG) log("fixTimeZone: adj mSavedTime=" + mSavedTime);
+                    if (DBG) {
+                        log("fixTimeZone: adj mSavedTime=" + mSavedTime);
+                    }
                 }
             }
-            if (DBG) log("fixTimeZone: using default TimeZone");
-        } else {
-            if (mNitzData == null) {
-                // This behavior is unusual but consistent with historical behavior when it wasn't
-                // possible to detect whether a previous NITZ signal had been saved.
-                zone = TimeUtils.getTimeZone(0 /* offset */, false /* dst */, 0 /* when */,
-                        isoCountryCode);
-            } else {
-                zone = TimeUtils.getTimeZone(mNitzData.getLocalOffsetMillis(), mNitzData.isDst(),
-                        mNitzData.getCurrentTimeInMillis(), isoCountryCode);
+            if (DBG) {
+                log("fixTimeZone: using default TimeZone");
             }
-            if (DBG) log("fixTimeZone: using getTimeZone(off, dst, time, iso)");
+        } else if (mNitzData == null) {
+            // The use of 1/1/1970 UTC is unusual but consistent with historical behavior when
+            // it wasn't possible to detect whether a previous NITZ signal had been saved.
+            zone = TimeUtils.getTimeZone(0 /* offset */, false /* dst */, 0 /* when */,
+                    isoCountryCode);
+            if (DBG) {
+                log("fixTimeZone: No cached NITZ data available, using only country code."
+                        + " zone=" + zone);
+            }
+        } else {
+            zone = TimeUtils.getTimeZone(mNitzData.getLocalOffsetMillis(), mNitzData.isDst(),
+                    mNitzData.getCurrentTimeInMillis(), isoCountryCode);
+            if (DBG) {
+                log("fixTimeZone: using getTimeZone(off, dst, time, iso)");
+            }
         }
-
         final String tmpLog = "fixTimeZone zoneName=" + zoneName + " mNitzData=" + mNitzData
                 + " iso-cc=" + isoCountryCode + " mNeedFixZoneAfterNitz="
                 + mNeedFixZoneAfterNitz + " zone=" + (zone != null ? zone.getID() : "NULL");
@@ -3256,6 +3278,14 @@ public class ServiceStateTracker extends Handler {
             log("fixTimeZone: zone == null, do nothing for zone");
         }
         mNeedFixZoneAfterNitz = false;
+    }
+
+    /**
+     * Returns {@code true} if the NITZ data looks like it might be incomplete or bogus, i.e. it has
+     * a zero offset from UTC with either no DST information available or a zero DST offset.
+     */
+    private static boolean nitzOffsetMightBeBogus(NitzData nitzData) {
+        return nitzData.getLocalOffsetMillis() == 0 && !nitzData.isDst();
     }
 
     /**

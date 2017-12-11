@@ -27,6 +27,7 @@ import android.os.Message;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataCallResponse;
 
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
@@ -225,7 +226,7 @@ public class DcController extends StateMachine {
             HashMap<Integer, DataCallResponse> dataCallResponseListByCid =
                     new HashMap<Integer, DataCallResponse>();
             for (DataCallResponse dcs : dcsList) {
-                dataCallResponseListByCid.put(dcs.cid, dcs);
+                dataCallResponseListByCid.put(dcs.getCallId(), dcs);
             }
 
             // Add a DC that is active but not in the
@@ -248,7 +249,7 @@ public class DcController extends StateMachine {
 
             for (DataCallResponse newState : dcsList) {
 
-                DataConnection dc = mDcListActiveByCid.get(newState.cid);
+                DataConnection dc = mDcListActiveByCid.get(newState.getCallId());
                 if (dc == null) {
                     // UNSOL_DATA_CALL_LIST_CHANGED arrived before SETUP_DATA_CALL completed.
                     loge("onDataStateChanged: no associated DC yet, ignore");
@@ -260,14 +261,16 @@ public class DcController extends StateMachine {
                 } else {
                     // Determine if the connection/apnContext should be cleaned up
                     // or just a notification should be sent out.
-                    if (DBG) log("onDataStateChanged: Found ConnId=" + newState.cid
-                            + " newState=" + newState.toString());
-                    if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE) {
+                    if (DBG) {
+                        log("onDataStateChanged: Found ConnId=" + newState.getCallId()
+                                + " newState=" + newState.toString());
+                    }
+                    if (newState.getActive() == DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE) {
                         if (mDct.isCleanupRequired.get()) {
                             apnsToCleanup.addAll(dc.mApnContexts.keySet());
                             mDct.isCleanupRequired.set(false);
                         } else {
-                            DcFailCause failCause = DcFailCause.fromInt(newState.status);
+                            DcFailCause failCause = DcFailCause.fromInt(newState.getStatus());
                             if (failCause.isRestartRadioFail(mPhone.getContext(),
                                         mPhone.getSubId())) {
                                 if (DBG) {
@@ -352,10 +355,10 @@ public class DcController extends StateMachine {
                     }
                 }
 
-                if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_UP) {
+                if (newState.getActive() == DATA_CONNECTION_ACTIVE_PH_LINK_UP) {
                     isAnyDataCallActive = true;
                 }
-                if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT) {
+                if (newState.getActive() == DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT) {
                     isAnyDataCallDormant = true;
                 }
             }

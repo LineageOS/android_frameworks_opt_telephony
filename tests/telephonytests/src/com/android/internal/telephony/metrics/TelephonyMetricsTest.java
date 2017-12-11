@@ -35,8 +35,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
-import android.support.test.filters.FlakyTest;
+import android.net.NetworkUtils;
 import android.telephony.ServiceState;
+import android.telephony.data.DataCallResponse;
+import android.telephony.data.InterfaceAddress;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
 
@@ -49,7 +51,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.RadioAccessTechnology;
@@ -69,6 +70,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 public class TelephonyMetricsTest extends TelephonyTest {
 
@@ -348,7 +350,12 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteOnSetupDataCallResponse() throws Exception {
         DataCallResponse response = new DataCallResponse(5, 6, 7, 8, "IPV4V6", FAKE_IFNAME,
-                FAKE_ADDRESS, FAKE_DNS, FAKE_GATEWAY, FAKE_PCSCF_ADDRESS, 1440);
+                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
+                Arrays.asList(FAKE_PCSCF_ADDRESS),
+                1440);
+
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,
                 RIL_REQUEST_SETUP_DATA_CALL, response);
