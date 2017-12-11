@@ -45,6 +45,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 
 import java.io.FileDescriptor;
@@ -141,7 +142,7 @@ public class UiccProfile {
                 if (mUiccApplications[i] == null) {
                     //Create newly added Applications
                     if (i < ics.mApplications.length) {
-                        mUiccApplications[i] = new UiccCardApplication(mUiccCard,
+                        mUiccApplications[i] = new UiccCardApplication(this,
                                 ics.mApplications[i], mContext, mCi);
                     }
                 } else if (i >= ics.mApplications.length) {
@@ -156,10 +157,14 @@ public class UiccProfile {
 
             createAndUpdateCatServiceLocked();
 
-            log("Before privilege rules: " + mCarrierPrivilegeRules);
-            if (mCarrierPrivilegeRules == null) {
-                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccCard,
-                        mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
+            // Reload the carrier privilege rules if necessary.
+            log("Before privilege rules: " + mCarrierPrivilegeRules + " : " + ics.mCardState);
+            if (mCarrierPrivilegeRules == null && ics.mCardState == CardState.CARDSTATE_PRESENT) {
+                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(this,
+                    mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
+            } else if (mCarrierPrivilegeRules != null
+                    && ics.mCardState != CardState.CARDSTATE_PRESENT) {
+                mCarrierPrivilegeRules = null;
             }
 
             sanitizeApplicationIndexesLocked();
@@ -170,9 +175,9 @@ public class UiccProfile {
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
             // Initialize or Reinitialize CatService
             if (mCatService == null) {
-                mCatService = CatService.getInstance(mCi, mContext, mUiccCard, mPhoneId);
+                mCatService = CatService.getInstance(mCi, mContext, this, mPhoneId);
             } else {
-                mCatService.update(mCi, mContext, mUiccCard);
+                mCatService.update(mCi, mContext, this);
             }
         } else {
             if (mCatService != null) {

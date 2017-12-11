@@ -1868,8 +1868,8 @@ public class SIMRecords extends IccRecords {
     public int getDisplayRule(ServiceState serviceState) {
         int rule;
 
-        if (mParentApp != null && mParentApp.getUiccCard() != null &&
-            mParentApp.getUiccCard().getOperatorBrandOverride() != null) {
+        if (mParentApp != null && mParentApp.getUiccProfile() != null
+                && mParentApp.getUiccProfile().getOperatorBrandOverride() != null) {
         // If the operator has been overridden, treat it as the SPN file on the SIM did not exist.
             rule = SPN_RULE_SHOW_PLMN;
         } else if (TextUtils.isEmpty(getServiceProviderName()) || mSpnDisplayCondition == -1) {
