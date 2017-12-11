@@ -411,6 +411,15 @@ public class EuiccController extends IEuiccController.Stub {
                                                 callingToken, subscription, switchAfterDownload,
                                                 callingPackage));
                                 break;
+                            case EuiccService.RESULT_NEED_CONFIRMATION_CODE:
+                                resultCode = RESOLVABLE_ERROR;
+                                addResolutionIntent(extrasIntent,
+                                        EuiccService.ACTION_RESOLVE_CONFIRMATION_CODE,
+                                        callingPackage,
+                                        EuiccOperation.forDownloadConfirmationCode(
+                                                callingToken, subscription, switchAfterDownload,
+                                                callingPackage));
+                                break;
                             default:
                                 resultCode = ERROR;
                                 extrasIntent.putExtra(

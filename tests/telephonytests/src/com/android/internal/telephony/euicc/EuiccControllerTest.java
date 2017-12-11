@@ -350,6 +350,17 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testDownloadSubscription_needConfirmationCode() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_NEED_CONFIRMATION_CODE, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_CONFIRMATION_CODE,
+                EuiccOperation.ACTION_DOWNLOAD_CONFIRMATION_CODE);
+    }
+
+    @Test
     public void testDownloadSubscription_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
