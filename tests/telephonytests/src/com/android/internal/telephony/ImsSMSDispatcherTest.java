@@ -119,7 +119,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     public void testSendImsGmsTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
         mImsSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false);
         verify(mSimulatedCommandsVerifier).sendImsGsmSms(eq("038122f2"),
                 eq("0100038111f1000014c9f67cda9c12d37378983e4697e5d4f29c0e"), eq(0), eq(0),
                 any(Message.class));
@@ -129,7 +129,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     public void testSendImsGmsTestWithOutDesAddr() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
         mImsSmsDispatcher.sendText(null, "222" /*scAddr*/, TAG,
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false);
         verify(mSimulatedCommandsVerifier, times(0)).sendImsGsmSms(anyString(), anyString(),
                 anyInt(), anyInt(), any(Message.class));
     }
@@ -138,7 +138,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     public void testSendImsCdmaTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
         mImsSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false);
         verify(mSimulatedCommandsVerifier).sendImsCdmaSms((byte[])any(), eq(0), eq(0),
                 any(Message.class));
     }
