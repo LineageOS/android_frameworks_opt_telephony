@@ -4300,8 +4300,10 @@ public class DcTracker extends Handler {
         if (dcac != null) {
             result = dcac.getPcscfAddr();
 
-            for (int i = 0; i < result.length; i++) {
-                log("Pcscf[" + i + "]: " + result[i]);
+            if (result != null) {
+                for (int i = 0; i < result.length; i++) {
+                    log("Pcscf[" + i + "]: " + result[i]);
+                }
             }
             return result;
         }
