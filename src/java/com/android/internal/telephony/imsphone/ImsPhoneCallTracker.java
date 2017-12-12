@@ -311,6 +311,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mAllowEmergencyVideoCalls = false;
     private boolean mIgnoreDataEnabledChangedForVideoCalls = false;
     private boolean mIsViLteDataMetered = false;
+    private boolean mAlwaysPlayRemoteHoldTone = false;
 
     /**
      * Listeners to changes in the phone state.  Intended for use by other interested IMS components
@@ -1029,6 +1030,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 CarrierConfigManager.KEY_VILTE_DATA_IS_METERED_BOOL);
         mSupportPauseVideo = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_SUPPORT_PAUSE_IMS_VIDEO_CALLS_BOOL);
+        mAlwaysPlayRemoteHoldTone = carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_ALWAYS_PLAY_REMOTE_HOLD_TONE_BOOL);
 
         String[] mappings = carrierConfig
                 .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
@@ -2442,38 +2445,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         @Override
         public void onCallHoldReceived(ImsCall imsCall) {
-            if (DBG) log("onCallHoldReceived");
-
-            ImsPhoneConnection conn = findConnection(imsCall);
-            if (conn != null) {
-                if (!mOnHoldToneStarted && ImsPhoneCall.isLocalTone(imsCall) &&
-                        conn.getState() == ImsPhoneCall.State.ACTIVE) {
-                    mPhone.startOnHoldTone(conn);
-                    mOnHoldToneStarted = true;
-                    mOnHoldToneId = System.identityHashCode(conn);
-                }
-                conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
-
-                boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
-                        com.android.internal.R.bool.config_useVideoPauseWorkaround);
-                if (useVideoPauseWorkaround && mSupportPauseVideo &&
-                        VideoProfile.isVideo(conn.getVideoState())) {
-                    // If we are using the video pause workaround, the vendor IMS code has issues
-                    // with video pause signalling.  In this case, when a call is remotely
-                    // held, the modem does not reliably change the video state of the call to be
-                    // paused.
-                    // As a workaround, we will turn on that bit now.
-                    conn.changeToPausedState();
-                }
-            }
-
-            SuppServiceNotification supp = new SuppServiceNotification();
-            // Type of notification: 0 = MO; 1 = MT
-            // Refer SuppServiceNotification class documentation.
-            supp.notificationType = 1;
-            supp.code = SuppServiceNotification.MT_CODE_CALL_ON_HOLD;
-            mPhone.notifySuppSvcNotification(supp);
-            mMetrics.writeOnImsCallHoldReceived(mPhone.getPhoneId(), imsCall.getCallSession());
+            ImsPhoneCallTracker.this.onCallHoldReceived(imsCall);
         }
 
         @Override
@@ -3700,5 +3672,47 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mMetrics.writeOnImsCapabilities(
                     mPhone.getPhoneId(), mImsFeatureEnabled);
         }
+    }
+
+    @VisibleForTesting
+    public void onCallHoldReceived(ImsCall imsCall) {
+        if (DBG) log("onCallHoldReceived");
+
+        ImsPhoneConnection conn = findConnection(imsCall);
+        if (conn != null) {
+            if (!mOnHoldToneStarted && (ImsPhoneCall.isLocalTone(imsCall)
+                    || mAlwaysPlayRemoteHoldTone) &&
+                    conn.getState() == ImsPhoneCall.State.ACTIVE) {
+                mPhone.startOnHoldTone(conn);
+                mOnHoldToneStarted = true;
+                mOnHoldToneId = System.identityHashCode(conn);
+            }
+            conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
+
+            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
+            if (useVideoPauseWorkaround && mSupportPauseVideo &&
+                    VideoProfile.isVideo(conn.getVideoState())) {
+                // If we are using the video pause workaround, the vendor IMS code has issues
+                // with video pause signalling.  In this case, when a call is remotely
+                // held, the modem does not reliably change the video state of the call to be
+                // paused.
+                // As a workaround, we will turn on that bit now.
+                conn.changeToPausedState();
+            }
+        }
+
+        SuppServiceNotification supp = new SuppServiceNotification();
+        // Type of notification: 0 = MO; 1 = MT
+        // Refer SuppServiceNotification class documentation.
+        supp.notificationType = 1;
+        supp.code = SuppServiceNotification.MT_CODE_CALL_ON_HOLD;
+        mPhone.notifySuppSvcNotification(supp);
+        mMetrics.writeOnImsCallHoldReceived(mPhone.getPhoneId(), imsCall.getCallSession());
+    }
+
+    @VisibleForTesting
+    public void setAlwaysPlayRemoteHoldTone(boolean shouldPlayRemoteHoldTone) {
+        mAlwaysPlayRemoteHoldTone = shouldPlayRemoteHoldTone;
     }
 }

@@ -237,8 +237,8 @@ public class ImsPhoneCall extends Call {
         }
     }
 
-    /*package*/ ImsPhoneConnection
-    getFirstConnection() {
+    @VisibleForTesting
+    public ImsPhoneConnection getFirstConnection() {
         if (mConnections.size() == 0) return null;
 
         return (ImsPhoneConnection) mConnections.get(0);
