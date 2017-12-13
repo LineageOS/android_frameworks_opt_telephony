@@ -441,7 +441,7 @@ public abstract class TelephonyTest {
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS).when(mServiceState).
                 getRilDataRadioTechnology();
         doReturn(mPhone).when(mCT).getPhone();
-        mImsManagerInstances.put(mPhone.getPhoneId(), null);
+        mImsManagerInstances.put(mPhone.getPhoneId(), mImsManager);
         doReturn(mImsEcbm).when(mImsManager).getEcbmInterface(anyInt());
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();

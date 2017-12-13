@@ -600,7 +600,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     /**
      * TODO: Remove this code; it is a workaround.
-     * When {@code true}, forces {@link ImsManager#updateImsServiceConfig(Context, int, boolean)} to
+     * When {@code true}, forces {@link ImsManager#updateImsServiceConfig(boolean)} to
      * be called when an ongoing video call is disconnected.  In some cases, where video pause is
      * supported by the carrier, when {@link #onDataEnabledChanged(boolean, int)} reports that data
      * has been disabled we will pause the video rather than disconnecting the call.  When this
@@ -784,8 +784,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         if (mCarrierConfigLoaded) {
-            ImsManager.updateImsServiceConfig(mPhone.getContext(),
-                    mPhone.getPhoneId(), true);
+            mImsManager.updateImsServiceConfig(true);
         }
     }
 
@@ -2231,7 +2230,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (mShouldUpdateImsConfigOnDisconnect) {
                 // Ensure we update the IMS config when the call is disconnected; we delayed this
                 // because a video call was paused.
-                ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+                if (mImsManager != null) {
+                    mImsManager.updateImsServiceConfig(true);
+                }
                 mShouldUpdateImsConfigOnDisconnect = false;
             }
         }
@@ -3338,8 +3339,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean isActiveCallVideo = activeCall.isVideoCall() ||
                 (mTreatDowngradedVideoCallsAsVideoCalls && activeCall.wasVideoCall());
         boolean isActiveCallOnWifi = activeCall.isWifiCall();
-        boolean isVoWifiEnabled = mImsManager.isWfcEnabledByPlatform(mPhone.getContext()) &&
-                mImsManager.isWfcEnabledByUser(mPhone.getContext());
+        boolean isVoWifiEnabled = mImsManager.isWfcEnabledByPlatform()
+                && mImsManager.isWfcEnabledByUser();
         boolean isIncomingCallAudio = !incomingCall.isVideoCall();
         log("shouldDisconnectActiveCallOnAnswer : isActiveCallVideo=" + isActiveCallVideo +
                 " isActiveCallOnWifi=" + isActiveCallOnWifi + " isIncomingCallAudio=" +
@@ -3420,6 +3421,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
 
         ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId()).setDataEnabled(enabled);
+
         mIsDataEnabled = enabled;
 
         if (!mIsViLteDataMetered) {
@@ -3456,7 +3458,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 && reason != DataEnabledSettings.REASON_REGISTERED) {
             // This will call into updateVideoCallFeatureValue and eventually all clients will be
             // asynchronously notified that the availability of VT over LTE has changed.
-            ImsManager.updateImsServiceConfig(mPhone.getContext(), mPhone.getPhoneId(), true);
+            if (mImsManager != null) {
+                mImsManager.updateImsServiceConfig(true);
+            }
         }
     }
 
