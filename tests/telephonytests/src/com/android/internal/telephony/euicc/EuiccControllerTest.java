@@ -15,6 +15,8 @@
  */
 package com.android.internal.telephony.euicc;
 
+import static android.telephony.euicc.EuiccManager.EUICC_OTA_STATUS_UNAVAILABLE;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -56,6 +58,7 @@ import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.euicc.EuiccConnector.GetOtaStatusCommandCallback;
 
 import org.junit.After;
 import org.junit.Before;
@@ -201,6 +204,26 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testGetEid_nullReturnValue() {
         setGetEidPermissions(true /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
         assertNull(callGetEid(true /* success */, null /* eid */));
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testGetOtaStatus_noPrivileges() {
+        setHasWriteEmbeddedPermission(false /* hasPermission */);
+        callGetOtaStatus(true /* success */, 1 /* status */);
+    }
+
+    @Test
+    public void testGetOtaStatus_withWriteEmbeddedPermission() {
+        setHasWriteEmbeddedPermission(true /* hasPermission */);
+        assertEquals(1, callGetOtaStatus(true /* success */, 1 /* status */));
+    }
+
+    @Test
+    public void testGetOtaStatus_failure() {
+        setHasWriteEmbeddedPermission(true /* hasPermission */);
+        assertEquals(
+                EUICC_OTA_STATUS_UNAVAILABLE,
+                callGetOtaStatus(false /* success */, 1 /* status */));
     }
 
     @Test
@@ -804,6 +827,22 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).getEid(Mockito.<EuiccConnector.GetEidCommandCallback>any());
         return mController.getEid();
+    }
+
+    private int callGetOtaStatus(final boolean success, final int status) {
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                GetOtaStatusCommandCallback cb = invocation.getArgument(0);
+                if (success) {
+                    cb.onGetOtaStatusComplete(status);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).getOtaStatus(Mockito.<GetOtaStatusCommandCallback>any());
+        return mController.getOtaStatus();
     }
 
     private EuiccInfo callGetEuiccInfo(final boolean success, final @Nullable EuiccInfo euiccInfo) {
