@@ -1629,7 +1629,7 @@ public class ImsPhone extends ImsPhoneBase {
         if (imsReasonInfo.mCode == imsReasonInfo.CODE_REGISTRATION_ERROR
                 && imsReasonInfo.mExtraMessage != null) {
             // Suppress WFC Registration notifications if WFC is not enabled by the user.
-            if (ImsManager.isWfcEnabledByUser(mContext)) {
+            if (ImsManager.getInstance(mContext, mPhoneId).isWfcEnabledByUser()) {
                 processWfcDisconnectForNotification(imsReasonInfo);
             }
         }
@@ -1715,7 +1715,7 @@ public class ImsPhone extends ImsPhoneBase {
             }
 
             // UX requirement is to disable WFC in case of "permanent" registration failures.
-            ImsManager.setWfcSetting(mContext, false);
+            ImsManager.getInstance(mContext, mPhoneId).setWfcSetting(false);
 
             // If WfcSettings are active then alert will be shown
             // otherwise notification will be added.
@@ -1761,8 +1761,8 @@ public class ImsPhone extends ImsPhoneBase {
         if (mCT.getState() == PhoneConstants.State.IDLE) {
             if (DBG) Rlog.d(LOG_TAG, "updateRoamingState now: " + newRoaming);
             mRoaming = newRoaming;
-            ImsManager.setWfcMode(mContext,
-                    ImsManager.getWfcMode(mContext, newRoaming), newRoaming);
+            ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
+            imsManager.setWfcMode(imsManager.getWfcMode(newRoaming), newRoaming);
         } else {
             if (DBG) Rlog.d(LOG_TAG, "updateRoamingState postponed: " + newRoaming);
             mCT.registerForVoiceCallEnded(this,
