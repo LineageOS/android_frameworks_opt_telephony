@@ -15,6 +15,8 @@
  */
 package com.android.internal.telephony;
 
+import static android.provider.Telephony.CarrierIdentification;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -41,8 +43,6 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static android.provider.Telephony.CarrierIdentification;
 
 /**
  * CarrierIdentifier identifies the subscription carrier and returns a canonical carrier Id
@@ -325,6 +325,8 @@ public class CarrierIdentifier extends Handler {
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.MCCMNC)),
                 cursor.getString(cursor.getColumnIndexOrThrow(
                         CarrierIdentification.IMSI_PREFIX_XPATTERN)),
+                cursor.getString(cursor.getColumnIndexOrThrow(
+                        CarrierIdentification.ICCID_PREFIX)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.GID1)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.GID2)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.PLMN)),
@@ -347,8 +349,9 @@ public class CarrierIdentifier extends Handler {
          * rule 1 {mccmnc, imsi} rule 2 {mccmnc, imsi, gid1} and rule 3 {mccmnc, imsi, gid2} all
          * matches with subscription data. rule 2 wins with the highest matching score.
          */
-        private static final int SCORE_MCCMNC          = 1 << 6;
-        private static final int SCORE_IMSI_PREFIX     = 1 << 5;
+        private static final int SCORE_MCCMNC          = 1 << 7;
+        private static final int SCORE_IMSI_PREFIX     = 1 << 6;
+        private static final int SCORE_ICCID_PREFIX    = 1 << 5;
         private static final int SCORE_GID1            = 1 << 4;
         private static final int SCORE_GID2            = 1 << 3;
         private static final int SCORE_PLMN            = 1 << 2;
@@ -360,6 +363,7 @@ public class CarrierIdentifier extends Handler {
         // carrier matching attributes
         private String mMccMnc;
         private String mImsiPrefixPattern;
+        private String mIccidPrefix;
         private String mGid1;
         private String mGid2;
         private String mPlmn;
@@ -373,10 +377,12 @@ public class CarrierIdentifier extends Handler {
 
         private int mScore = 0;
 
-        CarrierMatchingRule(String mccmnc, String imsiPrefixPattern, String gid1, String gid2,
-                String plmn, String spn, String apn, int cid, String name) {
+        CarrierMatchingRule(String mccmnc, String imsiPrefixPattern, String iccidPrefix,
+                String gid1, String gid2, String plmn, String spn, String apn, int cid,
+                String name) {
             mMccMnc = mccmnc;
             mImsiPrefixPattern = imsiPrefixPattern;
+            mIccidPrefix = iccidPrefix;
             mGid1 = gid1;
             mGid2 = gid2;
             mPlmn = plmn;
@@ -388,9 +394,9 @@ public class CarrierIdentifier extends Handler {
 
         // Calculate matching score. Values which aren't set in the rule are considered "wild".
         // All values in the rule must match in order for the subscription to be considered part of
-        // the carrier. otherwise, a invalid score -1 will be assigned. A match from a higher tier
+        // the carrier. Otherwise, a invalid score -1 will be assigned. A match from a higher tier
         // will beat any subsequent match which does not match at that tier. When there are multiple
-        // matches at the same tier, the longest, best match will be used.
+        // matches at the same tier, the match with highest score will be used.
         public void match(CarrierMatchingRule subscriptionRule) {
             mScore = 0;
             if (mMccMnc != null) {
@@ -406,6 +412,13 @@ public class CarrierIdentifier extends Handler {
                     return;
                 }
                 mScore += SCORE_IMSI_PREFIX;
+            }
+            if (mIccidPrefix != null) {
+                if (!iccidPrefixMatch(subscriptionRule.mIccidPrefix, mIccidPrefix)) {
+                    mScore = SCORE_INVALID;
+                    return;
+                }
+                mScore += SCORE_ICCID_PREFIX;
             }
             if (mGid1 != null) {
                 // full string match. carrier matching should cover the corner case that gid1
@@ -463,6 +476,13 @@ public class CarrierIdentifier extends Handler {
             return true;
         }
 
+        private boolean iccidPrefixMatch(String iccid, String prefix) {
+            if (iccid == null || prefix == null) {
+                return false;
+            }
+            return iccid.startsWith(prefix);
+        }
+
         public String toString() {
             return "[CarrierMatchingRule] -"
                     + " mccmnc: " + mMccMnc
@@ -470,6 +490,7 @@ public class CarrierIdentifier extends Handler {
                     + " gid2: " + mGid2
                     + " plmn: " + mPlmn
                     + " imsi_prefix: " + mImsiPrefixPattern
+                    + " iccid_prefix" + mIccidPrefix
                     + " spn: " + mSpn
                     + " apn: " + mApn
                     + " name: " + mName
@@ -488,6 +509,7 @@ public class CarrierIdentifier extends Handler {
             return;
         }
         final String mccmnc = mTelephonyMgr.getSimOperatorNumericForPhone(mPhone.getPhoneId());
+        final String iccid = mPhone.getIccSerialNumber();
         final String gid1 = mPhone.getGroupIdLevel1();
         final String gid2 = mPhone.getGroupIdLevel2();
         final String imsi = mPhone.getSubscriberId();
@@ -500,14 +522,15 @@ public class CarrierIdentifier extends Handler {
                     + " gid1: " + gid1
                     + " gid2: " + gid2
                     + " imsi: " + Rlog.pii(LOG_TAG, imsi)
+                    + " iccid: " + Rlog.pii(LOG_TAG, iccid)
                     + " plmn: " + plmn
                     + " spn: " + spn
                     + " apn: " + apn);
         }
 
         CarrierMatchingRule subscriptionRule = new CarrierMatchingRule(
-                mccmnc, imsi, gid1, gid2, plmn,  spn, apn, TelephonyManager.UNKNOWN_CARRIER_ID,
-                null);
+                mccmnc, imsi, iccid, gid1, gid2, plmn,  spn, apn,
+                TelephonyManager.UNKNOWN_CARRIER_ID, null);
 
         int maxScore = CarrierMatchingRule.SCORE_INVALID;
         CarrierMatchingRule maxRule = null;
