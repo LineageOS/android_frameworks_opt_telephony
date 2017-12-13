@@ -23,7 +23,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
@@ -34,7 +33,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.IAlarmManager;
-import android.content.Context;
 import android.content.Intent;
 import android.hardware.radio.V1_0.CellIdentityGsm;
 import android.hardware.radio.V1_0.CellInfoType;
@@ -1144,19 +1142,21 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetTimeFromNITZStr() throws Exception {
-        doReturn(mAlarmManager).when(mIBinder).queryLocalInterface(anyString());
-        mServiceManagerMockedServices.put(Context.ALARM_SERVICE, mIBinder);
-
-        // Mock sending incorrect nitz str from RIL
-        mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0");
-        waitForMs(200);
-        // AlarmManger.setTime is triggered by SystemClock.setCurrentTimeMillis().
-        // Verify system time is not set to incorrect NITZ time
-        verify(mAlarmManager, times(0)).setTime(anyLong());
-
-        // Mock sending correct nitz str from RIL
-        mSimulatedCommands.triggerNITZupdate("15/06/20,00:00:00+0");
-        waitForMs(200);
-        verify(mAlarmManager, times(1)).setTime(anyLong());
+        {
+            // Mock sending incorrect nitz str from RIL
+            mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0");
+            waitForMs(200);
+            verify(mNitzStateMachine, times(0))
+                    .setTimeAndTimeZoneFromNitz(any(), anyLong());
+        }
+        {
+            // Mock sending correct nitz str from RIL
+            String nitzStr = "15/06/20,00:00:00+0";
+            NitzData expectedNitzData = NitzData.parse(nitzStr);
+            mSimulatedCommands.triggerNITZupdate(nitzStr);
+            waitForMs(200);
+            verify(mNitzStateMachine, times(1))
+                    .setTimeAndTimeZoneFromNitz(eq(expectedNitzData), anyLong());
+        }
     }
 }

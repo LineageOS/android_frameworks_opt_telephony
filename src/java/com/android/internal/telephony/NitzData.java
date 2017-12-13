@@ -54,6 +54,9 @@ public final class NitzData {
 
     private NitzData(String originalString, int zoneOffsetMillis, Integer dstOffsetMillis,
             long utcTimeMillis, TimeZone timeZone) {
+        if (originalString == null) {
+            throw new NullPointerException("originalString==null");
+        }
         this.mOriginalString = originalString;
         this.mZoneOffset = zoneOffsetMillis;
         this.mDstOffset = dstOffsetMillis;
@@ -132,6 +135,13 @@ public final class NitzData {
             Rlog.e(LOG_TAG, "NITZ: Parsing NITZ time " + nitz + " ex=" + ex);
             return null;
         }
+    }
+
+    /** A method for use in tests to create NitzData instances. */
+    public static NitzData createForTests(int zoneOffsetMillis, Integer dstOffsetMillis,
+            long utcTimeMillis, TimeZone timeZone) {
+        return new NitzData("Test data", zoneOffsetMillis, dstOffsetMillis, utcTimeMillis,
+                timeZone);
     }
 
     /**
@@ -213,6 +223,45 @@ public final class NitzData {
         }
 
         return guess;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        NitzData nitzData = (NitzData) o;
+
+        if (mZoneOffset != nitzData.mZoneOffset) {
+            return false;
+        }
+        if (mCurrentTimeMillis != nitzData.mCurrentTimeMillis) {
+            return false;
+        }
+        if (!mOriginalString.equals(nitzData.mOriginalString)) {
+            return false;
+        }
+        if (mDstOffset != null ? !mDstOffset.equals(nitzData.mDstOffset)
+                : nitzData.mDstOffset != null) {
+            return false;
+        }
+        return mEmulatorHostTimeZone != null ? mEmulatorHostTimeZone
+                .equals(nitzData.mEmulatorHostTimeZone) : nitzData.mEmulatorHostTimeZone == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = mOriginalString.hashCode();
+        result = 31 * result + mZoneOffset;
+        result = 31 * result + (mDstOffset != null ? mDstOffset.hashCode() : 0);
+        result = 31 * result + (int) (mCurrentTimeMillis ^ (mCurrentTimeMillis >>> 32));
+        result = 31 * result + (mEmulatorHostTimeZone != null ? mEmulatorHostTimeZone.hashCode()
+                : 0);
+        return result;
     }
 
     @Override
