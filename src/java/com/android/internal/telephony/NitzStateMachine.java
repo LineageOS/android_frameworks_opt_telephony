@@ -99,15 +99,6 @@ public class NitzStateMachine {
         }
 
         /**
-         * Returns true if the {@code telephony.test.ignore.nitz} system property is set to
-         * 'y', 'yes', '1', 'true' or 'on' AND the current uptime is an odd number.
-         */
-        public boolean getIgnoreNitzForTests() {
-            return SystemProperties.getBoolean(TelephonyProperties.PROPERTY_IGNORE_NITZ, false)
-                    && ((SystemClock.uptimeMillis() & 1) == 0);
-        }
-
-        /**
          * Sets the {@code gsm.nitz.time} system property.
          */
         public void setNitzTimeProperty(long timeMillis) {
@@ -595,17 +586,13 @@ public class NitzStateMachine {
      * @param iso Country code from network MCC
      */
     public void updateTimeZoneByNetworkCountryCode(String iso) {
-        // Test both paths if ignore nitz for tests is true
-        boolean testOneUniqueOffsetPath = mDeviceState.getIgnoreNitzForTests();
-
         List<String> uniqueZoneIds = TimeUtils.getTimeZoneIdsWithUniqueOffsets(iso);
-        if ((uniqueZoneIds.size() == 1) || testOneUniqueOffsetPath) {
+        if (uniqueZoneIds.size() == 1) {
             String zoneId = uniqueZoneIds.get(0);
             if (DBG) {
                 Rlog.d(LOG_TAG, "updateTimeZoneByNetworkCountryCode: no nitz but one TZ for iso-cc="
                         + iso
-                        + " with zone.getID=" + zoneId
-                        + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath);
+                        + " with zone.getID=" + zoneId);
             }
             mTimeZoneLog.log("updateTimeZoneByNetworkCountryCode: set time zone=" + zoneId
                     + " iso=" + iso);
@@ -615,7 +602,6 @@ public class NitzStateMachine {
                 Rlog.d(LOG_TAG,
                         "updateTimeZoneByNetworkCountryCode: there are " + uniqueZoneIds.size()
                                 + " unique offsets for iso-cc='" + iso
-                                + " testOneUniqueOffsetPath=" + testOneUniqueOffsetPath
                                 + "', do nothing");
             }
         }
