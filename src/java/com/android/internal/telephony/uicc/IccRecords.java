@@ -73,6 +73,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
                                                        // made requests for the sim records
 
     protected String mIccId;  // Includes only decimals (no hex)
+    protected String mFakeIccId;
+
     protected String mFullIccId;  // Includes hex characters in ICCID
     protected String mMsisdn = null;  // My mobile number
     protected String mMsisdnTag = null;
@@ -160,6 +162,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsRequested=" + mRecordsRequested
                 + " lockedRecordsRequested=" + mLockedRecordsRequested
                 + " iccid=" + iccIdToPrint
+                + (mCarrierTestOverride.isInTestMode() ? "mFakeIccid=" + mFakeIccId : "")
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + Rlog.pii(VDBG, mVoiceMailNum)
                 + " voiceMailTag=" + mVoiceMailTag
@@ -173,7 +176,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " mailboxIndex=" + mMailboxIndex
                 + " spn=" + mSpn
                 + (mCarrierTestOverride.isInTestMode() ? " mFakeSpn=" + mFakeSpn : "");
-
     }
 
     /**
@@ -218,6 +220,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
             mFakePnnHomeName = mCarrierTestOverride.getFakePnnHomeName();
             log("load mFakePnnHomeName: " + mFakePnnHomeName);
+
+            mFakeIccId = mCarrierTestOverride.getFakeIccid();
+            log("load mFakeIccId: " + mFakeIccId);
         }
     }
 
@@ -276,7 +281,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return ICC ID without hex digits
      */
     public String getIccId() {
-        return mIccId;
+        if (mCarrierTestOverride.isInTestMode() && mFakeIccId != null) {
+            return mFakeIccId;
+        } else {
+            return mIccId;
+        }
     }
 
     /**

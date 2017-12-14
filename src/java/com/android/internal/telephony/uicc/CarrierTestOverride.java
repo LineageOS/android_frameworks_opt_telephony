@@ -48,6 +48,7 @@ public class CarrierTestOverride {
        <carrierTestOverride key="imsi" value="310010123456789"/>
        <carrierTestOverride key="spn" value="Verizon"/>
        <carrierTestOverride key="pnn" value="Verizon network"/>
+       <carrierTestOverride key="iccid" value="123456789012345678901"/>
        </carrierTestOverrides>
      */
     static final String DATA_CARRIER_TEST_OVERRIDE_PATH =
@@ -62,6 +63,7 @@ public class CarrierTestOverride {
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_IMSI = "imsi";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_SPN = "spn";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_PNN = "pnn";
+    static final String CARRIER_TEST_XML_ITEM_KEY_STRING_ICCID = "iccid";
 
     private HashMap<String, String> mCarrierTestParamMap;
 
@@ -127,6 +129,17 @@ public class CarrierTestOverride {
             return pnn;
         } catch (NullPointerException e) {
             Rlog.w(LOG_TAG, "No pnn in CarrierTestConfig file ");
+            return null;
+        }
+    }
+
+    String getFakeIccid() {
+        try {
+            String iccid = mCarrierTestParamMap.get(CARRIER_TEST_XML_ITEM_KEY_STRING_ICCID);
+            Rlog.d(LOG_TAG, "reading iccid from CarrierTestConfig file: " + iccid);
+            return iccid;
+        } catch (NullPointerException e) {
+            Rlog.w(LOG_TAG, "No iccid in CarrierTestConfig file ");
             return null;
         }
     }
