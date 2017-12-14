@@ -21,6 +21,7 @@ import android.os.RemoteException;
 import com.android.ims.internal.IImsFeatureStatusCallback;
 import com.android.ims.internal.IImsMMTelFeature;
 import com.android.ims.internal.IImsRcsFeature;
+import com.android.ims.internal.IImsRegistration;
 import com.android.ims.internal.IImsServiceController;
 
 import static org.mockito.Mockito.spy;
@@ -60,6 +61,11 @@ public class TestImsServiceControllerAdapter {
         public void removeImsFeature(int slotId, int feature, IImsFeatureStatusCallback c)
                 throws RemoteException {
             TestImsServiceControllerAdapter.this.removeImsFeature(slotId, feature);
+        }
+
+        @Override
+        public IImsRegistration getRegistration(int i) throws RemoteException {
+            return null;
         }
 
     }
