@@ -129,7 +129,7 @@ public class EuiccControllerTest extends TelephonyTest {
         @Override
         public void addResolutionIntent(
                 Intent extrasIntent, String resolutionAction, String callingPackage,
-                EuiccOperation op) {
+                boolean retried, EuiccOperation op) {
             mResolutionAction = resolutionAction;
             mOp = op;
         }
