@@ -53,7 +53,6 @@ public class NitzStateMachineTest extends TelephonyTest {
 
         // Configure device state
         when(mDeviceState.getIgnoreNitz()).thenReturn(false);
-        when(mDeviceState.getIgnoreNitzForTests()).thenReturn(false);
         when(mDeviceState.getNitzUpdateDiffMillis()).thenReturn(2000);
         when(mDeviceState.getNitzUpdateSpacingMillis()).thenReturn(1000 * 60 * 10);
         when(mDeviceState.elapsedRealtime()).thenReturn(123456789L);
@@ -68,7 +67,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         // Confirm all mDeviceState side effects were verified. We don't care about retrievals of
         // device state.
         verify(mDeviceState, atLeast(0)).getIgnoreNitz();
-        verify(mDeviceState, atLeast(0)).getIgnoreNitzForTests();
         verify(mDeviceState, atLeast(0)).getNitzUpdateDiffMillis();
         verify(mDeviceState, atLeast(0)).getNitzUpdateSpacingMillis();
         verify(mDeviceState, atLeast(0)).elapsedRealtime();
