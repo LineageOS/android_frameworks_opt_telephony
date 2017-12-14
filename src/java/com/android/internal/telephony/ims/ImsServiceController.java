@@ -34,6 +34,7 @@ import android.util.Pair;
 import com.android.ims.internal.IImsFeatureStatusCallback;
 import com.android.ims.internal.IImsMMTelFeature;
 import com.android.ims.internal.IImsRcsFeature;
+import com.android.ims.internal.IImsRegistration;
 import com.android.ims.internal.IImsServiceController;
 import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
@@ -366,10 +367,8 @@ public class ImsServiceController {
     }
 
     /**
-     * Finds the difference between the set of features that the ImsService has active and the new
-     * set defined in newImsFeatures. For every feature that is added,
-     * {@link IImsServiceController#createImsFeature} is called on the service. For every ImsFeature
-     * that is removed, {@link IImsServiceController#removeImsFeature} is called.
+     * For every feature that is added, the service calls the associated create. For every
+     * ImsFeature that is removed, {@link IImsServiceController#removeImsFeature} is called.
      */
     public void changeImsServiceFeatures(HashSet<Pair<Integer, Integer>> newImsFeatures)
             throws RemoteException {
@@ -463,6 +462,15 @@ public class ImsServiceController {
                 return null;
             }
             return f.resolve(IImsRcsFeature.class);
+        }
+    }
+
+    /**
+     * @return the IImsRegistration that corresponds to the slot id specified.
+     */
+    public IImsRegistration getRegistration(int slotId) throws RemoteException {
+        synchronized (mLock) {
+            return mIImsServiceController.getRegistration(slotId);
         }
     }
 

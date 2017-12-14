@@ -17,6 +17,7 @@
 package com.android.internal.telephony.ims;
 
 import android.Manifest;
+import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -40,6 +41,7 @@ import android.util.SparseArray;
 
 import com.android.ims.internal.IImsMMTelFeature;
 import com.android.ims.internal.IImsRcsFeature;
+import com.android.ims.internal.IImsRegistration;
 import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.PhoneConstants;
@@ -344,9 +346,20 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return (controller != null) ? controller.getRcsFeature(slotId) : null;
     }
 
+    /**
+     * Returns the ImsRegistration structure associated with the slotId and feature specified.
+     */
+    public @Nullable IImsRegistration getImsRegistration(int slotId, int feature)
+            throws RemoteException {
+        ImsServiceController controller = getImsServiceController(slotId, feature);
+        if (controller != null) {
+            return controller.getRegistration(slotId);
+        }
+        return null;
+    }
+
     @VisibleForTesting
-    public ImsServiceController getImsServiceControllerAndListen(int slotId, int feature,
-            IImsServiceFeatureCallback callback) {
+    public ImsServiceController getImsServiceController(int slotId, int feature) {
         if (slotId < 0 || slotId >= mNumSlots) {
             return null;
         }
@@ -358,6 +371,14 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             }
             controller = services.get(feature);
         }
+        return controller;
+    }
+
+    @VisibleForTesting
+    public ImsServiceController getImsServiceControllerAndListen(int slotId, int feature,
+            IImsServiceFeatureCallback callback) {
+        ImsServiceController controller = getImsServiceController(slotId, feature);
+
         if (controller != null) {
             controller.addImsServiceFeatureListener(callback);
             return controller;
