@@ -18,6 +18,7 @@ package com.android.internal.telephony.euicc;
 import static android.telephony.euicc.EuiccManager.EUICC_OTA_STATUS_UNAVAILABLE;
 
 import android.Manifest;
+import android.Manifest.permission;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
@@ -46,6 +47,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -189,6 +191,26 @@ public class EuiccController extends IEuiccController.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+
+    /**
+     * Start eUICC OTA update if current eUICC OS is not the latest one. When OTA is started or
+     * finished, the broadcast {@link EuiccManager#ACTION_OTA_STATUS_CHANGED} will be sent.
+     *
+     * This function will only be called from phone process and isn't exposed to the other apps.
+     */
+    public void startOtaUpdatingIfNecessary() {
+        mConnector.startOtaIfNecessary(
+                new OtaStatusChangedCallback() {
+                    @Override
+                    public void onOtaStatusChanged(int status) {
+                        sendOtaStatusChangedBroadcast();
+                    }
+
+                    @Override
+                    public void onEuiccServiceUnavailable() {}
+                });
     }
 
     @Override
@@ -941,6 +963,16 @@ public class EuiccController extends IEuiccController.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    /**
+     * Send broadcast {@link EuiccManager#ACTION_OTA_STATUS_CHANGED} for OTA status
+     * changed.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void sendOtaStatusChangedBroadcast() {
+        Intent intent = new Intent(EuiccManager.ACTION_OTA_STATUS_CHANGED);
+        mContext.sendBroadcast(intent, permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
     }
 
     @Nullable
