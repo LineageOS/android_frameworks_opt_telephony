@@ -70,6 +70,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         verify(mDeviceState, atLeast(0)).getIgnoreNitz();
         verify(mDeviceState, atLeast(0)).getIgnoreNitzForTests();
         verify(mDeviceState, atLeast(0)).getNitzUpdateDiffMillis();
+        verify(mDeviceState, atLeast(0)).getNitzUpdateSpacingMillis();
         verify(mDeviceState, atLeast(0)).elapsedRealtime();
         verify(mDeviceState, atLeast(0)).getNetworkCountryIsoForPhone();
         verifyNoMoreInteractions(mDeviceState);
