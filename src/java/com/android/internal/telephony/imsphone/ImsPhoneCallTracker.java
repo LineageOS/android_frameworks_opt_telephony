@@ -1884,6 +1884,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         int code = maybeRemapReasonCode(reasonInfo);
         switch (code) {
+            case ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL:
+                return DisconnectCause.IMS_SIP_ALTERNATE_EMERGENCY_CALL;
             case ImsReasonInfo.CODE_SIP_BAD_ADDRESS:
             case ImsReasonInfo.CODE_SIP_NOT_REACHABLE:
                 return DisconnectCause.NUMBER_UNREACHABLE;
