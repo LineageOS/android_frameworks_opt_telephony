@@ -56,14 +56,21 @@ public class NitzStateMachine {
         private static final int NITZ_UPDATE_DIFF_DEFAULT = 2000;
         private final int mNitzUpdateDiff;
 
+        private final GsmCdmaPhone mPhone;
+        private final TelephonyManager mTelephonyManager;
         private final ContentResolver mCr;
 
-        public DeviceState(Context context) {
+        public DeviceState(GsmCdmaPhone phone) {
+            mPhone = phone;
+
+            Context context = phone.getContext();
+            mTelephonyManager =
+                    (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
             mCr = context.getContentResolver();
-            mNitzUpdateSpacing = SystemProperties
-                    .getInt("ro.nitz_update_spacing", NITZ_UPDATE_SPACING_DEFAULT);
-            mNitzUpdateDiff = SystemProperties
-                    .getInt("ro.nitz_update_diff", NITZ_UPDATE_DIFF_DEFAULT);
+            mNitzUpdateSpacing =
+                    SystemProperties.getInt("ro.nitz_update_spacing", NITZ_UPDATE_SPACING_DEFAULT);
+            mNitzUpdateDiff =
+                    SystemProperties.getInt("ro.nitz_update_diff", NITZ_UPDATE_DIFF_DEFAULT);
         }
 
         /**
@@ -112,6 +119,10 @@ public class NitzStateMachine {
          */
         public long elapsedRealtime() {
             return SystemClock.elapsedRealtime();
+        }
+
+        public String getNetworkCountryIsoForPhone() {
+            return mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
         }
     }
 
@@ -166,12 +177,10 @@ public class NitzStateMachine {
     /** Wake lock used while setting time of day. */
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "NitzStateMachine";
-    private final ContentResolver mCr;
 
     /** Boolean is true if setTimeFromNITZ was called */
     private boolean mNitzUpdatedTime = false;
 
-    private final Context mContext;
     private final GsmCdmaPhone mPhone;
     private final DeviceState mDeviceState;
     private final TimeServiceHelper mTimeServiceHelper;
@@ -179,21 +188,18 @@ public class NitzStateMachine {
     public NitzStateMachine(GsmCdmaPhone phone) {
         this(phone,
                 TelephonyComponentFactory.getInstance().makeTimeServiceHelper(phone.getContext()),
-                new DeviceState(phone.getContext()));
+                new DeviceState(phone));
     }
 
     @VisibleForTesting
     public NitzStateMachine(GsmCdmaPhone phone, TimeServiceHelper timeServiceHelper,
             DeviceState deviceState) {
         mPhone = phone;
-        Context context = phone.getContext();
-        mContext = context;
 
+        Context context = phone.getContext();
         PowerManager powerManager =
                 (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG);
-
-        mCr = context.getContentResolver();
 
         mDeviceState = deviceState;
         mTimeServiceHelper = timeServiceHelper;
@@ -342,7 +348,7 @@ public class NitzStateMachine {
 
     private void setTimeZoneFromNitz(NitzData newNitzData, long nitzReceiveTime) {
         try {
-            String iso = getNetworkCountryIsoForPhone();
+            String iso = mDeviceState.getNetworkCountryIsoForPhone();
             TimeZone zone;
             if (newNitzData.getEmulatorHostTimeZone() != null) {
                 zone = newNitzData.getEmulatorHostTimeZone();
@@ -553,7 +559,7 @@ public class NitzStateMachine {
         if (mSavedTimeZoneId != null) {
             setAndBroadcastNetworkSetTimeZone(mSavedTimeZoneId);
         } else {
-            String iso = getNetworkCountryIsoForPhone();
+            String iso = mDeviceState.getNetworkCountryIsoForPhone();
             if (!TextUtils.isEmpty(iso)) {
                 updateTimeZoneByNetworkCountryCode(iso);
             }
@@ -672,9 +678,4 @@ public class NitzStateMachine {
         return mNeedFixZoneAfterNitz;
     }
 
-    // public so it can be used by tests for spying / setting up return values with Mockito.
-    public String getNetworkCountryIsoForPhone() {
-        return ((TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE))
-                .getNetworkCountryIsoForPhone(mPhone.getPhoneId());
-    }
 }

@@ -18,9 +18,12 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.spy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import android.icu.util.Calendar;
@@ -34,6 +37,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 public class NitzStateMachineTest extends TelephonyTest {
+
+    private static final TimeZone US_TIME_ZONE = TimeZone.getTimeZone("America/Los_Angeles");
+    private static final String US_ISO_CODE = "us";
 
     @Mock
     private NitzStateMachine.DeviceState mDeviceState;
@@ -52,15 +58,29 @@ public class NitzStateMachineTest extends TelephonyTest {
         when(mDeviceState.getNitzUpdateSpacingMillis()).thenReturn(1000 * 60 * 10);
         when(mDeviceState.elapsedRealtime()).thenReturn(123456789L);
 
-        NitzStateMachine real = new NitzStateMachine(mPhone, mTimeServiceHelper, mDeviceState);
-        mNitzStateMachine = spy(real);
+        mNitzStateMachine = new NitzStateMachine(mPhone, mTimeServiceHelper, mDeviceState);
 
         logd("ServiceStateTrackerTest -Setup!");
     }
 
     @After
     public void tearDown() throws Exception {
-        mNitzStateMachine = null;
+        // Confirm all mDeviceState side effects were verified. We don't care about retrievals of
+        // device state.
+        verify(mDeviceState, atLeast(0)).getIgnoreNitz();
+        verify(mDeviceState, atLeast(0)).getIgnoreNitzForTests();
+        verify(mDeviceState, atLeast(0)).getNitzUpdateDiffMillis();
+        verify(mDeviceState, atLeast(0)).elapsedRealtime();
+        verify(mDeviceState, atLeast(0)).getNetworkCountryIsoForPhone();
+        verifyNoMoreInteractions(mDeviceState);
+
+        // Confirm all mTimeServiceHelper side effects were verified. We don't care about current
+        // auto time / time zone state retrievals / listening.
+        verify(mTimeServiceHelper, atLeast(0)).setListener(any());
+        verify(mTimeServiceHelper, atLeast(0)).isTimeDetectionEnabled();
+        verify(mTimeServiceHelper, atLeast(0)).isTimeZoneDetectionEnabled();
+        verifyNoMoreInteractions(mTimeServiceHelper);
+
         super.tearDown();
     }
 
@@ -71,44 +91,159 @@ public class NitzStateMachineTest extends TelephonyTest {
         when(mTimeServiceHelper.isTimeZoneDetectionEnabled()).thenReturn(true);
 
         // Simulate the country being known.
-        when(mNitzStateMachine.getNetworkCountryIsoForPhone()).thenReturn("us");
+        when(mDeviceState.getNetworkCountryIsoForPhone()).thenReturn(US_ISO_CODE);
         mNitzStateMachine.setNetworkCountryIsoAvailable(true);
 
-        // Simulate NITZ being received.
-        long nitzReceivedRealtimeMillis = mDeviceState.elapsedRealtime();
-        TimeZone timeZone = TimeZone.getTimeZone("America/Los_Angeles");
-        long nitzTimeMillis = createTime(timeZone, 2017, 1, 2, 12, 45, 25);
-        NitzData nitzData = createValidNitzDataForTime(timeZone, nitzTimeMillis,
-                false /* includeEmulatorTimeZone */);
+        // Create a simulated NITZ signal.
+        TestNitzSignal usNitzSignal = createUsTestNitzSignal();
 
         // Simulate the elapsedRealtime() value incrementing with the passage of time.
         incrementSimulatedDeviceClock(1000);
 
-        mNitzStateMachine.setTimeAndTimeZoneFromNitz(nitzData, nitzReceivedRealtimeMillis);
+        // Simulate NITZ being received.
+        mNitzStateMachine.setTimeAndTimeZoneFromNitz(
+                usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
 
         // Check resulting state and side effects.
-        assertEquals(nitzData, mNitzStateMachine.getCachedNitzData());
-        verify(mTimeServiceHelper, times(1)).setDeviceTimeZone(timeZone.getID());
+        long expectedAdjustedCurrentTimeMillis =
+                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
 
-        long timeServiceTimeMillis = verifyTimeServiceTimeWasSet();
-        assertEquals(nitzTimeMillis + (mDeviceState.elapsedRealtime() - nitzReceivedRealtimeMillis),
-                timeServiceTimeMillis);
-        assertEquals(timeServiceTimeMillis, verifyNitzTimePropertyWasSet());
+        verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
+        verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
+
+        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
 
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
-        assertEquals(timeZone.getID(), mNitzStateMachine.getSavedTimeZoneId());
+        assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
-    private long verifyTimeServiceTimeWasSet() {
+    @Test
+    public void test_setTimeAndTimeZoneFromNitz_countryKnown_autoTimeZoneDisabled()
+            throws Exception {
+        // Simulate device settings.
+        when(mTimeServiceHelper.isTimeDetectionEnabled()).thenReturn(true);
+        when(mTimeServiceHelper.isTimeZoneDetectionEnabled()).thenReturn(false);
+
+        // Simulate the country being known.
+        when(mDeviceState.getNetworkCountryIsoForPhone()).thenReturn(US_ISO_CODE);
+        mNitzStateMachine.setNetworkCountryIsoAvailable(true);
+
+        // Create a simulated NITZ signal.
+        TestNitzSignal usNitzSignal = createUsTestNitzSignal();
+
+        // Simulate the elapsedRealtime() value incrementing with the passage of time.
+        incrementSimulatedDeviceClock(1000);
+
+        // Simulate NITZ being received.
+        mNitzStateMachine.setTimeAndTimeZoneFromNitz(
+                usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
+
+        // Check resulting state and side effects.
+        long expectedAdjustedCurrentTimeMillis =
+                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
+
+        verifyTimeServiceTimeZoneWasNotSet();
+        verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
+
+        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
+
+        assertTrue(mNitzStateMachine.getNitzUpdatedTime());
+        assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
+    }
+
+    @Test
+    public void test_setTimeAndTimeZoneFromNitz_countryKnown_autoTimeDisabled() throws Exception {
+        // Simulate device settings.
+        when(mTimeServiceHelper.isTimeDetectionEnabled()).thenReturn(false);
+        when(mTimeServiceHelper.isTimeZoneDetectionEnabled()).thenReturn(true);
+
+        // Simulate the country being known.
+        when(mDeviceState.getNetworkCountryIsoForPhone()).thenReturn(US_ISO_CODE);
+        mNitzStateMachine.setNetworkCountryIsoAvailable(true);
+
+        // Create a simulated NITZ signal.
+        TestNitzSignal usNitzSignal = createUsTestNitzSignal();
+
+        // Simulate the elapsedRealtime() value incrementing with the passage of time.
+        incrementSimulatedDeviceClock(1000);
+
+        // Simulate NITZ being received.
+        mNitzStateMachine.setTimeAndTimeZoneFromNitz(
+                usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
+
+        // Check resulting state and side effects.
+        long expectedAdjustedCurrentTimeMillis =
+                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
+
+        verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
+        verifyTimeServiceTimeWasNotSet();
+
+        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
+
+        assertTrue(mNitzStateMachine.getNitzUpdatedTime());
+        assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
+    }
+
+    @Test
+    public void test_setTimeAndTimeZoneFromNitz_countryKnown_autoTimeAndTimeZoneDisabled()
+            throws Exception {
+        // Simulate device settings.
+        when(mTimeServiceHelper.isTimeDetectionEnabled()).thenReturn(false);
+        when(mTimeServiceHelper.isTimeZoneDetectionEnabled()).thenReturn(false);
+
+        // Simulate the country being known.
+        when(mDeviceState.getNetworkCountryIsoForPhone()).thenReturn(US_ISO_CODE);
+        mNitzStateMachine.setNetworkCountryIsoAvailable(true);
+
+        // Create a simulated NITZ signal.
+        TestNitzSignal usNitzSignal = createUsTestNitzSignal();
+
+        // Simulate the elapsedRealtime() value incrementing with the passage of time.
+        incrementSimulatedDeviceClock(1000);
+
+        // Simulate NITZ being received.
+        mNitzStateMachine.setTimeAndTimeZoneFromNitz(
+                usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
+
+        // Check resulting state and side effects.
+        long expectedAdjustedCurrentTimeMillis =
+                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
+
+        verifyTimeServiceTimeZoneWasNotSet();
+        verifyTimeServiceTimeWasNotSet();
+
+        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
+
+        assertTrue(mNitzStateMachine.getNitzUpdatedTime());
+        assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
+    }
+
+    private void verifyTimeServiceTimeZoneWasNotSet() {
+        verify(mTimeServiceHelper, times(0)).setDeviceTimeZone(any(String.class));
+    }
+
+    private void verifyTimeServiceTimeZoneWasSet(String timeZoneId) {
+        verify(mTimeServiceHelper, times(1)).setDeviceTimeZone(timeZoneId);
+    }
+
+    private void verifyTimeServiceTimeWasNotSet() {
+        verify(mTimeServiceHelper, times(0)).setDeviceTime(anyLong());
+    }
+
+    private void verifyTimeServiceTimeWasSet(long expectedTimeMillis) {
         ArgumentCaptor<Long> timeServiceTimeCaptor = ArgumentCaptor.forClass(Long.TYPE);
         verify(mTimeServiceHelper, times(1)).setDeviceTime(timeServiceTimeCaptor.capture());
-        return timeServiceTimeCaptor.getValue();
+        assertEquals(expectedTimeMillis, (long) timeServiceTimeCaptor.getValue());
     }
 
-    private long verifyNitzTimePropertyWasSet() {
+    private void verifyNitzTimePropertyWasSet(long expectedTimeMillis) {
         ArgumentCaptor<Long> propertyCaptor = ArgumentCaptor.forClass(Long.TYPE);
         verify(mDeviceState, times(1)).setNitzTimeProperty(propertyCaptor.capture());
-        return propertyCaptor.getValue();
+        assertEquals(expectedTimeMillis, (long) propertyCaptor.getValue());
     }
 
     private void incrementSimulatedDeviceClock(int incMillis) {
@@ -116,27 +251,73 @@ public class NitzStateMachineTest extends TelephonyTest {
         when(mDeviceState.elapsedRealtime()).thenReturn(currentElapsedRealtime + incMillis);
     }
 
-    private NitzData createValidNitzDataForTime(TimeZone timeZone, long timeMillis,
-            boolean includeEmulatorTimeZone) {
-        int[] offsets = new int[2];
-        timeZone.getOffset(timeMillis, false /* local */, offsets);
-        int zoneOffsetMillis = offsets[0];
-        int dstOffsetMillis = offsets[1];
-
-        java.util.TimeZone emulatorTimeZone = null;
-        if (includeEmulatorTimeZone) {
-            emulatorTimeZone = java.util.TimeZone.getTimeZone(timeZone.getID());
-        }
-        return NitzData.createForTests(zoneOffsetMillis, dstOffsetMillis, timeMillis,
-                emulatorTimeZone);
-    }
-
-    private long createTime(TimeZone timeZone, int year, int monthOfYear, int dayOfMonth,
-            int hourOfDay, int minuteOfHour,
-            int secondOfMinute) {
+    private static long createTime(TimeZone timeZone, int year, int monthOfYear, int dayOfMonth,
+            int hourOfDay, int minuteOfHour, int secondOfMinute) {
         Calendar cal = new GregorianCalendar(timeZone);
         cal.clear();
         cal.set(year, monthOfYear - 1, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute);
         return cal.getTimeInMillis();
+    }
+
+    /**
+     * Creates a TestNitzSignal for an arbitrary time with a US time zone.
+     */
+    private TestNitzSignal createUsTestNitzSignal() {
+        long receivedRealtimeMillis = mDeviceState.elapsedRealtime();
+        long nitzTimeMillis = createTime(US_TIME_ZONE, 2017, 1, 2, 12, 45, 25);
+        return new TestNitzSignal(receivedRealtimeMillis, US_TIME_ZONE, nitzTimeMillis);
+    }
+
+    /**
+     * A class to contain a simulated NITZ signal and test metadata.
+     */
+    private static class TestNitzSignal {
+
+        private final long mReceivedRealtimeMillis;
+        private final TimeZone mTimeZone;
+        private final NitzData mNitzData;
+
+        TestNitzSignal(long receivedRealtimeMillis, TimeZone timeZone, long nitzTimeMillis) {
+            mReceivedRealtimeMillis = receivedRealtimeMillis;
+            mTimeZone = timeZone;
+            mNitzData = createValidNitzDataForTime(
+                    timeZone, nitzTimeMillis, false /* includeEmulatorTimeZone */);
+        }
+
+        NitzData getNitzData() {
+            return mNitzData;
+        }
+
+        long getReceivedRealtimeMillis() {
+            return mReceivedRealtimeMillis;
+        }
+
+        long getCurrentTimeInMillis() {
+            return mNitzData.getCurrentTimeInMillis();
+        }
+
+        String getTimeZoneId() {
+            return mTimeZone.getID();
+        }
+
+        long getAdjustedCurrentTimeMillis(long currentElapsedRealtimeMillis) {
+            long adjustmentMillis = currentElapsedRealtimeMillis - getReceivedRealtimeMillis();
+            return getCurrentTimeInMillis() + adjustmentMillis;
+        }
+
+        private static NitzData createValidNitzDataForTime(TimeZone timeZone, long timeMillis,
+                boolean includeEmulatorTimeZone) {
+            int[] offsets = new int[2];
+            timeZone.getOffset(timeMillis, false /* local */, offsets);
+            int zoneOffsetMillis = offsets[0];
+            int dstOffsetMillis = offsets[1];
+
+            java.util.TimeZone emulatorTimeZone = null;
+            if (includeEmulatorTimeZone) {
+                emulatorTimeZone = java.util.TimeZone.getTimeZone(timeZone.getID());
+            }
+            return NitzData.createForTests(zoneOffsetMillis, dstOffsetMillis, timeMillis,
+                    emulatorTimeZone);
+        }
     }
 }
