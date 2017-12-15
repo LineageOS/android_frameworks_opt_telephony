@@ -15,6 +15,20 @@
  */
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE;
+import static com.android.internal.telephony.TelephonyIntents
+        .ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.argThat;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.os.HandlerThread;
@@ -28,22 +42,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.compat.ArgumentMatcher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static com.android.internal.telephony.TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED;
-import static com.android.internal.telephony.TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.argThat;
+import java.util.Objects;
 
 public class CarrierSignalAgentTest extends TelephonyTest {
 
@@ -179,11 +181,8 @@ public class CarrierSignalAgentTest extends TelephonyTest {
         // Only wake signal is declared in the manifest
         doReturn(new ArrayList<>(Arrays.asList(mResolveInfo)))
                 .when(mPackageManager).queryBroadcastReceivers(
-                argThat(new ArgumentMatcher<Intent>() {
-                    @Override
-                    public boolean matchesObject(Object o) {
-                        return o instanceof Intent && ((Intent) o).getAction()
-                                .equals(ACTION_CARRIER_SIGNAL_PCO_VALUE); }}), anyInt());
+                argThat(o -> Objects.equals(o.getAction(), ACTION_CARRIER_SIGNAL_PCO_VALUE)),
+                anyInt());
 
         mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
         count++;
