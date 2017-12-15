@@ -61,6 +61,20 @@ public class TelephonyComponentFactory {
         return new ServiceStateTracker(phone, ci);
     }
 
+    /**
+     * Returns a new {@link NitzStateMachine} instance.
+     */
+    public NitzStateMachine makeNitzStateMachine(GsmCdmaPhone phone) {
+        return new NitzStateMachine(phone);
+    }
+
+    /**
+     * Returns a new {@link TimeServiceHelper} instance.
+     */
+    public TimeServiceHelper makeTimeServiceHelper(Context context) {
+        return new TimeServiceHelper(context);
+    }
+
     public SimActivationTracker makeSimActivationTracker(Phone phone) {
         return new SimActivationTracker(phone);
     }
