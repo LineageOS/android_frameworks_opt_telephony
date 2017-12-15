@@ -454,7 +454,7 @@ public class NitzStateMachine {
                 long adjustedCurrentTimeMillis = newNitzData.getCurrentTimeInMillis();
                 adjustedCurrentTimeMillis += millisSinceNitzReceived;
 
-                if (!mPhone.isPhoneTypeGsm() || mTimeServiceHelper.isTimeDetectionEnabled()) {
+                if (mTimeServiceHelper.isTimeDetectionEnabled()) {
                     String tmpLog = "NITZ: newNitaData=" + newNitzData
                             + " nitzReceiveTime=" + nitzReceiveTime
                             + " Setting time of day to " + adjustedCurrentTimeMillis
@@ -465,36 +465,29 @@ public class NitzStateMachine {
                         Rlog.d(LOG_TAG, tmpLog);
                     }
                     mTimeLog.log(tmpLog);
-                    if (mPhone.isPhoneTypeGsm()) {
-                        setAndBroadcastNetworkSetTime(adjustedCurrentTimeMillis);
-                        Rlog.i(LOG_TAG, "NITZ: after Setting time of day");
-                    } else {
-                        if (mTimeServiceHelper.isTimeDetectionEnabled()) {
-                            // Update system time automatically
-                            long gained = adjustedCurrentTimeMillis - System.currentTimeMillis();
-                            long timeSinceLastUpdate =
-                                    mDeviceState.elapsedRealtime() - mSavedAtTime;
-                            int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
-                            int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
-                            if ((mSavedAtTime == 0) || (timeSinceLastUpdate > nitzUpdateSpacing)
-                                    || (Math.abs(gained) > nitzUpdateDiff)) {
-                                if (DBG) {
-                                    Rlog.d(LOG_TAG, "NITZ: Auto updating time of day to "
-                                            + adjustedCurrentTimeMillis
-                                            + " NITZ receive delay=" + millisSinceNitzReceived
-                                            + "ms gained=" + gained + "ms from " + newNitzData);
-                                }
-
-                                setAndBroadcastNetworkSetTime(adjustedCurrentTimeMillis);
-                            } else {
-                                if (DBG) {
-                                    Rlog.d(LOG_TAG, "NITZ: ignore, a previous update was "
-                                            + timeSinceLastUpdate + "ms ago and gained="
-                                            + gained + "ms");
-                                }
-                                return;
-                            }
+                    // Update system time automatically
+                    long gained = adjustedCurrentTimeMillis - System.currentTimeMillis();
+                    long timeSinceLastUpdate =
+                            mDeviceState.elapsedRealtime() - mSavedAtTime;
+                    int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
+                    int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
+                    if ((mSavedAtTime == 0) || (timeSinceLastUpdate > nitzUpdateSpacing)
+                            || (Math.abs(gained) > nitzUpdateDiff)) {
+                        if (DBG) {
+                            Rlog.d(LOG_TAG, "NITZ: Auto updating time of day to "
+                                    + adjustedCurrentTimeMillis
+                                    + " NITZ receive delay=" + millisSinceNitzReceived
+                                    + "ms gained=" + gained + "ms from " + newNitzData);
                         }
+
+                        setAndBroadcastNetworkSetTime(adjustedCurrentTimeMillis);
+                    } else {
+                        if (DBG) {
+                            Rlog.d(LOG_TAG, "NITZ: ignore, a previous update was "
+                                    + timeSinceLastUpdate + "ms ago and gained="
+                                    + gained + "ms");
+                        }
+                        return;
                     }
                 }
                 saveNitzTime(adjustedCurrentTimeMillis);
