@@ -94,16 +94,8 @@ public class TimeServiceHelper {
      * Returns true if the device has an explicit time zone set.
      */
     public boolean isTimeZoneSettingInitialized() {
-        // timezone.equals("GMT") will be true and only true if the timezone was
-        // set to a default value by the system server (when starting, system server
-        // sets the persist.sys.timezone to "GMT" if it's not set). "GMT" is not used by
-        // any code that sets it explicitly (in case where something sets GMT explicitly,
-        // "Etc/GMT" Olsen ID would be used).
-        // TODO(b/64056758): Remove "timezone.equals("GMT")" hack when there's a
-        // better way of telling if the value has been defaulted.
+        return isTimeZoneSettingInitializedStatic();
 
-        String timeZoneId = SystemProperties.get(TIMEZONE_PROPERTY);
-        return timeZoneId != null && timeZoneId.length() > 0 && !timeZoneId.equals("GMT");
     }
 
     /**
@@ -135,12 +127,7 @@ public class TimeServiceHelper {
      * @param zoneId timezone set by carrier
      */
     public void setDeviceTimeZone(String zoneId) {
-        AlarmManager alarm = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
-        alarm.setTimeZone(zoneId);
-        Intent intent = new Intent(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        intent.putExtra("time-zone", zoneId);
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        setDeviceTimeZoneStatic(mContext, zoneId);
     }
 
     /**
@@ -155,5 +142,38 @@ public class TimeServiceHelper {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         intent.putExtra("time", time);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+    }
+
+    /**
+     * Static implementation of isTimeZoneSettingInitialized() for use from {@link MccTable}. This
+     * is a hack to deflake TelephonyTests when running on a device with a real SIM: in that
+     * situation real service events may come in while a TelephonyTest is running, leading to flakes
+     * as the real / fake instance of TimeServiceHelper is swapped in and out from
+     * {@link TelephonyComponentFactory}.
+     */
+    static boolean isTimeZoneSettingInitializedStatic() {
+        // timezone.equals("GMT") will be true and only true if the timezone was
+        // set to a default value by the system server (when starting, system server
+        // sets the persist.sys.timezone to "GMT" if it's not set). "GMT" is not used by
+        // any code that sets it explicitly (in case where something sets GMT explicitly,
+        // "Etc/GMT" Olsen ID would be used).
+        // TODO(b/64056758): Remove "timezone.equals("GMT")" hack when there's a
+        // better way of telling if the value has been defaulted.
+
+        String timeZoneId = SystemProperties.get(TIMEZONE_PROPERTY);
+        return timeZoneId != null && timeZoneId.length() > 0 && !timeZoneId.equals("GMT");
+    }
+
+    /**
+     * Static method for use by MccTable. See {@link #isTimeZoneSettingInitializedStatic()} for
+     * explanation.
+     */
+    static void setDeviceTimeZoneStatic(Context context, String zoneId) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        alarmManager.setTimeZone(zoneId);
+        Intent intent = new Intent(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+        intent.putExtra("time-zone", zoneId);
+        context.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 }
