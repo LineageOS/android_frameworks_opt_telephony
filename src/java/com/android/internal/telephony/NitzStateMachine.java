@@ -99,6 +99,13 @@ public class NitzStateMachine {
         }
 
         /**
+         * Returns the same value as {@link System#currentTimeMillis()}.
+         */
+        public long currentTimeMillis() {
+            return System.currentTimeMillis();
+        }
+
+        /**
          * Returns the same value as {@link SystemClock#elapsedRealtime()}.
          */
         public long elapsedRealtime() {
@@ -107,6 +114,31 @@ public class NitzStateMachine {
 
         public String getNetworkCountryIsoForPhone() {
             return mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
+        }
+    }
+
+    /** A pair containing a value and an associated time stamp. */
+    private static class TimeStampedValue<T> {
+        /** The value. */
+        final T mValue;
+
+        /**
+         * The value of {@link SystemClock#elapsedRealtime} or equivalent when value was
+         * determined.
+         */
+        final long mElapsedRealtime;
+
+        TimeStampedValue(T value, long elapsedRealtime) {
+            this.mValue = value;
+            this.mElapsedRealtime = elapsedRealtime;
+        }
+
+        @Override
+        public String toString() {
+            return "TimeStampedValue{"
+                    + "mValue=" + mValue
+                    + ", mElapsedRealtime=" + mElapsedRealtime
+                    + '}';
         }
     }
 
@@ -142,8 +174,16 @@ public class NitzStateMachine {
             "tg", // Togo
     };
 
-    private final LocalLog mTimeLog = new LocalLog(15);
-    private final LocalLog mTimeZoneLog = new LocalLog(15);
+    // Time detection state.
+
+    /**
+     * The last NITZ-sourced time considered. If auto time detection was off at the time this may
+     * not have been used to set the device time, but it can be used if auto time detection is
+     * re-enabled.
+     */
+    private TimeStampedValue<Long> mSavedNitzTime;
+
+    // Time Zone detection state.
 
     /**
      * Sometimes we get the NITZ time before we know what country we
@@ -155,19 +195,26 @@ public class NitzStateMachine {
     private NitzData mNitzData;
     private boolean mGotCountryCode = false;
     private String mSavedTimeZoneId;
-    private long mSavedTime;
-    private long mSavedAtTime;
 
-    /** Wake lock used while setting time of day. */
-    private PowerManager.WakeLock mWakeLock;
-    private static final String WAKELOCK_TAG = "NitzStateMachine";
+    /**
+     * Boolean is {@code true} if {@link #setTimeZoneFromNitz(NitzData, long)} has been called and
+     * was able to determine a time zone (which may not ultimately have been used due to user
+     * settings). Cleared by {@link #clearNitzTimeZoneDetectionSuccessful()},
+     * The flag can be used when historic NITZ data may no longer be valid. {@code true} indicates
+     * it's not reasonable to try to set the time zone using less reliable algorithms than
+     * NITZ-based detection such as by just using network country code.
+     */
+    private boolean mNitzTimeZoneDetectionSuccessful = false;
 
-    /** Boolean is true if setTimeFromNITZ was called */
-    private boolean mNitzUpdatedTime = false;
-
+    // Miscellaneous dependencies and helpers not related to detection state.
+    private final LocalLog mTimeLog = new LocalLog(15);
+    private final LocalLog mTimeZoneLog = new LocalLog(15);
     private final GsmCdmaPhone mPhone;
     private final DeviceState mDeviceState;
     private final TimeServiceHelper mTimeServiceHelper;
+    /** Wake lock used while setting time of day. */
+    private final PowerManager.WakeLock mWakeLock;
+    private static final String WAKELOCK_TAG = "NitzStateMachine";
 
     public NitzStateMachine(GsmCdmaPhone phone) {
         this(phone,
@@ -251,24 +298,30 @@ public class NitzStateMachine {
             // a zero UTC offset) the device will retain the existing time zone setting and not try
             // to derive one from the isoCountryCode.
             if (mNeedFixZoneAfterNitz) {
-                long ctm = System.currentTimeMillis();
-                long tzOffset = zone.getOffset(ctm);
-                if (DBG) {
-                    Rlog.d(LOG_TAG, "fixTimeZone: tzOffset=" + tzOffset
-                            + " ltod=" + TimeUtils.logTimeOfDay(ctm));
-                }
-                if (mTimeServiceHelper.isTimeDetectionEnabled()) {
-                    long adj = ctm - tzOffset;
+                try {
+                    // Acquire the wakelock as we're reading the system clock here.
+                    mWakeLock.acquire();
+
+                    long ctm = mDeviceState.currentTimeMillis();
+                    long tzOffset = zone.getOffset(ctm);
                     if (DBG) {
-                        Rlog.d(LOG_TAG, "fixTimeZone: adj ltod=" + TimeUtils.logTimeOfDay(adj));
+                        Rlog.d(LOG_TAG, "fixTimeZone: tzOffset=" + tzOffset
+                                + " ltod=" + TimeUtils.logTimeOfDay(ctm));
                     }
-                    setAndBroadcastNetworkSetTime(adj);
-                } else {
-                    // Adjust the saved NITZ time to account for tzOffset.
-                    mSavedTime = mSavedTime - tzOffset;
-                    if (DBG) {
-                        Rlog.d(LOG_TAG, "fixTimeZone: adj mSavedTime=" + mSavedTime);
+                    if (mTimeServiceHelper.isTimeDetectionEnabled()) {
+                        long adj = ctm - tzOffset;
+                        String msg = "fixTimeZone: adj ltod=" + TimeUtils.logTimeOfDay(adj);
+                        setAndBroadcastNetworkSetTime(msg, adj);
+                    } else {
+                        // Adjust the saved NITZ time to account for tzOffset.
+                        mSavedNitzTime = new TimeStampedValue<>(
+                                mSavedNitzTime.mValue - tzOffset, mSavedNitzTime.mElapsedRealtime);
+                        if (DBG) {
+                            Rlog.d(LOG_TAG, "fixTimeZone: adj mSavedTime=" + mSavedNitzTime);
+                        }
                     }
+                } finally {
+                    mWakeLock.release();
                 }
             }
             if (DBG) {
@@ -327,7 +380,10 @@ public class NitzStateMachine {
      */
     public void setTimeAndTimeZoneFromNitz(NitzData newNitzData, long nitzReceiveTime) {
         setTimeZoneFromNitz(newNitzData, nitzReceiveTime);
-        setTimeFromNitz(newNitzData, nitzReceiveTime);
+
+        TimeStampedValue<NitzData> nitzSignal =
+                new TimeStampedValue<>(newNitzData, nitzReceiveTime);
+        setTimeFromNitz(nitzSignal);
     }
 
     private void setTimeZoneFromNitz(NitzData newNitzData, long nitzReceiveTime) {
@@ -395,6 +451,7 @@ public class NitzStateMachine {
                 if (mTimeServiceHelper.isTimeZoneDetectionEnabled()) {
                     setAndBroadcastNetworkSetTimeZone(zone.getID());
                 }
+                mNitzTimeZoneDetectionSuccessful = true;
                 saveNitzTimeZone(zone.getID());
             }
         } catch (RuntimeException ex) {
@@ -402,95 +459,89 @@ public class NitzStateMachine {
         }
     }
 
-    private void setTimeFromNitz(NitzData newNitzData, long nitzReceiveTime) {
+    private void setTimeFromNitz(TimeStampedValue<NitzData> nitzTimeSignal) {
         try {
             boolean ignoreNitz = mDeviceState.getIgnoreNitz();
             if (ignoreNitz) {
-                Rlog.d(LOG_TAG, "NITZ: Not setting clock because gsm.ignore-nitz is set");
+                Rlog.d(LOG_TAG,
+                        "setTimeFromNitz: Not setting clock because gsm.ignore-nitz is set");
                 return;
             }
 
             try {
+                // Acquire the wake lock as we are reading the elapsed realtime clock and system
+                // clock.
                 mWakeLock.acquire();
 
-                long millisSinceNitzReceived = mDeviceState.elapsedRealtime() - nitzReceiveTime;
-                if (millisSinceNitzReceived < 0) {
-                    // Sanity check: something is wrong
+                // Validate the nitzTimeSignal to reject obviously bogus elapsedRealtime values.
+                long elapsedRealtime = mDeviceState.elapsedRealtime();
+                long millisSinceNitzReceived = elapsedRealtime - nitzTimeSignal.mElapsedRealtime;
+                if (millisSinceNitzReceived < 0 || millisSinceNitzReceived > Integer.MAX_VALUE) {
                     if (DBG) {
-                        Rlog.d(LOG_TAG, "NITZ: not setting time, clock has rolled "
-                                + "backwards since NITZ time was received, "
-                                + newNitzData);
+                        Rlog.d(LOG_TAG, "setTimeFromNitz: not setting time, unexpected"
+                                + " elapsedRealtime=" + elapsedRealtime
+                                + " nitzTimeSignal=" + nitzTimeSignal);
                     }
                     return;
                 }
 
-                if (millisSinceNitzReceived > Integer.MAX_VALUE) {
-                    // If the time is this far off, something is wrong > 24 days!
-                    if (DBG) {
-                        Rlog.d(LOG_TAG, "NITZ: not setting time, processing has taken "
-                                + (millisSinceNitzReceived / (1000 * 60 * 60 * 24))
-                                + " days");
-                    }
-                    return;
-                }
-
-                // Adjust the NITZ time by the delay since it was received.
-                long adjustedCurrentTimeMillis = newNitzData.getCurrentTimeInMillis();
-                adjustedCurrentTimeMillis += millisSinceNitzReceived;
+                // Adjust the NITZ time by the delay since it was received to get the time now.
+                long adjustedCurrentTimeMillis =
+                        nitzTimeSignal.mValue.getCurrentTimeInMillis() + millisSinceNitzReceived;
+                long gained = adjustedCurrentTimeMillis - mDeviceState.currentTimeMillis();
 
                 if (mTimeServiceHelper.isTimeDetectionEnabled()) {
-                    String tmpLog = "NITZ: newNitaData=" + newNitzData
-                            + " nitzReceiveTime=" + nitzReceiveTime
-                            + " Setting time of day to " + adjustedCurrentTimeMillis
-                            + " NITZ receive delay(ms): " + millisSinceNitzReceived
-                            + " gained(ms): "
-                            + (adjustedCurrentTimeMillis - System.currentTimeMillis());
-                    if (DBG) {
-                        Rlog.d(LOG_TAG, tmpLog);
-                    }
-                    mTimeLog.log(tmpLog);
-                    // Update system time automatically
-                    long gained = adjustedCurrentTimeMillis - System.currentTimeMillis();
-                    long timeSinceLastUpdate =
-                            mDeviceState.elapsedRealtime() - mSavedAtTime;
-                    int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
-                    int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
-                    if ((mSavedAtTime == 0) || (timeSinceLastUpdate > nitzUpdateSpacing)
-                            || (Math.abs(gained) > nitzUpdateDiff)) {
-                        if (DBG) {
-                            Rlog.d(LOG_TAG, "NITZ: Auto updating time of day to "
-                                    + adjustedCurrentTimeMillis
-                                    + " NITZ receive delay=" + millisSinceNitzReceived
-                                    + "ms gained=" + gained + "ms from " + newNitzData);
-                        }
+                    String logMsg = "(setTimeFromNitz)"
+                            + " nitzTimeSignal=" + nitzTimeSignal
+                            + " adjustedCurrentTimeMillis=" + adjustedCurrentTimeMillis
+                            + " millisSinceNitzReceived= " + millisSinceNitzReceived
+                            + " gained=" + gained;
 
-                        setAndBroadcastNetworkSetTime(adjustedCurrentTimeMillis);
+                    if (mSavedNitzTime == null) {
+                        logMsg += ": First update received.";
+                        setAndBroadcastNetworkSetTime(logMsg, adjustedCurrentTimeMillis);
                     } else {
-                        if (DBG) {
-                            Rlog.d(LOG_TAG, "NITZ: ignore, a previous update was "
-                                    + timeSinceLastUpdate + "ms ago and gained="
-                                    + gained + "ms");
+                        long elapsedRealtimeSinceLastSaved =
+                                mDeviceState.elapsedRealtime() - mSavedNitzTime.mElapsedRealtime;
+                        int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
+                        int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
+                        if (elapsedRealtimeSinceLastSaved > nitzUpdateSpacing
+                                || Math.abs(gained) > nitzUpdateDiff) {
+                            // Either it has been a while since we received an update, or the gain
+                            // is sufficiently large that we want to act on it.
+                            logMsg += ": New update received.";
+                            setAndBroadcastNetworkSetTime(logMsg, adjustedCurrentTimeMillis);
+                        } else {
+                            if (DBG) {
+                                Rlog.d(LOG_TAG, logMsg + ": Update throttled.");
+                            }
+
+                            // Return early. This means that we don't reset the
+                            // mSavedNitzTime for next time and that we may act on more
+                            // NITZ time signals overall but should end up with a system clock that
+                            // tracks NITZ more closely than if we saved throttled values (which
+                            // would reset mSavedNitzTime.elapsedRealtime used to calculate time
+                            // since the last NITZ signal was received).
+                            return;
                         }
-                        return;
                     }
                 }
-                saveNitzTime(adjustedCurrentTimeMillis);
+
+                // Save the last NITZ time signal used so we can return to it later
+                // if auto-time detection is toggled.
+                mSavedNitzTime = new TimeStampedValue<>(
+                        adjustedCurrentTimeMillis, nitzTimeSignal.mElapsedRealtime);
             } finally {
                 mWakeLock.release();
             }
         } catch (RuntimeException ex) {
-            Rlog.e(LOG_TAG, "NITZ: Processing NITZ data " + newNitzData + " ex=" + ex);
+            Rlog.e(LOG_TAG, "setTimeFromNitz: Processing NITZ data " + nitzTimeSignal
+                    + " ex=" + ex);
         }
     }
 
     private void saveNitzTimeZone(String zoneId) {
         mSavedTimeZoneId = zoneId;
-    }
-
-    private void saveNitzTime(long time) {
-        mSavedTime = time;
-        mSavedAtTime = mDeviceState.elapsedRealtime();
-        mNitzUpdatedTime = true;
     }
 
     private void setAndBroadcastNetworkSetTimeZone(String zoneId) {
@@ -505,24 +556,38 @@ public class NitzStateMachine {
         }
     }
 
-    private void setAndBroadcastNetworkSetTime(long time) {
-        if (DBG) {
-            Rlog.d(LOG_TAG, "setAndBroadcastNetworkSetTime: time=" + time + "ms");
+    private void setAndBroadcastNetworkSetTime(String msg, long time) {
+        if (!mWakeLock.isHeld()) {
+            Rlog.w(LOG_TAG, "Wake lock not held while setting device time (msg=" + msg + ")");
         }
+
+        msg = "setAndBroadcastNetworkSetTime: [setting time to time=" + time + "]:" + msg;
+        if (DBG) {
+            Rlog.d(LOG_TAG, msg);
+        }
+        mTimeLog.log(msg);
         mTimeServiceHelper.setDeviceTime(time);
         TelephonyMetrics.getInstance().writeNITZEvent(mPhone.getPhoneId(), time);
     }
 
     private void revertToNitzTime() {
         if (DBG) {
-            Rlog.d(LOG_TAG, "Reverting to NITZ Time: mSavedTime=" + mSavedTime
-                    + " mSavedAtTime=" + mSavedAtTime);
+            Rlog.d(LOG_TAG, "Reverting to NITZ Time: mSavedTime=" + mSavedNitzTime);
         }
-        if (mSavedTime != 0 && mSavedAtTime != 0) {
-            long currTime = mDeviceState.elapsedRealtime();
-            mTimeLog.log("Reverting to NITZ time, currTime=" + currTime
-                    + " mSavedAtTime=" + mSavedAtTime + " mSavedTime=" + mSavedTime);
-            setAndBroadcastNetworkSetTime(mSavedTime + (currTime - mSavedAtTime));
+        if (mSavedNitzTime != null) {
+            try {
+                // Acquire the wakelock as we're reading the elapsed realtime clock here.
+                mWakeLock.acquire();
+
+                long elapsedRealtime = mDeviceState.elapsedRealtime();
+                String msg = "Reverting to NITZ time, elapsedRealtime=" + elapsedRealtime
+                        + " mSavedNitzTime=" + mSavedNitzTime;
+                long adjustedCurrentTimeMillis =
+                        mSavedNitzTime.mValue + (elapsedRealtime - mSavedNitzTime.mElapsedRealtime);
+                setAndBroadcastNetworkSetTime(msg, adjustedCurrentTimeMillis);
+            } finally {
+                mWakeLock.release();
+            }
         }
     }
 
@@ -546,14 +611,18 @@ public class NitzStateMachine {
      * Dumps the current in-memory state to the supplied PrintWriter.
      */
     public void dumpState(PrintWriter pw) {
+        // Time Detection State
+        pw.println(" mSavedTime=" + mSavedNitzTime);
+
+        // Time Zone Detection State
         pw.println(" mNeedFixZoneAfterNitz=" + mNeedFixZoneAfterNitz);
         pw.println(" mNitzData=" + mNitzData);
         pw.println(" mGotCountryCode=" + mGotCountryCode);
         pw.println(" mSavedTimeZone=" + mSavedTimeZoneId);
-        pw.println(" mSavedTime=" + mSavedTime);
-        pw.println(" mSavedAtTime=" + mSavedAtTime);
+        pw.println(" mNitzTimeZoneDetectionSuccessful=" + mNitzTimeZoneDetectionSuccessful);
+
+        // Miscellaneous
         pw.println(" mWakeLock=" + mWakeLock);
-        pw.println(" mNitzUpdatedTime=" + mNitzUpdatedTime);
         pw.flush();
     }
 
@@ -600,17 +669,17 @@ public class NitzStateMachine {
     }
 
     /**
-     * Clear the mNitzUpdatedTime flag.
+     * Clear the mNitzTimeZoneDetectionSuccessful flag.
      */
-    public void clearNitzUpdatedTime() {
-        mNitzUpdatedTime = false;
+    public void clearNitzTimeZoneDetectionSuccessful() {
+        mNitzTimeZoneDetectionSuccessful = false;
     }
 
     /**
-     * Get the mNitzUpdatedTime flag value.
+     * Get the mNitzTimeZoneDetectionSuccessful flag value.
      */
-    public boolean getNitzUpdatedTime() {
-        return mNitzUpdatedTime;
+    public boolean getNitzTimeZoneDetectionSuccessful() {
+        return mNitzTimeZoneDetectionSuccessful;
     }
 
     /**
@@ -621,10 +690,11 @@ public class NitzStateMachine {
     }
 
     /**
-     * Returns true if mNitzUpdatedTime and automatic time zone detection is enabled.
+     * Returns true if !mNitzTimeZoneDetectionSuccessful and automatic time zone detection is
+     * enabled.
      */
     public boolean shouldUpdateTimeZoneUsingCountryCode() {
-        return !mNitzUpdatedTime && mTimeServiceHelper.isTimeZoneDetectionEnabled();
+        return !mNitzTimeZoneDetectionSuccessful && mTimeServiceHelper.isTimeZoneDetectionEnabled();
     }
 
     /**
@@ -648,5 +718,4 @@ public class NitzStateMachine {
     public boolean fixTimeZoneCallNeeded() {
         return mNeedFixZoneAfterNitz;
     }
-
 }
