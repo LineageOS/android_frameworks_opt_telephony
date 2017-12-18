@@ -33,6 +33,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IndentingPrintWriter;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
@@ -147,7 +148,7 @@ public class CarrierActionAgent extends Handler {
                 break;
             case EVENT_MOBILE_DATA_SETTINGS_CHANGED:
                 log("EVENT_MOBILE_DATA_SETTINGS_CHANGED");
-                if (!mPhone.getDataEnabled()) carrierActionReset();
+                if (!mPhone.isUserDataEnabled()) carrierActionReset();
                 break;
             case EVENT_DATA_ROAMING_OFF:
                 log("EVENT_DATA_ROAMING_OFF");
