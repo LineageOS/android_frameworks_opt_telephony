@@ -445,12 +445,17 @@ abstract class SipPhoneBase extends Phone {
     }
 
     @Override
-    public boolean getDataEnabled() {
+    public boolean isUserDataEnabled() {
         return false;
     }
 
     @Override
-    public void setDataEnabled(boolean enable) {
+    public boolean isDataEnabled() {
+        return false;
+    }
+
+    @Override
+    public void setUserDataEnabled(boolean enable) {
     }
 
     public boolean enableDataConnectivity() {

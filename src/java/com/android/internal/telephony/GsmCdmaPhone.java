@@ -1982,13 +1982,18 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public boolean getDataEnabled() {
-        return mDcTracker.getDataEnabled();
+    public boolean isUserDataEnabled() {
+        return mDcTracker.isUserDataEnabled();
     }
 
     @Override
-    public void setDataEnabled(boolean enable) {
-        mDcTracker.setDataEnabled(enable);
+    public boolean isDataEnabled() {
+        return mDcTracker.isDataEnabled();
+    }
+
+    @Override
+    public void setUserDataEnabled(boolean enable) {
+        mDcTracker.setUserDataEnabled(enable);
     }
 
     /**
