@@ -82,8 +82,6 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_NETWORK_LOCKED = 9;
 
     private static final int EVENT_ICC_RECORD_EVENTS = 500;
-    private static final int EVENT_SUBSCRIPTION_ACTIVATED = 501;
-    private static final int EVENT_SUBSCRIPTION_DEACTIVATED = 502;
     private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 503;
 
     private Integer mPhoneId = null;
@@ -242,16 +240,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 mNetworkLockedRegistrants.notifyRegistrants();
                 setExternalState(State.NETWORK_LOCKED);
                 break;
-            case EVENT_SUBSCRIPTION_ACTIVATED:
-                log("EVENT_SUBSCRIPTION_ACTIVATED");
-                onSubscriptionActivated();
-                break;
-
-            case EVENT_SUBSCRIPTION_DEACTIVATED:
-                log("EVENT_SUBSCRIPTION_DEACTIVATED");
-                onSubscriptionDeactivated();
-                break;
-
             case EVENT_ICC_RECORD_EVENTS:
                 if ((mCurrentAppType == UiccController.APP_FAM_3GPP) && (mIccRecords != null)) {
                     AsyncResult ar = (AsyncResult)msg.obj;
@@ -275,17 +263,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 loge("Unhandled message with number: " + msg.what);
                 break;
         }
-    }
-
-    private void onSubscriptionActivated() {
-        updateIccAvailability();
-        updateStateProperty();
-    }
-
-    private void onSubscriptionDeactivated() {
-        resetProperties();
-        updateIccAvailability();
-        updateStateProperty();
     }
 
     private void onRecordsLoaded() {
