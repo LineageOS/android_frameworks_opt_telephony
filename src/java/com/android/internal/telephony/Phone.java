@@ -121,7 +121,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
                     mImsServiceReady = true;
                     updateImsPhone();
-                    ImsManager.updateImsServiceConfig(mContext, mPhoneId, false);
+                    ImsManager.getInstance(mContext, mPhoneId).updateImsServiceConfig(false);
                 } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
                     mImsServiceReady = false;
                     updateImsPhone();
@@ -3327,12 +3327,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return {@code true} if IMS calling is enabled.
      */
     public boolean isImsUseEnabled() {
-        boolean imsUseEnabled =
-                ((ImsManager.isVolteEnabledByPlatform(mContext) &&
-                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext)) ||
-                (ImsManager.isWfcEnabledByPlatform(mContext) &&
-                ImsManager.isWfcEnabledByUser(mContext)) &&
-                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext));
+        ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
+        boolean imsUseEnabled = ((imsManager.isVolteEnabledByPlatform()
+                && imsManager.isEnhanced4gLteModeSettingEnabledByUser())
+                || (imsManager.isWfcEnabledByPlatform() && imsManager.isWfcEnabledByUser())
+                && imsManager.isNonTtyOrTtyOnVolteEnabled());
         return imsUseEnabled;
     }
 
@@ -3453,13 +3452,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return false;
     }
 
-    public static void checkWfcWifiOnlyModeBeforeDial(Phone imsPhone, Context context)
+    public static void checkWfcWifiOnlyModeBeforeDial(Phone imsPhone, int phoneId, Context context)
             throws CallStateException {
         if (imsPhone == null || !imsPhone.isWifiCallingEnabled()) {
-            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(context) &&
-                    ImsManager.isWfcEnabledByUser(context) &&
-                    (ImsManager.getWfcMode(context) ==
-                            ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
+            ImsManager imsManager = ImsManager.getInstance(context, phoneId);
+            boolean wfcWiFiOnly = (imsManager.isWfcEnabledByPlatform()
+                    && imsManager.isWfcEnabledByUser() && (imsManager.getWfcMode()
+                    == ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
             if (wfcWiFiOnly) {
                 throw new CallStateException(
                         CallStateException.ERROR_OUT_OF_SERVICE,
