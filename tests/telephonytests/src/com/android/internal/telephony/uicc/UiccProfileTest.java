@@ -33,6 +33,8 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cat.CatService;
 
@@ -50,6 +52,11 @@ public class UiccProfileTest extends TelephonyTest {
     }
 
     private IccIoResult mIccIoResult;
+    // Must match UiccProfile.EVENT_RADIO_ON
+    private static final int EVENT_RADIO_ON = 2;
+    // Must match UiccProfile.EVENT_APP_READY
+    private static final int EVENT_APP_READY = 6;
+    private static final int SCARY_SLEEP_MS = 200;
 
     private UiccProfileHandlerThread mTestHandlerThread;
     private Handler mHandler;
@@ -237,4 +244,120 @@ public class UiccProfileTest extends TelephonyTest {
                 mCaptorLong.capture());
         assertEquals(UICCPROFILE_CARRIER_PRIVILEDGE_LOADED_EVENT, mCaptorMessage.getValue().what);
     }
+
+    @Test
+    @SmallTest
+    public void testInitialCardState() {
+        assertEquals(mUiccProfile.getState(), State.UNKNOWN);
+    }
+
+    @Test
+    @SmallTest
+    public void testPowerOn() {
+        mSimulatedCommands.setRadioPower(true, null);
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_RADIO_ON));
+        waitForMs(SCARY_SLEEP_MS);
+        assertEquals(CommandsInterface.RadioState.RADIO_ON, mSimulatedCommands.getRadioState());
+        assertEquals(mUiccProfile.getState(), State.NOT_READY);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateUiccProfileApplicationNotReady() {
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_RADIO_ON));
+        /* update app status and index */
+        IccCardApplicationStatus cdmaApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_CSIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA0");
+        IccCardApplicationStatus imsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_ISIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA1");
+        IccCardApplicationStatus umtsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_USIM,
+                IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN, "0xA2");
+        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{cdmaApp, imsApp, umtsApp};
+        mIccCardStatus.mCdmaSubscriptionAppIndex = 0;
+        mIccCardStatus.mImsSubscriptionAppIndex = 1;
+        mIccCardStatus.mGsmUmtsSubscriptionAppIndex = 2;
+        Message mProfileUpdate = mHandler.obtainMessage(UICCPROFILE_UPDATE_APPLICATION_EVENT);
+        setReady(false);
+        mProfileUpdate.sendToTarget();
+
+        waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
+        assertEquals(3, mUiccProfile.getNumApplications());
+
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        waitForMs(SCARY_SLEEP_MS);
+        assertEquals(mUiccProfile.getState(), State.NOT_READY);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateUiccProfileApplicationAllReady() {
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_RADIO_ON));
+        /* update app status and index */
+        IccCardApplicationStatus cdmaApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_CSIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA0");
+        IccCardApplicationStatus imsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_ISIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA1");
+        IccCardApplicationStatus umtsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_USIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA2");
+        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{cdmaApp, imsApp, umtsApp};
+        mIccCardStatus.mCdmaSubscriptionAppIndex = 0;
+        mIccCardStatus.mImsSubscriptionAppIndex = 1;
+        mIccCardStatus.mGsmUmtsSubscriptionAppIndex = 2;
+        Message mProfileUpdate = mHandler.obtainMessage(UICCPROFILE_UPDATE_APPLICATION_EVENT);
+        setReady(false);
+        mProfileUpdate.sendToTarget();
+
+        waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
+        assertEquals(3, mUiccProfile.getNumApplications());
+
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        waitForMs(SCARY_SLEEP_MS);
+        assertEquals(mUiccProfile.getState(), State.READY);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateUiccProfileApplicationAllSupportedAppsReady() {
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_RADIO_ON));
+        /* update app status and index */
+        IccCardApplicationStatus cdmaApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_CSIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA0");
+        IccCardApplicationStatus imsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_ISIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA1");
+        IccCardApplicationStatus umtsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_UNKNOWN,
+                IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN, "0xA2");
+        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{cdmaApp, imsApp, umtsApp};
+        mIccCardStatus.mCdmaSubscriptionAppIndex = 0;
+        mIccCardStatus.mImsSubscriptionAppIndex = 1;
+        mIccCardStatus.mGsmUmtsSubscriptionAppIndex = 2;
+        Message mProfileUpdate = mHandler.obtainMessage(UICCPROFILE_UPDATE_APPLICATION_EVENT);
+        setReady(false);
+        mProfileUpdate.sendToTarget();
+
+        waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
+        assertEquals(3, mUiccProfile.getNumApplications());
+
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        waitForMs(SCARY_SLEEP_MS);
+        assertEquals(mUiccProfile.getState(), State.READY);
+    }
+
 }

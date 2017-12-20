@@ -130,7 +130,6 @@ public class UiccProfile extends Handler implements IccCard {
     private RegistrantList mNetworkLockedRegistrants = new RegistrantList();
 
     private int mCurrentAppType = UiccController.APP_FAM_3GPP; //default to 3gpp?
-    private UiccController mUiccController = null;
     private UiccCardApplication mUiccApplication = null;
     private IccRecords mIccRecords = null;
     private CommandsInterface.RadioState mRadioState =
@@ -151,9 +150,6 @@ public class UiccProfile extends Handler implements IccCard {
         update(c, ci, ics);
 
         if (ICC_CARD_PROXY_REMOVED) {
-            mTelephonyManager = (TelephonyManager) mContext.getSystemService(
-                    Context.TELEPHONY_SERVICE);
-            mUiccController = UiccController.getInstance();
             ci.registerForOn(this, EVENT_RADIO_ON, null);
             ci.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
 
@@ -175,8 +171,6 @@ public class UiccProfile extends Handler implements IccCard {
             if (DBG) log("Disposing profile");
 
             if (ICC_CARD_PROXY_REMOVED) {
-                mUiccController.unregisterForIccChanged(this);
-                mUiccController = null;
                 mCi.unregisterForOn(this);
                 mCi.unregisterForOffOrNotAvailable(this);
             }
@@ -245,10 +239,15 @@ public class UiccProfile extends Handler implements IccCard {
                 break;
 
             case EVENT_APP_READY:
-                setExternalState(IccCardConstants.State.READY);
+                if (areAllApplicationsReady()) {
+                    setExternalState(IccCardConstants.State.READY);
+                }
                 break;
 
             case EVENT_RECORDS_LOADED:
+                if (!areAllRecordsLoaded()) {
+                    break;
+                }
                 // Update the MCC/MNC.
                 if (mIccRecords != null) {
                     String operator = mIccRecords.getOperatorNumeric();
@@ -386,27 +385,39 @@ public class UiccProfile extends Handler implements IccCard {
 
     private void registerUiccCardEvents() {
         // todo: all of these should be notified to UiccProfile directly without needing to register
-        if (mUiccApplication != null) {
-            mUiccApplication.registerForReady(this, EVENT_APP_READY, null);
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null) {
+                app.registerForReady(this, EVENT_APP_READY, null);
+                IccRecords ir = app.getIccRecords();
+                if (ir != null) {
+                    ir.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
+                    ir.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
+                }
+            }
         }
+        // In case of locked, only listen to the current application.
         if (mIccRecords != null) {
-            mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
             mIccRecords.registerForLockedRecordsLoaded(this, EVENT_ICC_LOCKED, null);
             mIccRecords.registerForNetworkLockedRecordsLoaded(this, EVENT_NETWORK_LOCKED, null);
-            mIccRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
         }
+
     }
 
     private void unregisterUiccCardEvents() {
         if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
-        if (mUiccApplication != null) {
-            mUiccApplication.unregisterForReady(this);
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null) {
+                app.unregisterForReady(this);
+                IccRecords ir = app.getIccRecords();
+                if (ir != null) {
+                    ir.unregisterForRecordsLoaded(this);
+                    ir.unregisterForRecordsEvents(this);
+                }
+            }
         }
         if (mIccRecords != null) {
-            mIccRecords.unregisterForRecordsLoaded(this);
             mIccRecords.unregisterForLockedRecordsLoaded(this);
             mIccRecords.unregisterForNetworkLockedRecordsLoaded(this);
-            mIccRecords.unregisterForRecordsEvents(this);
         }
     }
 
@@ -803,6 +814,8 @@ public class UiccProfile extends Handler implements IccCard {
             mImsSubscriptionAppIndex = ics.mImsSubscriptionAppIndex;
             mContext = c;
             mCi = ci;
+            mTelephonyManager = (TelephonyManager) mContext.getSystemService(
+                    Context.TELEPHONY_SERVICE);
 
             //update applications
             if (DBG) log(ics.mApplications.length + " applications");
@@ -836,6 +849,9 @@ public class UiccProfile extends Handler implements IccCard {
             }
 
             sanitizeApplicationIndexesLocked();
+            if (mInitialized) {
+                updateIccAvailability();
+            }
         }
     }
 
@@ -874,6 +890,38 @@ public class UiccProfile extends Handler implements IccCard {
                         mCdmaSubscriptionAppIndex, AppType.APPTYPE_RUIM, AppType.APPTYPE_CSIM);
         mImsSubscriptionAppIndex =
                 checkIndexLocked(mImsSubscriptionAppIndex, AppType.APPTYPE_ISIM, null);
+    }
+
+    private boolean isSupportedApplication(UiccCardApplication app) {
+        if (app.getType() != AppType.APPTYPE_USIM && app.getType() != AppType.APPTYPE_CSIM
+                && app.getType() != AppType.APPTYPE_ISIM && app.getType() != AppType.APPTYPE_SIM
+                && app.getType() != AppType.APPTYPE_RUIM) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean areAllApplicationsReady() {
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null && isSupportedApplication(app) && !app.isReady()) {
+                return false;
+            }
+        }
+        // Returns false if there is no application in the UiccProfile.
+        return mUiccApplications[0] != null;
+    }
+
+    private boolean areAllRecordsLoaded() {
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null && isSupportedApplication(app)) {
+                IccRecords ir = app.getIccRecords();
+                if (ir == null || !ir.isLoaded()) {
+                    return false;
+                }
+            }
+        }
+        // Returns false if there is no application in the UiccProfile.
+        return mUiccApplications[0] != null;
     }
 
     private int checkIndexLocked(int index, AppType expectedAppType, AppType altExpectedAppType) {
@@ -1439,7 +1487,6 @@ public class UiccProfile extends Handler implements IccCard {
                         + ((Registrant) mNetworkLockedRegistrants.get(i)).getHandler());
             }
             pw.println(" mCurrentAppType=" + mCurrentAppType);
-            pw.println(" mUiccController=" + mUiccController);
             pw.println(" mUiccCard=" + mUiccCard);
             pw.println(" mUiccApplication=" + mUiccApplication);
             pw.println(" mIccRecords=" + mIccRecords);

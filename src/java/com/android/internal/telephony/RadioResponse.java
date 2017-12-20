@@ -1297,6 +1297,7 @@ public class RadioResponse extends IRadioResponse.Stub {
             appStatus.pin1           = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
             appStatus.pin2           = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
             iccCardStatus.mApplications[i] = appStatus;
+            mRil.riljLog("IccCardApplicationStatus " + i + ":" + appStatus.toString());
         }
         return iccCardStatus;
     }

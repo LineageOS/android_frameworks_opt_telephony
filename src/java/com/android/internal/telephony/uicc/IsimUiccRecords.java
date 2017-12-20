@@ -185,6 +185,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
 
         mRecordsRequested = false;
         mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
+        mLoaded.set(false);
     }
 
     private class EfIsimImpiLoaded implements IccRecords.IccRecordLoaded {
@@ -306,6 +307,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     @Override
     protected void onAllRecordsLoaded() {
        if (DBG) log("record load complete");
+        mLoaded.set(true);
         mRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
     }
 

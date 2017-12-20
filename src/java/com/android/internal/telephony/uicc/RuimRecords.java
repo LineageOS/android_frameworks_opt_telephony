@@ -157,6 +157,7 @@ public class RuimRecords extends IccRecords {
         // true only when fresh set of read requests are made.
         mRecordsRequested = false;
         mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
+        mLoaded.set(false);
     }
 
     public String getMdnNumber() {
@@ -807,6 +808,7 @@ public class RuimRecords extends IccRecords {
             setSimLanguage(mEFli, mEFpl);
         }
 
+        mLoaded.set(true);
         mRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
 
         // TODO: The below is hacky since the SubscriptionController may not be ready at this time.

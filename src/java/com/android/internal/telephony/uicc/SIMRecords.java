@@ -293,6 +293,7 @@ public class SIMRecords extends IccRecords {
         // true only when fresh set of read requests are made.
         mRecordsRequested = false;
         mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
+        mLoaded.set(false);
     }
 
     //***** Public Methods
@@ -1600,7 +1601,7 @@ public class SIMRecords extends IccRecords {
         }
 
         setVoiceMailByCountry(operator);
-
+        mLoaded.set(true);
         mRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
     }
 
