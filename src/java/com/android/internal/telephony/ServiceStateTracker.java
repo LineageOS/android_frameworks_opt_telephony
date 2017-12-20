@@ -2639,8 +2639,9 @@ public class ServiceStateTracker extends Handler {
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         // ratchet the new tech up through it's rat family but don't drop back down
-        // until cell change
-        if (!hasLocationChanged) {
+        // until cell change or device is OOS
+        boolean isDataInService = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
+        if (!hasLocationChanged && isDataInService) {
             mRatRatcheter.ratchetRat(mSS, mNewSS);
         }
 
