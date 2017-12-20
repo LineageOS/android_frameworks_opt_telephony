@@ -56,6 +56,7 @@ import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.os.BackgroundThread;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -135,6 +136,11 @@ public class SubscriptionInfoUpdater extends Handler {
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
         initializeCarrierApps();
+    }
+
+    public SubscriptionInfoUpdater(Context context, Phone[] phone, CommandsInterface[] ci) {
+        this(BackgroundThread.get().getLooper(), context, phone, ci);
+
     }
 
     private void initializeCarrierApps() {
