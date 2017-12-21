@@ -20,8 +20,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SmsCbMessage;
 
 import com.android.internal.telephony.CellBroadcastHandler;
@@ -54,6 +56,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
+    private boolean mSprintMwiQuirk;
+
     /**
      * Create a new inbound SMS handler for CDMA.
      */
@@ -65,6 +69,18 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi);
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+
+        CarrierConfigManager ccm = (CarrierConfigManager)
+            context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (ccm != null) {
+            PersistableBundle cc = ccm.getConfigForSubId(phone.getSubId());
+            if (cc != null) {
+                if (cc.getBoolean("sprint_mwi_quirk")) {
+                    mSprintMwiQuirk = true;
+                    phone.setVoiceMessageCount(SystemProperties.getInt("persist.sprint_vm_count", 0));
+                }
+            }
+        }
     }
 
     /**
@@ -132,11 +148,87 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         sms.parseSms();
         int teleService = sms.getTeleService();
 
+        // We handle Sprint's VVM SMS messages instead of their
+        // normal MWI messages, which get stuck in their system
+        // This has the limitation of only keeping track of
+        // voicemails received after a fresh install, but /shrug
+        if (mSprintMwiQuirk) {
+            String address = sms.getOriginatingAddress;
+            if (address != null && address.equals("9016")) {
+                String message = sms.getMessageBody();
+                // Extract the desired data from the message
+                if (message != null) {
+                    int voicemailCount = SystemProperties.getInt("persist.sprint_vm_count", 0);
+                    // The message always starts with "//ANDROID:Message from"
+                    // This is always followed by a space we trim off
+                    String header = message.substring(0, message.indexOf("from") + "from".length());
+                    message = message.substring(header.length() + 1, message.length());
+                    // The sender is after the header until the period
+                    // which is one before "MMSN" in the message
+                    // This is the phone number that left the message
+                    // for a new voicemail, or *@vvm.coremobility.com
+                    // otherwise, and it's always followed by a period
+                    // This is always followed by a space we trim off
+                    String sender = message.substring(0, message.indexOf(" MMSN"));
+                    message = message.substring(sender.length() + 1, message.length());
+                    // MMSN is always in the message, and is always
+                    // followed by a comma that we trim off
+                    String mmsn = message.substring(0, message.indexOf(","));
+                    message = message.substring(mmsn.length() + 1, message.length());
+                    // The unix timestamp is encoded into the message in Pacific Time
+                    // The stamp is encoded in hex, and is multiplied by 10000
+                    // This is always followed by a comma that we trim off
+                    // TODO: check if stamp offset changes with DST (PST vs PDT)
+                    String timestamp = message.substring(0, message.indexOf(","));
+                    long timeInPacificTime = Long.parseLong(timestamp, 16) / 10000;
+                    message = message.substring(timestamp.length() + 1, message.length());
+                    // The next block is one of the "command" blocks
+                    // When receiving a message, we get 2 SMS messages,
+                    // the first of which has an unknown 4 digit hex code,
+                    // and the second one always has "400"
+                    // When a message has been marked as read, we get 1 SMS
+                    // message, which is always "41f"
+                    // The first 3 chars of the next block are seemingly related:
+                    // With the 4 digit hex, the chars will be V67
+                    // With "400", the chars will be V68
+                    // With "41f", the chars will be M68
+                    // There may be more commands I have not seen, but this is all
+                    // that will actually matter for keeping track of voicemails
+                    // This is always followed by a comma that we trim off
+                    String command1 = message.substring(0, message.indexOf(","));
+                    message = message.substring(command1.length() + 1, message.length());
+                    // Since the first 3 chars of the next (seemingly) garbage block
+                    // are correlated to the actual command, separate them out
+                    String command2 = message.substring(0, 3);
+                    message = message.substring(command2.length() + 1, message.length());
+                    // The next chars until the footer are unknown at this time
+                    String garbage = message.substring(0, message.indexOf("/"));
+                    message = message.substring(garbage.length(), message.length());
+                    // The footer that ends every messsage is "//CM"
+                    String footer = new String(message);
+                    message = null;
+
+                    if (command1.equals("400") && voicemailCount < 99) {
+                        voicemailCount++;
+                    } else if (command1.equals("41f") && voicemailCount > 0) {
+                        voicemailCount--;
+                    }
+
+                    mPhone.setVoiceMessageCount(voicemailCount);
+                    SystemProperties.set("persist.sprint_vm_count", String.valueOf(voicemailCount));
+                }
+                return Intents.RESULT_SMS_HANDLED;
+            }
+        }
+
+
         switch (teleService) {
             case SmsEnvelope.TELESERVICE_VMN:
             case SmsEnvelope.TELESERVICE_MWI:
                 // handle voicemail indication
-                handleVoicemailTeleservice(sms);
+                if (!mSprintMwiQuirk) {
+                    handleVoicemailTeleservice(sms);
+                }
                 return Intents.RESULT_SMS_HANDLED;
 
             case SmsEnvelope.TELESERVICE_WMT:
