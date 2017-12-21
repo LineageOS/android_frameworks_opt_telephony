@@ -20,8 +20,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.SystemProperties;
+import android.preference.PreferenceManager;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SmsCbMessage;
 
 import com.android.internal.telephony.CellBroadcastHandler;
@@ -39,6 +42,8 @@ import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.util.HexDump;
 
 import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Subclass of {@link InboundSmsHandler} for 3GPP2 type messages.
@@ -54,6 +59,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
+    private boolean mSprintMwiQuirk;
+
     /**
      * Create a new inbound SMS handler for CDMA.
      */
@@ -65,6 +72,21 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi);
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+
+        CarrierConfigManager ccm = (CarrierConfigManager)
+            context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (ccm != null) {
+            PersistableBundle cc = ccm.getConfigForSubId(phone.getSubId());
+            if (cc != null) {
+                if (cc.getBoolean("sprint_mwi_quirk")) {
+                    mSprintMwiQuirk = true;
+                    String prefName = String.valueOf(phone.getSubId()) + "sprint_vm_count";
+                    int voicemailCount = PreferenceManager.getDefaultSharedPreferences(context)
+                            .getInt(prefName, 0);
+                    phone.setVoiceMessageCount(voicemailCount);
+                }
+            }
+        }
     }
 
     /**
@@ -132,11 +154,110 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         sms.parseSms();
         int teleService = sms.getTeleService();
 
+        // We handle Sprint's VVM SMS messages instead of their
+        // normal MWI messages, which get stuck in their system
+        // This has the limitation of only keeping track of
+        // voicemails received after a fresh install, but /shrug
+        if (mSprintMwiQuirk) {
+            String address = sms.getOriginatingAddress();
+            if (address != null && address.equals("9016")) {
+                String message = sms.getMessageBody();
+                if (message != null) {
+                    // Sprint's VVM app on stock intercepts SMS messages that notify it
+                    // of changes in the voicemail system, like receiving a new message
+                    // or marking a message as read, and the SMS is hidden from the user
+                    // On Lineage, these texts show up as normal SMS messages from the
+                    // number 9016, but there is a pattern to them that we can interpret
+                    // On receiving a new message, the system sends out two messages
+                    // The first one looks something like:
+                    // "//ANDROID:Message from 16125648499. MMSN,dbbd64a3b92,1806,V67r6VjpJab//CM"
+                    // The second one looks something like:
+                    // "//ANDROID:Message from 16125648499. MMSN,dbbd64ab2ca,400,V68kYv7wC04//CM"
+                    // On marking a message as read, the system sends out one messge
+                    // The message looks something like:
+                    // "//ANDROID:Message from *@vvm.coremobility.com. MMSN,dbbd653a3ca,41f,M68r4hSjahF//CM"
+                    // The pattern is described below, using the second message that
+                    // is received when receiving a new voicemail as the example
+                    // "//ANDROID:Message from" - The message header, present
+                    //                            in all messages from the system
+                    //                            This is consumed by the regex
+                    // " " - This is consumed by the regex
+                    // "16125648499" - The origin address, this is the phone number
+                    //                 that left the voicemail if it's a new message,
+                    //                 or "*@vvm.coremobility.com" for "service"
+                    //                 messages like marking a message as read
+                    //                 This is available as group 1 of the matcher
+                    // ". " - This is consumed by the regex
+                    // "MMSN" - This is a constant in all the messages, the meaning
+                    //          of which is unclear at this time of this writing
+                    //          This is consumed by the regex
+                    // "," - This is consumed by the regex
+                    // "dbbd64ab2ca" - The timestamp, this is a unix timestamp
+                    //                 encoded as a hex string, that is multiplied
+                    //                 by 10000, and offset by 8 hours
+                    //                 The offset seems to represent the PST timezone,
+                    //                 which is used in California, where the HQ of the
+                    //                 the company who wrote the VVM app, CoreMobilty, is
+                    //                 This is available as group 2 of the matcher
+                    // "," - This is consumed by the regex
+                    // "400" - The command block, this is a 3 digit hex string for
+                    //         the second message received on a new voicemail, and
+                    //         for the message received on a voicemail read message,
+                    //         while it's a 4 digit hex string for the first message
+                    //         received on receiving a new voicemail message
+                    //         For the first message received on a new voicemail,
+                    //         this is seemingly random, but for the second one
+                    //         it's always "400", and for the message received on
+                    //         a voicemail that has been read, it's always "41f"
+                    //         This is available as group 4 of the matcher
+                    // "," - This is consumed by the regex
+                    // "V68" - The second command block, the 3 chars after the first
+                    //         command block are seemingly related to first command
+                    //         When the first command is the "random" 4 digit hex,
+                    //         this block is "V67", then when the command is "400",
+                    //         this block is "V68", and when the command is "41f",
+                    //         this block is "M68"
+                    //         This is available as group 4 of the matcher
+                    // "kYv7wC04" - The "garbage" block, the chars after the second
+                    //              command block to the beginning of the footer
+                    //              have seemingly no pattern of significance
+                    //              This is available as group 5 of the matcher
+                    // "//CM" - The footer block, this is present in all messages,
+                    //          and represents the abbreviation of "CoreMobility",
+                    //          which is the company that wrote Sprint's VVM app
+                    //          This is consumed by the regex
+                    Pattern sprintVvmPattern = Pattern.compile(
+                            "//ANDROID:Message from (.*)\\. MMSN,(.*),(.*),(...)(.*)//CM");
+                    Matcher sprintVvmMatcher = sprintVvmPattern.matcher(message);
+
+                    if (sprintVvmMatcher.matches()) {
+                        String prefName = String.valueOf(mPhone.getSubId()) + "sprint_vm_count";
+                        int voicemailCount = PreferenceManager.getDefaultSharedPreferences(mContext)
+                                .getInt(prefName, 0);
+
+                        if (sprintVvmMatcher.group(3).equals("400") && voicemailCount < 99) {
+                            voicemailCount++;
+                        } else if (sprintVvmMatcher.group(3).equals("41f") && voicemailCount > 0) {
+                            voicemailCount--;
+                        }
+
+                        mPhone.setVoiceMessageCount(voicemailCount);
+                        PreferenceManager.getDefaultSharedPreferences(mContext).edit()
+                                .putInt(prefName, voicemailCount).apply();
+                        return Intents.RESULT_SMS_HANDLED;
+                    }
+                }
+            }
+        }
+
+
         switch (teleService) {
             case SmsEnvelope.TELESERVICE_VMN:
             case SmsEnvelope.TELESERVICE_MWI:
                 // handle voicemail indication
-                handleVoicemailTeleservice(sms);
+                if (!mSprintMwiQuirk) {
+                    handleVoicemailTeleservice(sms);
+                }
                 return Intents.RESULT_SMS_HANDLED;
 
             case SmsEnvelope.TELESERVICE_WMT:
