@@ -20,8 +20,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SmsCbMessage;
 
 import com.android.internal.telephony.CellBroadcastHandler;
@@ -54,6 +56,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
+    private boolean mSprintMwiQuirk;
+
     /**
      * Create a new inbound SMS handler for CDMA.
      */
@@ -65,6 +69,15 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi);
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+
+        CarrierConfigManager ccm = (CarrierConfigManager)
+            context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (ccm != null) {
+            PersistableBundle cc = ccm.getConfigForSubId(subId);
+            if (cc != null) {
+                mSprintMwiQuirk = cc.getBoolean("sprint_mwi_quirk");
+            }
+        }
     }
 
     /**
@@ -132,11 +145,47 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         sms.parseSms();
         int teleService = sms.getTeleService();
 
+        // We handle Sprint's VVM SMS messages instead of their
+        // normal MWI messages, which get stuck in their system
+        // This has the limitation of only keeping track of
+        // voicemails received after a fresh install, but /shrug
+        if (mSprintMwiQuirk) {
+            String sender = sms.getOriginatingAddress;
+            if (sender != null && sender.equals("9016")) {
+                String message = sms.getMessageBody();
+                // Extract the desired data from the message
+                if (message != null) {
+                    int voicemailCount = mPhone.getVoiceMessageCount();
+                    String[] data = message.split(",");
+                    switch (data[2]) {
+                        case "400":
+                            // New voicemail
+                            voicemailCount++;
+                            break;
+                        case "41f":
+                            // Deleted voicemail
+                            voicemailCount--;
+                            break;
+                    }
+                    if (voicemailCount < 0) {
+                        voicemailCount = 0;
+                    } else if (voicemailCount > 99) {
+                        voicemailCount = 99;
+                    }
+                    mPhone.setVoiceMessageCount(voicemailCount);
+                }
+                return Intents.RESULT_SMS_HANDLED;
+            }
+        }
+
+
         switch (teleService) {
             case SmsEnvelope.TELESERVICE_VMN:
             case SmsEnvelope.TELESERVICE_MWI:
                 // handle voicemail indication
-                handleVoicemailTeleservice(sms);
+                if (!mSprintMwiQuirk) {
+                    handleVoicemailTeleservice(sms);
+                }
                 return Intents.RESULT_SMS_HANDLED;
 
             case SmsEnvelope.TELESERVICE_WMT:
