@@ -107,7 +107,7 @@ public final class NetworkScanRequestTracker {
     }
 
     private boolean isValidScan(NetworkScanRequestInfo nsri) {
-        if (nsri.mRequest.specifiers == null) {
+        if (nsri.mRequest == null || nsri.mRequest.specifiers == null) {
             return false;
         }
         if (nsri.mRequest.specifiers.length > NetworkScanRequest.MAX_RADIO_ACCESS_NETWORKS) {
