@@ -1684,9 +1684,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             RadioAccessSpecifier ras) {
         android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
                 new android.hardware.radio.V1_1.RadioAccessSpecifier();
-        rasInHalFormat.radioAccessNetwork = ras.radioAccessNetwork;
+        rasInHalFormat.radioAccessNetwork = ras.getRadioAccessNetwork();
         List<Integer> bands = null;
-        switch (ras.radioAccessNetwork) {
+        switch (ras.getRadioAccessNetwork()) {
             case RadioAccessNetworks.GERAN:
                 bands = rasInHalFormat.geranBands;
                 break;
@@ -1697,18 +1697,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 bands = rasInHalFormat.eutranBands;
                 break;
             default:
-                Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.radioAccessNetwork
+                Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.getRadioAccessNetwork()
                         + " not supported!");
                 return null;
         }
 
-        if (ras.bands != null) {
-            for (int band : ras.bands) {
+        if (ras.getBands() != null) {
+            for (int band : ras.getBands()) {
                 bands.add(band);
             }
         }
-        if (ras.channels != null) {
-            for (int channel : ras.channels) {
+        if (ras.getChannels() != null) {
+            for (int channel : ras.getChannels()) {
                 rasInHalFormat.channels.add(channel);
             }
         }
@@ -1725,13 +1725,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (radioProxy12 != null) {
                 android.hardware.radio.V1_2.NetworkScanRequest request =
                         new android.hardware.radio.V1_2.NetworkScanRequest();
-                request.type = nsr.scanType;
-                request.interval = nsr.searchPeriodicity;
-                request.maxSearchTime = nsr.maxSearchTime;
-                request.incrementalResultsPeriodicity = nsr.incrementalResultsPeriodicity;
-                request.incrementalResults = nsr.incrementalResults;
+                request.type = nsr.getScanType();
+                request.interval = nsr.getSearchPeriodicity();
+                request.maxSearchTime = nsr.getMaxSearchTime();
+                request.incrementalResultsPeriodicity = nsr.getIncrementalResultsPeriodicity();
+                request.incrementalResults = nsr.getIncrementalResults();
 
-                for (RadioAccessSpecifier ras : nsr.specifiers) {
+                for (RadioAccessSpecifier ras : nsr.getSpecifiers()) {
 
                     android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
                             convertRadioAccessSpecifierToRadioHAL(ras);
@@ -1742,7 +1742,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     request.specifiers.add(rasInHalFormat);
                 }
 
-                request.mccMncs.addAll(nsr.mccMncs);
+                request.mccMncs.addAll(nsr.getPlmns());
                 RILRequest rr = obtainRequest(RIL_REQUEST_START_NETWORK_SCAN, result,
                         mRILDefaultWorkSource);
 
@@ -1767,9 +1767,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 } else {
                     android.hardware.radio.V1_1.NetworkScanRequest request =
                             new android.hardware.radio.V1_1.NetworkScanRequest();
-                    request.type = nsr.scanType;
-                    request.interval = nsr.searchPeriodicity;
-                    for (RadioAccessSpecifier ras : nsr.specifiers) {
+                    request.type = nsr.getScanType();
+                    request.interval = nsr.getSearchPeriodicity();
+                    for (RadioAccessSpecifier ras : nsr.getSpecifiers()) {
                         android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
                                 convertRadioAccessSpecifierToRadioHAL(ras);
                         if (rasInHalFormat == null) {
