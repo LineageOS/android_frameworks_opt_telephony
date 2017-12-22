@@ -781,8 +781,8 @@ public class ImsPhoneConnection extends Connection implements
                     callProfile.getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
             if (Phone.DEBUG_PHONE) {
                 Rlog.d(LOG_TAG, "updateAddressDisplay: callId = " + getTelecomCallId()
-                        + " address = " + Rlog.pii(LOG_TAG, address) + " name = " + name
-                        + " nump = " + nump + " namep = " + namep);
+                        + " address = " + Rlog.pii(LOG_TAG, address) + " name = "
+                        + Rlog.pii(LOG_TAG, name) + " nump = " + nump + " namep = " + namep);
             }
             if (!mIsMergeInProcess) {
                 // Only process changes to the name and address when a merge is not in process.
