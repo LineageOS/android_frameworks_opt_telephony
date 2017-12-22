@@ -110,8 +110,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
 
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
-
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
@@ -145,8 +143,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasNotSet();
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
 
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
-
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
@@ -173,13 +169,8 @@ public class NitzStateMachineTest extends TelephonyTest {
                 usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
 
         // Check resulting state and side effects.
-        long expectedAdjustedCurrentTimeMillis =
-                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
-
         verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
         verifyTimeServiceTimeWasNotSet();
-
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
 
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
@@ -207,14 +198,8 @@ public class NitzStateMachineTest extends TelephonyTest {
         mNitzStateMachine.setTimeAndTimeZoneFromNitz(
                 usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
 
-        // Check resulting state and side effects.
-        long expectedAdjustedCurrentTimeMillis =
-                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
-
         verifyTimeServiceTimeZoneWasNotSet();
         verifyTimeServiceTimeWasNotSet();
-
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
 
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
@@ -237,12 +222,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         ArgumentCaptor<Long> timeServiceTimeCaptor = ArgumentCaptor.forClass(Long.TYPE);
         verify(mTimeServiceHelper, times(1)).setDeviceTime(timeServiceTimeCaptor.capture());
         assertEquals(expectedTimeMillis, (long) timeServiceTimeCaptor.getValue());
-    }
-
-    private void verifyNitzTimePropertyWasSet(long expectedTimeMillis) {
-        ArgumentCaptor<Long> propertyCaptor = ArgumentCaptor.forClass(Long.TYPE);
-        verify(mDeviceState, times(1)).setNitzTimeProperty(propertyCaptor.capture());
-        assertEquals(expectedTimeMillis, (long) propertyCaptor.getValue());
     }
 
     private void incrementSimulatedDeviceClock(int incMillis) {
