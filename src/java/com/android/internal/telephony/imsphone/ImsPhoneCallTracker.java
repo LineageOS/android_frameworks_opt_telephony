@@ -1948,6 +1948,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
             }
 
+            case ImsReasonInfo.CODE_CALL_BARRED:
+                return DisconnectCause.CALL_BARRED;
+
             case ImsReasonInfo.CODE_FDN_BLOCKED:
                 return DisconnectCause.FDN_BLOCKED;
 
