@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dbde5dc3_05aa578b",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2017-12-23T12:56:26Z",
+      "side": 1,
+      "message": "If the message always starts and ends with those characters, use \"^...$\".\n\nAlso, I\u0027d use \u0027+\u0027 instead of \u0027*\u0027 where I expect at least one char to match.",
+      "range": {
+        "startLine": 230,
+        "startChar": 29,
+        "endLine": 230,
+        "endChar": 88
+      },
+      "revId": "3c2016752d7f3c9b88498e5144c51c198e17cc6f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
