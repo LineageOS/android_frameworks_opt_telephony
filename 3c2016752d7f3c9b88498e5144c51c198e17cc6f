@@ -22,6 +22,30 @@
       "revId": "3c2016752d7f3c9b88498e5144c51c198e17cc6f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8eb09a57_50cb71d2",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 11801
+      },
+      "writtenOn": "2017-12-23T14:48:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dbde5dc3_05aa578b",
+      "range": {
+        "startLine": 230,
+        "startChar": 29,
+        "endLine": 230,
+        "endChar": 88
+      },
+      "revId": "3c2016752d7f3c9b88498e5144c51c198e17cc6f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
