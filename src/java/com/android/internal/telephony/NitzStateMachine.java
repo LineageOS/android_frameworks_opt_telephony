@@ -99,13 +99,6 @@ public class NitzStateMachine {
         }
 
         /**
-         * Sets the {@code gsm.nitz.time} system property.
-         */
-        public void setNitzTimeProperty(long timeMillis) {
-            SystemProperties.set("gsm.nitz.time", String.valueOf(timeMillis));
-        }
-
-        /**
          * Returns the same value as {@link SystemClock#elapsedRealtime()}.
          */
         public long elapsedRealtime() {
@@ -495,7 +488,6 @@ public class NitzStateMachine {
     }
 
     private void saveNitzTime(long time) {
-        mDeviceState.setNitzTimeProperty(time);
         mSavedTime = time;
         mSavedAtTime = mDeviceState.elapsedRealtime();
         mNitzUpdatedTime = true;

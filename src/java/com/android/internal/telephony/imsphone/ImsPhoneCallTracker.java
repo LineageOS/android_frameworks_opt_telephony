@@ -1948,6 +1948,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
             }
 
+            case ImsReasonInfo.CODE_CALL_BARRED:
+                return DisconnectCause.CALL_BARRED;
+
             case ImsReasonInfo.CODE_FDN_BLOCKED:
                 return DisconnectCause.FDN_BLOCKED;
 
@@ -3438,8 +3441,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private void onDataEnabledChanged(boolean enabled, int reason) {
 
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
-
-        ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId()).setDataEnabled(enabled);
 
         mIsDataEnabled = enabled;
 
