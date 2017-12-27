@@ -126,7 +126,7 @@ public class DcTracker extends Handler {
     private String mRequestedApnType = PhoneConstants.APN_TYPE_DEFAULT;
 
     // All data enabling/disabling related settings
-    private final DataEnabledSettings mDataEnabledSettings = new DataEnabledSettings();
+    private final DataEnabledSettings mDataEnabledSettings;
 
 
     /**
@@ -612,8 +612,8 @@ public class DcTracker extends Handler {
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        // TODO - redundent with update call below?
-        mDataEnabledSettings.setUserDataEnabled(getDataEnabled());
+
+        mDataEnabledSettings = new DataEnabledSettings(phone);
 
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
@@ -664,6 +664,7 @@ public class DcTracker extends Handler {
         mDataConnectionTracker = null;
         mProvisionActionName = null;
         mSettingsObserver = new SettingsObserver(null, this);
+        mDataEnabledSettings = null;
     }
 
     public void registerServiceStateTrackerEvents() {
@@ -803,16 +804,6 @@ public class DcTracker extends Handler {
         synchronized (mDataEnabledSettings) {
             if (mDataEnabledSettings.isUserDataEnabled() != enabled) {
                 mDataEnabledSettings.setUserDataEnabled(enabled);
-
-                //TODO: We should move the followings into DataEnabledSettings class.
-                // For single SIM phones, this is a per phone property.
-                if (TelephonyManager.getDefault().getSimCount() == 1) {
-                    Settings.Global.putInt(mResolver, Settings.Global.MOBILE_DATA, enabled ? 1 : 0);
-                } else {
-                    int phoneSubId = mPhone.getSubId();
-                    Settings.Global.putInt(mResolver, Settings.Global.MOBILE_DATA + phoneSubId,
-                            enabled ? 1 : 0);
-                }
                 if (!getDataRoamingEnabled() && mPhone.getServiceState().getDataRoaming()) {
                     if (enabled) {
                         notifyOffApnsOfAvailability(Phone.REASON_ROAMING_ON);
@@ -883,12 +874,10 @@ public class DcTracker extends Handler {
     }
 
     private void onDeviceProvisionedChange() {
-        if (getDataEnabled()) {
-            mDataEnabledSettings.setUserDataEnabled(true);
+        if (isDataEnabled()) {
             reevaluateDataConnections();
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
-            mDataEnabledSettings.setUserDataEnabled(false);
             onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
         }
     }
@@ -2587,45 +2576,12 @@ public class DcTracker extends Handler {
     /**
      * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
      */
-    //TODO: Merge this into DataSettings. And probably should rename to getUserDataEnabled().
     public boolean getDataEnabled() {
-        final int device_provisioned =
-                Settings.Global.getInt(mResolver, Settings.Global.DEVICE_PROVISIONED, 0);
-
-        boolean retVal = "true".equalsIgnoreCase(SystemProperties.get(
-                "ro.com.android.mobiledata", "true"));
-        if (TelephonyManager.getDefault().getSimCount() == 1) {
-            retVal = Settings.Global.getInt(mResolver, Settings.Global.MOBILE_DATA,
-                    retVal ? 1 : 0) != 0;
+        if (mDataEnabledSettings.isProvisioning()) {
+            return mDataEnabledSettings.isProvisioningDataEnabled();
         } else {
-            int phoneSubId = mPhone.getSubId();
-            try {
-                retVal = TelephonyManager.getIntWithSubId(mResolver,
-                        Settings.Global.MOBILE_DATA, phoneSubId) != 0;
-            } catch (SettingNotFoundException e) {
-                // use existing retVal
-            }
+            return mDataEnabledSettings.isUserDataEnabled();
         }
-        if (VDBG) log("getDataEnabled: retVal=" + retVal);
-        if (device_provisioned == 0) {
-            // device is still getting provisioned - use whatever setting they
-            // want during this process
-            //
-            // use the normal data_enabled setting (retVal, determined above)
-            // as the default if nothing else is set
-            final String prov_property = SystemProperties.get("ro.com.android.prov_mobiledata",
-                  retVal ? "true" : "false");
-            retVal = "true".equalsIgnoreCase(prov_property);
-
-            final int prov_mobile_data = Settings.Global.getInt(mResolver,
-                    Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED,
-                    retVal ? 1 : 0);
-            retVal = prov_mobile_data != 0;
-            log("getDataEnabled during provisioning retVal=" + retVal + " - (" + prov_property +
-                    ", " + prov_mobile_data + ")");
-        }
-
-        return retVal;
     }
 
     /**
@@ -2666,19 +2622,17 @@ public class DcTracker extends Handler {
         boolean isDataRoamingEnabled;
         final int phoneSubId = mPhone.getSubId();
 
-        try {
-            // For single SIM phones, this is a per phone property.
-            if (TelephonyManager.getDefault().getSimCount() == 1) {
-                isDataRoamingEnabled = Settings.Global.getInt(mResolver,
-                        Settings.Global.DATA_ROAMING, getDefaultDataRoamingEnabled() ? 1 : 0) != 0;
-            } else {
-                isDataRoamingEnabled = TelephonyManager.getIntWithSubId(mResolver,
-                        Settings.Global.DATA_ROAMING, phoneSubId) != 0;
-            }
-        } catch (SettingNotFoundException snfe) {
-            if (DBG) log("getDataRoamingEnabled: SettingNofFoundException snfe=" + snfe);
-            isDataRoamingEnabled = getDefaultDataRoamingEnabled();
+        // For single SIM phones, this is a per phone property.
+        if (TelephonyManager.getDefault().getSimCount() == 1) {
+            isDataRoamingEnabled = Settings.Global.getInt(mResolver,
+                    Settings.Global.DATA_ROAMING,
+                    getDefaultDataRoamingEnabled() ? 1 : 0) != 0;
+        } else {
+            isDataRoamingEnabled = Settings.Global.getInt(mResolver,
+                    Settings.Global.DATA_ROAMING + phoneSubId,
+                    getDefaultDataRoamingEnabled() ? 1 : 0) != 0;
         }
+
         if (VDBG) {
             log("getDataRoamingEnabled: phoneSubId=" + phoneSubId
                     + " isDataRoamingEnabled=" + isDataRoamingEnabled);
@@ -4070,7 +4024,6 @@ public class DcTracker extends Handler {
         log("update(): Active DDS, register for all events now!");
         onUpdateIcc();
 
-        mDataEnabledSettings.setUserDataEnabled(getDataEnabled());
         mAutoAttachOnCreation.set(false);
 
         ((GsmCdmaPhone)mPhone).updateCurrentCarrierInProvider();
@@ -4268,6 +4221,7 @@ public class DcTracker extends Handler {
         pw.println(" getOverallState=" + getOverallState());
         pw.println(" mDataConnectionAsyncChannels=%s\n" + mDataConnectionAcHashMap);
         pw.println(" mAttached=" + mAttached.get());
+        mDataEnabledSettings.dump(fd, pw, args);
         pw.flush();
     }
 
