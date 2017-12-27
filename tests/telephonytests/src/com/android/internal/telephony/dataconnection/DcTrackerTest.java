@@ -37,6 +37,7 @@ import static org.mockito.Mockito.verify;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -805,6 +806,9 @@ public class DcTrackerTest extends TelephonyTest {
     @MediumTest
     public void testDDSResetAutoAttach() throws Exception {
 
+        ContentResolver resolver = mContext.getContentResolver();
+        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1);
+
         mDct.setDataEnabled(true);
 
         mContextFixture.putBooleanResource(
@@ -1224,5 +1228,48 @@ public class DcTrackerTest extends TelephonyTest {
         // Verify the same data connection
         assertEquals(FAKE_APN4, mDct.getActiveApnString(PhoneConstants.APN_TYPE_DEFAULT));
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
+    }
+
+    // Test provisioning
+    @Test
+    @SmallTest
+    public void testDataEnableInProvisioning() throws Exception {
+        // Initial state is: userData enabled, provisioned.
+        ContentResolver resolver = mContext.getContentResolver();
+        Settings.Global.putInt(resolver, Settings.Global.MOBILE_DATA, 1);
+        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1);
+        Settings.Global.putInt(resolver,
+                Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED, 1);
+
+        assertEquals(1, Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA));
+        assertTrue(mDct.isDataEnabled());
+        // The api should rename to getUserDataEnabled();
+        assertTrue(mDct.getDataEnabled());
+
+
+        mDct.setDataEnabled(false);
+        waitForMs(200);
+
+        assertEquals(0, Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA));
+        assertFalse(mDct.isDataEnabled());
+        // The api should rename to getUserDataEnabled();
+        assertFalse(mDct.getDataEnabled());
+
+        // Changing provisioned to 0.
+        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 0);
+
+        assertTrue(mDct.isDataEnabled());
+        // The api should rename to getUserDataEnabled();
+        assertTrue(mDct.getDataEnabled());
+
+        // Enable user data during provisioning. It should write to
+        // Settings.Global.MOBILE_DATA and keep data enabled when provisioned.
+        mDct.setDataEnabled(true);
+        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1);
+        waitForMs(200);
+
+        assertTrue(mDct.isDataEnabled());
+        assertTrue(mDct.getDataEnabled());
+        assertEquals(1, Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA));
     }
 }
