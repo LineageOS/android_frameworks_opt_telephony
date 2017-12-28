@@ -1006,6 +1006,12 @@ public class SipPhone extends SipPhoneBase {
             }
         }
 
+        @Override
+        public void deflect(String number) throws CallStateException {
+            //Deflect is not supported.
+            throw new CallStateException ("deflect is not supported for SipPhone");
+        }
+
         private void log(String s) {
             Rlog.d(SCN_TAG, s);
         }
