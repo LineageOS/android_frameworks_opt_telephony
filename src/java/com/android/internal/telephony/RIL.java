@@ -68,6 +68,7 @@ import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
@@ -5007,12 +5008,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForGsm(
             Parcel p, int lac, int cid, int arfcn, int bsic, String mcc, String mnc,
             String al, String as, int ss, int ber, int ta) {
+        p.writeInt(CellIdentity.TYPE_GSM);
+        p.writeString(mcc);
+        p.writeString(mnc);
         p.writeInt(lac);
         p.writeInt(cid);
         p.writeInt(arfcn);
         p.writeInt(bsic);
-        p.writeString(mcc);
-        p.writeString(mnc);
         p.writeString(al);
         p.writeString(as);
         p.writeInt(ss);
@@ -5023,6 +5025,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForCdma(
             Parcel p, int ni, int si, int bsi, int lon, int lat, String al, String as,
             int dbm, int ecio, int eDbm, int eEcio, int eSnr) {
+        p.writeInt(CellIdentity.TYPE_CDMA);
+        p.writeString(null);
+        p.writeString(null);
         p.writeInt(ni);
         p.writeInt(si);
         p.writeInt(bsi);
@@ -5040,12 +5045,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForLte(
             Parcel p, int ci, int pci, int tac, int earfcn, String mcc, String mnc, String al,
             String as, int ss, int rsrp, int rsrq, int rssnr, int cqi, int ta) {
+        p.writeInt(CellIdentity.TYPE_LTE);
+        p.writeString(mcc);
+        p.writeString(mnc);
         p.writeInt(ci);
         p.writeInt(pci);
         p.writeInt(tac);
         p.writeInt(earfcn);
-        p.writeString(mcc);
-        p.writeString(mnc);
         p.writeString(al);
         p.writeString(as);
         p.writeInt(ss);
@@ -5059,12 +5065,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForWcdma(
             Parcel p, int lac, int cid, int psc, int uarfcn, String mcc, String mnc,
             String al, String as, int ss, int ber) {
+        p.writeInt(CellIdentity.TYPE_WCDMA);
+        p.writeString(mcc);
+        p.writeString(mnc);
         p.writeInt(lac);
         p.writeInt(cid);
         p.writeInt(psc);
         p.writeInt(uarfcn);
-        p.writeString(mcc);
-        p.writeString(mnc);
         p.writeString(al);
         p.writeString(as);
         p.writeInt(ss);
