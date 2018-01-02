@@ -67,6 +67,9 @@ import org.mockito.Mock;
 import java.util.HashMap;
 
 public class GsmSmsDispatcherTest extends TelephonyTest {
+
+    private static final long TIMEOUT_MS = 500;
+
     @Mock
     private android.telephony.SmsMessage mSmsMessage;
     @Mock
@@ -233,6 +236,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 Settings.Global.DEVICE_PROVISIONED, 1);
 
         mGsmSmsDispatcher.sendRawPdu(mSmsTracker);
+        waitForHandlerAction(mGsmSmsDispatcher, TIMEOUT_MS);
 
         verify(mSmsUsageMonitor, times(1)).checkDestination(any(), any());
         verify(mSmsUsageMonitor, times(1)).getPremiumSmsPermission(any());
