@@ -45,6 +45,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mVoiceRadioTechChangedRegistrants = new RegistrantList();
     protected RegistrantList mImsNetworkStateChangedRegistrants = new RegistrantList();
     protected RegistrantList mIccStatusChangedRegistrants = new RegistrantList();
+    protected RegistrantList mIccSlotStatusChangedRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOnRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOffRegistrants = new RegistrantList();
     protected RegistrantList mOtaProvisionRegistrants = new RegistrantList();
@@ -279,6 +280,17 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForIccStatusChanged(Handler h) {
         mIccStatusChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForIccSlotStatusChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mIccSlotStatusChangedRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForIccSlotStatusChanged(Handler h) {
+        mIccSlotStatusChangedRegistrants.remove(h);
     }
 
     @Override
