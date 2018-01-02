@@ -136,6 +136,16 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void registerForIccSlotStatusChanged(Handler h, int what, Object obj) {
+
+    }
+
+    @Override
+    public void unregisterForIccSlotStatusChanged(Handler h) {
+
+    }
+
+    @Override
     public void registerForCallStateChanged(Handler h, int what, Object obj) {
 
     }
@@ -1163,6 +1173,14 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void getIccCardStatus(Message result) {
 
+    }
+
+    @Override
+    public void getIccSlotsStatus(Message result) {
+    }
+
+    @Override
+    public void setLogicalToPhysicalSlotMapping(int[] physicalSlots, Message result) {
     }
 
     @Override

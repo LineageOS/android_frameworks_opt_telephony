@@ -33,8 +33,9 @@ import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
-import android.hardware.radio.V1_1.IRadioResponse;
 import android.hardware.radio.V1_1.KeepaliveStatus;
+import android.hardware.radio.V1_2.IRadioResponse;
+import android.hardware.radio.V1_2.SimSlotStatus;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -53,6 +54,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.ArrayList;
@@ -101,6 +103,31 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getIccCardStatusResponse(RadioResponseInfo responseInfo, CardStatus cardStatus) {
         responseIccCardStatus(responseInfo, cardStatus);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param cardStatus ICC card status as defined by CardStatus in 1.2/types.hal
+     */
+    public void getIccCardStatusResponse_1_2(RadioResponseInfo responseInfo,
+                                             android.hardware.radio.V1_2.CardStatus cardStatus) {
+        responseIccCardStatus_1_2(responseInfo, cardStatus);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param slotsStatus ICC slot status as defined by SlotsStatus in 1.2/types.hal
+     */
+    public void getSimSlotsStatusResponse(RadioResponseInfo responseInfo,
+            ArrayList<SimSlotStatus> slotsStatus) {
+        responseIccSlotStatus(responseInfo, slotsStatus);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setSimSlotsMappingResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
     }
 
     /**
@@ -1241,44 +1268,80 @@ public class RadioResponse extends IRadioResponse.Stub {
         throw new UnsupportedOperationException("stopKeepaliveResponse not implemented");
     }
 
+    private IccCardStatus convertHalCardStatus(CardStatus cardStatus) {
+        IccCardStatus iccCardStatus = new IccCardStatus();
+        iccCardStatus.setCardState(cardStatus.cardState);
+        iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
+        iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
+        iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
+        iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
+        int numApplications = cardStatus.applications.size();
+
+        // limit to maximum allowed applications
+        if (numApplications
+                > com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS) {
+            numApplications =
+                com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS;
+        }
+        iccCardStatus.mApplications = new IccCardApplicationStatus[numApplications];
+        for (int i = 0; i < numApplications; i++) {
+            AppStatus rilAppStatus = cardStatus.applications.get(i);
+            IccCardApplicationStatus appStatus = new IccCardApplicationStatus();
+            appStatus.app_type       = appStatus.AppTypeFromRILInt(rilAppStatus.appType);
+            appStatus.app_state      = appStatus.AppStateFromRILInt(rilAppStatus.appState);
+            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(
+                rilAppStatus.persoSubstate);
+            appStatus.aid            = rilAppStatus.aidPtr;
+            appStatus.app_label      = rilAppStatus.appLabelPtr;
+            appStatus.pin1_replaced  = rilAppStatus.pin1Replaced;
+            appStatus.pin1           = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
+            appStatus.pin2           = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
+            iccCardStatus.mApplications[i] = appStatus;
+        }
+        return iccCardStatus;
+    }
+
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            IccCardStatus iccCardStatus = new IccCardStatus();
-            iccCardStatus.setCardState(cardStatus.cardState);
-            iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
-            iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
-            iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
-            iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
-            int numApplications = cardStatus.applications.size();
-
-            // limit to maximum allowed applications
-            if (numApplications
-                    > com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS) {
-                numApplications =
-                        com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS;
-            }
-            iccCardStatus.mApplications = new IccCardApplicationStatus[numApplications];
-            for (int i = 0; i < numApplications; i++) {
-                AppStatus rilAppStatus = cardStatus.applications.get(i);
-                IccCardApplicationStatus appStatus = new IccCardApplicationStatus();
-                appStatus.app_type       = appStatus.AppTypeFromRILInt(rilAppStatus.appType);
-                appStatus.app_state      = appStatus.AppStateFromRILInt(rilAppStatus.appState);
-                appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(
-                        rilAppStatus.persoSubstate);
-                appStatus.aid            = rilAppStatus.aidPtr;
-                appStatus.app_label      = rilAppStatus.appLabelPtr;
-                appStatus.pin1_replaced  = rilAppStatus.pin1Replaced;
-                appStatus.pin1           = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
-                appStatus.pin2           = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
-                iccCardStatus.mApplications[i] = appStatus;
-            }
+            IccCardStatus iccCardStatus = convertHalCardStatus(cardStatus);
             mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, iccCardStatus);
             }
             mRil.processResponseDone(rr, responseInfo, iccCardStatus);
+        }
+    }
+
+    private void responseIccCardStatus_1_2(RadioResponseInfo responseInfo,
+                                           android.hardware.radio.V1_2.CardStatus cardStatus) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            IccCardStatus iccCardStatus = convertHalCardStatus(cardStatus.base);
+            iccCardStatus.physicalSlotIndex = cardStatus.physicalSlotId;
+            iccCardStatus.atr = cardStatus.atr;
+            iccCardStatus.iccid = cardStatus.iccid;
+            mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, iccCardStatus);
+            }
+            mRil.processResponseDone(rr, responseInfo, iccCardStatus);
+        }
+    }
+
+    private void responseIccSlotStatus(RadioResponseInfo responseInfo,
+            ArrayList<SimSlotStatus> slotsStatus) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+        if (rr != null) {
+            ArrayList<IccSlotStatus> iccSlotStatus = RIL.convertHalSlotsStatus(slotsStatus);
+
+            mRil.riljLog("responseIccSlotStatus: from HIDL: " + iccSlotStatus);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, iccSlotStatus);
+            }
+            mRil.processResponseDone(rr, responseInfo, iccSlotStatus);
         }
     }
 
