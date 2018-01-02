@@ -56,6 +56,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.uicc.IccSlotStatus;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -125,6 +126,7 @@ public class SimulatedCommands extends BaseCommands
     private List<CellInfo> mCellInfoList;
     private int[] mImsRegState;
     private IccCardStatus mIccCardStatus;
+    private IccSlotStatus mIccSlotStatus;
     private IccIoResult mIccIoResultForApduLogicalChannel;
     private int mChannelId = IccOpenLogicalChannelResponse.INVALID_CHANNEL;
 
@@ -170,11 +172,29 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getIccCardStatus(Message result) {
-        if(mIccCardStatus!=null) {
+        if (mIccCardStatus != null) {
             resultSuccess(result, mIccCardStatus);
         } else {
             resultFail(result, null, new RuntimeException("IccCardStatus not set"));
         }
+    }
+
+    public void setIccSlotStatus(IccSlotStatus iccSlotStatus) {
+        mIccSlotStatus = iccSlotStatus;
+    }
+
+    @Override
+    public void getIccSlotsStatus(Message result) {
+        if (mIccSlotStatus != null) {
+            resultSuccess(result, mIccSlotStatus);
+        } else {
+            resultFail(result, null, new RuntimeException("IccSlotStatus not set"));
+        }
+    }
+
+    @Override
+    public void setLogicalToPhysicalSlotMapping(int[] physicalSlots, Message result) {
+        unimplemented(result);
     }
 
     @Override
