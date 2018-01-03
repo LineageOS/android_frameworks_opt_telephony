@@ -82,6 +82,7 @@ import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_1.KeepaliveStatus;
 import android.hardware.radio.V1_2.IRadioIndication;
+import android.hardware.radio.V1_2.PhysicalChannelConfig;
 import android.os.AsyncResult;
 import android.os.SystemProperties;
 import android.telephony.CellInfo;
@@ -238,6 +239,14 @@ public class RadioIndication extends IRadioIndication.Stub {
      */
     public void currentLinkCapacityEstimate(int indicationType,
                                             android.hardware.radio.V1_2.LinkCapacityEstimate lce) {
+      // TODO(b/70638175) Implement method.
+    }
+
+    /**
+     * Indicates current physical channel configuration.
+     */
+    public void currentPhysicalChannelConfigs(int indicationType,
+                                   ArrayList<PhysicalChannelConfig> configs) {
       // TODO(b/70638175) Implement method.
     }
 
