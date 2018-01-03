@@ -43,7 +43,7 @@ import java.io.PrintWriter;
 /**
  * This class represents a physical slot on the device.
  */
-public class UiccSlot {
+public class UiccSlot extends Handler {
     private static final String TAG = "UiccSlot";
     private static final boolean DBG = true;
 
@@ -65,9 +65,9 @@ public class UiccSlot {
 
     private static final LocalLog sLocalLog = new LocalLog(100);
 
-    public UiccSlot(Context c, CommandsInterface ci, boolean isActive) {
+    public UiccSlot(Context c, boolean isActive) {
         if (DBG) log("Creating");
-        mCi = ci;
+        mContext = c;
         mActive = isActive;
         mCardState = CardState.CARDSTATE_ABSENT;
     }
@@ -92,9 +92,8 @@ public class UiccSlot {
                 // No notifications while radio is off or we just powering up
                 if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
                     if (DBG) log("update: notify card removed");
-                    // todo - move registrant to uicccontroller
                     mAbsentRegistrants.notifyRegistrants();
-                    mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_REMOVED, null));
+                    sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
                 }
 
                 // no card present in the slot now; dispose card and make mUiccCard null
@@ -105,7 +104,7 @@ public class UiccSlot {
                 // No notifications while radio is off or we just powering up
                 if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
                     if (DBG) log("update: notify card added");
-                    mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
+                    sendMessage(obtainMessage(EVENT_CARD_ADDED, null));
                 }
 
                 // card is present in the slot now; create new mUiccCard
@@ -115,6 +114,10 @@ public class UiccSlot {
                 }
 
                 mUiccCard = new UiccCard(mContext, mCi, ics, phoneId);
+            } else {
+                if (mUiccCard != null) {
+                    mUiccCard.update(mContext, mCi, ics);
+                }
             }
             mLastRadioState = radioState;
         }
@@ -199,21 +202,19 @@ public class UiccSlot {
         }
     }
 
-    protected Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case EVENT_CARD_REMOVED:
-                    onIccSwap(false);
-                    break;
-                case EVENT_CARD_ADDED:
-                    onIccSwap(true);
-                    break;
-                default:
-                    loge("Unknown Event " + msg.what);
-            }
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_CARD_REMOVED:
+                onIccSwap(false);
+                break;
+            case EVENT_CARD_ADDED:
+                onIccSwap(true);
+                break;
+            default:
+                loge("Unknown Event " + msg.what);
         }
-    };
+    }
 
     /**
      * Returns the state of the UiccCard in the slot.
@@ -222,6 +223,51 @@ public class UiccSlot {
     public CardState getCardState() {
         synchronized (mLock) {
             return mCardState;
+        }
+    }
+
+    /**
+     * Returns the UiccCard in the slot.
+     */
+    public UiccCard getUiccCard() {
+        synchronized (mLock) {
+            return mUiccCard;
+        }
+    }
+
+    /**
+     * Processes radio state unavailable event
+     */
+    public void onRadioStateUnavailable() {
+        if (mUiccCard != null) {
+            mUiccCard.dispose();
+        }
+        mUiccCard = null;
+        mCardState = CardState.CARDSTATE_ABSENT;
+        mLastRadioState = RadioState.RADIO_UNAVAILABLE;
+    }
+
+    /**
+     * Notifies handler of any transition into State.ABSENT
+     */
+    public void registerForAbsent(Handler h, int what, Object obj) {
+        synchronized (mLock) {
+            Registrant r = new Registrant(h, what, obj);
+
+            mAbsentRegistrants.add(r);
+
+            if (mCardState == CardState.CARDSTATE_ABSENT) {
+                r.notifyRegistrant();
+            }
+        }
+    }
+
+    /**
+     * Unregister a handler for card absent notification
+     */
+    public void unregisterForAbsent(Handler h) {
+        synchronized (mLock) {
+            mAbsentRegistrants.remove(h);
         }
     }
 
@@ -251,7 +297,12 @@ public class UiccSlot {
                     + ((Registrant) mAbsentRegistrants.get(i)).getHandler());
         }
         pw.println(" mCardState=" + mCardState);
-        if (mUiccCard != null) mUiccCard.dump(fd, pw, args);
+        if (mUiccCard != null) {
+            pw.println(" mUiccCard=" + mUiccCard);
+            mUiccCard.dump(fd, pw, args);
+        } else {
+            pw.println(" mUiccCard=null");
+        }
         pw.println();
         pw.flush();
         pw.println("sLocalLog:");
