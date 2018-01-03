@@ -50,6 +50,14 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
+    public void getIccSlotsStatus(Message result) {
+    }
+
+    @Override
+    public void setLogicalToPhysicalSlotMapping(int[] physicalSlots, Message result) {
+    }
+
+    @Override
     public void supplyIccPin(String pin, Message result) {
     }
 

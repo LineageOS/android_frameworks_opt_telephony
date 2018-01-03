@@ -97,6 +97,7 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
+import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import java.io.ByteArrayInputStream;
@@ -499,6 +500,69 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 radioProxy.getIccCardStatus(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getIccCardStatus", e);
+            }
+        }
+    }
+
+    @Override
+    public void getIccSlotsStatus(Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+            if (radioProxy12 == null) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            } else {
+                RILRequest rr = obtainRequest(RIL_REQUEST_GET_SLOT_STATUS, result,
+                        mRILDefaultWorkSource);
+
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
+
+                try {
+                    radioProxy12.getSimSlotsStatus(rr.mSerial);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "getIccSlotStatus", e);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void setLogicalToPhysicalSlotMapping(int[] physicalSlots, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+            if (radioProxy12 == null) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            } else {
+                ArrayList<Integer> mapping = new ArrayList<>();
+                for (int slot : physicalSlots) {
+                    mapping.add(new Integer(slot));
+                }
+
+                RILRequest rr = obtainRequest(RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING,
+                        result, mRILDefaultWorkSource);
+
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
+
+                try {
+                    radioProxy12.setSimSlotsMapping(rr.mSerial, mapping);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setLogicalToPhysicalSlotMapping", e);
+                }
             }
         }
     }
@@ -4662,6 +4726,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_START_NETWORK_SCAN";
             case RIL_REQUEST_STOP_NETWORK_SCAN:
                 return "RIL_REQUEST_STOP_NETWORK_SCAN";
+            case RIL_REQUEST_GET_SLOT_STATUS:
+                return "RIL_REQUEST_GET_SLOT_STATUS";
+            case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
+                return "RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING";
             default: return "<unknown request>";
         }
     }
@@ -4764,6 +4832,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION";
             case RIL_UNSOL_NETWORK_SCAN_RESULT:
                 return "RIL_UNSOL_NETWORK_SCAN_RESULT";
+            case RIL_UNSOL_ICC_SLOT_STATUS:
+                return "RIL_UNSOL_ICC_SLOT_STATUS";
             default:
                 return "<unknown response>";
         }
@@ -5000,6 +5070,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeString(as);
         p.writeInt(ss);
         p.writeInt(ber);
+    }
+
+    /**
+     * Convert SlotsStatus defined in 1.2/types.hal to IccSlotStatus type.
+     * @param slotsStatus SlotsStatus defined in 1.2/types.hal
+     * @return Converted IccSlotStatus object
+     */
+    @VisibleForTesting
+    public static ArrayList<IccSlotStatus> convertHalSlotsStatus(
+            ArrayList<android.hardware.radio.V1_2.SimSlotStatus> slotsStatus) {
+        ArrayList<IccSlotStatus> iccSlotStatus = new ArrayList<IccSlotStatus>(slotsStatus.size());
+
+        for (android.hardware.radio.V1_2.SimSlotStatus slotStatus : slotsStatus) {
+            IccSlotStatus iss = new IccSlotStatus();
+            iss.setCardState(slotStatus.cardState);
+            iss.setSlotState(slotStatus.slotState);
+            iss.logicalSlotIndex = slotStatus.logicalSlotId;
+            iss.atr = slotStatus.atr;
+            iss.iccid = slotStatus.iccid;
+            iccSlotStatus.add(iss);
+        }
+        return iccSlotStatus;
     }
 
     /**

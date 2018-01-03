@@ -100,10 +100,9 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
         msg.what = integerArgumentCaptor.getValue();
 
         // The first broadcast should be sent after initialization.
-        UiccCard[] cards = new UiccCard[CARD_COUNT];
-        cards[0] = new UiccCard(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */);
-        when(UiccController.getInstance().getUiccCards()).thenReturn(cards);
+        UiccSlot[] uiccSlots = new UiccSlot[CARD_COUNT];
+        uiccSlots[0] = new UiccSlot(mContext, true /* isActive */);
+        when(UiccController.getInstance().getUiccSlots()).thenReturn(uiccSlots);
         uiccLauncher.handleMessage(msg);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -116,9 +115,9 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
                 intentArgumentCaptor.getValue().getAction());
 
         // Card state's changed to restricted. Broadcast should be sent.
-        cards[0].update(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_RESTRICTED));
-        when(UiccController.getInstance().getUiccCards()).thenReturn(cards);
+        uiccSlots[0].update(mContext, mSimulatedCommands,
+                makeCardStatus(CardState.CARDSTATE_RESTRICTED), 0 /* phoneId */);
+        when(UiccController.getInstance().getUiccSlots()).thenReturn(uiccSlots);
         uiccLauncher.handleMessage(msg);
 
         broadcast_count++;
@@ -132,9 +131,9 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
         verify(mContext, times(broadcast_count)).sendBroadcast(any(Intent.class));
 
         // Card state's changed from restricted. Broadcast should be sent.
-        cards[0].update(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_PRESENT));
-        when(UiccController.getInstance().getUiccCards()).thenReturn(cards);
+        uiccSlots[0].update(mContext, mSimulatedCommands,
+                makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */);
+        when(UiccController.getInstance().getUiccSlots()).thenReturn(uiccSlots);
         uiccLauncher.handleMessage(msg);
 
         broadcast_count++;

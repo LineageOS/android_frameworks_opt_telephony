@@ -25,6 +25,8 @@ option java_outer_classname = "CarrierIdProto";
 message CarrierList {
   // A collection of carriers. one entry for one carrier.
   repeated CarrierId carrier_id = 1;
+  // Version number of current carrier list
+  optional int64 version = 2;
 };
 
 // CarrierId is the unique representation of a carrier in CID table.

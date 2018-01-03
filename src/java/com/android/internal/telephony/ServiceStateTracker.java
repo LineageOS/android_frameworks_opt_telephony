@@ -3451,7 +3451,9 @@ public class ServiceStateTracker extends Handler {
         if (DBG) log("setNotification: cancelAllNotifications");
         NotificationManager notificationManager = (NotificationManager)
                 mPhone.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancelAll();
+        notificationManager.cancel(PS_NOTIFICATION);
+        notificationManager.cancel(CS_NOTIFICATION);
+        notificationManager.cancel(CS_REJECT_CAUSE_NOTIFICATION);
     }
 
     /**
