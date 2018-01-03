@@ -26,18 +26,18 @@ message CarrierList {
   // A collection of carriers. one entry for one carrier.
   repeated CarrierId carrier_id = 1;
   // Version number of current carrier list
-  optional int64 version = 2;
+  optional int32 version = 2;
 };
 
 // CarrierId is the unique representation of a carrier in CID table.
 message CarrierId {
-  // [Required] A unique canonical number designated to a carrier.
-  required int32 canonical_id = 1;
+  // [Optional] A unique canonical number designated to a carrier.
+  optional int32 canonical_id = 1;
 
   // [Optional] A user-friendly carrier name (not localized).
   optional string carrier_name = 2;
 
-  // [Required] Carrier attributes to match a carrier. At least one value is required.
+  // [Optional] Carrier attributes to match a carrier. At least one value is required.
   repeated CarrierAttribute carrier_attribute = 3;
 };
 
@@ -47,7 +47,7 @@ message CarrierId {
 //   - if set, the device must have one of the specified values to match.
 // Match is based on AND between any field that is set and OR for values within a repeated field.
 message CarrierAttribute {
-  // [Required] The MCC and MNC that map to this carrier. At least one value is required.
+  // [Optional] The MCC and MNC that map to this carrier. At least one value is required.
   repeated string mccmnc_tuple = 1;
 
   // [Optional] Prefix of IMSI (International Mobile Subscriber Identity) in
