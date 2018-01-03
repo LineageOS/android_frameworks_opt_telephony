@@ -14,8 +14,21 @@
  * limitations under the License.
  */
 package com.android.internal.telephony.uicc;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.verify;
+
 import android.os.AsyncResult;
+import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Message;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.TelephonyTest;
@@ -23,26 +36,15 @@ import com.android.internal.telephony.test.SimulatedCommands;
 
 import org.junit.After;
 import org.junit.Before;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.eq;
 import org.junit.Test;
 import org.mockito.Mock;
-import android.test.suitebuilder.annotation.SmallTest;
-import android.os.Handler;
-import android.os.Message;
 
 public class UiccCardApplicationTest extends TelephonyTest {
     private UiccCardApplication mUiccCardApplication;
     @Mock
     private IccCardApplicationStatus mUiccCardAppStatus;
     @Mock
-    private UiccCard mUiccCard;
+    private UiccProfile mUiccProfile;
     private Handler mHandler;
     private UiccCardAppTestHandlerThread mTestHandlerThread;
     private int mAttemptsRemaining = -1;
@@ -59,7 +61,7 @@ public class UiccCardApplicationTest extends TelephonyTest {
         }
         @Override
         public void onLooperPrepared() {
-            mUiccCardApplication = new UiccCardApplication(mUiccCard, mUiccCardAppStatus,
+            mUiccCardApplication = new UiccCardApplication(mUiccProfile, mUiccCardAppStatus,
                     mContext, mSimulatedCommands);
             mHandler = new Handler(mTestHandlerThread.getLooper()) {
                 @Override
