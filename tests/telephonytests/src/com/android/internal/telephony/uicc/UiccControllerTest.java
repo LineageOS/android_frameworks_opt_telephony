@@ -14,26 +14,29 @@
  * limitations under the License.
  */
 package com.android.internal.telephony.uicc;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Message;
-import android.test.suitebuilder.annotation.SmallTest;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.TelephonyTest;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
+import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.TelephonyTest;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 
 public class UiccControllerTest extends TelephonyTest {
     private UiccController mUiccControllerUT;
@@ -102,7 +105,7 @@ public class UiccControllerTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testSanity() {
-        assertEquals(PHONE_COUNT, mUiccControllerUT.getUiccCards().length);
+        assertEquals(PHONE_COUNT, mUiccControllerUT.getUiccSlots().length);
         assertNotNull(mUiccControllerUT.getUiccCard(0));
         assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
         assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP2));
