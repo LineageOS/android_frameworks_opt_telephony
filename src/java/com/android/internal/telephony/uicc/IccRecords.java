@@ -500,9 +500,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
         // which did occur after removing a SIM.
         UiccCardApplication parentApp = mParentApp;
         if (parentApp != null) {
-            UiccCard card = parentApp.getUiccCard();
-            if (card != null) {
-                String brandOverride = card.getOperatorBrandOverride();
+            UiccProfile profile = parentApp.getUiccProfile();
+            if (profile != null) {
+                String brandOverride = profile.getOperatorBrandOverride();
                 if (brandOverride != null) {
                     log("getServiceProviderName: override, providerName=" + providerName);
                     providerName = brandOverride;
