@@ -20,9 +20,9 @@ import static org.junit.Assert.assertEquals;
 
 import android.os.Parcel;
 import android.support.test.filters.SmallTest;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.AccessNetworkConstants.GeranBand;
 import android.telephony.RadioAccessSpecifier;
-import android.telephony.RadioNetworkConstants.GeranBands;
-import android.telephony.RadioNetworkConstants.RadioAccessNetworks;
 
 import org.junit.Test;
 
@@ -33,8 +33,8 @@ public class RadioAccessSpecifierTest {
     @Test
     @SmallTest
     public void testParcel() {
-        int ranGsm = RadioAccessNetworks.GERAN;
-        int[] gsmBands = {GeranBands.BAND_T380, GeranBands.BAND_T410};
+        int ranGsm = AccessNetworkType.GERAN;
+        int[] gsmBands = {GeranBand.BAND_T380, GeranBand.BAND_T410};
         int[] gsmChannels = {1, 2, 3, 4};
         RadioAccessSpecifier ras = new RadioAccessSpecifier(ranGsm, gsmBands, gsmChannels);
 
