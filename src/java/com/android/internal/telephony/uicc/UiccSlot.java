@@ -96,6 +96,8 @@ public class UiccSlot extends Handler {
                     sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
                 }
 
+                // todo: broadcast sim state changed for absent/unknown
+
                 // no card present in the slot now; dispose card and make mUiccCard null
                 mUiccCard.dispose();
                 mUiccCard = null;
@@ -243,6 +245,9 @@ public class UiccSlot extends Handler {
             mUiccCard.dispose();
         }
         mUiccCard = null;
+
+        // todo: broadcast sim state changed for absent/unknown
+
         mCardState = CardState.CARDSTATE_ABSENT;
         mLastRadioState = RadioState.RADIO_UNAVAILABLE;
     }
