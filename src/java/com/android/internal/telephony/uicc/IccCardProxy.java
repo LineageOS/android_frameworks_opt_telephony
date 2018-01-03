@@ -97,6 +97,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private int mCurrentAppType = UiccController.APP_FAM_3GPP; //default to 3gpp?
     private UiccController mUiccController = null;
+    private UiccSlot mUiccSlot = null;
     private UiccCard mUiccCard = null;
     private UiccCardApplication mUiccApplication = null;
     private IccRecords mIccRecords = null;
@@ -293,6 +294,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private void updateIccAvailability() {
         synchronized (mLock) {
+            UiccSlot newSlot = mUiccController.getUiccSlotForPhone(mPhoneId);
             UiccCard newCard = mUiccController.getUiccCard(mPhoneId);
             UiccCardApplication newApp = null;
             IccRecords newRecords = null;
@@ -303,9 +305,11 @@ public class IccCardProxy extends Handler implements IccCard {
                 }
             }
 
-            if (mIccRecords != newRecords || mUiccApplication != newApp || mUiccCard != newCard) {
+            if (mIccRecords != newRecords || mUiccApplication != newApp || mUiccCard != newCard
+                    || mUiccSlot != newSlot) {
                 if (DBG) log("Icc changed. Reregistering.");
                 unregisterUiccCardEvents();
+                mUiccSlot = newSlot;
                 mUiccCard = newCard;
                 mUiccApplication = newApp;
                 mIccRecords = newRecords;
@@ -406,8 +410,9 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void registerUiccCardEvents() {
-        if (mUiccCard != null) {
-            mUiccCard.registerForAbsent(this, EVENT_ICC_ABSENT, null);
+        if (mUiccSlot != null) {
+            // todo: reregistration is not needed unless slot mapping changes
+            mUiccSlot.registerForAbsent(this, EVENT_ICC_ABSENT, null);
         }
         if (mUiccApplication != null) {
             mUiccApplication.registerForReady(this, EVENT_APP_READY, null);
@@ -422,7 +427,7 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void unregisterUiccCardEvents() {
-        if (mUiccCard != null) mUiccCard.unregisterForAbsent(this);
+        if (mUiccSlot != null) mUiccSlot.unregisterForAbsent(this);
         if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForReady(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForLocked(this);
