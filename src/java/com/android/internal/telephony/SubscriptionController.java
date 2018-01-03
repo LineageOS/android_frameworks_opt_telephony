@@ -88,6 +88,7 @@ public class SubscriptionController extends ISub.Stub {
     static final boolean VDBG = false;
     static final boolean DBG_CACHE = false;
     static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
+    private static final int DEPRECATED_SETTING = -1;
     private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
 
     /* The Cache of Active SubInfoRecord(s) list of currently in use SubInfoRecord(s) */
@@ -194,6 +195,7 @@ public class SubscriptionController extends ISub.Stub {
 
     protected SubscriptionController(Context c) {
         init(c);
+        migrateImsSettings();
     }
 
     protected void init(Context c) {
@@ -222,6 +224,8 @@ public class SubscriptionController extends ISub.Stub {
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
         }
+
+        migrateImsSettings();
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
     }
@@ -1654,7 +1658,12 @@ public class SubscriptionController extends ISub.Stub {
         broadcastDefaultVoiceSubIdChanged(subId);
     }
 
-    private void broadcastDefaultVoiceSubIdChanged(int subId) {
+    /**
+     * Broadcast intent of ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED.
+     * @hide
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void broadcastDefaultVoiceSubIdChanged(int subId) {
         // Broadcast an Intent for default voice sub change
         if (DBG) logdl("[broadcastDefaultVoiceSubIdChanged] subId=" + subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED);
@@ -1669,7 +1678,7 @@ public class SubscriptionController extends ISub.Stub {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        if (VDBG) logd("[getDefaultVoiceSubId] subId=" + subId);
+        if (VDBG) slogd("[getDefaultVoiceSubId] subId=" + subId);
         return subId;
     }
 
@@ -1989,6 +1998,17 @@ public class SubscriptionController extends ISub.Stub {
         enforceModifyPhoneState("setSubscriptionProperty");
         final long token = Binder.clearCallingIdentity();
         ContentResolver resolver = mContext.getContentResolver();
+
+        setSubscriptionPropertyIntoContentResolver(subId, propKey, propValue, resolver);
+
+        // Refresh the Cache of Active Subscription Info List
+        refreshCachedActiveSubscriptionInfoList();
+
+        Binder.restoreCallingIdentity(token);
+    }
+
+    private static void setSubscriptionPropertyIntoContentResolver(
+            int subId, String propKey, String propValue, ContentResolver resolver) {
         ContentValues value = new ContentValues();
         switch (propKey) {
             case SubscriptionManager.CB_EXTREME_THREAT_ALERT:
@@ -2003,21 +2023,22 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.CB_CHANNEL_50_ALERT:
             case SubscriptionManager.CB_CMAS_TEST_ALERT:
             case SubscriptionManager.CB_OPT_OUT_DIALOG:
+            case SubscriptionManager.ENHANCED_4G_MODE_ENABLED:
+            case SubscriptionManager.VT_IMS_ENABLED:
+            case SubscriptionManager.WFC_IMS_ENABLED:
+            case SubscriptionManager.WFC_IMS_MODE:
+            case SubscriptionManager.WFC_IMS_ROAMING_MODE:
+            case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             default:
-                if(DBG) logd("Invalid column name");
+                if (DBG) slogd("Invalid column name");
                 break;
         }
 
         resolver.update(SubscriptionManager.CONTENT_URI, value,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
                         "=" + Integer.toString(subId), null);
-
-        // Refresh the Cache of Active Subscription Info List
-        refreshCachedActiveSubscriptionInfoList();
-
-        Binder.restoreCallingIdentity(token);
     }
 
     /**
@@ -2055,6 +2076,12 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.CB_CHANNEL_50_ALERT:
                         case SubscriptionManager.CB_CMAS_TEST_ALERT:
                         case SubscriptionManager.CB_OPT_OUT_DIALOG:
+                        case SubscriptionManager.ENHANCED_4G_MODE_ENABLED:
+                        case SubscriptionManager.VT_IMS_ENABLED:
+                        case SubscriptionManager.WFC_IMS_ENABLED:
+                        case SubscriptionManager.WFC_IMS_MODE:
+                        case SubscriptionManager.WFC_IMS_ROAMING_MODE:
+                        case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                             resultValue = cursor.getInt(0) + "";
                             break;
                         default:
@@ -2146,6 +2173,49 @@ public class SubscriptionController extends ISub.Stub {
             pw.flush();
         } finally {
             Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    /**
+     * Migrating Ims settings from global setting to subscription DB, if not already done.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void migrateImsSettings() {
+        migrateImsSettingHelper(
+                Settings.Global.ENHANCED_4G_MODE_ENABLED,
+                SubscriptionManager.ENHANCED_4G_MODE_ENABLED);
+        migrateImsSettingHelper(
+                Settings.Global.VT_IMS_ENABLED,
+                SubscriptionManager.VT_IMS_ENABLED);
+        migrateImsSettingHelper(
+                Settings.Global.WFC_IMS_ENABLED,
+                SubscriptionManager.WFC_IMS_ENABLED);
+        migrateImsSettingHelper(
+                Settings.Global.WFC_IMS_MODE,
+                SubscriptionManager.WFC_IMS_MODE);
+        migrateImsSettingHelper(
+                Settings.Global.WFC_IMS_ROAMING_MODE,
+                SubscriptionManager.WFC_IMS_ROAMING_MODE);
+        migrateImsSettingHelper(
+                Settings.Global.WFC_IMS_ROAMING_ENABLED,
+                SubscriptionManager.WFC_IMS_ROAMING_ENABLED);
+    }
+
+    private void migrateImsSettingHelper(String settingGlobal, String subscriptionProperty) {
+        ContentResolver resolver = mContext.getContentResolver();
+        int defaultSubId = getDefaultVoiceSubId();
+        try {
+            int prevSetting = Settings.Global.getInt(resolver, settingGlobal);
+
+            if (prevSetting != DEPRECATED_SETTING) {
+                // Write previous setting into Subscription DB.
+                setSubscriptionPropertyIntoContentResolver(defaultSubId, subscriptionProperty,
+                        Integer.toString(prevSetting), resolver);
+                // Write global setting value with DEPRECATED_SETTING making sure
+                // migration only happen once.
+                Settings.Global.putInt(resolver, settingGlobal, DEPRECATED_SETTING);
+            }
+        } catch (Settings.SettingNotFoundException e) {
         }
     }
 }
