@@ -51,7 +51,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
     private static final int EVENT_TEST_DONE = 2;
 
     @Mock
-    private UiccCard mUiccCard;
+    private UiccProfile mUiccProfile;
 
     private class UiccCarrierPrivilegeRulesHandlerThread extends HandlerThread {
 
@@ -70,7 +70,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                             /* Upon handling this event, new CarrierPrivilegeRule
                             will be created with the looper of HandlerThread */
                             mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(
-                                    mUiccCard, mHandler.obtainMessage(EVENT_TEST_DONE));
+                                    mUiccProfile, mHandler.obtainMessage(EVENT_TEST_DONE));
                             break;
                         case EVENT_TEST_DONE:
                             setReady(true);
@@ -110,7 +110,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -122,7 +122,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
                 anyInt(), anyInt(), anyString(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
@@ -132,7 +132,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
         Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
         setReady(false);
@@ -326,7 +326,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 }
                 return null;
             }
-        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -338,7 +338,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
                 anyInt(), anyInt(), anyString(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
@@ -348,7 +348,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
 
         Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
@@ -389,7 +389,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 }
                 return null;
             }
-        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -401,7 +401,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
                 anyInt(), anyInt(), anyString(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
@@ -411,7 +411,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
 
         Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
@@ -449,7 +449,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -461,7 +461,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
                 anyInt(), anyInt(), anyString(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
@@ -471,7 +471,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
 
         Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
@@ -516,7 +516,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -525,7 +525,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
         Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
         setReady(false);
@@ -564,7 +564,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 }
                 return null;
             }
-        }).when(mUiccCard).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -577,7 +577,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
                 eq(P2), anyInt(), anyString(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
@@ -591,7 +591,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), anyInt(), anyInt(), anyInt(),
                 eq(P2_EXTENDED_DATA), anyInt(), anyString(), any(Message.class));
 
         doAnswer(new Answer<Void>() {
@@ -601,7 +601,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
                 message.sendToTarget();
                 return null;
             }
-        }).when(mUiccCard).iccCloseLogicalChannel(anyInt(), any(Message.class));
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
 
         Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
