@@ -56,7 +56,6 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
@@ -2123,6 +2122,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void notifyDataActivationStateChanged(int state) {
         mNotifier.notifyDataActivationStateChanged(this, state);
+    }
+
+    public void notifyUserMobileDataStateChanged(boolean state) {
+        mNotifier.notifyUserMobileDataStateChanged(this, state);
     }
 
     public void notifySignalStrength() {
