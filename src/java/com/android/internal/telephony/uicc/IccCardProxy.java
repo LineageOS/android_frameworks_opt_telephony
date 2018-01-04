@@ -406,16 +406,16 @@ public class IccCardProxy extends Handler implements IccCard {
     private void unregisterUiccCardEvents() {
         if (mUiccSlot != null) mUiccSlot.unregisterForAbsent(this);
         if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
-        if (mUiccApplication != null) mUiccApplication.unregisterForReady(this);
-        if (mUiccApplication != null) mUiccApplication.unregisterForLocked(this);
-        if (mUiccApplication != null) mUiccApplication.unregisterForNetworkLocked(this);
-        if (mIccRecords != null) mIccRecords.unregisterForImsiReady(this);
-        if (mIccRecords != null) mIccRecords.unregisterForRecordsLoaded(this);
-        if (mIccRecords != null) mIccRecords.unregisterForRecordsEvents(this);
-    }
-
-    private void updateStateProperty() {
-        mTelephonyManager.setSimStateForPhone(mPhoneId, getState().toString());
+        if (mUiccApplication != null) {
+            mUiccApplication.unregisterForReady(this);
+            mUiccApplication.unregisterForNetworkLocked(this);
+        }
+        if (mIccRecords != null) {
+            mIccRecords.unregisterForImsiReady(this);
+            mIccRecords.unregisterForRecordsLoaded(this);
+            mIccRecords.unregisterForLockedRecordsLoaded(this);
+            mIccRecords.unregisterForRecordsEvents(this);
+        }
     }
 
     private void broadcastIccStateChangedIntent(String value, String reason) {
