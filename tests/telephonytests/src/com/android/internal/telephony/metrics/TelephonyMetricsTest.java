@@ -37,6 +37,7 @@ import static org.mockito.Mockito.doReturn;
 
 import android.net.NetworkUtils;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.InterfaceAddress;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -179,6 +180,42 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         assertEquals(mPhone.getPhoneId(), log.events[0].phoneId);
         assertEquals("Test", log.events[0].modemRestart.reason);
+    }
+
+    // Test write Carrier Identification matching event
+    @Test
+    @SmallTest
+    public void testWriteCarrierIdMatchingEventWithInvalidMatchingScore() throws Exception {
+
+        mMetrics.writeCarrierIdMatchingEvent(mPhone.getPhoneId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, "gid1Test");
+        TelephonyLog log = buildProto();
+
+        assertEquals(1, log.events.length);
+        assertEquals(0, log.callSessions.length);
+        assertEquals(0, log.smsSessions.length);
+
+        assertEquals(mPhone.getPhoneId(), log.events[0].phoneId);
+        assertEquals(TelephonyEvent.Type.CARRIER_ID_MATCHING, log.events[0].type);
+        assertTrue(log.events[0].carrierIdMatching.result.gid1.isEmpty());
+    }
+
+    // Test write Carrier Identification matching event
+    @Test
+    @SmallTest
+    public void testWriteCarrierIdMatchingEvent() throws Exception {
+
+        mMetrics.writeCarrierIdMatchingEvent(mPhone.getPhoneId(), 1, "gid1Test");
+        TelephonyLog log = buildProto();
+
+        assertEquals(1, log.events.length);
+        assertEquals(0, log.callSessions.length);
+        assertEquals(0, log.smsSessions.length);
+
+        assertEquals(mPhone.getPhoneId(), log.events[0].phoneId);
+        assertEquals(TelephonyEvent.Type.CARRIER_ID_MATCHING, log.events[0].type);
+        assertEquals(1, log.events[0].carrierIdMatching.result.carrierId);
+        assertEquals("gid1Test", log.events[0].carrierIdMatching.result.gid1);
     }
 
     // Test write on IMS call start

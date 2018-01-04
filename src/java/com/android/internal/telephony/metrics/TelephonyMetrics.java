@@ -40,6 +40,7 @@ import android.os.SystemClock;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyHistogram;
+import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -65,6 +66,8 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.E
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.RilCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.RilCall.Type;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatchingResult;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCall;
@@ -1747,6 +1750,31 @@ public class TelephonyMetrics {
         if (reason != null) modemRestart.reason = reason;
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setModemRestart(
                 modemRestart).build();
+        addTelephonyEvent(event);
+    }
+
+    /**
+     * Write carrier identification matching event
+     *
+     * @param phoneId Phone id
+     * @param cid Unique Carrier Id
+     * @param gid1 Group id level 1
+     */
+    public void writeCarrierIdMatchingEvent(int phoneId, int cid, String gid1) {
+        final CarrierIdMatching carrierIdMatching = new CarrierIdMatching();
+        final CarrierIdMatchingResult carrierIdMatchingResult = new CarrierIdMatchingResult();
+
+        if (cid != TelephonyManager.UNKNOWN_CARRIER_ID) {
+            carrierIdMatchingResult.carrierId = cid;
+            if (gid1 != null) {
+                carrierIdMatchingResult.gid1 = gid1;
+            }
+        }
+
+        carrierIdMatching.result = carrierIdMatchingResult;
+
+        TelephonyEvent event = new TelephonyEventBuilder(phoneId).setCarrierIdMatching(
+                carrierIdMatching).build();
         addTelephonyEvent(event);
     }
 

@@ -637,6 +637,9 @@ message TelephonyEvent {
 
     // System time overwritten by NITZ (Network time)
     NITZ_TIME = 12;
+
+    // Carrier Identification Matching Event
+    CARRIER_ID_MATCHING = 13;
   }
 
   // Setup a packet data connection
@@ -862,6 +865,25 @@ message TelephonyEvent {
      optional string reason = 2;
   }
 
+  message CarrierIdMatching {
+
+    // Carrier id table version number
+    optional int32 cid_table_version = 1;
+
+    // Carrier id matching result object
+    optional CarrierIdMatchingResult result = 2;
+  }
+
+  message CarrierIdMatchingResult {
+
+    // A unique carrier id
+    optional int32 carrier_id = 1;
+
+    // Group id level 1. Logged only if gid1 is configured from subscription
+    // but its matching rule is unknown
+    optional string gid1 = 2;
+  }
+
   // Time when event happened on device, in milliseconds since epoch
   optional int64 timestamp_millis = 1;
 
@@ -906,6 +928,9 @@ message TelephonyEvent {
 
   // NITZ time in milliseconds
   optional int64 nitz_timestamp_millis = 15;
+
+  // Carrier id matching event
+  optional CarrierIdMatching carrier_id_matching = 16;
 }
 
 enum TimeInterval {
@@ -1150,7 +1175,7 @@ message TelephonyCallSession {
     // Time since previous event
     optional TimeInterval delay = 2;
 
-    // Settings at the begining of the session or when changed
+    // Settings at the beginning of the session or when changed
     optional TelephonySettings settings = 3;
 
     // State at the beginning of the session or when changed
@@ -1334,7 +1359,7 @@ message SmsSession {
     // Time since previous event
     optional TimeInterval delay = 2;
 
-    // Settings at the begining of the session or when changed
+    // Settings at the beginning of the session or when changed
     optional TelephonySettings settings = 3;
 
     // State at the beginning of the session or when changed
