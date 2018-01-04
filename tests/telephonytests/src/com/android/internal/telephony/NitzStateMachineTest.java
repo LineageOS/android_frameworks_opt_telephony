@@ -53,7 +53,6 @@ public class NitzStateMachineTest extends TelephonyTest {
 
         // Configure device state
         when(mDeviceState.getIgnoreNitz()).thenReturn(false);
-        when(mDeviceState.getIgnoreNitzForTests()).thenReturn(false);
         when(mDeviceState.getNitzUpdateDiffMillis()).thenReturn(2000);
         when(mDeviceState.getNitzUpdateSpacingMillis()).thenReturn(1000 * 60 * 10);
         when(mDeviceState.elapsedRealtime()).thenReturn(123456789L);
@@ -68,7 +67,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         // Confirm all mDeviceState side effects were verified. We don't care about retrievals of
         // device state.
         verify(mDeviceState, atLeast(0)).getIgnoreNitz();
-        verify(mDeviceState, atLeast(0)).getIgnoreNitzForTests();
         verify(mDeviceState, atLeast(0)).getNitzUpdateDiffMillis();
         verify(mDeviceState, atLeast(0)).getNitzUpdateSpacingMillis();
         verify(mDeviceState, atLeast(0)).elapsedRealtime();
@@ -112,8 +110,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
 
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
-
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
@@ -147,8 +143,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasNotSet();
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
 
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
-
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
@@ -175,13 +169,8 @@ public class NitzStateMachineTest extends TelephonyTest {
                 usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
 
         // Check resulting state and side effects.
-        long expectedAdjustedCurrentTimeMillis =
-                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
-
         verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
         verifyTimeServiceTimeWasNotSet();
-
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
 
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
@@ -209,14 +198,8 @@ public class NitzStateMachineTest extends TelephonyTest {
         mNitzStateMachine.setTimeAndTimeZoneFromNitz(
                 usNitzSignal.getNitzData(), usNitzSignal.getReceivedRealtimeMillis());
 
-        // Check resulting state and side effects.
-        long expectedAdjustedCurrentTimeMillis =
-                usNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
-
         verifyTimeServiceTimeZoneWasNotSet();
         verifyTimeServiceTimeWasNotSet();
-
-        verifyNitzTimePropertyWasSet(expectedAdjustedCurrentTimeMillis);
 
         assertTrue(mNitzStateMachine.getNitzUpdatedTime());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
@@ -239,12 +222,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         ArgumentCaptor<Long> timeServiceTimeCaptor = ArgumentCaptor.forClass(Long.TYPE);
         verify(mTimeServiceHelper, times(1)).setDeviceTime(timeServiceTimeCaptor.capture());
         assertEquals(expectedTimeMillis, (long) timeServiceTimeCaptor.getValue());
-    }
-
-    private void verifyNitzTimePropertyWasSet(long expectedTimeMillis) {
-        ArgumentCaptor<Long> propertyCaptor = ArgumentCaptor.forClass(Long.TYPE);
-        verify(mDeviceState, times(1)).setNitzTimeProperty(propertyCaptor.capture());
-        assertEquals(expectedTimeMillis, (long) propertyCaptor.getValue());
     }
 
     private void incrementSimulatedDeviceClock(int incMillis) {

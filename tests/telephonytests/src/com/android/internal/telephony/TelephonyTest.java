@@ -299,26 +299,6 @@ public abstract class TelephonyTest {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
 
-        //Use reflection to mock singletons
-        replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);
-        replaceInstance(TelephonyComponentFactory.class, "sInstance", null,
-                mTelephonyComponentFactory);
-        replaceInstance(UiccController.class, "mInstance", null, mUiccController);
-        replaceInstance(CdmaSubscriptionSourceManager.class, "sInstance", null, mCdmaSSM);
-        replaceInstance(ImsManager.class, "sImsManagerInstances", null, mImsManagerInstances);
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
-        replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
-        replaceInstance(ActivityManager.class, "IActivityManagerSingleton", null,
-                mIActivityManagerSingleton);
-        replaceInstance(CdmaSubscriptionSourceManager.class,
-                "mCdmaSubscriptionSourceChangedRegistrants", mCdmaSSM, mRegistrantList);
-        replaceInstance(SimulatedCommandsVerifier.class, "sInstance", null,
-                mSimulatedCommandsVerifier);
-        replaceInstance(Singleton.class, "mInstance", mIActivityManagerSingleton,
-                mIActivityManager);
-        replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
-        replaceInstance(IntentBroadcaster.class, "sIntentBroadcaster", null, mIntentBroadcaster);
-
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();
@@ -332,9 +312,6 @@ public abstract class TelephonyTest {
                 Context.TELEPHONY_SUBSCRIPTION_SERVICE);
         mEuiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
         mPackageManager = mContext.getPackageManager();
-
-        replaceInstance(TelephonyManager.class, "sInstance", null,
-                mContext.getSystemService(Context.TELEPHONY_SERVICE));
 
         //mTelephonyComponentFactory
         doReturn(mSST).when(mTelephonyComponentFactory)
@@ -463,6 +440,28 @@ public abstract class TelephonyTest {
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
+
+        //Use reflection to mock singletons
+        replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);
+        replaceInstance(TelephonyComponentFactory.class, "sInstance", null,
+                mTelephonyComponentFactory);
+        replaceInstance(UiccController.class, "mInstance", null, mUiccController);
+        replaceInstance(CdmaSubscriptionSourceManager.class, "sInstance", null, mCdmaSSM);
+        replaceInstance(ImsManager.class, "sImsManagerInstances", null, mImsManagerInstances);
+        replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
+        replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
+        replaceInstance(ActivityManager.class, "IActivityManagerSingleton", null,
+                mIActivityManagerSingleton);
+        replaceInstance(CdmaSubscriptionSourceManager.class,
+                "mCdmaSubscriptionSourceChangedRegistrants", mCdmaSSM, mRegistrantList);
+        replaceInstance(SimulatedCommandsVerifier.class, "sInstance", null,
+                mSimulatedCommandsVerifier);
+        replaceInstance(Singleton.class, "mInstance", mIActivityManagerSingleton,
+                mIActivityManager);
+        replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
+        replaceInstance(IntentBroadcaster.class, "sIntentBroadcaster", null, mIntentBroadcaster);
+        replaceInstance(TelephonyManager.class, "sInstance", null,
+                mContext.getSystemService(Context.TELEPHONY_SERVICE));
 
         setReady(false);
     }
