@@ -166,7 +166,9 @@ public class DcTrackerTest extends TelephonyTest {
             logd("   selectionArgs = " + Arrays.toString(selectionArgs));
             logd("   sortOrder = " + sortOrder);
 
-            if (uri.compareTo(Telephony.Carriers.CONTENT_URI) == 0) {
+            if (uri.compareTo(Telephony.Carriers.CONTENT_URI) == 0
+                    || uri.compareTo(Uri.withAppendedPath(
+                            Telephony.Carriers.CONTENT_URI, "filtered")) == 0) {
                 if (projection == null && selectionArgs == null && selection != null) {
 
                     Pattern pattern = Pattern.compile("^numeric = '([0-9]*)'");
