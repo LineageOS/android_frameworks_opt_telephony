@@ -20,8 +20,8 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.SMSDispatcher;
+import com.android.internal.telephony.SmsDispatchersController;
 import com.android.internal.telephony.TelephonyTest;
 
 import static org.mockito.Mockito.*;
@@ -37,7 +37,7 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
     @Mock
     private SmsMessage mCdmaSmsMessage;
     @Mock
-    private ImsSMSDispatcher mImsSmsDispatcher;
+    private SmsDispatchersController mSmsDispatchersController;
     @Mock
     private SMSDispatcher.SmsTracker mSmsTracker;
 
@@ -52,8 +52,7 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mCdmaSmsDispatcher = new CdmaSMSDispatcher(mPhone, mSmsUsageMonitor,
-                    mImsSmsDispatcher);
+            mCdmaSmsDispatcher = new CdmaSMSDispatcher(mPhone, mSmsDispatchersController);
             setReady(true);
         }
     }
@@ -63,7 +62,7 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
         super.setUp(this.getClass().getSimpleName());
 
         setupMockPackagePermissionChecks();
-
+        doReturn(mSmsUsageMonitor).when(mSmsDispatchersController).getUsageMonitor();
         mCdmaSmsDispatcherTestHandler = new CdmaSmsDispatcherTestHandler(TAG);
         mCdmaSmsDispatcherTestHandler.start();
         waitUntilReady();
