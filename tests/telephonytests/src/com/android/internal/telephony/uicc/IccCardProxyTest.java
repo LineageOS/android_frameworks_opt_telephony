@@ -90,6 +90,8 @@ public class IccCardProxyTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore
+    @FlakyTest
     @SmallTest
     public void testPowerOn() {
         mSimulatedCommands.setRadioPower(true, null);
@@ -104,6 +106,8 @@ public class IccCardProxyTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore
+    @FlakyTest
     @SmallTest
     public void testCardLoaded() {
         testPowerOn();
@@ -115,6 +119,8 @@ public class IccCardProxyTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore
+    @FlakyTest
     @SmallTest
     public void testAppNotLoaded() {
         testPowerOn();
