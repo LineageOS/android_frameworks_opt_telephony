@@ -18,6 +18,9 @@ package com.android.internal.telephony.uicc;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
 
@@ -60,8 +63,7 @@ public class UiccSlotTest extends TelephonyTest {
                 public void handleMessage(Message msg) {
                     switch (msg.what) {
                         case UICCCARD_UPDATE_CARD_STATE_EVENT:
-                            mUiccSlot.update(mContext, mSimulatedCommands, mIccCardStatus,
-                                    0 /* phoneId */);
+                            mUiccSlot.update(mSimulatedCommands, mIccCardStatus, 0 /* phoneId */);
                             setReady(true);
                             break;
                         default:
@@ -115,7 +117,7 @@ public class UiccSlotTest extends TelephonyTest {
 
         logd("UICC Card absent update");
         mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_ABSENT;
-        mUiccSlot.update(mContext, mSimulatedCommands, mIccCardStatus, 0 /* phoneId */);
+        mUiccSlot.update(mSimulatedCommands, mIccCardStatus, 0 /* phoneId */);
         waitForMs(50);
 
         ArgumentCaptor<Message> mCaptorMessage = ArgumentCaptor.forClass(Message.class);
@@ -123,5 +125,37 @@ public class UiccSlotTest extends TelephonyTest {
         verify(mMockedHandler, atLeast(1)).sendMessageDelayed(mCaptorMessage.capture(),
                 mCaptorLong.capture());
         assertEquals(UICCCARD_ABSENT, mCaptorMessage.getValue().what);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateSlotStatus() {
+        IccSlotStatus iss = new IccSlotStatus();
+        iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_INACTIVE;
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.iccid = "fake-iccid";
+
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+        assertNull(mUiccSlot.getIccId());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+        assertEquals(iss.iccid, mUiccSlot.getIccId());
+
+        iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_ACTIVE;
+
+        // update slot to active
+        mUiccSlot.update(mSimulatedCommands, iss);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
     }
 }

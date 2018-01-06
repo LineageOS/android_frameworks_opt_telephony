@@ -649,7 +649,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_ICC_SLOT_STATUS, iccSlotStatus);
 
-        mRil.mIccStatusChangedRegistrants.notifyRegistrants(
+        mRil.mIccSlotStatusChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, iccSlotStatus, null));
     }
 
