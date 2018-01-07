@@ -32,11 +32,13 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -54,9 +56,11 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 
 import java.io.FileDescriptor;
@@ -395,11 +399,15 @@ public class UiccProfile extends Handler implements IccCard {
 
     private void unregisterUiccCardEvents() {
         if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
-        if (mUiccApplication != null) mUiccApplication.unregisterForReady(this);
-        if (mUiccApplication != null) mUiccApplication.unregisterForLocked(this);
-        if (mUiccApplication != null) mUiccApplication.unregisterForNetworkLocked(this);
-        if (mIccRecords != null) mIccRecords.unregisterForRecordsLoaded(this);
-        if (mIccRecords != null) mIccRecords.unregisterForRecordsEvents(this);
+        if (mUiccApplication != null) {
+            mUiccApplication.unregisterForReady(this);
+            mUiccApplication.unregisterForNetworkLocked(this);
+        }
+        if (mIccRecords != null) {
+            mIccRecords.unregisterForRecordsLoaded(this);
+            mIccRecords.unregisterForLockedRecordsLoaded(this);
+            mIccRecords.unregisterForRecordsEvents(this);
+        }
     }
 
     private void broadcastIccStateChangedIntent(String value, String reason) {
@@ -802,7 +810,7 @@ public class UiccProfile extends Handler implements IccCard {
                 if (mUiccApplications[i] == null) {
                     //Create newly added Applications
                     if (i < ics.mApplications.length) {
-                        mUiccApplications[i] = new UiccCardApplication(mUiccCard,
+                        mUiccApplications[i] = new UiccCardApplication(this,
                                 ics.mApplications[i], mContext, mCi);
                     }
                 } else if (i >= ics.mApplications.length) {
@@ -817,10 +825,14 @@ public class UiccProfile extends Handler implements IccCard {
 
             createAndUpdateCatServiceLocked();
 
-            log("Before privilege rules: " + mCarrierPrivilegeRules);
-            if (mCarrierPrivilegeRules == null) {
-                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccCard,
-                        mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
+            // Reload the carrier privilege rules if necessary.
+            log("Before privilege rules: " + mCarrierPrivilegeRules + " : " + ics.mCardState);
+            if (mCarrierPrivilegeRules == null && ics.mCardState == CardState.CARDSTATE_PRESENT) {
+                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(this,
+                    mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
+            } else if (mCarrierPrivilegeRules != null
+                    && ics.mCardState != CardState.CARDSTATE_PRESENT) {
+                mCarrierPrivilegeRules = null;
             }
 
             sanitizeApplicationIndexesLocked();
@@ -831,9 +843,9 @@ public class UiccProfile extends Handler implements IccCard {
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
             // Initialize or Reinitialize CatService
             if (mCatService == null) {
-                mCatService = CatService.getInstance(mCi, mContext, mUiccCard, mPhoneId);
+                mCatService = CatService.getInstance(mCi, mContext, this, mPhoneId);
             } else {
-                mCatService.update(mCi, mContext, mUiccCard);
+                mCatService.update(mCi, mContext, this);
             }
         } else {
             if (mCatService != null) {
@@ -1319,7 +1331,21 @@ public class UiccProfile extends Handler implements IccCard {
             return null;
         }
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        return sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
+        String brandName = sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
+        if (brandName == null) {
+            // Check if  CarrierConfig sets carrier name
+            CarrierConfigManager manager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            int subId = SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
+            if (manager != null) {
+                PersistableBundle bundle = manager.getConfigForSubId(subId);
+                if (bundle != null && bundle.getBoolean(
+                        CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL)) {
+                    brandName = bundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+                }
+            }
+        }
+        return brandName;
     }
 
     /**

@@ -16,6 +16,11 @@
 
 package com.android.internal.telephony.cat;
 
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants
+        .IDLE_SCREEN_AVAILABLE_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants
+        .LANGUAGE_SELECTION_EVENT;
+
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
 import android.app.backup.BackupManager;
@@ -31,30 +36,25 @@ import android.os.HandlerThread;
 import android.os.LocaleList;
 import android.os.Message;
 import android.os.RemoteException;
-import android.os.SystemProperties;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
-import com.android.internal.telephony.uicc.IccCardStatus.CardState;
-import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccProfile;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Locale;
-
-import static com.android.internal.telephony.cat.CatCmdMessage.
-                   SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage.
-                   SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
 
 class RilMessage {
     int mId;
@@ -134,9 +134,9 @@ public class CatService extends Handler implements AppInterface {
 
     /* For multisim catservice should not be singleton */
     private CatService(CommandsInterface ci, UiccCardApplication ca, IccRecords ir,
-            Context context, IccFileHandler fh, UiccCard ic, int slotId) {
+            Context context, IccFileHandler fh, UiccProfile uiccProfile, int slotId) {
         if (ci == null || ca == null || ir == null || context == null || fh == null
-                || ic == null) {
+                || uiccProfile == null) {
             throw new NullPointerException(
                     "Service: Input parameters must not be null");
         }
@@ -192,15 +192,15 @@ public class CatService extends Handler implements AppInterface {
      * @return The only Service object in the system
      */
     public static CatService getInstance(CommandsInterface ci,
-            Context context, UiccCard ic, int slotId) {
+            Context context, UiccProfile uiccProfile, int slotId) {
         UiccCardApplication ca = null;
         IccFileHandler fh = null;
         IccRecords ir = null;
-        if (ic != null) {
+        if (uiccProfile != null) {
             /* Since Cat is not tied to any application, but rather is Uicc application
              * in itself - just get first FileHandler and IccRecords object
              */
-            ca = ic.getApplicationIndex(0);
+            ca = uiccProfile.getApplicationIndex(0);
             if (ca != null) {
                 fh = ca.getIccFileHandler();
                 ir = ca.getIccRecords();
@@ -217,11 +217,11 @@ public class CatService extends Handler implements AppInterface {
             }
             if (sInstance[slotId] == null) {
                 if (ci == null || ca == null || ir == null || context == null || fh == null
-                        || ic == null) {
+                        || uiccProfile == null) {
                     return null;
                 }
 
-                sInstance[slotId] = new CatService(ci, ca, ir, context, fh, ic, slotId);
+                sInstance[slotId] = new CatService(ci, ca, ir, context, fh, uiccProfile, slotId);
             } else if ((ir != null) && (mIccRecords != ir)) {
                 if (mIccRecords != null) {
                     mIccRecords.unregisterForRecordsLoaded(sInstance[slotId]);
@@ -1102,15 +1102,15 @@ public class CatService extends Handler implements AppInterface {
     }
 
     public void update(CommandsInterface ci,
-            Context context, UiccCard ic) {
+            Context context, UiccProfile uiccProfile) {
         UiccCardApplication ca = null;
         IccRecords ir = null;
 
-        if (ic != null) {
+        if (uiccProfile != null) {
             /* Since Cat is not tied to any application, but rather is Uicc application
              * in itself - just get first FileHandler and IccRecords object
              */
-            ca = ic.getApplicationIndex(0);
+            ca = uiccProfile.getApplicationIndex(0);
             if (ca != null) {
                 ir = ca.getIccRecords();
             }
