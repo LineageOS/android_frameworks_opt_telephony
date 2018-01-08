@@ -377,8 +377,9 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals("*86", mPhoneUT.getVoiceMailNumber());
 
         // config_telephony_use_own_number_for_voicemail
-        mContextFixture.putBooleanResource(
-                com.android.internal.R.bool.config_telephony_use_own_number_for_voicemail, true);
+        mContextFixture.getCarrierConfigBundle()
+                .putBoolean(CarrierConfigManager
+                                .KEY_CONFIG_TELEPHONY_USE_OWN_NUMBER_FOR_VOICEMAIL_BOOL, true);
         doReturn(voiceMailNumber).when(mSST).getMdnNumber();
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
 
