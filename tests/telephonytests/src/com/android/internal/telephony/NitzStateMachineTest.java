@@ -56,6 +56,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         when(mDeviceState.getNitzUpdateDiffMillis()).thenReturn(2000);
         when(mDeviceState.getNitzUpdateSpacingMillis()).thenReturn(1000 * 60 * 10);
         when(mDeviceState.elapsedRealtime()).thenReturn(123456789L);
+        when(mDeviceState.currentTimeMillis()).thenReturn(987654321L);
 
         mNitzStateMachine = new NitzStateMachine(mPhone, mTimeServiceHelper, mDeviceState);
 
@@ -70,6 +71,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         verify(mDeviceState, atLeast(0)).getNitzUpdateDiffMillis();
         verify(mDeviceState, atLeast(0)).getNitzUpdateSpacingMillis();
         verify(mDeviceState, atLeast(0)).elapsedRealtime();
+        verify(mDeviceState, atLeast(0)).currentTimeMillis();
         verify(mDeviceState, atLeast(0)).getNetworkCountryIsoForPhone();
         verifyNoMoreInteractions(mDeviceState);
 
@@ -110,7 +112,8 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
 
-        assertTrue(mNitzStateMachine.getNitzUpdatedTime());
+
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
@@ -143,7 +146,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasNotSet();
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
 
-        assertTrue(mNitzStateMachine.getNitzUpdatedTime());
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
@@ -172,7 +175,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasSet(usNitzSignal.getTimeZoneId());
         verifyTimeServiceTimeWasNotSet();
 
-        assertTrue(mNitzStateMachine.getNitzUpdatedTime());
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
@@ -201,7 +204,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         verifyTimeServiceTimeZoneWasNotSet();
         verifyTimeServiceTimeWasNotSet();
 
-        assertTrue(mNitzStateMachine.getNitzUpdatedTime());
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(usNitzSignal.getNitzData(), mNitzStateMachine.getCachedNitzData());
         assertEquals(usNitzSignal.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
@@ -227,6 +230,8 @@ public class NitzStateMachineTest extends TelephonyTest {
     private void incrementSimulatedDeviceClock(int incMillis) {
         long currentElapsedRealtime = mDeviceState.elapsedRealtime();
         when(mDeviceState.elapsedRealtime()).thenReturn(currentElapsedRealtime + incMillis);
+        long currentTimeMillis = mDeviceState.currentTimeMillis();
+        when(mDeviceState.elapsedRealtime()).thenReturn(currentTimeMillis + incMillis);
     }
 
     private static long createTime(TimeZone timeZone, int year, int monthOfYear, int dayOfMonth,
