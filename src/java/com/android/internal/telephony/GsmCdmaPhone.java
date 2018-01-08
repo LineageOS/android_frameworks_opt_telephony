@@ -1410,8 +1410,11 @@ public class GsmCdmaPhone extends Phone {
 
         if (!isPhoneTypeGsm() && TextUtils.isEmpty(number)) {
             // Read platform settings for dynamic voicemail number
-            if (getContext().getResources().getBoolean(com.android.internal
-                    .R.bool.config_telephony_use_own_number_for_voicemail)) {
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle b = configManager.getConfig();
+            if (b != null && b.getBoolean(
+                    CarrierConfigManager.KEY_CONFIG_TELEPHONY_USE_OWN_NUMBER_FOR_VOICEMAIL_BOOL)) {
                 number = getLine1Number();
             } else {
                 number = "*86";
