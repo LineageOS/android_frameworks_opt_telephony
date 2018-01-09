@@ -3431,6 +3431,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.setAllowedCarriers(carriers, response);
     }
 
+    /** Sets the SignalStrength reporting criteria. */
+    public void setSignalStrengthReportingCriteria(int[] thresholds, int ran) {
+        // no-op default implementation
+    }
+
+    /** Sets the SignalStrength reporting criteria. */
+    public void setLinkCapacityReportingCriteria(int[] dlThresholds, int[] ulThresholds, int ran) {
+        // no-op default implementation
+    }
+
     /**
      * Get allowed carriers
      */
