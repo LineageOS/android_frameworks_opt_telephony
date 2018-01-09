@@ -16,9 +16,9 @@
 
 package com.android.internal.telephony;
 
-import static android.telephony.RadioNetworkConstants.RadioAccessNetworks.EUTRAN;
-import static android.telephony.RadioNetworkConstants.RadioAccessNetworks.GERAN;
-import static android.telephony.RadioNetworkConstants.RadioAccessNetworks.UTRAN;
+import static android.telephony.AccessNetworkConstants.AccessNetworkType.EUTRAN;
+import static android.telephony.AccessNetworkConstants.AccessNetworkType.GERAN;
+import static android.telephony.AccessNetworkConstants.AccessNetworkType.UTRAN;
 
 import android.hardware.radio.V1_0.RadioError;
 import android.os.AsyncResult;
