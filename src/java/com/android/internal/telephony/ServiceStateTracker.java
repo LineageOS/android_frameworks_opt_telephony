@@ -559,7 +559,7 @@ public class ServiceStateTracker extends Handler {
         mMin = null;
         mPrlVersion = null;
         mIsMinInfoReady = false;
-        mNitzState.clearNitzUpdatedTime();
+        mNitzState.clearNitzTimeZoneDetectionSuccessful();
 
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
@@ -2548,7 +2548,7 @@ public class ServiceStateTracker extends Handler {
                 mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mNitzState.setNetworkCountryIsoAvailable(false);
-                mNitzState.clearNitzUpdatedTime();
+                mNitzState.clearNitzTimeZoneDetectionSuccessful();
                 pollStateDone();
                 break;
 
@@ -2557,7 +2557,7 @@ public class ServiceStateTracker extends Handler {
                 mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mNitzState.setNetworkCountryIsoAvailable(false);
-                mNitzState.clearNitzUpdatedTime();
+                mNitzState.clearNitzTimeZoneDetectionSuccessful();
                 // don't poll when device is shutting down or the poll was not modemTrigged
                 // (they sent us new radio data) and current network is not IWLAN
                 if (mDeviceShuttingDown ||
@@ -2790,11 +2790,12 @@ public class ServiceStateTracker extends Handler {
             mNetworkAttachedRegistrants.notifyRegistrants();
 
             if (DBG) {
-                log("pollStateDone: hasRegistered, current mNitzState.getNitzUpdatedTime()="
-                        + mNitzState.getNitzUpdatedTime()
-                        + ". Calling mNitzState.clearNitzUpdatedTime()");
+                log("pollStateDone: hasRegistered,"
+                        + " current mNitzState.getNitzTimeZoneDetectionSuccessful()="
+                        + mNitzState.getNitzTimeZoneDetectionSuccessful()
+                        + ". Calling mNitzState.clearNitzTimeZoneDetectionSuccessful()");
             }
-            mNitzState.clearNitzUpdatedTime();
+            mNitzState.clearNitzTimeZoneDetectionSuccessful();
         }
 
         if (hasDeregistered) {
@@ -2828,7 +2829,7 @@ public class ServiceStateTracker extends Handler {
                 if (DBG) log("operatorNumeric " + operatorNumeric + " is invalid");
                 tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
                 mNitzState.setNetworkCountryIsoAvailable(false);
-                mNitzState.clearNitzUpdatedTime();
+                mNitzState.clearNitzTimeZoneDetectionSuccessful();
             } else if (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
                 // Update time zone, ISO, and IDD.
                 //

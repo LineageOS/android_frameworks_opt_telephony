@@ -254,6 +254,14 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public String getSystemServiceName(Class<?> serviceClass) {
+            if (serviceClass == SubscriptionManager.class) {
+                return Context.TELEPHONY_SUBSCRIPTION_SERVICE;
+            }
+            return super.getSystemServiceName(serviceClass);
+        }
+
+        @Override
         public int getUserId() {
             return 0;
         }
