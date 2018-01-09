@@ -67,6 +67,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
@@ -76,7 +77,6 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
 import android.telephony.RadioAccessSpecifier;
-import android.telephony.RadioNetworkConstants.RadioAccessNetworks;
 import android.telephony.Rlog;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
@@ -1751,13 +1751,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
         rasInHalFormat.radioAccessNetwork = ras.getRadioAccessNetwork();
         List<Integer> bands = null;
         switch (ras.getRadioAccessNetwork()) {
-            case RadioAccessNetworks.GERAN:
+            case AccessNetworkType.GERAN:
                 bands = rasInHalFormat.geranBands;
                 break;
-            case RadioAccessNetworks.UTRAN:
+            case AccessNetworkType.UTRAN:
                 bands = rasInHalFormat.utranBands;
                 break;
-            case RadioAccessNetworks.EUTRAN:
+            case AccessNetworkType.EUTRAN:
                 bands = rasInHalFormat.eutranBands;
                 break;
             default:
