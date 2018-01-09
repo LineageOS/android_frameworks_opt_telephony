@@ -39,6 +39,7 @@ import android.hardware.radio.V1_0.HardwareConfigModem;
 import android.hardware.radio.V1_0.IRadio;
 import android.hardware.radio.V1_0.IccIo;
 import android.hardware.radio.V1_0.ImsSmsMessage;
+import android.hardware.radio.V1_0.IndicationFilter;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.MvnoType;
 import android.hardware.radio.V1_0.NvWriteItem;
@@ -51,6 +52,7 @@ import android.hardware.radio.V1_0.SelectUiccSub;
 import android.hardware.radio.V1_0.SimApdu;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
+import android.hardware.radio.V1_2.AccessNetwork;
 import android.net.ConnectivityManager;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
@@ -3602,11 +3604,101 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " + filter);
             }
 
-            try {
-                radioProxy.setIndicationFilter(rr.mSerial, filter);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setIndicationFilter", e);
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+
+            if (radioProxy12 != null) {
+                try {
+                    radioProxy12.setIndicationFilter_1_2(rr.mSerial, filter);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setIndicationFilter_1_2", e);
+                }
+            } else {
+                try {
+                    int filter10 = filter & IndicationFilter.ALL;
+                    radioProxy.setIndicationFilter(rr.mSerial, filter10);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setIndicationFilter", e);
+                }
             }
+        }
+    }
+
+    @Override
+    public void setSignalStrengthReportingCriteria(int hysteresisMs, int hysteresisDb,
+            int[] thresholdsDbm, int ran, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+            if (radioProxy12 == null) {
+                riljLoge("setSignalStrengthReportingCriteria ignored. RadioProxy 1.2 is null!");
+                return;
+            }
+
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA,
+                    result, mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                radioProxy12.setSignalStrengthReportingCriteria(rr.mSerial, hysteresisMs,
+                        hysteresisDb, primitiveArrayToArrayList(thresholdsDbm),
+                        convertRanToHalRan(ran));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "setSignalStrengthReportingCriteria", e);
+            }
+        }
+    }
+
+    @Override
+    public void setLinkCapacityReportingCriteria(int hysteresisMs, int hysteresisDlKbps,
+            int hysteresisUlKbps, int[] thresholdsDlKbps, int[] thresholdsUlKbps, int ran,
+            Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+            if (radioProxy12 == null) {
+                riljLoge("setLinkCapacityReportingCriteria ignored. RadioProxy 1.2 is null!");
+                return;
+            }
+
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA,
+                    result, mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                radioProxy12.setLinkCapacityReportingCriteria(rr.mSerial, hysteresisMs,
+                        hysteresisDlKbps, hysteresisUlKbps,
+                        primitiveArrayToArrayList(thresholdsDlKbps),
+                        primitiveArrayToArrayList(thresholdsUlKbps), convertRanToHalRan(ran));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "setLinkCapacityReportingCriteria", e);
+            }
+        }
+    }
+
+    private static int convertRanToHalRan(int radioAccessNetwork) {
+        switch (radioAccessNetwork) {
+            case AccessNetworkType.GERAN:
+                return AccessNetwork.GERAN;
+            case AccessNetworkType.UTRAN:
+                return AccessNetwork.UTRAN;
+            case AccessNetworkType.EUTRAN:
+                return AccessNetwork.EUTRAN;
+            case AccessNetworkType.CDMA2000:
+                return AccessNetwork.CDMA2000;
+            case AccessNetworkType.IWLAN:
+                return AccessNetwork.IWLAN;
+            case AccessNetworkType.UNKNOWN:
+            default:
+                return 0;
         }
     }
 
@@ -4716,6 +4808,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_START_KEEPALIVE";
             case RIL_REQUEST_STOP_KEEPALIVE:
                 return "RIL_REQUEST_STOP_KEEPALIVE";
+            case RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA:
+                return "RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA";
+            case RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA:
+                return "RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA";
             default: return "<unknown request>";
         }
     }
@@ -4913,6 +5009,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
         ArrayList<Byte> arrayList = new ArrayList<>(arr.length);
         for (byte b : arr) {
             arrayList.add(b);
+        }
+        return arrayList;
+    }
+
+    /** Convert a primitive int array to an ArrayList<Integer>. */
+    public static ArrayList<Integer> primitiveArrayToArrayList(int[] arr) {
+        ArrayList<Integer> arrayList = new ArrayList<>(arr.length);
+        for (int i : arr) {
+            arrayList.add(i);
         }
         return arrayList;
     }
