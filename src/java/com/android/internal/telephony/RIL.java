@@ -4069,13 +4069,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return workSource;
     }
 
-    private String getWorkSourceClientId(WorkSource workSource) {
-        if (workSource != null) {
-            return String.valueOf(workSource.get(0)) + ":" + workSource.getName(0);
-        }
-
-        return null;
-    }
 
     /**
      * Holds a PARTIAL_WAKE_LOCK whenever
@@ -4099,7 +4092,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         mWakeLockCount++;
                         mWlSequenceNum++;
 
-                        String clientId = getWorkSourceClientId(rr.mWorkSource);
+                        String clientId = rr.getWorkSourceClientId();
                         if (!mClientWakelockTracker.isClientActive(clientId)) {
                             if (mActiveWakelockWorkSource != null) {
                                 mActiveWakelockWorkSource.add(rr.mWorkSource);
@@ -4161,7 +4154,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         mClientWakelockTracker.stopTracking(rr.mClientId,
                                 rr.mRequest, rr.mSerial,
                                 (mWakeLockCount > 1) ? mWakeLockCount - 1 : 0);
-                        String clientId = getWorkSourceClientId(rr.mWorkSource);;
+                        String clientId = rr.getWorkSourceClientId();
                         if (!mClientWakelockTracker.isClientActive(clientId)
                                 && (mActiveWakelockWorkSource != null)) {
                             mActiveWakelockWorkSource.remove(rr.mWorkSource);
