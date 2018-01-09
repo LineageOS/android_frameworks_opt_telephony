@@ -1537,7 +1537,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo) {
-        CarrierInfoManager.setCarrierInfoForImsiEncryption(imsiEncryptionInfo, mContext);
+        CarrierInfoManager.setCarrierInfoForImsiEncryption(imsiEncryptionInfo, mContext, mPhoneId);
     }
 
     @Override
