@@ -16,9 +16,8 @@
 
 package com.android.internal.telephony;
 
-import static org.junit.Assert.assertEquals;
-
 import android.os.Parcel;
+import android.telephony.CellIdentity;
 import android.telephony.CellIdentityWcdma;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -181,12 +180,13 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
         CellIdentityWcdma ci = new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, null, null);
 
         Parcel p = Parcel.obtain();
+        p.writeInt(CellIdentity.TYPE_WCDMA);
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(PSC);
         p.writeInt(UARFCN);
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.setDataPosition(0);
 
         CellIdentityWcdma newCi = CellIdentityWcdma.CREATOR.createFromParcel(p);
@@ -200,12 +200,13 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
         CellIdentityWcdma ci = new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, null, null);
 
         Parcel p = Parcel.obtain();
+        p.writeInt(CellIdentity.TYPE_WCDMA);
+        p.writeString(invalidMcc);
+        p.writeString(invalidMnc);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(PSC);
         p.writeInt(UARFCN);
-        p.writeString(invalidMcc);
-        p.writeString(invalidMnc);
         p.setDataPosition(0);
 
         CellIdentityWcdma newCi = CellIdentityWcdma.CREATOR.createFromParcel(p);

@@ -16,11 +16,8 @@
 
 package com.android.internal.telephony;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import android.os.Parcel;
+import android.telephony.CellIdentity;
 import android.telephony.CellIdentityGsm;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -186,12 +183,13 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         CellIdentityGsm ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, null, null);
 
         Parcel p = Parcel.obtain();
+        p.writeInt(CellIdentityGsm.TYPE_GSM);
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(ARFCN);
         p.writeInt(BSIC);
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.setDataPosition(0);
 
         CellIdentityGsm newCi = CellIdentityGsm.CREATOR.createFromParcel(p);
@@ -205,12 +203,13 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         CellIdentityGsm ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, null, null);
 
         Parcel p = Parcel.obtain();
+        p.writeInt(CellIdentity.TYPE_GSM);
+        p.writeString(invalidMcc);
+        p.writeString(invalidMnc);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(ARFCN);
         p.writeInt(BSIC);
-        p.writeString(invalidMcc);
-        p.writeString(invalidMnc);
         p.setDataPosition(0);
 
         CellIdentityGsm newCi = CellIdentityGsm.CREATOR.createFromParcel(p);
