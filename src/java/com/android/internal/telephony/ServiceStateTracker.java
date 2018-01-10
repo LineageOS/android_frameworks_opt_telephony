@@ -3092,7 +3092,7 @@ public class ServiceStateTracker extends Handler {
             if (lastNitzData == null) {
                 tzone = null;
             } else {
-                tzone = NitzData.guessTimeZone(lastNitzData);
+                tzone = TimeZoneLookupHelper.guessZoneByNitzStatic(lastNitzData);
                 if (ServiceStateTracker.DBG) {
                     log("fixUnknownMcc(): guessNitzTimeZone returned "
                             + (tzone == null ? tzone : tzone.getID()));
