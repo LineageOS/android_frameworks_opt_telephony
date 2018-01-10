@@ -20,8 +20,10 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.WorkSource;
+import android.os.WorkSource.WorkChain;
 import android.telephony.Rlog;
 
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -110,18 +112,41 @@ public class RILRequest {
      * @param workSource WorkSource to track the client
      * @return a RILRequest instance from the pool.
      */
-    static RILRequest obtain(int request, Message result, WorkSource workSource) {
+    // @VisibleForTesting
+    public static RILRequest obtain(int request, Message result, WorkSource workSource) {
         RILRequest rr = null;
 
         rr = obtain(request, result);
         if (workSource != null) {
             rr.mWorkSource = workSource;
-            rr.mClientId = String.valueOf(workSource.get(0)) + ":" + workSource.getName(0);
+            rr.mClientId = rr.getWorkSourceClientId();
         } else {
             Rlog.e(LOG_TAG, "null workSource " + request);
         }
 
         return rr;
+    }
+
+    /**
+     * Generate a String client ID from the WorkSource.
+     */
+    // @VisibleForTesting
+    public String getWorkSourceClientId() {
+        if (mWorkSource == null || mWorkSource.isEmpty()) {
+            return null;
+        }
+
+        if (mWorkSource.size() > 0) {
+            return mWorkSource.get(0) + ":" + mWorkSource.getName(0);
+        }
+
+        final ArrayList<WorkChain> workChains = mWorkSource.getWorkChains();
+        if (workChains != null && !workChains.isEmpty()) {
+            final WorkChain workChain = workChains.get(0);
+            return workChain.getAttributionUid() + ":" + workChain.getTags()[0];
+        }
+
+        return null;
     }
 
     /**

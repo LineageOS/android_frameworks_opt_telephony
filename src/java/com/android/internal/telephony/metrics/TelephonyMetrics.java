@@ -68,6 +68,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.E
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatchingResult;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCall;
@@ -510,7 +511,6 @@ public class TelephonyMetrics {
         log.endTime = new TelephonyProto.Time();
         log.endTime.systemTimestampMillis = System.currentTimeMillis();
         log.endTime.elapsedTimestampMillis = SystemClock.elapsedRealtime();
-
         return log;
     }
 
@@ -524,6 +524,23 @@ public class TelephonyMetrics {
         return (int) ((timestamp) / (MINUTE_IN_MILLIS * SESSION_START_PRECISION_MINUTES)
                 * (SESSION_START_PRECISION_MINUTES));
     }
+
+    /**
+     * Write the Carrier Key change event
+     *
+     * @param phoneId Phone id
+     * @param keyType type of key
+     * @param isDownloadSuccessful true if the key was successfully downloaded
+     */
+    public void writeCarrierKeyEvent(int phoneId, int keyType,  boolean isDownloadSuccessful) {
+        final CarrierKeyChange carrierKeyChange = new CarrierKeyChange();
+        carrierKeyChange.keyType = keyType;
+        carrierKeyChange.isDownloadSuccessful = isDownloadSuccessful;
+        TelephonyEvent event = new TelephonyEventBuilder(phoneId).setCarrierKeyChange(
+                carrierKeyChange).build();
+        addTelephonyEvent(event);
+    }
+
 
     /**
      * Get the time interval with reduced prevision

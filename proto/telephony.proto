@@ -640,6 +640,9 @@ message TelephonyEvent {
 
     // Carrier Identification Matching Event
     CARRIER_ID_MATCHING = 13;
+
+    // Carrier Key Change event.
+    CARRIER_KEY_CHANGED = 14;
   }
 
   // Setup a packet data connection
@@ -830,6 +833,26 @@ message TelephonyEvent {
     optional RilDataCall call = 3;
   }
 
+  // Carrier Key Change Event.
+  message CarrierKeyChange {
+
+    enum KeyType {
+
+      // Key Type Unknown.
+      UNKNOWN = 0;
+      // Key Type for WLAN.
+      WLAN = 1;
+      // Key Type for EPDG.
+      EPDG = 2;
+    }
+
+    // Key type of the Encryption key.
+    optional KeyType key_type = 1;
+
+    // Whether the download was successful or not.
+    optional bool isDownloadSuccessful = 2;
+  }
+
   // Deactivate packet data connection
   message RilDeactivateDataCall {
 
@@ -931,6 +954,9 @@ message TelephonyEvent {
 
   // Carrier id matching event
   optional CarrierIdMatching carrier_id_matching = 16;
+
+  // Carrier key change
+  optional CarrierKeyChange carrier_key_change = 17;
 }
 
 enum TimeInterval {
