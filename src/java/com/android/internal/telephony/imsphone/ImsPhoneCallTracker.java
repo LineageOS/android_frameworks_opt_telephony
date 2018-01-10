@@ -3449,6 +3449,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    public boolean isViLteDataMetered() {
+        return mIsViLteDataMetered;
+    }
+
     /**
      * Handler of data enabled changed event
      * @param enabled True if data is enabled, otherwise disabled.
