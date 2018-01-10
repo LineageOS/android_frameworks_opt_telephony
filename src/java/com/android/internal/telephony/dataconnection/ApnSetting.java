@@ -49,6 +49,7 @@ public class ApnSetting {
 
     static final String V2_FORMAT_REGEX = "^\\[ApnSettingV2\\]\\s*";
     static final String V3_FORMAT_REGEX = "^\\[ApnSettingV3\\]\\s*";
+    static final String V4_FORMAT_REGEX = "^\\[ApnSettingV4\\]\\s*";
     static final String TAG = "ApnSetting";
 
     public final String carrier;
@@ -79,7 +80,10 @@ public class ApnSetting {
      * To check what values can hold, refer to ServiceState.java.
      * This should be spread to other technologies,
      * but currently only used for LTE(14) and EHRPD(13).
+     *
+     * @deprecated use {@code networkTypeBitmask} instead
      */
+    @Deprecated
     private final int bearer;
     /**
       * Radio Access Technology info
@@ -87,8 +91,18 @@ public class ApnSetting {
       * technologies in ServiceState.
       * This should be spread to other technologies,
       * but currently only used for LTE(14) and EHRPD(13).
+      *
+      * @deprecated use {@code networkTypeBitmask} instead
       */
+    @Deprecated
     public final int bearerBitmask;
+
+    /**
+     * Radio Technology (Network Type) info
+     * To check what values can hold, refer to TelephonyManager.java. This is a bitmask of radio
+     * technologies ({@code NETWORK_TYPE_} constants) in {@link TelephonyManager}.
+     */
+    public final int networkTypeBitmask;
 
     /* ID of the profile in the modem */
     public final int profileId;
@@ -120,6 +134,11 @@ public class ApnSetting {
      * */
     public boolean permanentFailed = false;
 
+    /**
+     * @deprecated this constructor is no longer supported. Use the other constructor which takes
+     * a network type bitmask instead of the deprecated bearer bitmask and bearer field.
+     * */
+    @Deprecated
     public ApnSetting(int id, String numeric, String carrier, String apn,
                       String proxy, String port,
                       String mmsc, String mmsProxy, String mmsPort,
@@ -160,14 +179,59 @@ public class ApnSetting {
         this.mtu = mtu;
         this.mvnoType = mvnoType;
         this.mvnoMatchData = mvnoMatchData;
+        this.networkTypeBitmask = ServiceState.convertBearerBitmaskToNetworkTypeBitmask(
+                this.bearerBitmask);
+    }
 
+    public ApnSetting(int id, String numeric, String carrier, String apn,
+                      String proxy, String port,
+                      String mmsc, String mmsProxy, String mmsPort,
+                      String user, String password, int authType, String[] types,
+                      String protocol, String roamingProtocol, boolean carrierEnabled,
+                      int networkTypeBitmask, int profileId, boolean modemCognitive, int maxConns,
+                      int waitTime, int maxConnsTime, int mtu, String mvnoType,
+                      String mvnoMatchData) {
+        this.id = id;
+        this.numeric = numeric;
+        this.carrier = carrier;
+        this.apn = apn;
+        this.proxy = proxy;
+        this.port = port;
+        this.mmsc = mmsc;
+        this.mmsProxy = mmsProxy;
+        this.mmsPort = mmsPort;
+        this.user = user;
+        this.password = password;
+        this.authType = authType;
+        this.types = new String[types.length];
+        int apnBitmap = 0;
+        for (int i = 0; i < types.length; i++) {
+            this.types[i] = types[i].toLowerCase();
+            apnBitmap |= getApnBitmask(this.types[i]);
+        }
+        this.typesBitmap = apnBitmap;
+        this.protocol = protocol;
+        this.roamingProtocol = roamingProtocol;
+        this.carrierEnabled = carrierEnabled;
+        this.bearer = 0;
+        this.bearerBitmask =
+                ServiceState.convertNetworkTypeBitmaskToBearerBitmask(networkTypeBitmask);
+        this.networkTypeBitmask = networkTypeBitmask;
+        this.profileId = profileId;
+        this.modemCognitive = modemCognitive;
+        this.maxConns = maxConns;
+        this.waitTime = waitTime;
+        this.maxConnsTime = maxConnsTime;
+        this.mtu = mtu;
+        this.mvnoType = mvnoType;
+        this.mvnoMatchData = mvnoMatchData;
     }
 
     public ApnSetting(ApnSetting apn) {
         this(apn.id, apn.numeric, apn.carrier, apn.apn, apn.proxy, apn.port, apn.mmsc, apn.mmsProxy,
                 apn.mmsPort, apn.user, apn.password, apn.authType, apn.types, apn.protocol,
-                apn.roamingProtocol, apn.carrierEnabled, apn.bearer, apn.bearerBitmask,
-                apn.profileId, apn.modemCognitive, apn.maxConns, apn.waitTime, apn.maxConnsTime,
+                apn.roamingProtocol, apn.carrierEnabled, apn.networkTypeBitmask, apn.profileId,
+                apn.modemCognitive, apn.maxConns, apn.waitTime, apn.maxConnsTime,
                 apn.mtu, apn.mvnoType, apn.mvnoMatchData);
     }
 
@@ -196,6 +260,13 @@ public class ApnSetting {
      *   <profileId>, <modemCognitive>, <maxConns>, <waitTime>, <maxConnsTime>, <mtu>,
      *   <mvnoType>, <mvnoMatchData>
      *
+     * v4 format:
+     *   [ApnSettingV4] <carrier>, <apn>, <proxy>, <port>, <user>, <password>, <server>,
+     *   <mmsc>, <mmsproxy>, <mmsport>, <mcc>, <mnc>, <authtype>,
+     *   <type>[| <type>...], <protocol>, <roaming_protocol>, <carrierEnabled>, <bearerBitmask>,
+     *   <profileId>, <modemCognitive>, <maxConns>, <waitTime>, <maxConnsTime>, <mtu>,
+     *   <mvnoType>, <mvnoMatchData>, <networkTypeBitmask>
+     *
      * Note that the strings generated by toString() do not contain the username
      * and password and thus cannot be read by this method.
      */
@@ -204,7 +275,10 @@ public class ApnSetting {
 
         int version;
         // matches() operates on the whole string, so append .* to the regex.
-        if (data.matches(V3_FORMAT_REGEX + ".*")) {
+        if (data.matches(V4_FORMAT_REGEX + ".*")) {
+            version = 4;
+            data = data.replaceFirst(V4_FORMAT_REGEX, "");
+        } else if (data.matches(V3_FORMAT_REGEX + ".*")) {
             version = 3;
             data = data.replaceFirst(V3_FORMAT_REGEX, "");
         } else if (data.matches(V2_FORMAT_REGEX + ".*")) {
@@ -230,6 +304,7 @@ public class ApnSetting {
         String protocol, roamingProtocol;
         boolean carrierEnabled;
         int bearerBitmask = 0;
+        int networkTypeBitmask = 0;
         int profileId = 0;
         boolean modemCognitive = false;
         int maxConns = 0;
@@ -275,12 +350,21 @@ public class ApnSetting {
                 mvnoType = a[24];
                 mvnoMatchData = a[25];
             }
+            if (a.length > 26) {
+                networkTypeBitmask = ServiceState.getBitmaskFromString(a[26]);
+            }
         }
 
-        return new ApnSetting(-1,a[10]+a[11],a[0],a[1],a[2],a[3],a[7],a[8],
-                a[9],a[4],a[5],authType,typeArray,protocol,roamingProtocol,carrierEnabled,0,
-                bearerBitmask, profileId, modemCognitive, maxConns, waitTime, maxConnsTime, mtu,
-                mvnoType, mvnoMatchData);
+        // If both bearerBitmask and networkTypeBitmask were specified, bearerBitmask would be
+        // ignored.
+        if (networkTypeBitmask == 0) {
+            networkTypeBitmask =
+                    ServiceState.convertBearerBitmaskToNetworkTypeBitmask(bearerBitmask);
+        }
+        return new ApnSetting(-1, a[10] + a[11], a[0], a[1], a[2], a[3], a[7], a[8], a[9], a[4],
+                a[5], authType, typeArray, protocol, roamingProtocol, carrierEnabled,
+                networkTypeBitmask, profileId, modemCognitive, maxConns, waitTime, maxConnsTime,
+                mtu, mvnoType, mvnoMatchData);
     }
 
     /**
@@ -309,7 +393,7 @@ public class ApnSetting {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("[ApnSettingV3] ")
+        sb.append("[ApnSettingV4] ")
         .append(carrier)
         .append(", ").append(id)
         .append(", ").append(numeric)
@@ -340,6 +424,7 @@ public class ApnSetting {
         sb.append(", ").append(mvnoType);
         sb.append(", ").append(mvnoMatchData);
         sb.append(", ").append(permanentFailed);
+        sb.append(", ").append(networkTypeBitmask);
         return sb.toString();
     }
 
@@ -565,14 +650,15 @@ public class ApnSetting {
                 && maxConnsTime == other.maxConnsTime
                 && mtu == other.mtu
                 && mvnoType.equals(other.mvnoType)
-                && mvnoMatchData.equals(other.mvnoMatchData);
+                && mvnoMatchData.equals(other.mvnoMatchData)
+                && networkTypeBitmask == other.networkTypeBitmask;
     }
 
     /**
      * Compare two APN settings
      *
-     * Note: This method does not compare 'id', 'bearer', 'bearerBitmask'. We only use this for
-     * determining if tearing a data call is needed when conditions change. See
+     * Note: This method does not compare 'id', 'bearer', 'bearerBitmask', 'networkTypeBitmask'.
+     * We only use this for determining if tearing a data call is needed when conditions change. See
      * cleanUpConnectionsOnUpdatedApns in DcTracker.
      *
      * @param o the other object to compare
@@ -635,7 +721,8 @@ public class ApnSetting {
                 && Objects.equals(this.mvnoMatchData, other.mvnoMatchData)
                 && xorEquals(this.mmsc, other.mmsc)
                 && xorEquals(this.mmsProxy, other.mmsProxy)
-                && xorEquals(this.mmsPort, other.mmsPort));
+                && xorEquals(this.mmsPort, other.mmsPort))
+                && this.networkTypeBitmask == other.networkTypeBitmask;
     }
 
     // check whether the types of two APN same (even only one type of each APN is same)
