@@ -3324,7 +3324,8 @@ public class DcTracker extends Handler {
 
             // ORDER BY Telephony.Carriers._ID ("_id")
             Cursor cursor = mPhone.getContext().getContentResolver().query(
-                    Telephony.Carriers.CONTENT_URI, null, selection, null, Telephony.Carriers._ID);
+                    Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
+                    null, selection, null, Telephony.Carriers._ID);
 
             if (cursor != null) {
                 if (cursor.getCount() > 0) {
@@ -4296,7 +4297,8 @@ public class DcTracker extends Handler {
         // DB will contain only one entry for Emergency APN
         String selection = "type=\"emergency\"";
         Cursor cursor = mPhone.getContext().getContentResolver().query(
-                Telephony.Carriers.CONTENT_URI, null, selection, null, null);
+                Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
+                null, selection, null, null);
 
         if (cursor != null) {
             if (cursor.getCount() > 0) {
