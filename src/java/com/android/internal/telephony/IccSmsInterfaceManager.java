@@ -473,7 +473,17 @@ public class IccSmsInterfaceManager {
                 "\n format=" + format +
                 "\n receivedIntent=" + receivedIntent);
         }
-        mDispatchersController.injectSmsPdu(pdu, format, receivedIntent);
+        mDispatchersController.injectSmsPdu(pdu, format,
+                result -> {
+                    if (receivedIntent != null) {
+                        try {
+                            receivedIntent.send(result);
+                        } catch (PendingIntent.CanceledException e) {
+                            Rlog.d(LOG_TAG, "receivedIntent cancelled.");
+                        }
+                    }
+                }
+        );
     }
 
     /**

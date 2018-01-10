@@ -26,6 +26,7 @@ import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.util.Pair;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.InboundSmsHandler;
@@ -139,25 +140,17 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         SmsMessage sms = SmsMessage.newFromCDS(pdu);
 
         if (sms != null) {
-            int tpStatus = sms.getStatus();
             int messageRef = sms.mMessageRef;
             for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
                 SmsTracker tracker = deliveryPendingList.get(i);
                 if (tracker.mMessageRef == messageRef) {
-                    // Found it.  Remove from list and broadcast.
-                    if(tpStatus >= Sms.STATUS_FAILED || tpStatus < Sms.STATUS_PENDING ) {
-                       deliveryPendingList.remove(i);
-                       // Update the message status (COMPLETE or FAILED)
-                       tracker.updateSentMessageStatus(mContext, tpStatus);
+                    Pair<Boolean, Boolean> result = mSmsDispatchersController.handleSmsStatusReport(
+                            tracker,
+                            getFormat(),
+                            pdu);
+                    if (result.second) {
+                        deliveryPendingList.remove(i);
                     }
-                    PendingIntent intent = tracker.mDeliveryIntent;
-                    Intent fillIn = new Intent();
-                    fillIn.putExtra("pdu", pdu);
-                    fillIn.putExtra("format", getFormat());
-                    try {
-                        intent.send(mContext, Activity.RESULT_OK, fillIn);
-                    } catch (CanceledException ex) {}
-
                     // Only expect to see one tracker matching this messageref
                     break;
                 }

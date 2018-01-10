@@ -74,7 +74,6 @@ public final class SMSDispatcherUtil {
      * @param destAddr the address to send the message to
      * @param message the body of the message.
      * @param statusReportRequested whether or not a status report is requested.
-     * @param smsHeader message header.
      * @return the submit pdu.
      */
     public static SmsMessageBase.SubmitPduBase getSubmitPduGsm(String scAddr, String destAddr,

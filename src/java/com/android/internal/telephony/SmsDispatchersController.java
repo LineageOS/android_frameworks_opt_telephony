@@ -16,17 +16,22 @@
 
 package com.android.internal.telephony;
 
+import android.app.Activity;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
+import android.util.Pair;
 
+import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
@@ -40,7 +45,7 @@ import java.util.HashMap;
  *
  */
 public class SmsDispatchersController extends Handler {
-    private static final String TAG = "RIL_ImsSms";
+    private static final String TAG = "SmsDispatchersController";
 
     /** Radio is ON */
     private static final int EVENT_RADIO_ON = 11;
@@ -53,6 +58,7 @@ public class SmsDispatchersController extends Handler {
 
     private SMSDispatcher mCdmaDispatcher;
     private SMSDispatcher mGsmDispatcher;
+    private ImsSmsDispatcher mImsSmsDispatcher;
 
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
@@ -78,6 +84,7 @@ public class SmsDispatchersController extends Handler {
 
         // Create dispatchers, inbound SMS handlers and
         // broadcast undelivered messages in raw table.
+        mImsSmsDispatcher = new ImsSmsDispatcher(phone, this);
         mCdmaDispatcher = new CdmaSMSDispatcher(phone, this);
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
                 storageMonitor, phone);
@@ -146,7 +153,6 @@ public class SmsDispatchersController extends Handler {
     }
 
     private void setImsSmsFormat(int format) {
-        // valid format?
         switch (format) {
             case PhoneConstants.PHONE_TYPE_GSM:
                 mImsSmsFormat = SmsConstants.FORMAT_3GPP;
@@ -172,13 +178,12 @@ public class SmsDispatchersController extends Handler {
      *
      * @param pdu is the byte array of pdu to be injected into android telephony layer
      * @param format is the format of SMS pdu (3gpp or 3gpp2)
-     * @param receivedIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is successfully received by the
-     *  android telephony layer. This intent is broadcasted at
-     *  the same time an SMS received from radio is responded back.
+     * @param callback if not NULL this callback is triggered when the message is successfully
+     *                 received by the android telephony layer. This callback is triggered at
+     *                 the same time an SMS received from radio is responded back.
      */
     @VisibleForTesting
-    public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
+    public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback) {
         Rlog.d(TAG, "SmsDispatchersController:injectSmsPdu");
         try {
             // TODO We need to decide whether we should allow injecting GSM(3gpp)
@@ -192,13 +197,11 @@ public class SmsDispatchersController extends Handler {
                 if (msg == null) {
                     Rlog.e(TAG, "injectSmsPdu: createFromPdu returned null");
                 }
-                if (receivedIntent != null) {
-                    receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
-                }
+                callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
                 return;
             }
 
-            AsyncResult ar = new AsyncResult(receivedIntent, msg, null);
+            AsyncResult ar = new AsyncResult(callback, msg, null);
 
             if (format.equals(SmsConstants.FORMAT_3GPP)) {
                 Rlog.i(TAG, "SmsDispatchersController:injectSmsText Sending msg=" + msg
@@ -211,19 +214,11 @@ public class SmsDispatchersController extends Handler {
             } else {
                 // Invalid pdu format.
                 Rlog.e(TAG, "Invalid pdu format: " + format);
-                if (receivedIntent != null) {
-                    receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
-                }
+                callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
             }
         } catch (Exception e) {
             Rlog.e(TAG, "injectSmsPdu failed: ", e);
-            try {
-                if (receivedIntent != null) {
-                    receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
-                }
-            } catch (CanceledException ex) {
-                Rlog.e(TAG, "Failed to send result");
-            }
+            callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
         }
     }
 
@@ -307,8 +302,7 @@ public class SmsDispatchersController extends Handler {
         map.put("smsc", pdu.encodedScAddress);
         map.put("pdu", pdu.encodedMessage);
 
-        SMSDispatcher dispatcher = (isCdmaFormat(newFormat))
-                ? mCdmaDispatcher : mGsmDispatcher;
+        SMSDispatcher dispatcher = (isCdmaFormat(newFormat)) ? mCdmaDispatcher : mGsmDispatcher;
 
         tracker.mFormat = dispatcher.getFormat();
         dispatcher.sendSms(tracker);
@@ -344,7 +338,7 @@ public class SmsDispatchersController extends Handler {
      * @param format
      * @return true if format given is CDMA format, false otherwise.
      */
-    private boolean isCdmaFormat(String format) {
+    public boolean isCdmaFormat(String format) {
         return (mCdmaDispatcher.getFormat().equals(format));
     }
 
@@ -376,7 +370,10 @@ public class SmsDispatchersController extends Handler {
      */
     protected void sendData(String destAddr, String scAddr, int destPort,
                             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        if (isCdmaMo()) {
+        if (mImsSmsDispatcher.isAvailable()) {
+            mImsSmsDispatcher.sendData(destAddr, scAddr, destPort, data, sentIntent,
+                    deliveryIntent);
+        } else if (isCdmaMo()) {
             mCdmaDispatcher.sendData(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
         } else {
             mGsmDispatcher.sendData(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
@@ -413,7 +410,10 @@ public class SmsDispatchersController extends Handler {
     public void sendText(String destAddr, String scAddr, String text,
                             PendingIntent sentIntent, PendingIntent deliveryIntent, Uri messageUri,
                             String callingPkg, boolean persistMessage) {
-        if (isCdmaMo()) {
+        if (mImsSmsDispatcher.isAvailable()) {
+            mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
+                    messageUri, callingPkg, persistMessage);
+        } else if (isCdmaMo()) {
             mCdmaDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, messageUri,
                     callingPkg, persistMessage);
         } else {
@@ -454,7 +454,10 @@ public class SmsDispatchersController extends Handler {
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             boolean persistMessage) {
-        if (isCdmaMo()) {
+        if (mImsSmsDispatcher.isAvailable()) {
+            mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
+                    deliveryIntents, messageUri, callingPkg, persistMessage);
+        } else if (isCdmaMo()) {
             mCdmaDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
                     messageUri, callingPkg, persistMessage);
         } else {
@@ -491,5 +494,69 @@ public class SmsDispatchersController extends Handler {
 
     public SmsUsageMonitor getUsageMonitor() {
         return mUsageMonitor;
+    }
+
+    /**
+     * Triggers the correct method for handling the sms status report based on the format.
+     *
+     * @param tracker the sms tracker.
+     * @param format the format.
+     * @param pdu the pdu of the report.
+     * @return a Pair in which the first boolean is whether the report was handled successfully
+     *          or not and the second boolean is whether processing the sms is complete and the
+     *          tracker no longer need to be kept track of, false if we should expect more callbacks
+     *          and the tracker should be kept.
+     */
+    public Pair<Boolean, Boolean> handleSmsStatusReport(SMSDispatcher.SmsTracker tracker,
+            String format, byte[] pdu) {
+        if (isCdmaFormat(format)) {
+            return handleCdmaStatusReport(tracker, format, pdu);
+        } else {
+            return handleGsmStatusReport(tracker, format, pdu);
+        }
+    }
+
+    private Pair<Boolean, Boolean> handleCdmaStatusReport(SMSDispatcher.SmsTracker tracker,
+            String format, byte[] pdu) {
+        tracker.updateSentMessageStatus(mContext, Sms.STATUS_COMPLETE);
+        boolean success = triggerDeliveryIntent(tracker, format, pdu);
+        return new Pair(success, true /* complete */);
+    }
+
+    private Pair<Boolean, Boolean> handleGsmStatusReport(SMSDispatcher.SmsTracker tracker,
+            String format, byte[] pdu) {
+        com.android.internal.telephony.gsm.SmsMessage sms =
+                com.android.internal.telephony.gsm.SmsMessage.newFromCDS(pdu);
+        boolean complete = false;
+        boolean success = false;
+        if (sms != null) {
+            int tpStatus = sms.getStatus();
+            if(tpStatus >= Sms.STATUS_FAILED || tpStatus < Sms.STATUS_PENDING ) {
+                // Update the message status (COMPLETE or FAILED)
+                tracker.updateSentMessageStatus(mContext, tpStatus);
+                complete = true;
+            }
+            success = triggerDeliveryIntent(tracker, format, pdu);
+        }
+        return new Pair(success, complete);
+    }
+
+    private boolean triggerDeliveryIntent(SMSDispatcher.SmsTracker tracker, String format,
+                                          byte[] pdu) {
+        PendingIntent intent = tracker.mDeliveryIntent;
+        Intent fillIn = new Intent();
+        fillIn.putExtra("pdu", pdu);
+        fillIn.putExtra("format", format);
+        try {
+            intent.send(mContext, Activity.RESULT_OK, fillIn);
+            return true;
+        } catch (CanceledException ex) {
+            return false;
+        }
+    }
+
+
+    public interface SmsInjectionCallback {
+        void onSmsInjectedResult(int result);
     }
 }
