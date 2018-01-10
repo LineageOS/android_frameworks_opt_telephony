@@ -793,7 +793,7 @@ public class DcTracker extends Handler {
     /**
      * Modify {@link android.provider.Settings.Global#MOBILE_DATA} value.
      */
-    public void setDataEnabled(boolean enable) {
+    public void setUserDataEnabled(boolean enable) {
         Message msg = obtainMessage(DctConstants.CMD_SET_USER_DATA_ENABLE);
         msg.arg1 = enable ? 1 : 0;
         if (DBG) log("setDataEnabled: sendMessage: enable=" + enable);
@@ -1177,6 +1177,10 @@ public class DcTracker extends Handler {
         }
     }
 
+    /**
+     * Whether data is enabled. This does not only check isUserDataEnabled(), but also
+     * others like CarrierDataEnabled and internalDataEnabled.
+     */
     @VisibleForTesting
     public boolean isDataEnabled() {
         return mDataEnabledSettings.isDataEnabled();
@@ -2574,9 +2578,11 @@ public class DcTracker extends Handler {
     }
 
     /**
-     * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
+     * Whether data is enabled by user. Unlike isDataEnabled, this only
+     * checks user setting stored in {@link android.provider.Settings.Global#MOBILE_DATA}
+     * if not provisioning, or isProvisioningDataEnabled if provisioning.
      */
-    public boolean getDataEnabled() {
+    public boolean isUserDataEnabled() {
         if (mDataEnabledSettings.isProvisioning()) {
             return mDataEnabledSettings.isProvisioningDataEnabled();
         } else {
