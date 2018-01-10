@@ -45,6 +45,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.PersistableBundle;
 import android.os.Process;
+import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.support.test.filters.FlakyTest;
@@ -63,6 +64,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.util.TimeStampedValue;
 
 import org.junit.After;
 import org.junit.Before;
@@ -1146,8 +1148,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             // Mock sending incorrect nitz str from RIL
             mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0");
             waitForMs(200);
-            verify(mNitzStateMachine, times(0))
-                    .setTimeAndTimeZoneFromNitz(any(), anyLong());
+            verify(mNitzStateMachine, times(0)).handleNitzReceived(any());
         }
         {
             // Mock sending correct nitz str from RIL
@@ -1155,8 +1156,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             NitzData expectedNitzData = NitzData.parse(nitzStr);
             mSimulatedCommands.triggerNITZupdate(nitzStr);
             waitForMs(200);
+
+            ArgumentCaptor<TimeStampedValue<NitzData>> argumentsCaptor =
+                    ArgumentCaptor.forClass(TimeStampedValue.class);
             verify(mNitzStateMachine, times(1))
-                    .setTimeAndTimeZoneFromNitz(eq(expectedNitzData), anyLong());
+                    .handleNitzReceived(argumentsCaptor.capture());
+
+            // Confirm the argument was what we expected.
+            TimeStampedValue<NitzData> actualNitzSignal = argumentsCaptor.getValue();
+            assertEquals(expectedNitzData, actualNitzSignal.mValue);
+            assertTrue(actualNitzSignal.mElapsedRealtime <= SystemClock.elapsedRealtime());
         }
     }
 }
