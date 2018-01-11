@@ -594,6 +594,10 @@ public class ContextFixture implements TestFixture<Context> {
         doReturn(values).when(mResources).getIntArray(eq(id));
     }
 
+    public void putIntResource(int id, int value) {
+        doReturn(value).when(mResources).getInteger(eq(id));
+    }
+
     public PersistableBundle getCarrierConfigBundle() {
         return mBundle;
     }
