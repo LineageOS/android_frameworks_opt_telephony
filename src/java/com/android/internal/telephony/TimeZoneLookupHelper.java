@@ -16,12 +16,12 @@
 
 package com.android.internal.telephony;
 
+import android.text.TextUtils;
 import android.util.TimeUtils;
 
 import libcore.util.CountryTimeZones;
 import libcore.util.TimeZoneFinder;
 
-import java.util.Arrays;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -31,35 +31,6 @@ import java.util.TimeZone;
 // Non-final to allow mocking.
 public class TimeZoneLookupHelper {
     private static final int MS_PER_HOUR = 60 * 60 * 1000;
-
-    /**
-     * List of ISO codes for countries that can have an offset of
-     * GMT+0 when not in daylight savings time.  This ignores some
-     * small places such as the Canary Islands (Spain) and
-     * Danmarkshavn (Denmark).  The list must be sorted by code.
-     */
-    private static final String[] GMT_COUNTRY_CODES = {
-            "bf", // Burkina Faso
-            "ci", // Cote d'Ivoire
-            "eh", // Western Sahara
-            "fo", // Faroe Islands, Denmark
-            "gb", // United Kingdom of Great Britain and Northern Ireland
-            "gh", // Ghana
-            "gm", // Gambia
-            "gn", // Guinea
-            "gw", // Guinea Bissau
-            "ie", // Ireland
-            "lr", // Liberia
-            "is", // Iceland
-            "ma", // Morocco
-            "ml", // Mali
-            "mr", // Mauritania
-            "pt", // Portugal
-            "sl", // Sierra Leone
-            "sn", // Senegal
-            "st", // Sao Tome and Principe
-            "tg", // Togo
-    };
 
     public TimeZoneLookupHelper() {}
 
@@ -165,9 +136,18 @@ public class TimeZoneLookupHelper {
 
     /**
      * Returns {@code true} if the supplied (lower-case) ISO country code is for a country known to
-     * use a raw offset of zero from UTC.
+     * use a raw offset of zero from UTC at the time specified.
      */
-    public boolean countryUsesUtc(String isoCountryCode) {
-        return Arrays.binarySearch(GMT_COUNTRY_CODES, isoCountryCode) >= 0;
+    public boolean countryUsesUtc(String isoCountryCode, long whenMillis) {
+        if (TextUtils.isEmpty(isoCountryCode)) {
+            return false;
+        }
+
+        CountryTimeZones countryTimeZones =
+                TimeZoneFinder.getInstance().lookupCountryTimeZones(isoCountryCode);
+        if (countryTimeZones == null) {
+            return false;
+        }
+        return countryTimeZones.hasUtcZone(whenMillis);
     }
 }
