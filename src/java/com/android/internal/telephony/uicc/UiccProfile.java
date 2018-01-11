@@ -42,10 +42,13 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccAccessRule;
 import android.text.TextUtils;
+import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.LocalLog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
@@ -64,8 +67,8 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -1038,26 +1041,58 @@ public class UiccProfile extends Handler implements IccCard {
     }
 
     private Set<String> getUninstalledCarrierPackages() {
-        String whitelistSetting = Settings.Global.getString(mContext.getContentResolver(),
+        String whitelistSetting = Settings.Global.getString(
+                mContext.getContentResolver(),
                 Settings.Global.CARRIER_APP_WHITELIST);
         if (TextUtils.isEmpty(whitelistSetting)) {
             return Collections.emptySet();
         }
-        HashSet<String> carrierAppSet = new HashSet<String>(
-                Arrays.asList(whitelistSetting.split("\\s*;\\s*")));
-        if (carrierAppSet.isEmpty()) {
+        Map<String, String> certPackageMap = parseToCertificateToPackageMap(whitelistSetting);
+        if (certPackageMap.isEmpty()) {
             return Collections.emptySet();
         }
 
         Set<String> uninstalledCarrierPackages = new ArraySet<>();
-        List<String> pkgNames = mCarrierPrivilegeRules.getPackageNames();
-        for (String pkgName : pkgNames) {
-            if (!TextUtils.isEmpty(pkgName) && carrierAppSet.contains(pkgName)
-                    && !isPackageInstalled(mContext, pkgName)) {
+        List<UiccAccessRule> accessRules = mCarrierPrivilegeRules.getAccessRules();
+        for (UiccAccessRule accessRule : accessRules) {
+            String certHexString = accessRule.getCertificateHexString().toUpperCase();
+            String pkgName = certPackageMap.get(certHexString);
+            if (!TextUtils.isEmpty(pkgName) && !isPackageInstalled(mContext, pkgName)) {
                 uninstalledCarrierPackages.add(pkgName);
             }
         }
         return uninstalledCarrierPackages;
+    }
+
+    /**
+     * Converts a string in the format: key1:value1;key2:value2... into a map where the keys are
+     * hex representations of app certificates - all upper case - and the values are package names
+     * @hide
+     */
+    @VisibleForTesting
+    public static Map<String, String> parseToCertificateToPackageMap(String whitelistSetting) {
+        final String pairDelim = "\\s*;\\s*";
+        final String keyValueDelim = "\\s*:\\s*";
+
+        List<String> keyValuePairList = Arrays.asList(whitelistSetting.split(pairDelim));
+
+        if (keyValuePairList.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, String> map = new ArrayMap<>(keyValuePairList.size());
+        for (String keyValueString: keyValuePairList) {
+            String[] keyValue = keyValueString.split(keyValueDelim);
+
+            if (keyValue.length == 2) {
+                map.put(keyValue[0].toUpperCase(), keyValue[1]);
+            } else {
+                loge("Incorrect length of key-value pair in carrier app whitelist map.  "
+                        + "Length should be exactly 2");
+            }
+        }
+
+        return map;
     }
 
     /**
