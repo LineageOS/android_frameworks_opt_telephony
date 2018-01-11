@@ -3078,7 +3078,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             ImsSmsMessage msg = new ImsSmsMessage();
             msg.tech = RILConstants.GSM_PHONE;
-            msg.retry = (byte) retry == 1 ? true : false;
+            msg.retry = (byte) retry >= 1 ? true : false;
             msg.messageRef = messageRef;
 
             GsmSmsMessage gsmMsg = constructGsmSendSmsRilRequest(smscPdu, pdu);
@@ -3105,7 +3105,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             ImsSmsMessage msg = new ImsSmsMessage();
             msg.tech = RILConstants.CDMA_PHONE;
-            msg.retry = (byte) retry == 1 ? true : false;
+            msg.retry = (byte) retry >= 1 ? true : false;
             msg.messageRef = messageRef;
 
             CdmaSmsMessage cdmaMsg = new CdmaSmsMessage();
