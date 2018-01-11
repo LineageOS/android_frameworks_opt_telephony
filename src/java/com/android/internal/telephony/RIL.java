@@ -53,6 +53,7 @@ import android.hardware.radio.V1_0.SimApdu;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
 import android.net.ConnectivityManager;
+import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -85,7 +86,6 @@ import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
-import android.telephony.data.InterfaceAddress;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
@@ -107,7 +107,6 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -1191,23 +1190,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
             addresses = dcResult.addresses.split(" ");
         }
 
-        List<InterfaceAddress> iaList = new ArrayList<>();
+        List<LinkAddress> laList = new ArrayList<>();
         if (addresses != null) {
             for (String address : addresses) {
                 address = address.trim();
                 if (address.isEmpty()) continue;
 
-                String[] ap = address.split("/");
-                int addrPrefixLen = 0;
-                if (ap.length == 2) {
-                    addrPrefixLen = Integer.parseInt(ap[1]);
-                }
-
                 try {
-                    InterfaceAddress ia = new InterfaceAddress(ap[0], addrPrefixLen);
-                    iaList.add(ia);
-                } catch (UnknownHostException e) {
-                    Rlog.e(RILJ_LOG_TAG, "Unknown host exception: " + e);
+                    LinkAddress la = new LinkAddress(address);
+                    laList.add(la);
+                } catch (IllegalArgumentException e) {
+                    Rlog.e(RILJ_LOG_TAG, "Unknown address: " + address + ", exception = " + e);
                 }
             }
         }
@@ -1258,7 +1251,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 dcResult.active,
                 dcResult.type,
                 dcResult.ifname,
-                iaList,
+                laList,
                 dnsList,
                 gatewayList,
                 new ArrayList<>(Arrays.asList(dcResult.pcscf.trim().split("\\s*,\\s*"))),
