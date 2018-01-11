@@ -16,7 +16,7 @@
 
 // Note: Package name is intentionally wrong for this test; the internal junk class is used to test
 // that parcelables of types other than android.* are stripped out.
-package com.android.telephony.ims;
+package android.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;

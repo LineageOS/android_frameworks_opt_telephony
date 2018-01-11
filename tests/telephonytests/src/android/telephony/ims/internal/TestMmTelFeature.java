@@ -45,9 +45,8 @@ public class TestMmTelFeature extends MmTelFeature {
     }
 
     @Override
-    public ImsCallSession createCallSession(ImsCallProfile profile,
-            ImsCallSessionListener listener) {
-        return super.createCallSession(profile, listener);
+    public ImsCallSession createCallSession(ImsCallProfile profile) {
+        return super.createCallSession(profile);
     }
 
     @Override
