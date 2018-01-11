@@ -16,9 +16,8 @@
 
 package com.android.internal.telephony;
 
-import static org.junit.Assert.assertEquals;
-
 import android.os.Parcel;
+import android.telephony.CellIdentity;
 import android.telephony.CellIdentityLte;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -182,12 +181,13 @@ public class CellIdentityLteTest extends AndroidTestCase {
         CellIdentityLte ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, null, null, null, null);
 
         Parcel p = Parcel.obtain();
+        p.writeInt(CellIdentity.TYPE_LTE);
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeInt(CI);
         p.writeInt(PCI);
         p.writeInt(TAC);
         p.writeInt(EARFCN);
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.setDataPosition(0);
 
         CellIdentityLte newCi = CellIdentityLte.CREATOR.createFromParcel(p);
@@ -201,12 +201,13 @@ public class CellIdentityLteTest extends AndroidTestCase {
         CellIdentityLte ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, null, null, null, null);
 
         Parcel p = Parcel.obtain();
+        p.writeInt(CellIdentity.TYPE_LTE);
+        p.writeString(invalidMcc);
+        p.writeString(invalidMnc);
         p.writeInt(CI);
         p.writeInt(PCI);
         p.writeInt(TAC);
         p.writeInt(EARFCN);
-        p.writeString(invalidMcc);
-        p.writeString(invalidMnc);
         p.setDataPosition(0);
 
         CellIdentityLte newCi = CellIdentityLte.CREATOR.createFromParcel(p);

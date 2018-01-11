@@ -1763,7 +1763,10 @@ public class DcTracker extends Handler {
         }
 
         for (ApnSetting dunSetting : dunCandidates) {
-            if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
+            if (!ServiceState.bitmaskHasTech(dunSetting.networkTypeBitmask,
+                    ServiceState.rilRadioTechnologyToNetworkType(bearer))) {
+                continue;
+            }
             if (dunSetting.numeric.equals(operator)) {
                 if (dunSetting.hasMvnoParams()) {
                     if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
@@ -1841,6 +1844,9 @@ public class DcTracker extends Handler {
     private ApnSetting makeApnSetting(Cursor cursor) {
         String[] types = parseTypes(
                 cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.TYPE)));
+        int networkTypeBitmask = cursor.getInt(
+                cursor.getColumnIndexOrThrow(Telephony.Carriers.NETWORK_TYPE_BITMASK));
+
         ApnSetting apn = new ApnSetting(
                 cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID)),
                 cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.NUMERIC)),
@@ -1866,8 +1872,7 @@ public class DcTracker extends Handler {
                         Telephony.Carriers.ROAMING_PROTOCOL)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(
                         Telephony.Carriers.CARRIER_ENABLED)) == 1,
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.BEARER)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.BEARER_BITMASK)),
+                networkTypeBitmask,
                 cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.PROFILE_ID)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(
                         Telephony.Carriers.MODEM_COGNITIVE)) == 1,
@@ -3319,7 +3324,8 @@ public class DcTracker extends Handler {
 
             // ORDER BY Telephony.Carriers._ID ("_id")
             Cursor cursor = mPhone.getContext().getContentResolver().query(
-                    Telephony.Carriers.CONTENT_URI, null, selection, null, Telephony.Carriers._ID);
+                    Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
+                    null, selection, null, Telephony.Carriers._ID);
 
             if (cursor != null) {
                 if (cursor.getCount() > 0) {
@@ -3392,13 +3398,19 @@ public class DcTracker extends Handler {
         String protocol = src.protocol.equals("IPV4V6") ? src.protocol : dest.protocol;
         String roamingProtocol = src.roamingProtocol.equals("IPV4V6") ? src.roamingProtocol :
                 dest.roamingProtocol;
-        int bearerBitmask = (dest.bearerBitmask == 0 || src.bearerBitmask == 0) ?
-                0 : (dest.bearerBitmask | src.bearerBitmask);
+        int networkTypeBitmask = (dest.networkTypeBitmask == 0 || src.networkTypeBitmask == 0)
+                ? 0 : (dest.networkTypeBitmask | src.networkTypeBitmask);
+        if (networkTypeBitmask == 0) {
+            int bearerBitmask = (dest.bearerBitmask == 0 || src.bearerBitmask == 0)
+                    ? 0 : (dest.bearerBitmask | src.bearerBitmask);
+            networkTypeBitmask = ServiceState.convertBearerBitmaskToNetworkTypeBitmask(
+                    bearerBitmask);
+        }
 
         return new ApnSetting(id, dest.numeric, dest.carrier, dest.apn,
                 proxy, port, mmsc, mmsProxy, mmsPort, dest.user, dest.password,
                 dest.authType, resultTypes.toArray(new String[0]), protocol,
-                roamingProtocol, dest.carrierEnabled, 0, bearerBitmask, dest.profileId,
+                roamingProtocol, dest.carrierEnabled, networkTypeBitmask, dest.profileId,
                 (dest.modemCognitive || src.modemCognitive), dest.maxConns, dest.waitTime,
                 dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
     }
@@ -3486,7 +3498,8 @@ public class DcTracker extends Handler {
                         + mPreferredApn.numeric + ":" + mPreferredApn);
             }
             if (mPreferredApn.numeric.equals(operator)) {
-                if (ServiceState.bitmaskHasTech(mPreferredApn.bearerBitmask, radioTech)) {
+                if (ServiceState.bitmaskHasTech(mPreferredApn.networkTypeBitmask,
+                        ServiceState.rilRadioTechnologyToNetworkType(radioTech))) {
                     apnList.add(mPreferredApn);
                     if (DBG) log("buildWaitingApns: X added preferred apnList=" + apnList);
                     return apnList;
@@ -3505,13 +3518,15 @@ public class DcTracker extends Handler {
             if (DBG) log("buildWaitingApns: mAllApnSettings=" + mAllApnSettings);
             for (ApnSetting apn : mAllApnSettings) {
                 if (apn.canHandleType(requestedApnType)) {
-                    if (ServiceState.bitmaskHasTech(apn.bearerBitmask, radioTech)) {
+                    if (ServiceState.bitmaskHasTech(apn.networkTypeBitmask,
+                            ServiceState.rilRadioTechnologyToNetworkType(radioTech))) {
                         if (DBG) log("buildWaitingApns: adding apn=" + apn);
                         apnList.add(apn);
                     } else {
                         if (DBG) {
-                            log("buildWaitingApns: bearerBitmask:" + apn.bearerBitmask + " does " +
-                                    "not include radioTech:" + radioTech);
+                            log("buildWaitingApns: bearerBitmask:" + apn.bearerBitmask
+                                    + " or " + "networkTypeBitmask:" + apn.networkTypeBitmask
+                                    + "do not include radioTech:" + radioTech);
                         }
                     }
                 } else if (DBG) {
@@ -4282,7 +4297,8 @@ public class DcTracker extends Handler {
         // DB will contain only one entry for Emergency APN
         String selection = "type=\"emergency\"";
         Cursor cursor = mPhone.getContext().getContentResolver().query(
-                Telephony.Carriers.CONTENT_URI, null, selection, null, null);
+                Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
+                null, selection, null, null);
 
         if (cursor != null) {
             if (cursor.getCount() > 0) {
@@ -4816,9 +4832,14 @@ public class DcTracker extends Handler {
     @VisibleForTesting
     public static DataProfile createDataProfile(ApnSetting apn, int profileId) {
         int profileType;
-        if (apn.bearerBitmask == 0) {
+
+        int bearerBitmap = 0;
+        bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
+                apn.networkTypeBitmask);
+
+        if (bearerBitmap == 0) {
             profileType = DataProfile.TYPE_COMMON;
-        } else if (ServiceState.bearerBitmapHasCdma(apn.bearerBitmask)) {
+        } else if (ServiceState.bearerBitmapHasCdma(bearerBitmap)) {
             profileType = DataProfile.TYPE_3GPP2;
         } else {
             profileType = DataProfile.TYPE_3GPP;
@@ -4827,7 +4848,7 @@ public class DcTracker extends Handler {
         return new DataProfile(profileId, apn.apn, apn.protocol,
                 apn.authType, apn.user, apn.password, profileType,
                 apn.maxConnsTime, apn.maxConns, apn.waitTime, apn.carrierEnabled, apn.typesBitmap,
-                apn.roamingProtocol, apn.bearerBitmask, apn.mtu, apn.mvnoType, apn.mvnoMatchData,
+                apn.roamingProtocol, bearerBitmap, apn.mtu, apn.mvnoType, apn.mvnoMatchData,
                 apn.modemCognitive);
     }
 }
