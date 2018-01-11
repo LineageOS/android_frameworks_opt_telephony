@@ -625,11 +625,24 @@ public class RadioIndication extends IRadioIndication.Stub {
                 new AsyncResult (null, response, null));
     }
 
+    /** Get unsolicited message for cellInfoList */
     public void cellInfoList(int indicationType,
                              ArrayList<android.hardware.radio.V1_0.CellInfo> records) {
         mRil.processIndication(indicationType);
 
         ArrayList<CellInfo> response = RIL.convertHalCellInfoList(records);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
+
+        mRil.mRilCellInfoListRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    /** Get unsolicited message for cellInfoList using HAL V1_2 */
+    public void cellInfoList_1_2(int indicationType,
+                             ArrayList<android.hardware.radio.V1_2.CellInfo> records) {
+        mRil.processIndication(indicationType);
+
+        ArrayList<CellInfo> response = RIL.convertHalCellInfoList_1_2(records);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
 
