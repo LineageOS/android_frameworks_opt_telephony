@@ -20,9 +20,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
 
-import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -50,7 +48,6 @@ public class IccCardProxyTest extends TelephonyTest {
     // Must match IccCardProxy.EVENT_ICC_CHANGED
     private static final int EVENT_ICC_CHANGED = 3;
 
-    @Mock private Handler mMockedHandler;
     @Mock private IccCardStatus mIccCardStatus;
     @Mock private UiccCard mUiccCard;
     @Mock private UiccCardApplication mUiccCardApplication;
@@ -93,12 +90,15 @@ public class IccCardProxyTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore
+    @FlakyTest
     @SmallTest
     public void testPowerOn() {
         mSimulatedCommands.setRadioPower(true, null);
         mSimulatedCommands.notifyRadioOn();
-        when(mUiccController.getUiccCard(anyInt())).thenReturn(mUiccCard);
+        doReturn(mUiccCard).when(mUiccController).getUiccCard(anyInt());
         mIccCardProxyUT.sendMessage(mIccCardProxyUT.obtainMessage(EVENT_ICC_CHANGED));
+
         waitForMs(SCARY_SLEEP_MS);
         assertEquals(CommandsInterface.RadioState.RADIO_ON, mSimulatedCommands.getRadioState());
         assertEquals(mIccCardProxyUT.getState(), State.NOT_READY);
@@ -106,23 +106,28 @@ public class IccCardProxyTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore
+    @FlakyTest
     @SmallTest
     public void testCardLoaded() {
         testPowerOn();
-        when(mUiccCard.getCardState()).thenReturn(CardState.CARDSTATE_PRESENT);
+        doReturn(CardState.CARDSTATE_PRESENT).when(mUiccCard).getCardState();
         mIccCardProxyUT.sendMessage(mIccCardProxyUT.obtainMessage(EVENT_ICC_CHANGED));
+
         waitForMs(SCARY_SLEEP_MS);
         assertEquals(mIccCardProxyUT.getState(), State.NOT_READY);
     }
 
     @Test
+    @Ignore
+    @FlakyTest
     @SmallTest
     public void testAppNotLoaded() {
         testPowerOn();
-        when(mUiccCard.getCardState()).thenReturn(CardState.CARDSTATE_PRESENT);
+        doReturn(CardState.CARDSTATE_PRESENT).when(mUiccCard).getCardState();
         mIccCardProxyUT.sendMessage(mIccCardProxyUT.obtainMessage(EVENT_ICC_CHANGED));
-        when(mUiccCardApplication.getState()).thenReturn(AppState.APPSTATE_UNKNOWN);
-        when(mUiccCard.getApplication(anyInt())).thenReturn(mUiccCardApplication);
+        doReturn(AppState.APPSTATE_UNKNOWN).when(mUiccCardApplication).getState();
+        doReturn(mUiccCardApplication).when(mUiccCard).getApplication(anyInt());
 
         waitForMs(SCARY_SLEEP_MS);
         assertEquals(mIccCardProxyUT.getState(), State.NOT_READY);
@@ -134,10 +139,10 @@ public class IccCardProxyTest extends TelephonyTest {
     @SmallTest
     public void testAppReady() {
         testPowerOn();
-        when(mUiccCard.getCardState()).thenReturn(CardState.CARDSTATE_PRESENT);
+        doReturn(CardState.CARDSTATE_PRESENT).when(mUiccCard).getCardState();
         mIccCardProxyUT.sendMessage(mIccCardProxyUT.obtainMessage(EVENT_ICC_CHANGED));
-        when(mUiccCardApplication.getState()).thenReturn(AppState.APPSTATE_READY);
-        when(mUiccCard.getApplication(anyInt())).thenReturn(mUiccCardApplication);
+        doReturn(AppState.APPSTATE_READY).when(mUiccCardApplication).getState();
+        doReturn(mUiccCardApplication).when(mUiccCard).getApplication(anyInt());
 
         waitForMs(SCARY_SLEEP_MS);
         assertEquals(mIccCardProxyUT.getState(), State.READY);
