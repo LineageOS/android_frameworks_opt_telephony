@@ -172,6 +172,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getIccCardStatus(Message result) {
+        SimulatedCommandsVerifier.getInstance().getIccCardStatus(result);
         if (mIccCardStatus != null) {
             resultSuccess(result, mIccCardStatus);
         } else {
@@ -185,10 +186,12 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getIccSlotsStatus(Message result) {
+        SimulatedCommandsVerifier.getInstance().getIccSlotsStatus(result);
         if (mIccSlotStatus != null) {
             resultSuccess(result, mIccSlotStatus);
         } else {
-            resultFail(result, null, new RuntimeException("IccSlotStatus not set"));
+            resultFail(result, null,
+                    new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED));
         }
     }
 

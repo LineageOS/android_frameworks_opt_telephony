@@ -20,14 +20,16 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.test.suitebuilder.annotation.SmallTest;
+import android.support.test.filters.SmallTest;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyTest;
@@ -80,6 +82,8 @@ public class UiccControllerTest extends TelephonyTest {
 
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
         doReturn(PHONE_COUNT).when(mTelephonyManager).getSimCount();
+        // set number of slots to 1
+        mContextFixture.putIntResource(com.android.internal.R.integer.config_num_physical_slots, 1);
 
         replaceInstance(UiccController.class, "mInstance", null, null);
 
@@ -89,6 +93,8 @@ public class UiccControllerTest extends TelephonyTest {
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mSimulatedCommands.setIccCardStatus(mIccCardStatus);
+        // slotIndex should be invalid when testing with older versions (before 1.2) of hal
+        mIccCardStatus.physicalSlotIndex = UiccController.INVALID_SLOT_ID;
         mUiccControllerHandlerThread = new UiccControllerHandlerThread(TAG);
         mUiccControllerHandlerThread.start();
         waitUntilReady();
@@ -105,7 +111,19 @@ public class UiccControllerTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testSanity() {
-        assertEquals(PHONE_COUNT, mUiccControllerUT.getUiccSlots().length);
+        // radio power is expected to be on which should trigger icc card and slot status requests
+        verify(mSimulatedCommandsVerifier, times(1)).getIccCardStatus(any(Message.class));
+        verify(mSimulatedCommandsVerifier, times(1)).getIccSlotsStatus(any(Message.class));
+
+        // response to getIccCardStatus should create mUiccSlots[0] and UiccCard for it, and update
+        // phoneId to slotId mapping
+        UiccSlot uiccSlot = mUiccControllerUT.getUiccSlot(0);
+        UiccCard uiccCard = mUiccControllerUT.getUiccCardForSlot(0);
+        assertNotNull(uiccSlot);
+        // this assert verifies that phoneId 0 maps to slotId 0, since UiccCard object for both are
+        // same
+        assertEquals(uiccCard, mUiccControllerUT.getUiccCardForPhone(0));
+
         assertNotNull(mUiccControllerUT.getUiccCard(0));
         assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
         assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP2));
