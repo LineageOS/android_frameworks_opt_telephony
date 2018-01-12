@@ -431,7 +431,7 @@ public class UiccCardApplication {
     /**
      * Notifies handler of any transition into State.isPinLocked()
      */
-    public void registerForLocked(Handler h, int what, Object obj) {
+    protected void registerForLocked(Handler h, int what, Object obj) {
         synchronized (mLock) {
             Registrant r = new Registrant (h, what, obj);
             mPinLockedRegistrants.add(r);
@@ -439,7 +439,7 @@ public class UiccCardApplication {
         }
     }
 
-    public void unregisterForLocked(Handler h) {
+    protected void unregisterForLocked(Handler h) {
         synchronized (mLock) {
             mPinLockedRegistrants.remove(h);
         }
@@ -448,7 +448,7 @@ public class UiccCardApplication {
     /**
      * Notifies handler of any transition into State.NETWORK_LOCKED
      */
-    public void registerForNetworkLocked(Handler h, int what, Object obj) {
+    protected void registerForNetworkLocked(Handler h, int what, Object obj) {
         synchronized (mLock) {
             Registrant r = new Registrant (h, what, obj);
             mNetworkLockedRegistrants.add(r);
@@ -456,7 +456,7 @@ public class UiccCardApplication {
         }
     }
 
-    public void unregisterForNetworkLocked(Handler h) {
+    protected void unregisterForNetworkLocked(Handler h) {
         synchronized (mLock) {
             mNetworkLockedRegistrants.remove(h);
         }

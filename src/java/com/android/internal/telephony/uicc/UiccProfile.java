@@ -388,11 +388,11 @@ public class UiccProfile extends Handler implements IccCard {
         // todo: all of these should be notified to UiccProfile directly without needing to register
         if (mUiccApplication != null) {
             mUiccApplication.registerForReady(this, EVENT_APP_READY, null);
-            mUiccApplication.registerForNetworkLocked(this, EVENT_NETWORK_LOCKED, null);
         }
         if (mIccRecords != null) {
             mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
             mIccRecords.registerForLockedRecordsLoaded(this, EVENT_ICC_LOCKED, null);
+            mIccRecords.registerForNetworkLockedRecordsLoaded(this, EVENT_NETWORK_LOCKED, null);
             mIccRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
         }
     }
@@ -401,11 +401,11 @@ public class UiccProfile extends Handler implements IccCard {
         if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
         if (mUiccApplication != null) {
             mUiccApplication.unregisterForReady(this);
-            mUiccApplication.unregisterForNetworkLocked(this);
         }
         if (mIccRecords != null) {
             mIccRecords.unregisterForRecordsLoaded(this);
             mIccRecords.unregisterForLockedRecordsLoaded(this);
+            mIccRecords.unregisterForNetworkLockedRecordsLoaded(this);
             mIccRecords.unregisterForRecordsEvents(this);
         }
     }
