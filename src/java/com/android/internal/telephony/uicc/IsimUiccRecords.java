@@ -16,19 +16,12 @@
 
 package com.android.internal.telephony.uicc;
 
-import static com.android.internal.telephony.uicc.IccConstants.EF_DOMAIN;
-import static com.android.internal.telephony.uicc.IccConstants.EF_IMPI;
-import static com.android.internal.telephony.uicc.IccConstants.EF_IMPU;
-import static com.android.internal.telephony.uicc.IccConstants.EF_IST;
-import static com.android.internal.telephony.uicc.IccConstants.EF_PCSCF;
-
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.gsm.SimTlv;
@@ -83,7 +76,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         mRecordsRequested = false;  // No load request is made till SIM ready
         //todo: currently locked state for ISIM is not handled well and may cause app state to not
         //be broadcast
-        mLockedRecordsRequested = false;
+        mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
 
         // recordsToLoad is set to 0 because no requests are made yet
         mRecordsToLoad = 0;
@@ -191,7 +184,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         auth_rsp = null;
 
         mRecordsRequested = false;
-        mLockedRecordsRequested = false;
+        mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
     }
 
     private class EfIsimImpiLoaded implements IccRecords.IccRecordLoaded {
@@ -289,7 +282,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
 
         if (getRecordsLoaded()) {
             onAllRecordsLoaded();
-        } else if (getLockedRecordsLoaded()) {
+        } else if (getLockedRecordsLoaded() || getNetworkLockedRecordsLoaded()) {
             onLockedAllRecordsLoaded();
         } else if (mRecordsToLoad < 0) {
             loge("recordsToLoad <0, programmer error suspected");
@@ -299,7 +292,15 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
 
     private void onLockedAllRecordsLoaded() {
         if (DBG) log("SIM locked; record load complete");
-        mLockedRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+        if (mLockedRecordsReqReason == LOCKED_RECORDS_REQ_REASON_LOCKED) {
+            mLockedRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+        } else if (mLockedRecordsReqReason == LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED) {
+            mNetworkLockedRecordsLoadedRegistrants.notifyRegistrants(
+                    new AsyncResult(null, null, null));
+        } else {
+            loge("onLockedAllRecordsLoaded: unexpected mLockedRecordsReqReason "
+                    + mLockedRecordsReqReason);
+        }
     }
 
     @Override
