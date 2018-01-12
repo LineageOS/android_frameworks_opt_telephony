@@ -64,7 +64,7 @@ public class IccCardStatus {
     public int        mGsmUmtsSubscriptionAppIndex;
     public int        mCdmaSubscriptionAppIndex;
     public int        mImsSubscriptionAppIndex;
-    public int        physicalSlotIndex;
+    public int        physicalSlotIndex = UiccController.INVALID_SLOT_ID;
     public String     atr;
     public String     iccid;
 

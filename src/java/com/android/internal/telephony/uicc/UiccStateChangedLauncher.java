@@ -65,10 +65,10 @@ public class UiccStateChangedLauncher extends Handler {
                     mIsRestricted = new boolean[TelephonyManager.getDefault().getPhoneCount()];
                     shouldNotify = true;
                 }
-                UiccSlot[] uiccSlots = mUiccController.getUiccSlots();
-                for (int i = 0; uiccSlots != null && i < uiccSlots.length; ++i) {
+                for (int i = 0; i < mIsRestricted.length; ++i) {
                     // Update only if restricted state changes.
-                    UiccCard uiccCard = uiccSlots[i].getUiccCard();
+
+                    UiccCard uiccCard = mUiccController.getUiccCardForPhone(i);
                     if ((uiccCard == null
                             || uiccCard.getCardState() != CardState.CARDSTATE_RESTRICTED)
                             != mIsRestricted[i]) {
