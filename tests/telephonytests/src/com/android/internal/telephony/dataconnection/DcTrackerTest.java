@@ -42,6 +42,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
@@ -62,7 +63,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
-import android.telephony.data.InterfaceAddress;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -442,7 +442,7 @@ public class DcTrackerTest extends TelephonyTest {
     private static DataCallResponse createDataCallResponse() throws Exception {
 
         return new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
-                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
@@ -575,7 +575,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         // LOST_CONNECTION(0x10004) is a non-permanent failure, so we'll retry data setup later.
         DataCallResponse dcResponse = new DataCallResponse(0x10004, -1, 1, 2, "IP", FAKE_IFNAME,
-                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
