@@ -22,10 +22,10 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_G
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
 
+import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.os.Parcel;
 import android.telephony.data.DataCallResponse;
-import android.telephony.data.InterfaceAddress;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -36,7 +36,7 @@ public class DataCallResponseTest extends AndroidTestCase {
     @SmallTest
     public void testParcel() throws Exception {
         DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
-                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
@@ -53,14 +53,14 @@ public class DataCallResponseTest extends AndroidTestCase {
     @SmallTest
     public void testEquals() throws Exception {
         DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
-                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
 
         DataCallResponse response1 = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
-                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
@@ -70,7 +70,7 @@ public class DataCallResponseTest extends AndroidTestCase {
         assertEquals(response, response1);
 
         DataCallResponse response2 = new DataCallResponse(1, -1, 1, 3, "IP", FAKE_IFNAME,
-                Arrays.asList(new InterfaceAddress(FAKE_ADDRESS, 0)),
+                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS),
                         NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),

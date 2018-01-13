@@ -39,7 +39,6 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
-import android.telephony.data.InterfaceAddress;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
@@ -1048,22 +1047,16 @@ public class DataConnection extends StateMachine {
 
                 // set link addresses
                 if (response.getAddresses().size() > 0) {
-                    for (InterfaceAddress ia : response.getAddresses()) {
-                        if (!ia.getAddress().isAnyLocalAddress()) {
-                            int addrPrefixLen = ia.getNetworkPrefixLength();
+                    for (LinkAddress la : response.getAddresses()) {
+                        if (!la.getAddress().isAnyLocalAddress()) {
+                            int addrPrefixLen = la.getNetworkPrefixLength();
                             if (addrPrefixLen == 0) {
                                 // Assume point to point
-                                addrPrefixLen =
-                                        (ia.getAddress() instanceof Inet4Address) ? 32 : 128;
+                                addrPrefixLen = (la.getAddress() instanceof Inet4Address)
+                                        ? 32 : 128;
+                                la = new LinkAddress(la.getAddress(), addrPrefixLen);
                             }
-                            if (DBG) log("addr/pl=" + ia.getAddress() + "/" + addrPrefixLen);
-                            LinkAddress la;
-                            try {
-                                la = new LinkAddress(ia.getAddress(), addrPrefixLen);
-                            } catch (IllegalArgumentException e) {
-                                throw new UnknownHostException("Bad parameter for LinkAddress, ia="
-                                        + ia.getAddress().getHostAddress() + "/" + addrPrefixLen);
-                            }
+                            if (DBG) log("addr/pl=" + la.getAddress() + "/" + addrPrefixLen);
 
                             linkProperties.addLinkAddress(la);
                         }
