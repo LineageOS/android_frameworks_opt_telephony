@@ -71,9 +71,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // SIM is not locked
     protected static final int LOCKED_RECORDS_REQ_REASON_NONE = 0;
     // Records requested for PIN or PUK locked SIM
-    protected static final int LOCKED_RECORDS_REQ_REASON_LOCKED = 0;
+    protected static final int LOCKED_RECORDS_REQ_REASON_LOCKED = 1;
     // Records requested for network locked SIM
-    protected static final int LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED = 0;
+    protected static final int LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED = 2;
 
     protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
     protected int mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
