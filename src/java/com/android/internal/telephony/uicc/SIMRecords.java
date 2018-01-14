@@ -174,6 +174,7 @@ public class SIMRecords extends IccRecords {
     private static final int SYSTEM_EVENT_BASE = 0x100;
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 1 + SYSTEM_EVENT_BASE;
     private static final int EVENT_APP_LOCKED = 2 + SYSTEM_EVENT_BASE;
+    private static final int EVENT_APP_NETWORK_LOCKED = 3 + SYSTEM_EVENT_BASE;
 
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
@@ -211,7 +212,7 @@ public class SIMRecords extends IccRecords {
         mVmConfig = new VoiceMailConstants();
 
         mRecordsRequested = false;  // No load request is made till SIM ready
-        mLockedRecordsRequested = false;
+        mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
 
         // recordsToLoad is set to 0 because no requests are made yet
         mRecordsToLoad = 0;
@@ -222,6 +223,7 @@ public class SIMRecords extends IccRecords {
         resetRecords();
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
         mParentApp.registerForLocked(this, EVENT_APP_LOCKED, null);
+        mParentApp.registerForNetworkLocked(this, EVENT_APP_NETWORK_LOCKED, null);
         if (DBG) log("SIMRecords X ctor this=" + this);
 
         IntentFilter intentfilter = new IntentFilter();
@@ -245,6 +247,7 @@ public class SIMRecords extends IccRecords {
         mCi.unSetOnSmsOnSim(this);
         mParentApp.unregisterForReady(this);
         mParentApp.unregisterForLocked(this);
+        mParentApp.unregisterForNetworkLocked(this);
         mContext.unregisterReceiver(mReceiver);
         resetRecords();
         super.dispose();
@@ -289,7 +292,7 @@ public class SIMRecords extends IccRecords {
         // read requests made so far are not valid. This is set to
         // true only when fresh set of read requests are made.
         mRecordsRequested = false;
-        mLockedRecordsRequested = false;
+        mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
     }
 
     //***** Public Methods
@@ -664,7 +667,8 @@ public class SIMRecords extends IccRecords {
                     break;
 
                 case EVENT_APP_LOCKED:
-                    onLocked();
+                case EVENT_APP_NETWORK_LOCKED:
+                    onLocked(msg.what);
                     break;
 
                 /* IO events */
@@ -1519,7 +1523,7 @@ public class SIMRecords extends IccRecords {
 
         if (getRecordsLoaded()) {
             onAllRecordsLoaded();
-        } else if (getLockedRecordsLoaded()) {
+        } else if (getLockedRecordsLoaded() || getNetworkLockedRecordsLoaded()) {
             onLockedAllRecordsLoaded();
         } else if (mRecordsToLoad < 0) {
             loge("recordsToLoad <0, programmer error suspected");
@@ -1554,7 +1558,15 @@ public class SIMRecords extends IccRecords {
 
     private void onLockedAllRecordsLoaded() {
         setSimLanguageFromEF();
-        mLockedRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+        if (mLockedRecordsReqReason == LOCKED_RECORDS_REQ_REASON_LOCKED) {
+            mLockedRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+        } else if (mLockedRecordsReqReason == LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED) {
+            mNetworkLockedRecordsLoadedRegistrants.notifyRegistrants(
+                    new AsyncResult(null, null, null));
+        } else {
+            loge("onLockedAllRecordsLoaded: unexpected mLockedRecordsReqReason "
+                    + mLockedRecordsReqReason);
+        }
     }
 
     @Override
@@ -1674,9 +1686,10 @@ public class SIMRecords extends IccRecords {
         fetchSimRecords();
     }
 
-    private void onLocked() {
+    private void onLocked(int msg) {
         if (DBG) log("only fetch EF_LI, EF_PL and EF_ICCID in locked state");
-        mLockedRecordsRequested = true;
+        mLockedRecordsReqReason = msg == EVENT_APP_LOCKED ? LOCKED_RECORDS_REQ_REASON_LOCKED :
+                LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED;
 
         loadEfLiAndEfPl();
 

@@ -18,6 +18,7 @@ package com.android.internal.telephony.test;
 
 import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
+import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -38,7 +39,6 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
-import android.telephony.data.InterfaceAddress;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.BaseCommands;
@@ -172,6 +172,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getIccCardStatus(Message result) {
+        SimulatedCommandsVerifier.getInstance().getIccCardStatus(result);
         if (mIccCardStatus != null) {
             resultSuccess(result, mIccCardStatus);
         } else {
@@ -185,10 +186,12 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getIccSlotsStatus(Message result) {
+        SimulatedCommandsVerifier.getInstance().getIccSlotsStatus(result);
         if (mIccSlotStatus != null) {
             resultSuccess(result, mIccSlotStatus);
         } else {
-            resultFail(result, null, new RuntimeException("IccSlotStatus not set"));
+            resultFail(result, null,
+                    new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED));
         }
     }
 
@@ -1129,7 +1132,7 @@ public class SimulatedCommands extends BaseCommands
         if (mDcResponse == null) {
             try {
                 mDcResponse = new DataCallResponse(0, -1, 1, 2, "IP", "rmnet_data7",
-                        Arrays.asList(new InterfaceAddress("12.34.56.78", 0)),
+                        Arrays.asList(new LinkAddress("12.34.56.78/32")),
                         Arrays.asList(NetworkUtils.numericToInetAddress("98.76.54.32")),
                         Arrays.asList(NetworkUtils.numericToInetAddress("11.22.33.44")),
                         null, 1440);

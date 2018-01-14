@@ -100,9 +100,9 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
         msg.what = integerArgumentCaptor.getValue();
 
         // The first broadcast should be sent after initialization.
-        UiccSlot[] uiccSlots = new UiccSlot[CARD_COUNT];
-        uiccSlots[0] = new UiccSlot(mContext, true /* isActive */);
-        when(UiccController.getInstance().getUiccSlots()).thenReturn(uiccSlots);
+        UiccCard card = new UiccCard(mContext, mSimulatedCommands,
+                makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */);
+        when(UiccController.getInstance().getUiccCardForPhone(0)).thenReturn(card);
         uiccLauncher.handleMessage(msg);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -115,9 +115,8 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
                 intentArgumentCaptor.getValue().getAction());
 
         // Card state's changed to restricted. Broadcast should be sent.
-        uiccSlots[0].update(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_RESTRICTED), 0 /* phoneId */);
-        when(UiccController.getInstance().getUiccSlots()).thenReturn(uiccSlots);
+        card.update(mContext, mSimulatedCommands,
+                makeCardStatus(CardState.CARDSTATE_RESTRICTED));
         uiccLauncher.handleMessage(msg);
 
         broadcast_count++;
@@ -131,9 +130,8 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
         verify(mContext, times(broadcast_count)).sendBroadcast(any(Intent.class));
 
         // Card state's changed from restricted. Broadcast should be sent.
-        uiccSlots[0].update(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */);
-        when(UiccController.getInstance().getUiccSlots()).thenReturn(uiccSlots);
+        card.update(mContext, mSimulatedCommands,
+                makeCardStatus(CardState.CARDSTATE_PRESENT));
         uiccLauncher.handleMessage(msg);
 
         broadcast_count++;
