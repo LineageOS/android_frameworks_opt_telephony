@@ -78,9 +78,6 @@ public class TelephonyMetricsTest extends TelephonyTest {
     private ImsCallSession mImsCallSession;
 
     @Mock
-    private ImsReasonInfo mImsReasonInfo;
-
-    @Mock
     private ServiceState mServiceState;
 
     @Mock
@@ -90,15 +87,18 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
     private UUSInfo mUusInfo;
 
+    private ImsReasonInfo mImsReasonInfo;
+
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mMetrics = new TelephonyMetrics();
         mUusInfo = new UUSInfo(1, 2, new byte[]{1, 2});
         doReturn("123").when(mImsCallSession).getCallId();
-        doReturn("extramessage").when(mImsReasonInfo).getExtraMessage();
-        doReturn(123).when(mImsReasonInfo).getCode();
-        doReturn(456).when(mImsReasonInfo).getExtraCode();
+        mImsReasonInfo = new ImsReasonInfo();
+        mImsReasonInfo.mExtraMessage = "extramessage";
+        mImsReasonInfo.mCode = 123;
+        mImsReasonInfo.mExtraCode = 456;
 
         doReturn(ROAMING_TYPE_DOMESTIC).when(mServiceState).getVoiceRoamingType();
         doReturn(ROAMING_TYPE_DOMESTIC).when(mServiceState).getDataRoamingType();
