@@ -42,7 +42,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
     ImsPhoneConnection mConnection1;
     @Mock
     ImsPhoneConnection mConnection2;
-    @Mock
+
     ImsStreamMediaProfile mMediaProfile;
 
     private ImsPhoneCall mImsCallUT;
@@ -53,6 +53,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
         replaceInstance(ImsPhoneCallTracker.class, "mPhone", mImsCT, mImsPhone);
 
         mImsCallUT = new ImsPhoneCall(mImsCT, ImsPhoneCall.CONTEXT_FOREGROUND);
+        mMediaProfile = new ImsStreamMediaProfile();
     }
 
     @After

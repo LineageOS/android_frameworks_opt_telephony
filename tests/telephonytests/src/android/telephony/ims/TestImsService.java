@@ -29,7 +29,7 @@ import org.mockito.MockitoAnnotations;
  * Test ImsService used by mockito to verify functionality.
  */
 
-public class TestImsService extends ImsService {
+public class TestImsService extends android.telephony.ims.ImsService {
 
     public TestMmTelFeature mSpyMmTelFeature;
     public TestMmTelFeature mTestMmTelFeature;
