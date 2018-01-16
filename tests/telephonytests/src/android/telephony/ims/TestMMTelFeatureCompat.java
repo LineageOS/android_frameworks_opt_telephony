@@ -20,7 +20,6 @@ import android.telephony.ims.compat.feature.MMTelFeature;
 
 import com.android.ims.ImsCallProfile;
 import com.android.ims.internal.IImsCallSession;
-import com.android.ims.internal.IImsCallSessionListener;
 
 /**
  * MMTelFeature implementation used by mockito to test functionality.
@@ -32,7 +31,7 @@ public class TestMMTelFeatureCompat extends MMTelFeature {
     public boolean isCreateCallSessionCalled = false;
 
     @Override
-    public boolean isConnected(int callSessionType, int callType) {
+    public boolean isConnected(int callSessinType, int callType) {
         isConnectedCalled = true;
         return true;
     }
@@ -51,8 +50,7 @@ public class TestMMTelFeatureCompat extends MMTelFeature {
 
     // Compatibility Method
     @Override
-    public IImsCallSession createCallSession(int sessionId, ImsCallProfile profile,
-            IImsCallSessionListener listener) {
+    public IImsCallSession createCallSession(int sessionId, ImsCallProfile profile) {
         isCreateCallSessionCalled = true;
         return null;
     }
