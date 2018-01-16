@@ -27,7 +27,7 @@ import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.internal.feature.CapabilityChangeRequest;
 import android.telephony.ims.internal.feature.ImsFeature;
 import android.telephony.ims.internal.feature.MmTelFeature;
-import android.telephony.ims.internal.stub.ImsRegistrationImplBase;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.internal.IImsFeatureStatusCallback;

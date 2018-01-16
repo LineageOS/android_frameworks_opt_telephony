@@ -14,26 +14,28 @@
  * limitations under the License.
  */
 
-package android.telephony.ims.internal;
+package android.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import android.net.Uri;
 import android.os.Parcel;
 import android.os.RemoteException;
 import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ServiceState;
-import android.telephony.ims.internal.aidl.IImsRegistration;
 import android.telephony.ims.internal.feature.ImsFeature;
 import android.telephony.ims.internal.stub.ImsFeatureConfiguration;
-import android.telephony.ims.internal.stub.ImsRegistrationImplBase;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsReasonInfo;
+import com.android.ims.internal.IImsRegistration;
+import com.android.ims.internal.IImsRegistrationCallback;
 
 import org.junit.After;
 import org.junit.Before;
@@ -45,14 +47,15 @@ import org.mockito.Spy;
 @RunWith(AndroidJUnit4.class)
 public class ImsRegistrationTests {
 
-    @Spy private ImsRegistrationImplBase.Callback mCallback;
-    private TestImsRegistration mRegistration;
+    @Spy private IImsRegistrationCallback.Stub mCallback;
+    @Spy private IImsRegistrationCallback.Stub mCallback2;
+    private ImsRegistrationImplBase mRegistration;
     private IImsRegistration mRegBinder;
 
     @Before
     public void setup() throws RemoteException {
         MockitoAnnotations.initMocks(this);
-        mRegistration = new TestImsRegistration();
+        mRegistration = new ImsRegistrationImplBase();
         mRegBinder = mRegistration.getBinder();
         mRegBinder.addRegistrationCallback(mCallback);
     }
@@ -150,6 +153,17 @@ public class ImsRegistrationTests {
 
     @SmallTest
     @Test
+    public void testSubscriberUrisChanged() throws RemoteException {
+        Uri[] uris = new Uri[1];
+        uris[0] = Uri.fromParts("tel", "5555551212", null);
+
+        mRegistration.onSubscriberAssociatedUriChanged(uris);
+
+        verify(mCallback).onSubscriberAssociatedUriChanged(eq(uris));
+    }
+
+    @SmallTest
+    @Test
     public void testRegistrationCallbackAfterUnregistered() throws RemoteException {
         mRegBinder.removeRegistrationCallback(mCallback);
 
@@ -161,7 +175,6 @@ public class ImsRegistrationTests {
     @SmallTest
     @Test
     public void testRegistrationCallbackSendCurrentState() throws RemoteException {
-        ImsRegistrationImplBase.Callback mCallback2 = spy(new ImsRegistrationImplBase.Callback());
         mRegistration.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
 
         mRegBinder.addRegistrationCallback(mCallback2);
@@ -181,7 +194,6 @@ public class ImsRegistrationTests {
     @SmallTest
     @Test
     public void testRegistrationCallbackSendCurrentStateDisconnected() throws RemoteException {
-        ImsRegistrationImplBase.Callback mCallback2 = spy(new ImsRegistrationImplBase.Callback());
         ImsReasonInfo info = new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_NETWORK_NO_LTE_COVERAGE, 0);
         mRegistration.onDeregistered(info);
 
@@ -205,5 +217,14 @@ public class ImsRegistrationTests {
         verify(mCallback).onDeregistered(eq(info));
         assertEquals(ImsRegistrationImplBase.REGISTRATION_TECH_NONE,
                 mRegBinder.getRegistrationTechnology());
+    }
+
+    @SmallTest
+    @Test
+    public void testRegistrationCallbackNoCallbackIfUnknown() throws RemoteException {
+        mRegBinder.addRegistrationCallback(mCallback2);
+        // Verify that if we have never set the registration state, we do not callback immediately
+        // with onDeregistered.
+        verify(mCallback2, never()).onDeregistered(any(ImsReasonInfo.class));
     }
 }
