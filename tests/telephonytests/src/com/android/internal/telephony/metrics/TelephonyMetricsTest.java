@@ -187,7 +187,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteCarrierIdMatchingEventWithInvalidMatchingScore() throws Exception {
 
-        mMetrics.writeCarrierIdMatchingEvent(mPhone.getPhoneId(),
+        mMetrics.writeCarrierIdMatchingEvent(mPhone.getPhoneId(), 1,
                 TelephonyManager.UNKNOWN_CARRIER_ID, "gid1Test");
         TelephonyLog log = buildProto();
 
@@ -196,6 +196,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(0, log.smsSessions.length);
 
         assertEquals(mPhone.getPhoneId(), log.events[0].phoneId);
+        assertEquals(1, log.events[0].carrierIdMatching.cidTableVersion);
         assertEquals(TelephonyEvent.Type.CARRIER_ID_MATCHING, log.events[0].type);
         assertTrue(log.events[0].carrierIdMatching.result.gid1.isEmpty());
     }
@@ -205,7 +206,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteCarrierIdMatchingEvent() throws Exception {
 
-        mMetrics.writeCarrierIdMatchingEvent(mPhone.getPhoneId(), 1, "gid1Test");
+        mMetrics.writeCarrierIdMatchingEvent(mPhone.getPhoneId(), 1, 1, "gid1Test");
         TelephonyLog log = buildProto();
 
         assertEquals(1, log.events.length);
@@ -214,6 +215,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         assertEquals(mPhone.getPhoneId(), log.events[0].phoneId);
         assertEquals(TelephonyEvent.Type.CARRIER_ID_MATCHING, log.events[0].type);
+        assertEquals(1, log.events[0].carrierIdMatching.cidTableVersion);
         assertEquals(1, log.events[0].carrierIdMatching.result.carrierId);
         assertEquals("gid1Test", log.events[0].carrierIdMatching.result.gid1);
     }

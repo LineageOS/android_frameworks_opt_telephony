@@ -555,17 +555,26 @@ public class CarrierIdentifier extends Handler {
 
         /*
          * Write Carrier Identification Matching event, logging with the
-         * matching score and carrierId to differentiate below cases of metrics:
+         * carrierId, gid1 and carrier list version to differentiate below cases of metrics:
          * 1) unknown mccmnc - the Carrier Id provider contains no rule that matches the
          * read mccmnc.
          * 2) the Carrier Id provider contains some rule(s) that match the read mccmnc,
          * but the read gid1 is not matched within the highest-scored rule.
          * 3) successfully found a matched carrier id in the provider.
+         * 4) use carrier list version to compare the unknown carrier ratio between each version.
          */
         String gid1ToLog = ((maxScore & CarrierMatchingRule.SCORE_GID1) == 0
                 && !TextUtils.isEmpty(subscriptionRule.mGid1)) ? subscriptionRule.mGid1 : null;
         TelephonyMetrics.getInstance().writeCarrierIdMatchingEvent(
-                mPhone.getPhoneId(), mCarrierId, gid1ToLog);
+                mPhone.getPhoneId(), getCarrierListVersion(), mCarrierId, gid1ToLog);
+    }
+
+    private int getCarrierListVersion() {
+        final Cursor cursor = mContext.getContentResolver().query(
+                Uri.withAppendedPath(Telephony.CarrierIdentification.CONTENT_URI,
+                "get_version"), null, null, null);
+        cursor.moveToFirst();
+        return cursor.getInt(0);
     }
 
     public int getCarrierId() {
@@ -599,6 +608,7 @@ public class CarrierIdentifier extends Handler {
 
         ipw.println("mCarrierId: " + mCarrierId);
         ipw.println("mCarrierName: " + mCarrierName);
+        ipw.println("version: " + getCarrierListVersion());
 
         ipw.println("mCarrierMatchingRules on mccmnc: "
                 + mTelephonyMgr.getSimOperatorNumericForPhone(mPhone.getPhoneId()));
