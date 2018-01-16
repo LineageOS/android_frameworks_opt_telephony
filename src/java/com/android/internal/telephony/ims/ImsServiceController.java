@@ -27,15 +27,16 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.telephony.ims.aidl.IImsConfig;
+import android.telephony.ims.aidl.IImsMmTelFeature;
+import android.telephony.ims.aidl.IImsRcsFeature;
+import android.telephony.ims.aidl.IImsRegistration;
+import android.telephony.ims.aidl.IImsServiceController;
 import android.telephony.ims.feature.ImsFeature;
 import android.util.Log;
 import android.util.Pair;
 
 import com.android.ims.internal.IImsFeatureStatusCallback;
-import com.android.ims.internal.IImsMMTelFeature;
-import com.android.ims.internal.IImsRcsFeature;
-import com.android.ims.internal.IImsRegistration;
-import com.android.ims.internal.IImsServiceController;
 import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ExponentialBackoff;
@@ -421,33 +422,34 @@ public class ImsServiceController {
         }
     }
 
-    /**
-     * Return the {@Link MMTelFeature} binder on the slot associated with the slotId.
-     * Used for normal calling.
-     */
-    public IImsMMTelFeature getMMTelFeature(int slotId) {
-        synchronized (mLock) {
-            ImsFeatureContainer f = getImsFeatureContainer(slotId, ImsFeature.MMTEL);
-            if (f == null) {
-                Log.w(LOG_TAG, "Requested null MMTelFeature on slot " + slotId);
-                return null;
-            }
-            return f.resolve(IImsMMTelFeature.class);
+    public void enableIms(int slotId) {
+        try {
+            mIImsServiceController.enableIms(slotId);
+        } catch (RemoteException e) {
+            Log.w(LOG_TAG, "Couldn't enable IMS: " + e.getMessage());
+        }
+    }
+
+    public void disableIms(int slotId) {
+        try {
+            mIImsServiceController.disableIms(slotId);
+        } catch (RemoteException e) {
+            Log.w(LOG_TAG, "Couldn't disable IMS: " + e.getMessage());
         }
     }
 
     /**
      * Return the {@Link MMTelFeature} binder on the slot associated with the slotId.
-     * Used for emergency calling only.
+     * Used for normal calling.
      */
-    public IImsMMTelFeature getEmergencyMMTelFeature(int slotId) {
+    public IImsMmTelFeature getMmTelFeature(int slotId) {
         synchronized (mLock) {
-            ImsFeatureContainer f = getImsFeatureContainer(slotId, ImsFeature.EMERGENCY_MMTEL);
+            ImsFeatureContainer f = getImsFeatureContainer(slotId, ImsFeature.FEATURE_MMTEL);
             if (f == null) {
-                Log.w(LOG_TAG, "Requested null Emergency MMTelFeature on slot " + slotId);
+                Log.w(LOG_TAG, "Requested null MMTelFeature on slot " + slotId);
                 return null;
             }
-            return f.resolve(IImsMMTelFeature.class);
+            return f.resolve(IImsMmTelFeature.class);
         }
     }
 
@@ -456,7 +458,7 @@ public class ImsServiceController {
      */
     public IImsRcsFeature getRcsFeature(int slotId) {
         synchronized (mLock) {
-            ImsFeatureContainer f = getImsFeatureContainer(slotId, ImsFeature.RCS);
+            ImsFeatureContainer f = getImsFeatureContainer(slotId, ImsFeature.FEATURE_RCS);
             if (f == null) {
                 Log.w(LOG_TAG, "Requested null RcsFeature on slot " + slotId);
                 return null;
@@ -471,6 +473,15 @@ public class ImsServiceController {
     public IImsRegistration getRegistration(int slotId) throws RemoteException {
         synchronized (mLock) {
             return mIImsServiceController.getRegistration(slotId);
+        }
+    }
+
+    /**
+     * @return the IImsConfig that corresponds to the slot id specified.
+     */
+    public IImsConfig getConfig(int slotId) throws RemoteException {
+        synchronized (mLock) {
+            return mIImsServiceController.getConfig(slotId);
         }
     }
 
@@ -598,13 +609,10 @@ public class ImsServiceController {
     private IInterface createImsFeature(int slotId, int featureType, IImsFeatureStatusCallback c)
             throws RemoteException {
         switch (featureType) {
-            case ImsFeature.EMERGENCY_MMTEL: {
-                return mIImsServiceController.createEmergencyMMTelFeature(slotId, c);
+            case ImsFeature.FEATURE_MMTEL: {
+                return mIImsServiceController.createMmTelFeature(slotId, c);
             }
-            case ImsFeature.MMTEL: {
-                return mIImsServiceController.createMMTelFeature(slotId, c);
-            }
-            case ImsFeature.RCS: {
+            case ImsFeature.FEATURE_RCS: {
                 return mIImsServiceController.createRcsFeature(slotId, c);
             }
             default:

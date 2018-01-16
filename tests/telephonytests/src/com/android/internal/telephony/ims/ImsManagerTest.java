@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 
 import android.os.IBinder;
 import android.os.PersistableBundle;
-import android.os.RemoteException;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.ims.stub.ImsConfigImplBase;
@@ -56,10 +55,8 @@ public class ImsManagerTest extends TelephonyTest {
     private static final int WFC_IMS_ROAMING_MODE_DEFAULT_VAL = 3;
 
     PersistableBundle mBundle;
-    @Mock
-    IBinder mBinder;
-    @Mock
-    ImsConfigImplBase mImsConfigImplBaseMock;
+    @Mock IBinder mBinder;
+    @Mock ImsConfigImplBase mImsConfigImplBaseMock;
     Hashtable<Integer, Integer> mProvisionedIntVals = new Hashtable<>();
     Hashtable<Integer, String> mProvisionedStringVals = new Hashtable<>();
     ImsConfigImplBase.ImsConfigStub mImsConfigStub;
@@ -186,29 +183,29 @@ public class ImsManagerTest extends TelephonyTest {
         ImsManager imsManager = initializeProvisionedValues();
 
         assertEquals(true, imsManager.isWfcProvisionedOnDevice());
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
 
         assertEquals(true, imsManager.isVtProvisionedOnDevice());
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.LVC_SETTING_ENABLED));
 
         assertEquals(true, imsManager.isVolteProvisionedOnDevice());
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VLT_SETTING_ENABLED));
 
         // If we call get again, times should still be one because the value should be fetched
         // from cache.
         assertEquals(true, imsManager.isWfcProvisionedOnDevice());
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
 
         assertEquals(true, imsManager.isVtProvisionedOnDevice());
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.LVC_SETTING_ENABLED));
 
         assertEquals(true, imsManager.isVolteProvisionedOnDevice());
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VLT_SETTING_ENABLED));
     }
 
@@ -217,7 +214,7 @@ public class ImsManagerTest extends TelephonyTest {
         ImsManager imsManager = initializeProvisionedValues();
 
         assertEquals(true, imsManager.isWfcProvisionedOnDevice());
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
 
         imsManager.getConfigInterface().setProvisionedValue(
@@ -229,46 +226,30 @@ public class ImsManagerTest extends TelephonyTest {
 
         assertEquals(false, imsManager.isWfcProvisionedOnDevice());
 
-        verify(mImsConfigImplBaseMock, times(1)).setProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).setConfig(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED),
                 eq(0));
-        verify(mImsConfigImplBaseMock, times(1)).getProvisionedValue(
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
 
     }
 
     private ImsManager initializeProvisionedValues() {
-        try {
-            when(mImsConfigImplBaseMock.getProvisionedValue(anyInt()))
-                    .thenAnswer(invocation ->  {
-                        return getProvisionedInt((Integer) (invocation.getArguments()[0]));
-                    });
+        when(mImsConfigImplBaseMock.getConfigInt(anyInt()))
+                .thenAnswer(invocation ->  {
+                    return getProvisionedInt((Integer) (invocation.getArguments()[0]));
+                });
 
-            when(mImsConfigImplBaseMock.setProvisionedValue(anyInt(), anyInt()))
-                    .thenAnswer(invocation ->  {
-                        mProvisionedIntVals.put((Integer) (invocation.getArguments()[0]),
-                                (Integer) (invocation.getArguments()[1]));
-                        return ImsConfig.OperationStatusConstants.SUCCESS;
-                    });
+        when(mImsConfigImplBaseMock.setConfig(anyInt(), anyInt()))
+                .thenAnswer(invocation ->  {
+                    mProvisionedIntVals.put((Integer) (invocation.getArguments()[0]),
+                            (Integer) (invocation.getArguments()[1]));
+                    return ImsConfig.OperationStatusConstants.SUCCESS;
+                });
 
-            when(mImsConfigImplBaseMock.getProvisionedStringValue(anyInt()))
-                    .thenAnswer(invocation ->  {
-                        return getProvisionedString((Integer) (invocation.getArguments()[0]));
-                    });
-
-            when(mImsConfigImplBaseMock.setProvisionedStringValue(anyInt(), anyString()))
-                    .thenAnswer(invocation ->  {
-                        mProvisionedStringVals.put((Integer) (invocation.getArguments()[0]),
-                                (String) (invocation.getArguments()[1]));
-                        return ImsConfig.OperationStatusConstants.SUCCESS;
-                    });
-
-        } catch (RemoteException ex) {
-            fail("initializeProvisionedValues failed with " + ex);
-        }
 
         // Configure ImsConfigStub
-        mImsConfigStub = new ImsConfigImplBase.ImsConfigStub(mImsConfigImplBaseMock, mContext);
+        mImsConfigStub = new ImsConfigImplBase.ImsConfigStub(mImsConfigImplBaseMock);
         doReturn(mImsConfigStub).when(mImsConfigImplBaseMock).getIImsConfig();
 
         // Configure ImsConfig

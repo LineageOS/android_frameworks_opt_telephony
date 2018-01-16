@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package android.telephony.ims.internal;
+package android.telephony.ims;
 
 import android.os.IInterface;
-import android.telephony.ims.internal.feature.CapabilityChangeRequest;
-import android.telephony.ims.internal.feature.ImsFeature;
+import android.telephony.ims.feature.CapabilityChangeRequest;
+import android.telephony.ims.feature.ImsFeature;
 
 public class TestImsFeature extends ImsFeature {
 
