@@ -167,7 +167,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
                 .getSubInfoUsingSlotIndexWithCheck(eq(FAKE_SUB_ID_1), anyBoolean(), anyString());
         doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionController).getActiveSubIdList();
-        Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_ABSENT);
         mIntent.putExtra(PhoneConstants.PHONE_KEY, FAKE_SUB_ID_1);
@@ -189,7 +189,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSimUnknown() throws Exception {
-        Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
         mIntent.putExtra(PhoneConstants.PHONE_KEY, FAKE_SUB_ID_1);
@@ -209,7 +209,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSimError() throws Exception {
-        Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
         mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
@@ -228,7 +228,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWrongSimState() throws Exception {
-        Intent mIntent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        Intent mIntent = new Intent(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mIntent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_IMSI);
         mIntent.putExtra(PhoneConstants.PHONE_KEY, 2);
