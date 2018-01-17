@@ -2211,7 +2211,6 @@ public class SIMRecords extends IccRecords {
         pw.println(" mEfCfis[]=" + Arrays.toString(mEfCfis));
         pw.println(" mSpnDisplayCondition=" + mSpnDisplayCondition);
         pw.println(" mSpdiNetworks[]=" + mSpdiNetworks);
-        pw.println(" mPnnHomeName=" + mPnnHomeName);
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
         if (mCarrierTestOverride.isInTestMode()) {

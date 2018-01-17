@@ -16,6 +16,13 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
@@ -25,16 +32,12 @@ import android.provider.Telephony.Carriers;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
-import java.util.Arrays;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
+import java.util.Arrays;
 
 public class CarrierIdentifierTest extends TelephonyTest {
     private static final String MCCMNC = "311480";
@@ -210,6 +213,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                                 CarrierIdentification.GID2,
                                 CarrierIdentification.PLMN,
                                 CarrierIdentification.IMSI_PREFIX_XPATTERN,
+                                CarrierIdentification.ICCID_PREFIX,
                                 CarrierIdentification.SPN,
                                 CarrierIdentification.APN,
                                 CarrierIdentification.NAME,
@@ -222,6 +226,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // gid2
                         null,                   // plmn
                         null,                   // imsi_prefix
+                        null,                   // iccid_prefix
                         null,                   // spn
                         null,                   // apn
                         NAME,                   // carrier name
@@ -234,6 +239,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // gid2
                         null,                   // plmn
                         null,                   // imsi_prefix
+                        null,                   // iccid_prefix
                         null,                   // spn
                         null,                   // apn
                         NAME_TMO,               // carrier name
@@ -246,6 +252,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // gid2
                         null,                   // plmn
                         null,                   // imsi_prefix
+                        null,                   // iccid_prefix
                         SPN_FI,                 // spn
                         null,                   // apn
                         NAME_FI,                // carrier name
@@ -258,6 +265,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // gid2
                         null,                   // plmn
                         null,                   // imsi_prefix
+                        null,                   // iccid_prefix
                         null,                   // spn
                         APN_DOCOMO,             // apn
                         NAME_DOCOMO,            // carrier name
