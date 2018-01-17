@@ -835,6 +835,24 @@ public class UiccCardApplication {
     }
 
     /**
+     * @return true if the UiccCardApplication is ready.
+     */
+    public boolean isReady() {
+        synchronized (mLock) {
+            if (mAppState != AppState.APPSTATE_READY) {
+                return false;
+            } else if (mPin1State == PinState.PINSTATE_ENABLED_NOT_VERIFIED
+                    || mPin1State == PinState.PINSTATE_ENABLED_BLOCKED
+                    || mPin1State == PinState.PINSTATE_ENABLED_PERM_BLOCKED) {
+                loge("Sanity check failed! APPSTATE is ready while PIN1 is not verified!!!");
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+
+    /**
      * @return true if ICC card is PIN2 blocked
      */
     public boolean getIccPin2Blocked() {

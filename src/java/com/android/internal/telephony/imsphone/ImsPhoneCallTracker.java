@@ -87,6 +87,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -224,7 +225,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     log("onReceive : Updating mAllowEmergencyVideoCalls = " +
                             mAllowEmergencyVideoCalls);
                 }
-                mCarrierConfigLoaded  = true;
             } else if (TelecomManager.ACTION_CHANGE_DEFAULT_DIALER.equals(intent.getAction())) {
                 mDefaultDialerUid.set(getPackageUid(context, intent.getStringExtra(
                         TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME)));
@@ -665,30 +665,39 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     };
 
     // Callback fires when ImsManager MMTel Feature changes state
-    private ImsServiceProxy.INotifyStatusChanged mNotifyStatusChangedCallback = () -> {
-        try {
-            int status = mImsManager.getImsServiceStatus();
-            log("Status Changed: " + status);
-            switch(status) {
-                case ImsFeature.STATE_READY: {
-                    startListeningForCalls();
-                    break;
+    private ImsServiceProxy.IFeatureUpdate mNotifyStatusChangedCallback =
+            new ImsServiceProxy.IFeatureUpdate() {
+                @Override
+                public void notifyStateChanged() {
+                    try {
+                        int status = mImsManager.getImsServiceStatus();
+                        log("Status Changed: " + status);
+                        switch (status) {
+                            case ImsFeature.STATE_READY: {
+                                startListeningForCalls();
+                                break;
+                            }
+                            case ImsFeature.STATE_INITIALIZING:
+                                // fall through
+                            case ImsFeature.STATE_NOT_AVAILABLE: {
+                                stopListeningForCalls();
+                                break;
+                            }
+                            default: {
+                                Log.w(LOG_TAG, "Unexpected State!");
+                            }
+                        }
+                    } catch (ImsException e) {
+                        // Could not get the ImsService, retry!
+                        retryGetImsService();
+                    }
                 }
-                case ImsFeature.STATE_INITIALIZING:
-                    // fall through
-                case ImsFeature.STATE_NOT_AVAILABLE: {
-                    stopListeningForCalls();
-                    break;
+
+                @Override
+                public void notifyUnavailable() {
+                    retryGetImsService();
                 }
-                default: {
-                    Log.w(LOG_TAG, "Unexpected State!");
-                }
-            }
-        } catch (ImsException e) {
-            // Could not get the ImsService, retry!
-            retryGetImsService();
-        }
-    };
+            };
 
     @VisibleForTesting
     public interface IRetryTimeout {
@@ -794,7 +803,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mImsManager.addNotifyStatusChangedCallbackIfAvailable(mNotifyStatusChangedCallback);
         // Wait for ImsService.STATE_READY to start listening for calls.
         // Call the callback right away for compatibility with older devices that do not use states.
-        mNotifyStatusChangedCallback.notifyStatusChanged();
+        mNotifyStatusChangedCallback.notifyStateChanged();
     }
 
     private void startListeningForCalls() throws ImsException {
@@ -1032,16 +1041,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private void cacheCarrierConfiguration(int subId) {
         CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
                 mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        if (carrierConfigManager == null) {
-            loge("cacheCarrierConfiguration: No carrier config service found.");
+        if (carrierConfigManager == null
+                || !SubscriptionController.getInstance().isActiveSubId(subId)) {
+            loge("cacheCarrierConfiguration: No carrier config service found" + " "
+                    + "or not active subId = " + subId);
+            mCarrierConfigLoaded = false;
             return;
         }
 
         PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
         if (carrierConfig == null) {
             loge("cacheCarrierConfiguration: Empty carrier config.");
+            mCarrierConfigLoaded = false;
             return;
         }
+        mCarrierConfigLoaded = true;
 
         updateCarrierConfigCache(carrierConfig);
     }
@@ -3301,6 +3315,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (mImsManager.isServiceAvailable()) {
             return;
         }
+        // remove callback so we do not receive updates from old ImsServiceProxy when switching
+        // between ImsServices.
+        mImsManager.removeNotifyStatusChangedCallback(mNotifyStatusChangedCallback);
         //Leave mImsManager as null, then CallStateException will be thrown when dialing
         mImsManager = null;
         // Exponential backoff during retry, limited to 32 seconds.
@@ -3572,7 +3589,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // We do not want to update the ImsConfig for REASON_REGISTERED, since it can happen before
         // the carrier config has loaded and will deregister IMS.
         if (!mShouldUpdateImsConfigOnDisconnect
-                && reason != DataEnabledSettings.REASON_REGISTERED) {
+                && reason != DataEnabledSettings.REASON_REGISTERED && mCarrierConfigLoaded) {
             // This will call into updateVideoCallFeatureValue and eventually all clients will be
             // asynchronously notified that the availability of VT over LTE has changed.
             if (mImsManager != null) {

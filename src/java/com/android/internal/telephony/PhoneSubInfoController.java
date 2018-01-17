@@ -26,14 +26,15 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 
 import static android.Manifest.permission.CALL_PRIVILEGED;
+import static android.Manifest.permission.MODIFY_PHONE_STATE;
 import static android.Manifest.permission.READ_PHONE_NUMBERS;
 import static android.Manifest.permission.READ_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
@@ -106,7 +107,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int subId, int keyType,
-            String callingPackage) {
+                                                              String callingPackage) {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!checkReadPhoneState(callingPackage, "getCarrierInfoForImsiEncryption")) {
@@ -123,12 +124,29 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                                                 ImsiEncryptionInfo imsiEncryptionInfo) {
         Phone phone = getPhone(subId);
         if (phone != null) {
-            if (!checkReadPhoneState(callingPackage, "setCarrierInfoForImsiEncryption")) {
-                return;
-            }
+            enforceModifyPermission();
             phone.setCarrierInfoForImsiEncryption(imsiEncryptionInfo);
         } else {
             loge("setCarrierInfoForImsiEncryption phone is null for Subscription:" + subId);
+            return;
+        }
+    }
+
+    /**
+     *  Resets the Carrier Keys in the database. This involves 2 steps:
+     *  1. Delete the keys from the database.
+     *  2. Send an intent to download new Certificates.
+     *  @param subId
+     *  @param callingPackage
+     */
+    public void resetCarrierKeysForImsiEncryption(int subId, String callingPackage) {
+        Phone phone = getPhone(subId);
+        if (phone != null) {
+            enforceModifyPermission();
+            phone.resetCarrierKeysForImsiEncryption();
+            return;
+        } else {
+            loge("resetCarrierKeysForImsiEncryption phone is null for Subscription:" + subId);
             return;
         }
     }
@@ -325,6 +343,14 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                 mContext.getPackageManager()) != CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
             throw new SecurityException("No Carrier Privilege.");
         }
+    }
+
+    /**
+     * Make sure caller has modify phone state permission.
+     */
+    private void enforceModifyPermission() {
+        mContext.enforceCallingOrSelfPermission(MODIFY_PHONE_STATE,
+                "Requires MODIFY_PHONE_STATE");
     }
 
     private int getDefaultSubscription() {

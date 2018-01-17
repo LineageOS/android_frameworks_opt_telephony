@@ -20,9 +20,9 @@ import android.os.RemoteException;
 import android.telephony.ims.internal.feature.CapabilityChangeRequest;
 import android.telephony.ims.internal.feature.ImsFeature;
 import android.telephony.ims.internal.feature.MmTelFeature;
-import android.telephony.ims.internal.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsEcbmImplBase;
 import android.telephony.ims.stub.ImsMultiEndpointImplBase;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
 
 import com.android.ims.ImsCallProfile;

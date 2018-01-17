@@ -190,6 +190,8 @@ public class GsmCdmaPhone extends Phone {
     private int mRilVersion;
     private boolean mBroadcastEmergencyCallStateChanges = false;
     private CarrierKeyDownloadManager mCDM;
+    private CarrierInfoManager mCIM;
+
     // Constructors
 
     public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
@@ -274,6 +276,7 @@ public class GsmCdmaPhone extends Phone {
         mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
         mCDM = new CarrierKeyDownloadManager(this);
+        mCIM = new CarrierInfoManager();
     }
 
     private void initRatSpecific(int precisePhoneType) {
@@ -1548,6 +1551,11 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public String getCarrierName() {
         return mCarrerIdentifier.getCarrierName();
+    }
+
+    @Override
+    public void resetCarrierKeysForImsiEncryption() {
+        mCIM.resetCarrierKeysForImsiEncryption(mContext, mPhoneId);
     }
 
     @Override
