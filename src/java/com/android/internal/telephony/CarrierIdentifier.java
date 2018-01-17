@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
 import android.database.Cursor;
@@ -65,12 +66,11 @@ public class CarrierIdentifier extends Handler {
     private static final Uri CONTENT_URL_PREFER_APN = Uri.withAppendedPath(
             Telephony.Carriers.CONTENT_URI, "preferapn");
     private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
-    private static final int INVALID_CARRIER_ID         = -1;
 
     // cached matching rules based mccmnc to speed up resolution
     private List<CarrierMatchingRule> mCarrierMatchingRulesOnMccMnc = new ArrayList<>();
     // cached carrier Id
-    private int mCarrierId = INVALID_CARRIER_ID;
+    private int mCarrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
     // cached carrier name
     private String mCarrierName;
     // cached preferapn name
@@ -200,7 +200,7 @@ public class CarrierIdentifier extends Handler {
                 mCarrierMatchingRulesOnMccMnc.clear();
                 mSpn = null;
                 mPreferApn = null;
-                updateCarrierIdAndName(INVALID_CARRIER_ID, null);
+                updateCarrierIdAndName(TelephonyManager.UNKNOWN_CARRIER_ID, null);
                 break;
             case PREFER_APN_UPDATE_EVENT:
                 String preferApn = getPreferApn();
@@ -309,9 +309,14 @@ public class CarrierIdentifier extends Handler {
             update = true;
         }
         if (update) {
-            // TODO new public intent CARRIER_ID_CHANGED
             mCarrierIdLocalLog.log("[updateCarrierIdAndName] cid:" + mCarrierId + " name:"
                     + mCarrierName);
+            final Intent intent = new Intent(TelephonyManager
+                    .ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED);
+            intent.putExtra(TelephonyManager.EXTRA_CARRIER_ID, mCarrierId);
+            intent.putExtra(TelephonyManager.EXTRA_CARRIER_NAME, mCarrierName);
+            intent.putExtra(TelephonyManager.EXTRA_SUBSCRIPTION_ID, mPhone.getSubId());
+            mContext.sendBroadcast(intent);
         }
     }
 
@@ -501,7 +506,8 @@ public class CarrierIdentifier extends Handler {
         }
 
         CarrierMatchingRule subscriptionRule = new CarrierMatchingRule(
-                mccmnc, imsi, gid1, gid2, plmn,  spn, apn, INVALID_CARRIER_ID, null);
+                mccmnc, imsi, gid1, gid2, plmn,  spn, apn, TelephonyManager.UNKNOWN_CARRIER_ID,
+                null);
 
         int maxScore = CarrierMatchingRule.SCORE_INVALID;
         CarrierMatchingRule maxRule = null;
@@ -514,8 +520,9 @@ public class CarrierIdentifier extends Handler {
             }
         }
         if (maxScore == CarrierMatchingRule.SCORE_INVALID) {
-            logd("[matchCarrier - no match] cid: " + INVALID_CARRIER_ID + " name: " + null);
-            updateCarrierIdAndName(INVALID_CARRIER_ID, null);
+            logd("[matchCarrier - no match] cid: " + TelephonyManager.UNKNOWN_CARRIER_ID
+                    + " name: " + null);
+            updateCarrierIdAndName(TelephonyManager.UNKNOWN_CARRIER_ID, null);
         } else {
             logd("[matchCarrier] cid: " + maxRule.mCid + " name: " + maxRule.mName);
             updateCarrierIdAndName(maxRule.mCid, maxRule.mName);
