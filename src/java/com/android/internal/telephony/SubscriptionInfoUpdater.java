@@ -73,7 +73,10 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_SIM_IO_ERROR = 6;
     private static final int EVENT_SIM_UNKNOWN = 7;
     private static final int EVENT_SIM_RESTRICTED = 8;
-    private static final int EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS = 9;
+    private static final int EVENT_SIM_NOT_READY = 9;
+    private static final int EVENT_SIM_READY = 10;
+    private static final int EVENT_SIM_IMSI = 11;
+    private static final int EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS = 12;
 
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     /**
@@ -125,8 +128,8 @@ public class SubscriptionInfoUpdater extends Handler {
         mEuiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
 
-        IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
+        IntentFilter intentFilter = new IntentFilter(
+                IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mContext.registerReceiver(sReceiver, intentFilter);
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
@@ -173,8 +176,7 @@ public class SubscriptionInfoUpdater extends Handler {
             String action = intent.getAction();
             logd("Action: " + action);
 
-            if (!action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED) &&
-                    !action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
+            if (!action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
                 return;
             }
 
@@ -182,16 +184,14 @@ public class SubscriptionInfoUpdater extends Handler {
                     SubscriptionManager.INVALID_SIM_SLOT_INDEX);
             logd("slotIndex: " + slotIndex);
             if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
-                logd("ACTION_SIM_STATE_CHANGED contains invalid slotIndex: " + slotIndex);
+                logd("ACTION_INTERNAL_SIM_STATE_CHANGED contains invalid slotIndex: " + slotIndex);
                 return;
             }
 
             String simStatus = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
             logd("simStatus: " + simStatus);
 
-            // TODO: All of the below should be converted to ACTION_INTERNAL_SIM_STATE_CHANGED to
-            // ensure that the SubscriptionInfo is updated before the broadcasts are sent out.
-            if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
+            if (action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
                 if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_UNKNOWN.equals(simStatus)) {
@@ -201,22 +201,17 @@ public class SubscriptionInfoUpdater extends Handler {
                 } else if (IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_RESTRICTED, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_NOT_READY.equals(simStatus)) {
-                    // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
-                    // phase, the subscription list is accessible.
-                    // TODO(b/64216093): Clean up this special case, likely by treating NOT_READY
-                    // as equivalent to ABSENT, once the rest of the system can handle it. Currently
-                    // this breaks SystemUI which shows a "No SIM" icon.
-                    sendEmptyMessage(EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS);
-                } else {
-                    logd("Ignoring simStatus: " + simStatus);
-                }
-            } else if (action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
-                if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
+                    sendEmptyMessage(EVENT_SIM_NOT_READY);
+                } else if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
                     String reason = intent.getStringExtra(
                         IccCardConstants.INTENT_KEY_LOCKED_REASON);
                     sendMessage(obtainMessage(EVENT_SIM_LOCKED, slotIndex, -1, reason));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_LOADED, slotIndex, -1));
+                } else if (IccCardConstants.INTENT_VALUE_ICC_READY.equals(simStatus)) {
+                    sendMessage(obtainMessage(EVENT_SIM_READY, slotIndex, -1));
+                } else if (IccCardConstants.INTENT_VALUE_ICC_IMSI.equals(simStatus)) {
+                    sendMessage(obtainMessage(EVENT_SIM_IMSI, slotIndex, -1));
                 } else {
                     logd("Ignoring simStatus: " + simStatus);
                 }
@@ -254,7 +249,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
             }
 
-           case EVENT_SIM_LOADED:
+            case EVENT_SIM_LOADED:
                 handleSimLoaded(msg.arg1);
                 break;
 
@@ -268,6 +263,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
             case EVENT_SIM_UNKNOWN:
                 updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
+                broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null);
                 break;
 
             case EVENT_SIM_IO_ERROR:
@@ -276,7 +272,28 @@ public class SubscriptionInfoUpdater extends Handler {
 
             case EVENT_SIM_RESTRICTED:
                 updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED);
+                broadcastSimStateChanged(msg.arg1,
+                        IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED,
+                        IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED);
                 break;
+
+            case EVENT_SIM_READY:
+                broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_READY, null);
+                break;
+
+            case EVENT_SIM_IMSI:
+                broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_IMSI, null);
+                break;
+
+            case EVENT_SIM_NOT_READY:
+                broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_NOT_READY,
+                        null);
+                // intentional fall through
+                // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
+                // phase, the subscription list is accessible.
+                // TODO(b/64216093): Clean up this special case, likely by treating NOT_READY
+                // as equivalent to ABSENT, once the rest of the system can handle it. Currently
+                // this breaks SystemUI which shows a "No SIM" icon.
 
             case EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS:
                 if (updateEmbeddedSubscriptions()) {
@@ -457,6 +474,7 @@ public class SubscriptionInfoUpdater extends Handler {
             updateSubscriptionInfoByIccId();
         }
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
+        broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT, null);
     }
 
     private void handleSimError(int slotId) {
@@ -468,6 +486,8 @@ public class SubscriptionInfoUpdater extends Handler {
             updateSubscriptionInfoByIccId();
         }
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+        broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR,
+                IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
     }
 
     /**
