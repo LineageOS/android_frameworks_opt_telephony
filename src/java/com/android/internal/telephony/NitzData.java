@@ -23,7 +23,6 @@ import android.telephony.Rlog;
 import com.android.internal.annotations.VisibleForTesting;
 
 import java.util.Calendar;
-import java.util.Date;
 import java.util.TimeZone;
 
 /**
@@ -35,7 +34,6 @@ import java.util.TimeZone;
 @VisibleForTesting(visibility = PACKAGE)
 public final class NitzData {
     private static final String LOG_TAG = ServiceStateTracker.LOG_TAG;
-    private static final int MS_PER_HOUR = 60 * 60 * 1000;
     private static final int MS_PER_QUARTER_HOUR = 15 * 60 * 1000;
 
     /* Time stamp after 19 January 2038 is not supported under 32 bit */
@@ -53,7 +51,7 @@ public final class NitzData {
     private final TimeZone mEmulatorHostTimeZone;
 
     private NitzData(String originalString, int zoneOffsetMillis, Integer dstOffsetMillis,
-            long utcTimeMillis, TimeZone timeZone) {
+            long utcTimeMillis, TimeZone emulatorHostTimeZone) {
         if (originalString == null) {
             throw new NullPointerException("originalString==null");
         }
@@ -61,7 +59,7 @@ public final class NitzData {
         this.mZoneOffset = zoneOffsetMillis;
         this.mDstOffset = dstOffsetMillis;
         this.mCurrentTimeMillis = utcTimeMillis;
-        this.mEmulatorHostTimeZone = timeZone;
+        this.mEmulatorHostTimeZone = emulatorHostTimeZone;
     }
 
     /**
@@ -139,9 +137,9 @@ public final class NitzData {
 
     /** A method for use in tests to create NitzData instances. */
     public static NitzData createForTests(int zoneOffsetMillis, Integer dstOffsetMillis,
-            long utcTimeMillis, TimeZone timeZone) {
+            long utcTimeMillis, TimeZone emulatorHostTimeZone) {
         return new NitzData("Test data", zoneOffsetMillis, dstOffsetMillis, utcTimeMillis,
-                timeZone);
+                emulatorHostTimeZone);
     }
 
     /**
@@ -185,44 +183,6 @@ public final class NitzData {
      */
     public TimeZone getEmulatorHostTimeZone() {
         return mEmulatorHostTimeZone;
-    }
-
-    /**
-     * Using information present in the supplied {@link NitzData} object, guess the time zone.
-     * Because multiple time zones can have the same offset / DST state at a given time this process
-     * is error prone; an arbitrary match is returned when there are multiple candidates. The
-     * algorithm can also return a non-exact match by assuming that the DST information provided by
-     * NITZ is incorrect. This method can return {@code null} if no time zones are found.
-     */
-    public static TimeZone guessTimeZone(NitzData nitzData) {
-        int offset = nitzData.getLocalOffsetMillis();
-        boolean dst = nitzData.isDst();
-        long when = nitzData.getCurrentTimeInMillis();
-        TimeZone guess = findTimeZone(offset, dst, when);
-        if (guess == null) {
-            // Couldn't find a proper timezone.  Perhaps the DST data is wrong.
-            guess = findTimeZone(offset, !dst, when);
-        }
-        return guess;
-    }
-
-    private static TimeZone findTimeZone(int offset, boolean dst, long when) {
-        int rawOffset = offset;
-        if (dst) {
-            rawOffset -= MS_PER_HOUR;
-        }
-        String[] zones = TimeZone.getAvailableIDs(rawOffset);
-        TimeZone guess = null;
-        Date d = new Date(when);
-        for (String zone : zones) {
-            TimeZone tz = TimeZone.getTimeZone(zone);
-            if (tz.getOffset(when) == offset && tz.inDaylightTime(d) == dst) {
-                guess = tz;
-                break;
-            }
-        }
-
-        return guess;
     }
 
     @Override
