@@ -628,30 +628,39 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     };
 
     // Callback fires when ImsManager MMTel Feature changes state
-    private ImsServiceProxy.INotifyStatusChanged mNotifyStatusChangedCallback = () -> {
-        try {
-            int status = mImsManager.getImsServiceStatus();
-            log("Status Changed: " + status);
-            switch(status) {
-                case ImsFeature.STATE_READY: {
-                    startListeningForCalls();
-                    break;
+    private ImsServiceProxy.IFeatureUpdate mNotifyStatusChangedCallback =
+            new ImsServiceProxy.IFeatureUpdate() {
+                @Override
+                public void notifyStateChanged() {
+                    try {
+                        int status = mImsManager.getImsServiceStatus();
+                        log("Status Changed: " + status);
+                        switch (status) {
+                            case ImsFeature.STATE_READY: {
+                                startListeningForCalls();
+                                break;
+                            }
+                            case ImsFeature.STATE_INITIALIZING:
+                                // fall through
+                            case ImsFeature.STATE_NOT_AVAILABLE: {
+                                stopListeningForCalls();
+                                break;
+                            }
+                            default: {
+                                Log.w(LOG_TAG, "Unexpected State!");
+                            }
+                        }
+                    } catch (ImsException e) {
+                        // Could not get the ImsService, retry!
+                        retryGetImsService();
+                    }
                 }
-                case ImsFeature.STATE_INITIALIZING:
-                    // fall through
-                case ImsFeature.STATE_NOT_AVAILABLE: {
-                    stopListeningForCalls();
-                    break;
+
+                @Override
+                public void notifyUnavailable() {
+                    retryGetImsService();
                 }
-                default: {
-                    Log.w(LOG_TAG, "Unexpected State!");
-                }
-            }
-        } catch (ImsException e) {
-            // Could not get the ImsService, retry!
-            retryGetImsService();
-        }
-    };
+            };
 
     @VisibleForTesting
     public interface IRetryTimeout {
@@ -757,7 +766,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mImsManager.addNotifyStatusChangedCallbackIfAvailable(mNotifyStatusChangedCallback);
         // Wait for ImsService.STATE_READY to start listening for calls.
         // Call the callback right away for compatibility with older devices that do not use states.
-        mNotifyStatusChangedCallback.notifyStatusChanged();
+        mNotifyStatusChangedCallback.notifyStateChanged();
     }
 
     private void startListeningForCalls() throws ImsException {
@@ -3209,6 +3218,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (mImsManager.isServiceAvailable()) {
             return;
         }
+        // remove callback so we do not receive updates from old ImsServiceProxy when switching
+        // between ImsServices.
+        mImsManager.removeNotifyStatusChangedCallback(mNotifyStatusChangedCallback);
         //Leave mImsManager as null, then CallStateException will be thrown when dialing
         mImsManager = null;
         // Exponential backoff during retry, limited to 32 seconds.
