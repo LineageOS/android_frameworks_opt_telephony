@@ -141,6 +141,9 @@ public class TimeZoneLookupHelper {
 
     private static final int MS_PER_HOUR = 60 * 60 * 1000;
 
+    /** The last CountryTimeZones object retrieved. */
+    private CountryTimeZones mLastCountryTimeZones;
+
     public TimeZoneLookupHelper() {}
 
     /**
@@ -152,8 +155,7 @@ public class TimeZoneLookupHelper {
      * matching time zones are found.
      */
     public OffsetResult lookupByNitzCountry(NitzData nitzData, String isoCountryCode) {
-        CountryTimeZones countryTimeZones =
-                TimeZoneFinder.getInstance().lookupCountryTimeZones(isoCountryCode);
+        CountryTimeZones countryTimeZones = getCountryTimeZones(isoCountryCode);
         if (countryTimeZones == null) {
             return null;
         }
@@ -190,8 +192,7 @@ public class TimeZoneLookupHelper {
      * {@code null} can be returned.
      */
     public CountryResult lookupByCountry(String isoCountryCode, long whenMillis) {
-        CountryTimeZones countryTimeZones =
-                TimeZoneFinder.getInstance().lookupCountryTimeZones(isoCountryCode);
+        CountryTimeZones countryTimeZones = getCountryTimeZones(isoCountryCode);
         if (countryTimeZones == null) {
             // Unknown country code.
             return null;
@@ -271,8 +272,27 @@ public class TimeZoneLookupHelper {
             return false;
         }
 
-        CountryTimeZones countryTimeZones =
-                TimeZoneFinder.getInstance().lookupCountryTimeZones(isoCountryCode);
+        CountryTimeZones countryTimeZones = getCountryTimeZones(isoCountryCode);
         return countryTimeZones != null && countryTimeZones.hasUtcZone(whenMillis);
+    }
+
+    private CountryTimeZones getCountryTimeZones(String isoCountryCode) {
+        // A single entry cache of the last CountryTimeZones object retrieved since there should
+        // be strong consistency across calls.
+        synchronized (this) {
+            if (mLastCountryTimeZones != null) {
+                if (mLastCountryTimeZones.isForCountryCode(isoCountryCode)) {
+                    return mLastCountryTimeZones;
+                }
+            }
+
+            // Perform the lookup. It's very unlikely to return null, but we won't cache null.
+            CountryTimeZones countryTimeZones =
+                    TimeZoneFinder.getInstance().lookupCountryTimeZones(isoCountryCode);
+            if (countryTimeZones != null) {
+                mLastCountryTimeZones = countryTimeZones;
+            }
+            return countryTimeZones;
+        }
     }
 }
