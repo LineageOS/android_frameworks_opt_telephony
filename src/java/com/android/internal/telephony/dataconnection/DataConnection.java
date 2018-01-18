@@ -1012,6 +1012,8 @@ public class DataConnection extends StateMachine {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
         }
 
+        result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+
         return result;
     }
 
