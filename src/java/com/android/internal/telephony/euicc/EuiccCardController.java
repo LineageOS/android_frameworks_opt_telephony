@@ -90,6 +90,82 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
+    public void getProfile(String callingPackage, String iccid, IGetProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void disableProfile(String callingPackage, String iccid, boolean refresh,
+            IDisableProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void switchToProfile(String callingPackage, String iccid, boolean refresh,
+            ISwitchToProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public String getEid() {
+        // TODO(b/38206971): Wait until the eid is ready and return.
+        return null;
+    }
+
+    @Override
+    public void setNickname(String callingPackage, String iccid, String nickname,
+            ISetNicknameCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public  void deleteProfile(String callingPackage, String iccid,
+            IDeleteProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void resetMemory(String callingPackage, @EuiccCardManager.ResetOption int options,
+            IResetMemoryCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getDefaultSmdpAddress(String callingPackage,
+            IGetDefaultSmdpAddressCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getSmdsAddress(String callingPackage, IGetSmdsAddressCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void setDefaultSmdpAddress(String callingPackage, String address,
+            ISetDefaultSmdpAddressCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
     public void getRulesAuthTable(String callingPackage, IGetRulesAuthTableCallback callback) {
         checkCallingPackage(callingPackage);
 
