@@ -34,6 +34,11 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 public class TimeZoneLookupHelperTest {
+    // Note: Historical dates are used to avoid the test breaking due to data changes.
+    /* Arbitrary summer date in the Northern hemisphere. */
+    private static final long NH_SUMMER_TIME_MILLIS = createUtcTime(2015, 6, 20, 1, 2, 3);
+    /* Arbitrary winter date in the Northern hemisphere. */
+    private static final long NH_WINTER_TIME_MILLIS = createUtcTime(2015, 1, 20, 1, 2, 3);
 
     private TimeZoneLookupHelper mTimeZoneLookupHelper;
 
@@ -225,31 +230,29 @@ public class TimeZoneLookupHelperTest {
 
     @Test
     public void testGuessZoneIdByCountry() {
-        // Historical dates are used to avoid the test breaking due to data changes.
-        long nhSummerTimeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
-        long nhWinterTimeMillis = createUtcTime(2015, 1, 20, 1, 2, 3);
-
         // GB has one time zone.
         assertEquals("Europe/London",
-                mTimeZoneLookupHelper.guessZoneIdByCountry("gb", nhSummerTimeMillis));
+                mTimeZoneLookupHelper.guessZoneIdByCountry("gb", NH_SUMMER_TIME_MILLIS));
         assertEquals("Europe/London",
-                mTimeZoneLookupHelper.guessZoneIdByCountry("gb", nhWinterTimeMillis));
+                mTimeZoneLookupHelper.guessZoneIdByCountry("gb", NH_WINTER_TIME_MILLIS));
 
         // DE has two time zones according to data, but they agree on offset.
         assertEquals("Europe/Berlin",
-                mTimeZoneLookupHelper.guessZoneIdByCountry("de", nhSummerTimeMillis));
+                mTimeZoneLookupHelper.guessZoneIdByCountry("de", NH_SUMMER_TIME_MILLIS));
         assertEquals("Europe/Berlin",
-                mTimeZoneLookupHelper.guessZoneIdByCountry("de", nhWinterTimeMillis));
+                mTimeZoneLookupHelper.guessZoneIdByCountry("de", NH_WINTER_TIME_MILLIS));
 
         // US has many time zones that have different offsets.
-        assertNull(mTimeZoneLookupHelper.guessZoneIdByCountry("us", nhSummerTimeMillis));
-        assertNull(mTimeZoneLookupHelper.guessZoneIdByCountry("us", nhWinterTimeMillis));
+        assertNull(mTimeZoneLookupHelper.guessZoneIdByCountry("us", NH_SUMMER_TIME_MILLIS));
+        assertNull(mTimeZoneLookupHelper.guessZoneIdByCountry("us", NH_WINTER_TIME_MILLIS));
     }
 
     @Test
     public void testCountryUsesUtc() {
-        assertFalse(mTimeZoneLookupHelper.countryUsesUtc("us"));
-        assertTrue(mTimeZoneLookupHelper.countryUsesUtc("gb"));
+        assertFalse(mTimeZoneLookupHelper.countryUsesUtc("us", NH_SUMMER_TIME_MILLIS));
+        assertFalse(mTimeZoneLookupHelper.countryUsesUtc("us", NH_WINTER_TIME_MILLIS));
+        assertFalse(mTimeZoneLookupHelper.countryUsesUtc("gb", NH_SUMMER_TIME_MILLIS));
+        assertTrue(mTimeZoneLookupHelper.countryUsesUtc("gb", NH_WINTER_TIME_MILLIS));
     }
 
     private static void assertDifferentZoneIds(String zone1, String zone2) {

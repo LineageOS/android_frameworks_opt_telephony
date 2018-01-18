@@ -16,12 +16,14 @@
 
 package com.android.internal.telephony.euicc;
 
+import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.pm.ComponentInfo;
 import android.os.Binder;
 import android.os.ServiceManager;
 import android.telephony.euicc.EuiccCardManager;
+import android.telephony.euicc.EuiccNotification;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -81,7 +83,176 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void getAllProfiles(String callingPackage, IGetAllProfilesCallback getProfilesCb) {
+    public void getAllProfiles(String callingPackage, IGetAllProfilesCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getProfile(String callingPackage, String iccid, IGetProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void disableProfile(String callingPackage, String iccid, boolean refresh,
+            IDisableProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void switchToProfile(String callingPackage, String iccid, boolean refresh,
+            ISwitchToProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public String getEid() {
+        // TODO(b/38206971): Wait until the eid is ready and return.
+        return null;
+    }
+
+    @Override
+    public void setNickname(String callingPackage, String iccid, String nickname,
+            ISetNicknameCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public  void deleteProfile(String callingPackage, String iccid,
+            IDeleteProfileCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void resetMemory(String callingPackage, @EuiccCardManager.ResetOption int options,
+            IResetMemoryCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getDefaultSmdpAddress(String callingPackage,
+            IGetDefaultSmdpAddressCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getSmdsAddress(String callingPackage, IGetSmdsAddressCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void setDefaultSmdpAddress(String callingPackage, String address,
+            ISetDefaultSmdpAddressCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getRulesAuthTable(String callingPackage, IGetRulesAuthTableCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getEuiccChallenge(String callingPackage, IGetEuiccChallengeCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getEuiccInfo1(String callingPackage, IGetEuiccInfo1Callback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void getEuiccInfo2(String callingPackage, IGetEuiccInfo2Callback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void authenticateServer(String callingPackage, String matchingId, byte[] serverSigned1,
+            byte[] serverSignature1, byte[] euiccCiPkIdToBeUsed, byte[] serverCertificate,
+            IAuthenticateServerCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void prepareDownload(String callingPackage, @Nullable byte[] hashCc, byte[] smdpSigned2,
+            byte[] smdpSignature2, byte[] smdpCertificate, IPrepareDownloadCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void loadBoundProfilePackage(String callingPackage, byte[] boundProfilePackage,
+            ILoadBoundProfilePackageCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void cancelSession(String callingPackage, byte[] transactionId,
+            @EuiccCardManager.CancelReason int reason, ICancelSessionCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void listNotifications(String callingPackage, @EuiccNotification.Event int events,
+            IListNotificationsCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void retrieveNotificationList(String callingPackage, @EuiccNotification.Event int events,
+            IRetrieveNotificationListCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void retrieveNotification(String callingPackage, int seqNumber,
+            IRetrieveNotificationCallback callback) {
+        checkCallingPackage(callingPackage);
+
+        // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
+    }
+
+    @Override
+    public void removeNotificationFromList(String callingPackage, int seqNumber,
+            IRemoveNotificationFromListCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.

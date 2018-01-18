@@ -504,6 +504,9 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.NORMAL_UNSPECIFIED:
                 return DisconnectCause.NORMAL_UNSPECIFIED;
 
+            case CallFailCause.USER_ALERTING_NO_ANSWER:
+                return DisconnectCause.TIMED_OUT;
+
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:

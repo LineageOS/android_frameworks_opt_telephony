@@ -1776,10 +1776,11 @@ public class TelephonyMetrics {
      * Write carrier identification matching event
      *
      * @param phoneId Phone id
+     * @param version Carrier table version
      * @param cid Unique Carrier Id
      * @param gid1 Group id level 1
      */
-    public void writeCarrierIdMatchingEvent(int phoneId, int cid, String gid1) {
+    public void writeCarrierIdMatchingEvent(int phoneId, int version, int cid, String gid1) {
         final CarrierIdMatching carrierIdMatching = new CarrierIdMatching();
         final CarrierIdMatchingResult carrierIdMatchingResult = new CarrierIdMatchingResult();
 
@@ -1790,6 +1791,7 @@ public class TelephonyMetrics {
             }
         }
 
+        carrierIdMatching.cidTableVersion = version;
         carrierIdMatching.result = carrierIdMatchingResult;
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setCarrierIdMatching(
