@@ -94,6 +94,13 @@ public abstract class SMSDispatcher extends Handler {
     static final String TAG = "SMSDispatcher";    // accessed from inner class
     static final boolean DBG = false;
     private static final String SEND_NEXT_MSG_EXTRA = "SendNextMsg";
+    protected static final String MAP_KEY_PDU = "pdu";
+    protected static final String MAP_KEY_SMSC = "smsc";
+    protected static final String MAP_KEY_DEST_ADDR = "destAddr";
+    protected static final String MAP_KEY_SC_ADDR = "scAddr";
+    protected static final String MAP_KEY_DEST_PORT = "destPort";
+    protected static final String MAP_KEY_DATA = "data";
+    protected static final String MAP_KEY_TEXT = "text";
 
     private static final int PREMIUM_RULE_USE_SIM = 1;
     private static final int PREMIUM_RULE_USE_NETWORK = 2;
@@ -152,7 +159,7 @@ public abstract class SMSDispatcher extends Handler {
      */
     private static int sConcatenatedRef = new Random().nextInt(256);
 
-    private SmsDispatchersController mSmsDispatchersController;
+    protected SmsDispatchersController mSmsDispatchersController;
 
     /** Number of outgoing SmsTrackers waiting for user confirmation. */
     private int mPendingTrackerCount;
@@ -378,7 +385,7 @@ public abstract class SMSDispatcher extends Handler {
         @Override
         protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
             HashMap<String, Object> map = mTracker.getData();
-            String text = (String) map.get("text");
+            String text = (String) map.get(MAP_KEY_TEXT);
 
             if (text != null) {
                 try {
@@ -410,8 +417,8 @@ public abstract class SMSDispatcher extends Handler {
         @Override
         protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
             HashMap<String, Object> map = mTracker.getData();
-            byte[] data = (byte[]) map.get("data");
-            int destPort = (int) map.get("destPort");
+            byte[] data = (byte[]) map.get(MAP_KEY_DATA);
+            int destPort = (int) map.get(MAP_KEY_DEST_PORT);
 
             if (data != null) {
                 try {
@@ -1076,7 +1083,7 @@ public abstract class SMSDispatcher extends Handler {
     @VisibleForTesting
     public void sendRawPdu(SmsTracker tracker) {
         HashMap map = tracker.getData();
-        byte pdu[] = (byte[]) map.get("pdu");
+        byte pdu[] = (byte[]) map.get(MAP_KEY_PDU);
 
         if (mSmsSendDisabled) {
             Rlog.e(TAG, "Device does not support sending sms.");
@@ -1713,23 +1720,23 @@ public abstract class SMSDispatcher extends Handler {
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
             String text, SmsMessageBase.SubmitPduBase pdu) {
         HashMap<String, Object> map = new HashMap<String, Object>();
-        map.put("destAddr", destAddr);
-        map.put("scAddr", scAddr);
-        map.put("text", text);
-        map.put("smsc", pdu.encodedScAddress);
-        map.put("pdu", pdu.encodedMessage);
+        map.put(MAP_KEY_DEST_ADDR, destAddr);
+        map.put(MAP_KEY_SC_ADDR, scAddr);
+        map.put(MAP_KEY_TEXT, text);
+        map.put(MAP_KEY_SMSC, pdu.encodedScAddress);
+        map.put(MAP_KEY_PDU, pdu.encodedMessage);
         return map;
     }
 
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
             int destPort, byte[] data, SmsMessageBase.SubmitPduBase pdu) {
         HashMap<String, Object> map = new HashMap<String, Object>();
-        map.put("destAddr", destAddr);
-        map.put("scAddr", scAddr);
-        map.put("destPort", destPort);
-        map.put("data", data);
-        map.put("smsc", pdu.encodedScAddress);
-        map.put("pdu", pdu.encodedMessage);
+        map.put(MAP_KEY_DEST_ADDR, destAddr);
+        map.put(MAP_KEY_SC_ADDR, scAddr);
+        map.put(MAP_KEY_DEST_PORT, destPort);
+        map.put(MAP_KEY_DATA, data);
+        map.put(MAP_KEY_SMSC, pdu.encodedScAddress);
+        map.put(MAP_KEY_PDU, pdu.encodedMessage);
         return map;
     }
 
@@ -1886,7 +1893,7 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    protected final boolean isCdmaMo() {
+    protected boolean isCdmaMo() {
         return mSmsDispatchersController.isCdmaMo();
     }
 }
