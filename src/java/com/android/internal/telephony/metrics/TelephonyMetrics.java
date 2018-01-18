@@ -232,6 +232,8 @@ public class TelephonyMetrics {
                 return "DATA_STALL_ACTION";
             case TelephonyEvent.Type.MODEM_RESTART:
                 return "MODEM_RESTART";
+            case TelephonyEvent.Type.CARRIER_ID_MATCHING:
+                return "CARRIER_ID_MATCHING";
             default:
                 return Integer.toString(event);
         }
