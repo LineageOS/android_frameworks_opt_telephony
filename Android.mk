@@ -30,6 +30,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
     android.hardware.radio-V1.0-java \
     android.hardware.radio-V1.1-java \
     android.hardware.radio-V1.2-java \
+    android.hardware.radio.config-V1.0-java \
     android.hardware.radio.deprecated-V1.0-java \
     android.hidl.base-V1.0-java
 
