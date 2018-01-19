@@ -123,7 +123,7 @@ import java.util.stream.Collectors;
  */
 public class SubscriptionController extends ISub.Stub {
     private static final String LOG_TAG = "SubscriptionController";
-    private static final boolean DBG = false;
+    protected static final boolean DBG = false;
     private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     private static final boolean DBG_CACHE = false;
     private static final int DEPRECATED_SETTING = -1;
@@ -2963,7 +2963,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private void broadcastDefaultDataSubIdChanged(int subId) {
+    protected void broadcastDefaultDataSubIdChanged(int subId) {
         // Broadcast an Intent for default data sub change
         if (DBG) logdl("[broadcastDefaultDataSubIdChanged] subId=" + subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
@@ -4784,7 +4784,7 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @hide
      */
-    private void setGlobalSetting(String name, int value) {
+    protected void setGlobalSetting(String name, int value) {
         Settings.Global.putInt(mContext.getContentResolver(), name, value);
         if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION) {
             invalidateDefaultDataSubIdCaches();
