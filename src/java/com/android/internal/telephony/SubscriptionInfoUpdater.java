@@ -105,11 +105,19 @@ public class SubscriptionInfoUpdater extends Handler {
     @UnsupportedAppUsage
     private static Context sContext = null;
     @UnsupportedAppUsage
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
 
     protected static String[] sIccId = new String[SUPPORTED_MODEM_COUNT];
     private static String[] sInactiveIccIds = new String[SUPPORTED_MODEM_COUNT];
     private static int[] sSimCardState = new int[SUPPORTED_MODEM_COUNT];
     private static int[] sSimApplicationState = new int[SUPPORTED_MODEM_COUNT];
+=======
+    private static Context mContext = null;
+    @UnsupportedAppUsage
+    protected static String mIccId[] = new String[PROJECT_SIM_NUM];
+    private static int[] sSimCardState = new int[PROJECT_SIM_NUM];
+    private static int[] sSimApplicationState = new int[PROJECT_SIM_NUM];
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
     private static boolean sIsSubInfoInitialized = false;
     private SubscriptionManager mSubscriptionManager = null;
     private EuiccManager mEuiccManager;
@@ -218,7 +226,11 @@ public class SubscriptionInfoUpdater extends Handler {
 
     @UnsupportedAppUsage
     protected boolean isAllIccIdQueryDone() {
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
         for (int i = 0; i < TelephonyManager.getDefault().getActiveModemCount(); i++) {
+=======
+        for (int i = 0; i < PROJECT_SIM_NUM; i++) {
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
             UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(i);
             if  (sIccId[i] == null || slot == null || !slot.isActive()) {
@@ -279,7 +291,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_IO_ERROR:
-                handleSimError(msg.arg1);
+                handleSimAbsentOrError(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
                 break;
 
             case EVENT_SIM_RESTRICTED:
@@ -361,10 +373,17 @@ public class SubscriptionInfoUpdater extends Handler {
                 EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS, cardId, 0 /* arg2 */, callback));
     }
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
     protected void handleSimLocked(int phoneId, String reason) {
         if (sIccId[phoneId] != null && sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
             logd("SIM" + (phoneId + 1) + " hot plug in");
             sIccId[phoneId] = null;
+=======
+    protected void handleSimLocked(int slotId, String reason) {
+        if (mIccId[slotId] != null && mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+            logd("SIM" + (slotId + 1) + " hot plug in");
+            mIccId[slotId] = null;
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
         }
 
         IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
@@ -422,6 +441,7 @@ public class SubscriptionInfoUpdater extends Handler {
         broadcastSimApplicationStateChanged(phoneId, TelephonyManager.SIM_STATE_NOT_READY);
     }
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
 
     protected void handleSimNotReady(int phoneId) {
         logd("handleSimNotReady: phoneId: " + phoneId);
@@ -466,6 +486,10 @@ public class SubscriptionInfoUpdater extends Handler {
 
     protected void handleSimLoaded(int phoneId) {
         logd("handleSimLoaded: phoneId: " + phoneId);
+=======
+    protected void handleSimLoaded(int slotId) {
+        logd("handleSimLoaded: slotId: " + slotId);
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
 
         // The SIM should be loaded at this state, but it is possible in cases such as SIM being
         // removed or a refresh RESET that the IccRecords could be null. The right behavior is to
@@ -608,6 +632,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
     /**
      * PhoneId is the corresponding phoneId of the slot if slot was previously active.
      * It could be INVALID if it was already inactive.
@@ -620,6 +645,11 @@ public class SubscriptionInfoUpdater extends Handler {
                 logd("Slot of SIM" + (phoneId + 1) + " becomes inactive");
             }
             cleanSubscriptionInPhone(phoneId);
+=======
+    protected void handleSimAbsent(int slotId, int absentAndInactive) {
+        if (mIccId[slotId] != null && !mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+            logd("SIM" + (slotId + 1) + " hot plug out, absentAndInactive=" + absentAndInactive);
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
         }
         if (!TextUtils.isEmpty(iccId)) {
             // If iccId is new, add a subscription record in the db.
@@ -648,9 +678,17 @@ public class SubscriptionInfoUpdater extends Handler {
         updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
     }
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
     protected void handleSimAbsent(int phoneId) {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             logd("handleSimAbsent on invalid phoneId");
+=======
+    protected synchronized void updateSubscriptionInfoByIccId(int slotIndex,
+            boolean updateEmbeddedSubs) {
+        logd("updateSubscriptionInfoByIccId:+ Start");
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
+            loge("[updateSubscriptionInfoByIccId]- invalid slotIndex=" + slotIndex);
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
             return;
         }
         if (sIccId[phoneId] != null && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {

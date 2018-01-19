@@ -409,12 +409,22 @@ public class DcTracker extends Handler {
     private final NetworkPolicyManager.SubscriptionCallback mSubscriptionCallback =
             new NetworkPolicyManager.SubscriptionCallback() {
         @Override
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
         public void onSubscriptionOverride(int subId, int overrideMask, int overrideValue) {
             if (mPhone == null || mPhone.getSubId() != subId) return;
 
             for (DataConnection dataConnection : mDataConnections.values()) {
                 dataConnection.onSubscriptionOverride(overrideMask, overrideValue);
+=======
+        public void onSubscriptionsChanged() {
+            if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
+            // Set the network type, in case the radio does not restore it.
+            int subId = mPhone.getSubId();
+            if (mSubscriptionManager.isActiveSubId(subId)) {
+                registerSettingsObserver();
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
             }
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
         }
 
         @Override
@@ -423,6 +433,12 @@ public class DcTracker extends Handler {
 
             mSubscriptionPlans = plans == null ? null : Arrays.asList(plans);
             reevaluateUnmeteredConnections();
+=======
+            if (mSubscriptionManager.isActiveSubId(subId) &&
+                    mPreviousSubId.getAndSet(subId) != subId) {
+                onRecordsLoadedOrSubIdChanged();
+            }
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
         }
     };
 
@@ -491,8 +507,19 @@ public class DcTracker extends Handler {
         String apnType = apnContextforRetry.getApnType();
         String reason =  apnContextforRetry.getReason();
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
         if (!SubscriptionManager.isValidSubscriptionId(subId) || (subId != phoneSubId)) {
             log("onDataReconnect: invalid subId");
+=======
+        // Stop reconnect if not current subId is not correct.
+        // FIXME STOPSHIP - phoneSubId is coming up as -1 way after boot and failing this?
+        if (!mSubscriptionManager.isActiveSubId(currSubId) || (currSubId != phoneSubId)) {
+            return;
+        }
+
+        int transportType = bundle.getInt(INTENT_RECONNECT_ALARM_EXTRA_TRANSPORT_TYPE, 0);
+        if (transportType != mTransportType) {
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
             return;
         }
 
@@ -3541,6 +3568,20 @@ public class DcTracker extends Handler {
         int generation;
         int requestType;
         switch (msg.what) {
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
+=======
+            case DctConstants.EVENT_RECORDS_LOADED:
+                // If onRecordsLoadedOrSubIdChanged() is not called here, it should be called on
+                // onSubscriptionsChanged() when a valid subId is available.
+                int subId = mPhone.getSubId();
+                if (mSubscriptionManager.isActiveSubId(subId)) {
+                    onRecordsLoadedOrSubIdChanged();
+                } else {
+                    log("Ignoring EVENT_RECORDS_LOADED as subId is not valid: " + subId);
+                }
+                break;
+
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
             case DctConstants.EVENT_DATA_CONNECTION_DETACHED:
                 onDataConnectionDetached();
                 break;
@@ -3928,6 +3969,7 @@ public class DcTracker extends Handler {
         return cid;
     }
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
     /**
      * Update link bandwidth estimate default values from carrier config.
      * @param bandwidths String array of "RAT:upstream,downstream" for each RAT
@@ -3947,6 +3989,33 @@ public class DcTracker extends Handler {
                         upstream = Integer.parseInt(split[1]);
                     } catch (NumberFormatException ignored) {
                     }
+=======
+    private IccRecords getUiccRecords(int appFamily) {
+        return mUiccController.getIccRecords(mPhone.getPhoneId(), appFamily);
+    }
+
+
+    private void onUpdateIcc() {
+        if (mUiccController == null ) {
+            return;
+        }
+
+        IccRecords newIccRecords = mPhone.getIccRecords();
+
+        IccRecords r = mIccRecords.get();
+        if (r != newIccRecords) {
+            if (r != null) {
+                log("Removing stale icc objects.");
+                r.unregisterForRecordsLoaded(this);
+                mIccRecords.set(null);
+            }
+            if (newIccRecords != null) {
+                if (mSubscriptionManager.isActiveSubId(mPhone.getSubId())) {
+                    log("New records found.");
+                    mIccRecords.set(newIccRecords);
+                    newIccRecords.registerForRecordsLoaded(
+                            this, DctConstants.EVENT_RECORDS_LOADED, null);
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
                 }
                 temp.put(kv[0], new Pair<>(downstream, upstream));
             }

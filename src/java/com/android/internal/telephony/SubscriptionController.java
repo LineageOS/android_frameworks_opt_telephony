@@ -108,8 +108,8 @@ import java.util.stream.Collectors;
  */
 public class SubscriptionController extends ISub.Stub {
     private static final String LOG_TAG = "SubscriptionController";
-    private static final boolean DBG = true;
-    private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
+    protected static final boolean DBG = true;
+    protected static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     private static final boolean DBG_CACHE = false;
     private static final int DEPRECATED_SETTING = -1;
     private static final ParcelUuid INVALID_GROUP_UUID =
@@ -145,6 +145,10 @@ public class SubscriptionController extends ISub.Stub {
 
     /** The singleton instance. */
     protected static SubscriptionController sInstance = null;
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
+=======
+    protected static Phone[] sPhones;
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
     @UnsupportedAppUsage
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
@@ -156,6 +160,7 @@ public class SubscriptionController extends ISub.Stub {
     private static boolean sCachingEnabled = true;
 
     // Each slot can have multiple subs.
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
     private static class WatchedSlotIndexToSubIds {
         private Map<Integer, ArrayList<Integer>> mSlotIndexToSubIds = new ConcurrentHashMap<>();
 
@@ -273,8 +278,12 @@ public class SubscriptionController extends ISub.Stub {
         }
     };
 
+=======
+    private static Map<Integer, ArrayList<Integer>> sSlotIndexToSubIds = new ConcurrentHashMap<>();
+    protected static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
     @UnsupportedAppUsage
-    private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
+    protected static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
     @UnsupportedAppUsage
     private int[] colorArr;
@@ -1392,7 +1401,7 @@ public class SubscriptionController extends ISub.Stub {
                             // Set the default sub if not set or if single sim device
                             if (!isSubscriptionForRemoteSim(subscriptionType)) {
                                 if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                        || subIdCountMax == 1) {
+                                        || subIdCountMax == 1 || (!isActiveSubId(defaultSubId))) {
                                     logdl("setting default fallback subid to " + subId);
                                     setDefaultFallbackSubId(subId, subscriptionType);
                                 }
@@ -2400,12 +2409,12 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private void logvl(String msg) {
+    protected void logvl(String msg) {
         logv(msg);
         mLocalLog.log(msg);
     }
 
-    private void logv(String msg) {
+    protected void logv(String msg) {
         Rlog.v(LOG_TAG, msg);
     }
 
@@ -2415,12 +2424,19 @@ public class SubscriptionController extends ISub.Stub {
         mLocalLog.log(msg);
     }
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
+=======
+    protected static void slogd(String msg) {
+        Rlog.d(LOG_TAG, msg);
+    }
+
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
     @UnsupportedAppUsage
     private void logd(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
 
-    private void logel(String msg) {
+    protected void logel(String msg) {
         loge(msg);
         mLocalLog.log(msg);
     }
@@ -2606,7 +2622,22 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @UnsupportedAppUsage
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
     private void broadcastDefaultDataSubIdChanged(int subId) {
+=======
+    protected void updateAllDataConnectionTrackers() {
+        // Tell Phone Proxies to update data connection tracker
+        int len = sPhones.length;
+        if (DBG) logd("[updateAllDataConnectionTrackers] sPhones.length=" + len);
+        for (int phoneId = 0; phoneId < len; phoneId++) {
+            if (DBG) logd("[updateAllDataConnectionTrackers] phoneId=" + phoneId);
+            sPhones[phoneId].updateDataConnectionTracker();
+        }
+    }
+
+    @UnsupportedAppUsage
+    protected void broadcastDefaultDataSubIdChanged(int subId) {
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
         // Broadcast an Intent for default data sub change
         if (DBG) logdl("[broadcastDefaultDataSubIdChanged] subId=" + subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
@@ -2665,6 +2696,29 @@ public class SubscriptionController extends ISub.Stub {
                     + phoneId + " subId=" + subId);
         }
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+    }
+
+    protected boolean shouldDefaultBeCleared(List<SubscriptionInfo> records, int subId) {
+        if (DBG) logdl("[shouldDefaultBeCleared: subId] " + subId);
+        if (records == null) {
+            if (DBG) logdl("[shouldDefaultBeCleared] return true no records subId=" + subId);
+            return true;
+        }
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            // If the subId parameter is not valid its already cleared so return false.
+            if (DBG) logdl("[shouldDefaultBeCleared] return false only one subId, subId=" + subId);
+            return false;
+        }
+        for (SubscriptionInfo record : records) {
+            int id = record.getSubscriptionId();
+            if (DBG) logdl("[shouldDefaultBeCleared] Record.id: " + id);
+            if (id == subId) {
+                logdl("[shouldDefaultBeCleared] return false subId is active, subId=" + subId);
+                return false;
+            }
+        }
+        if (DBG) logdl("[shouldDefaultBeCleared] return true not active subId=" + subId);
+        return true;
     }
 
     /**
@@ -3001,7 +3055,11 @@ public class SubscriptionController extends ISub.Stub {
         return resultValue;
     }
 
+<<<<<<< HEAD   (24372c Allow injection jar to be located in system_ext folder)
     private void printStackTrace(String msg) {
+=======
+    protected static void printStackTrace(String msg) {
+>>>>>>> CHANGE (a9500a Enable vendor Telephony plugin: MSIM Changes)
         RuntimeException re = new RuntimeException();
         logd("StackTrace - " + msg);
         StackTraceElement[] st = re.getStackTrace();
