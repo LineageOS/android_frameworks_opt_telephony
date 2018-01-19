@@ -108,8 +108,8 @@ import java.util.stream.Collectors;
  */
 public class SubscriptionController extends ISub.Stub {
     private static final String LOG_TAG = "SubscriptionController";
-    private static final boolean DBG = true;
-    private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
+    protected static final boolean DBG = true;
+    protected static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     private static final boolean DBG_CACHE = false;
     private static final int DEPRECATED_SETTING = -1;
     private static final ParcelUuid INVALID_GROUP_UUID =
@@ -274,7 +274,7 @@ public class SubscriptionController extends ISub.Stub {
     };
 
     @UnsupportedAppUsage
-    private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
+    protected static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
     @UnsupportedAppUsage
     private int[] colorArr;
@@ -1392,7 +1392,7 @@ public class SubscriptionController extends ISub.Stub {
                             // Set the default sub if not set or if single sim device
                             if (!isSubscriptionForRemoteSim(subscriptionType)) {
                                 if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                        || subIdCountMax == 1) {
+                                        || subIdCountMax == 1 || (!isActiveSubId(defaultSubId))) {
                                     logdl("setting default fallback subid to " + subId);
                                     setDefaultFallbackSubId(subId, subscriptionType);
                                 }
@@ -2400,12 +2400,12 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private void logvl(String msg) {
+    protected void logvl(String msg) {
         logv(msg);
         mLocalLog.log(msg);
     }
 
-    private void logv(String msg) {
+    protected void logv(String msg) {
         Rlog.v(LOG_TAG, msg);
     }
 
@@ -2420,7 +2420,7 @@ public class SubscriptionController extends ISub.Stub {
         Rlog.d(LOG_TAG, msg);
     }
 
-    private void logel(String msg) {
+    protected void logel(String msg) {
         loge(msg);
         mLocalLog.log(msg);
     }
@@ -2606,7 +2606,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @UnsupportedAppUsage
-    private void broadcastDefaultDataSubIdChanged(int subId) {
+    protected void broadcastDefaultDataSubIdChanged(int subId) {
         // Broadcast an Intent for default data sub change
         if (DBG) logdl("[broadcastDefaultDataSubIdChanged] subId=" + subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
@@ -2665,6 +2665,29 @@ public class SubscriptionController extends ISub.Stub {
                     + phoneId + " subId=" + subId);
         }
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+    }
+
+    protected boolean shouldDefaultBeCleared(List<SubscriptionInfo> records, int subId) {
+        if (DBG) logdl("[shouldDefaultBeCleared: subId] " + subId);
+        if (records == null) {
+            if (DBG) logdl("[shouldDefaultBeCleared] return true no records subId=" + subId);
+            return true;
+        }
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            // If the subId parameter is not valid its already cleared so return false.
+            if (DBG) logdl("[shouldDefaultBeCleared] return false only one subId, subId=" + subId);
+            return false;
+        }
+        for (SubscriptionInfo record : records) {
+            int id = record.getSubscriptionId();
+            if (DBG) logdl("[shouldDefaultBeCleared] Record.id: " + id);
+            if (id == subId) {
+                logdl("[shouldDefaultBeCleared] return false subId is active, subId=" + subId);
+                return false;
+            }
+        }
+        if (DBG) logdl("[shouldDefaultBeCleared] return true not active subId=" + subId);
+        return true;
     }
 
     /**
@@ -3001,7 +3024,7 @@ public class SubscriptionController extends ISub.Stub {
         return resultValue;
     }
 
-    private void printStackTrace(String msg) {
+    protected void printStackTrace(String msg) {
         RuntimeException re = new RuntimeException();
         logd("StackTrace - " + msg);
         StackTraceElement[] st = re.getStackTrace();
