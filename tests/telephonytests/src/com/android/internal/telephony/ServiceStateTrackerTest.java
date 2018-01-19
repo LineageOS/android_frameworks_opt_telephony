@@ -374,8 +374,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 SignalStrength.INVALID,     // lteRsrq
                 SignalStrength.INVALID,     // lteRssnr
                 SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID,     // tdScdmaRscp
-                true                        // gsmFlag
+                SignalStrength.INVALID      // tdScdmaRscp
         );
 
         mSimulatedCommands.setSignalStrength(ss);
