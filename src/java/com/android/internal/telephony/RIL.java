@@ -106,6 +106,7 @@ import java.io.DataInputStream;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1186,7 +1187,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // Process address
         String[] addresses = null;
         if (!TextUtils.isEmpty(dcResult.addresses)) {
-            addresses = dcResult.addresses.split(" ");
+            addresses = dcResult.addresses.split("\\s+");
         }
 
         List<LinkAddress> laList = new ArrayList<>();
@@ -1196,10 +1197,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 if (address.isEmpty()) continue;
 
                 try {
-                    LinkAddress la = new LinkAddress(address);
+                    LinkAddress la;
+                    // Check if the address contains prefix length. If yes, LinkAddress
+                    // can parse that.
+                    if (address.split("/").length == 2) {
+                        la = new LinkAddress(address);
+                    } else {
+                        InetAddress ia = NetworkUtils.numericToInetAddress(address);
+                        la = new LinkAddress(ia, (ia instanceof Inet4Address) ? 32 : 128);
+                    }
+
                     laList.add(la);
                 } catch (IllegalArgumentException e) {
-                    Rlog.e(RILJ_LOG_TAG, "Unknown address: " + address + ", exception = " + e);
+                    Rlog.e(RILJ_LOG_TAG, "Unknown address: " + address + ", " + e);
                 }
             }
         }
@@ -1207,7 +1217,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // Process dns
         String[] dnses = null;
         if (!TextUtils.isEmpty(dcResult.dnses)) {
-            dnses = dcResult.dnses.split(" ");
+            dnses = dcResult.dnses.split("\\s+");
         }
 
         List<InetAddress> dnsList = new ArrayList<>();
@@ -1227,7 +1237,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // Process gateway
         String[] gateways = null;
         if (!TextUtils.isEmpty(dcResult.gateways)) {
-            gateways = dcResult.gateways.split(" ");
+            gateways = dcResult.gateways.split("\\s+");
         }
 
         List<InetAddress> gatewayList = new ArrayList<>();
@@ -1253,7 +1263,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 laList,
                 dnsList,
                 gatewayList,
-                new ArrayList<>(Arrays.asList(dcResult.pcscf.trim().split("\\s*,\\s*"))),
+                new ArrayList<>(Arrays.asList(dcResult.pcscf.trim().split("\\s+"))),
                 dcResult.mtu
         );
     }
