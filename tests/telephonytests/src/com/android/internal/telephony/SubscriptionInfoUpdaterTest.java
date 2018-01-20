@@ -122,6 +122,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         replaceInstance(SubscriptionInfoUpdater.class, "mInsertSimState", null, new int[1]);
         replaceInstance(SubscriptionInfoUpdater.class, "mContext", null, null);
         replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null, 1);
+        replaceInstance(SubscriptionInfoUpdater.class, "sSimCardState", null, new int[1]);
+        replaceInstance(SubscriptionInfoUpdater.class, "sSimApplicationState", null, new int[1]);
 
         replaceInstance(EuiccController.class, "sInstance", null, mEuiccController);
         replaceInstance(IntentBroadcaster.class, "sIntentBroadcaster", null, mIntentBroadcaster);
@@ -388,6 +390,10 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         replaceInstance(SubscriptionInfoUpdater.class, "mInsertSimState", null,
                 new int[]{SubscriptionInfoUpdater.SIM_NOT_CHANGE,
                         SubscriptionInfoUpdater.SIM_NOT_CHANGE});
+        replaceInstance(SubscriptionInfoUpdater.class, "sSimCardState", null,
+                new int[]{0, 0});
+        replaceInstance(SubscriptionInfoUpdater.class, "sSimApplicationState", null,
+                new int[]{0, 0});
 
         doReturn(new int[]{FAKE_SUB_ID_1, FAKE_SUB_ID_2}).when(mSubscriptionManager)
                 .getActiveSubscriptionIdList();
