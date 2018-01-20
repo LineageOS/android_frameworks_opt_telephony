@@ -67,7 +67,6 @@ import com.android.internal.util.StateMachine;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -1069,15 +1068,10 @@ public class DataConnection extends StateMachine {
                 if (response.getAddresses().size() > 0) {
                     for (LinkAddress la : response.getAddresses()) {
                         if (!la.getAddress().isAnyLocalAddress()) {
-                            int addrPrefixLen = la.getNetworkPrefixLength();
-                            if (addrPrefixLen == 0) {
-                                // Assume point to point
-                                addrPrefixLen = (la.getAddress() instanceof Inet4Address)
-                                        ? 32 : 128;
-                                la = new LinkAddress(la.getAddress(), addrPrefixLen);
+                            if (DBG) {
+                                log("addr/pl=" + la.getAddress() + "/"
+                                        + la.getNetworkPrefixLength());
                             }
-                            if (DBG) log("addr/pl=" + la.getAddress() + "/" + addrPrefixLen);
-
                             linkProperties.addLinkAddress(la);
                         }
                     }
