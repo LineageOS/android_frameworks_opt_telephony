@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import android.os.HandlerThread;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -81,5 +82,12 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
 
         verify(mSmsDispatchersController).sendRetrySms(mSmsTracker);
         assertNull(mImsSmsDispatcher.mTrackers.get(token));
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        mImsSmsDispatcher = null;
+        mImsSmsDispatcherTestHandler.quit();
+        super.tearDown();
     }
 }
