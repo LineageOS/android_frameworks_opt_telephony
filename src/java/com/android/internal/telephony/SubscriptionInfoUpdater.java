@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.UserSwitchObserver;
@@ -109,6 +110,8 @@ public class SubscriptionInfoUpdater extends Handler {
     private static Context mContext = null;
     private static String mIccId[] = new String[PROJECT_SIM_NUM];
     private static int[] mInsertSimState = new int[PROJECT_SIM_NUM];
+    private static int[] sSimCardState = new int[PROJECT_SIM_NUM];
+    private static int[] sSimApplicationState = new int[PROJECT_SIM_NUM];
     private SubscriptionManager mSubscriptionManager = null;
     private EuiccManager mEuiccManager;
     private IPackageManager mPackageManager;
@@ -264,6 +267,8 @@ public class SubscriptionInfoUpdater extends Handler {
             case EVENT_SIM_UNKNOWN:
                 updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
                 broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null);
+                broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_UNKNOWN);
+                broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_UNKNOWN);
                 break;
 
             case EVENT_SIM_IO_ERROR:
@@ -275,10 +280,14 @@ public class SubscriptionInfoUpdater extends Handler {
                 broadcastSimStateChanged(msg.arg1,
                         IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED,
                         IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED);
+                broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_CARD_RESTRICTED);
+                broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_NOT_READY);
                 break;
 
             case EVENT_SIM_READY:
                 broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_READY, null);
+                broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_PRESENT);
+                broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_NOT_READY);
                 break;
 
             case EVENT_SIM_IMSI:
@@ -288,6 +297,8 @@ public class SubscriptionInfoUpdater extends Handler {
             case EVENT_SIM_NOT_READY:
                 broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_NOT_READY,
                         null);
+                broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_PRESENT);
+                broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_NOT_READY);
                 // intentional fall through
                 // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
                 // phase, the subscription list is accessible.
@@ -347,6 +358,24 @@ public class SubscriptionInfoUpdater extends Handler {
 
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
+        broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_PRESENT);
+        broadcastSimApplicationStateChanged(slotId, getSimStateFromLockedReason(reason));
+    }
+
+    private static int getSimStateFromLockedReason(String lockedReason) {
+        switch (lockedReason) {
+            case IccCardConstants.INTENT_VALUE_LOCKED_ON_PIN:
+                return TelephonyManager.SIM_STATE_PIN_REQUIRED;
+            case IccCardConstants.INTENT_VALUE_LOCKED_ON_PUK:
+                return TelephonyManager.SIM_STATE_PUK_REQUIRED;
+            case IccCardConstants.INTENT_VALUE_LOCKED_NETWORK:
+                return TelephonyManager.SIM_STATE_NETWORK_LOCKED;
+            case IccCardConstants.INTENT_VALUE_ABSENT_ON_PERM_DISABLED:
+                return TelephonyManager.SIM_STATE_PERM_DISABLED;
+            default:
+                Rlog.e(LOG_TAG, "Unexpected SIM locked reason " + lockedReason);
+                return TelephonyManager.SIM_STATE_UNKNOWN;
+        }
     }
 
     private void handleSimLoaded(int slotId) {
@@ -455,6 +484,8 @@ public class SubscriptionInfoUpdater extends Handler {
                 mContext.getContentResolver(), mCurrentlyActiveUserId);
 
         broadcastSimStateChanged(loadedSlotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+        broadcastSimCardStateChanged(loadedSlotId, TelephonyManager.SIM_STATE_PRESENT);
+        broadcastSimApplicationStateChanged(loadedSlotId, TelephonyManager.SIM_STATE_LOADED);
         updateCarrierServices(loadedSlotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
@@ -475,6 +506,8 @@ public class SubscriptionInfoUpdater extends Handler {
         }
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT, null);
+        broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_ABSENT);
+        broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
     }
 
     private void handleSimError(int slotId) {
@@ -488,6 +521,8 @@ public class SubscriptionInfoUpdater extends Handler {
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR,
                 IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+        broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_CARD_IO_ERROR);
+        broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
     }
 
     /**
@@ -797,6 +832,68 @@ public class SubscriptionInfoUpdater extends Handler {
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
              " for mCardIndex: " + slotId);
         IntentBroadcaster.getInstance().broadcastStickyIntent(i, slotId);
+    }
+
+    private void broadcastSimCardStateChanged(int phoneId, int state) {
+        if (state != sSimCardState[phoneId]) {
+            sSimCardState[phoneId] = state;
+            Intent i = new Intent(Intent.ACTION_SIM_CARD_STATE_CHANGED);
+            i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+            i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
+            logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
+                    + " for phone: " + phoneId);
+            mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        }
+    }
+
+    private void broadcastSimApplicationStateChanged(int phoneId, int state) {
+        // Broadcast if the state has changed, except if old state was UNKNOWN and new is NOT_READY,
+        // because that's the initial state and a broadcast should be sent only on a transition
+        // after SIM is PRESENT
+        if (!(state == sSimApplicationState[phoneId]
+                || (state == TelephonyManager.SIM_STATE_NOT_READY
+                && sSimApplicationState[phoneId] == TelephonyManager.SIM_STATE_UNKNOWN))) {
+            sSimApplicationState[phoneId] = state;
+            Intent i = new Intent(Intent.ACTION_SIM_APPLICATION_STATE_CHANGED);
+            i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+            i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
+            logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED " + simStateString(state)
+                    + " for phone: " + phoneId);
+            mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        }
+    }
+
+    private static String simStateString(int state) {
+        switch (state) {
+            case TelephonyManager.SIM_STATE_UNKNOWN:
+                return "UNKNOWN";
+            case TelephonyManager.SIM_STATE_ABSENT:
+                return "ABSENT";
+            case TelephonyManager.SIM_STATE_PIN_REQUIRED:
+                return "PIN_REQUIRED";
+            case TelephonyManager.SIM_STATE_PUK_REQUIRED:
+                return "PUK_REQUIRED";
+            case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
+                return "NETWORK_LOCKED";
+            case TelephonyManager.SIM_STATE_READY:
+                return "READY";
+            case TelephonyManager.SIM_STATE_NOT_READY:
+                return "NOT_READY";
+            case TelephonyManager.SIM_STATE_PERM_DISABLED:
+                return "PERM_DISABLED";
+            case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
+                return "CARD_IO_ERROR";
+            case TelephonyManager.SIM_STATE_CARD_RESTRICTED:
+                return "CARD_RESTRICTED";
+            case TelephonyManager.SIM_STATE_LOADED:
+                return "LOADED";
+            case TelephonyManager.SIM_STATE_PRESENT:
+                return "PRESENT";
+            default:
+                return "INVALID";
+        }
     }
 
     // Remove trailing F's from full hexadecimal IccId, as they should be considered padding
