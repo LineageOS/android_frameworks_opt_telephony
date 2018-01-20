@@ -228,9 +228,7 @@ public class IccCardProxy extends Handler implements IccCard {
                     mUiccCard.registerForCarrierPrivilegeRulesLoaded(
                             this, EVENT_CARRIER_PRIVILEGES_LOADED, null);
                 } else {
-                    broadcastInternalIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED,
-                            null);
-                    //setExternalState(State.LOADED);
+                    setExternalState(State.LOADED);
                 }
                 break;
             case EVENT_IMSI_READY:
@@ -257,9 +255,7 @@ public class IccCardProxy extends Handler implements IccCard {
                 if (mUiccCard != null) {
                     mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
                 }
-                broadcastInternalIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED,
-                        null);
-                //setExternalState(State.LOADED);
+                setExternalState(State.LOADED);
                 break;
 
             default:
@@ -512,7 +508,7 @@ public class IccCardProxy extends Handler implements IccCard {
             case PERM_DISABLED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
             case CARD_IO_ERROR: return IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR;
             case CARD_RESTRICTED: return IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED;
-            //case LOADED: return IccCardConstants.INTENT_VALUE_ICC_LOADED;
+            case LOADED: return IccCardConstants.INTENT_VALUE_ICC_LOADED;
             default: return IccCardConstants.INTENT_VALUE_ICC_UNKNOWN;
         }
     }
