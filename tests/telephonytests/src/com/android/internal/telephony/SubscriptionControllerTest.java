@@ -76,7 +76,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 SubscriptionManager.ACCESS_RULES, SubscriptionManager.ENHANCED_4G_MODE_ENABLED,
                 SubscriptionManager.VT_IMS_ENABLED, SubscriptionManager.WFC_IMS_ENABLED,
                 SubscriptionManager.WFC_IMS_MODE, SubscriptionManager.WFC_IMS_ROAMING_MODE,
-                SubscriptionManager.WFC_IMS_ROAMING_ENABLED};
+                SubscriptionManager.WFC_IMS_ROAMING_ENABLED,
+                SubscriptionManager.CARD_ID};
 
         /* internal util function */
         private MatrixCursor convertFromContentToCursor(ContentValues initialValues,
