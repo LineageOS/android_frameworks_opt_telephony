@@ -25,6 +25,7 @@ import android.provider.Telephony.Sms;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.util.Pair;
 
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
@@ -102,18 +103,12 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
             SmsTracker tracker = deliveryPendingList.get(i);
             if (tracker.mMessageRef == sms.mMessageRef) {
-                // Found it.  Remove from list and broadcast.
-                deliveryPendingList.remove(i);
-                // Update the message status (COMPLETE)
-                tracker.updateSentMessageStatus(mContext, Sms.STATUS_COMPLETE);
-
-                PendingIntent intent = tracker.mDeliveryIntent;
-                Intent fillIn = new Intent();
-                fillIn.putExtra("pdu", sms.getPdu());
-                fillIn.putExtra("format", getFormat());
-                try {
-                    intent.send(mContext, Activity.RESULT_OK, fillIn);
-                } catch (CanceledException ex) {}
+                Pair<Boolean, Boolean> result =
+                        mSmsDispatchersController.handleSmsStatusReport(tracker, getFormat(),
+                                sms.getPdu());
+                if (result.second) {
+                    deliveryPendingList.remove(i);
+                }
                 break;  // Only expect to see one tracker matching this message.
             }
         }

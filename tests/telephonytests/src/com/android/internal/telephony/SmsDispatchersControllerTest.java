@@ -21,6 +21,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.isNull;
@@ -38,6 +39,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.provider.Telephony.Sms.Intents;
 import android.test.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Singleton;
@@ -55,18 +57,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
 
     private SmsDispatchersController mSmsDispatchersController;
     private ImsSmsDispatcherTestHandler mImsSmsDispatcherTestHandler;
-    private boolean mReceivedTestIntent = false;
-    private Object mLock = new Object();
+    private boolean mInjectionCallbackTriggered = false;
     private static final String TEST_INTENT = "com.android.internal.telephony.TEST_INTENT";
-    private BroadcastReceiver mTestReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            logd("onReceive");
-            synchronized (mLock) {
-                mReceivedTestIntent = true;
-            }
-        }
-    };
 
     private class ImsSmsDispatcherTestHandler extends HandlerThread {
 
@@ -176,18 +168,15 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         restoreInstance(Singleton.class, "mInstance", mIActivityManagerSingleton);
         restoreInstance(ActivityManager.class, "IActivityManagerSingleton", null);
 
-        Context realContext = TestApplication.getAppContext();
-        realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT));
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(realContext, 0,
-                new Intent(TEST_INTENT), 0);
-
         // inject null sms pdu. This should cause intent to be received since pdu is null.
-        mSmsDispatchersController.injectSmsPdu(null, SmsConstants.FORMAT_3GPP, pendingIntent);
+        mSmsDispatchersController.injectSmsPdu(null, SmsConstants.FORMAT_3GPP,
+                (SmsDispatchersController.SmsInjectionCallback) result -> {
+                    mInjectionCallbackTriggered = true;
+                   assertEquals(Intents.RESULT_SMS_GENERIC_ERROR, result);
+                }
+        );
         waitForMs(100);
-        synchronized (mLock) {
-            assertEquals(true, mReceivedTestIntent);
-        }
+        assertEquals(true, mInjectionCallbackTriggered);
     }
 
     private void switchImsSmsFormat(int phoneType) {

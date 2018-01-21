@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static android.net.NetworkPolicyManager.OVERRIDE_CONGESTED;
+import static android.net.NetworkPolicyManager.OVERRIDE_UNMETERED;
+
 import android.app.PendingIntent;
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -64,7 +67,6 @@ import com.android.internal.util.StateMachine;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -173,6 +175,7 @@ public class DataConnection extends StateMachine {
     private DcFailCause mLastFailCause;
     private static final String NULL_IP = "0.0.0.0";
     private Object mUserData;
+    private int mSubscriptionOverride;
     private int mRilRat = Integer.MAX_VALUE;
     private int mDataRegState = Integer.MAX_VALUE;
     private NetworkInfo mNetworkInfo;
@@ -203,9 +206,10 @@ public class DataConnection extends StateMachine {
     static final int EVENT_BW_REFRESH_RESPONSE = BASE + 14;
     static final int EVENT_DATA_CONNECTION_VOICE_CALL_STARTED = BASE + 15;
     static final int EVENT_DATA_CONNECTION_VOICE_CALL_ENDED = BASE + 16;
+    static final int EVENT_DATA_CONNECTION_OVERRIDE_CHANGED = BASE + 17;
 
     private static final int CMD_TO_STRING_COUNT =
-            EVENT_DATA_CONNECTION_VOICE_CALL_ENDED - BASE + 1;
+            EVENT_DATA_CONNECTION_OVERRIDE_CHANGED - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -229,6 +233,8 @@ public class DataConnection extends StateMachine {
                 "EVENT_DATA_CONNECTION_VOICE_CALL_STARTED";
         sCmdToString[EVENT_DATA_CONNECTION_VOICE_CALL_ENDED - BASE] =
                 "EVENT_DATA_CONNECTION_VOICE_CALL_ENDED";
+        sCmdToString[EVENT_DATA_CONNECTION_OVERRIDE_CHANGED - BASE] =
+                "EVENT_DATA_CONNECTION_OVERRIDE_CHANGED";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -509,6 +515,12 @@ public class DataConnection extends StateMachine {
                 || (isModemRoaming && !mPhone.getServiceState().getDataRoaming());
 
         mPhone.mCi.setupDataCall(cp.mRilRat, dp, isModemRoaming, allowRoaming, msg);
+    }
+
+    public void onSubscriptionOverride(int overrideMask, int overrideValue) {
+        mSubscriptionOverride = (mSubscriptionOverride & ~overrideMask)
+                | (overrideValue & overrideMask);
+        sendMessage(obtainMessage(EVENT_DATA_CONNECTION_OVERRIDE_CHANGED));
     }
 
     /**
@@ -1006,13 +1018,18 @@ public class DataConnection extends StateMachine {
 
         result.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(mPhone.getSubId())));
 
-        if (!mPhone.getServiceState().getDataRoaming()) {
-            result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
-        } else {
-            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
-        }
+        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
+                !mPhone.getServiceState().getDataRoaming());
 
         result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+
+        // Override values set above when requested by policy
+        if ((mSubscriptionOverride & OVERRIDE_UNMETERED) != 0) {
+            result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
+        if ((mSubscriptionOverride & OVERRIDE_CONGESTED) != 0) {
+            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        }
 
         return result;
     }
@@ -1051,15 +1068,10 @@ public class DataConnection extends StateMachine {
                 if (response.getAddresses().size() > 0) {
                     for (LinkAddress la : response.getAddresses()) {
                         if (!la.getAddress().isAnyLocalAddress()) {
-                            int addrPrefixLen = la.getNetworkPrefixLength();
-                            if (addrPrefixLen == 0) {
-                                // Assume point to point
-                                addrPrefixLen = (la.getAddress() instanceof Inet4Address)
-                                        ? 32 : 128;
-                                la = new LinkAddress(la.getAddress(), addrPrefixLen);
+                            if (DBG) {
+                                log("addr/pl=" + la.getAddress() + "/"
+                                        + la.getNetworkPrefixLength());
                             }
-                            if (DBG) log("addr/pl=" + la.getAddress() + "/" + addrPrefixLen);
-
                             linkProperties.addLinkAddress(la);
                         }
                     }
@@ -1343,6 +1355,7 @@ public class DataConnection extends StateMachine {
                     break;
                 case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
+                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED:
                     updateNetworkInfo();
                     if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
@@ -1791,7 +1804,8 @@ public class DataConnection extends StateMachine {
                     break;
                 }
                 case EVENT_DATA_CONNECTION_ROAM_ON:
-                case EVENT_DATA_CONNECTION_ROAM_OFF: {
+                case EVENT_DATA_CONNECTION_ROAM_OFF:
+                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
                     updateNetworkInfo();
                     if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
@@ -2237,6 +2251,7 @@ public class DataConnection extends StateMachine {
         pw.println("mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
         pw.println("mLastFailCause=" + mLastFailCause);
         pw.println("mUserData=" + mUserData);
+        pw.println("mSubscriptionOverride=" + Integer.toHexString(mSubscriptionOverride));
         pw.println("mInstanceNumber=" + mInstanceNumber);
         pw.println("mAc=" + mAc);
         pw.println("Network capabilities changed history:");

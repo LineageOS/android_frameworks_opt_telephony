@@ -51,6 +51,7 @@ public class UiccCard {
     private final Object mLock = new Object();
     private CardState mCardState;
     private String mIccid;
+    protected String mCardId;
     private UiccProfile mUiccProfile;
     private Context mContext;
     private CommandsInterface mCi;
@@ -81,6 +82,8 @@ public class UiccCard {
             mContext = c;
             mCi = ci;
             mIccid = ics.iccid;
+            updateCardId();
+
 
             if (mCardState != CardState.CARDSTATE_ABSENT) {
                 if (mUiccProfile == null) {
@@ -97,6 +100,18 @@ public class UiccCard {
     @Override
     protected void finalize() {
         if (DBG) log("UiccCard finalized");
+    }
+
+    /**
+     * Updates the ID of the SIM card.
+     *
+     * <p>Whenever the {@link UiccCard#update(Context, CommandsInterface, IccCardStatus)} is called,
+     * this function needs to be called to update the card ID. Subclasses of {@link UiccCard}
+     * could override this function to set the {@link UiccCard#mCardId} to be something else instead
+     * of {@link UiccCard#mIccid}.</p>
+     */
+    protected void updateCardId() {
+        mCardId = mIccid;
     }
 
     /**
@@ -458,6 +473,20 @@ public class UiccCard {
     public String getIccId() {
         if (mIccid != null) {
             return mIccid;
+        } else if (mUiccProfile != null) {
+            return mUiccProfile.getIccId();
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns the ID of this SIM card, it is the ICCID of the active profile on the card for a UICC
+     * card or the EID of the card for an eUICC card.
+     */
+    public String getCardId() {
+        if (mCardId != null) {
+            return mCardId;
         } else if (mUiccProfile != null) {
             return mUiccProfile.getIccId();
         } else {
