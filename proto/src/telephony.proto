@@ -44,6 +44,9 @@ message TelephonyLog {
 
   // The end time of this log
   optional Time end_time = 7;
+
+  // Modem power stats
+  optional ModemPowerStats modem_power_stats = 8;
 }
 
 // The time information
@@ -1268,4 +1271,36 @@ message SmsSession {
 
   // Indicating some sms session events are dropped
   optional bool events_dropped = 4;
+}
+
+// Power stats for modem
+message ModemPowerStats {
+
+  // Duration of log (ms). This is the duration of time device is
+  // on battery and modem power stats are collected.
+  optional int64 logging_duration_ms = 1;
+
+  // Energy consumed by modem (mAh)
+  optional double energy_consumed_mah = 2;
+
+  // Number of packets sent (tx)
+  optional int64 num_packets_tx = 3;
+
+  // Amount of time kernel is active because of cellular data (ms)
+  optional int64 cellular_kernel_active_time_ms = 4;
+
+  // Amount of time spent in very poor rx signal level (ms)
+  optional int64 time_in_very_poor_rx_signal_level_ms = 5;
+
+  // Amount of time modem is in sleep (ms)
+  optional int64 sleep_time_ms = 6;
+
+  // Amount of time modem is in idle (ms)
+  optional int64 idle_time_ms = 7;
+
+  // Amount of time modem is in rx (ms)
+  optional int64 rx_time_ms = 8;
+
+  // Amount of time modem is in tx (ms)
+  repeated int64 tx_time_ms = 9;
 }
