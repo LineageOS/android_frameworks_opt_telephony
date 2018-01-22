@@ -458,7 +458,7 @@ public class SubscriptionInfoUpdater extends Handler {
                         mContext.getSystemService(Context.TELEPHONY_SERVICE);
                 String operator = tm.getSimOperatorNumeric(subId);
 
-                if (!TextUtils.isEmpty(operator)) {
+                if (operator != null && !TextUtils.isEmpty(operator)) {
                     if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
                         MccTable.updateMccMncConfiguration(mContext, operator);
                     }
