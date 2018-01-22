@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c02e88af_b840a9a1",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 841,
+      "author": {
+        "id": 6351
+      },
+      "writtenOn": "2018-01-22T19:09:21Z",
+      "side": 1,
+      "message": "This change is making the code effectively\n\nif (multi-sim enabled) { ... }\n\nCaveat: I\u0027ve never debugged this code so I\u0027m talking out of my ass.\n\nAssuming I\u0027m understanding what the original problem was then this commit (and the previous 2 attempts to fix this) don\u0027t seem right to me.  There is a method in the SubscriptionController\n\nclearDefaultsForInactiveSubIds\n\nwhich sounds like it should be taking care of the problem.  I wonder if it\u0027s not being called or if it is being called at the wrong time.",
+      "revId": "3098a932ce22516c7b55bd9d7ee8415802b35a63",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
