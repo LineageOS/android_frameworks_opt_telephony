@@ -36,9 +36,9 @@ import android.telephony.ServiceState;
 import android.text.TextUtils;
 
 import com.android.ims.ImsCall;
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsException;
-import com.android.ims.ImsStreamMediaProfile;
+import android.telephony.ims.ImsStreamMediaProfile;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;

@@ -26,7 +26,7 @@ import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallProfile;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaCall;

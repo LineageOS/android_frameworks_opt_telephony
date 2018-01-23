@@ -20,13 +20,11 @@ import android.os.RemoteException;
 import android.telephony.ims.feature.CapabilityChangeRequest;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsCallSessionImplBase;
 import android.telephony.ims.stub.ImsEcbmImplBase;
 import android.telephony.ims.stub.ImsMultiEndpointImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
-
-import com.android.ims.ImsCallProfile;
-import com.android.ims.internal.ImsCallSession;
 
 public class TestMmTelFeature extends MmTelFeature {
 
@@ -35,7 +33,7 @@ public class TestMmTelFeature extends MmTelFeature {
     public CapabilityChangeRequest lastRequest;
     public boolean isUtInterfaceCalled = false;
 
-    public void incomingCall(ImsCallSession c) throws RemoteException {
+    public void incomingCall(ImsCallSessionImplBase c) throws RemoteException {
         notifyIncomingCall(c, null);
     }
 
@@ -45,7 +43,7 @@ public class TestMmTelFeature extends MmTelFeature {
     }
 
     @Override
-    public ImsCallSession createCallSession(ImsCallProfile profile) {
+    public ImsCallSessionImplBase createCallSession(ImsCallProfile profile) {
         return super.createCallSession(profile);
     }
 

@@ -18,7 +18,6 @@ package android.telephony.ims;
 
 import android.telephony.ims.compat.feature.MMTelFeature;
 
-import com.android.ims.ImsCallProfile;
 import com.android.ims.internal.IImsCallSession;
 
 /**

@@ -45,8 +45,8 @@ import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
 
-import com.android.ims.ImsReasonInfo;
-import com.android.ims.internal.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
