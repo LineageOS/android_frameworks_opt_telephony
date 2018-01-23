@@ -35,7 +35,6 @@ import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.hardware.radio.V1_1.KeepaliveStatus;
 import android.hardware.radio.V1_2.IRadioResponse;
-import android.hardware.radio.V1_2.SimSlotStatus;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -54,7 +53,6 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
-import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.ArrayList;
@@ -112,22 +110,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void getIccCardStatusResponse_1_2(RadioResponseInfo responseInfo,
                                              android.hardware.radio.V1_2.CardStatus cardStatus) {
         responseIccCardStatus_1_2(responseInfo, cardStatus);
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param slotsStatus ICC slot status as defined by SlotsStatus in 1.2/types.hal
-     */
-    public void getSimSlotsStatusResponse(RadioResponseInfo responseInfo,
-            ArrayList<SimSlotStatus> slotsStatus) {
-        responseIccSlotStatus(responseInfo, slotsStatus);
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     */
-    public void setSimSlotsMappingResponse(RadioResponseInfo responseInfo) {
-        responseVoid(responseInfo);
     }
 
     /**
@@ -1329,20 +1311,6 @@ public class RadioResponse extends IRadioResponse.Stub {
                 sendMessageResponse(rr.mResult, iccCardStatus);
             }
             mRil.processResponseDone(rr, responseInfo, iccCardStatus);
-        }
-    }
-
-    private void responseIccSlotStatus(RadioResponseInfo responseInfo,
-            ArrayList<SimSlotStatus> slotsStatus) {
-        RILRequest rr = mRil.processResponse(responseInfo);
-        if (rr != null) {
-            ArrayList<IccSlotStatus> iccSlotStatus = RIL.convertHalSlotsStatus(slotsStatus);
-
-            mRil.riljLog("responseIccSlotStatus: from HIDL: " + iccSlotStatus);
-            if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, iccSlotStatus);
-            }
-            mRil.processResponseDone(rr, responseInfo, iccSlotStatus);
         }
     }
 
