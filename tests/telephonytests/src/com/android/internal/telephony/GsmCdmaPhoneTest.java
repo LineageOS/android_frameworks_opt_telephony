@@ -298,7 +298,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
             mCT.mRingingCall = mGsmCdmaCall;
             doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
 
-            Connection connection = mPhoneUT.dial("1234567890", 0);
+            Connection connection = mPhoneUT.dial("1234567890",
+                    new PhoneInternalInterface.DialArgs.Builder().build());
             verify(mCT).dial("1234567890", null, null);
         } catch (CallStateException e) {
             fail();

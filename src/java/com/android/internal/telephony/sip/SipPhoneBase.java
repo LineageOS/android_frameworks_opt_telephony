@@ -69,13 +69,6 @@ abstract class SipPhoneBase extends Phone {
     @Override
     public abstract Call getRingingCall();
 
-    @Override
-    public Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
-            throws CallStateException {
-        // ignore UUSInfo
-        return dial(dialString, videoState);
-    }
-
     void migrateFrom(SipPhoneBase from) {
         super.migrateFrom(from);
         migrate(mRingbackRegistrants, from.mRingbackRegistrants);
