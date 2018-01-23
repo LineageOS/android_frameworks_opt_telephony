@@ -66,8 +66,8 @@ public class NitzStateMachineTest extends TelephonyTest {
         when(mDeviceState.getIgnoreNitz()).thenReturn(false);
         when(mDeviceState.getNitzUpdateDiffMillis()).thenReturn(2000);
         when(mDeviceState.getNitzUpdateSpacingMillis()).thenReturn(1000 * 60 * 10);
-        when(mDeviceState.elapsedRealtime()).thenReturn(123456789L);
-        when(mDeviceState.currentTimeMillis()).thenReturn(987654321L);
+        when(mTimeServiceHelper.elapsedRealtime()).thenReturn(123456789L);
+        when(mTimeServiceHelper.currentTimeMillis()).thenReturn(987654321L);
 
         mNitzStateMachine = new NitzStateMachine(
                 mPhone, mTimeServiceHelper, mDeviceState, mTimeZoneLookupHelper);
@@ -82,8 +82,6 @@ public class NitzStateMachineTest extends TelephonyTest {
         verify(mDeviceState, atLeast(0)).getIgnoreNitz();
         verify(mDeviceState, atLeast(0)).getNitzUpdateDiffMillis();
         verify(mDeviceState, atLeast(0)).getNitzUpdateSpacingMillis();
-        verify(mDeviceState, atLeast(0)).elapsedRealtime();
-        verify(mDeviceState, atLeast(0)).currentTimeMillis();
         verify(mDeviceState, atLeast(0)).getNetworkCountryIsoForPhone();
         verifyNoMoreInteractions(mDeviceState);
 
@@ -94,6 +92,8 @@ public class NitzStateMachineTest extends TelephonyTest {
         verify(mTimeServiceHelper, atLeast(0)).isTimeDetectionEnabled();
         verify(mTimeServiceHelper, atLeast(0)).isTimeZoneDetectionEnabled();
         verify(mTimeServiceHelper, atLeast(0)).isTimeZoneSettingInitialized();
+        verify(mTimeServiceHelper, atLeast(0)).elapsedRealtime();
+        verify(mTimeServiceHelper, atLeast(0)).currentTimeMillis();
         verifyNoMoreInteractions(mTimeServiceHelper);
 
         super.tearDown();
@@ -126,7 +126,7 @@ public class NitzStateMachineTest extends TelephonyTest {
 
         // Check resulting state and side effects.
         long expectedAdjustedCurrentTimeMillis =
-                testNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
+                testNitzSignal.getAdjustedCurrentTimeMillis(mTimeServiceHelper.elapsedRealtime());
 
         verifyTimeServiceTimeZoneWasSet(testLookupResult.zoneId);
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
@@ -165,7 +165,7 @@ public class NitzStateMachineTest extends TelephonyTest {
 
         // Check resulting state and side effects.
         long expectedAdjustedCurrentTimeMillis =
-                testNitzSignal.getAdjustedCurrentTimeMillis(mDeviceState.elapsedRealtime());
+                testNitzSignal.getAdjustedCurrentTimeMillis(mTimeServiceHelper.elapsedRealtime());
 
         verifyTimeServiceTimeZoneWasNotSet();
         verifyTimeServiceTimeWasSet(expectedAdjustedCurrentTimeMillis);
@@ -312,10 +312,10 @@ public class NitzStateMachineTest extends TelephonyTest {
     }
 
     private void incrementSimulatedDeviceClock(int incMillis) {
-        long currentElapsedRealtime = mDeviceState.elapsedRealtime();
-        when(mDeviceState.elapsedRealtime()).thenReturn(currentElapsedRealtime + incMillis);
-        long currentTimeMillis = mDeviceState.currentTimeMillis();
-        when(mDeviceState.elapsedRealtime()).thenReturn(currentTimeMillis + incMillis);
+        long currentElapsedRealtime = mTimeServiceHelper.elapsedRealtime();
+        when(mTimeServiceHelper.elapsedRealtime()).thenReturn(currentElapsedRealtime + incMillis);
+        long currentTimeMillis = mTimeServiceHelper.currentTimeMillis();
+        when(mTimeServiceHelper.elapsedRealtime()).thenReturn(currentTimeMillis + incMillis);
     }
 
     private static long createTime(TimeZone timeZone, int year, int monthOfYear, int dayOfMonth,
@@ -331,7 +331,7 @@ public class NitzStateMachineTest extends TelephonyTest {
      * receivedRealtimeMillis from the current {@code mDeviceState.elapsedRealtime()}.
      */
     private TestNitzSignal createTestNitzSignal() {
-        long receivedRealtimeMillis = mDeviceState.elapsedRealtime();
+        long receivedRealtimeMillis = mTimeServiceHelper.elapsedRealtime();
         // Create an arbitrary time.
         long timeMillis = createTime(TimeZone.getTimeZone("UTC"), 2017, 1, 2, 12, 45, 25);
         // Create arbitrary NITZ data.
