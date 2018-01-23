@@ -757,6 +757,11 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
         mHandler.sendMessage(mHandler.obtainMessage(EVENT_UNREGISTER_NETWORK_FACTORY, messenger));
     }
 
+    @Override
+    public byte[] getNetworkWatchlistConfigHash() {
+        throw new RuntimeException("not implemented");
+    }
+
     private void handleUnregisterNetworkFactory(Messenger messenger) {
         NetworkFactoryInfo nfi = mNetworkFactoryInfos.remove(messenger);
         if (nfi == null) {
