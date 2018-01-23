@@ -28,10 +28,10 @@ import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.aidl.IImsMmTelFeature;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsCallSessionImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.internal.IImsCallSession;
-import com.android.ims.internal.ImsCallSession;
 
 import org.junit.After;
 import org.junit.Before;
@@ -82,7 +82,8 @@ public class MmTelFeatureTests {
     @Test
     public void testNewIncomingCall() throws Exception {
         IImsCallSession sessionBinder = Mockito.mock(IImsCallSession.class);
-        ImsCallSession session = new ImsCallSession(sessionBinder);
+        ImsCallSessionImplBase session = new ImsCallSessionImplBase();
+        session.setServiceImpl(sessionBinder);
 
         mFeature.incomingCall(session);
         ArgumentCaptor<IImsCallSession> captor = ArgumentCaptor.forClass(IImsCallSession.class);

@@ -24,8 +24,6 @@ import static org.mockito.Mockito.verify;
 import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.ims.ImsCallProfile;
-import com.android.ims.ImsReasonInfo;
 import com.android.ims.internal.IImsMMTelFeature;
 
 import org.junit.After;
