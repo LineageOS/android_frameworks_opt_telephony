@@ -823,7 +823,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private void broadcastSimCardStateChanged(int phoneId, int state) {
         if (state != sSimCardState[phoneId]) {
             sSimCardState[phoneId] = state;
-            Intent i = new Intent(Intent.ACTION_SIM_CARD_STATE_CHANGED);
+            Intent i = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
             i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
@@ -841,7 +841,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 || (state == TelephonyManager.SIM_STATE_NOT_READY
                 && sSimApplicationState[phoneId] == TelephonyManager.SIM_STATE_UNKNOWN))) {
             sSimApplicationState[phoneId] = state;
-            Intent i = new Intent(Intent.ACTION_SIM_APPLICATION_STATE_CHANGED);
+            Intent i = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
             i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
