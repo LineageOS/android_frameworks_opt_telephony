@@ -135,6 +135,8 @@ public abstract class SMSDispatcher extends Handler {
     // other
     protected static final int EVENT_NEW_ICC_SMS = 14;
     protected static final int EVENT_ICC_CHANGED = 15;
+    protected static final int EVENT_GET_IMS_SERVICE = 16;
+
 
     protected Phone mPhone;
     protected final Context mContext;
