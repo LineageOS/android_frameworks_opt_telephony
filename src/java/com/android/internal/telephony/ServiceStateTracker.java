@@ -579,9 +579,7 @@ public class ServiceStateTracker extends Handler {
             mCellLoc = new GsmCellLocation();
             mNewCellLoc = new GsmCellLocation();
         } else {
-            if (mPhone.isPhoneTypeCdmaLte()) {
-                mPhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
-            }
+            mPhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
             mCellLoc = new CdmaCellLocation();
             mNewCellLoc = new CdmaCellLocation();
             mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(mPhone.getContext(), mCi, this,
@@ -3768,86 +3766,44 @@ public class ServiceStateTracker extends Handler {
     public void powerOffRadioSafely(DcTracker dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
-                if (mPhone.isPhoneTypeGsm() || mPhone.isPhoneTypeCdmaLte()) {
-                    int dds = SubscriptionManager.getDefaultDataSubscriptionId();
-                    // To minimize race conditions we call cleanUpAllConnections on
-                    // both if else paths instead of before this isDisconnected test.
-                    if (dcTracker.isDisconnected()
-                            && (dds == mPhone.getSubId()
-                            || (dds != mPhone.getSubId()
-                            && ProxyController.getInstance().isDataDisconnected(dds)))) {
-                        // To minimize race conditions we do this after isDisconnected
-                        dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
-                        if (DBG) log("Data disconnected, turn off radio right away.");
-                        hangupAndPowerOff();
-                    } else {
-                        // hang up all active voice calls first
-                        if (mPhone.isPhoneTypeGsm() && mPhone.isInCall()) {
-                            mPhone.mCT.mRingingCall.hangupIfAlive();
-                            mPhone.mCT.mBackgroundCall.hangupIfAlive();
-                            mPhone.mCT.mForegroundCall.hangupIfAlive();
-                        }
-                        dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
-                        if (dds != mPhone.getSubId()
-                                && !ProxyController.getInstance().isDataDisconnected(dds)) {
-                            if (DBG) log("Data is active on DDS.  Wait for all data disconnect");
-                            // Data is not disconnected on DDS. Wait for the data disconnect complete
-                            // before sending the RADIO_POWER off.
-                            ProxyController.getInstance().registerForAllDataDisconnected(dds, this,
-                                    EVENT_ALL_DATA_DISCONNECTED, null);
-                            mPendingRadioPowerOffAfterDataOff = true;
-                        }
-                        Message msg = Message.obtain(this);
-                        msg.what = EVENT_SET_RADIO_POWER_OFF;
-                        msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
-                        if (sendMessageDelayed(msg, 30000)) {
-                            if (DBG) log("Wait upto 30s for data to disconnect, then turn off radio.");
-                            mPendingRadioPowerOffAfterDataOff = true;
-                        } else {
-                            log("Cannot send delayed Msg, turn off radio right away.");
-                            hangupAndPowerOff();
-                            mPendingRadioPowerOffAfterDataOff = false;
-                        }
-                    }
+                int dds = SubscriptionManager.getDefaultDataSubscriptionId();
+                // To minimize race conditions we call cleanUpAllConnections on
+                // both if else paths instead of before this isDisconnected test.
+                if (dcTracker.isDisconnected()
+                        && (dds == mPhone.getSubId()
+                        || (dds != mPhone.getSubId()
+                        && ProxyController.getInstance().isDataDisconnected(dds)))) {
+                    // To minimize race conditions we do this after isDisconnected
+                    dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
+                    if (DBG) log("Data disconnected, turn off radio right away.");
+                    hangupAndPowerOff();
                 } else {
-                    // In some network, deactivate PDP connection cause releasing of RRC connection,
-                    // which MM/IMSI detaching request needs. Without this detaching, network can
-                    // not release the network resources previously attached.
-                    // So we are avoiding data detaching on these networks.
-                    String[] networkNotClearData = mPhone.getContext().getResources()
-                            .getStringArray(com.android.internal.R.array.networks_not_clear_data);
-                    String currentNetwork = mSS.getOperatorNumeric();
-                    if ((networkNotClearData != null) && (currentNetwork != null)) {
-                        for (int i = 0; i < networkNotClearData.length; i++) {
-                            if (currentNetwork.equals(networkNotClearData[i])) {
-                                // Don't clear data connection for this carrier
-                                if (DBG)
-                                    log("Not disconnecting data for " + currentNetwork);
-                                hangupAndPowerOff();
-                                return;
-                            }
-                        }
+                    // hang up all active voice calls first
+                    if (mPhone.isPhoneTypeGsm() && mPhone.isInCall()) {
+                        mPhone.mCT.mRingingCall.hangupIfAlive();
+                        mPhone.mCT.mBackgroundCall.hangupIfAlive();
+                        mPhone.mCT.mForegroundCall.hangupIfAlive();
                     }
-                    // To minimize race conditions we call cleanUpAllConnections on
-                    // both if else paths instead of before this isDisconnected test.
-                    if (dcTracker.isDisconnected()) {
-                        // To minimize race conditions we do this after isDisconnected
-                        dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
-                        if (DBG) log("Data disconnected, turn off radio right away.");
-                        hangupAndPowerOff();
+                    dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
+                    if (dds != mPhone.getSubId()
+                            && !ProxyController.getInstance().isDataDisconnected(dds)) {
+                        if (DBG) log("Data is active on DDS.  Wait for all data disconnect");
+                        // Data is not disconnected on DDS. Wait for the data disconnect complete
+                        // before sending the RADIO_POWER off.
+                        ProxyController.getInstance().registerForAllDataDisconnected(dds, this,
+                                EVENT_ALL_DATA_DISCONNECTED, null);
+                        mPendingRadioPowerOffAfterDataOff = true;
+                    }
+                    Message msg = Message.obtain(this);
+                    msg.what = EVENT_SET_RADIO_POWER_OFF;
+                    msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
+                    if (sendMessageDelayed(msg, 30000)) {
+                        if (DBG) log("Wait upto 30s for data to disconnect, then turn off radio.");
+                        mPendingRadioPowerOffAfterDataOff = true;
                     } else {
-                        dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
-                        Message msg = Message.obtain(this);
-                        msg.what = EVENT_SET_RADIO_POWER_OFF;
-                        msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
-                        if (sendMessageDelayed(msg, 30000)) {
-                            if (DBG)
-                                log("Wait upto 30s for data to disconnect, then turn off radio.");
-                            mPendingRadioPowerOffAfterDataOff = true;
-                        } else {
-                            log("Cannot send delayed Msg, turn off radio right away.");
-                            hangupAndPowerOff();
-                        }
+                        log("Cannot send delayed Msg, turn off radio right away.");
+                        hangupAndPowerOff();
+                        mPendingRadioPowerOffAfterDataOff = false;
                     }
                 }
             }
