@@ -77,8 +77,8 @@ import java.util.concurrent.CompletableFuture;
  * the active phones.  Note we don't wait for data attach (which may not happen anyway).
  */
 public class PhoneSwitcher extends Handler {
-    private static final String LOG_TAG = "PhoneSwitcher";
-    private static final boolean VDBG = false;
+    protected static final String LOG_TAG = "PhoneSwitcher";
+    protected static final boolean VDBG = false;
 
     private static final int DEFAULT_NETWORK_CHANGE_TIMEOUT_MS = 5000;
     private static final int MODEM_COMMAND_RETRY_PERIOD_MS     = 5000;
@@ -148,15 +148,15 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
-    private final List<DcRequest> mPrioritizedDcRequests = new ArrayList<DcRequest>();
-    private final RegistrantList mActivePhoneRegistrants;
-    private final SubscriptionController mSubscriptionController;
-    private final int[] mPhoneSubscriptions;
-    private final CommandsInterface[] mCommandsInterfaces;
-    private final Context mContext;
-    private final PhoneState[] mPhoneStates;
+    protected final List<DcRequest> mPrioritizedDcRequests = new ArrayList<DcRequest>();
+    protected final RegistrantList mActivePhoneRegistrants;
+    protected final SubscriptionController mSubscriptionController;
+    protected final int[] mPhoneSubscriptions;
+    protected final CommandsInterface[] mCommandsInterfaces;
+    protected final Context mContext;
+    protected final PhoneState[] mPhoneStates;
     @UnsupportedAppUsage
-    private final int mNumPhones;
+    protected final int mNumPhones;
     @UnsupportedAppUsage
     private final Phone[] mPhones;
     private final LocalLog mLocalLog;
@@ -168,7 +168,7 @@ public class PhoneSwitcher extends Handler {
             (validated, subId) -> Message.obtain(PhoneSwitcher.this,
                     EVENT_NETWORK_VALIDATION_DONE, subId, validated ? 1 : 0).sendToTarget();
     @UnsupportedAppUsage
-    private int mMaxActivePhones;
+    protected int mMaxActivePhones;
     private static PhoneSwitcher sPhoneSwitcher = null;
 
     // Which primary (non-opportunistic) subscription is set as data subscription among all primary
@@ -203,8 +203,8 @@ public class PhoneSwitcher extends Handler {
 
     private ISetOpportunisticDataCallback mSetOpptSubCallback;
 
-    private static final int EVENT_PRIMARY_DATA_SUB_CHANGED       = 101;
-    private static final int EVENT_SUBSCRIPTION_CHANGED           = 102;
+    protected static final int EVENT_PRIMARY_DATA_SUB_CHANGED       = 101;
+    protected static final int EVENT_SUBSCRIPTION_CHANGED           = 102;
     private static final int EVENT_REQUEST_NETWORK                = 103;
     private static final int EVENT_RELEASE_NETWORK                = 104;
     // ECBM has started/ended. If we just ended an emergency call and mEmergencyOverride is not
@@ -234,6 +234,9 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_OVERRIDE_DDS_FOR_EMERGENCY     = 115;
     // If it exists, remove the current mEmergencyOverride DDS override.
     private static final int EVENT_REMOVE_DDS_EMERGENCY_OVERRIDE  = 116;
+    protected final static int EVENT_VOICE_CALL_ENDED             = 117;
+    protected static final int EVENT_UNSOL_MAX_DATA_ALLOWED_CHANGED = 118;
+    protected static final int EVENT_OEM_HOOK_SERVICE_READY       = 119;
 
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
@@ -717,7 +720,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     private static final boolean REQUESTS_CHANGED   = true;
-    private static final boolean REQUESTS_UNCHANGED = false;
+    protected static final boolean REQUESTS_UNCHANGED = false;
     /**
      * Re-evaluate things. Do nothing if nothing's changed.
      *
@@ -727,7 +730,7 @@ public class PhoneSwitcher extends Handler {
      *
      * @return {@code True} if the default data subscription need to be changed.
      */
-    private boolean onEvaluate(boolean requestsChanged, String reason) {
+    protected boolean onEvaluate(boolean requestsChanged, String reason) {
         StringBuilder sb = new StringBuilder(reason);
 
         // If we use HAL_COMMAND_PREFERRED_DATA,
@@ -855,18 +858,18 @@ public class PhoneSwitcher extends Handler {
         return diffDetected;
     }
 
-    private static class PhoneState {
+    protected static class PhoneState {
         public volatile boolean active = false;
         public long lastRequested = 0;
     }
 
     @UnsupportedAppUsage
-    private void activate(int phoneId) {
+    protected void activate(int phoneId) {
         switchPhone(phoneId, true);
     }
 
     @UnsupportedAppUsage
-    private void deactivate(int phoneId) {
+    protected void deactivate(int phoneId) {
         switchPhone(phoneId, false);
     }
 
@@ -919,7 +922,7 @@ public class PhoneSwitcher extends Handler {
         msg.sendToTarget();
     }
 
-    private void sendRilCommands(int phoneId) {
+    protected void sendRilCommands(int phoneId) {
         if (!SubscriptionManager.isValidPhoneId(phoneId) || phoneId >= mNumPhones) return;
 
         Message message = Message.obtain(this, EVENT_MODEM_COMMAND_DONE, phoneId);
@@ -944,7 +947,7 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
-    private int phoneIdForRequest(NetworkRequest netRequest) {
+    protected int phoneIdForRequest(NetworkRequest netRequest) {
         int subId = getSubIdFromNetworkSpecifier(netRequest.networkCapabilities
                 .getNetworkSpecifier());
 
@@ -1268,7 +1271,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     @UnsupportedAppUsage
-    private void log(String l) {
+    protected void log(String l) {
         Rlog.d(LOG_TAG, l);
         mLocalLog.log(l);
     }
