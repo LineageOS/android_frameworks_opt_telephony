@@ -17,6 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.telephony.SubscriptionInfo;
+import android.text.TextUtils;
 
 /**
  * This class represents the status of the physical UICC slots.
@@ -83,6 +84,23 @@ public class IccSlotStatus {
 
         sb.append("}");
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+
+        IccSlotStatus that = (IccSlotStatus) obj;
+        return (cardState == that.cardState)
+                && (slotState == that.slotState)
+                && (logicalSlotIndex == that.logicalSlotIndex)
+                && (TextUtils.equals(atr, that.atr))
+                && (TextUtils.equals(iccid, that.iccid));
     }
 
 }

@@ -174,7 +174,13 @@ public class UiccSlot extends Handler {
     }
 
     public String getIccId() {
-        return mIccId;
+        if (mIccId != null) {
+            return mIccId;
+        } else if (mUiccCard != null) {
+            return mUiccCard.getIccId();
+        } else {
+            return null;
+        }
     }
 
     @Override

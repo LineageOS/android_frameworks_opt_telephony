@@ -19,7 +19,6 @@ package com.android.internal.telephony;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.os.PowerManager;
-import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.Rlog;
@@ -97,20 +96,6 @@ public class NitzStateMachine {
         public boolean getIgnoreNitz() {
             String ignoreNitz = SystemProperties.get("gsm.ignore-nitz");
             return ignoreNitz != null && ignoreNitz.equals("yes");
-        }
-
-        /**
-         * Returns the same value as {@link System#currentTimeMillis()}.
-         */
-        public long currentTimeMillis() {
-            return System.currentTimeMillis();
-        }
-
-        /**
-         * Returns the same value as {@link SystemClock#elapsedRealtime()}.
-         */
-        public long elapsedRealtime() {
-            return SystemClock.elapsedRealtime();
         }
 
         public String getNetworkCountryIsoForPhone() {
@@ -285,7 +270,7 @@ public class NitzStateMachine {
                             // Use the time that came with the NITZ offset that we think is bogus:
                             // we just interpret it as local time.
                             long ctm = nitzData.getCurrentTimeInMillis();
-                            long delayAdjustedCtm = ctm + (mDeviceState.elapsedRealtime()
+                            long delayAdjustedCtm = ctm + (mTimeServiceHelper.elapsedRealtime()
                                     - mLatestNitzSignal.mElapsedRealtime);
                             long tzOffset = zone.getOffset(delayAdjustedCtm);
                             if (DBG) {
@@ -484,7 +469,7 @@ public class NitzStateMachine {
                 mWakeLock.acquire();
 
                 // Validate the nitzTimeSignal to reject obviously bogus elapsedRealtime values.
-                long elapsedRealtime = mDeviceState.elapsedRealtime();
+                long elapsedRealtime = mTimeServiceHelper.elapsedRealtime();
                 long millisSinceNitzReceived = elapsedRealtime - nitzSignal.mElapsedRealtime;
                 if (millisSinceNitzReceived < 0 || millisSinceNitzReceived > Integer.MAX_VALUE) {
                     if (DBG) {
@@ -498,7 +483,7 @@ public class NitzStateMachine {
                 // Adjust the NITZ time by the delay since it was received to get the time now.
                 long adjustedCurrentTimeMillis =
                         nitzSignal.mValue.getCurrentTimeInMillis() + millisSinceNitzReceived;
-                long gained = adjustedCurrentTimeMillis - mDeviceState.currentTimeMillis();
+                long gained = adjustedCurrentTimeMillis - mTimeServiceHelper.currentTimeMillis();
 
                 if (mTimeServiceHelper.isTimeDetectionEnabled()) {
                     String logMsg = "handleTimeFromNitz:"
@@ -511,8 +496,8 @@ public class NitzStateMachine {
                         logMsg += ": First update received.";
                         setAndBroadcastNetworkSetTime(logMsg, adjustedCurrentTimeMillis);
                     } else {
-                        long elapsedRealtimeSinceLastSaved =
-                                mDeviceState.elapsedRealtime() - mSavedNitzTime.mElapsedRealtime;
+                        long elapsedRealtimeSinceLastSaved = mTimeServiceHelper.elapsedRealtime()
+                                - mSavedNitzTime.mElapsedRealtime;
                         int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
                         int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
                         if (elapsedRealtimeSinceLastSaved > nitzUpdateSpacing
@@ -588,7 +573,7 @@ public class NitzStateMachine {
                 // Acquire the wakelock as we're reading the elapsed realtime clock here.
                 mWakeLock.acquire();
 
-                long elapsedRealtime = mDeviceState.elapsedRealtime();
+                long elapsedRealtime = mTimeServiceHelper.elapsedRealtime();
                 String msg = "mSavedNitzTime: Reverting to NITZ time"
                         + " elapsedRealtime=" + elapsedRealtime
                         + " mSavedNitzTime=" + mSavedNitzTime;
@@ -660,7 +645,7 @@ public class NitzStateMachine {
      */
     private void updateTimeZoneByNetworkCountryCode(String iso) {
         CountryResult lookupResult = mTimeZoneLookupHelper.lookupByCountry(
-                iso, mDeviceState.currentTimeMillis());
+                iso, mTimeServiceHelper.currentTimeMillis());
         if (lookupResult != null && lookupResult.allZonesHaveSameOffset) {
             String logMsg = "updateTimeZoneByNetworkCountryCode: set time"
                     + " lookupResult=" + lookupResult
