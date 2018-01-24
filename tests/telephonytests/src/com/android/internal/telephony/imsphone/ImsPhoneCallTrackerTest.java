@@ -645,6 +645,15 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testImsAlternateEmergencyDisconnect() {
+        assertEquals(DisconnectCause.IMS_SIP_ALTERNATE_EMERGENCY_CALL,
+                mCTUT.getDisconnectCauseFromReasonInfo(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL, 0),
+                        Call.State.ACTIVE));
+    }
+
+    @Test
+    @SmallTest
     public void testLowBatteryDisconnectDialing() {
         assertEquals(DisconnectCause.DIAL_LOW_BATTERY, mCTUT.getDisconnectCauseFromReasonInfo(
                 new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_LOW_BATTERY, 0), Call.State.DIALING));
