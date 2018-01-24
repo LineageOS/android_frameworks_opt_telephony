@@ -83,21 +83,23 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void getAllProfiles(String callingPackage, IGetAllProfilesCallback callback) {
+    public void getAllProfiles(String callingPackage, String cardId,
+            IGetAllProfilesCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void getProfile(String callingPackage, String iccid, IGetProfileCallback callback) {
+    public void getProfile(String callingPackage, String cardId, String iccid,
+            IGetProfileCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void disableProfile(String callingPackage, String iccid, boolean refresh,
+    public void disableProfile(String callingPackage, String cardId, String iccid, boolean refresh,
             IDisableProfileCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -105,7 +107,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void switchToProfile(String callingPackage, String iccid, boolean refresh,
+    public void switchToProfile(String callingPackage, String cardId, String iccid, boolean refresh,
             ISwitchToProfileCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -113,13 +115,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public String getEid() {
-        // TODO(b/38206971): Wait until the eid is ready and return.
-        return null;
-    }
-
-    @Override
-    public void setNickname(String callingPackage, String iccid, String nickname,
+    public void setNickname(String callingPackage, String cardId, String iccid, String nickname,
             ISetNicknameCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -127,7 +123,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public  void deleteProfile(String callingPackage, String iccid,
+    public  void deleteProfile(String callingPackage, String cardId, String iccid,
             IDeleteProfileCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -135,15 +131,15 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void resetMemory(String callingPackage, @EuiccCardManager.ResetOption int options,
-            IResetMemoryCallback callback) {
+    public void resetMemory(String callingPackage, String cardId,
+            @EuiccCardManager.ResetOption int options, IResetMemoryCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void getDefaultSmdpAddress(String callingPackage,
+    public void getDefaultSmdpAddress(String callingPackage, String cardId,
             IGetDefaultSmdpAddressCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -151,14 +147,15 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void getSmdsAddress(String callingPackage, IGetSmdsAddressCallback callback) {
+    public void getSmdsAddress(String callingPackage, String cardId,
+            IGetSmdsAddressCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void setDefaultSmdpAddress(String callingPackage, String address,
+    public void setDefaultSmdpAddress(String callingPackage, String cardId, String address,
             ISetDefaultSmdpAddressCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -166,60 +163,65 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void getRulesAuthTable(String callingPackage, IGetRulesAuthTableCallback callback) {
+    public void getRulesAuthTable(String callingPackage, String cardId,
+            IGetRulesAuthTableCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void getEuiccChallenge(String callingPackage, IGetEuiccChallengeCallback callback) {
+    public void getEuiccChallenge(String callingPackage, String cardId,
+            IGetEuiccChallengeCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void getEuiccInfo1(String callingPackage, IGetEuiccInfo1Callback callback) {
+    public void getEuiccInfo1(String callingPackage, String cardId,
+            IGetEuiccInfo1Callback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void getEuiccInfo2(String callingPackage, IGetEuiccInfo2Callback callback) {
+    public void getEuiccInfo2(String callingPackage, String cardId,
+            IGetEuiccInfo2Callback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void authenticateServer(String callingPackage, String matchingId, byte[] serverSigned1,
-            byte[] serverSignature1, byte[] euiccCiPkIdToBeUsed, byte[] serverCertificate,
-            IAuthenticateServerCallback callback) {
+    public void authenticateServer(String callingPackage, String cardId, String matchingId,
+            byte[] serverSigned1, byte[] serverSignature1, byte[] euiccCiPkIdToBeUsed,
+            byte[] serverCertificate, IAuthenticateServerCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void prepareDownload(String callingPackage, @Nullable byte[] hashCc, byte[] smdpSigned2,
-            byte[] smdpSignature2, byte[] smdpCertificate, IPrepareDownloadCallback callback) {
+    public void prepareDownload(String callingPackage, String cardId, @Nullable byte[] hashCc,
+            byte[] smdpSigned2, byte[] smdpSignature2, byte[] smdpCertificate,
+            IPrepareDownloadCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void loadBoundProfilePackage(String callingPackage, byte[] boundProfilePackage,
-            ILoadBoundProfilePackageCallback callback) {
+    public void loadBoundProfilePackage(String callingPackage, String cardId,
+            byte[] boundProfilePackage, ILoadBoundProfilePackageCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void cancelSession(String callingPackage, byte[] transactionId,
+    public void cancelSession(String callingPackage, String cardId, byte[] transactionId,
             @EuiccCardManager.CancelReason int reason, ICancelSessionCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -227,23 +229,23 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void listNotifications(String callingPackage, @EuiccNotification.Event int events,
-            IListNotificationsCallback callback) {
+    public void listNotifications(String callingPackage, String cardId,
+            @EuiccNotification.Event int events, IListNotificationsCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void retrieveNotificationList(String callingPackage, @EuiccNotification.Event int events,
-            IRetrieveNotificationListCallback callback) {
+    public void retrieveNotificationList(String callingPackage, String cardId,
+            @EuiccNotification.Event int events, IRetrieveNotificationListCallback callback) {
         checkCallingPackage(callingPackage);
 
         // TODO(b/38206971): Get EuiccCard instance from UiccController and call the API.
     }
 
     @Override
-    public void retrieveNotification(String callingPackage, int seqNumber,
+    public void retrieveNotification(String callingPackage, String cardId, int seqNumber,
             IRetrieveNotificationCallback callback) {
         checkCallingPackage(callingPackage);
 
@@ -251,7 +253,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void removeNotificationFromList(String callingPackage, int seqNumber,
+    public void removeNotificationFromList(String callingPackage, String cardId, int seqNumber,
             IRemoveNotificationFromListCallback callback) {
         checkCallingPackage(callingPackage);
 
