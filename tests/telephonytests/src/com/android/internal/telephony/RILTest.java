@@ -787,6 +787,7 @@ public class RILTest extends TelephonyTest {
         }
     }
 
+    @FlakyTest
     @Test
     public void testIccOpenLogicalChannel() throws Exception {
         String aid = "aid";
