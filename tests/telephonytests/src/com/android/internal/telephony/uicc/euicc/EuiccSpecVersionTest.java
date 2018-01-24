@@ -19,7 +19,10 @@ package com.android.internal.telephony.uicc.euicc;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import com.android.internal.telephony.uicc.IccUtils;
 
 import org.junit.Test;
 
@@ -80,5 +83,25 @@ public class EuiccSpecVersionTest {
         ver2 = new EuiccSpecVersion(1, 3, 2);
         assertEquals(-1, ver1.compareTo(ver2));
         assertEquals(1, ver2.compareTo(ver1));
+    }
+
+    @Test
+    public void testFromOpenChannelResponse() {
+        assertEquals(new EuiccSpecVersion(2, 1, 3),
+                EuiccSpecVersion.fromOpenChannelResponse(
+                        IccUtils.hexStringToBytes("E00582030201039000")));
+    }
+
+    @Test
+    public void testFromOpenChannelResponseError() {
+        // Invalid data
+        assertNull(EuiccSpecVersion.fromOpenChannelResponse(
+                IccUtils.hexStringToBytes("E00F05820202039000")));
+        // Wrong length
+        assertNull(EuiccSpecVersion.fromOpenChannelResponse(
+                IccUtils.hexStringToBytes("E005820202039000")));
+        // Wrong tag
+        assertNull(EuiccSpecVersion.fromOpenChannelResponse(
+                IccUtils.hexStringToBytes("E10482030201039000")));
     }
 }
