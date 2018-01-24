@@ -31,7 +31,6 @@ import android.text.format.Time;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.RadioConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -116,7 +115,6 @@ public class UiccController extends Handler {
     protected RegistrantList mIccChangedRegistrants = new RegistrantList();
 
     private UiccStateChangedLauncher mLauncher;
-    private RadioConfig mRadioConfig;
 
     // Logging for dumpsys. Useful in cases when the cards run into errors.
     private static final int MAX_PROACTIVE_COMMANDS_TO_LOG = 20;
@@ -145,10 +143,12 @@ public class UiccController extends Handler {
         mPhoneIdToSlotId = new int[ci.length];
         Arrays.fill(mPhoneIdToSlotId, INVALID_SLOT_ID);
         if (VDBG) logPhoneIdToSlotIdMapping();
-        mRadioConfig = RadioConfig.getInstance(mContext);
-        mRadioConfig.registerForSimSlotStatusChanged(this, EVENT_SLOT_STATUS_CHANGED, null);
         for (int i = 0; i < mCis.length; i++) {
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
+            // slot status should be the same on all RILs; request it only for phoneId 0
+            if (i == 0) {
+                mCis[i].registerForIccSlotStatusChanged(this, EVENT_SLOT_STATUS_CHANGED, i);
+            }
 
             // TODO remove this once modem correctly notifies the unsols
             // If the device is unencrypted or has been decrypted or FBE is supported,
@@ -276,11 +276,6 @@ public class UiccController extends Handler {
         }
     }
 
-    /** Map logicalSlot to physicalSlot, and activate the physicalSlot if it is inactive. */
-    public void switchSlots(int[] physicalSlots, Message response) {
-        mRadioConfig.setSimSlotsMapping(physicalSlots, response);
-    }
-
     // Easy to use API
     public IccRecords getIccRecords(int phoneId, int family) {
         synchronized (mLock) {
@@ -353,7 +348,7 @@ public class UiccController extends Handler {
                             log("Received EVENT_RADIO_AVAILABLE/EVENT_RADIO_ON for phoneId 0, "
                                     + "calling getIccSlotsStatus");
                         }
-                        mRadioConfig.getSimSlotsStatus(obtainMessage(EVENT_GET_SLOT_STATUS_DONE,
+                        mCis[phoneId].getIccSlotsStatus(obtainMessage(EVENT_GET_SLOT_STATUS_DONE,
                                 phoneId));
                     }
                     break;
