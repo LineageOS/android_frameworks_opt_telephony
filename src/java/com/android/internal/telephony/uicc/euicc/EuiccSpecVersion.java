@@ -16,16 +16,63 @@
 
 package com.android.internal.telephony.uicc.euicc;
 
+import android.telephony.Rlog;
+
+import com.android.internal.telephony.uicc.asn1.Asn1Decoder;
+import com.android.internal.telephony.uicc.asn1.Asn1Node;
+import com.android.internal.telephony.uicc.asn1.InvalidAsn1DataException;
+import com.android.internal.telephony.uicc.asn1.TagNotFoundException;
+
 import java.util.Arrays;
 
 /**
  * This represents the version of GSMA SGP.22 spec in the form of 3 numbers: major, minor, and
  * revision.
- *
- * @hide
  */
 public final class EuiccSpecVersion implements Comparable<EuiccSpecVersion> {
+    private static final String LOG_TAG = "EuiccSpecVer";
+
+    // ASN.1 Tags
+    private static final int TAG_ISD_R_APP_TEMPLATE = 0xE0;
+    private static final int TAG_VERSION = 0x82;
+
     private final int[] mVersionValues = new int[3];
+
+    /**
+     * Parses the response of opening a logical channel to get spec version of the eUICC card.
+     *
+     * @return Parsed spec version. If any error is encountered, null will be returned.
+     */
+    public static EuiccSpecVersion fromOpenChannelResponse(byte[] response) {
+        Asn1Node node;
+        try {
+            Asn1Decoder decoder = new Asn1Decoder(response);
+            if (!decoder.hasNextNode()) {
+                return null;
+            }
+            node = decoder.nextNode();
+        } catch (InvalidAsn1DataException e) {
+            Rlog.e(LOG_TAG, "Cannot parse the select response of ISD-R.", e);
+            return null;
+        }
+        try {
+            byte[] versionType;
+            if (node.getTag() == TAG_ISD_R_APP_TEMPLATE) {
+                versionType = node.getChild(TAG_VERSION).asBytes();
+            } else {
+                versionType =
+                        node.getChild(TAG_ISD_R_APP_TEMPLATE, TAG_VERSION).asBytes();
+            }
+            if (versionType.length == 3) {
+                return new EuiccSpecVersion(versionType);
+            } else {
+                Rlog.e(LOG_TAG, "Cannot parse select response of ISD-R: " + node.toHex());
+            }
+        } catch (InvalidAsn1DataException | TagNotFoundException e) {
+            Rlog.e(LOG_TAG, "Cannot parse select response of ISD-R: " + node.toHex());
+        }
+        return null;
+    }
 
     public EuiccSpecVersion(int major, int minor, int revision) {
         mVersionValues[0] = major;
