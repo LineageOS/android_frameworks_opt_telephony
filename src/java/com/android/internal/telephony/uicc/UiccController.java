@@ -219,6 +219,16 @@ public class UiccController extends Handler {
     }
 
     /**
+     * API to get all the UICC slots.
+     * @return UiccSlots array.
+     */
+    public UiccSlot[] getUiccSlots() {
+        synchronized (mLock) {
+            return mUiccSlots;
+        }
+    }
+
+    /**
      * API to get UiccSlot object for a specific physical slot index on the device
      * @return UiccSlot object for the given physical slot index
      */
