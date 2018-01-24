@@ -51,9 +51,9 @@ import android.text.TextUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
-import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.UiccProfile;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -131,8 +131,7 @@ public class SubscriptionInfoUpdater extends Handler {
         mEuiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
 
-        IntentFilter intentFilter = new IntentFilter(
-                IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
+        IntentFilter intentFilter = new IntentFilter(UiccProfile.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mContext.registerReceiver(sReceiver, intentFilter);
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
@@ -179,7 +178,7 @@ public class SubscriptionInfoUpdater extends Handler {
             String action = intent.getAction();
             logd("Action: " + action);
 
-            if (!action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
+            if (!action.equals(UiccProfile.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
                 return;
             }
 
@@ -194,7 +193,7 @@ public class SubscriptionInfoUpdater extends Handler {
             String simStatus = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
             logd("simStatus: " + simStatus);
 
-            if (action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
+            if (action.equals(UiccProfile.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
                 if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotIndex, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_UNKNOWN.equals(simStatus)) {
