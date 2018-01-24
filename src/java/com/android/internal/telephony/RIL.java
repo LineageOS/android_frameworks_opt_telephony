@@ -250,7 +250,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     Set<Integer> mDisabledOemHookServices = new HashSet();
 
     /* default work source which will blame phone process */
-    private WorkSource mRILDefaultWorkSource;
+    protected WorkSource mRILDefaultWorkSource;
 
     /* Worksource containing all applications causing wakelock to be held */
     private WorkSource mActiveWakelockWorkSource;
@@ -427,7 +427,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    private synchronized void resetProxyAndRequestList() {
+    protected synchronized void resetProxyAndRequestList() {
         mRadioProxy = null;
         mOemHookProxy = null;
 
@@ -726,7 +726,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
-    private RILRequest obtainRequest(int request, Message result, WorkSource workSource,
+    protected RILRequest obtainRequest(int request, Message result, WorkSource workSource,
             Object... args) {
         RILRequest rr = RILRequest.obtain(request, result, workSource, args);
         addRequest(rr);
@@ -5530,6 +5530,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
+    protected Message getMessageFromRequest(Object request) {
+        RILRequest rr = (RILRequest)request;
+        Message result = null;
+        if (rr != null) {
+                result = rr.mResult;
+        }
+        return result;
+    }
+
     /**
      * This is a helper function to be called at the end of all RadioResponse callbacks.
      * It takes care of sending error response, logging, decrementing wakelock if needed, and
@@ -5582,6 +5591,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
             rr.release();
         }
+    }
+
+    protected void processResponseDone(Object request, RadioResponseInfo responseInfo, Object ret) {
+        RILRequest rr = (RILRequest)request;
+        processResponseDone(rr, responseInfo, ret);
     }
 
     /**
