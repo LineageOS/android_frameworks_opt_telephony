@@ -1261,6 +1261,10 @@ public class DcTracker extends Handler {
         setupDataOnAllConnectableApns(Phone.REASON_DATA_ATTACHED, RetryFailures.ALWAYS);
     }
 
+    protected boolean getAttachedStatus() {
+        return mAttached.get();
+    }
+
     /**
      * Check if it is allowed to make a data connection (without checking APN context specific
      * conditions).
@@ -1301,7 +1305,7 @@ public class DcTracker extends Handler {
 
         // Step 1: Get all environment conditions.
         final boolean internalDataEnabled = mDataEnabledSettings.isInternalDataEnabled();
-        boolean attachedState = mAttached.get();
+        boolean attachedState = getAttachedStatus();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         boolean radioStateFromCarrier = mPhone.getServiceStateTracker().getPowerStateFromCarrier();
         // TODO: Remove this hack added by ag/641832.
@@ -1459,6 +1463,10 @@ public class DcTracker extends Handler {
         // 2) our apn list has change
         ONLY_ON_CHANGE
     };
+
+    protected void setupDataOnAllConnectableApns(String reason) {
+        setupDataOnAllConnectableApns(reason, RetryFailures.ALWAYS);
+    }
 
     protected void setupDataOnAllConnectableApns(String reason, RetryFailures retryFailures) {
         if (VDBG) log("setupDataOnAllConnectableApns: " + reason);
