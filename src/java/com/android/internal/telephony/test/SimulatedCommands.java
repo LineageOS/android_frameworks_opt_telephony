@@ -863,8 +863,7 @@ public class SimulatedCommands extends BaseCommands
                 SignalStrength.INVALID,     // lteRsrq
                 SignalStrength.INVALID,     // lteRssnr
                 SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID,     // tdScdmaRscp
-                true                        // gsmFlag
+                SignalStrength.INVALID      // tdScdmaRscp
             );
         }
 
@@ -2107,8 +2106,7 @@ public class SimulatedCommands extends BaseCommands
                     SignalStrength.INVALID,     // lteRsrq
                     SignalStrength.INVALID,     // lteRssnr
                     SignalStrength.INVALID,     // lteCqi
-                    SignalStrength.INVALID,     // tdScdmaRscp
-                    true                        // gsmFlag
+                    SignalStrength.INVALID      // tdScdmaRscp
             );
         }
 
