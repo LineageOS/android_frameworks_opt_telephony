@@ -192,6 +192,8 @@ public abstract class TelephonyTest {
     protected IntentBroadcaster mIntentBroadcaster;
     @Mock
     protected NitzStateMachine mNitzStateMachine;
+    @Mock
+    protected RadioConfig mMockRadioConfig;
 
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
@@ -478,6 +480,7 @@ public abstract class TelephonyTest {
         replaceInstance(PhoneFactory.class, "sMadeDefaults", null, true);
         replaceInstance(PhoneFactory.class, "sPhone", null, mPhone);
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        replaceInstance(RadioConfig.class, "sRadioConfig", null, mMockRadioConfig);
 
         setReady(false);
     }
