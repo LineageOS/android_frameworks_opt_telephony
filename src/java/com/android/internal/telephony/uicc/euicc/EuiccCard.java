@@ -22,10 +22,12 @@ import android.os.Handler;
 import android.service.carrier.CarrierIdentifier;
 import android.service.euicc.EuiccProfileInfo;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionInfo;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccCardManager;
 import android.telephony.euicc.EuiccNotification;
 import android.telephony.euicc.EuiccRulesAuthTable;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -35,6 +37,7 @@ import com.android.internal.telephony.uicc.asn1.Asn1Decoder;
 import com.android.internal.telephony.uicc.asn1.Asn1Node;
 import com.android.internal.telephony.uicc.asn1.InvalidAsn1DataException;
 import com.android.internal.telephony.uicc.asn1.TagNotFoundException;
+import com.android.internal.telephony.uicc.euicc.apdu.ApduException;
 import com.android.internal.telephony.uicc.euicc.apdu.ApduSender;
 import com.android.internal.telephony.uicc.euicc.apdu.RequestBuilder;
 import com.android.internal.telephony.uicc.euicc.apdu.RequestProvider;
@@ -49,8 +52,21 @@ import java.util.List;
  */
 public class EuiccCard extends UiccCard {
     private static final String LOG_TAG = "EuiccCard";
+    private static final boolean DBG = true;
 
     private static final String ISD_R_AID = "A0000005591010FFFFFFFF8900000100";
+    private static final int ICCID_LENGTH = 20;
+
+    // APDU status for SIM refresh
+    private static final int APDU_ERROR_SIM_REFRESH = 0x6F00;
+
+    // These error codes are defined in GSMA SGP.22. 0 is the code for success.
+    private static final int CODE_OK = 0;
+
+    // Error code for profile not in expected state for the operation. This error includes the case
+    // that profile is not in disabled state when being enabled or deleted, and that profile is not
+    // in enabled state when being disabled.
+    private static final int CODE_PROFILE_NOT_IN_EXPECTED_STATE = 2;
 
     private static final EuiccSpecVersion SGP_2_0 = new EuiccSpecVersion(2, 0, 0);
 
@@ -63,6 +79,10 @@ public class EuiccCard extends UiccCard {
     private interface ApduResponseHandler<T> {
         T handleResult(byte[] response)
                 throws EuiccCardException, TagNotFoundException, InvalidAsn1DataException;
+    }
+
+    private interface ApduExceptionHandler {
+        void handleException(Throwable e);
     }
 
     private final ApduSender mApduSender;
@@ -147,7 +167,32 @@ public class EuiccCard extends UiccCard {
      */
     public void disableProfile(String iccid, boolean refresh, AsyncResultCallback<Void> callback,
             Handler handler) {
-        // TODO: to be implemented.
+        sendApduWithSimResetErrorWorkaround(
+                newRequestProvider((RequestBuilder requestBuilder) -> {
+                    byte[] iccidBytes = IccUtils.bcdToBytes(padTrailingFs(iccid));
+                    requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_DISABLE_PROFILE)
+                            .addChild(Asn1Node.newBuilder(Tags.TAG_CTX_COMP_0)
+                                    .addChildAsBytes(Tags.TAG_ICCID, iccidBytes))
+                            .addChildAsBoolean(Tags.TAG_CTX_1, refresh)
+                            .build().toHex());
+                }),
+                (byte[] response) -> {
+                    int result;
+                    // SGP.22 v2.0 DisableProfileResponse
+                    result = parseSimpleResult(response);
+                    switch (result) {
+                        case CODE_OK:
+                            return null;
+                        case CODE_PROFILE_NOT_IN_EXPECTED_STATE:
+                            logd("Profile is already disabled, iccid: "
+                                    + SubscriptionInfo.givePrintableIccid(iccid));
+                            return null;
+                        default:
+                            throw new EuiccCardErrorException(
+                                    EuiccCardErrorException.OPERATION_DISABLE_PROFILE, result);
+                    }
+                },
+                callback, handler);
     }
 
     /**
@@ -303,8 +348,8 @@ public class EuiccCard extends UiccCard {
      * @param handler The handler to run the callback.
      * @since 2.0.0 [GSMA SGP.22]
      */
-    public void authenticateServer(String matchingId, byte[] serverSigned1,
-            byte[] serverSignature1, byte[] euiccCiPkIdToBeUsed, byte[] serverCertificate,
+    public void authenticateServer(String matchingId, byte[] serverSigned1, byte[] serverSignature1,
+            byte[] euiccCiPkIdToBeUsed, byte[] serverCertificate,
             AsyncResultCallback<byte[]> callback, Handler handler) {
         // TODO: to be implemented.
     }
@@ -451,6 +496,38 @@ public class EuiccCard extends UiccCard {
     private <T> void sendApdu(RequestProvider requestBuilder,
             ApduResponseHandler<T> responseHandler, AsyncResultCallback<T> callback,
             Handler handler) {
+        sendApdu(requestBuilder, responseHandler,
+                (e) -> callback.onException(new EuiccCardException("Cannot send APDU.", e)),
+                callback, handler);
+    }
+
+    /**
+     * This is a workaround solution to the bug that a SIM refresh may interrupt the modem to return
+     * the reset of responses of the original APDU command. This applies to disable profile, switch
+     * profile, and reset eUICC memory.
+     *
+     * <p>TODO: Use
+     * {@link #sendApdu(RequestProvider, ApduResponseHandler, AsyncResultCallback, Handler)} when
+     * this workaround is not needed.
+     */
+    private void sendApduWithSimResetErrorWorkaround(
+            RequestProvider requestBuilder, ApduResponseHandler<Void> responseHandler,
+            AsyncResultCallback<Void> callback, Handler handler) {
+        sendApdu(requestBuilder, responseHandler, (e) -> {
+            if (e instanceof ApduException
+                    && ((ApduException) e).getApduStatus() == APDU_ERROR_SIM_REFRESH) {
+                logi("Sim is refreshed after disabling profile, no response got.");
+                callback.onResult(null);
+            } else {
+                callback.onException(new EuiccCardException("Cannot send APDU.", e));
+            }
+        }, callback, handler);
+    }
+
+    private <T> void sendApdu(RequestProvider requestBuilder,
+            ApduResponseHandler<T> responseHandler,
+            ApduExceptionHandler exceptionHandler, AsyncResultCallback<T> callback,
+            Handler handler) {
         mApduSender.send(requestBuilder, new AsyncResultCallback<byte[]>() {
             @Override
             public void onResult(byte[] response) {
@@ -466,7 +543,7 @@ public class EuiccCard extends UiccCard {
 
             @Override
             public void onException(Throwable e) {
-                callback.onException(new EuiccCardException("Cannot send APDU.", e));
+                exceptionHandler.handleException(e);
             }
         }, handler);
     }
@@ -564,12 +641,45 @@ public class EuiccCard extends UiccCard {
         return rules;
     }
 
+    /** Returns the first CONTEXT [0] as an integer. */
+    private static int parseSimpleResult(byte[] response)
+            throws EuiccCardException, TagNotFoundException, InvalidAsn1DataException {
+        return parseResponse(response).getChild(Tags.TAG_CTX_0).asInteger();
+    }
+
+    private static Asn1Node parseResponse(byte[] response)
+            throws EuiccCardException, InvalidAsn1DataException {
+        Asn1Decoder decoder = new Asn1Decoder(response);
+        if (!decoder.hasNextNode()) {
+            throw new EuiccCardException("Empty response", null);
+        }
+        return decoder.nextNode();
+    }
+
     /** Strip all the trailing 'F' characters of an iccId. */
     private static String stripTrailingFs(byte[] iccId) {
         return IccUtils.stripTrailingFs(IccUtils.bchToString(iccId, 0, iccId.length));
     }
 
+    /** Pad an iccId with trailing 'F' characters until the length is 20. */
+    private static String padTrailingFs(String iccId) {
+        if (!TextUtils.isEmpty(iccId) && iccId.length() < ICCID_LENGTH) {
+            iccId += new String(new char[20 - iccId.length()]).replace('\0', 'F');
+        }
+        return iccId;
+    }
+
     private static void loge(String message) {
         Rlog.e(LOG_TAG, message);
+    }
+
+    private static void logi(String message) {
+        Rlog.i(LOG_TAG, message);
+    }
+
+    private static void logd(String message) {
+        if (DBG) {
+            Rlog.d(LOG_TAG, message);
+        }
     }
 }
