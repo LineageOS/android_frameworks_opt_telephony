@@ -166,6 +166,42 @@ public class EuiccCardTest extends TelephonyTest {
         verifyStoreData(channel, "BF2D0D5C0B5A909192B79F709599BF76");
     }
 
+    @Test
+    public void testDisableProfile() {
+        int channel = mockLogicalChannelResponses("BF32038001009000");
+
+        ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
+        mEuiccCard.disableProfile("98760000000000543210", true, resultCaptor, mHandler);
+        resultCaptor.await();
+
+        assertUnexpectedException(resultCaptor.exception);
+        verifyStoreData(channel, "BF3211A00C5A0A896700000000004523018101FF");
+    }
+
+    @Test
+    public void testDisableProfile_SimRefresh() {
+        int channel = mockLogicalChannelResponses("6106", "6f00");
+
+        ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
+        mEuiccCard.disableProfile("98760000000000543210", true, resultCaptor, mHandler);
+        resultCaptor.await();
+
+        assertUnexpectedException(resultCaptor.exception);
+        verifyStoreData(channel, "BF3211A00C5A0A896700000000004523018101FF");
+    }
+
+    @Test
+    public void testDisableProfile_Error() {
+        int channel = mockLogicalChannelResponses("BF32038001039000");
+
+        ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
+        mEuiccCard.disableProfile("98760000000000543210", true, resultCaptor, mHandler);
+        resultCaptor.await();
+
+        assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
+        verifyStoreData(channel, "BF3211A00C5A0A896700000000004523018101FF");
+    }
+
     private void verifyStoreData(int channel, String command) {
         verify(mMockCi, times(1))
                 .iccTransmitApduLogicalChannel(eq(channel), eq(0x80 | channel), eq(0xE2), eq(0x91),
