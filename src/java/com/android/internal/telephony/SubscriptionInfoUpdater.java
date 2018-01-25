@@ -343,11 +343,11 @@ public class SubscriptionInfoUpdater extends Handler {
         String iccId = mIccId[slotId];
         if (iccId == null) {
             IccRecords records = mPhone[slotId].getIccCard().getIccRecords();
-            if (stripIccIdSuffix(records.getFullIccId()) == null) {
+            if (IccUtils.stripTrailingFs(records.getFullIccId()) == null) {
                 logd("handleSimLocked: IccID null");
                 return;
             }
-            mIccId[slotId] = stripIccIdSuffix(records.getFullIccId());
+            mIccId[slotId] = IccUtils.stripTrailingFs(records.getFullIccId());
         } else {
             logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
         }
@@ -390,11 +390,11 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("handleSimLoaded: IccRecords null");
             return;
         }
-        if (stripIccIdSuffix(records.getFullIccId()) == null) {
+        if (IccUtils.stripTrailingFs(records.getFullIccId()) == null) {
             logd("handleSimLoaded: IccID null");
             return;
         }
-        mIccId[slotId] = stripIccIdSuffix(records.getFullIccId());
+        mIccId[slotId] = IccUtils.stripTrailingFs(records.getFullIccId());
 
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
@@ -879,15 +879,6 @@ public class SubscriptionInfoUpdater extends Handler {
                 return "PRESENT";
             default:
                 return "INVALID";
-        }
-    }
-
-    // Remove trailing F's from full hexadecimal IccId, as they should be considered padding
-    private String stripIccIdSuffix(String hexIccId) {
-        if (hexIccId == null) {
-            return null;
-        } else {
-            return hexIccId.replaceAll("(?i)f*$", "");
         }
     }
 
