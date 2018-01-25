@@ -113,7 +113,7 @@ public class UiccControllerTest extends TelephonyTest {
     public void testSanity() {
         // radio power is expected to be on which should trigger icc card and slot status requests
         verify(mSimulatedCommandsVerifier, times(1)).getIccCardStatus(any(Message.class));
-        verify(mSimulatedCommandsVerifier, times(1)).getIccSlotsStatus(any(Message.class));
+        verify(mMockRadioConfig, times(1)).getSimSlotsStatus(any(Message.class));
 
         // response to getIccCardStatus should create mUiccSlots[0] and UiccCard for it, and update
         // phoneId to slotId mapping
