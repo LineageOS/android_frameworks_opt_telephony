@@ -42,8 +42,8 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
-import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -435,7 +435,7 @@ public class PhoneFactory {
             pw.println("++++++++++++++++++++++++++++++++");
 
             try {
-                ((IccCardProxy)phone.getIccCard()).dump(fd, pw, args);
+                ((UiccProfile) phone.getIccCard()).dump(fd, pw, args);
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -60,7 +60,13 @@ import java.util.Set;
  *                       UiccController
  *                            #
  *                            |
+ *                        UiccSlot[]
+ *                            #
+ *                            |
  *                        UiccCard
+ *                            #
+ *                            |
+ *                       UiccProfile
  *                          #   #
  *                          |   ------------------
  *                    UiccCardApplication    CatService
@@ -78,7 +84,6 @@ import java.util.Set;
  *         ^ stands for Generalization
  *
  * See also {@link com.android.internal.telephony.IccCard}
- * and {@link com.android.internal.telephony.uicc.IccCardProxy}
  */
 public class UiccController extends Handler {
     private static final boolean DBG = true;
@@ -210,9 +215,26 @@ public class UiccController extends Handler {
      */
     public UiccCard getUiccCardForPhone(int phoneId) {
         synchronized (mLock) {
-            UiccSlot uiccSlot = getUiccSlotForPhone(phoneId);
-            if (uiccSlot != null) {
-                return uiccSlot.getUiccCard();
+            if (isValidPhoneIndex(phoneId)) {
+                UiccSlot uiccSlot = getUiccSlotForPhone(phoneId);
+                if (uiccSlot != null) {
+                    return uiccSlot.getUiccCard();
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * API to get UiccProfile corresponding to given phone id
+     * @return UiccProfile object corresponding to given phone id; null if there is no card/profile
+     * present for the phone id
+     */
+    public UiccProfile getUiccProfileForPhone(int phoneId) {
+        synchronized (mLock) {
+            if (isValidPhoneIndex(phoneId)) {
+                UiccCard uiccCard = getUiccCardForPhone(phoneId);
+                return uiccCard != null ? uiccCard.getUiccProfile() : null;
             }
             return null;
         }
@@ -252,9 +274,11 @@ public class UiccController extends Handler {
      */
     public UiccSlot getUiccSlotForPhone(int phoneId) {
         synchronized (mLock) {
-            int slotId = getSlotIdFromPhoneId(phoneId);
-            if (isValidSlotIndex(slotId)) {
-                return mUiccSlots[slotId];
+            if (isValidPhoneIndex(phoneId)) {
+                int slotId = getSlotIdFromPhoneId(phoneId);
+                if (isValidSlotIndex(slotId)) {
+                    return mUiccSlots[slotId];
+                }
             }
             return null;
         }
@@ -437,7 +461,7 @@ public class UiccController extends Handler {
                     + "never return an error", ar.exception);
             return;
         }
-        if (!isValidCardIndex(index)) {
+        if (!isValidPhoneIndex(index)) {
             Rlog.e(LOG_TAG,"onGetIccCardStatusDone: invalid index : " + index);
             return;
         }
@@ -503,7 +527,7 @@ public class UiccController extends Handler {
                 numActiveSlots++;
 
                 // sanity check: logicalSlotIndex should be valid for an active slot
-                if (!isValidCardIndex(iss.logicalSlotIndex)) {
+                if (!isValidPhoneIndex(iss.logicalSlotIndex)) {
                     throw new RuntimeException("Logical slot index " + iss.logicalSlotIndex
                             + " invalid for physical slot " + i);
                 }
@@ -579,7 +603,7 @@ public class UiccController extends Handler {
             return;
         }
 
-        if (!isValidCardIndex(index)) {
+        if (!isValidPhoneIndex(index)) {
             Rlog.e(LOG_TAG,"onSimRefresh: invalid index : " + index);
             return;
         }
@@ -623,7 +647,7 @@ public class UiccController extends Handler {
         mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, index));
     }
 
-    private boolean isValidCardIndex(int index) {
+    private boolean isValidPhoneIndex(int index) {
         return (index >= 0 && index < TelephonyManager.getDefault().getPhoneCount());
     }
 

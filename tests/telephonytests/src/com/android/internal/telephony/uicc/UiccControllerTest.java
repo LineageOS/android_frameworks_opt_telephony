@@ -125,9 +125,11 @@ public class UiccControllerTest extends TelephonyTest {
         assertEquals(uiccCard, mUiccControllerUT.getUiccCardForPhone(0));
 
         assertNotNull(mUiccControllerUT.getUiccCard(0));
-        assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
-        assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP2));
-        assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_IMS));
+        assertEquals(mSimRecords, mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
+        assertEquals(mRuimRecords, mUiccControllerUT.getIccRecords(0,
+                UiccController.APP_FAM_3GPP2));
+        assertEquals(mIsimUiccRecords, mUiccControllerUT.getIccRecords(0,
+                UiccController.APP_FAM_IMS));
         assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP));
         assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP2));
         assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_IMS));
@@ -182,9 +184,10 @@ public class UiccControllerTest extends TelephonyTest {
         assertNotNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
         assertNotNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP2));
         assertNotNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_IMS));
-        assertNotNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP));
-        assertNotNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP2));
-        assertNotNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_IMS));
+        // null because getIccFileHandler() has not been mocked for mocked applications
+        assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP));
+        assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP2));
+        assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_IMS));
     }
 
     @Test @SmallTest
