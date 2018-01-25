@@ -19,7 +19,10 @@ package com.android.internal.telephony.uicc.euicc;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.os.Handler;
+import android.service.carrier.CarrierIdentifier;
 import android.service.euicc.EuiccProfileInfo;
+import android.telephony.Rlog;
+import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccCardManager;
 import android.telephony.euicc.EuiccNotification;
 import android.telephony.euicc.EuiccRulesAuthTable;
@@ -28,6 +31,8 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.asn1.Asn1Decoder;
+import com.android.internal.telephony.uicc.asn1.Asn1Node;
 import com.android.internal.telephony.uicc.asn1.InvalidAsn1DataException;
 import com.android.internal.telephony.uicc.asn1.TagNotFoundException;
 import com.android.internal.telephony.uicc.euicc.apdu.ApduSender;
@@ -36,11 +41,15 @@ import com.android.internal.telephony.uicc.euicc.apdu.RequestProvider;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultHelper;
 
+import java.util.List;
+
 /**
  * This represents an eUICC card to perform profile management operations asynchronously. This class
  * includes methods defined by different versions of GSMA Spec (SGP.22).
  */
 public class EuiccCard extends UiccCard {
+    private static final String LOG_TAG = "EuiccCard";
+
     private static final String ISD_R_AID = "A0000005591010FFFFFFFF8900000100";
 
     private static final EuiccSpecVersion SGP_2_0 = new EuiccSpecVersion(2, 0, 0);
@@ -88,7 +97,32 @@ public class EuiccCard extends UiccCard {
      * @since 1.1.0 [GSMA SGP.22]
      */
     public void getAllProfiles(AsyncResultCallback<EuiccProfileInfo[]> callback, Handler handler) {
-        // TODO: to be implemented.
+        sendApdu(
+                newRequestProvider((RequestBuilder requestBuilder) ->
+                        requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
+                                .addChildAsBytes(Tags.TAG_TAG_LIST, Tags.EUICC_PROFILE_TAGS)
+                                .build().toHex())),
+                (byte[] response) -> {
+                    List<Asn1Node> profileNodes = new Asn1Decoder(response).nextNode()
+                            .getChild(Tags.TAG_CTX_COMP_0).getChildren(Tags.TAG_PROFILE_INFO);
+                    int size = profileNodes.size();
+                    EuiccProfileInfo[] profiles = new EuiccProfileInfo[size];
+                    int profileCount = 0;
+                    for (int i = 0; i < size; i++) {
+                        Asn1Node profileNode = profileNodes.get(i);
+                        if (!profileNode.hasChild(Tags.TAG_ICCID)) {
+                            loge("Profile must have an ICCID.");
+                            continue;
+                        }
+                        EuiccProfileInfo.Builder profileBuilder = new EuiccProfileInfo.Builder();
+                        buildProfile(profileNode, profileBuilder);
+
+                        EuiccProfileInfo profile = profileBuilder.build();
+                        profiles[profileCount++] = profile;
+                    }
+                    return profiles;
+                },
+                callback, handler);
     }
 
     /**
@@ -435,5 +469,107 @@ public class EuiccCard extends UiccCard {
                 callback.onException(new EuiccCardException("Cannot send APDU.", e));
             }
         }, handler);
+    }
+
+    private static void buildProfile(Asn1Node profileNode, EuiccProfileInfo.Builder profileBuilder)
+            throws TagNotFoundException, InvalidAsn1DataException {
+        String strippedIccIdString =
+                stripTrailingFs(profileNode.getChild(Tags.TAG_ICCID).asBytes());
+        profileBuilder.setIccid(strippedIccIdString);
+
+        if (profileNode.hasChild(Tags.TAG_NICKNAME)) {
+            profileBuilder.setNickname(profileNode.getChild(Tags.TAG_NICKNAME).asString());
+        }
+
+        if (profileNode.hasChild(Tags.TAG_SERVICE_PROVIDER_NAME)) {
+            profileBuilder.setServiceProviderName(
+                    profileNode.getChild(Tags.TAG_SERVICE_PROVIDER_NAME).asString());
+        }
+
+        if (profileNode.hasChild(Tags.TAG_PROFILE_NAME)) {
+            profileBuilder.setProfileName(
+                    profileNode.getChild(Tags.TAG_PROFILE_NAME).asString());
+        }
+
+        if (profileNode.hasChild(Tags.TAG_OPERATOR_ID)) {
+            profileBuilder.setCarrierIdentifier(
+                    buildCarrierIdentifier(profileNode.getChild(Tags.TAG_OPERATOR_ID)));
+        }
+
+        if (profileNode.hasChild(Tags.TAG_PROFILE_STATE)) {
+            // noinspection WrongConstant
+            profileBuilder.setState(profileNode.getChild(Tags.TAG_PROFILE_STATE).asInteger());
+        } else {
+            profileBuilder.setState(EuiccProfileInfo.PROFILE_STATE_DISABLED);
+        }
+
+        if (profileNode.hasChild(Tags.TAG_PROFILE_CLASS)) {
+            // noinspection WrongConstant
+            profileBuilder.setProfileClass(
+                    profileNode.getChild(Tags.TAG_PROFILE_CLASS).asInteger());
+        } else {
+            profileBuilder.setProfileClass(EuiccProfileInfo.PROFILE_CLASS_OPERATIONAL);
+        }
+
+        if (profileNode.hasChild(Tags.TAG_PROFILE_POLICY_RULE)) {
+            // noinspection WrongConstant
+            profileBuilder.setPolicyRules(
+                    profileNode.getChild(Tags.TAG_PROFILE_POLICY_RULE).asBits());
+        }
+
+        if (profileNode.hasChild(Tags.TAG_CARRIER_PRIVILEGE_RULES)) {
+            List<Asn1Node> refArDoNodes = profileNode.getChild(Tags.TAG_CARRIER_PRIVILEGE_RULES)
+                    .getChildren(Tags.TAG_REF_AR_DO);
+            profileBuilder.setUiccAccessRule(buildUiccAccessRule(refArDoNodes));
+        }
+    }
+
+    private static CarrierIdentifier buildCarrierIdentifier(Asn1Node node)
+            throws InvalidAsn1DataException, TagNotFoundException {
+        String gid1 = null;
+        if (node.hasChild(Tags.TAG_CTX_1)) {
+            gid1 = IccUtils.bytesToHexString(node.getChild(Tags.TAG_CTX_1).asBytes());
+        }
+        String gid2 = null;
+        if (node.hasChild(Tags.TAG_CTX_2)) {
+            gid2 = IccUtils.bytesToHexString(node.getChild(Tags.TAG_CTX_2).asBytes());
+        }
+        return new CarrierIdentifier(node.getChild(Tags.TAG_CTX_0).asBytes(), gid1, gid2);
+    }
+
+    @Nullable
+    private static UiccAccessRule[] buildUiccAccessRule(List<Asn1Node> nodes)
+            throws InvalidAsn1DataException, TagNotFoundException {
+        if (nodes.isEmpty()) {
+            return null;
+        }
+        int count = nodes.size();
+        UiccAccessRule[] rules = new UiccAccessRule[count];
+        for (int i = 0; i < count; i++) {
+            Asn1Node node = nodes.get(i);
+            Asn1Node refDoNode = node.getChild(Tags.TAG_REF_DO);
+            byte[] signature = refDoNode.getChild(Tags.TAG_DEVICE_APP_ID_REF_DO).asBytes();
+
+            String packageName = null;
+            if (refDoNode.hasChild(Tags.TAG_PKG_REF_DO)) {
+                packageName = refDoNode.getChild(Tags.TAG_PKG_REF_DO).asString();
+            }
+            long accessType = 0;
+            if (node.hasChild(Tags.TAG_AR_DO, Tags.TAG_PERM_AR_DO)) {
+                Asn1Node permArDoNode = node.getChild(Tags.TAG_AR_DO, Tags.TAG_PERM_AR_DO);
+                accessType = permArDoNode.asRawLong();
+            }
+            rules[i] = new UiccAccessRule(signature, packageName, accessType);
+        }
+        return rules;
+    }
+
+    /** Strip all the trailing 'F' characters of an iccId. */
+    private static String stripTrailingFs(byte[] iccId) {
+        return IccUtils.stripTrailingFs(IccUtils.bchToString(iccId, 0, iccId.length));
+    }
+
+    private static void loge(String message) {
+        Rlog.e(LOG_TAG, message);
     }
 }
