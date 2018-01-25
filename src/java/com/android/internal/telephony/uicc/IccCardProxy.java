@@ -544,16 +544,6 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
-    @Override
-    public IccFileHandler getIccFileHandler() {
-        synchronized (mLock) {
-            if (mUiccApplication != null) {
-                return mUiccApplication.getIccFileHandler();
-            }
-            return null;
-        }
-    }
-
     /**
      * Notifies handler of any transition into State.NETWORK_LOCKED
      */
@@ -664,11 +654,6 @@ public class IccCardProxy extends Handler implements IccCard {
                     mUiccApplication.getIccFdnEnabled() : false;
             return retValue;
         }
-    }
-
-    public boolean getIccFdnAvailable() {
-        boolean retValue = mUiccApplication != null ? mUiccApplication.getIccFdnAvailable() : false;
-        return retValue;
     }
 
     public boolean getIccPin2Blocked() {

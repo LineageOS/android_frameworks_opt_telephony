@@ -29,6 +29,9 @@ import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.uicc.IccCardProxy;
+import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccProfile;
 
 /**
  * This class has one-line methods to instantiate objects only. The purpose is to make code
@@ -105,6 +108,14 @@ public class TelephonyComponentFactory {
 
     public IccCardProxy makeIccCardProxy(Context context, CommandsInterface ci, int phoneId) {
         return new IccCardProxy(context, ci, phoneId);
+    }
+
+    /**
+     * Create a new UiccProfile object.
+     */
+    public UiccProfile makeUiccProfile(Context context, CommandsInterface ci, IccCardStatus ics,
+                                       int phoneId, UiccCard uiccCard) {
+        return new UiccProfile(context, ci, ics, phoneId, uiccCard);
     }
 
     public EriManager makeEriManager(Phone phone, Context context, int eriFileSource) {
