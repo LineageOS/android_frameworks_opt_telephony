@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc.euicc.asn1;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -240,5 +241,15 @@ public class IccUtilsTest {
         output = new byte[4];
         IccUtils.bcdToBytes("12345", output);
         assertArrayEquals(new byte[] {0x21, 0x43, 0x05, 0}, output);
+    }
+
+    @SmallTest
+    @Test
+    public void testStripTrailingFs() {
+        assertNull(IccUtils.stripTrailingFs(null));
+        assertEquals("", IccUtils.stripTrailingFs(""));
+        assertEquals("1234", IccUtils.stripTrailingFs("1234"));
+        assertEquals("1234", IccUtils.stripTrailingFs("1234ff"));
+        assertEquals("1234", IccUtils.stripTrailingFs("1234FF"));
     }
 }
