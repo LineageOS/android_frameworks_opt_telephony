@@ -33,7 +33,6 @@ import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
-import android.hardware.radio.V1_1.KeepaliveStatus;
 import android.hardware.radio.V1_2.IRadioResponse;
 import android.os.AsyncResult;
 import android.os.Message;
@@ -49,6 +48,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -1230,24 +1230,96 @@ public class RadioResponse extends IRadioResponse.Stub {
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
+    public void setSignalStrengthReportingCriteriaResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setLinkCapacityReportingCriteriaResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
     public void setSimCardPowerResponse_1_1(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
+
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param keepaliveStatus status of the keepalive with a handle for the session
      */
     public void startKeepaliveResponse(RadioResponseInfo responseInfo,
-            KeepaliveStatus keepaliveStatus) {
-        throw new UnsupportedOperationException("startKeepaliveResponse not implemented");
+            android.hardware.radio.V1_1.KeepaliveStatus keepaliveStatus) {
+
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr == null) {
+            return;
+        }
+
+        KeepaliveStatus ret = null;
+
+        switch(responseInfo.error) {
+            case RadioError.NONE:
+                int convertedStatus = convertHalKeepaliveStatusCode(keepaliveStatus.code);
+                if (convertedStatus < 0) {
+                    ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
+                } else {
+                    ret = new KeepaliveStatus(keepaliveStatus.sessionHandle, convertedStatus);
+                }
+                break;
+            case RadioError.REQUEST_NOT_SUPPORTED:
+                ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
+                // The request is unsupported, which is ok. We'll report it to the higher
+                // layer and treat it as acceptable in the RIL.
+                responseInfo.error = RadioError.NONE;
+                break;
+            case RadioError.NO_RESOURCES:
+                ret = new KeepaliveStatus(KeepaliveStatus.ERROR_NO_RESOURCES);
+                break;
+            default:
+                ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNKNOWN);
+                break;
+        }
+        sendMessageResponse(rr.mResult, ret);
+        mRil.processResponseDone(rr, responseInfo, ret);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void stopKeepaliveResponse(RadioResponseInfo responseInfo) {
-        throw new UnsupportedOperationException("stopKeepaliveResponse not implemented");
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr == null) {
+            return;
+        }
+
+        if (responseInfo.error == RadioError.NONE) {
+            sendMessageResponse(rr.mResult, null);
+            mRil.processResponseDone(rr, responseInfo, null);
+        } else {
+            //TODO: Error code translation
+        }
+    }
+
+    private int convertHalKeepaliveStatusCode(int halCode) {
+        switch (halCode) {
+            case android.hardware.radio.V1_1.KeepaliveStatusCode.ACTIVE:
+                return KeepaliveStatus.STATUS_ACTIVE;
+            case android.hardware.radio.V1_1.KeepaliveStatusCode.INACTIVE:
+                return KeepaliveStatus.STATUS_INACTIVE;
+            case android.hardware.radio.V1_1.KeepaliveStatusCode.PENDING:
+                return KeepaliveStatus.STATUS_PENDING;
+            default:
+                mRil.riljLog("Invalid Keepalive Status" + halCode);
+                return -1;
+        }
     }
 
     private IccCardStatus convertHalCardStatus(CardStatus cardStatus) {

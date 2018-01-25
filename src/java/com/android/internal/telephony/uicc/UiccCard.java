@@ -28,6 +28,7 @@ import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
@@ -77,17 +78,16 @@ public class UiccCard {
 
     public void update(Context c, CommandsInterface ci, IccCardStatus ics) {
         synchronized (mLock) {
-            CardState oldState = mCardState;
             mCardState = ics.mCardState;
             mContext = c;
             mCi = ci;
             mIccid = ics.iccid;
             updateCardId();
 
-
             if (mCardState != CardState.CARDSTATE_ABSENT) {
                 if (mUiccProfile == null) {
-                    mUiccProfile = new UiccProfile(mContext, mCi, ics, mPhoneId, this);
+                    mUiccProfile = TelephonyComponentFactory.getInstance().makeUiccProfile(
+                            mContext, mCi, ics, mPhoneId, this);
                 } else {
                     mUiccProfile.update(mContext, mCi, ics);
                 }
@@ -348,6 +348,10 @@ public class UiccCard {
 
     public int getPhoneId() {
         return mPhoneId;
+    }
+
+    public UiccProfile getUiccProfile() {
+        return mUiccProfile;
     }
 
     /**
