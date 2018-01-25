@@ -277,6 +277,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         getImsManager().addRegistrationCallback(mRegistrationCallback);
         getImsManager().addCapabilitiesCallback(mCapabilityCallback);
         getImsManager().setSmsListener(mImsSmsListener);
+        getImsManager().onSmsReady();
         mImsServiceRetryCount = 0;
     }
 
