@@ -63,12 +63,15 @@ import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
+import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IsimUiccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccProfile;
 
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -103,6 +106,8 @@ public abstract class TelephonyTest {
     protected UiccController mUiccController;
     @Mock
     protected IccCardProxy mIccCardProxy;
+    @Mock
+    protected UiccProfile mUiccProfile;
     @Mock
     protected CallManager mCallManager;
     @Mock
@@ -201,6 +206,7 @@ public abstract class TelephonyTest {
     private Object mLock = new Object();
     private boolean mReady;
     protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
+    private Phone[] mPhones = new Phone[] {mPhone};
 
 
     protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
@@ -320,6 +326,9 @@ public abstract class TelephonyTest {
         doReturn(mIccCardProxy).when(mTelephonyComponentFactory)
                 .makeIccCardProxy(nullable(Context.class), nullable(CommandsInterface.class),
                         anyInt());
+        doReturn(mUiccProfile).when(mTelephonyComponentFactory)
+                .makeUiccProfile(nullable(Context.class), nullable(CommandsInterface.class),
+                        nullable(IccCardStatus.class), anyInt(), nullable(UiccCard.class));
         doReturn(mCT).when(mTelephonyComponentFactory)
                 .makeGsmCdmaCallTracker(nullable(GsmCdmaPhone.class));
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
@@ -365,7 +374,7 @@ public abstract class TelephonyTest {
         doReturn(mContext).when(mPhone).getContext();
         doReturn(mContext).when(mImsPhone).getContext();
         doReturn(true).when(mPhone).getUnitTestMode();
-        doReturn(mIccCardProxy).when(mPhone).getIccCard();
+        doReturn(mUiccProfile).when(mPhone).getIccCard();
         doReturn(mServiceState).when(mPhone).getServiceState();
         doReturn(mServiceState).when(mImsPhone).getServiceState();
         doReturn(mPhone).when(mImsPhone).getDefaultPhone();
@@ -408,12 +417,20 @@ public abstract class TelephonyTest {
         doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
 
         //mIccCardProxy
-        doReturn(mSimRecords).when(mIccCardProxy).getIccRecords();
+        doReturn(mSimRecords).when(mUiccProfile).getIccRecords();
         doAnswer(new Answer<IccRecords>() {
             public IccRecords answer(InvocationOnMock invocation) {
                 return (mPhone.isPhoneTypeGsm()) ? mSimRecords : mRuimRecords;
             }
-        }).when(mIccCardProxy).getIccRecords();
+        }).when(mUiccProfile).getIccRecords();
+
+        //mUiccProfile
+        doReturn(mUiccCardApplication3gpp).when(mUiccProfile).getApplication(
+                eq(UiccController.APP_FAM_3GPP));
+        doReturn(mUiccCardApplication3gpp2).when(mUiccProfile).getApplication(
+                eq(UiccController.APP_FAM_3GPP2));
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplication(
+                eq(UiccController.APP_FAM_IMS));
 
         //SMS
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
@@ -462,6 +479,9 @@ public abstract class TelephonyTest {
         replaceInstance(IntentBroadcaster.class, "sIntentBroadcaster", null, mIntentBroadcaster);
         replaceInstance(TelephonyManager.class, "sInstance", null,
                 mContext.getSystemService(Context.TELEPHONY_SERVICE));
+        replaceInstance(PhoneFactory.class, "sMadeDefaults", null, true);
+        replaceInstance(PhoneFactory.class, "sPhone", null, mPhone);
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
 
         setReady(false);
     }

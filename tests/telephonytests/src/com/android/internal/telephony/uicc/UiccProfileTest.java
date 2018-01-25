@@ -248,7 +248,8 @@ public class UiccProfileTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testInitialCardState() {
-        assertEquals(mUiccProfile.getState(), State.UNKNOWN);
+        // after updateExternalState() is called, the state will not be UNKNOWN
+        assertEquals(mUiccProfile.getState(), State.NOT_READY);
     }
 
     @Test
@@ -324,7 +325,9 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
-        assertEquals(mUiccProfile.getState(), State.READY);
+        // state is loaded as all records are loaded right away as SimulatedCommands returns
+        // response for them right away. Ideally applications and records should be mocked.
+        assertEquals(State.LOADED, mUiccProfile.getState());
     }
 
     @Test
@@ -357,7 +360,8 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
-        assertEquals(mUiccProfile.getState(), State.READY);
+        // state is loaded as all records are loaded right away as SimulatedCommands returns
+        // response for them right away. Ideally applications and records should be mocked.
+        assertEquals(State.LOADED, mUiccProfile.getState());
     }
-
 }
