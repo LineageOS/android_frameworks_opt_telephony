@@ -18,6 +18,7 @@ package com.android.internal.telephony.test;
 
 import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
+import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
@@ -2204,5 +2205,14 @@ public class SimulatedCommands extends BaseCommands
     public void unregisterForIccRefresh(Handler h) {
         super.unregisterForIccRefresh(h);
         SimulatedCommandsVerifier.getInstance().unregisterForIccRefresh(h);
+    }
+
+    @Override
+    public void startNattKeepalive(
+            int contextId, KeepalivePacketData packetData, int intervalMillis, Message result) {
+    }
+
+    @Override
+    public void stopNattKeepalive(int sessionHandle, Message result) {
     }
 }
