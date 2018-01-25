@@ -5000,8 +5000,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private static void writeToParcelForLte(
-            Parcel p, int ci, int pci, int tac, int earfcn, String mcc, String mnc, String al,
-            String as, int ss, int rsrp, int rsrq, int rssnr, int cqi, int ta) {
+            Parcel p, int ci, int pci, int tac, int earfcn, int bandwidth, String mcc, String mnc,
+            String al, String as, int ss, int rsrp, int rsrq, int rssnr, int cqi, int ta) {
         p.writeInt(CellIdentity.TYPE_LTE);
         p.writeString(mcc);
         p.writeString(mnc);
@@ -5009,6 +5009,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeInt(pci);
         p.writeInt(tac);
         p.writeInt(earfcn);
+        p.writeInt(bandwidth);
         p.writeString(al);
         p.writeString(as);
         p.writeInt(ss);
@@ -5052,6 +5053,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             p.writeInt(record.registered ? 1 : 0);
             p.writeInt(record.timeStampType);
             p.writeLong(record.timeStamp);
+            p.writeInt(CellInfo.CONNECTION_UNKNOWN);
             switch (record.cellInfoType) {
                 case CellInfoType.GSM: {
                     CellInfoGsm cellInfoGsm = record.gsm.get(0);
@@ -5098,6 +5100,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             cellInfoLte.cellIdentityLte.pci,
                             cellInfoLte.cellIdentityLte.tac,
                             cellInfoLte.cellIdentityLte.earfcn,
+                            Integer.MAX_VALUE,
                             cellInfoLte.cellIdentityLte.mcc,
                             cellInfoLte.cellIdentityLte.mnc,
                             EMPTY_ALPHA_LONG,
@@ -5158,6 +5161,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             p.writeInt(record.registered ? 1 : 0);
             p.writeInt(record.timeStampType);
             p.writeLong(record.timeStamp);
+            p.writeInt(record.connectionStatus);
             switch (record.cellInfoType) {
                 case CellInfoType.GSM: {
                     android.hardware.radio.V1_2.CellInfoGsm cellInfoGsm = record.gsm.get(0);
@@ -5204,6 +5208,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             cellInfoLte.cellIdentityLte.base.pci,
                             cellInfoLte.cellIdentityLte.base.tac,
                             cellInfoLte.cellIdentityLte.base.earfcn,
+                            cellInfoLte.cellIdentityLte.bandwidth,
                             cellInfoLte.cellIdentityLte.base.mcc,
                             cellInfoLte.cellIdentityLte.base.mnc,
                             cellInfoLte.cellIdentityLte.operatorNames.alphaLong,
