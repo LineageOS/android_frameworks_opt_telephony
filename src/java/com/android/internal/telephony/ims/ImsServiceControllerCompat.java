@@ -160,15 +160,21 @@ public class ImsServiceControllerCompat extends ImsServiceController {
         return mServiceController != null;
     }
 
-    private IImsMmTelFeature createMMTelCompat(int slotId, IImsFeatureStatusCallback c)
+    protected MmTelInterfaceAdapter getInterface(int slotId, IImsFeatureStatusCallback c)
             throws RemoteException {
         IImsMMTelFeature feature = mServiceController.createMMTelFeature(slotId, c);
         if (feature == null) {
             Log.w(TAG, "createMMTelCompat: createMMTelFeature returned null.");
             return null;
         }
+        return new MmTelInterfaceAdapter(slotId, feature.asBinder());
+    }
+
+    private IImsMmTelFeature createMMTelCompat(int slotId, IImsFeatureStatusCallback c)
+            throws RemoteException {
+        MmTelInterfaceAdapter interfaceAdapter = getInterface(slotId, c);
         MmTelFeatureCompatAdapter mmTelAdapter = new MmTelFeatureCompatAdapter(mContext, slotId,
-                feature);
+                interfaceAdapter);
         mMmTelCompatAdapters.put(slotId, mmTelAdapter);
         ImsRegistrationCompatAdapter regAdapter = new ImsRegistrationCompatAdapter();
         mmTelAdapter.addRegistrationAdapter(regAdapter);

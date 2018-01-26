@@ -821,7 +821,7 @@ public class ImsResolverTest extends ImsTestBase {
         }
 
         mTestImsResolver = new ImsResolver(mMockContext, TEST_DEVICE_DEFAULT_NAME.getPackageName(),
-                numSlots);
+                numSlots, true);
 
         ArgumentCaptor<BroadcastReceiver> packageBroadcastCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);

@@ -17,17 +17,20 @@
 package com.android.internal.telephony.ims;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.os.IBinder;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
+import android.telephony.ims.stub.ImsConfigImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsConfig;
@@ -39,10 +42,19 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
+import java.util.Hashtable;
+
 public class ImsManagerTest extends TelephonyTest {
+    private static final String UNSET_PROVISIONED_STRING = "unset";
+    private static final boolean ENHANCED_4G_MODE_DEFAULT_VAL = true;
+    private static final boolean ENHANCED_4G_ENABLE_DEFAULT_VAL = true;
+    private static final boolean WFC_IMS_ENABLE_DEFAULT_VAL = false;
+    private static final boolean WFC_IMS_ROAMING_ENABLE_DEFAULT_VAL = true;
+    private static final boolean VT_IMS_ENABLE_DEFAULT_VAL = true;
+    private static final int WFC_IMS_MODE_DEFAULT_VAL = 2;
+    private static final int WFC_IMS_ROAMING_MODE_DEFAULT_VAL = 3;
 
     PersistableBundle mBundle;
-
     @Mock IBinder mBinder;
     @Mock ImsConfigImplBase mImsConfigImplBaseMock;
     Hashtable<Integer, Integer> mProvisionedIntVals = new Hashtable<>();
@@ -83,17 +95,10 @@ public class ImsManagerTest extends TelephonyTest {
                 WFC_IMS_MODE_DEFAULT_VAL);
         mBundle.putInt(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_ROAMING_MODE_INT,
                 WFC_IMS_ROAMING_MODE_DEFAULT_VAL);
+        mBundle.putBoolean(CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL,
+                ENHANCED_4G_MODE_DEFAULT_VAL);
+        mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_VOLTE_PROVISIONING_REQUIRED_BOOL, true);
     }
-
-    private static final boolean ENHANCED_4G_ENABLE_DEFAULT_VAL = true;
-    private static final boolean WFC_IMS_ENABLE_DEFAULT_VAL = false;
-    private static final boolean WFC_IMS_ROAMING_ENABLE_DEFAULT_VAL = true;
-    private static final boolean VT_IMS_ENABLE_DEFAULT_VAL = true;
-    private static final int WFC_IMS_MODE_DEFAULT_VAL = 2;
-    private static final int WFC_IMS_ROAMING_MODE_DEFAULT_VAL = 3;
-
-    private final int[] mSubId = {0};
-    private int mPhoneId;
 
     @Test @SmallTest
     public void testGetDefaultValues() {

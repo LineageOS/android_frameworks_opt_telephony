@@ -334,8 +334,12 @@ public class ImsServiceController {
                         | Context.BIND_IMPORTANT;
                 Log.i(LOG_TAG, "Binding ImsService:" + mComponentName);
                 try {
-                    return mContext.bindService(imsServiceIntent, mImsServiceConnection,
-                            serviceFlags);
+                    boolean bindSucceeded = startBindToService(imsServiceIntent,
+                            mImsServiceConnection, serviceFlags);
+                    if (!bindSucceeded) {
+                        mBackoff.notifyFailed();
+                    }
+                    return bindSucceeded;
                 } catch (Exception e) {
                     mBackoff.notifyFailed();
                     Log.e(LOG_TAG, "Error binding (" + mComponentName + ") with exception: "
@@ -347,6 +351,15 @@ public class ImsServiceController {
                 return false;
             }
         }
+    }
+
+    /**
+     * Starts the bind to the ImsService. Overridden by subclasses that need to access the service
+     * in a different fashion.
+     */
+    protected boolean startBindToService(Intent intent, ImsServiceConnection connection,
+            int flags) {
+        return mContext.bindService(intent, connection, flags);
     }
 
     /**
