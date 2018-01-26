@@ -25,11 +25,14 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.ComparisonFailure;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class ImsRttTextHandlerTest extends TelephonyTest {
     private static final int TEST_TIMEOUT = 1000;
@@ -121,29 +124,41 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
      */
     @Test
     public void testSendAfterEnoughChars() throws Exception {
+        // Register a read notifier
+        CountDownLatch readNotifier = new CountDownLatch(1);
+        mRttTextHandler.setReadNotifier(readNotifier);
         // Send four characters
         mPipeToHandler.write("abcd");
         mPipeToHandler.flush();
+        // Wait for the stream to consume the characters
+        readNotifier.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         // make sure at it hasn't been sent.
         Assert.assertEquals("", mNetworkWriter.getContents());
+
+        // Send the second part
         Thread.sleep(10);
+        // Register a read notifier
+        readNotifier = new CountDownLatch(1);
+        mRttTextHandler.setReadNotifier(readNotifier);
         // Send four more characters
         mPipeToHandler.write("efgh");
         mPipeToHandler.flush();
         // Wait for the stream to consume the characters
-        int count = 0;
-        while (mHandlerSideOfPipeToHandler.ready()) {
-            Thread.sleep(10);
-            count += 1;
-            if (count >= 5) {
-                break;
-            }
-        }
+        boolean res = readNotifier.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        // Wait for the handler to write to the mock network writer
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         // make sure that all characters were sent.
-        Assert.assertEquals("abcdefgh", mNetworkWriter.getContents());
+        try {
+            Assert.assertEquals("abcdefgh", mNetworkWriter.getContents());
+        } catch (ComparisonFailure e) {
+            throw new ComparisonFailure(e.getMessage()
+                    + ", network buffer=" + mRttTextHandler.getNetworkBufferText()
+                    + ", res=" + res,
+                    e.getExpected(), e.getActual());
+        }
     }
 
     /**
