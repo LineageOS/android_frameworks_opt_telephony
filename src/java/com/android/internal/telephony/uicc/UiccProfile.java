@@ -232,7 +232,13 @@ public class UiccProfile extends Handler implements IccCard {
 
             case EVENT_APP_READY:
                 if (VDBG) log("EVENT_APP_READY");
-                setExternalStateOnReady();
+                if (areAllApplicationsReady()) {
+                    if (areAllRecordsLoaded() && areCarrierPriviligeRulesLoaded()) {
+                        setExternalState(IccCardConstants.State.LOADED);
+                    } else {
+                        setExternalState(IccCardConstants.State.READY);
+                    }
+                }
                 break;
 
             case EVENT_RECORDS_LOADED:
@@ -282,7 +288,9 @@ public class UiccProfile extends Handler implements IccCard {
             case EVENT_CARRIER_PRIVILEGES_LOADED:
                 if (VDBG) log("EVENT_CARRIER_PRIVILEGES_LOADED");
                 onCarrierPriviligesLoadedMessage();
-                setExternalState(IccCardConstants.State.LOADED);
+                if (areAllRecordsLoaded()) {
+                    setExternalState(IccCardConstants.State.LOADED);
+                }
                 break;
 
             case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
@@ -379,20 +387,16 @@ public class UiccProfile extends Handler implements IccCard {
                 // Otherwise don't change external SIM state.
                 break;
             case APPSTATE_READY:
-                setExternalStateOnReady();
+                if (areAllApplicationsReady()) {
+                    if (areAllRecordsLoaded() && areCarrierPriviligeRulesLoaded()) {
+                        setExternalState(IccCardConstants.State.LOADED);
+                    } else {
+                        setExternalState(IccCardConstants.State.READY);
+                    }
+                } else {
+                    setExternalState(IccCardConstants.State.NOT_READY);
+                }
                 break;
-        }
-    }
-
-    private void setExternalStateOnReady() {
-        if (areAllApplicationsReady()) {
-            if (areAllRecordsLoaded() && areCarrierPriviligeRulesLoaded()) {
-                setExternalState(IccCardConstants.State.LOADED);
-            } else {
-                setExternalState(IccCardConstants.State.READY);
-            }
-        } else {
-            setExternalState(IccCardConstants.State.NOT_READY);
         }
     }
 
