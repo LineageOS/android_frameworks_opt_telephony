@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.os.Bundle;
 import android.os.Parcel;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -224,12 +225,43 @@ public class ServiceStateTest extends TestCase {
         ss.setCdmaEriIconMode(7);
         ss.setEmergencyOnly(true);
         ss.setDataRoamingFromRegistration(true);
+        ss.setChannelNumber(2100);
+        ss.setCellBandwidths(new int[]{1400, 5000, 10000});
 
         Parcel p = Parcel.obtain();
         ss.writeToParcel(p, 0);
         p.setDataPosition(0);
 
         ServiceState newSs = new ServiceState(p);
+        assertEquals(ss, newSs);
+    }
+
+    @SmallTest
+    public void testBundle() {
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_OUT_OF_SERVICE);
+        ss.setVoiceRoamingType(ServiceState.ROAMING_TYPE_INTERNATIONAL);
+        ss.setDataRoamingType(ServiceState.ROAMING_TYPE_UNKNOWN);
+        ss.setOperatorName("long", "short", "numeric");
+        ss.setIsManualSelection(true);
+        ss.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
+        ss.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0);
+        ss.setCssIndicator(1);
+        ss.setSystemAndNetworkId(2, 3);
+        ss.setCdmaRoamingIndicator(4);
+        ss.setCdmaDefaultRoamingIndicator(5);
+        ss.setCdmaEriIconIndex(6);
+        ss.setCdmaEriIconMode(7);
+        ss.setEmergencyOnly(true);
+        ss.setDataRoamingFromRegistration(true);
+        ss.setChannelNumber(2100);
+        ss.setCellBandwidths(new int[]{3, 4, 10});
+
+        Bundle b = new Bundle();
+        ss.fillInNotifierBundle(b);
+        ServiceState newSs = ServiceState.newFromBundle(b);
+
         assertEquals(ss, newSs);
     }
 }
