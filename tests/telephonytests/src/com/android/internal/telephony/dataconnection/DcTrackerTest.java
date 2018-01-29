@@ -1247,12 +1247,7 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testDataEnableInProvisioning() throws Exception {
-        // Initial state is: userData enabled, provisioned.
         ContentResolver resolver = mContext.getContentResolver();
-        Settings.Global.putInt(resolver, Settings.Global.MOBILE_DATA, 1);
-        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1);
-        Settings.Global.putInt(resolver,
-                Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED, 1);
 
         assertEquals(1, Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA));
         assertTrue(mDct.isDataEnabled());
