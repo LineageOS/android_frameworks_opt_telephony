@@ -2879,26 +2879,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void requestIsimAuthentication(String nonce, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_ISIM_AUTHENTICATION, result,
-                    mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + " nonce = " + nonce);
-            }
-
-            try {
-                radioProxy.requestIsimAuthentication(rr.mSerial, convertNullToEmptyString(nonce));
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "requestIsimAuthentication", e);
-            }
-        }
-    }
-
-    @Override
     public void acknowledgeIncomingGsmSmsWithPdu(boolean success, String ackPdu, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {

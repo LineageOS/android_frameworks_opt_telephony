@@ -1722,18 +1722,6 @@ public interface CommandsInterface {
     public int getLteOnCdmaMode();
 
     /**
-     * Request the ISIM application on the UICC to perform the AKA
-     * challenge/response algorithm for IMS authentication. The nonce string
-     * and challenge response are Base64 encoded Strings.
-     *
-     * @param nonce the nonce string to pass with the ISIM authentication request
-     * @param response a callback message with the String response in the obj field
-     * @deprecated
-     * @see requestIccSimAuthentication
-     */
-    public void requestIsimAuthentication(String nonce, Message response);
-
-    /**
      * Request the SIM application on the UICC to perform authentication
      * challenge/response algorithm. The data string and challenge response are
      * Base64 encoded Strings.
