@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import static android.provider.Telephony.CarrierIdentification;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -94,10 +95,11 @@ public class CarrierIdentifier extends Handler {
     private final ContentObserver mContentObserver = new ContentObserver(this) {
         @Override
         public void onChange(boolean selfChange, Uri uri) {
-            logd("onChange URI: " + uri);
             if (CONTENT_URL_PREFER_APN.equals(uri.getLastPathSegment())) {
+                logd("onChange URI: " + uri);
                 sendEmptyMessage(PREFER_APN_UPDATE_EVENT);
-            } else {
+            } else if (CarrierIdentification.All.CONTENT_URI.equals(uri)) {
+                logd("onChange URI: " + uri);
                 sendEmptyMessage(CARRIER_ID_DB_UPDATE_EVENT);
             }
         }
@@ -152,7 +154,7 @@ public class CarrierIdentifier extends Handler {
         mContext.getContentResolver().registerContentObserver(CONTENT_URL_PREFER_APN, false,
                 mContentObserver);
         mContext.getContentResolver().registerContentObserver(
-                Telephony.CarrierIdentification.CONTENT_URI, false, mContentObserver);
+                Telephony.CarrierIdentification.All.CONTENT_URI, false, mContentObserver);
         SubscriptionManager.from(mContext).addOnSubscriptionsChangedListener(
                 mOnSubscriptionsChangedListener);
         PreferenceManager.getDefaultSharedPreferences(mContext)
@@ -244,9 +246,10 @@ public class CarrierIdentifier extends Handler {
     private void loadCarrierMatchingRulesOnMccMnc() {
         try {
             String mccmnc = mTelephonyMgr.getSimOperatorNumericForPhone(mPhone.getPhoneId());
-            Cursor cursor = mContext.getContentResolver().query(CarrierIdentification.CONTENT_URI,
+            Cursor cursor = mContext.getContentResolver().query(
+                    CarrierIdentification.All.CONTENT_URI,
                     /* projection */ null,
-                    /* selection */ CarrierIdentification.MCCMNC + "=?",
+                    /* selection */ CarrierIdentification.All.MCCMNC + "=?",
                     /* selectionArgs */ new String[]{mccmnc}, null);
             try {
                 if (cursor != null) {
@@ -318,21 +321,29 @@ public class CarrierIdentifier extends Handler {
             intent.putExtra(TelephonyManager.EXTRA_CARRIER_NAME, mCarrierName);
             intent.putExtra(TelephonyManager.EXTRA_SUBSCRIPTION_ID, mPhone.getSubId());
             mContext.sendBroadcast(intent);
+
+            // update current subscriptions
+            ContentValues cv = new ContentValues();
+            cv.put(CarrierIdentification.CID, mCarrierId);
+            cv.put(CarrierIdentification.NAME, mCarrierName);
+            mContext.getContentResolver().update(
+                    Uri.withAppendedPath(CarrierIdentification.CONTENT_URI,
+                    Integer.toString(mPhone.getSubId())), cv, null, null);
         }
     }
 
     private CarrierMatchingRule makeCarrierMatchingRule(Cursor cursor) {
         return new CarrierMatchingRule(
-                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.MCCMNC)),
+                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.All.MCCMNC)),
                 cursor.getString(cursor.getColumnIndexOrThrow(
-                        CarrierIdentification.IMSI_PREFIX_XPATTERN)),
+                        CarrierIdentification.All.IMSI_PREFIX_XPATTERN)),
                 cursor.getString(cursor.getColumnIndexOrThrow(
-                        CarrierIdentification.ICCID_PREFIX)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.GID1)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.GID2)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.PLMN)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.SPN)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.APN)),
+                        CarrierIdentification.All.ICCID_PREFIX)),
+                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.All.GID1)),
+                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.All.GID2)),
+                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.All.PLMN)),
+                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.All.SPN)),
+                cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.All.APN)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(CarrierIdentification.CID)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierIdentification.NAME)));
     }
@@ -571,7 +582,7 @@ public class CarrierIdentifier extends Handler {
 
     private int getCarrierListVersion() {
         final Cursor cursor = mContext.getContentResolver().query(
-                Uri.withAppendedPath(Telephony.CarrierIdentification.CONTENT_URI,
+                Uri.withAppendedPath(Telephony.CarrierIdentification.All.CONTENT_URI,
                 "get_version"), null, null, null);
         cursor.moveToFirst();
         return cursor.getInt(0);
