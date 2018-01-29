@@ -305,6 +305,7 @@ public class CellularNetworkService extends NetworkService {
             return result;
         }
 
+        @Override
         public void getNetworkRegistrationState(int domain, NetworkServiceCallback callback) {
             if (DBG) log("getNetworkRegistrationState for domain " + domain);
             Message message = null;
