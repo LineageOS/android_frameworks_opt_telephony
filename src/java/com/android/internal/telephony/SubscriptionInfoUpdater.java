@@ -384,7 +384,12 @@ public class SubscriptionInfoUpdater extends Handler {
         // removed or a refresh RESET that the IccRecords could be null. The right behavior is to
         // not broadcast the SIM loaded.
         int loadedSlotId = slotId;
-        IccRecords records = mPhone[slotId].getIccCard().getIccRecords();
+        IccCard iccCard = mPhone[slotId].getIccCard();
+        if (iccCard == null) {  // Possibly a race condition.
+            logd("handleSimLoaded: IccCard null");
+            return;
+        }
+        IccRecords records = iccCard.getIccRecords();
         if (records == null) {  // Possibly a race condition.
             logd("handleSimLoaded: IccRecords null");
             return;
