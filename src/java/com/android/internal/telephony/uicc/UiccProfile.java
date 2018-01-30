@@ -459,19 +459,17 @@ public class UiccProfile extends Handler implements IccCard {
         }
     }
 
-    private void broadcastInternalIccStateChangedIntent(String value, String reason) {
-        synchronized (mLock) {
-            Intent intent = new Intent(ACTION_INTERNAL_SIM_STATE_CHANGED);
-            intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
-                    | Intent.FLAG_RECEIVER_FOREGROUND);
-            intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
-            intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
-            intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
-            intent.putExtra(PhoneConstants.PHONE_KEY, mPhoneId);  // SubId may not be valid.
-            log("Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
-                    + " for mPhoneId : " + mPhoneId);
-            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
-        }
+    static void broadcastInternalIccStateChangedIntent(String value, String reason, int phoneId) {
+        Intent intent = new Intent(ACTION_INTERNAL_SIM_STATE_CHANGED);
+        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
+                | Intent.FLAG_RECEIVER_FOREGROUND);
+        intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
+        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
+        intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
+        intent.putExtra(PhoneConstants.PHONE_KEY, phoneId);  // SubId may not be valid.
+        log("Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
+                + " for mPhoneId : " + phoneId);
+        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
     }
 
     private void setExternalState(IccCardConstants.State newState, boolean override) {
@@ -510,7 +508,7 @@ public class UiccProfile extends Handler implements IccCard {
             mTelephonyManager.setSimStateForPhone(mPhoneId, getState().toString());
 
             broadcastInternalIccStateChangedIntent(getIccStateIntentString(mExternalState),
-                    getIccStateReason(mExternalState));
+                    getIccStateReason(mExternalState), mPhoneId);
         }
     }
 
@@ -1366,7 +1364,7 @@ public class UiccProfile extends Handler implements IccCard {
         return null;
     }
 
-    private void log(String msg) {
+    private static void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
 
