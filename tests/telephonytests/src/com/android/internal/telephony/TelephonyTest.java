@@ -27,6 +27,7 @@ import static org.mockito.Mockito.eq;
 
 import android.app.ActivityManager;
 import android.app.IActivityManager;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.IIntentSender;
 import android.content.Intent;
@@ -41,6 +42,7 @@ import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
+import android.provider.Settings;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -206,7 +208,7 @@ public abstract class TelephonyTest {
     private Object mLock = new Object();
     private boolean mReady;
     protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
-    private Phone[] mPhones = new Phone[] {mPhone};
+    private Phone[] mPhones;
 
 
     protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
@@ -305,6 +307,7 @@ public abstract class TelephonyTest {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
 
+        mPhones = new Phone[] {mPhone};
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();
@@ -455,6 +458,15 @@ public abstract class TelephonyTest {
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
+        doReturn(1).when(mTelephonyManager).getPhoneCount();
+
+        //Data
+        //Initial state is: userData enabled, provisioned.
+        ContentResolver resolver = mContext.getContentResolver();
+        Settings.Global.putInt(resolver, Settings.Global.MOBILE_DATA, 1);
+        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1);
+        Settings.Global.putInt(resolver,
+                Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED, 1);
 
         //Use reflection to mock singletons
         replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);
