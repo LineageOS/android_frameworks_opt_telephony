@@ -23,8 +23,8 @@ import static org.mockito.Mockito.verify;
 import android.net.Uri;
 import android.support.test.filters.FlakyTest;
 
-import com.android.ims.ImsCallProfile;
-import com.android.ims.ImsExternalCallState;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsExternalCallState;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 

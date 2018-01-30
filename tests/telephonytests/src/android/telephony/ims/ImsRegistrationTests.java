@@ -28,14 +28,12 @@ import android.os.Parcel;
 import android.os.RemoteException;
 import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ServiceState;
-import android.telephony.ims.internal.feature.ImsFeature;
-import android.telephony.ims.internal.stub.ImsFeatureConfiguration;
+import android.telephony.ims.aidl.IImsRegistration;
+import android.telephony.ims.aidl.IImsRegistrationCallback;
+import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
-
-import com.android.ims.ImsReasonInfo;
-import com.android.ims.internal.IImsRegistration;
-import com.android.ims.internal.IImsRegistrationCallback;
 
 import org.junit.After;
 import org.junit.Before;

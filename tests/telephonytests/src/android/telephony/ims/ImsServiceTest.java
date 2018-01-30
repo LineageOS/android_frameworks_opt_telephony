@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 
 package android.telephony.ims;
 
-import static com.android.internal.telephony.ims.ImsResolver.SERVICE_INTERFACE;
-
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
@@ -25,29 +23,29 @@ import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
 
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;
 import android.support.test.runner.AndroidJUnit4;
+import android.telephony.ims.aidl.IImsMmTelFeature;
+import android.telephony.ims.aidl.IImsServiceController;
 import android.telephony.ims.feature.ImsFeature;
-import android.telephony.ims.feature.MMTelFeature;
+import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.SparseArray;
 
 import com.android.ims.ImsManager;
 import com.android.ims.internal.IImsFeatureStatusCallback;
-import com.android.ims.internal.IImsMMTelFeature;
-import com.android.ims.internal.IImsServiceController;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 /**
  * Unit tests for ImsService
@@ -61,21 +59,22 @@ public class ImsServiceTest {
     private TestImsService mTestImsService;
     private IImsServiceController mTestImsServiceBinder;
 
-    @Mock
     private Context mMockContext;
-    @Mock
     private IImsFeatureStatusCallback mTestCallback;
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        mMockContext = mock(Context.class);
+        mTestCallback = mock(IImsFeatureStatusCallback.class);
         mTestImsService = new TestImsService(mMockContext);
         mTestImsServiceBinder = (IImsServiceController) mTestImsService.onBind(
-                new Intent(SERVICE_INTERFACE));
+                new Intent(ImsService.SERVICE_INTERFACE));
     }
 
     @After
     public void tearDown() throws Exception {
+        mMockContext = null;
+        mTestCallback = null;
         mTestImsService = null;
         mTestImsServiceBinder = null;
     }
@@ -83,45 +82,46 @@ public class ImsServiceTest {
     @Test
     @SmallTest
     public void testCreateMMTelFeature() throws RemoteException {
-        IImsMMTelFeature f = mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
-        mTestImsService.mTestMMTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
+        IImsMmTelFeature f = mTestImsServiceBinder.createMmTelFeature(TEST_SLOT_0, mTestCallback);
+        mTestImsService.mTestMmTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
 
         SparseArray<ImsFeature> features = mTestImsService.getFeatures(TEST_SLOT_0);
-        ImsFeature featureToVerify = features.get(ImsFeature.MMTEL);
-        MMTelFeature testMMTelFeature = null;
-        if (featureToVerify instanceof MMTelFeature) {
-            testMMTelFeature = (MMTelFeature) featureToVerify;
+        ImsFeature featureToVerify = features.get(ImsFeature.FEATURE_MMTEL);
+        MmTelFeature testMMTelFeature = null;
+        if (featureToVerify instanceof MmTelFeature) {
+            testMMTelFeature = (MmTelFeature) featureToVerify;
         } else {
             fail();
         }
-        assertEquals(mTestImsService.mSpyMMTelFeature, testMMTelFeature);
+        assertEquals(mTestImsService.mSpyMmTelFeature, testMMTelFeature);
         // Verify that upon creating a feature, we assign the callback and get the set feature state
         // when querying it.
-        verify(mTestImsService.mSpyMMTelFeature).addImsFeatureStatusCallback(eq(mTestCallback));
-        assertEquals(ImsFeature.STATE_READY, f.getFeatureStatus());
+        verify(mTestImsService.mSpyMmTelFeature).addImsFeatureStatusCallback(eq(mTestCallback));
+        assertEquals(ImsFeature.STATE_READY, f.getFeatureState());
     }
 
     @Test
     @SmallTest
     public void testRemoveMMTelFeature() throws RemoteException {
-        mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
+        mTestImsServiceBinder.createMmTelFeature(TEST_SLOT_0, mTestCallback);
 
-        mTestImsServiceBinder.removeImsFeature(TEST_SLOT_0, ImsFeature.MMTEL, mTestCallback);
+        mTestImsServiceBinder.removeImsFeature(TEST_SLOT_0, ImsFeature.FEATURE_MMTEL,
+                mTestCallback);
 
-        verify(mTestImsService.mSpyMMTelFeature).onFeatureRemoved();
-        verify(mTestImsService.mSpyMMTelFeature).removeImsFeatureStatusCallback(mTestCallback);
+        verify(mTestImsService.mSpyMmTelFeature).onFeatureRemoved();
+        verify(mTestImsService.mSpyMmTelFeature).removeImsFeatureStatusCallback(mTestCallback);
         SparseArray<ImsFeature> features = mTestImsService.getFeatures(TEST_SLOT_0);
-        assertNull(features.get(ImsFeature.MMTEL));
+        assertNull(features.get(ImsFeature.FEATURE_MMTEL));
     }
 
     @Test
     @SmallTest
     public void testCallMethodOnCreatedFeature() throws RemoteException {
-        IImsMMTelFeature f = mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
+        IImsMmTelFeature f = mTestImsServiceBinder.createMmTelFeature(TEST_SLOT_0, mTestCallback);
 
-        f.isConnected(0/*callSessionType*/, 0 /*callType*/);
+        f.getUtInterface();
 
-        assertTrue(mTestImsService.mTestMMTelFeature.isConnectedCalled);
+        assertTrue(mTestImsService.mTestMmTelFeature.isUtInterfaceCalled);
     }
 
     /**
@@ -131,9 +131,9 @@ public class ImsServiceTest {
     @Test
     @SmallTest
     public void testImsServiceUpSentCompat() throws RemoteException {
-        mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
+        mTestImsServiceBinder.createMmTelFeature(TEST_SLOT_0, mTestCallback);
 
-        mTestImsService.mSpyMMTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
+        mTestImsService.mSpyMmTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
 
         ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext).sendBroadcast(intentCaptor.capture());
@@ -153,9 +153,9 @@ public class ImsServiceTest {
     @Test
     @SmallTest
     public void testImsServiceDownSentCompatInitializing() throws RemoteException {
-        mTestImsServiceBinder.createMMTelFeature(TEST_SLOT_0, mTestCallback);
+        mTestImsServiceBinder.createMmTelFeature(TEST_SLOT_0, mTestCallback);
 
-        mTestImsService.mSpyMMTelFeature.sendSetFeatureState(ImsFeature.STATE_INITIALIZING);
+        mTestImsService.mSpyMmTelFeature.sendSetFeatureState(ImsFeature.STATE_INITIALIZING);
 
         ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext).sendBroadcast(intentCaptor.capture());
@@ -166,6 +166,23 @@ public class ImsServiceTest {
         } catch (IndexOutOfBoundsException e) {
             fail("Did not receive all intents");
         }
+    }
+
+    /**
+     * Tests that the ImsService will return the correct ImsFeatureConfiguration when queried.
+     */
+    @Test
+    @SmallTest
+    public void testQuerySupportedImsFeatures() throws RemoteException {
+        ImsFeatureConfiguration config = new ImsFeatureConfiguration.Builder()
+                .addFeature(ImsFeature.FEATURE_MMTEL)
+                .addFeature(ImsFeature.FEATURE_RCS)
+                .build();
+        mTestImsService.testFeatureConfig = config;
+
+        ImsFeatureConfiguration result = mTestImsServiceBinder.querySupportedImsFeatures();
+
+        assertEquals(config, result);
     }
 
     private void verifyServiceDownSent(Intent testIntent) {

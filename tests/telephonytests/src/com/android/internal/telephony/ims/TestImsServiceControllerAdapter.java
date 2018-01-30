@@ -17,12 +17,17 @@
 package com.android.internal.telephony.ims;
 
 import android.os.RemoteException;
+import android.telephony.ims.aidl.IImsConfig;
+import android.telephony.ims.aidl.IImsMmTelFeature;
+import android.telephony.ims.aidl.IImsRcsFeature;
+import android.telephony.ims.aidl.IImsRegistration;
+import android.telephony.ims.aidl.IImsServiceController;
+import android.telephony.ims.aidl.IImsServiceControllerListener;
+import android.telephony.ims.stub.ImsConfigImplBase;
+import android.telephony.ims.stub.ImsFeatureConfiguration;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 
 import com.android.ims.internal.IImsFeatureStatusCallback;
-import com.android.ims.internal.IImsMMTelFeature;
-import com.android.ims.internal.IImsRcsFeature;
-import com.android.ims.internal.IImsRegistration;
-import com.android.ims.internal.IImsServiceController;
 
 import static org.mockito.Mockito.spy;
 
@@ -37,35 +42,56 @@ public class TestImsServiceControllerAdapter {
     public class ImsServiceControllerBinder extends IImsServiceController.Stub {
 
         @Override
-        public IImsMMTelFeature createEmergencyMMTelFeature(int slotId, IImsFeatureStatusCallback c)
-                throws RemoteException {
-            mStatusCallback = c;
-            return TestImsServiceControllerAdapter.this.createEmergencyMMTelFeature(slotId);
+        public void setListener(IImsServiceControllerListener l) {
         }
 
         @Override
-        public IImsMMTelFeature createMMTelFeature(int slotId, IImsFeatureStatusCallback c)
-                throws RemoteException {
-            mStatusCallback = c;
+        public IImsMmTelFeature createMmTelFeature(int slotId, IImsFeatureStatusCallback c) {
             return TestImsServiceControllerAdapter.this.createMMTelFeature(slotId);
         }
 
         @Override
-        public IImsRcsFeature createRcsFeature(int slotId, IImsFeatureStatusCallback c)
-                throws RemoteException {
-            mStatusCallback = c;
+        public IImsRcsFeature createRcsFeature(int slotId, IImsFeatureStatusCallback c) {
             return TestImsServiceControllerAdapter.this.createRcsFeature(slotId);
         }
 
         @Override
-        public void removeImsFeature(int slotId, int feature, IImsFeatureStatusCallback c)
+        public void removeImsFeature(int slotId, int featureType, IImsFeatureStatusCallback c)
                 throws RemoteException {
-            TestImsServiceControllerAdapter.this.removeImsFeature(slotId, feature);
+            TestImsServiceControllerAdapter.this.removeImsFeature(slotId, featureType);
         }
 
         @Override
-        public IImsRegistration getRegistration(int i) throws RemoteException {
+        public ImsFeatureConfiguration querySupportedImsFeatures() {
             return null;
+        }
+
+        @Override
+        public void notifyImsServiceReadyForFeatureCreation() {
+        }
+
+        @Override
+        public void notifyImsFeatureReady(int slotId, int featureType)
+                throws RemoteException {
+        }
+
+        @Override
+        public IImsConfig getConfig(int slotId) throws RemoteException {
+            return new ImsConfigImplBase().getIImsConfig();
+        }
+
+        @Override
+        public IImsRegistration getRegistration(int slotId) throws RemoteException {
+            return new ImsRegistrationImplBase().getBinder();
+        }
+
+        @Override
+        public void enableIms(int slotId) {
+        }
+
+        @Override
+        public void disableIms(int slotId) {
+
         }
 
     }
@@ -81,12 +107,7 @@ public class TestImsServiceControllerAdapter {
     }
 
     // Used by Mockito for verification that this method is being called in spy
-    public IImsMMTelFeature createEmergencyMMTelFeature(int slotId) {
-        return null;
-    }
-
-    // Used by Mockito for verification that this method is being called in spy
-    public IImsMMTelFeature createMMTelFeature(int slotId) {
+    public IImsMmTelFeature createMMTelFeature(int slotId) {
         return null;
     }
 

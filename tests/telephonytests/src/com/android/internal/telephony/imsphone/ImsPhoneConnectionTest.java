@@ -23,10 +23,10 @@ import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.ims.ImsCallProfile;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.ims.ImsCallProfile;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaCall;
@@ -159,10 +159,10 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertEquals(PhoneConstants.PRESENTATION_UNKNOWN, mConnectionUT.getNumberPresentation());
         assertEquals(PhoneConstants.PRESENTATION_UNKNOWN, mConnectionUT.getCnapNamePresentation());
-        doReturn(ImsCallProfile.OIR_PRESENTATION_PAYPHONE).when(mImsCallProfile)
-                .getCallExtraInt(eq(ImsCallProfile.EXTRA_CNAP));
-        doReturn(ImsCallProfile.OIR_PRESENTATION_NOT_RESTRICTED).when(mImsCallProfile)
-                .getCallExtraInt(eq(ImsCallProfile.EXTRA_OIR));
+        mImsCallProfile.setCallExtraInt(ImsCallProfile.EXTRA_CNAP,
+                ImsCallProfile.OIR_PRESENTATION_PAYPHONE);
+        mImsCallProfile.setCallExtraInt(ImsCallProfile.EXTRA_OIR,
+                ImsCallProfile.OIR_PRESENTATION_NOT_RESTRICTED);
 
         mConnectionUT.updateAddressDisplay(mImsCall);
         assertEquals(ImsCallProfile.OIRToPresentation(ImsCallProfile.OIR_PRESENTATION_PAYPHONE),
@@ -287,8 +287,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
             mConnectionUT = new ImsPhoneConnection(mImsPhone, testAddress[0], mImsCT,
                     mForeGroundCall, false);
             mConnectionUT.setIsIncoming(true);
-            doReturn(testAddress[1]).when(mImsCallProfile)
-                    .getCallExtra(eq(ImsCallProfile.EXTRA_OI));
+            mImsCallProfile.setCallExtra(ImsCallProfile.EXTRA_OI, testAddress[1]);
             mConnectionUT.updateAddressDisplay(mImsCall);
             assertEquals(testAddress[2], mConnectionUT.getAddress());
         }
@@ -306,8 +305,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, inputAddress, mImsCT, mForeGroundCall,
                 false);
         mConnectionUT.setIsIncoming(false);
-        doReturn(updateAddress).when(mImsCallProfile)
-                .getCallExtra(eq(ImsCallProfile.EXTRA_OI));
+        mImsCallProfile.setCallExtra(ImsCallProfile.EXTRA_OI, updateAddress);
         mConnectionUT.updateAddressDisplay(mImsCall);
         assertEquals(inputAddress, mConnectionUT.getAddress());
     }

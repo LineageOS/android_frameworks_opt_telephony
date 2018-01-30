@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-package android.telephony.ims.internal;
+package android.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import android.os.RemoteException;
 import android.support.test.runner.AndroidJUnit4;
-import android.telephony.ims.internal.aidl.IImsMmTelFeature;
-import android.telephony.ims.internal.feature.ImsFeature;
-import android.telephony.ims.internal.feature.MmTelFeature;
+import android.telephony.ims.aidl.IImsMmTelFeature;
+import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsCallSessionImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.internal.IImsCallSession;
-import com.android.ims.internal.ImsCallSession;
 
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +46,7 @@ public class MmTelFeatureTests {
     private static final int TEST_CAPABILITY = 1;
     private static final int TEST_RADIO_TECH = 0;
 
-    private TestMmTelFeature mFeature;
+    private android.telephony.ims.TestMmTelFeature mFeature;
     private IImsMmTelFeature mFeatureBinder;
     private ImsFeature.CapabilityCallback mCapabilityCallback;
     private MmTelFeature.Listener mListener;
@@ -81,12 +82,13 @@ public class MmTelFeatureTests {
     @Test
     public void testNewIncomingCall() throws Exception {
         IImsCallSession sessionBinder = Mockito.mock(IImsCallSession.class);
-        ImsCallSession session = new ImsCallSession(sessionBinder);
+        ImsCallSessionImplBase session = new ImsCallSessionImplBase();
+        session.setServiceImpl(sessionBinder);
 
         mFeature.incomingCall(session);
-        ArgumentCaptor<ImsCallSession> captor = ArgumentCaptor.forClass(ImsCallSession.class);
-        verify(mListener).onIncomingCall(captor.capture());
+        ArgumentCaptor<IImsCallSession> captor = ArgumentCaptor.forClass(IImsCallSession.class);
+        verify(mListener).onIncomingCall(captor.capture(), any());
 
-        assertEquals(sessionBinder, captor.getValue().getSession());
+        assertEquals(sessionBinder, captor.getValue());
     }
 }

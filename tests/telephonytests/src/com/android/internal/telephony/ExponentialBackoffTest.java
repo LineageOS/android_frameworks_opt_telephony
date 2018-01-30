@@ -17,8 +17,10 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.spy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.Handler;
@@ -31,7 +33,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
+import org.mockito.Mock;
 @RunWith(AndroidJUnit4.class)
 public class ExponentialBackoffTest extends ImsTestBase {
 
@@ -40,20 +42,23 @@ public class ExponentialBackoffTest extends ImsTestBase {
     private static final int MULTIPLIER = 2;
 
     private ExponentialBackoff mBackoffUnderTest;
-    private Handler mHandler = spy(new Handler(Looper.getMainLooper()));
-    private Runnable mRunnable = spy(new MyRunnable());
-
-    public class MyRunnable implements Runnable {
-        @Override
-        public void run() {
-            // do nothing
-        }
-    }
+    private Handler mHandler = new Handler(Looper.getMainLooper());
+    @Mock private Runnable mRunnable;
+    @Mock private ExponentialBackoff.HandlerAdapter mHandlerAdapter;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        super.setUp();
         mBackoffUnderTest = new ExponentialBackoff(
                 START_DELAY_MS, MAXIMUM_DELAY_MS, MULTIPLIER, mHandler, mRunnable);
+        mBackoffUnderTest.setHandlerAdapter(mHandlerAdapter);
+        doAnswer(invocation -> mHandler.postDelayed((Runnable) invocation.getArguments()[0],
+                        (long) invocation.getArguments()[1])
+        ).when(mHandlerAdapter).postDelayed(any(Runnable.class), anyLong());
+        doAnswer(invocation -> {
+            mHandler.removeCallbacks((Runnable) invocation.getArguments()[0]);
+            return null;
+        }).when(mHandlerAdapter).removeCallbacks(any(Runnable.class));
     }
 
     @After
@@ -74,10 +79,10 @@ public class ExponentialBackoffTest extends ImsTestBase {
     @Test
     public void testStopBackoff() {
         mBackoffUnderTest.start();
-        reset(mHandler);
 
         mBackoffUnderTest.stop();
-        verify(mHandler).removeCallbacks(mRunnable);
+        // removeCallbacks is called during start() and stop()
+        verify(mHandlerAdapter, times(2)).removeCallbacks(mRunnable);
     }
 
     @Test
