@@ -35,6 +35,7 @@ import android.view.WindowManager;
 import com.android.internal.R;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.CommandsInterface.RadioState;
+import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 
 import java.io.FileDescriptor;
@@ -59,7 +60,9 @@ public class UiccSlot extends Handler {
     private RadioState mLastRadioState = RadioState.RADIO_UNAVAILABLE;
     private boolean mIsEuicc;
     private String mIccId;
+    private Integer mPhoneId = null;
 
+    // todo: remove if this is not needed
     private RegistrantList mAbsentRegistrants = new RegistrantList();
 
     private static final int EVENT_CARD_REMOVED = 13;
@@ -81,6 +84,7 @@ public class UiccSlot extends Handler {
         synchronized (mLock) {
             CardState oldState = mCardState;
             mCardState = ics.mCardState;
+            mPhoneId = phoneId;
             parseAtr(ics.atr);
             mCi = ci;
 
@@ -98,7 +102,8 @@ public class UiccSlot extends Handler {
                     sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
                 }
 
-                // todo: broadcast sim state changed for absent/unknown when IccCardProxy is removed
+                UiccProfile.broadcastInternalIccStateChangedIntent(
+                        IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, mPhoneId);
 
                 // no card present in the slot now; dispose card and make mUiccCard null
                 mUiccCard.dispose();
@@ -118,7 +123,7 @@ public class UiccSlot extends Handler {
                 }
 
                 if (!mIsEuicc) {
-                    mUiccCard = new UiccCard(mContext, mCi, ics, phoneId);
+                    mUiccCard = new UiccCard(mContext, mCi, ics, mPhoneId);
                 } else {
                     // todo: initialize new EuiccCard object here
                     //mUiccCard = new EuiccCard();
@@ -144,6 +149,9 @@ public class UiccSlot extends Handler {
                     mActive = false;
                     // treat as radio state unavailable
                     onRadioStateUnavailable();
+                    // set mPhoneId to null only after sim state changed broadcast is sent as it
+                    // needs the phoneId. The broadcast is sent from onRadioStateUnavailable()
+                    mPhoneId = null;
                 }
                 parseAtr(iss.atr);
                 mCardState = iss.cardState;
@@ -304,7 +312,10 @@ public class UiccSlot extends Handler {
         }
         mUiccCard = null;
 
-        // todo: broadcast sim state changed for absent/unknown when IccCardProxy is removed
+        if (mPhoneId != null) {
+            UiccProfile.broadcastInternalIccStateChangedIntent(
+                    IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null, mPhoneId);
+        }
 
         mCardState = CardState.CARDSTATE_ABSENT;
         mLastRadioState = RadioState.RADIO_UNAVAILABLE;
