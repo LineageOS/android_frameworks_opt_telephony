@@ -428,6 +428,7 @@ public class ImsPhoneConnection extends Connection implements
             mDisconnected = true;
 
             mOwner.mPhone.notifyDisconnect(this);
+            notifyDisconnect(mCause);
 
             if (mParent != null) {
                 changed = mParent.connectionDisconnected(this);
