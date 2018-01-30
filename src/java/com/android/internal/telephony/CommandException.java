@@ -259,6 +259,8 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.DEVICE_IN_USE);
             case RILConstants.ABORTED:
                 return new CommandException(Error.ABORTED);
+            case RILConstants.INVALID_RESPONSE:
+                return new CommandException(Error.INVALID_RESPONSE);
             case RILConstants.OEM_ERROR_1:
                 return new CommandException(Error.OEM_ERROR_1);
             case RILConstants.OEM_ERROR_2:

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.test;
 
+import android.net.KeepalivePacketData;
 import android.os.Handler;
 import android.os.Message;
 import android.service.carrier.CarrierIdentifier;
@@ -1405,5 +1406,22 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
 
     @Override
     public void unregisterForCarrierInfoForImsiEncryption(Handler h) {
+    }
+
+    @Override
+    public void registerForNattKeepaliveStatus(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForNattKeepaliveStatus(Handler h) {
+    }
+
+    @Override
+    public void startNattKeepalive(
+            int contextId, KeepalivePacketData packetData, int intervalMillis, Message result) {
+    }
+
+    @Override
+    public void stopNattKeepalive(int sessionHandle, Message result)  {
     }
 }
