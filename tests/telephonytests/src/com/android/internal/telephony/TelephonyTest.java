@@ -210,7 +210,7 @@ public abstract class TelephonyTest {
     private Object mLock = new Object();
     private boolean mReady;
     protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
-    private Phone[] mPhones = new Phone[] {mPhone};
+    private Phone[] mPhones;
 
 
     protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
@@ -309,6 +309,7 @@ public abstract class TelephonyTest {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
 
+        mPhones = new Phone[] {mPhone};
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();
@@ -461,6 +462,7 @@ public abstract class TelephonyTest {
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
+        doReturn(1).when(mTelephonyManager).getPhoneCount();
 
         //Data
         //Initial state is: userData enabled, provisioned.
