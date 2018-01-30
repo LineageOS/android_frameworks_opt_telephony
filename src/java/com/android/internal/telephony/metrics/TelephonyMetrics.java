@@ -77,6 +77,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetu
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse
         .RilDataCallFailCause;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyLog;
+import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
@@ -413,6 +414,21 @@ public class TelephonyMetrics {
         }
 
         pw.decreaseIndent();
+        pw.println("Modem power stats:");
+        pw.increaseIndent();
+        ModemPowerStats s = new ModemPowerMetrics().buildProto();
+        pw.println("Power log duration (battery time) (ms): " + s.loggingDurationMs);
+        pw.println("Energy consumed by modem (mAh): " + s.energyConsumedMah);
+        pw.println("Number of packets sent (tx): " + s.numPacketsTx);
+        pw.println("Amount of time kernel is active because of cellular data (ms): " +
+            s.cellularKernelActiveTimeMs);
+        pw.println("Amount of time spent in very poor rx signal level (ms): " +
+            s.timeInVeryPoorRxSignalLevelMs);
+        pw.println("Amount of time modem is in sleep (ms): " + s.sleepTimeMs);
+        pw.println("Amount of time modem is in idle (ms): " + s.idleTimeMs);
+        pw.println("Amount of time modem is in rx (ms): " + s.rxTimeMs);
+        pw.println("Amount of time modem is in tx (ms): " + Arrays.toString(s.txTimeMs));
+        pw.decreaseIndent();
     }
 
     /**
@@ -505,6 +521,9 @@ public class TelephonyMetrics {
             histogramProto.bucketEndPoints = rilHistogram.getBucketEndPoints();
             histogramProto.bucketCounters = rilHistogram.getBucketCounters();
         }
+
+        // Build modem power metrics
+        log.modemPowerStats = new ModemPowerMetrics().buildProto();
 
         // Log the starting system time
         log.startTime = new TelephonyProto.Time();
