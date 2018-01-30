@@ -53,6 +53,7 @@ import android.hardware.radio.V1_0.SimApdu;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
 import android.net.ConnectivityManager;
+import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
@@ -106,6 +107,7 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3759,6 +3761,93 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void startNattKeepalive(
+            int contextId, KeepalivePacketData packetData, int intervalMillis, Message result) {
+        checkNotNull(packetData, "KeepaliveRequest cannot be null.");
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy == null) {
+            riljLoge("Radio Proxy object is null!");
+            return;
+        }
+
+        android.hardware.radio.V1_1.IRadio radioProxy11 =
+                android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
+        if (radioProxy11 == null) {
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+            return;
+        }
+
+        RILRequest rr = obtainRequest(
+                RIL_REQUEST_START_KEEPALIVE, result, mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        try {
+            android.hardware.radio.V1_1.KeepaliveRequest req =
+                    new android.hardware.radio.V1_1.KeepaliveRequest();
+
+            req.cid = contextId;
+
+            if (packetData.dstAddress instanceof Inet4Address) {
+                req.type = android.hardware.radio.V1_1.KeepaliveType.NATT_IPV4;
+            } else if (packetData.dstAddress instanceof Inet6Address) {
+                req.type = android.hardware.radio.V1_1.KeepaliveType.NATT_IPV6;
+            } else {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(INVALID_ARGUMENTS));
+                result.sendToTarget();
+                return;
+            }
+
+            appendPrimitiveArrayToArrayList(
+                    packetData.srcAddress.getAddress(), req.sourceAddress);
+            req.sourcePort = packetData.srcPort;
+            appendPrimitiveArrayToArrayList(
+                    packetData.dstAddress.getAddress(), req.destinationAddress);
+            req.destinationPort = packetData.dstPort;
+
+            radioProxy11.startKeepalive(rr.mSerial, req);
+        } catch (RemoteException | RuntimeException e) {
+            handleRadioProxyExceptionForRR(rr, "startNattKeepalive", e);
+        }
+    }
+
+    @Override
+    public void stopNattKeepalive(int sessionHandle, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy == null) {
+            Rlog.e(RIL.RILJ_LOG_TAG, "Radio Proxy object is null!");
+            return;
+        }
+
+        android.hardware.radio.V1_1.IRadio radioProxy11 =
+                android.hardware.radio.V1_1.IRadio.castFrom(radioProxy);
+        if (radioProxy11 == null) {
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+            return;
+        }
+
+        RILRequest rr = obtainRequest(
+                RIL_REQUEST_STOP_KEEPALIVE, result, mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        try {
+            radioProxy11.stopKeepalive(rr.mSerial, sessionHandle);
+        } catch (RemoteException | RuntimeException e) {
+            handleRadioProxyExceptionForRR(rr, "stopNattKeepalive", e);
+        }
+    }
+
+    @Override
     public void getIMEI(Message result) {
         throw new RuntimeException("getIMEI not expected to be called");
     }
@@ -4687,6 +4776,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_GET_SLOT_STATUS";
             case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
                 return "RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING";
+            case RIL_REQUEST_START_KEEPALIVE:
+                return "RIL_REQUEST_START_KEEPALIVE";
+            case RIL_REQUEST_STOP_KEEPALIVE:
+                return "RIL_REQUEST_STOP_KEEPALIVE";
             default: return "<unknown request>";
         }
     }
@@ -4791,6 +4884,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_UNSOL_NETWORK_SCAN_RESULT";
             case RIL_UNSOL_ICC_SLOT_STATUS:
                 return "RIL_UNSOL_ICC_SLOT_STATUS";
+            case RIL_UNSOL_KEEPALIVE_STATUS:
+                return "RIL_UNSOL_KEEPALIVE_STATUS";
             default:
                 return "<unknown response>";
         }
@@ -4871,6 +4966,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return mClientWakelockTracker.getClientRequestStats();
     }
 
+    /** Append the data to the end of an ArrayList */
+    public static void appendPrimitiveArrayToArrayList(byte[] src, ArrayList<Byte> dst) {
+        for (byte b : src) {
+            dst.add(b);
+        }
+    }
+
     public static ArrayList<Byte> primitiveArrayToArrayList(byte[] arr) {
         ArrayList<Byte> arrayList = new ArrayList<>(arr.length);
         for (byte b : arr) {
@@ -4879,6 +4981,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return arrayList;
     }
 
+    /** Convert an ArrayList of Bytes to an exactly-sized primitive array */
     public static byte[] arrayListToPrimitiveArray(ArrayList<Byte> bytes) {
         byte[] ret = new byte[bytes.size()];
         for (int i = 0; i < ret.length; i++) {

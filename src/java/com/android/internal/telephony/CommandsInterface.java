@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.net.KeepalivePacketData;
 import android.os.Handler;
 import android.os.Message;
 import android.os.WorkSource;
@@ -2073,7 +2074,7 @@ public interface CommandsInterface {
      * Register for unsolicited PCO data.  This information is carrier-specific,
      * opaque binary blobs destined for carrier apps for interpretation.
      *
-     * @param h Handler for notificaiton message.
+     * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
@@ -2133,7 +2134,7 @@ public interface CommandsInterface {
     /**
      * Register for unsolicited Carrier Public Key.
      *
-     * @param h Handler for notificaiton message.
+     * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
@@ -2142,14 +2143,14 @@ public interface CommandsInterface {
     /**
      * DeRegister for unsolicited Carrier Public Key.
      *
-     * @param h Handler for notificaiton message.
+     * @param h Handler for notification message.
      */
     void unregisterForCarrierInfoForImsiEncryption(Handler h);
 
     /**
      * Register for unsolicited Network Scan result.
      *
-     * @param h Handler for notificaiton message.
+     * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
@@ -2158,9 +2159,44 @@ public interface CommandsInterface {
     /**
      * DeRegister for unsolicited Network Scan result.
      *
-     * @param h Handler for notificaiton message.
+     * @param h Handler for notification message.
      */
     void unregisterForNetworkScanResult(Handler h);
+
+    /**
+     * Register for unsolicited NATT Keepalive Status Indications
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForNattKeepaliveStatus(Handler h, int what, Object obj);
+
+    /**
+     * Deregister for unsolicited NATT Keepalive Status Indications.
+     *
+     * @param h Handler for notification message.
+     */
+    void unregisterForNattKeepaliveStatus(Handler h);
+
+    /**
+     * Start sending NATT Keepalive packets on a specified data connection
+     *
+     * @param contextId cid that identifies the data connection for this keepalive
+     * @param packetData the keepalive packet data description
+     * @param intervalMillis a time interval in ms between keepalive packet transmissions
+     * @param result a Message to return to the requester
+     */
+    void startNattKeepalive(
+            int contextId, KeepalivePacketData packetData, int intervalMillis, Message result);
+
+    /**
+     * Stop sending NATT Keepalive packets on a specified data connection
+     *
+     * @param sessionHandle the keepalive session handle (from the modem) to stop
+     * @param result a Message to return to the requester
+     */
+    void stopNattKeepalive(int sessionHandle, Message result);
 
     default public List<ClientRequestStats> getClientRequestStats() {
         return null;
