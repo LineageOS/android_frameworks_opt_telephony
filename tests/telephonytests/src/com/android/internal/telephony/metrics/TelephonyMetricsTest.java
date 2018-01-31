@@ -18,7 +18,6 @@ package com.android.internal.telephony.metrics;
 
 import static android.telephony.ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
 import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
-
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
@@ -28,7 +27,6 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_G
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -40,13 +38,13 @@ import android.net.NetworkUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
+import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
 
-import android.telephony.ims.ImsReasonInfo;
-import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
@@ -537,8 +535,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteRilSetupDataCall() throws Exception {
-        mMetrics.writeRilSetupDataCall(
-                mPhone.getPhoneId(), 1, 14, 3, "apn", 0, "IPV4V6");
+        mMetrics.writeSetupDataCall(
+                mPhone.getPhoneId(), 14, 3, "apn", "IPV4V6");
 
         TelephonyLog log = buildProto();
 
