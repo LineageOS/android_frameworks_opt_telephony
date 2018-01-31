@@ -145,8 +145,15 @@ public class UiccController extends Handler {
             log("config_num_physical_slots = " + c.getResources().getInteger(
                     com.android.internal.R.integer.config_num_physical_slots));
         }
-        mUiccSlots = new UiccSlot[c.getResources().getInteger(
-                com.android.internal.R.integer.config_num_physical_slots)];
+        int numPhysicalSlots = c.getResources().getInteger(
+                com.android.internal.R.integer.config_num_physical_slots);
+        // Minimum number of physical slot count should be equals to or greater than phone count,
+        // if it is less than phone count use phone count as physical slot count.
+        if (numPhysicalSlots < mCis.length) {
+            numPhysicalSlots = mCis.length;
+        }
+
+        mUiccSlots = new UiccSlot[numPhysicalSlots];
         mPhoneIdToSlotId = new int[ci.length];
         Arrays.fill(mPhoneIdToSlotId, INVALID_SLOT_ID);
         if (VDBG) logPhoneIdToSlotIdMapping();
