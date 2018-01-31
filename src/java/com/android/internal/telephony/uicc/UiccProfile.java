@@ -222,56 +222,15 @@ public class UiccProfile extends Handler implements IccCard {
             return;
         }
         switch (msg.what) {
-            case EVENT_RADIO_OFF_OR_UNAVAILABLE:
-                updateExternalState();
-                break;
-
-            case EVENT_ICC_LOCKED:
-                processLockedState();
-                break;
-
-            case EVENT_APP_READY:
-                if (VDBG) log("EVENT_APP_READY");
-                if (areAllApplicationsReady()) {
-                    if (areAllRecordsLoaded() && areCarrierPriviligeRulesLoaded()) {
-                        setExternalState(IccCardConstants.State.LOADED);
-                    } else {
-                        setExternalState(IccCardConstants.State.READY);
-                    }
-                }
-                break;
-
-            case EVENT_RECORDS_LOADED:
-                if (VDBG) log("EVENT_RECORDS_LOADED");
-                if (!areAllRecordsLoaded()) {
-                    break;
-                }
-                // Update the MCC/MNC.
-                if (mIccRecords != null) {
-                    String operator = mIccRecords.getOperatorNumeric();
-                    log("operator=" + operator + " mPhoneId=" + mPhoneId);
-
-                    if (!TextUtils.isEmpty(operator)) {
-                        mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, operator);
-                        String countryCode = operator.substring(0, 3);
-                        if (countryCode != null) {
-                            mTelephonyManager.setSimCountryIsoForPhone(mPhoneId,
-                                    MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
-                        } else {
-                            loge("EVENT_RECORDS_LOADED Country code is null");
-                        }
-                    } else {
-                        loge("EVENT_RECORDS_LOADED Operator name is null");
-                    }
-                }
-                if (areCarrierPriviligeRulesLoaded()) {
-                    setExternalState(IccCardConstants.State.LOADED);
-                }
-                break;
-
             case EVENT_NETWORK_LOCKED:
                 mNetworkLockedRegistrants.notifyRegistrants();
-                setExternalState(IccCardConstants.State.NETWORK_LOCKED);
+                // intentional fall through
+            case EVENT_RADIO_OFF_OR_UNAVAILABLE:
+            case EVENT_ICC_LOCKED:
+            case EVENT_APP_READY:
+            case EVENT_RECORDS_LOADED:
+                if (VDBG) log("handleMessage: Received " + msg.what);
+                updateExternalState();
                 break;
 
             case EVENT_ICC_RECORD_EVENTS:
@@ -288,9 +247,7 @@ public class UiccProfile extends Handler implements IccCard {
             case EVENT_CARRIER_PRIVILEGES_LOADED:
                 if (VDBG) log("EVENT_CARRIER_PRIVILEGES_LOADED");
                 onCarrierPriviligesLoadedMessage();
-                if (areAllRecordsLoaded()) {
-                    setExternalState(IccCardConstants.State.LOADED);
-                }
+                updateExternalState();
                 break;
 
             case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
@@ -348,7 +305,7 @@ public class UiccProfile extends Handler implements IccCard {
     }
 
     private void updateExternalState() {
-
+        // First check if card state is IO_ERROR or RESTRICTED
         if (mUiccCard.getCardState() == IccCardStatus.CardState.CARDSTATE_ERROR) {
             setExternalState(IccCardConstants.State.CARD_IO_ERROR);
             return;
@@ -359,13 +316,65 @@ public class UiccProfile extends Handler implements IccCard {
             return;
         }
 
-        if (mUiccApplication == null || !areAllApplicationsReady()) {
+        // By process of elimination, the UICC Card State = PRESENT and state needs to be decided
+        // based on apps
+        if (mUiccApplication == null) {
+            loge("updateExternalState: setting state to NOT_READY because mUiccApplication is "
+                    + "null");
             setExternalState(IccCardConstants.State.NOT_READY);
             return;
         }
 
-        // By process of elimination, the UICC Card State = PRESENT
-        switch (mUiccApplication.getState()) {
+        // Check if SIM is locked
+        boolean cardLocked = false;
+        IccCardConstants.State lockedState = null;
+        IccCardApplicationStatus.AppState appState = mUiccApplication.getState();
+
+        PinState pin1State = mUiccApplication.getPin1State();
+        if (pin1State == PinState.PINSTATE_ENABLED_PERM_BLOCKED) {
+            if (VDBG) log("updateExternalState: PERM_DISABLED");
+            cardLocked = true;
+            lockedState = IccCardConstants.State.PERM_DISABLED;
+        } else {
+            if (appState == IccCardApplicationStatus.AppState.APPSTATE_PIN) {
+                if (VDBG) log("updateExternalState: PIN_REQUIRED");
+                cardLocked = true;
+                lockedState = IccCardConstants.State.PIN_REQUIRED;
+            } else if (appState == IccCardApplicationStatus.AppState.APPSTATE_PUK) {
+                if (VDBG) log("updateExternalState: PUK_REQUIRED");
+                cardLocked = true;
+                lockedState = IccCardConstants.State.PUK_REQUIRED;
+            } else if (appState == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) {
+                if (mUiccApplication.getPersoSubState()
+                        == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
+                    if (VDBG) log("updateExternalState: PERSOSUBSTATE_SIM_NETWORK");
+                    cardLocked = true;
+                    lockedState = IccCardConstants.State.NETWORK_LOCKED;
+                }
+            }
+        }
+
+        // If SIM is locked, broadcast state as NOT_READY/LOCKED depending on if records are loaded
+        if (cardLocked) {
+            if (mIccRecords != null && (mIccRecords.getLockedRecordsLoaded()
+                    || mIccRecords.getNetworkLockedRecordsLoaded())) { // locked records loaded
+                if (VDBG) {
+                    log("updateExternalState: card locked and records loaded; "
+                            + "setting state to locked");
+                }
+                setExternalState(lockedState);
+            } else {
+                if (VDBG) {
+                    log("updateExternalState: card locked but records not loaded; "
+                            + "setting state to NOT_READY");
+                }
+                setExternalState(IccCardConstants.State.NOT_READY);
+            }
+            return;
+        }
+
+        // Check for remaining app states
+        switch (appState) {
             case APPSTATE_UNKNOWN:
                 /*
                  * APPSTATE_UNKNOWN is a catch-all state reported whenever the app
@@ -377,23 +386,29 @@ public class UiccProfile extends Handler implements IccCard {
                  * 2) There is no valid App on the SIM to load, which can be the case with an
                  *    eSIM/soft SIM.
                  */
-                setExternalState(IccCardConstants.State.NOT_READY);
-                break;
-            case APPSTATE_SUBSCRIPTION_PERSO:
-                if (mUiccApplication.getPersoSubState()
-                        == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
-                    setExternalState(IccCardConstants.State.NETWORK_LOCKED);
+                if (VDBG) {
+                    log("updateExternalState: app state is unknown; setting state to NOT_READY");
                 }
-                // Otherwise don't change external SIM state.
+                setExternalState(IccCardConstants.State.NOT_READY);
                 break;
             case APPSTATE_READY:
                 if (areAllApplicationsReady()) {
                     if (areAllRecordsLoaded() && areCarrierPriviligeRulesLoaded()) {
+                        if (VDBG) log("updateExternalState: setting state to LOADED");
                         setExternalState(IccCardConstants.State.LOADED);
                     } else {
+                        if (VDBG) {
+                            log("updateExternalState: setting state to READY; records loaded "
+                                    + areAllRecordsLoaded() + ", carrier privilige rules loaded "
+                                    + areCarrierPriviligeRulesLoaded());
+                        }
                         setExternalState(IccCardConstants.State.READY);
                     }
                 } else {
+                    if (VDBG) {
+                        log("updateExternalState: app state is READY but not for all apps; "
+                                + "setting state to NOT_READY");
+                    }
                     setExternalState(IccCardConstants.State.NOT_READY);
                 }
                 break;
@@ -444,19 +459,17 @@ public class UiccProfile extends Handler implements IccCard {
         }
     }
 
-    private void broadcastInternalIccStateChangedIntent(String value, String reason) {
-        synchronized (mLock) {
-            Intent intent = new Intent(ACTION_INTERNAL_SIM_STATE_CHANGED);
-            intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
-                    | Intent.FLAG_RECEIVER_FOREGROUND);
-            intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
-            intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
-            intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
-            intent.putExtra(PhoneConstants.PHONE_KEY, mPhoneId);  // SubId may not be valid.
-            log("Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
-                    + " for mPhoneId : " + mPhoneId);
-            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
-        }
+    static void broadcastInternalIccStateChangedIntent(String value, String reason, int phoneId) {
+        Intent intent = new Intent(ACTION_INTERNAL_SIM_STATE_CHANGED);
+        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
+                | Intent.FLAG_RECEIVER_FOREGROUND);
+        intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
+        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
+        intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
+        intent.putExtra(PhoneConstants.PHONE_KEY, phoneId);  // SubId may not be valid.
+        log("Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
+                + " for mPhoneId : " + phoneId);
+        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
     }
 
     private void setExternalState(IccCardConstants.State newState, boolean override) {
@@ -471,41 +484,31 @@ public class UiccProfile extends Handler implements IccCard {
                 return;
             }
             mExternalState = newState;
+            if (mExternalState == IccCardConstants.State.LOADED) {
+                // Update the MCC/MNC.
+                if (mIccRecords != null) {
+                    String operator = mIccRecords.getOperatorNumeric();
+                    log("operator=" + operator + " mPhoneId=" + mPhoneId);
+
+                    if (!TextUtils.isEmpty(operator)) {
+                        mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, operator);
+                        String countryCode = operator.substring(0, 3);
+                        if (countryCode != null) {
+                            mTelephonyManager.setSimCountryIsoForPhone(mPhoneId,
+                                    MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
+                        } else {
+                            loge("EVENT_RECORDS_LOADED Country code is null");
+                        }
+                    } else {
+                        loge("EVENT_RECORDS_LOADED Operator name is null");
+                    }
+                }
+            }
             log("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
             mTelephonyManager.setSimStateForPhone(mPhoneId, getState().toString());
 
             broadcastInternalIccStateChangedIntent(getIccStateIntentString(mExternalState),
-                    getIccStateReason(mExternalState));
-        }
-    }
-
-    private void processLockedState() {
-        synchronized (mLock) {
-            if (mUiccApplication == null) {
-                //Don't need to do anything if non-existent application is locked
-                return;
-            }
-            PinState pin1State = mUiccApplication.getPin1State();
-            if (pin1State == PinState.PINSTATE_ENABLED_PERM_BLOCKED) {
-                setExternalState(IccCardConstants.State.PERM_DISABLED);
-                return;
-            }
-
-            IccCardApplicationStatus.AppState appState = mUiccApplication.getState();
-            switch (appState) {
-                case APPSTATE_PIN:
-                    setExternalState(IccCardConstants.State.PIN_REQUIRED);
-                    break;
-                case APPSTATE_PUK:
-                    setExternalState(IccCardConstants.State.PUK_REQUIRED);
-                    break;
-                case APPSTATE_DETECTED:
-                case APPSTATE_READY:
-                case APPSTATE_SUBSCRIPTION_PERSO:
-                case APPSTATE_UNKNOWN:
-                    // Neither required
-                    break;
-            }
+                    getIccStateReason(mExternalState), mPhoneId);
         }
     }
 
@@ -1361,7 +1364,7 @@ public class UiccProfile extends Handler implements IccCard {
         return null;
     }
 
-    private void log(String msg) {
+    private static void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
 

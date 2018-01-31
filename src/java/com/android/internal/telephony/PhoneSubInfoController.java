@@ -458,18 +458,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         }
     }
 
-    public String getIsimChallengeResponse(String nonce) throws RemoteException {
-        Phone phone = getPhone(getDefaultSubscription());
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-        IsimRecords isim = phone.getIsimRecords();
-        if (isim != null) {
-            return isim.getIsimChallengeResponse(nonce);
-        } else {
-            return null;
-        }
-    }
-
     public String getIccSimChallengeResponse(int subId, int appType, int authType, String data)
             throws RemoteException {
         Phone phone = getPhone(subId);

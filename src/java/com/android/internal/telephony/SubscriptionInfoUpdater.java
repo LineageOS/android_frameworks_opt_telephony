@@ -37,6 +37,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.provider.Settings.Global;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
@@ -447,13 +448,21 @@ public class SubscriptionInfoUpdater extends Handler {
                 int storedSubId = sp.getInt(CURR_SUBID + slotId, -1);
 
                 if (storedSubId != subId) {
-                    int networkType = RILConstants.PREFERRED_NETWORK_MODE;
+                    int networkType = Settings.Global.getInt(
+                            mPhone[slotId].getContext().getContentResolver(),
+                            Settings.Global.PREFERRED_NETWORK_MODE + subId,
+                            -1 /* invalid network mode */);
+
+                    if (networkType == -1) {
+                        networkType = RILConstants.PREFERRED_NETWORK_MODE;
+                        Settings.Global.putInt(
+                                mPhone[slotId].getContext().getContentResolver(),
+                                Global.PREFERRED_NETWORK_MODE + subId,
+                                networkType);
+                    }
 
                     // Set the modem network mode
                     mPhone[slotId].setPreferredNetworkType(networkType, null);
-                    Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
-                            Settings.Global.PREFERRED_NETWORK_MODE + subId,
-                            networkType);
 
                     // Only support automatic selection mode on SIM change.
                     mPhone[slotId].getNetworkSelectionMode(

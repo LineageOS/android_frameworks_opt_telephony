@@ -28,7 +28,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsException;
-import com.android.ims.ImsStreamMediaProfile;
+import android.telephony.ims.ImsStreamMediaProfile;
 
 import java.util.List;
 

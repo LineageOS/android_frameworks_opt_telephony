@@ -18,6 +18,7 @@ package com.android.internal.telephony.imsphone;
 
 import android.os.HandlerThread;
 import android.os.ParcelFileDescriptor;
+import android.support.test.filters.FlakyTest;
 import android.telecom.Connection;
 
 import com.android.internal.telephony.TelephonyTest;
@@ -122,6 +123,7 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
      * Test that the text handler sends after enough characters have been sent from in-call
      * @throws Exception
      */
+    @FlakyTest
     @Test
     public void testSendAfterEnoughChars() throws Exception {
         // Register a read notifier

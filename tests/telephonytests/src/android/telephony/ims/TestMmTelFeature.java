@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,17 @@
  * limitations under the License.
  */
 
-package android.telephony.ims.internal;
+package android.telephony.ims;
 
 import android.os.RemoteException;
-import android.telephony.ims.internal.feature.CapabilityChangeRequest;
-import android.telephony.ims.internal.feature.ImsFeature;
-import android.telephony.ims.internal.feature.MmTelFeature;
+import android.telephony.ims.feature.CapabilityChangeRequest;
+import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsCallSessionImplBase;
 import android.telephony.ims.stub.ImsEcbmImplBase;
 import android.telephony.ims.stub.ImsMultiEndpointImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
-
-import com.android.ims.ImsCallProfile;
-import com.android.ims.internal.ImsCallSession;
 
 public class TestMmTelFeature extends MmTelFeature {
 
@@ -35,8 +33,8 @@ public class TestMmTelFeature extends MmTelFeature {
     public CapabilityChangeRequest lastRequest;
     public boolean isUtInterfaceCalled = false;
 
-    public void incomingCall(ImsCallSession c) throws RemoteException {
-        notifyIncomingCall(c);
+    public void incomingCall(ImsCallSessionImplBase c) throws RemoteException {
+        notifyIncomingCall(c, null);
     }
 
     @Override
@@ -45,9 +43,8 @@ public class TestMmTelFeature extends MmTelFeature {
     }
 
     @Override
-    public ImsCallSession createCallSession(ImsCallProfile profile,
-            ImsCallSessionListener listener) {
-        return super.createCallSession(profile, listener);
+    public ImsCallSessionImplBase createCallSession(ImsCallProfile profile) {
+        return super.createCallSession(profile);
     }
 
     @Override

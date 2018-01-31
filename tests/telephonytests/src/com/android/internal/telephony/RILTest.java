@@ -45,7 +45,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_FOR
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_REGISTRATION_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ISIM_AUTHENTICATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_READ_ITEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_RESET_CONFIG;
@@ -624,16 +623,6 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest,
                 mSerialNumberCaptor.getValue(),
                 RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE);
-    }
-
-    @FlakyTest
-    @Test
-    public void testRequestIsimAuthentication() throws Exception {
-        String nonce = "nonce";
-        mRILUnderTest.requestIsimAuthentication(nonce, obtainMessage());
-        verify(mRadioProxy).requestIsimAuthentication(mSerialNumberCaptor.capture(), eq(nonce));
-        verifyRILResponse(
-                mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_ISIM_AUTHENTICATION);
     }
 
     @FlakyTest

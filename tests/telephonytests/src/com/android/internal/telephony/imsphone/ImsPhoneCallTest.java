@@ -26,8 +26,8 @@ import static org.mockito.Mockito.verify;
 
 import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.telephony.ims.ImsStreamMediaProfile;
 
-import com.android.ims.ImsStreamMediaProfile;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.TelephonyTest;
 
@@ -42,7 +42,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
     ImsPhoneConnection mConnection1;
     @Mock
     ImsPhoneConnection mConnection2;
-    @Mock
+
     ImsStreamMediaProfile mMediaProfile;
 
     private ImsPhoneCall mImsCallUT;
@@ -53,6 +53,7 @@ public class ImsPhoneCallTest extends TelephonyTest {
         replaceInstance(ImsPhoneCallTracker.class, "mPhone", mImsCT, mImsPhone);
 
         mImsCallUT = new ImsPhoneCall(mImsCT, ImsPhoneCall.CONTEXT_FOREGROUND);
+        mMediaProfile = new ImsStreamMediaProfile();
     }
 
     @After
