@@ -1190,11 +1190,6 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void requestIsimAuthentication(String nonce, Message response) {
-
-    }
-
-    @Override
     public void requestIccSimAuthentication(int authContext, String data, String aid,
                                             Message response) {
 
