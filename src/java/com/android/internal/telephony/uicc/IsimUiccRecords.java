@@ -404,33 +404,6 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         return (mIsimPcscf != null) ? mIsimPcscf.clone() : null;
     }
 
-    /**
-     * Returns the response of ISIM Authetification through RIL.
-     * Returns null if the Authentification hasn't been successed or isn't present iphonesubinfo.
-     * @return the response of ISIM Authetification, or null if not available
-     */
-    @Override
-    public String getIsimChallengeResponse(String nonce){
-        if (DBG) log("getIsimChallengeResponse-nonce:"+nonce);
-        try {
-            synchronized(mLock) {
-                mCi.requestIsimAuthentication(nonce,obtainMessage(EVENT_ISIM_AUTHENTICATE_DONE));
-                try {
-                    mLock.wait();
-                } catch (InterruptedException e) {
-                    log("interrupted while trying to request Isim Auth");
-                }
-            }
-        } catch(Exception e) {
-            if (DBG) log( "Fail while trying to request Isim Auth");
-            return null;
-        }
-
-        if (DBG) log("getIsimChallengeResponse-auth_rsp"+auth_rsp);
-
-        return auth_rsp;
-    }
-
     @Override
     public int getDisplayRule(ServiceState serviceState) {
         // Not applicable to Isim

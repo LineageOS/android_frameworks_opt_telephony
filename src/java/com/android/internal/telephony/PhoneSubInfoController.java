@@ -26,8 +26,8 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -428,18 +428,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             }
         } else {
             loge("getIsimPcscf phone is null for Subscription:" + subId);
-            return null;
-        }
-    }
-
-    public String getIsimChallengeResponse(String nonce) throws RemoteException {
-        Phone phone = getPhone(getDefaultSubscription());
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-        IsimRecords isim = phone.getIsimRecords();
-        if (isim != null) {
-            return isim.getIsimChallengeResponse(nonce);
-        } else {
             return null;
         }
     }
