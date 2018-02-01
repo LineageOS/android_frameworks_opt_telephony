@@ -20,14 +20,12 @@ import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED;
 import static android.net.NetworkPolicyManager.OVERRIDE_CONGESTED;
 import static android.net.NetworkPolicyManager.OVERRIDE_UNMETERED;
-
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -46,14 +44,15 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.DataService;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
@@ -226,8 +225,8 @@ public class DataConnectionTest extends TelephonyTest {
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), dpCaptor.capture(),
-                eq(false), eq(false), any(Message.class));
+                eq(AccessNetworkType.UTRAN), dpCaptor.capture(), eq(false),
+                eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(), any(Message.class));
 
         assertEquals("spmode.ne.jp", dpCaptor.getValue().getApn());
 
@@ -243,7 +242,7 @@ public class DataConnectionTest extends TelephonyTest {
         waitForMs(100);
 
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(eq(1),
-                eq(RILConstants.DEACTIVATE_REASON_NONE), any(Message.class));
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
 
         assertEquals("DcInactiveState", getCurrentState().getName());
     }

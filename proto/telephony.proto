@@ -876,6 +876,8 @@ message TelephonyEvent {
       DEACTIVATE_REASON_RADIO_OFF = 2;
 
       DEACTIVATE_REASON_PDP_RESET = 3;
+
+      DEACTIVATE_REASON_HANDOVER = 4;
     }
   }
 

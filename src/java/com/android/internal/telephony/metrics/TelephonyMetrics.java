@@ -17,7 +17,6 @@
 package com.android.internal.telephony.metrics;
 
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
-
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
@@ -42,14 +41,15 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataService;
+import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
-import android.telephony.ims.ImsReasonInfo;
-import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
@@ -60,6 +60,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
+import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
@@ -72,12 +73,11 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Carrier
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall.DeactivateReason;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse
-        .RilDataCallFailCause;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse.RilDataCallFailCause;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyLog;
-import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
@@ -1062,19 +1062,17 @@ public class TelephonyMetrics {
      * Write setup data call event
      *
      * @param phoneId Phone id
-     * @param rilSerial RIL request serial number
      * @param radioTechnology The data call RAT
-     * @param profile Data profile
+     * @param profileId Data profile id
      * @param apn APN in string
-     * @param authType Authentication type
      * @param protocol Data connection protocol
      */
-    public void writeRilSetupDataCall(int phoneId, int rilSerial, int radioTechnology, int profile,
-                                      String apn, int authType, String protocol) {
+    public void writeSetupDataCall(int phoneId, int radioTechnology, int profileId, String apn,
+                                   String protocol) {
 
         RilSetupDataCall setupDataCall = new RilSetupDataCall();
         setupDataCall.rat = radioTechnology;
-        setupDataCall.dataProfile = profile + 1;  // off by 1 between proto and RIL constants.
+        setupDataCall.dataProfile = profileId + 1;  // off by 1 between proto and RIL constants.
         if (apn != null) {
             setupDataCall.apn = apn;
         }
@@ -1098,7 +1096,19 @@ public class TelephonyMetrics {
 
         RilDeactivateDataCall deactivateDataCall = new RilDeactivateDataCall();
         deactivateDataCall.cid = cid;
-        deactivateDataCall.reason = reason + 1;
+        switch (reason) {
+            case DataService.REQUEST_REASON_NORMAL:
+                deactivateDataCall.reason = DeactivateReason.DEACTIVATE_REASON_NONE;
+                break;
+            case DataService.REQUEST_REASON_SHUTDOWN:
+                deactivateDataCall.reason = DeactivateReason.DEACTIVATE_REASON_RADIO_OFF;
+                break;
+            case DataService.REQUEST_REASON_HANDOVER:
+                deactivateDataCall.reason = DeactivateReason.DEACTIVATE_REASON_HANDOVER;
+                break;
+            default:
+                deactivateDataCall.reason = DeactivateReason.DEACTIVATE_REASON_UNKNOWN;
+        }
 
         addTelephonyEvent(new TelephonyEventBuilder(phoneId).setDeactivateDataCall(
                 deactivateDataCall).build());
