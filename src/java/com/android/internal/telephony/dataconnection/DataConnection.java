@@ -44,6 +44,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.DataService;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
@@ -61,6 +62,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
@@ -527,7 +529,10 @@ public class DataConnection extends StateMachine {
         boolean allowRoaming = mPhone.getDataRoamingEnabled()
                 || (isModemRoaming && !mPhone.getServiceState().getDataRoaming());
 
-        mPhone.mCi.setupDataCall(cp.mRilRat, dp, isModemRoaming, allowRoaming, msg);
+        mPhone.mCi.setupDataCall(ServiceState.rilRadioTechnologyToAccessNetworkType(cp.mRilRat), dp,
+                isModemRoaming, allowRoaming, DataService.REQUEST_REASON_NORMAL, null, msg);
+        TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
+                dp.getProfileId(), dp.getApn(), dp.getProtocol());
     }
 
     public void onSubscriptionOverride(int overrideMask, int overrideValue) {
@@ -544,15 +549,14 @@ public class DataConnection extends StateMachine {
      * @param o is the object returned in the AsyncResult.obj.
      */
     private void tearDownData(Object o) {
-        int discReason = RILConstants.DEACTIVATE_REASON_NONE;
+        int discReason = DataService.REQUEST_REASON_NORMAL;
         ApnContext apnContext = null;
         if ((o != null) && (o instanceof DisconnectParams)) {
             DisconnectParams dp = (DisconnectParams)o;
             apnContext = dp.mApnContext;
-            if (TextUtils.equals(dp.mReason, Phone.REASON_RADIO_TURNED_OFF)) {
-                discReason = RILConstants.DEACTIVATE_REASON_RADIO_OFF;
-            } else if (TextUtils.equals(dp.mReason, Phone.REASON_PDP_RESET)) {
-                discReason = RILConstants.DEACTIVATE_REASON_PDP_RESET;
+            if (TextUtils.equals(dp.mReason, Phone.REASON_RADIO_TURNED_OFF)
+                    || TextUtils.equals(dp.mReason, Phone.REASON_PDP_RESET)) {
+                discReason = DataService.REQUEST_REASON_SHUTDOWN;
             }
         }
 
@@ -1332,12 +1336,10 @@ public class DataConnection extends StateMachine {
                     }
                     deferMessage(msg);
                     break;
-
                 case EVENT_TEAR_DOWN_NOW:
                     if (DBG) log("DcDefaultState EVENT_TEAR_DOWN_NOW");
-                    mPhone.mCi.deactivateDataCall(mCid, 0,  null);
+                    mPhone.mCi.deactivateDataCall(mCid, DataService.REQUEST_REASON_NORMAL,  null);
                     break;
-
                 case EVENT_LOST_CONNECTION:
                     if (DBG) {
                         String s = "DcDefaultState ignore EVENT_LOST_CONNECTION"
