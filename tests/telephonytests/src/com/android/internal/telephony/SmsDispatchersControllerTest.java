@@ -49,11 +49,11 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-public class ImsSMSDispatcherTest extends TelephonyTest {
+public class SmsDispatchersControllerTest extends TelephonyTest {
     @Mock
     private SMSDispatcher.SmsTracker mTracker;
 
-    private ImsSMSDispatcher mImsSmsDispatcher;
+    private SmsDispatchersController mSmsDispatchersController;
     private ImsSmsDispatcherTestHandler mImsSmsDispatcherTestHandler;
     private boolean mReceivedTestIntent = false;
     private Object mLock = new Object();
@@ -76,7 +76,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mImsSmsDispatcher = new ImsSMSDispatcher(mPhone, mSmsStorageMonitor,
+            mSmsDispatchersController = new SmsDispatchersController(mPhone, mSmsStorageMonitor,
                     mSmsUsageMonitor);
             //Initial state of RIL is power on, need to wait util RADIO_ON msg get handled
             waitForMs(200);
@@ -96,29 +96,29 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        mImsSmsDispatcher = null;
+        mSmsDispatchersController = null;
         mImsSmsDispatcherTestHandler.quit();
         super.tearDown();
     }
 
     @Test @SmallTest @FlakyTest @Ignore
     public void testSmsHandleStateUpdate() throws Exception {
-        assertEquals(SmsConstants.FORMAT_UNKNOWN, mImsSmsDispatcher.getImsSmsFormat());
+        assertEquals(SmsConstants.FORMAT_UNKNOWN, mSmsDispatchersController.getImsSmsFormat());
         //Mock ImsNetWorkStateChange with GSM phone type
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
-        assertEquals(SmsConstants.FORMAT_3GPP, mImsSmsDispatcher.getImsSmsFormat());
-        assertTrue(mImsSmsDispatcher.isIms());
+        assertEquals(SmsConstants.FORMAT_3GPP, mSmsDispatchersController.getImsSmsFormat());
+        assertTrue(mSmsDispatchersController.isIms());
 
         //Mock ImsNetWorkStateChange with Cdma Phone type
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
-        assertEquals(SmsConstants.FORMAT_3GPP2, mImsSmsDispatcher.getImsSmsFormat());
-        assertTrue(mImsSmsDispatcher.isIms());
+        assertEquals(SmsConstants.FORMAT_3GPP2, mSmsDispatchersController.getImsSmsFormat());
+        assertTrue(mSmsDispatchersController.isIms());
     }
 
     @Test @SmallTest @FlakyTest @Ignore
     public void testSendImsGmsTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
-        mImsSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
+        mSmsDispatchersController.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
                 null, null, null, null, false);
         verify(mSimulatedCommandsVerifier).sendImsGsmSms(eq("038122f2"),
                 eq("0100038111f1000014c9f67cda9c12d37378983e4697e5d4f29c0e"), eq(0), eq(0),
@@ -128,7 +128,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     @Test @SmallTest
     public void testSendImsGmsTestWithOutDesAddr() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
-        mImsSmsDispatcher.sendText(null, "222" /*scAddr*/, TAG,
+        mSmsDispatchersController.sendText(null, "222" /*scAddr*/, TAG,
                 null, null, null, null, false);
         verify(mSimulatedCommandsVerifier, times(0)).sendImsGsmSms(anyString(), anyString(),
                 anyInt(), anyInt(), any(Message.class));
@@ -137,7 +137,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
     @Test @SmallTest
     public void testSendImsCdmaTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
-        mImsSmsDispatcher.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
+        mSmsDispatchersController.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
                 null, null, null, null, false);
         verify(mSimulatedCommandsVerifier).sendImsCdmaSms((byte[])any(), eq(0), eq(0),
                 any(Message.class));
@@ -151,7 +151,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
         replaceInstance(SMSDispatcher.SmsTracker.class, "mFormat", mTracker,
                 SmsConstants.FORMAT_3GPP2);
         doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
-        mImsSmsDispatcher.sendRetrySms(mTracker);
+        mSmsDispatchersController.sendRetrySms(mTracker);
         verify(mSimulatedCommandsVerifier).sendImsCdmaSms(captor.capture(), eq(0), eq(0),
                 any(Message.class));
         assertEquals(1, captor.getAllValues().size());
@@ -164,7 +164,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
         replaceInstance(SMSDispatcher.SmsTracker.class, "mFormat", mTracker,
                 SmsConstants.FORMAT_3GPP);
-        mImsSmsDispatcher.sendRetrySms(mTracker);
+        mSmsDispatchersController.sendRetrySms(mTracker);
         verify(mSimulatedCommandsVerifier).sendImsGsmSms((String)isNull(), (String)isNull(), eq(0),
                 eq(0), any(Message.class));
     }
@@ -183,7 +183,7 @@ public class ImsSMSDispatcherTest extends TelephonyTest {
                 new Intent(TEST_INTENT), 0);
 
         // inject null sms pdu. This should cause intent to be received since pdu is null.
-        mImsSmsDispatcher.injectSmsPdu(null, SmsConstants.FORMAT_3GPP, pendingIntent);
+        mSmsDispatchersController.injectSmsPdu(null, SmsConstants.FORMAT_3GPP, pendingIntent);
         waitForMs(100);
         synchronized (mLock) {
             assertEquals(true, mReceivedTestIntent);
