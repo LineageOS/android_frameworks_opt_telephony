@@ -104,6 +104,7 @@ public abstract class Connection {
         public void onConnectionEvent(String event, Bundle extras);
         public void onRttModifyRequestReceived();
         public void onRttModifyResponseReceived(int status);
+        public void onDisconnect(int cause);
     }
 
     /**
@@ -143,6 +144,8 @@ public abstract class Connection {
         public void onRttModifyRequestReceived() {}
         @Override
         public void onRttModifyResponseReceived(int status) {}
+        @Override
+        public void onDisconnect(int cause) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -1051,6 +1054,18 @@ public abstract class Connection {
     public void onRttModifyResponseReceived(int status) {
         for (Listener l : mListeners) {
             l.onRttModifyResponseReceived(status);
+        }
+    }
+
+    /**
+     * Notify interested parties that this connection disconnected.
+     * {@code TelephonyConnection}, for example, uses this.
+     * @param reason the disconnect code, per {@link DisconnectCause}.
+     */
+    protected void notifyDisconnect(int reason) {
+        Rlog.i(TAG, "notifyDisconnect: callId=" + getTelecomCallId() + ", reason=" + reason);
+        for (Listener l : mListeners) {
+            l.onDisconnect(reason);
         }
     }
 
