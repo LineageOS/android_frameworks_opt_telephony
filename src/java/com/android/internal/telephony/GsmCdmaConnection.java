@@ -583,6 +583,7 @@ public class GsmCdmaConnection extends Connection {
             if (DBG) Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
 
             mOwner.getPhone().notifyDisconnect(this);
+            notifyDisconnect(cause);
 
             if (mParent != null) {
                 changed = mParent.connectionDisconnected(this);
