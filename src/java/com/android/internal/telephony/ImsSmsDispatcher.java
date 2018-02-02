@@ -36,9 +36,9 @@ import com.android.internal.telephony.gsm.SmsMessage;
 
 import android.telephony.ims.internal.feature.ImsFeature;
 import android.telephony.ims.internal.feature.MmTelFeature;
-import android.telephony.ims.internal.SmsImplBase;
-import android.telephony.ims.internal.SmsImplBase.SendStatusResult;
-import android.telephony.ims.internal.SmsImplBase.StatusReportResult;
+import android.telephony.ims.internal.stub.SmsImplBase;
+import android.telephony.ims.internal.stub.SmsImplBase.SendStatusResult;
+import android.telephony.ims.internal.stub.SmsImplBase.StatusReportResult;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.provider.Telephony.Sms.Intents;
 import android.util.Pair;
