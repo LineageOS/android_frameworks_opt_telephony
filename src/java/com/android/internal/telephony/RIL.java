@@ -55,6 +55,7 @@ import android.hardware.radio.V1_0.UusInfo;
 import android.net.ConnectivityManager;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
+import android.net.LinkProperties;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -81,12 +82,14 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.DataService;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
@@ -1225,8 +1228,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setupDataCall(int radioTechnology, DataProfile dataProfile, boolean isRoaming,
-                              boolean allowRoaming, Message result) {
+    public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
+                              boolean allowRoaming, int reason, LinkProperties linkProperties,
+                              Message result) {
 
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
@@ -1237,17 +1241,49 @@ public class RIL extends BaseCommands implements CommandsInterface {
             // Convert to HAL data profile
             DataProfileInfo dpi = convertToHalDataProfile(dataProfile);
 
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + ",radioTechnology=" + radioTechnology + ",isRoaming="
-                        + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile);
-            }
-
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
             try {
-                radioProxy.setupDataCall(rr.mSerial, radioTechnology, dpi,
-                        dataProfile.isModemCognitive(), allowRoaming, isRoaming);
-                mMetrics.writeRilSetupDataCall(mPhoneId, rr.mSerial, radioTechnology, dpi.profileId,
-                        dpi.apn, dpi.authType, dpi.protocol);
+                if (radioProxy12 == null) {
+                    // IRadio V1.0
+                    if (RILJ_LOGD) {
+                        riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                + ",radioTechnology=unknown,isRoaming=" + isRoaming
+                                + ",allowRoaming=" + allowRoaming + "," + dataProfile);
+                    }
+                    // The RAT field in setup data call request was never used before. Starting from
+                    // P, the new API passes in access network type instead of RAT. Since it's
+                    // not possible to convert access network type back to RAT, but we still need to
+                    // support the 1.0 API, we passed in unknown RAT to the modem. And modem must
+                    // setup the data call on its current camped network.
+                    radioProxy.setupDataCall(rr.mSerial, ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN,
+                            dpi, dataProfile.isModemCognitive(), allowRoaming, isRoaming);
+                } else {
+                    // IRadio V1.2
+                    ArrayList<String> addresses = null;
+                    ArrayList<String> dnses = null;
+                    if (linkProperties != null) {
+                        addresses = new ArrayList<>();
+                        for (InetAddress address : linkProperties.getAddresses()) {
+                            addresses.add(address.getHostAddress());
+                        }
+                        dnses = new ArrayList<>();
+                        for (InetAddress dns : linkProperties.getDnsServers()) {
+                            dnses.add(dns.getHostAddress());
+                        }
+                    }
+
+                    if (RILJ_LOGD) {
+                        riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                + ",accessNetworkType=" + accessNetworkType + ",isRoaming="
+                                + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile
+                                + ",addresses=" + addresses + ",dnses=" + dnses);
+                    }
+
+                    radioProxy12.setupDataCall_1_2(rr.mSerial, accessNetworkType, dpi,
+                            dataProfile.isModemCognitive(), allowRoaming, isRoaming, reason,
+                            addresses, dnses);
+                }
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setupDataCall", e);
             }
@@ -1531,10 +1567,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         + requestToString(rr.mRequest) + " cid = " + cid + " reason = " + reason);
             }
 
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+
             try {
-                radioProxy.deactivateDataCall(rr.mSerial, cid, (reason == 0) ? false : true);
-                mMetrics.writeRilDeactivateDataCall(mPhoneId, rr.mSerial,
-                        cid, reason);
+                if (radioProxy12 == null) {
+                    radioProxy.deactivateDataCall(rr.mSerial, cid,
+                            (reason == DataService.REQUEST_REASON_SHUTDOWN));
+                } else {
+                    radioProxy12.deactivateDataCall_1_2(rr.mSerial, cid, reason);
+                }
+                mMetrics.writeRilDeactivateDataCall(mPhoneId, rr.mSerial, cid, reason);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "deactivateDataCall", e);
             }
