@@ -552,4 +552,14 @@ abstract class SipPhoneBase extends Phone {
     @Override
     public void setBroadcastEmergencyCallStateChanges(boolean broadcast) {
     }
+
+    @Override
+    public void getCallBarring(String facility, String password, Message onComplete,
+            int serviceClass) {
+    }
+
+    @Override
+    public void setCallBarring(String facility, boolean lockState, String password,
+            Message onComplete, int serviceClass) {
+    }
 }
