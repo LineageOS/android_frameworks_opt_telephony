@@ -84,7 +84,7 @@ public class SubscriptionControllerMock extends SubscriptionController {
         broadcastDefaultDataSubIdChanged(subId);
     }
 
-    private void broadcastDefaultDataSubIdChanged(int subId) {
+    protected void broadcastDefaultDataSubIdChanged(int subId) {
         // Broadcast an Intent for default data sub change
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
