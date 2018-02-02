@@ -1208,6 +1208,14 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
+    public void getCallBarring(String facility, String password, Message onComplete,
+            int serviceClass) {
+    }
+
+    public void setCallBarring(String facility, boolean lockState, String password,
+            Message onComplete, int serviceClass) {
+    }
+
     public void getOutgoingCallerIdDisplay(Message onComplete) {
         throw new RuntimeException("not implemented");
     }

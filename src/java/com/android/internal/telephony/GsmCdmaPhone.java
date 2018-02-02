@@ -1767,6 +1767,57 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public void getCallBarring(String facility, String password, Message onComplete,
+            int serviceClass) {
+        if (isPhoneTypeGsm()) {
+            Phone imsPhone = mImsPhone;
+            if ((imsPhone != null)
+                    && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
+                    || imsPhone.isUtEnabled())) {
+                imsPhone.getCallBarring(facility, password, onComplete, serviceClass);
+                return;
+            }
+            mCi.queryFacilityLock(facility, password, serviceClass, onComplete);
+        } else {
+            loge("getCallBarringOption: not possible in CDMA");
+        }
+    }
+
+    @Override
+    public void setCallBarring(String facility, boolean lockState, String password,
+            Message onComplete, int serviceClass) {
+        if (isPhoneTypeGsm()) {
+            Phone imsPhone = mImsPhone;
+            if ((imsPhone != null)
+                    && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
+                    || imsPhone.isUtEnabled())) {
+                imsPhone.setCallBarring(facility, lockState, password, onComplete, serviceClass);
+                return;
+            }
+            mCi.setFacilityLock(facility, lockState, password, serviceClass, onComplete);
+        } else {
+            loge("setCallBarringOption: not possible in CDMA");
+        }
+    }
+
+    /**
+     * Changes access code used for call barring
+     *
+     * @param facility is one of CB_FACILTY_*
+     * @param oldPwd is old password
+     * @param newPwd is new password
+     * @param onComplete is callback message when the action is completed.
+     */
+    public void changeCallBarringPassword(String facility, String oldPwd, String newPwd,
+            Message onComplete) {
+        if (isPhoneTypeGsm()) {
+            mCi.changeBarringPassword(facility, oldPwd, newPwd, onComplete);
+        } else {
+            loge("changeCallBarringPassword: not possible in CDMA");
+        }
+    }
+
+    @Override
     public void getOutgoingCallerIdDisplay(Message onComplete) {
         if (isPhoneTypeGsm()) {
             Phone imsPhone = mImsPhone;
