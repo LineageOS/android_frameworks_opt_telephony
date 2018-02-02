@@ -34,13 +34,11 @@ import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
-import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.NetworkUtils;
 import android.net.ProxyInfo;
 import android.net.TrafficStats;
 import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Bundle;
@@ -245,24 +243,6 @@ public class DcTracker extends Handler {
             } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
                 if (DBG) log("Provisioning apn alarm");
                 onActionIntentProvisioningApnAlarm(intent);
-            } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
-                final android.net.NetworkInfo networkInfo = (NetworkInfo)
-                intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
-                mIsWifiConnected = (networkInfo != null && networkInfo.isConnected());
-                if (DBG) log("NETWORK_STATE_CHANGED_ACTION: mIsWifiConnected=" + mIsWifiConnected);
-            } else if (action.equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
-                if (DBG) log("Wifi state changed");
-                final boolean enabled = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
-                        WifiManager.WIFI_STATE_UNKNOWN) == WifiManager.WIFI_STATE_ENABLED;
-                if (!enabled) {
-                    // when WiFi got disabled, the NETWORK_STATE_CHANGED_ACTION
-                    // quit and won't report disconnected until next enabling.
-                    mIsWifiConnected = false;
-                }
-                if (DBG) {
-                    log("WIFI_STATE_CHANGED_ACTION: enabled=" + enabled
-                            + " mIsWifiConnected=" + mIsWifiConnected);
-                }
             } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
                 if (mIccRecords.get() != null && mIccRecords.get().getRecordsLoaded()) {
                     setDefaultDataRoamingEnabled();
@@ -488,9 +468,6 @@ public class DcTracker extends Handler {
     // True when in voice call
     private boolean mInVoiceCall = false;
 
-    // wifi connection status will be updated by sticky intent
-    private boolean mIsWifiConnected = false;
-
     /** Intent sent when the reconnect alarm fires. */
     private PendingIntent mReconnectIntent = null;
 
@@ -607,8 +584,6 @@ public class DcTracker extends Handler {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
-        filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
@@ -4171,7 +4146,6 @@ public class DcTracker extends Handler {
         pw.println(" mSentSinceLastRecv=" + mSentSinceLastRecv);
         pw.println(" mNoRecvPollCount=" + mNoRecvPollCount);
         pw.println(" mResolver=" + mResolver);
-        pw.println(" mIsWifiConnected=" + mIsWifiConnected);
         pw.println(" mReconnectIntent=" + mReconnectIntent);
         pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
