@@ -15,14 +15,10 @@
  */
 package com.android.internal.telephony.uicc;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.verify;
 
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -34,7 +30,6 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 public class UiccSlotTest extends TelephonyTest {
@@ -96,35 +91,6 @@ public class UiccSlotTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mTestHandlerThread.quit();
         super.tearDown();
-    }
-
-
-    @Test @SmallTest
-    public void testCardAbsentListener() {
-        mUiccSlot.registerForAbsent(mMockedHandler, UICCCARD_ABSENT, null);
-        /* assume hotswap capable, avoid bootup on card removal */
-        mContextFixture.putBooleanResource(com.android.internal.R.bool.config_hotswapCapable, true);
-        mSimulatedCommands.setRadioPower(true, null);
-
-        /* Mock Card State transition from card_present to card_absent */
-        logd("UICC Card Present update");
-        mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
-        // mUiccSlot.update() needs to be called from the handler thread because it creates UiccCard
-        Message mCardUpdate = mTestHandler.obtainMessage(UICCCARD_UPDATE_CARD_STATE_EVENT);
-        setReady(false);
-        mCardUpdate.sendToTarget();
-        waitUntilReady();
-
-        logd("UICC Card absent update");
-        mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_ABSENT;
-        mUiccSlot.update(mSimulatedCommands, mIccCardStatus, 0 /* phoneId */);
-        waitForMs(50);
-
-        ArgumentCaptor<Message> mCaptorMessage = ArgumentCaptor.forClass(Message.class);
-        ArgumentCaptor<Long> mCaptorLong = ArgumentCaptor.forClass(Long.class);
-        verify(mMockedHandler, atLeast(1)).sendMessageDelayed(mCaptorMessage.capture(),
-                mCaptorLong.capture());
-        assertEquals(UICCCARD_ABSENT, mCaptorMessage.getValue().what);
     }
 
     @Test

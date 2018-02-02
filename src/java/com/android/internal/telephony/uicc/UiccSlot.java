@@ -26,8 +26,6 @@ import android.content.res.Resources;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
-import android.os.Registrant;
-import android.os.RegistrantList;
 import android.telephony.Rlog;
 import android.util.LocalLog;
 import android.view.WindowManager;
@@ -62,9 +60,6 @@ public class UiccSlot extends Handler {
     private String mIccId;
     private Integer mPhoneId = null;
 
-    // todo: remove if this is not needed
-    private RegistrantList mAbsentRegistrants = new RegistrantList();
-
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
 
@@ -98,7 +93,6 @@ public class UiccSlot extends Handler {
                 // No notifications while radio is off or we just powering up
                 if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
                     if (DBG) log("update: notify card removed");
-                    mAbsentRegistrants.notifyRegistrants();
                     sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
                 }
 
@@ -147,11 +141,10 @@ public class UiccSlot extends Handler {
             if (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_INACTIVE) {
                 if (mActive) {
                     mActive = false;
-                    // treat as radio state unavailable
-                    onRadioStateUnavailable();
-                    // set mPhoneId to null only after sim state changed broadcast is sent as it
-                    // needs the phoneId. The broadcast is sent from onRadioStateUnavailable()
+                    mLastRadioState = RadioState.RADIO_UNAVAILABLE;
                     mPhoneId = null;
+                    if (mUiccCard != null) mUiccCard.dispose();
+                    mUiccCard = null;
                 }
                 parseAtr(iss.atr);
                 mCardState = iss.cardState;
@@ -321,30 +314,6 @@ public class UiccSlot extends Handler {
         mLastRadioState = RadioState.RADIO_UNAVAILABLE;
     }
 
-    /**
-     * Notifies handler of any transition into State.ABSENT
-     */
-    public void registerForAbsent(Handler h, int what, Object obj) {
-        synchronized (mLock) {
-            Registrant r = new Registrant(h, what, obj);
-
-            mAbsentRegistrants.add(r);
-
-            if (mCardState == CardState.CARDSTATE_ABSENT) {
-                r.notifyRegistrant();
-            }
-        }
-    }
-
-    /**
-     * Unregister a handler for card absent notification
-     */
-    public void unregisterForAbsent(Handler h) {
-        synchronized (mLock) {
-            mAbsentRegistrants.remove(h);
-        }
-    }
-
     private void log(String msg) {
         Rlog.d(TAG, msg);
     }
@@ -365,11 +334,6 @@ public class UiccSlot extends Handler {
         pw.println(" mCi=" + mCi);
         pw.println(" mActive=" + mActive);
         pw.println(" mLastRadioState=" + mLastRadioState);
-        pw.println(" mAbsentRegistrants: size=" + mAbsentRegistrants.size());
-        for (int i = 0; i < mAbsentRegistrants.size(); i++) {
-            pw.println("  mAbsentRegistrants[" + i + "]="
-                    + ((Registrant) mAbsentRegistrants.get(i)).getHandler());
-        }
         pw.println(" mCardState=" + mCardState);
         if (mUiccCard != null) {
             pw.println(" mUiccCard=" + mUiccCard);
