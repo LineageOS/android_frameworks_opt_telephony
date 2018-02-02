@@ -1119,8 +1119,8 @@ public class RILTest extends TelephonyTest {
         expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
         CellIdentityGsm ci = new CellIdentityGsm(
                 LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
-        CellSignalStrengthGsm cs = new CellSignalStrengthGsm();
-        cs.initialize(SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
+        CellSignalStrengthGsm cs = new CellSignalStrengthGsm(
+                SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
         expected.setCellIdentity(ci);
         expected.setCellSignalStrength(cs);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_UNKNOWN);
@@ -1285,8 +1285,8 @@ public class RILTest extends TelephonyTest {
         expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
         CellIdentityGsm ci = new CellIdentityGsm(
                 LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
-        CellSignalStrengthGsm cs = new CellSignalStrengthGsm();
-        cs.initialize(SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
+        CellSignalStrengthGsm cs = new CellSignalStrengthGsm(
+                SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
         expected.setCellIdentity(ci);
         expected.setCellSignalStrength(cs);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
@@ -1306,8 +1306,8 @@ public class RILTest extends TelephonyTest {
         expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
         CellIdentityGsm ci = new CellIdentityGsm(
                 LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
-        CellSignalStrengthGsm cs = new CellSignalStrengthGsm();
-        cs.initialize(SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
+        CellSignalStrengthGsm cs = new CellSignalStrengthGsm(
+                SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
         expected.setCellIdentity(ci);
         expected.setCellSignalStrength(cs);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
@@ -1329,8 +1329,8 @@ public class RILTest extends TelephonyTest {
         expected.setTimeStampType(RIL_TIMESTAMP_TYPE_OEM_RIL);
         CellIdentityGsm ci = new CellIdentityGsm(
                 LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
-        CellSignalStrengthGsm cs = new CellSignalStrengthGsm();
-        cs.initialize(SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
+        CellSignalStrengthGsm cs = new CellSignalStrengthGsm(
+                SIGNAL_STRENGTH, BIT_ERROR_RATE, TIME_ADVANCE);
         expected.setCellIdentity(ci);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
         expected.setCellSignalStrength(cs);
