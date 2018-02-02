@@ -546,6 +546,16 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
+    public void getCallBarring(String facility, String password, Message onComplete,
+            int serviceClass) {
+    }
+
+    @Override
+    public void setCallBarring(String facility, boolean lockState, String password,
+            Message onComplete, int serviceClass) {
+    }
+
+    @Override
     protected void onUpdateIccAvailability() {
     }
 
