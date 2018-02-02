@@ -83,7 +83,7 @@ public class IccSmsInterfaceManager {
     final protected Context mContext;
     final protected AppOpsManager mAppOps;
     final private UserManager mUserManager;
-    protected SMSDispatcher mDispatcher;
+    protected SmsDispatchersController mDispatchersController;
 
     protected Handler mHandler = new Handler() {
         @Override
@@ -131,7 +131,7 @@ public class IccSmsInterfaceManager {
         mContext = phone.getContext();
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
-        mDispatcher = new ImsSMSDispatcher(phone,
+        mDispatchersController = new SmsDispatchersController(phone,
                 phone.mSmsStorageMonitor, phone.mSmsUsageMonitor);
     }
 
@@ -170,7 +170,7 @@ public class IccSmsInterfaceManager {
 
     protected void updatePhoneObject(Phone phone) {
         mPhone = phone;
-        mDispatcher.updatePhoneObject(phone);
+        mDispatchersController.updatePhoneObject(phone);
     }
 
     protected void enforceReceiveAndSend(String message) {
@@ -379,7 +379,8 @@ public class IccSmsInterfaceManager {
             return;
         }
         destAddr = filterDestAddress(destAddr);
-        mDispatcher.sendData(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
+        mDispatchersController.sendData(destAddr, scAddr, destPort, data, sentIntent,
+                deliveryIntent);
     }
 
     /**
@@ -451,7 +452,7 @@ public class IccSmsInterfaceManager {
             enforcePrivilegedAppPermissions();
         }
         destAddr = filterDestAddress(destAddr);
-        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
+        mDispatchersController.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                 null/*messageUri*/, callingPackage, persistMessageForNonDefaultSmsApp);
     }
 
@@ -472,7 +473,7 @@ public class IccSmsInterfaceManager {
                 "\n format=" + format +
                 "\n receivedIntent=" + receivedIntent);
         }
-        mDispatcher.injectSmsPdu(pdu, format, receivedIntent);
+        mDispatchersController.injectSmsPdu(pdu, format, receivedIntent);
     }
 
     /**
@@ -546,7 +547,7 @@ public class IccSmsInterfaceManager {
                     singleDeliveryIntent = deliveryIntents.get(i);
                 }
 
-                mDispatcher.sendText(destAddr, scAddr, singlePart,
+                mDispatchersController.sendText(destAddr, scAddr, singlePart,
                         singleSentIntent, singleDeliveryIntent,
                         null/*messageUri*/, callingPackage,
                         persistMessageForNonDefaultSmsApp);
@@ -554,19 +555,19 @@ public class IccSmsInterfaceManager {
             return;
         }
 
-        mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
+        mDispatchersController.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents,
                 null/*messageUri*/, callingPackage, persistMessageForNonDefaultSmsApp);
     }
 
 
     public int getPremiumSmsPermission(String packageName) {
-        return mDispatcher.getPremiumSmsPermission(packageName);
+        return mDispatchersController.getPremiumSmsPermission(packageName);
     }
 
 
     public void setPremiumSmsPermission(String packageName, int permission) {
-        mDispatcher.setPremiumSmsPermission(packageName, permission);
+        mDispatchersController.setPremiumSmsPermission(packageName, permission);
     }
 
     /**
@@ -919,11 +920,11 @@ public class IccSmsInterfaceManager {
     }
 
     public boolean isImsSmsSupported() {
-        return mDispatcher.isIms();
+        return mDispatchersController.isIms();
     }
 
     public String getImsSmsFormat() {
-        return mDispatcher.getImsSmsFormat();
+        return mDispatchersController.getImsSmsFormat();
     }
 
     public void sendStoredText(String callingPkg, Uri messageUri, String scAddress,
@@ -951,7 +952,7 @@ public class IccSmsInterfaceManager {
             return;
         }
         textAndAddress[1] = filterDestAddress(textAndAddress[1]);
-        mDispatcher.sendText(textAndAddress[1], scAddress, textAndAddress[0],
+        mDispatchersController.sendText(textAndAddress[1], scAddress, textAndAddress[0],
                 sentIntent, deliveryIntent, messageUri, callingPkg,
                 true /* persistMessageForNonDefaultSmsApp */);
     }
@@ -1007,14 +1008,14 @@ public class IccSmsInterfaceManager {
                     singleDeliveryIntent = deliveryIntents.get(i);
                 }
 
-                mDispatcher.sendText(textAndAddress[1], scAddress, singlePart,
+                mDispatchersController.sendText(textAndAddress[1], scAddress, singlePart,
                         singleSentIntent, singleDeliveryIntent, messageUri, callingPkg,
                         true  /* persistMessageForNonDefaultSmsApp */);
             }
             return;
         }
 
-        mDispatcher.sendMultipartText(
+        mDispatchersController.sendMultipartText(
                 textAndAddress[1], // destAddress
                 scAddress,
                 parts,
