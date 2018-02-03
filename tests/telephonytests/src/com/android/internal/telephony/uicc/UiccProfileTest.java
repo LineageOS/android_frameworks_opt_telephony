@@ -126,8 +126,11 @@ public class UiccProfileTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        /* initially there are no application available */
-        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
+         /* initially there are no application available, but the array should not be empty. */
+        IccCardApplicationStatus umtsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_USIM,
+                IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN, "0xA2");
+        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{umtsApp};
         mIccCardStatus.mCdmaSubscriptionAppIndex =
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
@@ -154,12 +157,17 @@ public class UiccProfileTest extends TelephonyTest {
     @Test
     @SmallTest
     public void tesUiccProfileInfoSanity() {
-        assertEquals(0, mUiccProfile.getNumApplications());
+        assertEquals(1, mUiccProfile.getNumApplications());
         assertNull(mUiccProfile.getUniversalPinState());
         assertNull(mUiccProfile.getOperatorBrandOverride());
         for (IccCardApplicationStatus.AppType mAppType :
                 IccCardApplicationStatus.AppType.values()) {
-            assertFalse(mUiccProfile.isApplicationOnIcc(mAppType));
+            if (mAppType == IccCardApplicationStatus.AppType.APPTYPE_USIM) {
+                assertTrue(mUiccProfile.isApplicationOnIcc(mAppType));
+            } else {
+                assertFalse(mUiccProfile.isApplicationOnIcc(mAppType));
+            }
+
         }
     }
 
@@ -346,5 +354,54 @@ public class UiccProfileTest extends TelephonyTest {
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
         assertEquals(State.LOADED, mUiccProfile.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateUiccProfileApplicationNoApplication() {
+        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
+        mIccCardStatus.mCdmaSubscriptionAppIndex = -1;
+        mIccCardStatus.mImsSubscriptionAppIndex = -1;
+        mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
+        Message mProfileUpdate = mHandler.obtainMessage(UICCPROFILE_UPDATE_APPLICATION_EVENT);
+        setReady(false);
+        mProfileUpdate.sendToTarget();
+
+        waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
+        assertEquals(0, mUiccProfile.getNumApplications());
+
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        waitForMs(SCARY_SLEEP_MS);
+        // state is loaded since there is no applications.
+        assertEquals(State.NOT_READY, mUiccProfile.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateUiccProfileApplicationNoSupportApplication() {
+        IccCardApplicationStatus unknownApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_UNKNOWN,
+                IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN, "");
+        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{unknownApp};
+        mIccCardStatus.mCdmaSubscriptionAppIndex = -1;
+        mIccCardStatus.mImsSubscriptionAppIndex = -1;
+        mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
+        Message mProfileUpdate = mHandler.obtainMessage(UICCPROFILE_UPDATE_APPLICATION_EVENT);
+        setReady(false);
+        mProfileUpdate.sendToTarget();
+
+        waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
+        assertEquals(1, mUiccProfile.getNumApplications());
+
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        waitForMs(SCARY_SLEEP_MS);
+        // state is loaded since there is no applications.
+        assertEquals(State.NOT_READY, mUiccProfile.getState());
     }
 }
