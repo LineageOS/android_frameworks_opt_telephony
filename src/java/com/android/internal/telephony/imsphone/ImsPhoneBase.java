@@ -446,10 +446,6 @@ abstract class ImsPhoneBase extends Phone {
             Message response) {
     }
 
-    @Override
-    public void getDataCallList(Message response) {
-    }
-
     public List<DataConnection> getCurrentDataConnectionList () {
         return null;
     }

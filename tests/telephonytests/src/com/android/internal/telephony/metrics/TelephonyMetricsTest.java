@@ -18,6 +18,7 @@ package com.android.internal.telephony.metrics;
 
 import static android.telephony.ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
 import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
+
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
@@ -27,17 +28,18 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_G
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
-import android.net.LinkAddress;
-import android.net.NetworkUtils;
+import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataCallResponse;
+import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -70,7 +72,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
 
 public class TelephonyMetricsTest extends TelephonyTest {
 
@@ -389,16 +390,21 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteOnSetupDataCallResponse() throws Exception {
-        DataCallResponse response = new DataCallResponse(5, 6, 7, 8, "IPV4V6", FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
-                Arrays.asList(FAKE_PCSCF_ADDRESS),
-                1440);
-
+        SetupDataCallResult result = new SetupDataCallResult();
+        result.status = 5;
+        result.suggestedRetryTime = 6;
+        result.cid = 7;
+        result.active = 8;
+        result.type = "IPV4V6";
+        result.ifname = FAKE_IFNAME;
+        result.addresses = FAKE_ADDRESS;
+        result.dnses = FAKE_DNS;
+        result.gateways = FAKE_GATEWAY;
+        result.pcscf = FAKE_PCSCF_ADDRESS;
+        result.mtu = 1440;
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,
-                RIL_REQUEST_SETUP_DATA_CALL, response);
+                RIL_REQUEST_SETUP_DATA_CALL, result);
         TelephonyLog log = buildProto();
 
         assertEquals(1, log.events.length);
