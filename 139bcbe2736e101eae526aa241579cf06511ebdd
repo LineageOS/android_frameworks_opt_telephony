@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fb43141a_acc86b08",
+        "filename": "src/java/com/android/internal/telephony/uicc/IccCardProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-02-04T03:47:46Z",
+      "side": 1,
+      "message": "How is this detecting that the current device is a CDMA NV device?",
+      "range": {
+        "startLine": 244,
+        "startChar": 23,
+        "endLine": 244,
+        "endChar": 30
+      },
+      "revId": "139bcbe2736e101eae526aa241579cf06511ebdd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
