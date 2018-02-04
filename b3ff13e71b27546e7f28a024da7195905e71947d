@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a7302d5b_53784ded",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1239,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-02-04T01:23:46Z",
+      "side": 1,
+      "message": "return cdmaSubscriptionSouce \u003d\u003d CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV;",
+      "range": {
+        "startLine": 1235,
+        "startChar": 8,
+        "endLine": 1239,
+        "endChar": 21
+      },
+      "revId": "b3ff13e71b27546e7f28a024da7195905e71947d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "699735cb_771230af",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1286,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-02-04T01:23:46Z",
+      "side": 1,
+      "message": "why bother with the intermediate variable at all?",
+      "range": {
+        "startLine": 1286,
+        "startChar": 16,
+        "endLine": 1286,
+        "endChar": 34
+      },
+      "revId": "b3ff13e71b27546e7f28a024da7195905e71947d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
