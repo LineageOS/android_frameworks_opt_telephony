@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8bf883e7_441804ee",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 3411,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-02-04T03:49:43Z",
+      "side": 1,
+      "message": "Should this be part of the if/else block below? Or is it expected that the else block is executed?",
+      "range": {
+        "startLine": 3409,
+        "startChar": 8,
+        "endLine": 3411,
+        "endChar": 9
+      },
+      "revId": "f4612c81ae4502efaf6d403cec94311f51e524b3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
