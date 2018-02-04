@@ -20,12 +20,14 @@ import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED;
 import static android.net.NetworkPolicyManager.OVERRIDE_CONGESTED;
 import static android.net.NetworkPolicyManager.OVERRIDE_UNMETERED;
+
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -35,16 +37,18 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.content.IntentFilter;
+import android.content.pm.ServiceInfo;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkUtils;
-import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.data.DataCallResponse;
@@ -52,6 +56,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.R;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
@@ -126,11 +131,29 @@ public class DataConnectionTest extends TelephonyTest {
         public void onLooperPrepared() {
             Handler h = new Handler();
 
-            mDcc = DcController.makeDcc(mPhone, mDcTracker, h);
-            mDc = DataConnection.makeDataConnection(mPhone, 0, mDcTracker, mDcTesterFailBringUpAll,
-                    mDcc);
+            DataServiceManager manager = new DataServiceManager(mPhone, TransportType.WWAN);
+            mDcc = DcController.makeDcc(mPhone, mDcTracker, manager, h);
+            mDcc.start();
+            mDc = DataConnection.makeDataConnection(mPhone, 0, mDcTracker, manager,
+                    mDcTesterFailBringUpAll, mDcc);
         }
     }
+
+    private void addDataService() {
+        CellularDataService cellularDataService = new CellularDataService();
+        ServiceInfo serviceInfo = new ServiceInfo();
+        serviceInfo.packageName = "com.android.phone";
+        serviceInfo.permission = "android.permission.BIND_DATA_SERVICE";
+        IntentFilter filter = new IntentFilter();
+        mContextFixture.addService(
+                DataService.DATA_SERVICE_INTERFACE,
+                null,
+                "com.android.phone",
+                cellularDataService.mBinder,
+                serviceInfo,
+                filter);
+    }
+
 
     @Before
     public void setUp() throws Exception {
@@ -160,8 +183,12 @@ public class DataConnectionTest extends TelephonyTest {
                 "evdo:131072,262144,1048576,4096,16384,524288",
                 "lte:524288,1048576,8388608,262144,524288,4194304"});
 
+        mContextFixture.putResource(R.string.config_wwan_data_service_package,
+                "com.android.phone");
 
         mDcp.mApnContext = mApnContext;
+
+        addDataService();
 
         mDataConnectionTestHandler = new DataConnectionTestHandler(getClass().getSimpleName());
         mDataConnectionTestHandler.start();
@@ -185,12 +212,12 @@ public class DataConnectionTest extends TelephonyTest {
         return (IState) method.invoke(mDc);
     }
 
-    private long getSuggestedRetryDelay(AsyncResult ar) throws Exception {
+    private long getSuggestedRetryDelay(DataCallResponse response) throws Exception {
         Class[] cArgs = new Class[1];
-        cArgs[0] = AsyncResult.class;
+        cArgs[0] = DataCallResponse.class;
         Method method = DataConnection.class.getDeclaredMethod("getSuggestedRetryDelay", cArgs);
         method.setAccessible(true);
-        return (long) method.invoke(mDc, ar);
+        return (long) method.invoke(mDc, response);
     }
 
     private SetupResult setLinkProperties(DataCallResponse response,
@@ -257,8 +284,7 @@ public class DataConnectionTest extends TelephonyTest {
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
 
-        AsyncResult ar = new AsyncResult(null, response, null);
-        assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(ar));
+        assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(response));
 
         response = new DataCallResponse(0, 1000, 1, 2, "IP", FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
@@ -266,8 +292,7 @@ public class DataConnectionTest extends TelephonyTest {
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
-        ar = new AsyncResult(null, response, null);
-        assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(ar));
+        assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(response));
 
         response = new DataCallResponse(0, 9999, 1, 2, "IP", FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
@@ -275,9 +300,7 @@ public class DataConnectionTest extends TelephonyTest {
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
-        ar = new AsyncResult(null, response, null);
-
-        assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(ar));
+        assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(response));
     }
 
     @Test
@@ -289,8 +312,8 @@ public class DataConnectionTest extends TelephonyTest {
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
-        AsyncResult ar = new AsyncResult(null, response, null);
-        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(ar));
+
+        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(response));
 
         response = new DataCallResponse(0, -5, 1, 2, "IP", FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
@@ -298,8 +321,7 @@ public class DataConnectionTest extends TelephonyTest {
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
-        ar = new AsyncResult(null, response, null);
-        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(ar));
+        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(response));
 
         response = new DataCallResponse(0, Integer.MIN_VALUE, 1, 2, "IP", FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
@@ -307,8 +329,7 @@ public class DataConnectionTest extends TelephonyTest {
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
-        ar = new AsyncResult(null, response, null);
-        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(ar));
+        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(response));
     }
 
     @Test
@@ -321,8 +342,7 @@ public class DataConnectionTest extends TelephonyTest {
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
                 1440);
-        AsyncResult ar = new AsyncResult(null, response, null);
-        assertEquals(RetryManager.NO_RETRY, getSuggestedRetryDelay(ar));
+        assertEquals(RetryManager.NO_RETRY, getSuggestedRetryDelay(response));
     }
 
     private NetworkInfo getNetworkInfo() throws Exception {
@@ -470,7 +490,7 @@ public class DataConnectionTest extends TelephonyTest {
                 1440);
 
         LinkProperties linkProperties = new LinkProperties();
-        assertEquals(SetupResult.ERR_UnacceptableParameter,
+        assertEquals(SetupResult.ERROR_INVALID_ARG,
                 setLinkProperties(response, linkProperties));
     }
 

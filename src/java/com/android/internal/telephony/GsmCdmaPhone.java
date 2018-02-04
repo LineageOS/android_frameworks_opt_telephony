@@ -1965,11 +1965,6 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void getDataCallList(Message response) {
-        mCi.getDataCallList(response);
-    }
-
-    @Override
     public void updateServiceLocation() {
         mSST.enableSingleLocationUpdate();
     }
