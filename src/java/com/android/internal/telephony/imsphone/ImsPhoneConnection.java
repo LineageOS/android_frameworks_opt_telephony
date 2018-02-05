@@ -874,6 +874,25 @@ public class ImsPhoneConnection extends Connection implements
                         mShouldIgnoreVideoStateChanges = true;
                     }
                 }
+
+                if (negotiatedCallProfile.mMediaProfile != null) {
+                    boolean isRttOn = negotiatedCallProfile.mMediaProfile.isRttCall();
+
+                    if (isRttOn && mRttTextHandler == null) {
+                        Rlog.d(LOG_TAG, "updateMediaCapabilities -- turning RTT on, profile="
+                                + negotiatedCallProfile);
+                        startRttTextProcessing();
+                        onRttInitiated();
+                        changed = true;
+                    } else if (!isRttOn && mRttTextHandler != null) {
+                        Rlog.d(LOG_TAG, "updateMediaCapabilities -- turning RTT off, profile="
+                                + negotiatedCallProfile);
+                        mRttTextHandler.tearDown();
+                        mRttTextHandler = null;
+                        onRttTerminated();
+                        changed = true;
+                    }
+                }
             }
 
             // Check for a change in the capabilities for the call and update
@@ -961,7 +980,15 @@ public class ImsPhoneConnection extends Connection implements
         mRttTextStream = rttTextStream;
     }
 
+    public boolean hasRttTextStream() {
+        return mRttTextStream != null;
+    }
+
     public void startRttTextProcessing() {
+        if (mRttTextStream == null) {
+            Rlog.w(LOG_TAG, "startRttTextProcessing: no RTT text stream. Ignoring.");
+            return;
+        }
         getOrCreateRttTextHandler().initialize(mRttTextStream);
     }
 

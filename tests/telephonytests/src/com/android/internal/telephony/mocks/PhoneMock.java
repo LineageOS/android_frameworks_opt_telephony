@@ -1138,12 +1138,8 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public Connection dial(String dialString, int videoState) throws CallStateException {
-        throw new RuntimeException("not implemented");
-    }
-
-    public Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
-            throws CallStateException {
+    @Override
+    public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
         throw new RuntimeException("not implemented");
     }
 
