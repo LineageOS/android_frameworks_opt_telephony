@@ -42,8 +42,7 @@ public class NetworkScanResultTest {
         ArrayList<CellInfo> infos = new ArrayList<CellInfo>();
 
         CellIdentityGsm cig = new CellIdentityGsm(310, 310, 1, 2, 3, 4);
-        CellSignalStrengthGsm cssg = new CellSignalStrengthGsm();
-        cssg.initialize(5, 6, 7);
+        CellSignalStrengthGsm cssg = new CellSignalStrengthGsm(5, 6, 7);
         CellInfoGsm gsm = new CellInfoGsm();
         gsm.setRegistered(true);
         gsm.setTimeStampType(8);
@@ -53,8 +52,7 @@ public class NetworkScanResultTest {
         infos.add(gsm);
 
         CellIdentityLte cil = new CellIdentityLte(320, 320, 11, 12, 13, 14);
-        CellSignalStrengthLte cssl = new CellSignalStrengthLte();
-        cssl.initialize(15, 16, 17, 18, 19, 20);
+        CellSignalStrengthLte cssl = new CellSignalStrengthLte(15, 16, 17, 18, 19, 20);
         CellInfoLte lte = new CellInfoLte();
         lte.setRegistered(false);
         lte.setTimeStampType(21);

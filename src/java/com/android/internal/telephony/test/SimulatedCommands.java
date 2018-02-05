@@ -20,6 +20,7 @@ import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
+import android.net.LinkProperties;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -34,6 +35,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.IccOpenLogicalChannelResponse;
 import android.telephony.ImsiEncryptionInfo;
+import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -119,10 +121,17 @@ public class SimulatedCommands extends BaseCommands
     int mNetworkType;
     String mPin2Code;
     boolean mSsnNotifyOn = false;
-    private int mVoiceRegState = ServiceState.RIL_REG_STATE_HOME;
+    private int mVoiceRegState = NetworkRegistrationState.REG_STATE_HOME;
     private int mVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_UMTS;
-    private int mDataRegState = ServiceState.RIL_REG_STATE_HOME;
+    private int mDataRegState = NetworkRegistrationState.REG_STATE_HOME;
     private int mDataRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_UMTS;
+    public boolean mCssSupported;
+    public int mRoamingIndicator;
+    public int mSystemIsInPrl;
+    public int mDefaultRoamingIndicator;
+    public int mReasonForDenial;
+    public int mMaxDataCalls;
+
     private SignalStrength mSignalStrength;
     private List<CellInfo> mCellInfoList;
     private int[] mImsRegState;
@@ -957,6 +966,11 @@ public class SimulatedCommands extends BaseCommands
         VoiceRegStateResult ret = new VoiceRegStateResult();
         ret.regState = mVoiceRegState;
         ret.rat = mVoiceRadioTech;
+        ret.cssSupported = mCssSupported;
+        ret.roamingIndicator = mRoamingIndicator;
+        ret.systemIsInPrl = mSystemIsInPrl;
+        ret.defaultRoamingIndicator = mDefaultRoamingIndicator;
+        ret.reasonForDenial = mReasonForDenial;
 
         resultSuccess(result, ret);
     }
@@ -983,6 +997,8 @@ public class SimulatedCommands extends BaseCommands
         DataRegStateResult ret = new DataRegStateResult();
         ret.regState = mDataRegState;
         ret.rat = mDataRadioTech;
+        ret.maxDataCalls = mMaxDataCalls;
+        ret.reasonDataDenied = mReasonForDenial;
 
         resultSuccess(result, ret);
     }
@@ -1123,11 +1139,12 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setupDataCall(int radioTechnology, DataProfile dataProfile, boolean isRoaming,
-                              boolean allowRoaming, Message result) {
+    public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
+                              boolean allowRoaming, int reason, LinkProperties linkProperties,
+                              Message result) {
 
-        SimulatedCommandsVerifier.getInstance().setupDataCall(radioTechnology, dataProfile,
-                isRoaming, allowRoaming, result);
+        SimulatedCommandsVerifier.getInstance().setupDataCall(accessNetworkType, dataProfile,
+                isRoaming, allowRoaming, reason, linkProperties, result);
 
         if (mDcResponse == null) {
             try {

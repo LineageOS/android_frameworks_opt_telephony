@@ -167,8 +167,7 @@ public class CellularNetworkService extends NetworkService {
             }
         }
 
-        private int[] getAvailableServices(int regState, int domain,
-                boolean emergencyOnly) {
+        private int[] getAvailableServices(int regState, int domain, boolean emergencyOnly) {
             int[] availableServices = null;
 
             // In emergency only states, only SERVICE_TYPE_EMERGENCY is available.
@@ -177,7 +176,7 @@ public class CellularNetworkService extends NetworkService {
             if (emergencyOnly) {
                 availableServices = new int[] {NetworkRegistrationState.SERVICE_TYPE_EMERGENCY};
             } else if (regState == NetworkRegistrationState.REG_STATE_ROAMING
-                    || regState != NetworkRegistrationState.REG_STATE_HOME) {
+                    || regState == NetworkRegistrationState.REG_STATE_HOME) {
                 if (domain == NetworkRegistrationState.DOMAIN_PS) {
                     availableServices = new int[] {NetworkRegistrationState.SERVICE_TYPE_DATA};
                 } else if (domain == NetworkRegistrationState.DOMAIN_CS) {
@@ -243,6 +242,10 @@ public class CellularNetworkService extends NetworkService {
 
         private CellIdentity convertHalCellIdentityToCellIdentity(
                 android.hardware.radio.V1_0.CellIdentity cellIdentity) {
+            if (cellIdentity == null) {
+                return null;
+            }
+
             CellIdentity result = null;
             switch(cellIdentity.cellInfoType) {
                 case CellInfoType.GSM: {
@@ -305,6 +308,7 @@ public class CellularNetworkService extends NetworkService {
             return result;
         }
 
+        @Override
         public void getNetworkRegistrationState(int domain, NetworkServiceCallback callback) {
             if (DBG) log("getNetworkRegistrationState for domain " + domain);
             Message message = null;
