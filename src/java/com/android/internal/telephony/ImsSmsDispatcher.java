@@ -19,7 +19,10 @@ package com.android.internal.telephony;
 import android.os.RemoteException;
 import android.os.Message;
 import android.telephony.Rlog;
+import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.aidl.IImsSmsListener;
+import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase.SendStatusResult;
@@ -28,7 +31,7 @@ import android.util.Pair;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
-import com.android.ims.ImsServiceProxy;
+import com.android.ims.MmTelFeatureConnection;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
@@ -98,7 +101,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 }
 
                 @Override
-                public void onDeregistered(com.android.ims.ImsReasonInfo info) {
+                public void onDeregistered(ImsReasonInfo info) {
                     Rlog.d(TAG, "onImsDisconnected imsReasonInfo=" + info);
                     synchronized (mLock) {
                         mIsRegistered = false;
@@ -118,12 +121,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     };
 
     // Callback fires when ImsManager MMTel Feature changes state
-    private ImsServiceProxy.IFeatureUpdate mNotifyStatusChangedCallback =
-            new ImsServiceProxy.IFeatureUpdate() {
+    private MmTelFeatureConnection.IFeatureUpdate mNotifyStatusChangedCallback =
+            new MmTelFeatureConnection.IFeatureUpdate() {
                 @Override
                 public void notifyStateChanged() {
                     try {
-                        int status = getImsManager().getImsServiceStatus();
+                        int status = getImsManager().getImsServiceState();
                         Rlog.d(TAG, "Status Changed: " + status);
                         switch (status) {
                             case android.telephony.ims.feature.ImsFeature.STATE_READY: {
@@ -135,7 +138,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                             }
                             case android.telephony.ims.feature.ImsFeature.STATE_INITIALIZING:
                                 // fall through
-                            case android.telephony.ims.feature.ImsFeature.STATE_NOT_AVAILABLE:
+                            case ImsFeature.STATE_UNAVAILABLE:
                                 synchronized (mLock) {
                                     mIsImsServiceUp = false;
                                 }
@@ -277,7 +280,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         if (getImsManager().isServiceAvailable()) {
             return;
         }
-        // remove callback so we do not receive updates from old ImsServiceProxy when switching
+        // remove callback so we do not receive updates from old MmTelFeatureConnection when switching
         // between ImsServices.
         getImsManager().removeNotifyStatusChangedCallback(mNotifyStatusChangedCallback);
         // Exponential backoff during retry, limited to 32 seconds.

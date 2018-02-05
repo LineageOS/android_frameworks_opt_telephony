@@ -52,10 +52,10 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsManager;
-import com.android.ims.ImsReasonInfo;
+import android.telephony.ims.ImsReasonInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandsInterface;

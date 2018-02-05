@@ -69,14 +69,14 @@ import android.telephony.TelephonyManager;
 import android.telephony.UssdResponse;
 import android.text.TextUtils;
 
-import com.android.ims.ImsCallForwardInfo;
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallForwardInfo;
+import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
-import com.android.ims.ImsReasonInfo;
-import com.android.ims.ImsSsInfo;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
