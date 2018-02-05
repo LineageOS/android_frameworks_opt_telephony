@@ -413,7 +413,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     eq(new String[]{"+17005554141"}), any());
 
             // Because this is an emergency call, we expect caller id to be visible now.
-            verify(mImsCallProfile).setCallExtraInt(ImsCallProfile.EXTRA_OIR,
+            assertEquals(mImsCallProfile.getCallExtraInt(ImsCallProfile.EXTRA_OIR),
                     CommandsInterface.CLIR_SUPPRESSION);
         } catch (CallStateException cse) {
             cse.printStackTrace();

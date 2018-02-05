@@ -19,6 +19,7 @@ package android.telephony.ims;
 import android.telephony.ims.compat.feature.MMTelFeature;
 
 import com.android.ims.internal.IImsCallSession;
+import com.android.ims.internal.IImsCallSessionListener;
 
 /**
  * MMTelFeature implementation used by mockito to test functionality.
@@ -49,7 +50,8 @@ public class TestMMTelFeatureCompat extends MMTelFeature {
 
     // Compatibility Method
     @Override
-    public IImsCallSession createCallSession(int sessionId, ImsCallProfile profile) {
+    public IImsCallSession createCallSession(int sessionId, ImsCallProfile profile,
+            IImsCallSessionListener listener) {
         isCreateCallSessionCalled = true;
         return null;
     }

@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.support.test.runner.AndroidJUnit4;
+import android.telephony.ims.aidl.IImsCallSessionListener;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.internal.IImsMMTelFeature;
@@ -60,15 +61,15 @@ public class ImsCompatTests {
     @SmallTest
     @Test
     public void testCreateCallSessionCompat() throws Exception {
-        mCompatMmTelBinder.createCallSession(0, mock(ImsCallProfile.class));
+        mCompatMmTelBinder.createCallSession(0, new ImsCallProfile());
         assertTrue(mCompatMmTel.isCreateCallSessionCalled);
     }
 
     @SmallTest
     @Test
     public void testListenerCompatLayer() throws Exception {
-        ImsCallSessionListener listener = mock(ImsCallSessionListener.class);
-        ImsReasonInfo info = mock(ImsReasonInfo.class);
+        IImsCallSessionListener listener = mock(IImsCallSessionListener.class);
+        ImsReasonInfo info = new ImsReasonInfo();
         mCompatCallSession.setListener(listener);
 
         mCompatCallSession.mListener.callSessionTerminated(null, info);

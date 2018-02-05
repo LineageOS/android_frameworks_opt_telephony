@@ -131,8 +131,6 @@ public abstract class TelephonyTest {
     @Mock
     protected ImsCall mImsCall;
     @Mock
-    protected ImsCallProfile mImsCallProfile;
-    @Mock
     protected ImsEcbm mImsEcbm;
     @Mock
     protected SubscriptionController mSubscriptionController;
@@ -197,6 +195,7 @@ public abstract class TelephonyTest {
     @Mock
     protected RadioConfig mMockRadioConfig;
 
+    protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
     protected SubscriptionManager mSubscriptionManager;
     protected EuiccManager mEuiccManager;
@@ -308,6 +307,7 @@ public abstract class TelephonyTest {
         MockitoAnnotations.initMocks(this);
 
         mPhones = new Phone[] {mPhone};
+        mImsCallProfile = new ImsCallProfile();
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();

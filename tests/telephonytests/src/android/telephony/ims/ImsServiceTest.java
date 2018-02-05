@@ -16,8 +16,6 @@
 
 package android.telephony.ims;
 
-import static com.android.internal.telephony.ims.ImsResolver.SERVICE_INTERFACE;
-
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
@@ -70,7 +68,7 @@ public class ImsServiceTest {
         mTestCallback = mock(IImsFeatureStatusCallback.class);
         mTestImsService = new TestImsService(mMockContext);
         mTestImsServiceBinder = (IImsServiceController) mTestImsService.onBind(
-                new Intent(SERVICE_INTERFACE));
+                new Intent(ImsService.SERVICE_INTERFACE));
     }
 
     @After
