@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,31 +16,17 @@
 
 package android.telephony.ims;
 
-import android.telephony.ims.feature.MMTelFeature;
+import android.telephony.ims.compat.stub.ImsCallSessionImplBase;
 
-/**
- * MMTelFeature implementation used by mockito to test functionality.
- */
+import com.android.ims.internal.IImsCallSessionListener;
 
-public class TestMMTelFeature extends MMTelFeature {
+public class TestImsCallSessionCompat extends ImsCallSessionImplBase {
 
-    public boolean isConnectedCalled = false;
 
-    @Override
-    public boolean isConnected(int callSessionType, int callType) {
-        isConnectedCalled = true;
-        return true;
-    }
+    IImsCallSessionListener mListener;
 
     @Override
-    public void onFeatureReady() {
-    }
-
-    @Override
-    public void onFeatureRemoved() {
-    }
-
-    public void sendSetFeatureState(int state) {
-        setFeatureState(state);
+    public void setListener(IImsCallSessionListener listener) {
+        mListener = listener;
     }
 }

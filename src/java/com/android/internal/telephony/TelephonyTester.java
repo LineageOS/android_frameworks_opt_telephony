@@ -27,10 +27,10 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 
 import com.android.ims.ImsCall;
-import com.android.ims.ImsCallProfile;
-import com.android.ims.ImsConferenceState;
-import com.android.ims.ImsExternalCallState;
-import com.android.ims.ImsReasonInfo;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsConferenceState;
+import android.telephony.ims.ImsExternalCallState;
+import android.telephony.ims.ImsReasonInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;

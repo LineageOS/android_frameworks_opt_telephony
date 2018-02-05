@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -11,12 +11,12 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.
+ * limitations under the License
  */
 
 // Note: Package name is intentionally wrong for this test; the internal junk class is used to test
 // that parcelables of types other than android.* are stripped out.
-package com.android.telephony.ims;
+package com.android.internal.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
@@ -28,13 +28,15 @@ import android.support.test.runner.AndroidJUnit4;
 import android.telecom.DisconnectCause;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallProfile;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Tests for the {@link com.android.ims.ImsCallProfile} class.
+ * Tests for the {@link ImsCallProfile} class.
+ *
+ * Test must NOT be in the "android." namespace.
  */
 @RunWith(AndroidJUnit4.class)
 public class ImsCallProfileTest {
@@ -49,15 +51,15 @@ public class ImsCallProfileTest {
             mTest = in.readInt();
         }
 
-        public static final Creator<JunkParcelable> CREATOR = new Creator<JunkParcelable>() {
+        public static final Creator<JunkParcelable> CREATOR = new Creator<ImsCallProfileTest.JunkParcelable>() {
             @Override
-            public JunkParcelable createFromParcel(Parcel in) {
-                return new JunkParcelable(in);
+            public ImsCallProfileTest.JunkParcelable createFromParcel(Parcel in) {
+                return new ImsCallProfileTest.JunkParcelable(in);
             }
 
             @Override
-            public JunkParcelable[] newArray(int size) {
-                return new JunkParcelable[size];
+            public ImsCallProfileTest.JunkParcelable[] newArray(int size) {
+                return new ImsCallProfileTest.JunkParcelable[size];
             }
         };
 

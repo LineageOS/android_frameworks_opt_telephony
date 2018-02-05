@@ -2294,8 +2294,14 @@ public class GsmCdmaPhone extends Phone {
                         config_switch_phone_on_voice_reg_state_change)) {
                     mCi.getVoiceRadioTechnology(obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
                 }
-                // Force update IMS service
-                ImsManager.getInstance(mContext, mPhoneId).updateImsServiceConfig(true);
+                // Force update IMS service if it is available, if it isn't the config will be
+                // updated when ImsPhoneCallTracker opens a connection.
+                ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
+                if (imsManager.isServiceAvailable()) {
+                    imsManager.updateImsServiceConfig(true);
+                } else {
+                    logd("ImsManager is not available to update CarrierConfig.");
+                }
 
                 // Update broadcastEmergencyCallStateChanges
                 CarrierConfigManager configMgr = (CarrierConfigManager)

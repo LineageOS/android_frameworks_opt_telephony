@@ -16,32 +16,25 @@
 
 package com.android.internal.telephony;
 
-import android.app.Activity;
 import android.os.RemoteException;
 import android.os.Message;
-import android.app.PendingIntent;
-import android.app.PendingIntent.CanceledException;
-import android.provider.Telephony.Sms;
-import android.content.Intent;
 import android.telephony.Rlog;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.aidl.IImsSmsListener;
+import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.ims.stub.ImsSmsImplBase;
+import android.telephony.ims.stub.ImsSmsImplBase.SendStatusResult;
+import android.provider.Telephony.Sms.Intents;
+import android.util.Pair;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
-import com.android.ims.ImsServiceProxy;
-import com.android.ims.internal.IImsSmsListener;
+import com.android.ims.MmTelFeatureConnection;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
-import com.android.internal.telephony.gsm.SmsMessage;
-
-import android.telephony.ims.internal.feature.ImsFeature;
-import android.telephony.ims.internal.feature.MmTelFeature;
-import android.telephony.ims.internal.stub.SmsImplBase;
-import android.telephony.ims.internal.stub.SmsImplBase.SendStatusResult;
-import android.telephony.ims.internal.stub.SmsImplBase.StatusReportResult;
-import android.telephony.ims.stub.ImsRegistrationImplBase;
-import android.provider.Telephony.Sms.Intents;
-import android.util.Pair;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,6 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Responsible for communications with {@link com.android.ims.ImsManager} to send/receive messages
  * over IMS.
+ * @hide
  */
 public class ImsSmsDispatcher extends SMSDispatcher {
     // Initial condition for ims connection retry.
@@ -107,7 +101,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 }
 
                 @Override
-                public void onDeregistered(com.android.ims.ImsReasonInfo info) {
+                public void onDeregistered(ImsReasonInfo info) {
                     Rlog.d(TAG, "onImsDisconnected imsReasonInfo=" + info);
                     synchronized (mLock) {
                         mIsRegistered = false;
@@ -127,12 +121,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     };
 
     // Callback fires when ImsManager MMTel Feature changes state
-    private ImsServiceProxy.IFeatureUpdate mNotifyStatusChangedCallback =
-            new ImsServiceProxy.IFeatureUpdate() {
+    private MmTelFeatureConnection.IFeatureUpdate mNotifyStatusChangedCallback =
+            new MmTelFeatureConnection.IFeatureUpdate() {
                 @Override
                 public void notifyStateChanged() {
                     try {
-                        int status = getImsManager().getImsServiceStatus();
+                        int status = getImsManager().getImsServiceState();
                         Rlog.d(TAG, "Status Changed: " + status);
                         switch (status) {
                             case android.telephony.ims.feature.ImsFeature.STATE_READY: {
@@ -144,7 +138,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                             }
                             case android.telephony.ims.feature.ImsFeature.STATE_INITIALIZING:
                                 // fall through
-                            case android.telephony.ims.feature.ImsFeature.STATE_NOT_AVAILABLE:
+                            case ImsFeature.STATE_UNAVAILABLE:
                                 synchronized (mLock) {
                                     mIsImsServiceUp = false;
                                 }
@@ -174,18 +168,18 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 throw new IllegalArgumentException("Invalid token.");
             }
             switch(reason) {
-                case SmsImplBase.SEND_STATUS_OK:
+                case ImsSmsImplBase.SEND_STATUS_OK:
                     tracker.onSent(mContext);
                     break;
-                case SmsImplBase.SEND_STATUS_ERROR:
+                case ImsSmsImplBase.SEND_STATUS_ERROR:
                     tracker.onFailed(mContext, reason, 0 /* errorCode */);
                     mTrackers.remove(token);
                     break;
-                case SmsImplBase.SEND_STATUS_ERROR_RETRY:
+                case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
                     tracker.mRetryCount += 1;
                     sendSms(tracker);
                     break;
-                case SmsImplBase.SEND_STATUS_ERROR_FALLBACK:
+                case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
                     fallbackToPstn(token, tracker);
                     break;
                 default:
@@ -208,8 +202,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 getImsManager().acknowledgeSmsReport(
                         token,
                         messageRef,
-                        result.first ? SmsImplBase.STATUS_REPORT_STATUS_OK
-                                : SmsImplBase.STATUS_REPORT_STATUS_ERROR);
+                        result.first ? ImsSmsImplBase.STATUS_REPORT_STATUS_OK
+                                : ImsSmsImplBase.STATUS_REPORT_STATUS_ERROR);
             } catch (ImsException e) {
                 Rlog.e(TAG, "Failed to acknowledgeSmsReport(). Error: "
                         + e.getMessage());
@@ -229,8 +223,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     getImsManager().acknowledgeSms(token,
                             0,
                             result == Intents.RESULT_SMS_HANDLED
-                                    ? SmsImplBase.STATUS_REPORT_STATUS_OK
-                                    : SmsImplBase.DELIVER_STATUS_ERROR);
+                                    ? ImsSmsImplBase.STATUS_REPORT_STATUS_OK
+                                    : ImsSmsImplBase.DELIVER_STATUS_ERROR);
                 } catch (ImsException e) {
                     Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
                 }
@@ -286,7 +280,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         if (getImsManager().isServiceAvailable()) {
             return;
         }
-        // remove callback so we do not receive updates from old ImsServiceProxy when switching
+        // remove callback so we do not receive updates from old MmTelFeatureConnection when switching
         // between ImsServices.
         getImsManager().removeNotifyStatusChangedCallback(mNotifyStatusChangedCallback);
         // Exponential backoff during retry, limited to 32 seconds.

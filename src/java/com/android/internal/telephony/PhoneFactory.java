@@ -150,11 +150,17 @@ public class PhoneFactory {
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
                 int numPhones = TelephonyManager.getDefault().getPhoneCount();
-                // Start ImsResolver and bind to ImsServices.
+                // Return whether or not the device should use dynamic binding or the static
+                // implementation (deprecated)
+                boolean isDynamicBinding = sContext.getResources().getBoolean(
+                        com.android.internal.R.bool.config_dynamic_bind_ims);
+                // Get the package name of the default IMS implementation.
                 String defaultImsPackage = sContext.getResources().getString(
                         com.android.internal.R.string.config_ims_package);
+                // Start ImsResolver and bind to ImsServices.
                 Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
-                sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones);
+                sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones,
+                        isDynamicBinding);
                 sImsResolver.populateCacheAndStartBind();
 
                 int[] networkModes = new int[numPhones];

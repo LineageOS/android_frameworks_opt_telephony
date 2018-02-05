@@ -42,13 +42,14 @@ import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
+import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
-import com.android.ims.ImsConfig;
-import com.android.ims.ImsReasonInfo;
-import com.android.ims.internal.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
@@ -836,25 +837,29 @@ public class TelephonyMetrics {
      * @param feature IMS feature
      * @param network The IMS network type
      * @param value The settings. 0 indicates disabled, otherwise enabled.
-     * @param status IMS operation status. See OperationStatusConstants for details.
      */
-    public void writeImsSetFeatureValue(int phoneId, int feature, int network, int value,
-                                        int status) {
+    public void writeImsSetFeatureValue(int phoneId, int feature, int network, int value) {
         TelephonySettings s = new TelephonySettings();
-        switch (feature) {
-            case ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE:
-                s.isEnhanced4GLteModeEnabled = (value != 0);
-                break;
-            case ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI:
-                s.isWifiCallingEnabled = (value != 0);
-                break;
-            case ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE:
-                s.isVtOverLteEnabled = (value != 0);
-                break;
-            case ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI:
-                s.isVtOverWifiEnabled = (value != 0);
-                break;
+        if (network == ImsRegistrationImplBase.REGISTRATION_TECH_LTE) {
+            switch (feature) {
+                case MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE:
+                    s.isEnhanced4GLteModeEnabled = (value != 0);
+                    break;
+                case MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO:
+                    s.isVtOverLteEnabled = (value != 0);
+                    break;
+            }
+        } else if (network == ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN) {
+            switch (feature) {
+                case MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE:
+                    s.isWifiCallingEnabled = (value != 0);
+                    break;
+                case MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO:
+                    s.isVtOverWifiEnabled = (value != 0);
+                    break;
+            }
         }
+
 
         // If the settings don't change, we don't log the event.
         if (mLastSettings.get(phoneId) != null &&
@@ -952,15 +957,27 @@ public class TelephonyMetrics {
      * @param phoneId Phone id
      * @param capabilities IMS capabilities array
      */
-    public synchronized void writeOnImsCapabilities(int phoneId, boolean[] capabilities) {
+    public synchronized void writeOnImsCapabilities(int phoneId,
+            @ImsRegistrationImplBase.ImsRegistrationTech int radioTech,
+            MmTelFeature.MmTelCapabilities capabilities) {
         ImsCapabilities cap = new ImsCapabilities();
 
-        cap.voiceOverLte = capabilities[0];
-        cap.videoOverLte = capabilities[1];
-        cap.voiceOverWifi = capabilities[2];
-        cap.videoOverWifi = capabilities[3];
-        cap.utOverLte = capabilities[4];
-        cap.utOverWifi = capabilities[5];
+        if (radioTech == ImsRegistrationImplBase.REGISTRATION_TECH_LTE) {
+            cap.voiceOverLte = capabilities.isCapable(
+                    MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
+            cap.videoOverLte = capabilities.isCapable(
+                    MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
+            cap.utOverLte = capabilities.isCapable(
+                    MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_UT);
+
+        } else if (radioTech == ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN) {
+            cap.voiceOverWifi = capabilities.isCapable(
+                    MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
+            cap.videoOverWifi = capabilities.isCapable(
+                    MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
+            cap.utOverWifi = capabilities.isCapable(
+                    MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_UT);
+        }
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setImsCapabilities(cap).build();
 
