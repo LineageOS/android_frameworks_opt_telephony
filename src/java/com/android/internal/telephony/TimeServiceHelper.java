@@ -91,6 +91,20 @@ public class TimeServiceHelper {
     }
 
     /**
+     * Returns the same value as {@link System#currentTimeMillis()}.
+     */
+    public long currentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+
+    /**
+     * Returns the same value as {@link SystemClock#elapsedRealtime()}.
+     */
+    public long elapsedRealtime() {
+        return SystemClock.elapsedRealtime();
+    }
+
+    /**
      * Returns true if the device has an explicit time zone set.
      */
     public boolean isTimeZoneSettingInitialized() {

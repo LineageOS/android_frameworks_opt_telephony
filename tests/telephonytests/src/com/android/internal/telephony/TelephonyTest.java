@@ -195,8 +195,6 @@ public abstract class TelephonyTest {
     @Mock
     protected NitzStateMachine mNitzStateMachine;
     @Mock
-    protected TimeServiceHelper mTimeServiceHelper;
-    @Mock
     protected RadioConfig mMockRadioConfig;
 
     protected TelephonyManager mTelephonyManager;
@@ -372,8 +370,6 @@ public abstract class TelephonyTest {
                 .makeDeviceStateMonitor(nullable(Phone.class));
         doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
                 .makeNitzStateMachine(nullable(GsmCdmaPhone.class));
-        doReturn(mTimeServiceHelper).when(mTelephonyComponentFactory)
-                .makeTimeServiceHelper(nullable(Context.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
