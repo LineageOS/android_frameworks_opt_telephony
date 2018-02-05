@@ -19,7 +19,6 @@ package com.android.internal.telephony;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.os.PowerManager;
-import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.Rlog;
@@ -29,6 +28,8 @@ import android.util.LocalLog;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
+import com.android.internal.telephony.TimeZoneLookupHelper.OffsetResult;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.util.TimeStampedValue;
 import com.android.internal.util.IndentingPrintWriter;
@@ -97,20 +98,6 @@ public class NitzStateMachine {
             return ignoreNitz != null && ignoreNitz.equals("yes");
         }
 
-        /**
-         * Returns the same value as {@link System#currentTimeMillis()}.
-         */
-        public long currentTimeMillis() {
-            return System.currentTimeMillis();
-        }
-
-        /**
-         * Returns the same value as {@link SystemClock#elapsedRealtime()}.
-         */
-        public long elapsedRealtime() {
-            return SystemClock.elapsedRealtime();
-        }
-
         public String getNetworkCountryIsoForPhone() {
             return mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
         }
@@ -131,13 +118,13 @@ public class NitzStateMachine {
     // Time Zone detection state.
 
     /**
-     * Sometimes we get the NITZ time before we know what country we
-     * are in. Keep the time zone information from the NITZ string in
-     * mNitzData so we can fix the time zone once know the country.
+     * Sometimes we get the NITZ time before we know what country we are in. We keep the time zone
+     * information from the NITZ string in mLatestNitzSignal so we can fix the time zone once we
+     * know the country.
      */
     private boolean mNeedCountryCodeForNitz = false;
 
-    private NitzData mNitzData;
+    private TimeStampedValue<NitzData> mLatestNitzSignal;
     private boolean mGotCountryCode = false;
     private String mSavedTimeZoneId;
 
@@ -165,7 +152,7 @@ public class NitzStateMachine {
 
     public NitzStateMachine(GsmCdmaPhone phone) {
         this(phone,
-                TelephonyComponentFactory.getInstance().makeTimeServiceHelper(phone.getContext()),
+                new TimeServiceHelper(phone.getContext()),
                 new DeviceState(phone),
                 new TimeZoneLookupHelper());
     }
@@ -218,119 +205,145 @@ public class NitzStateMachine {
         }
 
         if (countryChanged || mNeedCountryCodeForNitz) {
-            // Capture the time zone property. This allows us to tell whether the device has a time
-            // zone set. TimeZone.getDefault() returns a default zone (GMT) even when time zone is
-            // not explicitly set making the system property a better indicator of whether an
-            // explicit time zone choice has been made.
+            // TimeZone.getDefault() returns a default zone (GMT) even when time zone have never
+            // been set which makes it difficult to tell if it's what the user / time zone detection
+            // has chosen. isTimeZoneSettingInitialized() tells us whether the time zone of the
+            // device has ever been explicit set by the user or code.
             final boolean isTimeZoneSettingInitialized =
                     mTimeServiceHelper.isTimeZoneSettingInitialized();
             if (DBG) {
-                Rlog.d(LOG_TAG, "fixTimeZone"
+                Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet:"
                         + " isTimeZoneSettingInitialized=" + isTimeZoneSettingInitialized
-                        + " mNitzData=" + mNitzData
-                        + " iso-cc='" + isoCountryCode
-                        + "' countryUsesUtc="
-                        + mTimeZoneLookupHelper.countryUsesUtc(isoCountryCode));
+                        + " mLatestNitzSignal=" + mLatestNitzSignal
+                        + " isoCountryCode=" + isoCountryCode);
             }
             String zoneId;
             if (TextUtils.isEmpty(isoCountryCode) && mNeedCountryCodeForNitz) {
                 // Country code not found.  This is likely a test network.
                 // Get a TimeZone based only on the NITZ parameters (best guess).
 
-                // mNeedCountryCodeForNitz is only set to true when mNitzData is set so there's no
-                // need to check mNitzData == null.
-                zoneId = mTimeZoneLookupHelper.guessZoneIdByNitz(mNitzData);
+                // mNeedCountryCodeForNitz is only set to true when mLatestNitzSignal is set so
+                // there's no need to check mLatestNitzSignal == null.
+                OffsetResult lookupResult =
+                        mTimeZoneLookupHelper.lookupByNitz(mLatestNitzSignal.mValue);
                 if (DBG) {
-                    Rlog.d(LOG_TAG, "fixTimeZone(): guessNitzTimeZone returned " + zoneId);
+                    Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: guessZoneIdByNitz() returned"
+                            + " lookupResult=" + lookupResult);
                 }
-            } else if ((mNitzData == null || nitzOffsetMightBeBogus(mNitzData))
-                    && isTimeZoneSettingInitialized
-                    && !mTimeZoneLookupHelper.countryUsesUtc(isoCountryCode)) {
+                zoneId = lookupResult != null ? lookupResult.zoneId : null;
+            } else if (mLatestNitzSignal == null) {
+                zoneId = null;
+                if (DBG) {
+                    Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: No cached NITZ data available,"
+                            + " not setting zone");
+                }
+            } else { // mLatestNitzSignal != null
+                if (nitzOffsetMightBeBogus(mLatestNitzSignal.mValue)
+                        && isTimeZoneSettingInitialized
+                        && !countryUsesUtc(isoCountryCode, mLatestNitzSignal)) {
 
-                // This case means that (1) the device received no NITZ signal yet or received an
-                // NITZ signal that looks bogus due to having a zero offset from UTC, (2) the device
-                // has a time zone set explicitly, and (3) the iso tells us the country is NOT one
-                // that uses a zero offset. This is interpreted as being NITZ incorrectly reporting
-                // a local time and not a UTC time. The zone is left as the current device's zone
-                // setting, and the time may be adjusted by assuming the current zone setting is
-                // correct.
-                TimeZone zone = TimeZone.getDefault();
-                zoneId = zone.getID();
+                    // This case means that (1) the device received an NITZ signal that could be
+                    // bogus due to having a zero offset from UTC, (2) the device has had a time
+                    // zone set explicitly and (3) the iso tells us the country is NOT one that uses
+                    // a zero offset. This is interpreted as being NITZ incorrectly reporting a
+                    // local time and not a UTC time. The zone is left as the current device's zone
+                    // setting, and the system clock may be adjusted by taking the NITZ time and
+                    // assuming the current zone setting is correct.
 
-                // Note that mNeedCountryCodeForNitz => (implies) { mNitzData != null }. Therefore,
-                // if mNitzData == null, mNeedCountryCodeForNitz cannot be true. The code in this
-                // section therefore means that when mNitzData == null (and the country is one that
-                // doesn't use a zero UTC offset) the device will retain the existing time zone
-                // setting and not try to derive one from the isoCountryCode.
-                if (mNeedCountryCodeForNitz) {
-                    try {
-                        // Acquire the wakelock as we're reading the system clock here.
-                        mWakeLock.acquire();
-
-                        long ctm = mDeviceState.currentTimeMillis();
-                        long tzOffset = zone.getOffset(ctm);
-                        if (DBG) {
-                            Rlog.d(LOG_TAG, "fixTimeZone: tzOffset=" + tzOffset
-                                    + " ltod=" + TimeUtils.logTimeOfDay(ctm));
-                        }
-                        if (mTimeServiceHelper.isTimeDetectionEnabled()) {
-                            long adj = ctm - tzOffset;
-                            String msg = "fixTimeZone: adj ltod=" + TimeUtils.logTimeOfDay(adj);
-                            setAndBroadcastNetworkSetTime(msg, adj);
-                        } else {
-                            // Adjust the saved NITZ time to account for tzOffset.
-                            mSavedNitzTime = new TimeStampedValue<>(
-                                    mSavedNitzTime.mValue - tzOffset,
-                                    mSavedNitzTime.mElapsedRealtime);
-                            if (DBG) {
-                                Rlog.d(LOG_TAG, "fixTimeZone: adj mSavedTime=" + mSavedNitzTime);
-                            }
-                        }
-                    } finally {
-                        mWakeLock.release();
+                    TimeZone zone = TimeZone.getDefault();
+                    if (DBG) {
+                        Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: NITZ looks bogus, maybe using"
+                                + " current default zone to adjust the system clock,"
+                                + " mNeedCountryCodeForNitz=" + mNeedCountryCodeForNitz
+                                + " mLatestNitzSignal=" + mLatestNitzSignal
+                                + " zone=" + zone);
                     }
-                }
-                if (DBG) {
-                    Rlog.d(LOG_TAG, "fixTimeZone: using default TimeZone");
-                }
-            } else if (mNitzData == null) {
-                // The use of 1/1/1970 UTC is unusual but consistent with historical behavior when
-                // it wasn't possible to detect whether a previous NITZ signal had been saved.
-                zoneId = mTimeZoneLookupHelper.guessZoneIdByInstantOffsetDstCountry(
-                        0 /* when */, 0 /* offset */, false /* dst */, isoCountryCode);
-                if (DBG) {
-                    Rlog.d(LOG_TAG, "fixTimeZone: No cached NITZ data available, using only country"
-                            + " code. zoneId=" + zoneId);
-                }
-            } else {
-                zoneId = mTimeZoneLookupHelper.guessZoneIdByNitzCountry(mNitzData, isoCountryCode);
-                if (DBG) {
-                    Rlog.d(LOG_TAG, "fixTimeZone: using getTimeZone(off, dst, time, iso)");
+                    zoneId = zone.getID();
+
+                    if (mNeedCountryCodeForNitz) {
+                        NitzData nitzData = mLatestNitzSignal.mValue;
+                        try {
+                            // Acquire the wakelock as we're reading the elapsed realtime clock
+                            // here.
+                            mWakeLock.acquire();
+
+                            // Use the time that came with the NITZ offset that we think is bogus:
+                            // we just interpret it as local time.
+                            long ctm = nitzData.getCurrentTimeInMillis();
+                            long delayAdjustedCtm = ctm + (mTimeServiceHelper.elapsedRealtime()
+                                    - mLatestNitzSignal.mElapsedRealtime);
+                            long tzOffset = zone.getOffset(delayAdjustedCtm);
+                            if (DBG) {
+                                Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet:"
+                                        + " tzOffset=" + tzOffset
+                                        + " delayAdjustedCtm="
+                                        + TimeUtils.logTimeOfDay(delayAdjustedCtm));
+                            }
+                            if (mTimeServiceHelper.isTimeDetectionEnabled()) {
+                                long timeZoneAdjustedCtm = delayAdjustedCtm - tzOffset;
+                                String msg = "handleNetworkCountryCodeSet: setting time"
+                                        + " timeZoneAdjustedCtm="
+                                        + TimeUtils.logTimeOfDay(timeZoneAdjustedCtm);
+                                setAndBroadcastNetworkSetTime(msg, timeZoneAdjustedCtm);
+                            } else {
+                                // Adjust the saved NITZ time to account for tzOffset.
+                                mSavedNitzTime = new TimeStampedValue<>(
+                                        mSavedNitzTime.mValue - tzOffset,
+                                        mSavedNitzTime.mElapsedRealtime);
+                                if (DBG) {
+                                    Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet:"
+                                            + "adjusting time mSavedNitzTime=" + mSavedNitzTime);
+                                }
+                            }
+                        } finally {
+                            mWakeLock.release();
+                        }
+                    }
+                } else {
+                    NitzData nitzData = mLatestNitzSignal.mValue;
+                    OffsetResult lookupResult =
+                            mTimeZoneLookupHelper.lookupByNitzCountry(nitzData, isoCountryCode);
+                    if (DBG) {
+                        Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: using"
+                                + " guessZoneIdByNitzCountry(nitzData, isoCountryCode),"
+                                + " nitzData=" + nitzData
+                                + " isoCountryCode=" + isoCountryCode
+                                + " lookupResult=" + lookupResult);
+                    }
+                    zoneId = lookupResult != null ? lookupResult.zoneId : null;
                 }
             }
-            final String tmpLog = "fixTimeZone:"
+            final String tmpLog = "handleNetworkCountryCodeSet:"
                     + " isTimeZoneSettingInitialized=" + isTimeZoneSettingInitialized
-                    + " mNitzData=" + mNitzData
-                    + " iso-cc=" + isoCountryCode
+                    + " mLatestNitzSignal=" + mLatestNitzSignal
+                    + " isoCountryCode=" + isoCountryCode
                     + " mNeedCountryCodeForNitz=" + mNeedCountryCodeForNitz
                     + " zoneId=" + zoneId;
             mTimeZoneLog.log(tmpLog);
 
             if (zoneId != null) {
-                Rlog.d(LOG_TAG, "fixTimeZone: zone != null zoneId=" + zoneId);
+                Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: zoneId != null, zoneId=" + zoneId);
                 if (mTimeServiceHelper.isTimeZoneDetectionEnabled()) {
                     setAndBroadcastNetworkSetTimeZone(zoneId);
                 } else {
-                    Rlog.d(LOG_TAG, "fixTimeZone: skip changing zone as getAutoTimeZone was false");
+                    Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: skip changing zone as"
+                            + " isTimeZoneDetectionEnabled() is false");
                 }
                 if (mNeedCountryCodeForNitz) {
-                    saveNitzTimeZone(zoneId);
+                    mSavedTimeZoneId = zoneId;
                 }
             } else {
-                Rlog.d(LOG_TAG, "fixTimeZone: zone == null, do nothing for zone");
+                Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: lookupResult == null, do nothing");
             }
             mNeedCountryCodeForNitz = false;
         }
+    }
+
+    private boolean countryUsesUtc(
+            String isoCountryCode, TimeStampedValue<NitzData> nitzSignal) {
+        return mTimeZoneLookupHelper.countryUsesUtc(
+                isoCountryCode,
+                nitzSignal.mValue.getCurrentTimeInMillis());
     }
 
     /**
@@ -384,41 +397,34 @@ public class NitzStateMachine {
                 if (!mGotCountryCode) {
                     zoneId = null;
                 } else if (!TextUtils.isEmpty(iso)) {
-                    zoneId = mTimeZoneLookupHelper.guessZoneIdByNitzCountry(newNitzData, iso);
+                    OffsetResult lookupResult =
+                            mTimeZoneLookupHelper.lookupByNitzCountry(newNitzData, iso);
+                    zoneId = lookupResult != null ? lookupResult.zoneId : null;
                 } else {
                     // We don't have a valid iso country code.  This is
                     // most likely because we're on a test network that's
                     // using a bogus MCC (eg, "001"), so get a TimeZone
                     // based only on the NITZ parameters.
-                    zoneId = mTimeZoneLookupHelper.guessZoneIdByNitz(newNitzData);
+                    OffsetResult lookupResult = mTimeZoneLookupHelper.lookupByNitz(newNitzData);
                     if (DBG) {
-                        Rlog.d(LOG_TAG, "setTimeZoneFromNitz(): findByNitz returned " + zoneId);
+                        Rlog.d(LOG_TAG, "handleTimeZoneFromNitz: guessZoneIdByNitz returned"
+                                + " lookupResult=" + lookupResult);
                     }
+                    zoneId = lookupResult != null ? lookupResult.zoneId : null;
                 }
             }
 
-            int previousUtcOffset;
-            boolean previousIsDst;
-            if (mNitzData == null) {
-                // No previously saved NITZ data. Use the same defaults as Android would have done
-                // before it was possible to detect this case.
-                previousUtcOffset = 0;
-                previousIsDst = false;
-            } else {
-                previousUtcOffset = mNitzData.getLocalOffsetMillis();
-                previousIsDst = mNitzData.isDst();
-            }
             if ((zoneId == null)
-                    || (newNitzData.getLocalOffsetMillis() != previousUtcOffset)
-                    || (newNitzData.isDst() != previousIsDst)) {
-                // We got the time before the country or the zone has changed
+                    || mLatestNitzSignal == null
+                    || offsetInfoDiffers(newNitzData, mLatestNitzSignal.mValue)) {
+                // We got the time before the country, or the zone has changed
                 // so we don't know how to identify the DST rules yet.  Save
                 // the information and hope to fix it up later.
                 mNeedCountryCodeForNitz = true;
-                mNitzData = newNitzData;
+                mLatestNitzSignal = nitzSignal;
             }
 
-            String tmpLog = "NITZ: nitzTimeSignal=" + nitzSignal
+            String tmpLog = "handleTimeZoneFromNitz: nitzSignal=" + nitzSignal
                     + " zoneId=" + zoneId
                     + " iso=" + iso + " mGotCountryCode=" + mGotCountryCode
                     + " mNeedCountryCodeForNitz=" + mNeedCountryCodeForNitz
@@ -434,19 +440,26 @@ public class NitzStateMachine {
                     setAndBroadcastNetworkSetTimeZone(zoneId);
                 }
                 mNitzTimeZoneDetectionSuccessful = true;
-                saveNitzTimeZone(zoneId);
+                mSavedTimeZoneId = zoneId;
             }
         } catch (RuntimeException ex) {
-            Rlog.e(LOG_TAG, "NITZ: Processing NITZ data " + nitzSignal + " ex=" + ex);
+            Rlog.e(LOG_TAG, "handleTimeZoneFromNitz: Processing NITZ data"
+                    + " nitzSignal=" + nitzSignal
+                    + " ex=" + ex);
         }
     }
 
-    private void handleTimeFromNitz(TimeStampedValue<NitzData> nitzTimeSignal) {
+    private static boolean offsetInfoDiffers(NitzData one, NitzData two) {
+        return one.getLocalOffsetMillis() != two.getLocalOffsetMillis()
+                || one.isDst() != two.isDst();
+    }
+
+    private void handleTimeFromNitz(TimeStampedValue<NitzData> nitzSignal) {
         try {
             boolean ignoreNitz = mDeviceState.getIgnoreNitz();
             if (ignoreNitz) {
                 Rlog.d(LOG_TAG,
-                        "setTimeFromNitz: Not setting clock because gsm.ignore-nitz is set");
+                        "handleTimeFromNitz: Not setting clock because gsm.ignore-nitz is set");
                 return;
             }
 
@@ -456,25 +469,25 @@ public class NitzStateMachine {
                 mWakeLock.acquire();
 
                 // Validate the nitzTimeSignal to reject obviously bogus elapsedRealtime values.
-                long elapsedRealtime = mDeviceState.elapsedRealtime();
-                long millisSinceNitzReceived = elapsedRealtime - nitzTimeSignal.mElapsedRealtime;
+                long elapsedRealtime = mTimeServiceHelper.elapsedRealtime();
+                long millisSinceNitzReceived = elapsedRealtime - nitzSignal.mElapsedRealtime;
                 if (millisSinceNitzReceived < 0 || millisSinceNitzReceived > Integer.MAX_VALUE) {
                     if (DBG) {
-                        Rlog.d(LOG_TAG, "setTimeFromNitz: not setting time, unexpected"
+                        Rlog.d(LOG_TAG, "handleTimeFromNitz: not setting time, unexpected"
                                 + " elapsedRealtime=" + elapsedRealtime
-                                + " nitzTimeSignal=" + nitzTimeSignal);
+                                + " nitzSignal=" + nitzSignal);
                     }
                     return;
                 }
 
                 // Adjust the NITZ time by the delay since it was received to get the time now.
                 long adjustedCurrentTimeMillis =
-                        nitzTimeSignal.mValue.getCurrentTimeInMillis() + millisSinceNitzReceived;
-                long gained = adjustedCurrentTimeMillis - mDeviceState.currentTimeMillis();
+                        nitzSignal.mValue.getCurrentTimeInMillis() + millisSinceNitzReceived;
+                long gained = adjustedCurrentTimeMillis - mTimeServiceHelper.currentTimeMillis();
 
                 if (mTimeServiceHelper.isTimeDetectionEnabled()) {
-                    String logMsg = "(setTimeFromNitz)"
-                            + " nitzTimeSignal=" + nitzTimeSignal
+                    String logMsg = "handleTimeFromNitz:"
+                            + " nitzSignal=" + nitzSignal
                             + " adjustedCurrentTimeMillis=" + adjustedCurrentTimeMillis
                             + " millisSinceNitzReceived= " + millisSinceNitzReceived
                             + " gained=" + gained;
@@ -483,8 +496,8 @@ public class NitzStateMachine {
                         logMsg += ": First update received.";
                         setAndBroadcastNetworkSetTime(logMsg, adjustedCurrentTimeMillis);
                     } else {
-                        long elapsedRealtimeSinceLastSaved =
-                                mDeviceState.elapsedRealtime() - mSavedNitzTime.mElapsedRealtime;
+                        long elapsedRealtimeSinceLastSaved = mTimeServiceHelper.elapsedRealtime()
+                                - mSavedNitzTime.mElapsedRealtime;
                         int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
                         int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
                         if (elapsedRealtimeSinceLastSaved > nitzUpdateSpacing
@@ -512,38 +525,36 @@ public class NitzStateMachine {
                 // Save the last NITZ time signal used so we can return to it later
                 // if auto-time detection is toggled.
                 mSavedNitzTime = new TimeStampedValue<>(
-                        adjustedCurrentTimeMillis, nitzTimeSignal.mElapsedRealtime);
+                        adjustedCurrentTimeMillis, nitzSignal.mElapsedRealtime);
             } finally {
                 mWakeLock.release();
             }
         } catch (RuntimeException ex) {
-            Rlog.e(LOG_TAG, "setTimeFromNitz: Processing NITZ data " + nitzTimeSignal
+            Rlog.e(LOG_TAG, "handleTimeFromNitz: Processing NITZ data"
+                    + " nitzSignal=" + nitzSignal
                     + " ex=" + ex);
         }
     }
 
-    private void saveNitzTimeZone(String zoneId) {
-        mSavedTimeZoneId = zoneId;
-    }
-
     private void setAndBroadcastNetworkSetTimeZone(String zoneId) {
         if (DBG) {
-            Rlog.d(LOG_TAG, "setAndBroadcastNetworkSetTimeZone: setTimeZone=" + zoneId);
+            Rlog.d(LOG_TAG, "setAndBroadcastNetworkSetTimeZone: zoneId=" + zoneId);
         }
         mTimeServiceHelper.setDeviceTimeZone(zoneId);
         if (DBG) {
             Rlog.d(LOG_TAG,
-                    "setAndBroadcastNetworkSetTimeZone: call alarm.setTimeZone and broadcast"
+                    "setAndBroadcastNetworkSetTimeZone: called setDeviceTimeZone()"
                             + " zoneId=" + zoneId);
         }
     }
 
     private void setAndBroadcastNetworkSetTime(String msg, long time) {
         if (!mWakeLock.isHeld()) {
-            Rlog.w(LOG_TAG, "Wake lock not held while setting device time (msg=" + msg + ")");
+            Rlog.w(LOG_TAG, "setAndBroadcastNetworkSetTime: Wake lock not held while setting device"
+                    + " time (msg=" + msg + ")");
         }
 
-        msg = "setAndBroadcastNetworkSetTime: [setting time to time=" + time + "]:" + msg;
+        msg = "setAndBroadcastNetworkSetTime: [Setting time to time=" + time + "]:" + msg;
         if (DBG) {
             Rlog.d(LOG_TAG, msg);
         }
@@ -554,15 +565,17 @@ public class NitzStateMachine {
 
     private void handleAutoTimeEnabled() {
         if (DBG) {
-            Rlog.d(LOG_TAG, "Reverting to NITZ Time: mSavedTime=" + mSavedNitzTime);
+            Rlog.d(LOG_TAG, "handleAutoTimeEnabled: Reverting to NITZ Time:"
+                    + " mSavedNitzTime=" + mSavedNitzTime);
         }
         if (mSavedNitzTime != null) {
             try {
                 // Acquire the wakelock as we're reading the elapsed realtime clock here.
                 mWakeLock.acquire();
 
-                long elapsedRealtime = mDeviceState.elapsedRealtime();
-                String msg = "Reverting to NITZ time, elapsedRealtime=" + elapsedRealtime
+                long elapsedRealtime = mTimeServiceHelper.elapsedRealtime();
+                String msg = "mSavedNitzTime: Reverting to NITZ time"
+                        + " elapsedRealtime=" + elapsedRealtime
                         + " mSavedNitzTime=" + mSavedNitzTime;
                 long adjustedCurrentTimeMillis =
                         mSavedNitzTime.mValue + (elapsedRealtime - mSavedNitzTime.mElapsedRealtime);
@@ -574,7 +587,8 @@ public class NitzStateMachine {
     }
 
     private void handleAutoTimeZoneEnabled() {
-        String tmpLog = "Reverting to NITZ TimeZone: tz=" + mSavedTimeZoneId;
+        String tmpLog = "handleAutoTimeZoneEnabled: Reverting to NITZ TimeZone:"
+                + " mSavedTimeZoneId=" + mSavedTimeZoneId;
         if (DBG) {
             Rlog.d(LOG_TAG, tmpLog);
         }
@@ -598,9 +612,9 @@ public class NitzStateMachine {
 
         // Time Zone Detection State
         pw.println(" mNeedCountryCodeForNitz=" + mNeedCountryCodeForNitz);
-        pw.println(" mNitzData=" + mNitzData);
+        pw.println(" mLatestNitzSignal=" + mLatestNitzSignal);
         pw.println(" mGotCountryCode=" + mGotCountryCode);
-        pw.println(" mSavedTimeZone=" + mSavedTimeZoneId);
+        pw.println(" mSavedTimeZoneId=" + mSavedTimeZoneId);
         pw.println(" mNitzTimeZoneDetectionSuccessful=" + mNitzTimeZoneDetectionSuccessful);
 
         // Miscellaneous
@@ -630,22 +644,22 @@ public class NitzStateMachine {
      * @param iso Country code from network MCC
      */
     private void updateTimeZoneByNetworkCountryCode(String iso) {
-        String zoneId = mTimeZoneLookupHelper.guessZoneIdByCountry(
-                iso, mDeviceState.currentTimeMillis());
-        if (zoneId != null) {
+        CountryResult lookupResult = mTimeZoneLookupHelper.lookupByCountry(
+                iso, mTimeServiceHelper.currentTimeMillis());
+        if (lookupResult != null && lookupResult.allZonesHaveSameOffset) {
+            String logMsg = "updateTimeZoneByNetworkCountryCode: set time"
+                    + " lookupResult=" + lookupResult
+                    + " iso=" + iso;
             if (DBG) {
-                Rlog.d(LOG_TAG, "updateTimeZoneByNetworkCountryCode: set time zone=" + zoneId
-                        + " iso=" + iso);
+                Rlog.d(LOG_TAG, logMsg);
             }
-
-            mTimeZoneLog.log("updateTimeZoneByNetworkCountryCode: set time zone=" + zoneId
-                    + " iso=" + iso);
-            setAndBroadcastNetworkSetTimeZone(zoneId);
+            mTimeZoneLog.log(logMsg);
+            setAndBroadcastNetworkSetTimeZone(lookupResult.zoneId);
         } else {
             if (DBG) {
-                Rlog.d(LOG_TAG,
-                        "updateTimeZoneByNetworkCountryCode: no good zone for iso-cc='" + iso
-                                + "', do nothing");
+                Rlog.d(LOG_TAG, "updateTimeZoneByNetworkCountryCode: no good zone for"
+                        + " iso=" + iso
+                        + " lookupResult=" + lookupResult);
             }
         }
     }
@@ -661,7 +675,7 @@ public class NitzStateMachine {
      * Returns the last NITZ data that was cached.
      */
     public NitzData getCachedNitzData() {
-        return mNitzData;
+        return mLatestNitzSignal != null ? mLatestNitzSignal.mValue : null;
     }
 
     /**
