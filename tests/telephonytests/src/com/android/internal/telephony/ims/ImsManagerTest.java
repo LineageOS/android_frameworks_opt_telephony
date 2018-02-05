@@ -42,8 +42,16 @@ import org.mockito.Mock;
 public class ImsManagerTest extends TelephonyTest {
 
     PersistableBundle mBundle;
-    @Mock
-    IBinder mBinder;
+
+    @Mock IBinder mBinder;
+    @Mock ImsConfigImplBase mImsConfigImplBaseMock;
+    Hashtable<Integer, Integer> mProvisionedIntVals = new Hashtable<>();
+    Hashtable<Integer, String> mProvisionedStringVals = new Hashtable<>();
+    ImsConfigImplBase.ImsConfigStub mImsConfigStub;
+    ImsConfig mImsConfig;
+
+    private final int[] mSubId = {0};
+    private int mPhoneId;
 
     @Before
     public void setUp() throws Exception {
@@ -161,5 +169,111 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(mSubId[0]),
                 eq(SubscriptionManager.WFC_IMS_ENABLED),
                 eq("1"));
+    }
+
+    @Test
+    public void testGetProvisionedValues() throws Exception {
+        ImsManager imsManager = initializeProvisionedValues();
+
+        assertEquals(true, imsManager.isWfcProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
+
+        assertEquals(true, imsManager.isVtProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.LVC_SETTING_ENABLED));
+
+        assertEquals(true, imsManager.isVolteProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.VLT_SETTING_ENABLED));
+
+        // If we call get again, times should still be one because the value should be fetched
+        // from cache.
+        assertEquals(true, imsManager.isWfcProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
+
+        assertEquals(true, imsManager.isVtProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.LVC_SETTING_ENABLED));
+
+        assertEquals(true, imsManager.isVolteProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.VLT_SETTING_ENABLED));
+    }
+
+    @Test
+    public void testSetProvisionedValues() throws Exception {
+        ImsManager imsManager = initializeProvisionedValues();
+
+        assertEquals(true, imsManager.isWfcProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
+
+        imsManager.getConfigInterface().setProvisionedValue(
+                ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED,
+                ImsConfig.FeatureValueConstants.OFF);
+
+        assertEquals(0, (int) mProvisionedIntVals.get(
+                ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
+
+        assertEquals(false, imsManager.isWfcProvisionedOnDevice());
+
+        verify(mImsConfigImplBaseMock, times(1)).setConfig(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED),
+                eq(0));
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
+
+    }
+
+    private ImsManager initializeProvisionedValues() {
+        when(mImsConfigImplBaseMock.getConfigInt(anyInt()))
+                .thenAnswer(invocation ->  {
+                    return getProvisionedInt((Integer) (invocation.getArguments()[0]));
+                });
+
+        when(mImsConfigImplBaseMock.setConfig(anyInt(), anyInt()))
+                .thenAnswer(invocation ->  {
+                    mProvisionedIntVals.put((Integer) (invocation.getArguments()[0]),
+                            (Integer) (invocation.getArguments()[1]));
+                    return ImsConfig.OperationStatusConstants.SUCCESS;
+                });
+
+
+        // Configure ImsConfigStub
+        mImsConfigStub = new ImsConfigImplBase.ImsConfigStub(mImsConfigImplBaseMock);
+        doReturn(mImsConfigStub).when(mImsConfigImplBaseMock).getIImsConfig();
+
+        // Configure ImsConfig
+        mImsConfig = new ImsConfig(mImsConfigStub, mContext);
+
+        // Configure ImsManager
+        ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
+        try {
+            replaceInstance(ImsManager.class, "mConfig", imsManager, mImsConfig);
+        } catch (Exception ex) {
+            fail("failed with " + ex);
+        }
+
+        return imsManager;
+    }
+
+    // If the value is ever set, return the set value. If not, return a constant value 1000.
+    private int getProvisionedInt(int item) {
+        if (mProvisionedIntVals.containsKey(item)) {
+            return mProvisionedIntVals.get(item);
+        } else {
+            return ImsConfig.FeatureValueConstants.ON;
+        }
+    }
+
+    // If the value is ever set, return the set value. If not, return a constant value "unset".
+    private String getProvisionedString(int item) {
+        if (mProvisionedStringVals.containsKey(item)) {
+            return mProvisionedStringVals.get(item);
+        } else {
+            return UNSET_PROVISIONED_STRING;
+        }
     }
 }

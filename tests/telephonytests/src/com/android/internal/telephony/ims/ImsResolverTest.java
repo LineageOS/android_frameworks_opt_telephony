@@ -16,6 +16,19 @@
 
 package com.android.internal.telephony.ims;
 
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.assertTrue;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -49,18 +62,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNotNull;
-import static junit.framework.Assert.assertNull;
-import static junit.framework.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for ImsResolver
@@ -108,7 +109,6 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(1/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> features = new HashSet<>();
-        features.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, features, true));
@@ -137,7 +137,6 @@ public class ImsResolverTest extends ImsTestBase {
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> features = new HashSet<>();
-        features.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, features, true));
@@ -166,7 +165,6 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(1/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> features = new HashSet<>();
-        features.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, features, true));
@@ -197,7 +195,6 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(1/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> features = new HashSet<>();
-        features.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_RCS_FEATURE);
         // Use device default package, which will load the ImsService that the device provides
@@ -233,14 +230,12 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(1/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Set the carrier override package for slot 0
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
         Set<String> carrierFeatures = new HashSet<>();
-        // Carrier service doesn't support the emergency voice feature.
-        carrierFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        // Carrier service doesn't support the voice feature.
         carrierFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Use device default package, which will load the ImsService that the device provides
         info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true));
@@ -283,27 +278,20 @@ public class ImsResolverTest extends ImsTestBase {
 
         // Callback from mock ImsServiceControllers
         // All features on slot 1 should be the device default
-        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.EMERGENCY_MMTEL, deviceController);
-        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.MMTEL, deviceController);
-        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.RCS, deviceController);
-        // The carrier override does not support emergency voice
-        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.EMERGENCY_MMTEL, deviceController);
-        // The carrier override contains these features
-        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.MMTEL, carrierController);
-        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.RCS, carrierController);
+        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.FEATURE_MMTEL, deviceController);
+        mTestImsResolver.imsServiceFeatureCreated(1, ImsFeature.FEATURE_RCS, deviceController);
+        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_MMTEL, deviceController);
+        // The carrier override contains this feature
+        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_RCS, carrierController);
         // Get the IImsServiceControllers for each feature on each slot and verify they are correct.
         assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
-                1/*Slot id*/, ImsFeature.EMERGENCY_MMTEL, null));
+                1 /*Slot id*/, ImsFeature.FEATURE_MMTEL, null));
         assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
-                1 /*Slot id*/, ImsFeature.MMTEL, null));
+                1 /*Slot id*/, ImsFeature.FEATURE_RCS, null));
         assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
-                1 /*Slot id*/, ImsFeature.RCS, null));
-        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
-                1 /*Slot id*/, ImsFeature.EMERGENCY_MMTEL, null));
+                0 /*Slot id*/, ImsFeature.FEATURE_MMTEL, null));
         assertEquals(carrierController, mTestImsResolver.getImsServiceControllerAndListen(
-                0 /*Slot id*/, ImsFeature.MMTEL, null));
-        assertEquals(carrierController, mTestImsResolver.getImsServiceControllerAndListen(
-                0 /*Slot id*/, ImsFeature.RCS, null));
+                0 /*Slot id*/, ImsFeature.FEATURE_RCS, null));
     }
 
     /**
@@ -316,7 +304,6 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> features = new HashSet<>();
-        features.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         // Doesn't include RCS feature by default
         info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, features, true));
@@ -364,7 +351,6 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         // Set the carrier override package for slot 0
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
@@ -400,7 +386,6 @@ public class ImsResolverTest extends ImsTestBase {
 
         // add RCS to features list
         Set<String> newDeviceFeatures = new HashSet<>();
-        newDeviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         newDeviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         newDeviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         info.clear();
@@ -435,7 +420,6 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Set the carrier override package for slot 0
@@ -504,14 +488,12 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Set the carrier override package for slot 0
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
         Set<String> carrierFeatures = new HashSet<>();
-        // Carrier service doesn't support the emergency voice feature.
-        carrierFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        // Carrier service doesn't support the voice feature.
         carrierFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Use device default package, which will load the ImsService that the device provides
         info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true));
@@ -559,7 +541,6 @@ public class ImsResolverTest extends ImsTestBase {
                 convertToHashSet(newCarrierFeatures, 0);
         verify(carrierController).changeImsServiceFeatures(newCarrierFeatureSet);
         Set<String> newDeviceFeatures = new HashSet<>();
-        newDeviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         newDeviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         newDeviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         HashSet<Pair<Integer, Integer>> newDeviceFeatureSet = convertToHashSet(newDeviceFeatures,
@@ -578,7 +559,6 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Set the carrier override package for slot 0
@@ -594,8 +574,7 @@ public class ImsResolverTest extends ImsTestBase {
         waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
 
         Set<String> carrierFeatures = new HashSet<>();
-        // Carrier service doesn't support the emergency voice feature.
-        carrierFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        // Carrier service doesn't support the voice feature.
         carrierFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, true));
         when(mMockPM.queryIntentServicesAsUser(any(), anyInt(), anyInt())).thenReturn(info);
@@ -629,14 +608,12 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Set the carrier override package for slot 0
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
         Set<String> carrierFeatures = new HashSet<>();
-        // Carrier service doesn't support the emergency voice feature.
-        carrierFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        // Carrier service doesn't support the voice feature.
         carrierFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, true));
         // Use device default package, which will load the ImsService that the device provides
@@ -680,14 +657,12 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Set the carrier override package for slot 0
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
         Set<String> carrierFeatures = new HashSet<>();
-        // Carrier service doesn't support the emergency voice feature.
-        carrierFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        // Carrier service doesn't support the voice feature.
         carrierFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, true));
         // Use device default package, which will load the ImsService that the device provides
@@ -726,17 +701,16 @@ public class ImsResolverTest extends ImsTestBase {
         setupResolver(2/*numSlots*/);
         List<ResolveInfo> info = new ArrayList<>();
         Set<String> deviceFeatures = new HashSet<>();
-        deviceFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
         deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
         // Set the carrier override package for slot 0
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
         Set<String> carrierFeatures1 = new HashSet<>();
-        // Carrier service doesn't support the emergency voice feature.
+        // Carrier service 1
         carrierFeatures1.add(ImsResolver.METADATA_MMTEL_FEATURE);
         carrierFeatures1.add(ImsResolver.METADATA_RCS_FEATURE);
         Set<String> carrierFeatures2 = new HashSet<>();
-        // Carrier service doesn't support the emergency voice feature.
+        // Carrier service 2 doesn't support the voice feature.
         carrierFeatures2.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_CARRIER_2_DEFAULT_NAME, carrierFeatures2, true));
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, carrierFeatures1, true));
@@ -850,12 +824,10 @@ public class ImsResolverTest extends ImsTestBase {
 
     private int metadataStringToFeature(String f) {
         switch (f) {
-            case ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE:
-                return ImsFeature.EMERGENCY_MMTEL;
             case ImsResolver.METADATA_MMTEL_FEATURE:
-                return ImsFeature.MMTEL;
+                return ImsFeature.FEATURE_MMTEL;
             case ImsResolver.METADATA_RCS_FEATURE:
-                return ImsFeature.RCS;
+                return ImsFeature.FEATURE_RCS;
         }
         return -1;
     }
@@ -868,17 +840,17 @@ public class ImsResolverTest extends ImsTestBase {
         for (String f : features) {
             switch (f) {
                 case ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE:
-                    if (!sInfo.supportedFeatures.contains(ImsFeature.EMERGENCY_MMTEL)) {
+                    if (!sInfo.supportedFeatures.contains(ImsFeature.FEATURE_EMERGENCY_MMTEL)) {
                         return false;
                     }
                     break;
                 case ImsResolver.METADATA_MMTEL_FEATURE:
-                    if (!sInfo.supportedFeatures.contains(ImsFeature.MMTEL)) {
+                    if (!sInfo.supportedFeatures.contains(ImsFeature.FEATURE_MMTEL)) {
                         return false;
                     }
                     break;
                 case ImsResolver.METADATA_RCS_FEATURE:
-                    if (!sInfo.supportedFeatures.contains(ImsFeature.RCS)) {
+                    if (!sInfo.supportedFeatures.contains(ImsFeature.FEATURE_RCS)) {
                         return false;
                     }
                     break;
