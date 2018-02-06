@@ -302,7 +302,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                             | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS);
             return getCarrierPrivilegeStatus(pInfo);
         } catch (PackageManager.NameNotFoundException ex) {
-            Rlog.e(LOG_TAG, "NameNotFoundException", ex);
+            log("Package " + packageName + " not found for carrier privilege status check");
         }
         return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
     }
