@@ -41,9 +41,9 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.Phone;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Data service manager manages handling data requests and responses on data services (e.g.
@@ -51,7 +51,7 @@ import java.util.Map;
  */
 public class DataServiceManager {
     private static final String TAG = DataServiceManager.class.getSimpleName();
-    private static final boolean DBG = true;
+    private static final boolean DBG = false;
 
     static final String DATA_CALL_RESPONSE = "data_call_response";
 
@@ -69,7 +69,7 @@ public class DataServiceManager {
 
     private final RegistrantList mServiceBindingChangedRegistrants = new RegistrantList();
 
-    private final Map<CellularDataServiceCallback, Message> mMessageMap = new HashMap<>();
+    private final Map<IBinder, Message> mMessageMap = new ConcurrentHashMap<>();
 
     private final RegistrantList mDataCallListChangedRegistrants = new RegistrantList();
 
@@ -128,29 +128,33 @@ public class DataServiceManager {
                 log("onSetupDataCallComplete. resultCode = " + resultCode + ", response = "
                         + response);
             }
-            Message msg = mMessageMap.remove(CellularDataServiceCallback.this);
-            msg.getData().putParcelable(DATA_CALL_RESPONSE, response);
-            sendCompleteMessage(msg, resultCode);
+            Message msg = mMessageMap.remove(asBinder());
+            if (msg != null) {
+                msg.getData().putParcelable(DATA_CALL_RESPONSE, response);
+                sendCompleteMessage(msg, resultCode);
+            } else {
+                loge("Unable to find the message for setup call response.");
+            }
         }
 
         @Override
         public void onDeactivateDataCallComplete(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onDeactivateDataCallComplete. resultCode = " + resultCode);
-            Message msg = mMessageMap.remove(CellularDataServiceCallback.this);
+            Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
 
         @Override
         public void onSetInitialAttachApnComplete(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onSetInitialAttachApnComplete. resultCode = " + resultCode);
-            Message msg = mMessageMap.remove(CellularDataServiceCallback.this);
+            Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
 
         @Override
         public void onSetDataProfileComplete(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onSetDataProfileComplete. resultCode = " + resultCode);
-            Message msg = mMessageMap.remove(CellularDataServiceCallback.this);
+            Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
 
@@ -158,7 +162,7 @@ public class DataServiceManager {
         public void onGetDataCallListComplete(@DataServiceCallback.ResultCode int resultCode,
                                               List<DataCallResponse> dataCallList) {
             if (DBG) log("onGetDataCallListComplete. resultCode = " + resultCode);
-            Message msg = mMessageMap.remove(CellularDataServiceCallback.this);
+            Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
 
@@ -266,22 +270,28 @@ public class DataServiceManager {
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
                               Message onCompleteMessage) {
+        if (DBG) log("setupDataCall");
         if (!mBound) {
             loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
         }
 
-        CellularDataServiceCallback callback = new CellularDataServiceCallback();
+        CellularDataServiceCallback callback = null;
+        if (onCompleteMessage != null) {
+            callback = new CellularDataServiceCallback();
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
+        }
         try {
             mIDataService.setupDataCall(mPhone.getPhoneId(), accessNetworkType, dataProfile,
                     isRoaming, allowRoaming, reason, linkProperties, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke setupDataCall on data service.");
+            if (callback != null) {
+                mMessageMap.remove(callback.asBinder());
+            }
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
-            return;
         }
-        mMessageMap.put(callback, onCompleteMessage);
     }
 
     /**
@@ -298,21 +308,27 @@ public class DataServiceManager {
      *        care about the result.
      */
     public void deactivateDataCall(int cid, int reason, Message onCompleteMessage) {
+        if (DBG) log("deactivateDataCall");
         if (!mBound) {
             loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
         }
 
-        CellularDataServiceCallback callback = new CellularDataServiceCallback();
+        CellularDataServiceCallback callback = null;
+        if (onCompleteMessage != null) {
+            callback = new CellularDataServiceCallback();
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
+        }
         try {
             mIDataService.deactivateDataCall(mPhone.getPhoneId(), cid, reason, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke deactivateDataCall on data service.");
+            if (callback != null) {
+                mMessageMap.remove(callback.asBinder());
+            }
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
-            return;
         }
-        mMessageMap.put(callback, onCompleteMessage);
     }
 
     /**
@@ -325,22 +341,28 @@ public class DataServiceManager {
      */
     public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming,
                                     Message onCompleteMessage) {
+        if (DBG) log("setInitialAttachApn");
         if (!mBound) {
             loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
         }
 
-        CellularDataServiceCallback callback = new CellularDataServiceCallback();
+        CellularDataServiceCallback callback = null;
+        if (onCompleteMessage != null) {
+            callback = new CellularDataServiceCallback();
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
+        }
         try {
             mIDataService.setInitialAttachApn(mPhone.getPhoneId(), dataProfile, isRoaming,
                     callback);
         } catch (RemoteException e) {
             loge("Cannot invoke setInitialAttachApn on data service.");
+            if (callback != null) {
+                mMessageMap.remove(callback.asBinder());
+            }
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
-            return;
         }
-        mMessageMap.put(callback, onCompleteMessage);
     }
 
     /**
@@ -355,21 +377,27 @@ public class DataServiceManager {
      */
     public void setDataProfile(List<DataProfile> dps, boolean isRoaming,
                                Message onCompleteMessage) {
+        if (DBG) log("setDataProfile");
         if (!mBound) {
             loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
         }
 
-        CellularDataServiceCallback callback = new CellularDataServiceCallback();
+        CellularDataServiceCallback callback = null;
+        if (onCompleteMessage != null) {
+            callback = new CellularDataServiceCallback();
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
+        }
         try {
             mIDataService.setDataProfile(mPhone.getPhoneId(), dps, isRoaming, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke setDataProfile on data service.");
+            if (callback != null) {
+                mMessageMap.remove(callback.asBinder());
+            }
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
-            return;
         }
-        mMessageMap.put(callback, onCompleteMessage);
     }
 
     /**
@@ -379,21 +407,27 @@ public class DataServiceManager {
      *        care about the result.
      */
     public void getDataCallList(Message onCompleteMessage) {
+        if (DBG) log("getDataCallList");
         if (!mBound) {
             loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
         }
 
-        CellularDataServiceCallback callback = new CellularDataServiceCallback();
+        CellularDataServiceCallback callback = null;
+        if (onCompleteMessage != null) {
+            callback = new CellularDataServiceCallback();
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
+        }
         try {
             mIDataService.getDataCallList(mPhone.getPhoneId(), callback);
         } catch (RemoteException e) {
             loge("Cannot invoke getDataCallList on data service.");
+            if (callback != null) {
+                mMessageMap.remove(callback.asBinder());
+            }
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
-            return;
         }
-        mMessageMap.put(callback, onCompleteMessage);
     }
 
     /**

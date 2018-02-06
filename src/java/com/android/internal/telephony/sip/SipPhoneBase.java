@@ -44,7 +44,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.dataconnection.DataConnection;
 import com.android.internal.telephony.uicc.IccFileHandler;
 
 import java.util.ArrayList;
@@ -68,13 +67,6 @@ abstract class SipPhoneBase extends Phone {
 
     @Override
     public abstract Call getRingingCall();
-
-    @Override
-    public Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
-            throws CallStateException {
-        // ignore UUSInfo
-        return dial(dialString, videoState);
-    }
 
     void migrateFrom(SipPhoneBase from) {
         super.migrateFrom(from);
@@ -413,14 +405,6 @@ abstract class SipPhoneBase extends Phone {
 
     @Override
     public void setOnPostDialCharacter(Handler h, int what, Object obj) {
-    }
-
-    @Override
-    public void getDataCallList(Message response) {
-    }
-
-    public List<DataConnection> getCurrentDataConnectionList () {
-        return null;
     }
 
     @Override

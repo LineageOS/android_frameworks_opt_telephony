@@ -17,6 +17,7 @@
 package com.android.internal.telephony.metrics;
 
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
+
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
@@ -34,6 +35,7 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYP
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_PPP;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNKNOWN;
 
+import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.os.Build;
 import android.os.SystemClock;
 import android.telephony.Rlog;
@@ -1365,26 +1367,26 @@ public class TelephonyMetrics {
      * @param rilSerial RIL request serial number
      * @param rilError RIL error
      * @param rilRequest RIL request
-     * @param response Data call response
+     * @param result Data call result
      */
     private void writeOnSetupDataCallResponse(int phoneId, int rilSerial, int rilError,
-                                              int rilRequest, DataCallResponse response) {
+                                              int rilRequest, SetupDataCallResult result) {
 
         RilSetupDataCallResponse setupDataCallResponse = new RilSetupDataCallResponse();
         RilDataCall dataCall = new RilDataCall();
 
-        if (response != null) {
-            setupDataCallResponse.status = (response.getStatus() == 0
-                    ? RilDataCallFailCause.PDP_FAIL_NONE : response.getStatus());
-            setupDataCallResponse.suggestedRetryTimeMillis = response.getSuggestedRetryTime();
+        if (result != null) {
+            setupDataCallResponse.status =
+                    (result.status == 0 ? RilDataCallFailCause.PDP_FAIL_NONE : result.status);
+            setupDataCallResponse.suggestedRetryTimeMillis = result.suggestedRetryTime;
 
-            dataCall.cid = response.getCallId();
-            if (!TextUtils.isEmpty(response.getType())) {
-                dataCall.type = toPdpType(response.getType());
+            dataCall.cid = result.cid;
+            if (!TextUtils.isEmpty(result.type)) {
+                dataCall.type = toPdpType(result.type);
             }
 
-            if (!TextUtils.isEmpty(response.getIfname())) {
-                dataCall.iframe = response.getIfname();
+            if (!TextUtils.isEmpty(result.ifname)) {
+                dataCall.iframe = result.ifname;
             }
         }
         setupDataCallResponse.call = dataCall;
@@ -1472,8 +1474,8 @@ public class TelephonyMetrics {
                                             int rilRequest, Object ret) {
         switch (rilRequest) {
             case RIL_REQUEST_SETUP_DATA_CALL:
-                DataCallResponse dataCall = (DataCallResponse) ret;
-                writeOnSetupDataCallResponse(phoneId, rilSerial, rilError, rilRequest, dataCall);
+                SetupDataCallResult result = (SetupDataCallResult) ret;
+                writeOnSetupDataCallResponse(phoneId, rilSerial, rilError, rilRequest, result);
                 break;
             case RIL_REQUEST_DEACTIVATE_DATA_CALL:
                 writeOnDeactivateDataCallResponse(phoneId, rilError);

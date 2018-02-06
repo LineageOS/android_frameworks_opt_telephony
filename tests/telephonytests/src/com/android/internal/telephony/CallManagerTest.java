@@ -144,11 +144,12 @@ public class CallManagerTest extends TelephonyTest {
         CallManager.getInstance().dial(mPhone,
                 PhoneNumberUtils.stripSeparators("+17005554141"), 0);
         ArgumentCaptor<String> mCaptorString = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Integer> mCaptorInt = ArgumentCaptor.forClass(Integer.class);
-        verify(mPhone, times(1)).dial(mCaptorString.capture(), mCaptorInt.capture());
+        ArgumentCaptor<PhoneInternalInterface.DialArgs> dialArgsCaptor =
+                ArgumentCaptor.forClass(PhoneInternalInterface.DialArgs.class);
+        verify(mPhone, times(1)).dial(mCaptorString.capture(), dialArgsCaptor.capture());
         assertEquals(PhoneNumberUtils.stripSeparators("+17005554141"),
                 mCaptorString.getValue());
-        assertEquals(0, mCaptorInt.getValue().intValue());
+        assertEquals(0, dialArgsCaptor.getValue().videoState);
     }
 
     @SmallTest @Test
@@ -286,12 +287,13 @@ public class CallManagerTest extends TelephonyTest {
         CallManager.getInstance().dial(mPhone,
                 PhoneNumberUtils.stripSeparators("+17005554141"), 0);
         ArgumentCaptor<String> mCaptorString = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Integer> mCaptorInt = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<PhoneInternalInterface.DialArgs> dialArgsCaptor =
+                ArgumentCaptor.forClass(PhoneInternalInterface.DialArgs.class);
 
-        verify(mPhone, times(1)).dial(mCaptorString.capture(), mCaptorInt.capture());
+        verify(mPhone, times(1)).dial(mCaptorString.capture(), dialArgsCaptor.capture());
         assertEquals(PhoneNumberUtils.stripSeparators("+17005554141"),
                 mCaptorString.getValue());
-        assertEquals(0, mCaptorInt.getValue().intValue());
+        assertEquals(0, dialArgsCaptor.getValue().videoState);
     }
 
     @Test @SmallTest

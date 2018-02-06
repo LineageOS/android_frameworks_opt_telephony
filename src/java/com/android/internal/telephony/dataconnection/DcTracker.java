@@ -54,6 +54,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.provider.Telephony;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.PcoData;
@@ -563,14 +564,17 @@ public class DcTracker extends Handler {
     private BroadcastReceiver mProvisionBroadcastReceiver;
     private ProgressDialog mProvisioningSpinner;
 
-    public boolean mImsRegistrationState = false;
+    private final DataServiceManager mDataServiceManager;
+
+    private final int mTransportType;
 
     //***** Constructor
-    public DcTracker(Phone phone) {
+    public DcTracker(Phone phone, int transportType) {
         super();
         mPhone = phone;
-
         if (DBG) log("DCT.constructor");
+        mTransportType = transportType;
+        mDataServiceManager = new DataServiceManager(phone, transportType);
 
         mResolver = mPhone.getContext().getContentResolver();
         mUiccController = UiccController.getInstance();
@@ -601,7 +605,7 @@ public class DcTracker extends Handler {
         HandlerThread dcHandlerThread = new HandlerThread("DcHandlerThread");
         dcHandlerThread.start();
         Handler dcHandler = new Handler(dcHandlerThread.getLooper());
-        mDcc = DcController.makeDcc(mPhone, this, dcHandler);
+        mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager, dcHandler);
         mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
 
         mDataConnectionTracker = this;
@@ -640,6 +644,8 @@ public class DcTracker extends Handler {
         mProvisionActionName = null;
         mSettingsObserver = new SettingsObserver(null, this);
         mDataEnabledSettings = null;
+        mTransportType = 0;
+        mDataServiceManager = null;
     }
 
     public void registerServiceStateTrackerEvents() {
@@ -670,11 +676,13 @@ public class DcTracker extends Handler {
     }
 
     private void registerForAllEvents() {
-        mPhone.mCi.registerForAvailable(this, DctConstants.EVENT_RADIO_AVAILABLE, null);
-        mPhone.mCi.registerForOffOrNotAvailable(this,
-                DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-        mPhone.mCi.registerForDataCallListChanged(this,
-                DctConstants.EVENT_DATA_STATE_CHANGED, null);
+        if (mTransportType == TransportType.WWAN) {
+            mPhone.mCi.registerForAvailable(this, DctConstants.EVENT_RADIO_AVAILABLE, null);
+            mPhone.mCi.registerForOffOrNotAvailable(this,
+                    DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
+            mPhone.mCi.registerForPcoData(this, DctConstants.EVENT_PCO_DATA_RECEIVED, null);
+        }
+
         // Note, this is fragile - the Phone is now presenting a merged picture
         // of PS (volte) & CS and by diving into its internals you're just seeing
         // the CS data.  This works well for the purposes this is currently used for
@@ -685,12 +693,12 @@ public class DcTracker extends Handler {
         mPhone.getCallTracker().registerForVoiceCallStarted(this,
                 DctConstants.EVENT_VOICE_CALL_STARTED, null);
         registerServiceStateTrackerEvents();
-     //   SubscriptionManager.registerForDdsSwitch(this,
-     //          DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS, null);
         mPhone.mCi.registerForPcoData(this, DctConstants.EVENT_PCO_DATA_RECEIVED, null);
         mPhone.getCarrierActionAgent().registerForCarrierAction(
                 CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED, this,
                 DctConstants.EVENT_SET_CARRIER_DATA_ENABLED, null, false);
+        mDataServiceManager.registerForServiceBindingChanged(this,
+                DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED, null);
     }
 
     public void dispose() {
@@ -732,37 +740,24 @@ public class DcTracker extends Handler {
 
     private void unregisterForAllEvents() {
          //Unregister for all events
-        mPhone.mCi.unregisterForAvailable(this);
-        mPhone.mCi.unregisterForOffOrNotAvailable(this);
+        if (mTransportType == TransportType.WWAN) {
+            mPhone.mCi.unregisterForAvailable(this);
+            mPhone.mCi.unregisterForOffOrNotAvailable(this);
+            mPhone.mCi.unregisterForPcoData(this);
+        }
+
         IccRecords r = mIccRecords.get();
         if (r != null) {
             r.unregisterForRecordsLoaded(this);
             mIccRecords.set(null);
         }
-        mPhone.mCi.unregisterForDataCallListChanged(this);
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         unregisterServiceStateTrackerEvents();
-        //SubscriptionManager.unregisterForDdsSwitch(this);
         mPhone.mCi.unregisterForPcoData(this);
         mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
                 CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED);
-    }
-
-    /**
-     * Called when EVENT_RESET_DONE is received so goto
-     * IDLE state and send notifications to those interested.
-     *
-     * TODO - currently unused.  Needs to be hooked into DataConnection cleanup
-     * TODO - needs to pass some notion of which connection is reset..
-     */
-    private void onResetDone(AsyncResult ar) {
-        if (DBG) log("EVENT_RESET_DONE");
-        String reason = null;
-        if (ar.userObj instanceof String) {
-            reason = (String) ar.userObj;
-        }
-        gotoIdleAndNotifyDataConnection(reason);
+        mDataServiceManager.unregisterForServiceBindingChanged(this);
     }
 
     /**
@@ -2080,7 +2075,7 @@ public class DcTracker extends Handler {
         } else {
             if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
 
-            mPhone.mCi.setInitialAttachApn(createDataProfile(initialAttachApnSetting),
+            mDataServiceManager.setInitialAttachApn(createDataProfile(initialAttachApnSetting),
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
     }
@@ -2122,12 +2117,6 @@ public class DcTracker extends Handler {
             }
         }
         return null;
-    }
-
-    // TODO: For multiple Active APNs not exactly sure how to do this.
-    private void gotoIdleAndNotifyDataConnection(String reason) {
-        if (DBG) log("gotoIdleAndNotifyDataConnection: reason=" + reason);
-        notifyDataConnection(reason);
     }
 
     /**
@@ -3277,7 +3266,7 @@ public class DcTracker extends Handler {
                 }
             }
             if (dps.size() > 0) {
-                mPhone.mCi.setDataProfile(dps.toArray(new DataProfile[0]),
+                mDataServiceManager.setDataProfile(dps,
                         mPhone.getServiceState().getDataRoamingFromRegistration(), null);
             }
         }
@@ -3397,8 +3386,8 @@ public class DcTracker extends Handler {
         if (DBG) log("createDataConnection E");
 
         int id = mUniqueIdGenerator.getAndIncrement();
-        DataConnection conn = DataConnection.makeDataConnection(mPhone, id,
-                                                this, mDcTesterFailBringUpAll, mDcc);
+        DataConnection conn = DataConnection.makeDataConnection(mPhone, id, this,
+                mDataServiceManager, mDcTesterFailBringUpAll, mDcc);
         mDataConnections.put(id, conn);
         DcAsyncChannel dcac = new DcAsyncChannel(conn, LOG_TAG);
         int status = dcac.fullyConnectSync(mPhone.getContext(), this, conn.getHandler());
@@ -3783,12 +3772,6 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_VOICE_CALL_ENDED:
                 onVoiceCallEnded();
                 break;
-
-            case DctConstants.EVENT_RESET_DONE: {
-                if (DBG) log("EVENT_RESET_DONE");
-                onResetDone((AsyncResult) msg.obj);
-                break;
-            }
             case DctConstants.CMD_SET_USER_DATA_ENABLE: {
                 final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
                 if (DBG) log("CMD_SET_USER_DATA_ENABLE enabled=" + enabled);
@@ -3933,11 +3916,6 @@ public class DcTracker extends Handler {
                 }
                 break;
             }
-            case DctConstants.EVENT_DATA_STATE_CHANGED: {
-                // no longer do anything, but still registered - clean up log
-                // TODO - why are we still registering?
-                break;
-            }
             case DctConstants.EVENT_PCO_DATA_RECEIVED: {
                 handlePcoData((AsyncResult)msg.obj);
                 break;
@@ -3948,6 +3926,8 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_DATA_RECONNECT:
                 onDataReconnect(msg.getData());
                 break;
+            case DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED:
+                onDataServiceBindingChanged((Boolean) ((AsyncResult) msg.obj).result);
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
                 break;
@@ -4571,36 +4551,37 @@ public class DcTracker extends Handler {
             final int recoveryAction = getRecoveryAction();
             TelephonyMetrics.getInstance().writeDataStallEvent(mPhone.getPhoneId(), recoveryAction);
             switch (recoveryAction) {
-            case RecoveryAction.GET_DATA_CALL_LIST:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,
-                        mSentSinceLastRecv);
-                if (DBG) log("doRecovery() get data call list");
-                mPhone.mCi.getDataCallList(obtainMessage(DctConstants.EVENT_DATA_STATE_CHANGED));
-                putRecoveryAction(RecoveryAction.CLEANUP);
-                break;
-            case RecoveryAction.CLEANUP:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP, mSentSinceLastRecv);
-                if (DBG) log("doRecovery() cleanup all connections");
-                cleanUpAllConnections(Phone.REASON_PDP_RESET);
-                putRecoveryAction(RecoveryAction.REREGISTER);
-                break;
-            case RecoveryAction.REREGISTER:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_REREGISTER,
-                        mSentSinceLastRecv);
-                if (DBG) log("doRecovery() re-register");
-                mPhone.getServiceStateTracker().reRegisterNetwork(null);
-                putRecoveryAction(RecoveryAction.RADIO_RESTART);
-                break;
-            case RecoveryAction.RADIO_RESTART:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_RADIO_RESTART,
-                        mSentSinceLastRecv);
-                if (DBG) log("restarting radio");
-                restartRadio();
-                putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
-                break;
-            default:
-                throw new RuntimeException("doRecovery: Invalid recoveryAction=" +
-                    recoveryAction);
+                case RecoveryAction.GET_DATA_CALL_LIST:
+                    EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,
+                            mSentSinceLastRecv);
+                    if (DBG) log("doRecovery() get data call list");
+                    mDataServiceManager.getDataCallList(obtainMessage());
+                    putRecoveryAction(RecoveryAction.CLEANUP);
+                    break;
+                case RecoveryAction.CLEANUP:
+                    EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP,
+                            mSentSinceLastRecv);
+                    if (DBG) log("doRecovery() cleanup all connections");
+                    cleanUpAllConnections(Phone.REASON_PDP_RESET);
+                    putRecoveryAction(RecoveryAction.REREGISTER);
+                    break;
+                case RecoveryAction.REREGISTER:
+                    EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_REREGISTER,
+                            mSentSinceLastRecv);
+                    if (DBG) log("doRecovery() re-register");
+                    mPhone.getServiceStateTracker().reRegisterNetwork(null);
+                    putRecoveryAction(RecoveryAction.RADIO_RESTART);
+                    break;
+                case RecoveryAction.RADIO_RESTART:
+                    EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_RADIO_RESTART,
+                            mSentSinceLastRecv);
+                    if (DBG) log("restarting radio");
+                    restartRadio();
+                    putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
+                    break;
+                default:
+                    throw new RuntimeException("doRecovery: Invalid recoveryAction="
+                            + recoveryAction);
             }
             mSentSinceLastRecv = 0;
         }
@@ -4826,5 +4807,13 @@ public class DcTracker extends Handler {
                 apn.maxConnsTime, apn.maxConns, apn.waitTime, apn.carrierEnabled, apn.typesBitmap,
                 apn.roamingProtocol, bearerBitmap, apn.mtu, apn.mvnoType, apn.mvnoMatchData,
                 apn.modemCognitive);
+    }
+
+    private void onDataServiceBindingChanged(boolean bound) {
+        if (bound) {
+            mDcc.start();
+        } else {
+            mDcc.dispose();
+        }
     }
 }

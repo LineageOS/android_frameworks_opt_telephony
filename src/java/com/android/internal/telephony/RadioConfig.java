@@ -166,7 +166,7 @@ public class RadioConfig extends Handler {
         }
 
         try {
-            mRadioConfigProxy = IRadioConfig.getService(RADIO_CONFIG_SERVICE_NAME);
+            mRadioConfigProxy = IRadioConfig.getService(RADIO_CONFIG_SERVICE_NAME, true);
             if (mRadioConfigProxy != null) {
                 mRadioConfigProxy.linkToDeath(mServiceDeathRecipient,
                         mRadioConfigProxyCookie.incrementAndGet());
@@ -177,7 +177,7 @@ public class RadioConfig extends Handler {
             }
         } catch (RemoteException | RuntimeException e) {
             mRadioConfigProxy = null;
-            loge("getRadioConfigProxy: RadioProxy getService/setResponseFunctions: " + e);
+            loge("getRadioConfigProxy: RadioConfigProxy getService/setResponseFunctions: " + e);
         }
 
         if (mRadioConfigProxy == null) {

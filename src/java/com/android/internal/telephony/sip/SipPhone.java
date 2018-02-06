@@ -183,9 +183,9 @@ public class SipPhone extends SipPhoneBase {
     }
 
     @Override
-    public Connection dial(String dialString, int videoState) throws CallStateException {
+    public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
         synchronized (SipPhone.class) {
-            return dialInternal(dialString, videoState);
+            return dialInternal(dialString, dialArgs.videoState);
         }
     }
 

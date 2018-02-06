@@ -28,6 +28,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_NO_REPL
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
+import android.annotation.NonNull;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -1049,14 +1050,9 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public Connection dial(String dialString, int videoState) throws CallStateException {
-        return dial(dialString, null, videoState, null);
-    }
-
-    @Override
-    public Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+    public Connection dial(String dialString, @NonNull DialArgs dialArgs)
             throws CallStateException {
-        if (!isPhoneTypeGsm() && uusInfo != null) {
+        if (!isPhoneTypeGsm() && dialArgs.uusInfo != null) {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
         }
 
@@ -1071,7 +1067,7 @@ public class GsmCdmaPhone extends Phone {
         boolean useImsForCall = isImsUseEnabled()
                  && imsPhone != null
                  && (imsPhone.isVolteEnabled() || imsPhone.isWifiCallingEnabled() ||
-                 (imsPhone.isVideoEnabled() && VideoProfile.isVideo(videoState)))
+                 (imsPhone.isVideoEnabled() && VideoProfile.isVideo(dialArgs.videoState)))
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
 
         boolean useImsForEmergency = imsPhone != null
@@ -1108,7 +1104,7 @@ public class GsmCdmaPhone extends Phone {
         if ((useImsForCall && !isUt) || (isUt && useImsForUt) || useImsForEmergency) {
             try {
                 if (DBG) logd("Trying IMS PS call");
-                return imsPhone.dial(dialString, uusInfo, videoState, intentExtras);
+                return imsPhone.dial(dialString, dialArgs);
             } catch (CallStateException e) {
                 if (DBG) logd("IMS PS call exception " + e +
                         "useImsForCall =" + useImsForCall + ", imsPhone =" + imsPhone);
@@ -1131,7 +1127,7 @@ public class GsmCdmaPhone extends Phone {
         }
         // Check non-emergency voice CS call - shouldn't dial when POWER_OFF
         if (mSST != null && mSST.mSS.getState() == ServiceState.STATE_POWER_OFF /* CS POWER_OFF */
-                && !VideoProfile.isVideo(videoState) /* voice call */
+                && !VideoProfile.isVideo(dialArgs.videoState) /* voice call */
                 && !isEmergency /* non-emergency call */) {
             throw new CallStateException(
                 CallStateException.ERROR_POWER_OFF,
@@ -1143,7 +1139,7 @@ public class GsmCdmaPhone extends Phone {
                 && mSST.mSS.getState() == ServiceState.STATE_OUT_OF_SERVICE /* CS out of service */
                 && !(mSST.mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
                     && ServiceState.isLte(mSST.mSS.getRilDataRadioTechnology())) /* PS not in LTE */
-                && !VideoProfile.isVideo(videoState) /* voice call */
+                && !VideoProfile.isVideo(dialArgs.videoState) /* voice call */
                 && !isEmergency /* non-emergency call */) {
             throw new CallStateException(
                 CallStateException.ERROR_OUT_OF_SERVICE,
@@ -1152,9 +1148,11 @@ public class GsmCdmaPhone extends Phone {
         if (DBG) logd("Trying (non-IMS) CS call");
 
         if (isPhoneTypeGsm()) {
-            return dialInternal(dialString, null, VideoProfile.STATE_AUDIO_ONLY, intentExtras);
+            return dialInternal(dialString, new DialArgs.Builder<>()
+                    .setIntentExtras(dialArgs.intentExtras)
+                    .build());
         } else {
-            return dialInternal(dialString, null, videoState, intentExtras);
+            return dialInternal(dialString, dialArgs);
         }
     }
 
@@ -1195,14 +1193,13 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    protected Connection dialInternal(String dialString, UUSInfo uusInfo, int videoState,
-                                      Bundle intentExtras)
+    protected Connection dialInternal(String dialString, DialArgs dialArgs)
             throws CallStateException {
-        return dialInternal(dialString, uusInfo, videoState, intentExtras, null);
+        return dialInternal(dialString, dialArgs, null);
     }
 
-    protected Connection dialInternal(String dialString, UUSInfo uusInfo, int videoState,
-                                      Bundle intentExtras, ResultReceiver wrappedCallback)
+    protected Connection dialInternal(String dialString, DialArgs dialArgs,
+            ResultReceiver wrappedCallback)
             throws CallStateException {
 
         // Need to make sure dialString gets parsed properly
@@ -1221,9 +1218,10 @@ public class GsmCdmaPhone extends Phone {
             if (DBG) logd("dialInternal: dialing w/ mmi '" + mmi + "'...");
 
             if (mmi == null) {
-                return mCT.dial(newDialString, uusInfo, intentExtras);
+                return mCT.dial(newDialString, dialArgs.uusInfo, dialArgs.intentExtras);
             } else if (mmi.isTemporaryModeCLIR()) {
-                return mCT.dial(mmi.mDialingNumber, mmi.getCLIRMode(), uusInfo, intentExtras);
+                return mCT.dial(mmi.mDialingNumber, mmi.getCLIRMode(), dialArgs.uusInfo,
+                        dialArgs.intentExtras);
             } else {
                 mPendingMMIs.add(mmi);
                 mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
@@ -1296,8 +1294,7 @@ public class GsmCdmaPhone extends Phone {
 
         // Try USSD over GSM.
         try {
-            dialInternal(ussdRequest, null, VideoProfile.STATE_AUDIO_ONLY, null,
-                    wrappedCallback);
+            dialInternal(ussdRequest, new DialArgs.Builder<>().build(), wrappedCallback);
         } catch (Exception e) {
             logd("handleUssdRequest: exception" + e);
             return false;
@@ -1962,11 +1959,6 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public boolean getMute() {
         return mCT.getMute();
-    }
-
-    @Override
-    public void getDataCallList(Message response) {
-        mCi.getDataCallList(response);
     }
 
     @Override
