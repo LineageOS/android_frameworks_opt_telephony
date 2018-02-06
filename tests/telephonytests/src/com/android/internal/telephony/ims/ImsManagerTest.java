@@ -48,6 +48,7 @@ public class ImsManagerTest extends TelephonyTest {
     private static final String UNSET_PROVISIONED_STRING = "unset";
     private static final boolean ENHANCED_4G_MODE_DEFAULT_VAL = true;
     private static final boolean ENHANCED_4G_ENABLE_DEFAULT_VAL = true;
+    private static final boolean ENHANCED_4G_MODE_EDITABLE = true;
     private static final boolean WFC_IMS_ENABLE_DEFAULT_VAL = false;
     private static final boolean WFC_IMS_ROAMING_ENABLE_DEFAULT_VAL = true;
     private static final boolean VT_IMS_ENABLE_DEFAULT_VAL = true;
@@ -55,8 +56,11 @@ public class ImsManagerTest extends TelephonyTest {
     private static final int WFC_IMS_ROAMING_MODE_DEFAULT_VAL = 3;
 
     PersistableBundle mBundle;
-    @Mock IBinder mBinder;
-    @Mock ImsConfigImplBase mImsConfigImplBaseMock;
+
+    @Mock
+    IBinder mBinder;
+    @Mock
+    ImsConfigImplBase mImsConfigImplBaseMock;
     Hashtable<Integer, Integer> mProvisionedIntVals = new Hashtable<>();
     Hashtable<Integer, String> mProvisionedStringVals = new Hashtable<>();
     ImsConfigImplBase.ImsConfigStub mImsConfigStub;
@@ -77,6 +81,8 @@ public class ImsManagerTest extends TelephonyTest {
         mServiceManagerMockedServices.put("isub", mBinder);
 
         mImsManagerInstances.remove(mPhoneId);
+
+        setDefaultValues();
     }
 
     @After
@@ -104,8 +110,6 @@ public class ImsManagerTest extends TelephonyTest {
     public void testGetDefaultValues() {
         doReturn("-1").when(mSubscriptionController)
                 .getSubscriptionProperty(anyInt(), anyString(), anyString());
-
-        setDefaultValues();
 
         ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
 
@@ -163,6 +167,9 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(SubscriptionManager.VT_IMS_ENABLED),
                 eq("0"));
 
+        // enhanced 4g mode must be editable to use setEnhanced4gLteModeSetting
+        mBundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL,
+                ENHANCED_4G_MODE_EDITABLE);
         imsManager.setEnhanced4gLteModeSetting(true);
         verify(mSubscriptionController, times(1)).setSubscriptionProperty(
                 eq(mSubId[0]),
