@@ -3566,8 +3566,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
 
-        ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId()).setDataEnabled(enabled);
-
         mIsDataEnabled = enabled;
 
         if (!mIsViLteDataMetered) {
