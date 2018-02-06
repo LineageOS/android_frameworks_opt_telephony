@@ -33,9 +33,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.hardware.radio.V1_0.CellInfoType;
-import android.hardware.radio.V1_0.DataRegStateResult;
-import android.hardware.radio.V1_0.RegState;
-import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Build;
@@ -50,33 +47,42 @@ import android.os.UserHandle;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellIdentity;
+import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
 import android.telephony.CellLocation;
+import android.telephony.DataSpecificRegistrationStates;
+import android.telephony.NetworkRegistrationState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
+import android.telephony.VoiceSpecificRegistrationStates;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.LocalLog;
 import android.util.Pair;
+import android.util.SparseArray;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -452,6 +458,9 @@ public class ServiceStateTracker extends Handler {
     private String mRegistrationDeniedReason;
     private String mCurrentCarrier = null;
 
+    private final TransportManager mTransportManager;
+    private final SparseArray<NetworkRegistrationManager> mRegStateManagers = new SparseArray<>();
+
     /* list of LTE EARFCNs (E-UTRA Absolute Radio Frequency Channel Number,
      * Reference: 3GPP TS 36.104 5.4.3)
      * inclusive ranges for which the lte rsrp boost is applied */
@@ -482,9 +491,17 @@ public class ServiceStateTracker extends Handler {
                 .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mRestrictedState = new RestrictedState();
 
+        mTransportManager = new TransportManager();
+
+        for (int transportType : mTransportManager.getAvailableTransports()) {
+            mRegStateManagers.append(transportType, new NetworkRegistrationManager(
+                    transportType, phone));
+            mRegStateManagers.get(transportType).registerForNetworkRegistrationStateChanged(
+                    this, EVENT_NETWORK_STATE_CHANGED, null);
+        }
+
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
-        mCi.registerForNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
         mCi.setOnNITZTime(this, EVENT_NITZ_TIME, null);
 
         mCr = phone.getContext().getContentResolver();
@@ -854,55 +871,37 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    private void processCellLocationInfo(CellLocation cellLocation,
-                                         VoiceRegStateResult voiceRegStateResult) {
+    private void processCellLocationInfo(CellLocation cellLocation, CellIdentity cellIdentity) {
         if (mPhone.isPhoneTypeGsm()) {
             int psc = -1;
             int cid = -1;
             int lac = -1;
-            switch(voiceRegStateResult.cellIdentity.cellInfoType) {
-                case CellInfoType.GSM: {
-                    if (voiceRegStateResult.cellIdentity.cellIdentityGsm.size() == 1) {
-                        android.hardware.radio.V1_0.CellIdentityGsm cellIdentityGsm =
-                                voiceRegStateResult.cellIdentity.cellIdentityGsm.get(0);
-                        cid = cellIdentityGsm.cid;
-                        lac = cellIdentityGsm.lac;
+            if (cellIdentity != null) {
+                switch (cellIdentity.getType()) {
+                    case CellInfoType.GSM: {
+                        cid = ((CellIdentityGsm) cellIdentity).getCid();
+                        lac = ((CellIdentityGsm) cellIdentity).getLac();
+                        break;
                     }
-                    break;
-                }
-                case CellInfoType.WCDMA: {
-                    if (voiceRegStateResult.cellIdentity.cellIdentityWcdma.size() == 1) {
-                        android.hardware.radio.V1_0.CellIdentityWcdma cellIdentityWcdma =
-                                voiceRegStateResult.cellIdentity.cellIdentityWcdma.get(0);
-                        cid = cellIdentityWcdma.cid;
-                        lac = cellIdentityWcdma.lac;
-                        psc = cellIdentityWcdma.psc;
+                    case CellInfoType.WCDMA: {
+                        cid = ((CellIdentityWcdma) cellIdentity).getCid();
+                        lac = ((CellIdentityWcdma) cellIdentity).getLac();
+                        psc = ((CellIdentityWcdma) cellIdentity).getPsc();
+                        break;
                     }
-                    break;
-                }
-                case CellInfoType.TD_SCDMA: {
-                    if (voiceRegStateResult.cellIdentity.cellIdentityTdscdma.size() == 1) {
-                        android.hardware.radio.V1_0.CellIdentityTdscdma
-                                cellIdentityTdscdma =
-                                voiceRegStateResult.cellIdentity.cellIdentityTdscdma.get(0);
-                        cid = cellIdentityTdscdma.cid;
-                        lac = cellIdentityTdscdma.lac;
+                    case CellInfoType.TD_SCDMA: {
+                        cid = ((CellIdentityTdscdma) cellIdentity).getCid();
+                        lac = ((CellIdentityTdscdma) cellIdentity).getLac();
+                        break;
                     }
-                    break;
-                }
-                case CellInfoType.LTE: {
-                    if (voiceRegStateResult.cellIdentity.cellIdentityLte.size() == 1) {
-                        android.hardware.radio.V1_0.CellIdentityLte cellIdentityLte =
-                                voiceRegStateResult.cellIdentity.cellIdentityLte.get(0);
-                        cid = cellIdentityLte.ci;
-
-                        /* Continuing the historical behaviour of using tac as lac. */
-                        lac = cellIdentityLte.tac;
+                    case CellInfoType.LTE: {
+                        cid = ((CellIdentityLte) cellIdentity).getCi();
+                        lac = ((CellIdentityLte) cellIdentity).getTac();
+                        break;
                     }
-                    break;
-                }
-                default: {
-                    break;
+                    default: {
+                        break;
+                    }
                 }
             }
             // LAC and CID are -1 if not avail
@@ -915,21 +914,19 @@ public class ServiceStateTracker extends Handler {
             int systemId = 0;
             int networkId = 0;
 
-            switch(voiceRegStateResult.cellIdentity.cellInfoType) {
-                case CellInfoType.CDMA: {
-                    if (voiceRegStateResult.cellIdentity.cellIdentityCdma.size() == 1) {
-                        android.hardware.radio.V1_0.CellIdentityCdma cellIdentityCdma =
-                                voiceRegStateResult.cellIdentity.cellIdentityCdma.get(0);
-                        baseStationId = cellIdentityCdma.baseStationId;
-                        baseStationLatitude = cellIdentityCdma.latitude;
-                        baseStationLongitude = cellIdentityCdma.longitude;
-                        systemId = cellIdentityCdma.systemId;
-                        networkId = cellIdentityCdma.networkId;
+            if (cellIdentity != null) {
+                switch (cellIdentity.getType()) {
+                    case CellInfoType.CDMA: {
+                        baseStationId = ((CellIdentityCdma) cellIdentity).getBasestationId();
+                        baseStationLatitude = ((CellIdentityCdma) cellIdentity).getLatitude();
+                        baseStationLongitude = ((CellIdentityCdma) cellIdentity).getLongitude();
+                        systemId = ((CellIdentityCdma) cellIdentity).getSystemId();
+                        networkId = ((CellIdentityCdma) cellIdentity).getNetworkId();
+                        break;
                     }
-                    break;
-                }
-                default: {
-                    break;
+                    default: {
+                        break;
+                    }
                 }
             }
 
@@ -945,19 +942,17 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    private int getLteEarfcn(DataRegStateResult dataRegStateResult) {
+    private int getLteEarfcn(CellIdentity cellIdentity) {
         int lteEarfcn = INVALID_LTE_EARFCN;
-        switch(dataRegStateResult.cellIdentity.cellInfoType) {
-            case CellInfoType.LTE: {
-                if (dataRegStateResult.cellIdentity.cellIdentityLte.size() == 1) {
-                    android.hardware.radio.V1_0.CellIdentityLte cellIdentityLte =
-                            dataRegStateResult.cellIdentity.cellIdentityLte.get(0);
-                    lteEarfcn = cellIdentityLte.earfcn;
+        if (cellIdentity != null) {
+            switch (cellIdentity.getType()) {
+                case CellInfoType.LTE: {
+                    lteEarfcn = ((CellIdentityLte) cellIdentity).getEarfcn();
+                    break;
                 }
-                break;
-            }
-            default: {
-                break;
+                default: {
+                    break;
+                }
             }
         }
 
@@ -1103,7 +1098,9 @@ public class ServiceStateTracker extends Handler {
             case EVENT_GET_LOC_DONE:
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
-                    processCellLocationInfo(mCellLoc, (VoiceRegStateResult) ar.result);
+                    CellIdentity cellIdentity = ((NetworkRegistrationState) ar.result)
+                            .getCellIdentity();
+                    processCellLocationInfo(mCellLoc, cellIdentity);
                     mPhone.notifyLocationChanged();
                 }
 
@@ -1176,7 +1173,9 @@ public class ServiceStateTracker extends Handler {
                 ar = (AsyncResult) msg.obj;
 
                 if (ar.exception == null) {
-                    mCi.getVoiceRegistrationState(obtainMessage(EVENT_GET_LOC_DONE, null));
+                    mRegStateManagers.get(AccessNetworkConstants.TransportType.WWAN)
+                            .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
+                            obtainMessage(EVENT_GET_LOC_DONE, null));
                 }
                 break;
 
@@ -1721,47 +1720,25 @@ public class ServiceStateTracker extends Handler {
         return cdmaRoaming && !isSameOperatorNameFromSimAndSS(s);
     }
 
-    private int getRegStateFromHalRegState(int regState) {
-        switch (regState) {
-            case RegState.NOT_REG_MT_NOT_SEARCHING_OP:
-                return ServiceState.RIL_REG_STATE_NOT_REG;
-            case RegState.REG_HOME:
-                return ServiceState.RIL_REG_STATE_HOME;
-            case RegState.NOT_REG_MT_SEARCHING_OP:
-                return ServiceState.RIL_REG_STATE_SEARCHING;
-            case RegState.REG_DENIED:
-                return ServiceState.RIL_REG_STATE_DENIED;
-            case RegState.UNKNOWN:
-                return ServiceState.RIL_REG_STATE_UNKNOWN;
-            case RegState.REG_ROAMING:
-                return ServiceState.RIL_REG_STATE_ROAMING;
-            case RegState.NOT_REG_MT_NOT_SEARCHING_OP_EM:
-                return ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED;
-            case RegState.NOT_REG_MT_SEARCHING_OP_EM:
-                return ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED;
-            case RegState.REG_DENIED_EM:
-                return ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED;
-            case RegState.UNKNOWN_EM:
-                return ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED;
-            default:
-                return ServiceState.REGISTRATION_STATE_NOT_REGISTERED_AND_NOT_SEARCHING;
-        }
-    }
-
     void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
         switch (what) {
             case EVENT_POLL_STATE_REGISTRATION: {
-                VoiceRegStateResult voiceRegStateResult = (VoiceRegStateResult) ar.result;
-                int registrationState = getRegStateFromHalRegState(voiceRegStateResult.regState);
-                int cssIndicator = voiceRegStateResult.cssSupported ? 1 : 0;
+                NetworkRegistrationState regStates = (NetworkRegistrationState) ar.result;
+                VoiceSpecificRegistrationStates voiceSpecificStates =
+                        regStates.getVoiceSpecificStates();
+
+                int registrationState = regStates.getRegState();
+                int cssIndicator = voiceSpecificStates.cssSupported ? 1 : 0;
+                int newVoiceRat = ServiceState.networkTypeToRilRadioTechnology(
+                        regStates.getAccessNetworkTechnology());
 
                 mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
                 mNewSS.setCssIndicator(cssIndicator);
-                mNewSS.setRilVoiceRadioTechnology(voiceRegStateResult.rat);
+                mNewSS.setRilVoiceRadioTechnology(newVoiceRat);
 
                 //Denial reason if registrationState = 3
-                int reasonForDenial = voiceRegStateResult.reasonForDenial;
+                int reasonForDenial = regStates.getReasonForDenial();
                 if (mPhone.isPhoneTypeGsm()) {
 
                     mGsmRoaming = regCodeIsRoaming(registrationState);
@@ -1769,27 +1746,15 @@ public class ServiceStateTracker extends Handler {
 
                     boolean isVoiceCapable = mPhone.getContext().getResources()
                             .getBoolean(com.android.internal.R.bool.config_voice_capable);
-                    if (((registrationState
-                            == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED)
-                            || (registrationState
-                            == ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED)
-                            || (registrationState
-                            == ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED)
-                            || (registrationState
-                            == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED))
-                            && isVoiceCapable) {
-                        mEmergencyOnly = true;
-                    } else {
-                        mEmergencyOnly = false;
-                    }
+                    mEmergencyOnly = regStates.isEmergencyEnabled();
                 } else {
-                    int roamingIndicator = voiceRegStateResult.roamingIndicator;
+                    int roamingIndicator = voiceSpecificStates.roamingIndicator;
 
                     //Indicates if current system is in PR
-                    int systemIsInPrl = voiceRegStateResult.systemIsInPrl;
+                    int systemIsInPrl = voiceSpecificStates.systemIsInPrl;
 
                     //Is default roaming indicator from PRL
-                    int defaultRoamingIndicator = voiceRegStateResult.defaultRoamingIndicator;
+                    int defaultRoamingIndicator = voiceSpecificStates.defaultRoamingIndicator;
 
                     mRegistrationState = registrationState;
                     // When registration state is roaming and TSB58
@@ -1806,12 +1771,10 @@ public class ServiceStateTracker extends Handler {
 
                     int systemId = 0;
                     int networkId = 0;
-                    if (voiceRegStateResult.cellIdentity.cellInfoType == CellInfoType.CDMA
-                            && voiceRegStateResult.cellIdentity.cellIdentityCdma.size() == 1) {
-                        android.hardware.radio.V1_0.CellIdentityCdma cellIdentityCdma =
-                                voiceRegStateResult.cellIdentity.cellIdentityCdma.get(0);
-                        systemId = cellIdentityCdma.systemId;
-                        networkId = cellIdentityCdma.networkId;
+                    CellIdentity cellIdentity = regStates.getCellIdentity();
+                    if (cellIdentity != null && cellIdentity.getType() == CellInfoType.CDMA) {
+                        systemId = ((CellIdentityCdma) cellIdentity).getSystemId();
+                        networkId = ((CellIdentityCdma) cellIdentity).getNetworkId();
                     }
                     mNewSS.setSystemAndNetworkId(systemId, networkId);
 
@@ -1828,34 +1791,37 @@ public class ServiceStateTracker extends Handler {
                     }
                 }
 
-                processCellLocationInfo(mNewCellLoc, voiceRegStateResult);
+                processCellLocationInfo(mNewCellLoc, regStates.getCellIdentity());
 
                 if (DBG) {
                     log("handlPollVoiceRegResultMessage: regState=" + registrationState
-                            + " radioTechnology=" + voiceRegStateResult.rat);
+                            + " radioTechnology=" + newVoiceRat);
                 }
                 break;
             }
 
             case EVENT_POLL_STATE_GPRS: {
-                DataRegStateResult dataRegStateResult = (DataRegStateResult) ar.result;
-                int regState = getRegStateFromHalRegState(dataRegStateResult.regState);
-                int dataRegState = regCodeToServiceState(regState);
-                int newDataRat = dataRegStateResult.rat;
-                mNewSS.setDataRegState(dataRegState);
+                NetworkRegistrationState regStates = (NetworkRegistrationState) ar.result;
+                DataSpecificRegistrationStates dataSpecificStates =
+                        regStates.getDataSpecificStates();
+                int regState = regStates.getRegState();
+                int serviceState = regCodeToServiceState(regState);
+                int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
+                        regStates.getAccessNetworkTechnology());
+                mNewSS.setDataRegState(serviceState);
                 mNewSS.setRilDataRadioTechnology(newDataRat);
 
                 if (mPhone.isPhoneTypeGsm()) {
 
-                    mNewReasonDataDenied = dataRegStateResult.reasonDataDenied;
-                    mNewMaxDataCalls = dataRegStateResult.maxDataCalls;
+                    mNewReasonDataDenied = regStates.getReasonForDenial();
+                    mNewMaxDataCalls = dataSpecificStates.maxDataCalls;
                     mDataRoaming = regCodeIsRoaming(regState);
                     // Save the data roaming state reported by modem registration before resource
                     // overlay or carrier config possibly overrides it.
                     mNewSS.setDataRoamingFromRegistration(mDataRoaming);
 
                     if (DBG) {
-                        log("handlPollStateResultMessage: GsmSST setDataRegState=" + dataRegState
+                        log("handlPollStateResultMessage: GsmSST dataServiceState=" + serviceState
                                 + " regState=" + regState
                                 + " dataRadioTechnology=" + newDataRat);
                     }
@@ -1868,7 +1834,7 @@ public class ServiceStateTracker extends Handler {
                     mNewSS.setDataRoamingFromRegistration(isDataRoaming);
 
                     if (DBG) {
-                        log("handlPollStateResultMessage: cdma setDataRegState=" + dataRegState
+                        log("handlPollStateResultMessage: cdma dataServiceState=" + serviceState
                                 + " regState=" + regState
                                 + " dataRadioTechnology=" + newDataRat);
                     }
@@ -1896,13 +1862,13 @@ public class ServiceStateTracker extends Handler {
                     // overlay or carrier config possibly overrides it.
                     mNewSS.setDataRoamingFromRegistration(isDataRoaming);
                     if (DBG) {
-                        log("handlPollStateResultMessage: CdmaLteSST setDataRegState="
-                                + dataRegState + " regState=" + regState + " dataRadioTechnology="
+                        log("handlPollStateResultMessage: CdmaLteSST dataServiceState="
+                                + serviceState + " regState=" + regState + " dataRadioTechnology="
                                 + newDataRat);
                     }
                 }
 
-                updateServiceStateLteEarfcnBoost(mNewSS, getLteEarfcn(dataRegStateResult));
+                updateServiceStateLteEarfcnBoost(mNewSS, getLteEarfcn(regStates.getCellIdentity()));
                 break;
             }
 
@@ -2567,15 +2533,19 @@ public class ServiceStateTracker extends Handler {
             default:
                 // Issue all poll-related commands at once then count down the responses, which
                 // are allowed to arrive out-of-order
+                // TODO: Add WLAN support.
                 mPollingContext[0]++;
                 mCi.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR, mPollingContext));
 
                 mPollingContext[0]++;
-                mCi.getDataRegistrationState(obtainMessage(EVENT_POLL_STATE_GPRS, mPollingContext));
+                mRegStateManagers.get(AccessNetworkConstants.TransportType.WWAN)
+                        .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                        obtainMessage(EVENT_POLL_STATE_GPRS, mPollingContext));
 
                 mPollingContext[0]++;
-                mCi.getVoiceRegistrationState(obtainMessage(EVENT_POLL_STATE_REGISTRATION,
-                        mPollingContext));
+                mRegStateManagers.get(AccessNetworkConstants.TransportType.WWAN)
+                        .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
+                        obtainMessage(EVENT_POLL_STATE_REGISTRATION, mPollingContext));
 
                 if (mPhone.isPhoneTypeGsm()) {
                     mPollingContext[0]++;
@@ -3122,8 +3092,8 @@ public class ServiceStateTracker extends Handler {
      * to service state */
     private int regCodeToServiceState(int code) {
         switch (code) {
-            case ServiceState.RIL_REG_STATE_HOME:
-            case ServiceState.RIL_REG_STATE_ROAMING:
+            case NetworkRegistrationState.REG_STATE_HOME:
+            case NetworkRegistrationState.REG_STATE_ROAMING:
                 return ServiceState.STATE_IN_SERVICE;
             default:
                 return ServiceState.STATE_OUT_OF_SERVICE;
@@ -3135,7 +3105,7 @@ public class ServiceStateTracker extends Handler {
      * returns true if registered roam, false otherwise
      */
     private boolean regCodeIsRoaming (int code) {
-        return ServiceState.RIL_REG_STATE_ROAMING == code;
+        return NetworkRegistrationState.REG_STATE_ROAMING == code;
     }
 
     private boolean isSameOperatorNameFromSimAndSS(ServiceState s) {
