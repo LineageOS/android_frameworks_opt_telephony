@@ -27,6 +27,7 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsMmTelFeature;
 import android.telephony.ims.aidl.IImsRcsFeature;
@@ -95,7 +96,7 @@ public class ImsServiceController {
                     try {
                         service.linkToDeath(mImsDeathRecipient, 0);
                         mImsServiceControllerBinder = service;
-                        mIImsServiceController = IImsServiceController.Stub.asInterface(service);
+                        setServiceController(service);
                         // create all associated features in the ImsService
                         for (Pair<Integer, Integer> i : mImsFeatures) {
                             addImsServiceFeature(i);
@@ -119,7 +120,7 @@ public class ImsServiceController {
             synchronized (mLock) {
                 mIsBinding = false;
             }
-            if (mIImsServiceController != null) {
+            if (isServiceControllerAvailable()) {
                 mImsServiceControllerBinder.unlinkToDeath(mImsDeathRecipient, 0);
             }
             notifyAllFeaturesRemoved();
@@ -165,9 +166,7 @@ public class ImsServiceController {
     private static final String LOG_TAG = "ImsServiceController";
     private static final int REBIND_START_DELAY_MS = 2 * 1000; // 2 seconds
     private static final int REBIND_MAXIMUM_DELAY_MS = 60 * 1000; // 1 minute
-    private final Context mContext;
     private final ComponentName mComponentName;
-    private final Object mLock = new Object();
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
     private final IPackageManager mPackageManager;
     private ImsServiceControllerCallbacks mCallbacks;
@@ -187,6 +186,9 @@ public class ImsServiceController {
     private Set<IImsServiceFeatureCallback> mImsStatusCallbacks = new HashSet<>();
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
+
+    protected final Object mLock = new Object();
+    protected final Context mContext;
 
     private class ImsFeatureContainer {
         public int slotId;
@@ -325,7 +327,7 @@ public class ImsServiceController {
             if (!mIsBound && !mIsBinding) {
                 mIsBinding = true;
                 mImsFeatures = imsFeatureSet;
-                Intent imsServiceIntent = new Intent(ImsResolver.SERVICE_INTERFACE).setComponent(
+                Intent imsServiceIntent = new Intent(getServiceInterface()).setComponent(
                         mComponentName);
                 mImsServiceConnection = new ImsServiceConnection();
                 int serviceFlags = Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE
@@ -485,6 +487,26 @@ public class ImsServiceController {
         }
     }
 
+    protected String getServiceInterface() {
+        return ImsService.SERVICE_INTERFACE;
+    }
+
+    /**
+     * Sets the IImsServiceController instance. Overridden by compat layers to set compatibility
+     * versions of this service controller.
+     */
+    protected void setServiceController(IBinder serviceController) {
+        mIImsServiceController = IImsServiceController.Stub.asInterface(serviceController);
+    }
+
+    /**
+     * Check to see if the service controller is available, overridden for compat versions,
+     * @return true if available, false otherwise;
+     */
+    protected boolean isServiceControllerAvailable() {
+        return mIImsServiceController != null;
+    }
+
     private void removeImsServiceFeatureListener() {
         synchronized (mLock) {
             mImsStatusCallbacks.clear();
@@ -564,7 +586,7 @@ public class ImsServiceController {
 
     // This method should only be called when synchronized on mLock
     private void addImsServiceFeature(Pair<Integer, Integer> featurePair) throws RemoteException {
-        if (mIImsServiceController == null || mCallbacks == null) {
+        if (!isServiceControllerAvailable() || mCallbacks == null) {
             Log.w(LOG_TAG, "addImsServiceFeature called with null values.");
             return;
         }
@@ -582,7 +604,7 @@ public class ImsServiceController {
     // This method should only be called when synchronized on mLock
     private void removeImsServiceFeature(Pair<Integer, Integer> featurePair)
             throws RemoteException {
-        if (mIImsServiceController == null || mCallbacks == null) {
+        if (!isServiceControllerAvailable() || mCallbacks == null) {
             Log.w(LOG_TAG, "removeImsServiceFeature called with null values.");
             return;
         }
@@ -593,7 +615,7 @@ public class ImsServiceController {
         if (callbackToRemove != null) {
             mFeatureStatusCallbacks.remove(callbackToRemove);
         }
-        mIImsServiceController.removeImsFeature(featurePair.first, featurePair.second,
+        removeImsFeature(featurePair.first, featurePair.second,
                 (callbackToRemove != null ? callbackToRemove.getCallback() : null));
         removeImsFeatureBinder(featurePair.first, featurePair.second);
         // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
@@ -605,8 +627,9 @@ public class ImsServiceController {
         sendImsFeatureRemovedCallback(featurePair.first, featurePair.second);
     }
 
-    // This method should only be called when already synchronized on mLock;
-    private IInterface createImsFeature(int slotId, int featureType, IImsFeatureStatusCallback c)
+    // This method should only be called when already synchronized on mLock.
+    // overridden by compat layer to create features
+    protected IInterface createImsFeature(int slotId, int featureType, IImsFeatureStatusCallback c)
             throws RemoteException {
         switch (featureType) {
             case ImsFeature.FEATURE_MMTEL: {
@@ -618,6 +641,12 @@ public class ImsServiceController {
             default:
                 return null;
         }
+    }
+
+    // overridden by compat layer to remove features
+    protected void removeImsFeature(int slotId, int featureType, IImsFeatureStatusCallback c)
+            throws RemoteException {
+        mIImsServiceController.removeImsFeature(slotId, featureType, c);
     }
 
     // This method should only be called when synchronized on mLock
@@ -659,7 +688,7 @@ public class ImsServiceController {
             mImsDeathRecipient = null;
             mImsServiceConnection = null;
             mImsServiceControllerBinder = null;
-            mIImsServiceController = null;
+            setServiceController(null);
             mIsBound = false;
         }
     }
