@@ -445,7 +445,7 @@ public abstract class TelephonyTest {
                 getRilDataRadioTechnology();
         doReturn(mPhone).when(mCT).getPhone();
         mImsManagerInstances.put(mPhone.getPhoneId(), mImsManager);
-        doReturn(mImsEcbm).when(mImsManager).getEcbmInterface(anyInt());
+        doReturn(mImsEcbm).when(mImsManager).getEcbmInterface();
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
         doReturn(mIBinder).when(mIIntentSender).asBinder();
