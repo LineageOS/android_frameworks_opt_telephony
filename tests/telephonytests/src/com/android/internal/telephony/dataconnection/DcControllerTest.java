@@ -66,6 +66,8 @@ public class DcControllerTest extends TelephonyTest {
     DataConnection mDc;
     @Mock
     HashMap<ApnContext, ConnectionParams> mApnContexts;
+    @Mock
+    DataServiceManager mDataServiceManager;
 
     UpdateLinkPropertyResult mResult;
 
@@ -83,7 +85,8 @@ public class DcControllerTest extends TelephonyTest {
         @Override
         public void onLooperPrepared() {
             mHandler = new Handler();
-            mDcc = DcController.makeDcc(mPhone, mDcTracker, mHandler);
+            mDcc = DcController.makeDcc(mPhone, mDcTracker, mDataServiceManager, mHandler);
+            mDcc.start();
             setReady(true);
         }
     }

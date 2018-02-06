@@ -48,15 +48,12 @@ import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.V1_0.ResetNvType;
 import android.hardware.radio.V1_0.SelectUiccSub;
-import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SimApdu;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
 import android.net.ConnectivityManager;
 import android.net.KeepalivePacketData;
-import android.net.LinkAddress;
 import android.net.LinkProperties;
-import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
@@ -87,7 +84,6 @@ import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.text.TextUtils;
@@ -1136,103 +1132,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return -1;
     }
 
-    /**
-     * Convert SetupDataCallResult defined in types.hal into DataCallResponse
-     * @param dcResult setup data call result
-     * @return converted DataCallResponse object
-     */
-    static DataCallResponse convertDataCallResult(SetupDataCallResult dcResult) {
-
-        // Process address
-        String[] addresses = null;
-        if (!TextUtils.isEmpty(dcResult.addresses)) {
-            addresses = dcResult.addresses.split("\\s+");
-        }
-
-        List<LinkAddress> laList = new ArrayList<>();
-        if (addresses != null) {
-            for (String address : addresses) {
-                address = address.trim();
-                if (address.isEmpty()) continue;
-
-                try {
-                    LinkAddress la;
-                    // Check if the address contains prefix length. If yes, LinkAddress
-                    // can parse that.
-                    if (address.split("/").length == 2) {
-                        la = new LinkAddress(address);
-                    } else {
-                        InetAddress ia = NetworkUtils.numericToInetAddress(address);
-                        la = new LinkAddress(ia, (ia instanceof Inet4Address) ? 32 : 128);
-                    }
-
-                    laList.add(la);
-                } catch (IllegalArgumentException e) {
-                    Rlog.e(RILJ_LOG_TAG, "Unknown address: " + address + ", " + e);
-                }
-            }
-        }
-
-        // Process dns
-        String[] dnses = null;
-        if (!TextUtils.isEmpty(dcResult.dnses)) {
-            dnses = dcResult.dnses.split("\\s+");
-        }
-
-        List<InetAddress> dnsList = new ArrayList<>();
-        if (dnses != null) {
-            for (String dns : dnses) {
-                dns = dns.trim();
-                InetAddress ia;
-                try {
-                    ia = NetworkUtils.numericToInetAddress(dns);
-                    dnsList.add(ia);
-                } catch (IllegalArgumentException e) {
-                    Rlog.e(RILJ_LOG_TAG, "Unknown dns: " + dns + ", exception = " + e);
-                }
-            }
-        }
-
-        // Process gateway
-        String[] gateways = null;
-        if (!TextUtils.isEmpty(dcResult.gateways)) {
-            gateways = dcResult.gateways.split("\\s+");
-        }
-
-        List<InetAddress> gatewayList = new ArrayList<>();
-        if (gateways != null) {
-            for (String gateway : gateways) {
-                gateway = gateway.trim();
-                InetAddress ia;
-                try {
-                    ia = NetworkUtils.numericToInetAddress(gateway);
-                    gatewayList.add(ia);
-                } catch (IllegalArgumentException e) {
-                    Rlog.e(RILJ_LOG_TAG, "Unknown gateway: " + gateway + ", exception = " + e);
-                }
-            }
-        }
-
-        return new DataCallResponse(dcResult.status,
-                dcResult.suggestedRetryTime,
-                dcResult.cid,
-                dcResult.active,
-                dcResult.type,
-                dcResult.ifname,
-                laList,
-                dnsList,
-                gatewayList,
-                new ArrayList<>(Arrays.asList(dcResult.pcscf.trim().split("\\s+"))),
-                dcResult.mtu
-        );
-    }
-
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
                               Message result) {
 
         IRadio radioProxy = getRadioProxy(result);
+
         if (radioProxy != null) {
 
             RILRequest rr = obtainRequest(RIL_REQUEST_SETUP_DATA_CALL, result,

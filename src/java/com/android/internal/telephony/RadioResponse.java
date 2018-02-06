@@ -45,7 +45,6 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataCallResponse;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
@@ -1672,11 +1671,10 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            DataCallResponse ret = RIL.convertDataCallResult(setupDataCallResult);
             if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, ret);
+                sendMessageResponse(rr.mResult, setupDataCallResult);
             }
-            mRil.processResponseDone(rr, responseInfo, ret);
+            mRil.processResponseDone(rr, responseInfo, setupDataCallResult);
         }
     }
 
@@ -1767,14 +1765,10 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<DataCallResponse> dcResponseList = new ArrayList<>();
-            for (SetupDataCallResult dcResult : dataCallResultList) {
-                dcResponseList.add(RIL.convertDataCallResult(dcResult));
-            }
             if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, dcResponseList);
+                sendMessageResponse(rr.mResult, dataCallResultList);
             }
-            mRil.processResponseDone(rr, responseInfo, dcResponseList);
+            mRil.processResponseDone(rr, responseInfo, dataCallResultList);
         }
     }
 
