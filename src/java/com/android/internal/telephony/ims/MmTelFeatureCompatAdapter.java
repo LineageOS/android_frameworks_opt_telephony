@@ -37,7 +37,6 @@ import com.android.ims.ImsManager;
 import com.android.ims.internal.IImsCallSession;
 import com.android.ims.internal.IImsConfig;
 import com.android.ims.internal.IImsEcbm;
-import com.android.ims.internal.IImsMMTelFeature;
 import com.android.ims.internal.IImsMultiEndpoint;
 import com.android.ims.internal.IImsRegistrationListener;
 import com.android.ims.internal.IImsUt;
@@ -55,7 +54,7 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
 
     private static final int WAIT_TIMEOUT_MS = 5000;
 
-    private final IImsMMTelFeature mCompatFeature;
+    private final MmTelInterfaceAdapter mCompatFeature;
     private ImsRegistrationCompatAdapter mRegCompatAdapter;
     private int mSessionId = -1;
 
@@ -198,6 +197,66 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
         }
     };
 
+    /**
+     * Stub implementation of the "old" Registration listener interface that provides no
+     * functionality. Instead, it is used to ensure compatibility with older devices that require
+     * a listener on startSession. The actual Registration Listener Interface is added separately
+     * in ImsRegistration.
+     */
+    private class ImsRegistrationListenerBase extends IImsRegistrationListener.Stub {
+
+        @Override
+        public void registrationConnected() throws RemoteException {
+        }
+
+        @Override
+        public void registrationProgressing() throws RemoteException {
+        }
+
+        @Override
+        public void registrationConnectedWithRadioTech(int imsRadioTech) throws RemoteException {
+        }
+
+        @Override
+        public void registrationProgressingWithRadioTech(int imsRadioTech) throws RemoteException {
+        }
+
+        @Override
+        public void registrationDisconnected(ImsReasonInfo imsReasonInfo) throws RemoteException {
+        }
+
+        @Override
+        public void registrationResumed() throws RemoteException {
+        }
+
+        @Override
+        public void registrationSuspended() throws RemoteException {
+        }
+
+        @Override
+        public void registrationServiceCapabilityChanged(int serviceClass, int event)
+                throws RemoteException {
+        }
+
+        @Override
+        public void registrationFeatureCapabilityChanged(int serviceClass, int[] enabledFeatures,
+                int[] disabledFeatures) throws RemoteException {
+        }
+
+        @Override
+        public void voiceMessageCountUpdate(int count) throws RemoteException {
+        }
+
+        @Override
+        public void registrationAssociatedUriChanged(Uri[] uris) throws RemoteException {
+        }
+
+        @Override
+        public void registrationChangeFailed(int targetAccessTech, ImsReasonInfo imsReasonInfo)
+                throws RemoteException {
+        }
+    }
+
     // Handle Incoming Call as PendingIntent, the old method
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -218,7 +277,8 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
         }
     };
 
-    public MmTelFeatureCompatAdapter(Context context, int slotId, IImsMMTelFeature compatFeature) {
+    public MmTelFeatureCompatAdapter(Context context, int slotId,
+            MmTelInterfaceAdapter compatFeature) {
         initialize(context, slotId);
         mCompatFeature = compatFeature;
     }
@@ -342,7 +402,7 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
     @Override
     public int getFeatureState() {
         try {
-            return mCompatFeature.getFeatureStatus();
+            return mCompatFeature.getFeatureState();
         } catch (RemoteException e) {
             throw new RuntimeException(e.getMessage());
         }
@@ -381,7 +441,8 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
         IntentFilter intentFilter = new IntentFilter(ImsManager.ACTION_IMS_INCOMING_CALL);
         mContext.registerReceiver(mReceiver, intentFilter);
         try {
-            mSessionId = mCompatFeature.startSession(createIncomingCallPendingIntent(), null);
+            mSessionId = mCompatFeature.startSession(createIncomingCallPendingIntent(),
+                    new ImsRegistrationListenerBase());
             mCompatFeature.addRegistrationListener(mListener);
             mCompatFeature.addRegistrationListener(mRegCompatAdapter.getRegistrationListener());
         } catch (RemoteException e) {
