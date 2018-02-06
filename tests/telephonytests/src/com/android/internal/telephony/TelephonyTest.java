@@ -53,7 +53,7 @@ import android.util.Log;
 import android.util.Singleton;
 
 import com.android.ims.ImsCall;
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;

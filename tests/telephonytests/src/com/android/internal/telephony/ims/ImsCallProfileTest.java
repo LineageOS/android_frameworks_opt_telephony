@@ -28,7 +28,7 @@ import android.support.test.runner.AndroidJUnit4;
 import android.telecom.DisconnectCause;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallProfile;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

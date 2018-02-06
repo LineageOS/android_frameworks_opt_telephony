@@ -26,8 +26,8 @@ import static org.mockito.Mockito.verify;
 
 import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.telephony.ims.ImsStreamMediaProfile;
 
-import com.android.ims.ImsStreamMediaProfile;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.TelephonyTest;
 

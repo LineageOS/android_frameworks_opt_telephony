@@ -48,8 +48,8 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
-import com.android.ims.ImsReasonInfo;
-import com.android.ims.internal.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;

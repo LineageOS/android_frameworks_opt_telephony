@@ -55,13 +55,13 @@ import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCall;
-import com.android.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsException;
-import com.android.ims.ImsReasonInfo;
-import com.android.ims.ImsStreamMediaProfile;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsStreamMediaProfile;
 import com.android.ims.internal.IImsCallSession;
-import com.android.ims.internal.ImsCallSession;
+import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
