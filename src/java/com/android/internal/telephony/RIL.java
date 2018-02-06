@@ -284,10 +284,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             " mRadioProxyCookie = " + mRadioProxyCookie.get());
                     if ((long) msg.obj == mRadioProxyCookie.get()) {
                         resetProxyAndRequestList();
-
-                        // todo: rild should be back up since message was sent with a delay. this is
-                        // a hack.
-                        getRadioProxy(null);
                     }
                     break;
             }
@@ -322,11 +318,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         public void serviceDied(long cookie) {
             // Deal with service going away
             riljLog("serviceDied");
-            // todo: temp hack to send delayed message so that rild is back up by then
-            //mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, cookie));
-            mRilHandler.sendMessageDelayed(
-                    mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, cookie),
-                    IRADIO_GET_SERVICE_DELAY_MILLIS);
+            mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, cookie));
         }
     }
 
@@ -342,9 +334,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // Clear request list on close
         clearRequestList(RADIO_NOT_AVAILABLE, false);
 
-        // todo: need to get service right away so setResponseFunctions() can be called for
-        // unsolicited indications. getService() is not a blocking call, so it doesn't help to call
-        // it here. Current hack is to call getService() on death notification after a delay.
+        getRadioProxy(null);
     }
 
     /** Returns a {@link IRadio} instance or null if the service is not available. */
@@ -365,7 +355,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         try {
-            mRadioProxy = IRadio.getService(HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
+            mRadioProxy = IRadio.getService(HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId],
+                    true);
             if (mRadioProxy != null) {
                 mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
                         mRadioProxyCookie.incrementAndGet());
@@ -379,17 +370,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         if (mRadioProxy == null) {
+            // getService() is a blocking call, so this should never happen
+            riljLoge("getRadioProxy: mRadioProxy == null");
             if (result != null) {
                 AsyncResult.forMessage(result, null,
                         CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
                 result.sendToTarget();
             }
-
-            // if service is not up, treat it like death notification to try to get service again
-            mRilHandler.sendMessageDelayed(
-                    mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD,
-                            mRadioProxyCookie.incrementAndGet()),
-                    IRADIO_GET_SERVICE_DELAY_MILLIS);
         }
 
         return mRadioProxy;
@@ -474,13 +461,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private void handleRadioProxyExceptionForRR(RILRequest rr, String caller, Exception e) {
         riljLoge(caller + ": " + e);
         resetProxyAndRequestList();
-
-        // service most likely died, handle exception like death notification to try to get service
-        // again
-        mRilHandler.sendMessageDelayed(
-                mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD,
-                        mRadioProxyCookie.incrementAndGet()),
-                IRADIO_GET_SERVICE_DELAY_MILLIS);
     }
 
     private String convertNullToEmptyString(String string) {
