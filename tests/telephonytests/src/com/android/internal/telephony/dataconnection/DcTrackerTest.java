@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static com.android.internal.telephony.dataconnection.ApnSettingTest.createApnSetting;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,13 +40,14 @@ import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.ServiceInfo;
 import android.database.Cursor;
 import android.database.MatrixCursor;
-import android.net.LinkAddress;
+import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
-import android.net.NetworkUtils;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
@@ -55,12 +57,12 @@ import android.os.PersistableBundle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.test.mock.MockContentProvider;
@@ -69,6 +71,7 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.LocalLog;
 
+import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
@@ -146,6 +149,21 @@ public class DcTrackerTest extends TelephonyTest {
     private final ApnSettingContentProvider mApnSettingContentProvider =
             new ApnSettingContentProvider();
 
+    private void addDataService() {
+        CellularDataService cellularDataService = new CellularDataService();
+        ServiceInfo serviceInfo = new ServiceInfo();
+        serviceInfo.packageName = "com.android.phone";
+        serviceInfo.permission = "android.permission.BIND_DATA_SERVICE";
+        IntentFilter filter = new IntentFilter();
+        mContextFixture.addService(
+                DataService.DATA_SERVICE_INTERFACE,
+                null,
+                "com.android.phone",
+                cellularDataService.mBinder,
+                serviceInfo,
+                filter);
+    }
+
     private class DcTrackerTestHandler extends HandlerThread {
 
         private DcTrackerTestHandler(String name) {
@@ -154,7 +172,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mDct = new DcTracker(mPhone);
+            mDct = new DcTracker(mPhone, TransportType.WWAN);
             setReady(true);
         }
     }
@@ -389,6 +407,9 @@ public class DcTrackerTest extends TelephonyTest {
                 "evdo:131072,262144,1048576,4096,16384,524288",
                 "lte:524288,1048576,8388608,262144,524288,4194304"});
 
+        mContextFixture.putResource(R.string.config_wwan_data_service_package,
+                "com.android.phone");
+
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
@@ -420,7 +441,8 @@ public class DcTrackerTest extends TelephonyTest {
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         mBundle = mContextFixture.getCarrierConfigBundle();
 
-        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
+        mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
+        addDataService();
 
         mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
         mDcTrackerTestHandler.start();
@@ -439,14 +461,20 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     // Create a successful data response
-    private static DataCallResponse createDataCallResponse() throws Exception {
-
-        return new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
-                Arrays.asList(FAKE_PCSCF_ADDRESS),
-                1440);
+    private static SetupDataCallResult createSetupDataCallResult() throws Exception {
+        SetupDataCallResult result = new SetupDataCallResult();
+        result.status = 0;
+        result.suggestedRetryTime = -1;
+        result.cid = 1;
+        result.active = 2;
+        result.type = "IP";
+        result.ifname = FAKE_IFNAME;
+        result.addresses = FAKE_ADDRESS;
+        result.dnses = FAKE_DNS;
+        result.gateways = FAKE_GATEWAY;
+        result.pcscf = FAKE_PCSCF_ADDRESS;
+        result.mtu = 1440;
+        return result;
     }
 
     private void verifyDataProfile(DataProfile dp, String apn, int profileId,
@@ -512,7 +540,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         mDct.setUserDataEnabled(true);
 
-        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
+        mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
 
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
         boolean allowed = isDataAllowed(dataConnectionReasons);
@@ -576,15 +604,17 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.setUserDataEnabled(true);
 
         // LOST_CONNECTION(0x10004) is a non-permanent failure, so we'll retry data setup later.
-        DataCallResponse dcResponse = new DataCallResponse(0x10004, -1, 1, 2, "IP", FAKE_IFNAME,
+        /*DataCallResponse dcResponse = new DataCallResponse(0x10004, -1, 1, 2, "IP", FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
                 Arrays.asList(FAKE_PCSCF_ADDRESS),
-                1440);
+                1440);*/
+        SetupDataCallResult result = createSetupDataCallResult();
+        result.status = 0x10004;
 
         // Simulate RIL fails the data call setup
-        mSimulatedCommands.setDataCallResponse(false, dcResponse);
+        mSimulatedCommands.setDataCallResult(false, result);
 
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
         boolean allowed = isDataAllowed(dataConnectionReasons);
@@ -647,7 +677,7 @@ public class DcTrackerTest extends TelephonyTest {
                 anyLong(), any(PendingIntent.class));
 
         // This time we'll let RIL command succeed.
-        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
+        mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
 
         // Simulate the timer expires.
         Intent intent = new Intent("com.android.internal.telephony.data-reconnect.default");
@@ -841,7 +871,7 @@ public class DcTrackerTest extends TelephonyTest {
         mContextFixture.putBooleanResource(
                 com.android.internal.R.bool.config_auto_attach_data_on_creation, true);
 
-        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
+        mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
 
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
         boolean allowed = isDataAllowed(dataConnectionReasons);

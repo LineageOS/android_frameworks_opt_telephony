@@ -21,6 +21,7 @@ import android.database.Cursor;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
 import android.os.ServiceManager;
+import android.telephony.AccessNetworkConstants.TransportType;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
@@ -76,7 +77,7 @@ public class TelephonyComponentFactory {
     }
 
     public DcTracker makeDcTracker(Phone phone) {
-        return new DcTracker(phone);
+        return new DcTracker(phone, TransportType.WWAN);
     }
 
     public CarrierSignalAgent makeCarrierSignalAgent(Phone phone) {

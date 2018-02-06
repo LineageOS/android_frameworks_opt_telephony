@@ -89,7 +89,6 @@ import android.telephony.CellInfo;
 import android.telephony.PcoData;
 import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
-import android.telephony.data.DataCallResponse;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
@@ -254,16 +253,10 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void dataCallListChanged(int indicationType, ArrayList<SetupDataCallResult> dcList) {
         mRil.processIndication(indicationType);
 
-        ArrayList<DataCallResponse> response = new ArrayList<>();
-
-        for (SetupDataCallResult dcResult : dcList) {
-            response.add(RIL.convertDataCallResult(dcResult));
-        }
-
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, response);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
 
         mRil.mDataCallListChangedRegistrants.notifyRegistrants(
-                new AsyncResult(null, response, null));
+                new AsyncResult(null, dcList, null));
     }
 
     public void suppSvcNotify(int indicationType, SuppSvcNotification suppSvcNotification) {

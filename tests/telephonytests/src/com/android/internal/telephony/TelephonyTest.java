@@ -47,13 +47,13 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.euicc.EuiccManager;
+import android.telephony.ims.ImsCallProfile;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.util.Log;
 import android.util.Singleton;
 
 import com.android.ims.ImsCall;
-import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -81,6 +81,8 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -562,5 +564,17 @@ public abstract class TelephonyTest {
                 // do nothing
             }
         }
+    }
+
+    public static Object invokeMethod(
+            Object instance, String methodName, Class<?>[] parameterClasses, Object[] parameters) {
+        try {
+            Method method = instance.getClass().getDeclaredMethod(methodName, parameterClasses);
+            method.setAccessible(true);
+            return method.invoke(instance, parameters);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            fail(instance.getClass() + " " + methodName + " " + e.getClass().getName());
+        }
+        return null;
     }
 }

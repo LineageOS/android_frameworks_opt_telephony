@@ -26,6 +26,7 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
@@ -52,9 +53,10 @@ public class DcController extends StateMachine {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
-    private Phone mPhone;
-    private DcTracker mDct;
-    private DcTesterDeactivateAll mDcTesterDeactivateAll;
+    private final Phone mPhone;
+    private final DcTracker mDct;
+    private final DataServiceManager mDataServiceManager;
+    private final DcTesterDeactivateAll mDcTesterDeactivateAll;
 
     // package as its used by Testing code
     // @GuardedBy("mDcListAll")
@@ -90,15 +92,17 @@ public class DcController extends StateMachine {
      * @param name to be used for the Controller
      * @param phone the phone associated with Dcc and Dct
      * @param dct the DataConnectionTracker associated with Dcc
+     * @param dataServiceManager the data service manager that manages data services
      * @param handler defines the thread/looper to be used with Dcc
      */
     private DcController(String name, Phone phone, DcTracker dct,
-            Handler handler) {
+                         DataServiceManager dataServiceManager, Handler handler) {
         super(name, handler);
         setLogRecSize(300);
         log("E ctor");
         mPhone = phone;
         mDct = dct;
+        mDataServiceManager = dataServiceManager;
         addState(mDccDefaultState);
         setInitialState(mDccDefaultState);
         log("X ctor");
@@ -115,15 +119,19 @@ public class DcController extends StateMachine {
         mNetworkPolicyManager = (NetworkPolicyManager) phone.getContext()
                 .getSystemService(Context.NETWORK_POLICY_SERVICE);
 
+        mDcTesterDeactivateAll = (Build.IS_DEBUGGABLE)
+                ? new DcTesterDeactivateAll(mPhone, DcController.this, getHandler())
+                : null;
+
         if (mTelephonyManager != null) {
             mTelephonyManager.listen(mPhoneStateListener,
                     PhoneStateListener.LISTEN_CARRIER_NETWORK_CHANGE);
         }
     }
 
-    public static DcController makeDcc(Phone phone, DcTracker dct, Handler handler) {
-        DcController dcc = new DcController("Dcc", phone, dct, handler);
-        dcc.start();
+    public static DcController makeDcc(Phone phone, DcTracker dct,
+                                       DataServiceManager dataServiceManager, Handler handler) {
+        DcController dcc = new DcController("Dcc", phone, dct, dataServiceManager, handler);
         return dcc;
     }
 
@@ -192,14 +200,15 @@ public class DcController extends StateMachine {
     private class DccDefaultState extends State {
         @Override
         public void enter() {
-            mPhone.mCi.registerForRilConnected(getHandler(),
-                    DataConnection.EVENT_RIL_CONNECTED, null);
-            mPhone.mCi.registerForDataCallListChanged(getHandler(),
-                    DataConnection.EVENT_DATA_STATE_CHANGED, null);
-            if (Build.IS_DEBUGGABLE) {
-                mDcTesterDeactivateAll =
-                        new DcTesterDeactivateAll(mPhone, DcController.this, getHandler());
+            if (mPhone != null && mDataServiceManager.getTransportType()
+                    == TransportType.WWAN) {
+                mPhone.mCi.registerForRilConnected(getHandler(),
+                        DataConnection.EVENT_RIL_CONNECTED, null);
             }
+
+            mDataServiceManager.registerForDataCallListChanged(getHandler(),
+                    DataConnection.EVENT_DATA_STATE_CHANGED);
+
             if (mNetworkPolicyManager != null) {
                 mNetworkPolicyManager.registerListener(mListener);
             }
@@ -207,10 +216,12 @@ public class DcController extends StateMachine {
 
         @Override
         public void exit() {
-            if (mPhone != null) {
+            if (mPhone != null & mDataServiceManager.getTransportType()
+                    == TransportType.WWAN) {
                 mPhone.mCi.unregisterForRilConnected(getHandler());
-                mPhone.mCi.unregisterForDataCallListChanged(getHandler());
             }
+            mDataServiceManager.unregisterForDataCallListChanged(getHandler());
+
             if (mDcTesterDeactivateAll != null) {
                 mDcTesterDeactivateAll.dispose();
             }
