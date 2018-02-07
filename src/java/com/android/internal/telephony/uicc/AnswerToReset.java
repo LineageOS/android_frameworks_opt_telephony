@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.uicc;
 
 import android.annotation.Nullable;
 import android.telephony.Rlog;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.uicc.IccUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -205,6 +204,11 @@ public class AnswerToReset {
     }
 
     private boolean parseAtrString(String atr) {
+        if (atr == null) {
+            loge("The input ATR string can not be null");
+            return false;
+        }
+
         if (atr.length() % 2 != 0) {
             loge("The length of input ATR string " + atr.length() + " is not even.");
             return false;
