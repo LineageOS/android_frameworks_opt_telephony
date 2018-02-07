@@ -35,6 +35,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.CommandsInterface.RadioState;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
+import com.android.internal.telephony.uicc.euicc.EuiccCard;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -119,8 +120,7 @@ public class UiccSlot extends Handler {
                 if (!mIsEuicc) {
                     mUiccCard = new UiccCard(mContext, mCi, ics, mPhoneId);
                 } else {
-                    // todo: initialize new EuiccCard object here
-                    //mUiccCard = new EuiccCard();
+                    mUiccCard = new EuiccCard(mContext, mCi, ics, phoneId);
                 }
             } else {
                 if (mUiccCard != null) {
