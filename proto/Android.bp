@@ -24,4 +24,6 @@ java_library_static {
     srcs: ["src/**/*.proto"],
     no_framework_libs: true,
     jarjar_rules: "jarjar-rules.txt",
+    // Pin java_version until jarjar is certified to support later versions. http://b/72703434
+    java_version: "1.8",
 }
