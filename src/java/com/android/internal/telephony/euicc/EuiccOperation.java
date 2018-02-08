@@ -207,37 +207,37 @@ public class EuiccOperation implements Parcelable {
         switch (mAction) {
             case ACTION_GET_METADATA_DEACTIVATE_SIM:
                 resolvedGetMetadataDeactivateSim(
-                        resolutionExtras.getBoolean(EuiccService.RESOLUTION_EXTRA_CONSENT),
+                        resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
             case ACTION_DOWNLOAD_DEACTIVATE_SIM:
                 resolvedDownloadDeactivateSim(
-                        resolutionExtras.getBoolean(EuiccService.RESOLUTION_EXTRA_CONSENT),
+                        resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
             case ACTION_DOWNLOAD_NO_PRIVILEGES:
                 resolvedDownloadNoPrivileges(
-                        resolutionExtras.getBoolean(EuiccService.RESOLUTION_EXTRA_CONSENT),
+                        resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
             case ACTION_DOWNLOAD_CONFIRMATION_CODE:
                 resolvedDownloadConfirmationCode(
-                        resolutionExtras.getString(EuiccService.RESOLUTION_EXTRA_CONFIRMATION_CODE),
+                        resolutionExtras.getString(EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE),
                         callbackIntent);
                 break;
             case ACTION_GET_DEFAULT_LIST_DEACTIVATE_SIM:
                 resolvedGetDefaultListDeactivateSim(
-                        resolutionExtras.getBoolean(EuiccService.RESOLUTION_EXTRA_CONSENT),
+                        resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
             case ACTION_SWITCH_DEACTIVATE_SIM:
                 resolvedSwitchDeactivateSim(
-                        resolutionExtras.getBoolean(EuiccService.RESOLUTION_EXTRA_CONSENT),
+                        resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
             case ACTION_SWITCH_NO_PRIVILEGES:
                 resolvedSwitchNoPrivileges(
-                        resolutionExtras.getBoolean(EuiccService.RESOLUTION_EXTRA_CONSENT),
+                        resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
             default:
