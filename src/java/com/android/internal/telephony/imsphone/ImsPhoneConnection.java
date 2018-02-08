@@ -343,6 +343,23 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     @Override
+    public void deflect(String number) throws CallStateException {
+        if (mParent.getState().isRinging()) {
+            try {
+                if (mImsCall != null) {
+                    mImsCall.deflect(number);
+                } else {
+                    throw new CallStateException("no valid ims call to deflect");
+                }
+            } catch (ImsException e) {
+                throw new CallStateException("cannot deflect call");
+            }
+        } else {
+            throw new CallStateException("phone not ringing");
+        }
+    }
+
+    @Override
     public void hangup() throws CallStateException {
         if (!mDisconnected) {
             mOwner.hangup(this);
