@@ -494,6 +494,11 @@ public abstract class Connection {
     }
 
     /**
+     * Deflect individual Connection
+     */
+    public abstract void deflect(String number) throws CallStateException;
+
+    /**
      * Hangup individual Connection
      */
     public abstract void hangup() throws CallStateException;

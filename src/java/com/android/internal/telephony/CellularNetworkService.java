@@ -40,8 +40,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implementation of network services for Cellular. It's a service that handles network requests
@@ -59,7 +58,8 @@ public class CellularNetworkService extends NetworkService {
 
     private class CellularNetworkServiceProvider extends NetworkServiceProvider {
 
-        private final Map<Message, NetworkServiceCallback> mCallbackMap = new HashMap<>();
+        private final ConcurrentHashMap<Message, NetworkServiceCallback> mCallbackMap =
+                new ConcurrentHashMap<>();
 
         private final Looper mLooper;
 
@@ -315,18 +315,17 @@ public class CellularNetworkService extends NetworkService {
 
             if (domain == NetworkRegistrationState.DOMAIN_CS) {
                 message = Message.obtain(mHandler, GET_CS_REGISTRATION_STATE_DONE);
+                mCallbackMap.put(message, callback);
                 mPhone.mCi.getVoiceRegistrationState(message);
             } else if (domain == NetworkRegistrationState.DOMAIN_PS) {
                 message = Message.obtain(mHandler, GET_PS_REGISTRATION_STATE_DONE);
+                mCallbackMap.put(message, callback);
                 mPhone.mCi.getDataRegistrationState(message);
             } else {
                 loge("getNetworkRegistrationState invalid domain " + domain);
                 callback.onGetNetworkRegistrationStateComplete(
                         NetworkServiceCallback.RESULT_ERROR_INVALID_ARG, null);
-                return;
             }
-
-            mCallbackMap.put(message, callback);
         }
 
         @CallSuper

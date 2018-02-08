@@ -124,4 +124,72 @@ public class UiccSlotTest extends TelephonyTest {
         // assert on updated values
         assertTrue(mUiccSlot.isActive());
     }
+
+    @Test
+    @SmallTest
+    public void testUpdateSlotStatusEuiccIsSupported() {
+        IccSlotStatus iss = new IccSlotStatus();
+        iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_INACTIVE;
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.iccid = "fake-iccid";
+        iss.atr = "3F979580BFFE8210428031A073BE211797";
+
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+        assertNull(mUiccSlot.getIccId());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+        assertEquals(iss.iccid, mUiccSlot.getIccId());
+
+        iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_ACTIVE;
+
+        // update slot to active
+        mUiccSlot.update(mSimulatedCommands, iss);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
+        assertTrue(mUiccSlot.isEuicc());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateSlotStatusEuiccIsNotSupported() {
+        IccSlotStatus iss = new IccSlotStatus();
+        iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_INACTIVE;
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.iccid = "fake-iccid";
+        iss.atr = "3F979580BFFE8110428031A073BE211797";
+
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+        assertNull(mUiccSlot.getIccId());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+        assertEquals(iss.iccid, mUiccSlot.getIccId());
+
+        iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_ACTIVE;
+
+        // update slot to active
+        mUiccSlot.update(mSimulatedCommands, iss);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
+        assertFalse(mUiccSlot.isEuicc());
+    }
 }
