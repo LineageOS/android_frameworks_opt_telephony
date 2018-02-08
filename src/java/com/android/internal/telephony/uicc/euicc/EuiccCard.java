@@ -48,7 +48,6 @@ import com.android.internal.telephony.uicc.euicc.apdu.RequestProvider;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultHelper;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -146,10 +145,7 @@ public class EuiccCard extends UiccCard {
                             loge("Profile must have an ICCID.");
                             continue;
                         }
-                        String strippedIccIdString =
-                                stripTrailingFs(profileNode.getChild(Tags.TAG_ICCID).asBytes());
-                        EuiccProfileInfo.Builder profileBuilder =
-                                new EuiccProfileInfo.Builder(strippedIccIdString);
+                        EuiccProfileInfo.Builder profileBuilder = new EuiccProfileInfo.Builder();
                         buildProfile(profileNode, profileBuilder);
 
                         EuiccProfileInfo profile = profileBuilder.build();
@@ -182,10 +178,7 @@ public class EuiccCard extends UiccCard {
                         return null;
                     }
                     Asn1Node profileNode = profileNodes.get(0);
-                    String strippedIccIdString =
-                            stripTrailingFs(profileNode.getChild(Tags.TAG_ICCID).asBytes());
-                    EuiccProfileInfo.Builder profileBuilder =
-                            new EuiccProfileInfo.Builder(strippedIccIdString);
+                    EuiccProfileInfo.Builder profileBuilder = new EuiccProfileInfo.Builder();
                     buildProfile(profileNode, profileBuilder);
                     return profileBuilder.build();
                 },
@@ -466,7 +459,7 @@ public class EuiccCard extends UiccCard {
                         for (int j = 0; j < opIdSize; j++) {
                             opIds[j] = buildCarrierIdentifier(opIdNodes.get(j));
                         }
-                        builder.add(node.getChild(Tags.TAG_CTX_0).asBits(), Arrays.asList(opIds),
+                        builder.add(node.getChild(Tags.TAG_CTX_0).asBits(), opIds,
                                 node.getChild(Tags.TAG_CTX_2).asBits());
                     }
                     return builder.build();
@@ -931,6 +924,10 @@ public class EuiccCard extends UiccCard {
 
     private static void buildProfile(Asn1Node profileNode, EuiccProfileInfo.Builder profileBuilder)
             throws TagNotFoundException, InvalidAsn1DataException {
+        String strippedIccIdString =
+                stripTrailingFs(profileNode.getChild(Tags.TAG_ICCID).asBytes());
+        profileBuilder.setIccid(strippedIccIdString);
+
         if (profileNode.hasChild(Tags.TAG_NICKNAME)) {
             profileBuilder.setNickname(profileNode.getChild(Tags.TAG_NICKNAME).asString());
         }
@@ -974,12 +971,7 @@ public class EuiccCard extends UiccCard {
         if (profileNode.hasChild(Tags.TAG_CARRIER_PRIVILEGE_RULES)) {
             List<Asn1Node> refArDoNodes = profileNode.getChild(Tags.TAG_CARRIER_PRIVILEGE_RULES)
                     .getChildren(Tags.TAG_REF_AR_DO);
-            UiccAccessRule[] rules = buildUiccAccessRule(refArDoNodes);
-            List<UiccAccessRule> rulesList = null;
-            if (rules != null) {
-                rulesList = Arrays.asList(rules);
-            }
-            profileBuilder.setUiccAccessRule(rulesList);
+            profileBuilder.setUiccAccessRule(buildUiccAccessRule(refArDoNodes));
         }
     }
 

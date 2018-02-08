@@ -223,7 +223,7 @@ public class EuiccCardTest extends TelephonyTest {
                                         "ABCD92CBB156B280FA4E1429A6ECEEB6E5C1BFE4"),
                                 "com.google.android.apps.myapp", 1)
                 },
-                profile.getUiccAccessRules().toArray());
+                profile.getUiccAccessRules());
         verifyStoreData(channel, "BF2D195A0A896700000000004523015C0B5A909192B79F709599BF76");
     }
 
