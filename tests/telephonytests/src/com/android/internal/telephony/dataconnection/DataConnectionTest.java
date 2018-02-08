@@ -256,6 +256,9 @@ public class DataConnectionTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier, times(1))
                 .registerForNattKeepaliveStatus(any(Handler.class),
                         eq(DataConnection.EVENT_KEEPALIVE_STATUS), eq(null));
+        verify(mSimulatedCommandsVerifier, times(1))
+                .registerForLceInfo(any(Handler.class),
+                        eq(DataConnection.EVENT_LINK_CAPACITY_CHANGED), eq(null));
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
@@ -275,6 +278,7 @@ public class DataConnectionTest extends TelephonyTest {
         mDc.sendMessage(DataConnection.EVENT_DISCONNECT, mDcp);
         waitForMs(100);
 
+        verify(mSimulatedCommandsVerifier, times(1)).unregisterForLceInfo(any(Handler.class));
         verify(mSimulatedCommandsVerifier, times(1))
                 .unregisterForNattKeepaliveStatus(any(Handler.class));
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(eq(1),
