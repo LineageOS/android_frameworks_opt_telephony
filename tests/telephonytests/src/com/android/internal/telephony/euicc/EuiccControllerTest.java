@@ -73,6 +73,7 @@ import org.mockito.stubbing.Stubber;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Collections;
 
 @RunWith(AndroidJUnit4.class)
@@ -100,7 +101,8 @@ public class EuiccControllerTest extends TelephonyTest {
             DownloadableSubscription.forActivationCode("abcde");
     static {
         SUBSCRIPTION_WITH_METADATA.setCarrierName("test name");
-        SUBSCRIPTION_WITH_METADATA.setAccessRules(new UiccAccessRule[] { ACCESS_RULE });
+        SUBSCRIPTION_WITH_METADATA.setAccessRules(
+                Arrays.asList(new UiccAccessRule[] { ACCESS_RULE }));
     }
 
     private static final String OS_VERSION = "1.0";
@@ -264,7 +266,7 @@ public class EuiccControllerTest extends TelephonyTest {
 
     @Test
     public void testGetEuiccInfo_success() {
-        assertEquals(OS_VERSION, callGetEuiccInfo(true /* success */, EUICC_INFO).osVersion);
+        assertEquals(OS_VERSION, callGetEuiccInfo(true /* success */, EUICC_INFO).getOsVersion());
     }
 
     @Test
@@ -837,6 +839,8 @@ public class EuiccControllerTest extends TelephonyTest {
         SubscriptionInfo subInfo = new SubscriptionInfo(
                 0, "", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
                 hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null);
+        when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
+                hasPrivileges);
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
                 Collections.singletonList(subInfo));
     }
@@ -845,6 +849,8 @@ public class EuiccControllerTest extends TelephonyTest {
         SubscriptionInfo subInfo = new SubscriptionInfo(
                 SUBSCRIPTION_ID, ICC_ID, 0, "", "", 0, 0, "", 0, null, 0, 0, "",
                 true /* isEmbedded */, hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null);
+        when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
+                hasPrivileges);
         when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(
                 Collections.singletonList(subInfo));
     }
