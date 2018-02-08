@@ -259,12 +259,12 @@ public class EuiccController extends IEuiccController.Stub {
                 GetDownloadableSubscriptionMetadataResult result) {
             Intent extrasIntent = new Intent();
             final int resultCode;
-            switch (result.getResult()) {
+            switch (result.result) {
                 case EuiccService.RESULT_OK:
                     resultCode = OK;
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION,
-                            result.getDownloadableSubscription());
+                            result.subscription);
                     break;
                 case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
                     resultCode = RESOLVABLE_ERROR;
@@ -278,7 +278,7 @@ public class EuiccController extends IEuiccController.Stub {
                     resultCode = ERROR;
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                            result.getResult());
+                            result.result);
                     break;
             }
 
@@ -346,7 +346,7 @@ public class EuiccController extends IEuiccController.Stub {
         @Override
         public void onGetMetadataComplete(
                 GetDownloadableSubscriptionMetadataResult result) {
-            if (result.getResult() == EuiccService.RESULT_MUST_DEACTIVATE_SIM) {
+            if (result.result == EuiccService.RESULT_MUST_DEACTIVATE_SIM) {
                 // If we need to deactivate the current SIM to even check permissions, go ahead and
                 // require that the user resolve the stronger permission dialog.
                 Intent extrasIntent = new Intent();
@@ -360,18 +360,14 @@ public class EuiccController extends IEuiccController.Stub {
                 return;
             }
 
-            if (result.getResult() != EuiccService.RESULT_OK) {
+            if (result.result != EuiccService.RESULT_OK) {
                 // Just propagate the error as normal.
                 super.onGetMetadataComplete(result);
                 return;
             }
 
-            DownloadableSubscription subscription = result.getDownloadableSubscription();
-            UiccAccessRule[] rules = null;
-            List<UiccAccessRule> rulesList = subscription.getAccessRules();
-            if (rulesList != null) {
-                rules = rulesList.toArray(new UiccAccessRule[rulesList.size()]);
-            }
+            DownloadableSubscription subscription = result.subscription;
+            UiccAccessRule[] rules = subscription.getAccessRules();
             if (rules == null) {
                 Log.e(TAG, "No access rules but caller is unprivileged");
                 sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
@@ -566,15 +562,12 @@ public class EuiccController extends IEuiccController.Stub {
         public void onGetDefaultListComplete(GetDefaultDownloadableSubscriptionListResult result) {
             Intent extrasIntent = new Intent();
             final int resultCode;
-            switch (result.getResult()) {
+            switch (result.result) {
                 case EuiccService.RESULT_OK:
                     resultCode = OK;
-                    List<DownloadableSubscription> list = result.getDownloadableSubscriptions();
-                    if (list != null && list.size() > 0) {
-                        extrasIntent.putExtra(
-                                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTIONS,
-                                list.toArray(new DownloadableSubscription[list.size()]));
-                    }
+                    extrasIntent.putExtra(
+                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTIONS,
+                            result.subscriptions);
                     break;
                 case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
                     resultCode = RESOLVABLE_ERROR;
@@ -589,7 +582,7 @@ public class EuiccController extends IEuiccController.Stub {
                     resultCode = ERROR;
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                            result.getResult());
+                            result.result);
                     break;
             }
 
@@ -718,7 +711,7 @@ public class EuiccController extends IEuiccController.Stub {
                     return;
                 }
                 if (!callerCanWriteEmbeddedSubscriptions
-                        && !mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
+                        && !sub.canManageSubscription(mContext, callingPackage)) {
                     Log.e(TAG, "Not permitted to switch to subscription: " + subscriptionId);
                     sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
@@ -1070,9 +1063,7 @@ public class EuiccController extends IEuiccController.Stub {
         int size = subInfoList.size();
         for (int subIndex = 0; subIndex < size; subIndex++) {
             SubscriptionInfo subInfo = subInfoList.get(subIndex);
-
-            if (subInfo.isEmbedded()
-                    && mSubscriptionManager.canManageSubscription(subInfo, callingPackage)) {
+            if (subInfo.isEmbedded() && subInfo.canManageSubscription(mContext, callingPackage)) {
                 return true;
             }
         }
