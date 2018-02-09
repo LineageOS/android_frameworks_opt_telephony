@@ -67,16 +67,16 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UssdResponse;
-import android.text.TextUtils;
-
 import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsSsInfo;
+import android.text.TextUtils;
+
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
-import android.telephony.ims.ImsReasonInfo;
-import android.telephony.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
@@ -1612,6 +1612,11 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public boolean isVideoEnabled() {
         return mCT.isVideoCallEnabled();
+    }
+
+    @Override
+    public int getImsRegistrationTech() {
+        return mCT.getImsRegistrationTech();
     }
 
     @Override

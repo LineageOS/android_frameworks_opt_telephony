@@ -56,6 +56,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 
 import com.android.ims.ImsCall;
@@ -3189,6 +3190,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
         Rlog.d(LOG_TAG, "isImsRegistered =" + isVolteEnabled);
         return isVolteEnabled;
+    }
+
+    /**
+     * @return the IMS MmTel Registration technology for this Phone, defined in
+     * {@link ImsRegistrationImplBase}.
+     */
+    public int getImsRegistrationTech() {
+        Phone imsPhone = mImsPhone;
+        int regTech = ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
+        if (imsPhone != null) {
+            regTech = imsPhone.getImsRegistrationTech();
+        }
+        Rlog.d(LOG_TAG, "getImsRegistrationTechnology =" + regTech);
+        return regTech;
     }
 
     private boolean getRoamingOverrideHelper(String prefix, String key) {
