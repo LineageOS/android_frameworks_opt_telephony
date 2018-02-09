@@ -103,7 +103,7 @@ public class TelephonyTester {
             "com.android.internal.telephony.TestSuppSrvcNotification";
 
     private static final String EXTRA_CODE = "code";
-
+    private static final String EXTRA_TYPE = "type";
 
     private static final String ACTION_TEST_SERVICE_STATE =
             "com.android.internal.telephony.TestServiceState";
@@ -317,8 +317,9 @@ public class TelephonyTester {
     }
 
     private void sendTestSuppServiceNotification(Intent intent) {
-        if (intent.hasExtra(EXTRA_CODE)) {
+        if (intent.hasExtra(EXTRA_CODE) && intent.hasExtra(EXTRA_TYPE)) {
             int code = intent.getIntExtra(EXTRA_CODE, -1);
+            int type = intent.getIntExtra(EXTRA_TYPE, -1);
             ImsPhone imsPhone = (ImsPhone) mPhone;
             if (imsPhone == null) {
                 return;
@@ -326,6 +327,7 @@ public class TelephonyTester {
             log("Test supp service notification:" + code);
             SuppServiceNotification suppServiceNotification = new SuppServiceNotification();
             suppServiceNotification.code = code;
+            suppServiceNotification.notificationType = type;
             imsPhone.notifySuppSvcNotification(suppServiceNotification);
         }
     }
