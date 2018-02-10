@@ -771,27 +771,25 @@ public class DcTracker extends Handler {
     }
 
     private void onSetUserDataEnabled(boolean enabled) {
-        synchronized (mDataEnabledSettings) {
-            if (mDataEnabledSettings.isUserDataEnabled() != enabled) {
-                mDataEnabledSettings.setUserDataEnabled(enabled);
-                if (!getDataRoamingEnabled() && mPhone.getServiceState().getDataRoaming()) {
-                    if (enabled) {
-                        notifyOffApnsOfAvailability(Phone.REASON_ROAMING_ON);
-                    } else {
-                        notifyOffApnsOfAvailability(Phone.REASON_DATA_DISABLED);
-                    }
-                }
-
-                mPhone.notifyUserMobileDataStateChanged(enabled);
-
-                // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
-                // handle the rest from there.
+        if (mDataEnabledSettings.isUserDataEnabled() != enabled) {
+            mDataEnabledSettings.setUserDataEnabled(enabled);
+            if (!getDataRoamingEnabled() && mPhone.getServiceState().getDataRoaming()) {
                 if (enabled) {
-                    reevaluateDataConnections();
-                    onTrySetupData(Phone.REASON_DATA_ENABLED);
+                    notifyOffApnsOfAvailability(Phone.REASON_ROAMING_ON);
                 } else {
-                    onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
+                    notifyOffApnsOfAvailability(Phone.REASON_DATA_DISABLED);
                 }
+            }
+
+            mPhone.notifyUserMobileDataStateChanged(enabled);
+
+            // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
+            // handle the rest from there.
+            if (enabled) {
+                reevaluateDataConnections();
+                onTrySetupData(Phone.REASON_DATA_ENABLED);
+            } else {
+                onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
             }
         }
     }
@@ -2275,29 +2273,27 @@ public class DcTracker extends Handler {
             Rlog.e(LOG_TAG, "CarrierDataEnable exception: " + ar.exception);
             return;
         }
-        synchronized (mDataEnabledSettings) {
-            boolean enabled = (boolean) ar.result;
-            if (enabled != mDataEnabledSettings.isCarrierDataEnabled()) {
-                if (DBG) {
-                    log("carrier Action: set metered apns enabled: " + enabled);
-                }
+        boolean enabled = (boolean) ar.result;
+        if (enabled != mDataEnabledSettings.isCarrierDataEnabled()) {
+            if (DBG) {
+                log("carrier Action: set metered apns enabled: " + enabled);
+            }
 
-                // Disable/enable all metered apns
-                mDataEnabledSettings.setCarrierDataEnabled(enabled);
+            // Disable/enable all metered apns
+            mDataEnabledSettings.setCarrierDataEnabled(enabled);
 
-                if (!enabled) {
-                    // Send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
-                    mPhone.notifyOtaspChanged(TelephonyManager.OTASP_SIM_UNPROVISIONED);
-                    // Tear down all metered apns
-                    cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
-                } else {
-                    // Re-evaluate Otasp state
-                    int otaspState = mPhone.getServiceStateTracker().getOtasp();
-                    mPhone.notifyOtaspChanged(otaspState);
+            if (!enabled) {
+                // Send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
+                mPhone.notifyOtaspChanged(TelephonyManager.OTASP_SIM_UNPROVISIONED);
+                // Tear down all metered apns
+                cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
+            } else {
+                // Re-evaluate Otasp state
+                int otaspState = mPhone.getServiceStateTracker().getOtasp();
+                mPhone.notifyOtaspChanged(otaspState);
 
-                    reevaluateDataConnections();
-                    setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
-                }
+                reevaluateDataConnections();
+                setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
             }
         }
     }
@@ -2338,19 +2334,17 @@ public class DcTracker extends Handler {
     }
 
     private void onSetPolicyDataEnabled(boolean enabled) {
-        synchronized (mDataEnabledSettings) {
-            final boolean prevEnabled = isDataEnabled();
-            if (mDataEnabledSettings.isPolicyDataEnabled() != enabled) {
-                mDataEnabledSettings.setPolicyDataEnabled(enabled);
-                // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
-                // handle the rest from there.
-                if (prevEnabled != isDataEnabled()) {
-                    if (!prevEnabled) {
-                        reevaluateDataConnections();
-                        onTrySetupData(Phone.REASON_DATA_ENABLED);
-                    } else {
-                        onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
-                    }
+        final boolean prevEnabled = isDataEnabled();
+        if (mDataEnabledSettings.isPolicyDataEnabled() != enabled) {
+            mDataEnabledSettings.setPolicyDataEnabled(enabled);
+            // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
+            // handle the rest from there.
+            if (prevEnabled != isDataEnabled()) {
+                if (!prevEnabled) {
+                    reevaluateDataConnections();
+                    onTrySetupData(Phone.REASON_DATA_ENABLED);
+                } else {
+                    onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
                 }
             }
         }
@@ -4063,24 +4057,22 @@ public class DcTracker extends Handler {
     }
 
     private void onSetInternalDataEnabled(boolean enabled, Message onCompleteMsg) {
-        synchronized (mDataEnabledSettings) {
-            if (DBG) log("onSetInternalDataEnabled: enabled=" + enabled);
-            boolean sendOnComplete = true;
+        if (DBG) log("onSetInternalDataEnabled: enabled=" + enabled);
+        boolean sendOnComplete = true;
 
-            mDataEnabledSettings.setInternalDataEnabled(enabled);
-            if (enabled) {
-                log("onSetInternalDataEnabled: changed to enabled, try to setup data call");
-                onTrySetupData(Phone.REASON_DATA_ENABLED);
-            } else {
-                sendOnComplete = false;
-                log("onSetInternalDataEnabled: changed to disabled, cleanUpAllConnections");
-                cleanUpAllConnections(Phone.REASON_DATA_DISABLED, onCompleteMsg);
-            }
+        mDataEnabledSettings.setInternalDataEnabled(enabled);
+        if (enabled) {
+            log("onSetInternalDataEnabled: changed to enabled, try to setup data call");
+            onTrySetupData(Phone.REASON_DATA_ENABLED);
+        } else {
+            sendOnComplete = false;
+            log("onSetInternalDataEnabled: changed to disabled, cleanUpAllConnections");
+            cleanUpAllConnections(Phone.REASON_DATA_DISABLED, onCompleteMsg);
+        }
 
-            if (sendOnComplete) {
-                if (onCompleteMsg != null) {
-                    onCompleteMsg.sendToTarget();
-                }
+        if (sendOnComplete) {
+            if (onCompleteMsg != null) {
+                onCompleteMsg.sendToTarget();
             }
         }
     }
