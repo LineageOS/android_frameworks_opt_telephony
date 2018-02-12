@@ -710,20 +710,25 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         final EuiccProfileInfo[] embeddedProfiles;
-        if (result.result == EuiccService.RESULT_OK) {
-            embeddedProfiles = result.profiles;
+        if (result.getResult() == EuiccService.RESULT_OK) {
+            List<EuiccProfileInfo> list = result.getProfiles();
+            if (list == null || list.size() == 0) {
+                embeddedProfiles = new EuiccProfileInfo[0];
+            } else {
+                embeddedProfiles = list.toArray(new EuiccProfileInfo[list.size()]);
+            }
         } else {
-            logd("updatedEmbeddedSubscriptions: error " + result.result + " listing profiles");
+            logd("updatedEmbeddedSubscriptions: error " + result.getResult() + " listing profiles");
             // If there's an error listing profiles, treat it equivalently to a successful
             // listing which returned no profiles under the assumption that none are currently
             // accessible.
             embeddedProfiles = new EuiccProfileInfo[0];
         }
-        final boolean isRemovable = result.isRemovable;
+        final boolean isRemovable = result.getIsRemovable();
 
         final String[] embeddedIccids = new String[embeddedProfiles.length];
         for (int i = 0; i < embeddedProfiles.length; i++) {
-            embeddedIccids[i] = embeddedProfiles[i].iccid;
+            embeddedIccids[i] = embeddedProfiles[i].getIccid();
         }
 
         // Note that this only tracks whether we make any writes to the DB. It's possible this will
@@ -741,25 +746,30 @@ public class SubscriptionInfoUpdater extends Handler {
         ContentResolver contentResolver = mContext.getContentResolver();
         for (EuiccProfileInfo embeddedProfile : embeddedProfiles) {
             int index =
-                    findSubscriptionInfoForIccid(existingSubscriptions, embeddedProfile.iccid);
+                    findSubscriptionInfoForIccid(existingSubscriptions, embeddedProfile.getIccid());
             if (index < 0) {
                 // No existing entry for this ICCID; create an empty one.
                 SubscriptionController.getInstance().insertEmptySubInfoRecord(
-                        embeddedProfile.iccid, SubscriptionManager.SIM_NOT_INSERTED);
+                        embeddedProfile.getIccid(), SubscriptionManager.SIM_NOT_INSERTED);
             } else {
                 existingSubscriptions.remove(index);
             }
             ContentValues values = new ContentValues();
             values.put(SubscriptionManager.IS_EMBEDDED, 1);
+            List<UiccAccessRule> ruleList = embeddedProfile.getUiccAccessRules();
+            boolean isRuleListEmpty = false;
+            if (ruleList == null || ruleList.size() == 0) {
+                isRuleListEmpty = true;
+            }
             values.put(SubscriptionManager.ACCESS_RULES,
-                    embeddedProfile.accessRules == null ? null :
-                            UiccAccessRule.encodeRules(embeddedProfile.accessRules));
+                    isRuleListEmpty ? null : UiccAccessRule.encodeRules(
+                            ruleList.toArray(new UiccAccessRule[ruleList.size()])));
             values.put(SubscriptionManager.IS_REMOVABLE, isRemovable);
-            values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.nickname);
+            values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.getNickname());
             values.put(SubscriptionManager.NAME_SOURCE, SubscriptionManager.NAME_SOURCE_USER_INPUT);
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
-                    SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.iccid + "\"", null);
+                    SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.getIccid() + "\"", null);
 
             // refresh Cached Active Subscription Info List
             SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
