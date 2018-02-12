@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.telephony.Phone.CS_FALLBACK;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -86,7 +88,6 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneInternalInterface;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -899,6 +900,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean isPhoneInEcmMode = isPhoneInEcbMode();
         boolean isEmergencyNumber = mPhoneNumberUtilsProxy.isEmergencyNumber(dialString);
 
+        if (!shouldNumberBePlacedOnIms(isEmergencyNumber, dialString)) {
+            Rlog.i(LOG_TAG, "dial: shouldNumberBePlacedOnIms = false");
+            throw new CallStateException(CS_FALLBACK);
+        }
+
         int clirMode = dialArgs.clirMode;
         int videoState = dialArgs.videoState;
 
@@ -1010,6 +1016,38 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         return mImsManager.isServiceReady();
+    }
+
+    private boolean shouldNumberBePlacedOnIms(boolean isEmergency, String number) {
+        int processCallResult;
+        try {
+            if (mImsManager != null) {
+                processCallResult = mImsManager.shouldProcessCall(isEmergency,
+                        new String[]{number});
+                Rlog.i(LOG_TAG, "shouldProcessCall: number: " + Rlog.pii(LOG_TAG, number)
+                        + ", result: " + processCallResult);
+            } else {
+                Rlog.w(LOG_TAG, "ImsManager unavailable, shouldProcessCall returning false.");
+                return false;
+            }
+        } catch (ImsException e) {
+            Rlog.w(LOG_TAG, "ImsService unavailable, shouldProcessCall returning false.");
+            return false;
+        }
+        switch(processCallResult) {
+            case MmTelFeature.PROCESS_CALL_IMS: {
+                // The ImsService wishes to place the call over IMS
+                return true;
+            }
+            case MmTelFeature.PROCESS_CALL_CSFB: {
+                Rlog.i(LOG_TAG, "shouldProcessCall: place over CSFB instead.");
+                return false;
+            }
+            default: {
+                Rlog.w(LOG_TAG, "shouldProcessCall returned unknown result.");
+                return false;
+            }
+        }
     }
 
     /**
