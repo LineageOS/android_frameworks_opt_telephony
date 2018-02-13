@@ -675,18 +675,6 @@ public class GsmCdmaPhone extends Phone {
         mNotifier.notifyCallForwardingChanged(this);
     }
 
-    // override for allowing access from other classes of this package
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setSystemProperty(String property, String value) {
-        if (getUnitTestMode()) {
-            return;
-        }
-        TelephonyManager.setTelephonyProperty(mPhoneId, property, value);
-    }
-
     @Override
     public void registerForSuppServiceNotification(
             Handler h, int what, Object obj) {
