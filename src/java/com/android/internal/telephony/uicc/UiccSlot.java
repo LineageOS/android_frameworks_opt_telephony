@@ -49,6 +49,7 @@ public class UiccSlot extends Handler {
 
     public static final String EXTRA_ICC_CARD_ADDED =
             "com.android.internal.telephony.uicc.ICC_CARD_ADDED";
+    public static final int INVALID_PHONE_ID = -1;
 
     private final Object mLock = new Object();
     private boolean mActive;
@@ -59,8 +60,8 @@ public class UiccSlot extends Handler {
     private RadioState mLastRadioState = RadioState.RADIO_UNAVAILABLE;
     private boolean mIsEuicc;
     private String mIccId;
-    private Integer mPhoneId = null;
     private AnswerToReset mAtr;
+    private int mPhoneId = INVALID_PHONE_ID;
 
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
@@ -143,7 +144,7 @@ public class UiccSlot extends Handler {
                 if (mActive) {
                     mActive = false;
                     mLastRadioState = RadioState.RADIO_UNAVAILABLE;
-                    mPhoneId = null;
+                    mPhoneId = INVALID_PHONE_ID;
                     if (mUiccCard != null) mUiccCard.dispose();
                     mUiccCard = null;
                 }
@@ -184,6 +185,10 @@ public class UiccSlot extends Handler {
 
     public boolean isActive() {
         return mActive;
+    }
+
+    public int getPhoneId() {
+        return mPhoneId;
     }
 
     public String getIccId() {
@@ -317,7 +322,7 @@ public class UiccSlot extends Handler {
         }
         mUiccCard = null;
 
-        if (mPhoneId != null) {
+        if (mPhoneId != INVALID_PHONE_ID) {
             UiccProfile.broadcastInternalIccStateChangedIntent(
                     IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null, mPhoneId);
         }
