@@ -5088,6 +5088,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, String roamingProtocol, int imsType, Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_INITIAL_ATTACH_APN, result);
+
+        if (RILJ_LOGD) riljLog("Set RIL_REQUEST_SET_INITIAL_ATTACH_APN");
+
+        rr.mParcel.writeString(apn);
+        rr.mParcel.writeString(protocol);
+        rr.mParcel.writeInt(authType);
+        rr.mParcel.writeString(username);
+        rr.mParcel.writeString(password);
+        rr.mParcel.writeString(roamingProtocol);
+        rr.mParcel.writeInt(imsType);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + ", apn:" + apn + ", protocol:" + protocol + ", authType:" + authType
+                + ", username:" + username + ", password:" + password + ", roamingProtocol: "
+                + roamingProtocol + ", imsType: " + imsType);
+
+        send(rr);
+    }
+
     public void setDataProfile(DataProfile[] dps, Message result) {
         if (RILJ_LOGD) riljLog("Set RIL_REQUEST_SET_DATA_PROFILE");
 

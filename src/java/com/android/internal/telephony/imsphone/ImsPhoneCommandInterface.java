@@ -568,6 +568,11 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, String roamingProtocol, int imsType, Message result) {
+    }
+
+    @Override
     public void setDataProfile(DataProfile[] dps, Message result) {
     }
 

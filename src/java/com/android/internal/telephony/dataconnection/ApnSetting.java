@@ -340,6 +340,15 @@ public class ApnSetting {
         return !TextUtils.isEmpty(mvnoType) && !TextUtils.isEmpty(mvnoMatchData);
     }
 
+    public boolean hasType(String type) {
+        for (String str : this.types) {
+            if ((str.equalsIgnoreCase(type)) || (str.equalsIgnoreCase("*")) || ((str.equalsIgnoreCase("default")) && (type.equalsIgnoreCase("hipri")))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean canHandleType(String type) {
         if (!carrierEnabled) return false;
         boolean wildcardable = true;

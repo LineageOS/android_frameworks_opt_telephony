@@ -2277,14 +2277,29 @@ public class DcTracker extends Handler {
             initialAttachApnSetting = firstApnSetting;
         }
 
+        int imsType;
+        if (initialAttachApnSetting.hasType("default")) {
+            imsType = 0;
+        } else if (initialAttachApnSetting.hasType("ims")) {
+            imsType = 2;
+        } else {
+            imsType = 1006; // WTF
+        }
+
         if (initialAttachApnSetting == null) {
             if (DBG) log("setInitialAttachApn: X There in no available apn");
         } else {
             if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
 
+/*
             mPhone.mCi.setInitialAttachApn(initialAttachApnSetting.apn,
                     initialAttachApnSetting.protocol, initialAttachApnSetting.authType,
                     initialAttachApnSetting.user, initialAttachApnSetting.password, null);
+*/
+            mPhone.mCi.setInitialAttachApn(initialAttachApnSetting.apn,
+                    initialAttachApnSetting.protocol, initialAttachApnSetting.authType,
+                    initialAttachApnSetting.user, initialAttachApnSetting.password,
+                    initialAttachApnSetting.roamingProtocol, imsType, null);
         }
     }
 

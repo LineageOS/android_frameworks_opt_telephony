@@ -1777,9 +1777,15 @@ public interface CommandsInterface {
      *            the password for APN, or NULL
      * @param result
      *            callback message contains the information of SUCCESS/FAILURE
+     * @param roamingProtocol
+     *            Samsung roaming protocol
+     * @param imsType
+     *            Samsung IMS type
      */
     public void setInitialAttachApn(String apn, String protocol, int authType, String username,
             String password, Message result);
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, String roamingProtocol, int imsType, Message result);
 
     /**
      * Set data profiles in modem
