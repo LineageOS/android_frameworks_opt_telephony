@@ -27,6 +27,8 @@ import android.telephony.euicc.EuiccRulesAuthTable;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
 public class EuiccRulesAuthTableTest {
     @Test
     public void testFindIndex() {
@@ -38,11 +40,11 @@ public class EuiccRulesAuthTableTest {
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
                                 // Matches none
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         // Matches none
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
@@ -51,23 +53,23 @@ public class EuiccRulesAuthTableTest {
                                         // Matches opA
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         // Matches none
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         // Matches opA and opB
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         // Matches none
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
@@ -77,7 +79,7 @@ public class EuiccRulesAuthTableTest {
                                         // Matches opA
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
 
@@ -101,13 +103,13 @@ public class EuiccRulesAuthTableTest {
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         // Matches none
                                         new CarrierIdentifier(
                                                 new byte[] {(byte) 0xEE, (byte) 0xEE, (byte) 0xEE},
                                                 null,
                                                 null)
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
         assertEquals(0, rat.findIndex(EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE, opA));
@@ -122,7 +124,7 @@ public class EuiccRulesAuthTableTest {
         CarrierIdentifier opB = new CarrierIdentifier(
                 new byte[] {0x78, (byte) 0xF4, 0x25}, "4", null);
         EuiccRulesAuthTable rat = new EuiccRulesAuthTable.Builder(1)
-                .add(0, new CarrierIdentifier[] {}, 0).build();
+                .add(0, Arrays.asList(new CarrierIdentifier[] {}), 0).build();
         assertEquals(-1, rat.findIndex(EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE, opA));
         assertEquals(-1, rat.findIndex(EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE, opB));
         assertEquals(-1, rat.findIndex(EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE, opA));
@@ -147,13 +149,14 @@ public class EuiccRulesAuthTableTest {
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void testBuild_TooManyRules() {
-        new EuiccRulesAuthTable.Builder(0).add(0, new CarrierIdentifier[] {}, 0).build();
+        new EuiccRulesAuthTable.Builder(0)
+                .add(0, Arrays.asList(new CarrierIdentifier[] {}), 0).build();
     }
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void testHasPolicyRuleFlag_OutOfBounds() {
         EuiccRulesAuthTable rat = new EuiccRulesAuthTable.Builder(1)
-                .add(0, new CarrierIdentifier[] {}, 0).build();
+                .add(0, Arrays.asList(new CarrierIdentifier[] {}), 0).build();
         rat.hasPolicyRuleFlag(1, EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED);
     }
 
@@ -181,39 +184,39 @@ public class EuiccRulesAuthTableTest {
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
                                                 "4",
                                                 null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, "4", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
 
@@ -261,39 +264,39 @@ public class EuiccRulesAuthTableTest {
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
                                                 "4",
                                                 null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, "4", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
 
@@ -307,39 +310,39 @@ public class EuiccRulesAuthTableTest {
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
                                                 "4",
                                                 null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, "4", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
         assertTrue(rat.equals(that));
@@ -354,27 +357,27 @@ public class EuiccRulesAuthTableTest {
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
                                                 "4",
                                                 null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .build();
         assertFalse(rat.equals(that));
@@ -384,38 +387,38 @@ public class EuiccRulesAuthTableTest {
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         // Only one item
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
                                                 "4",
                                                 null)
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, "4", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
         assertFalse(rat.equals(that));
@@ -425,11 +428,11 @@ public class EuiccRulesAuthTableTest {
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         // Different value from rat
                                         new CarrierIdentifier(
                                                 new byte[] {0x22, (byte) 0xF3, 0x54},
@@ -437,28 +440,28 @@ public class EuiccRulesAuthTableTest {
                                                 null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, "4", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
         assertFalse(rat.equals(that));
@@ -473,77 +476,77 @@ public class EuiccRulesAuthTableTest {
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
                                                 "4",
                                                 null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, "4", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
-        assertFalse(rat.equals(that));
+        assertTrue(rat.equals(that));
 
         that =
                 new EuiccRulesAuthTable.Builder(4)
                         .add(
                                 // Different policy rules
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {},
+                                Arrays.asList(new CarrierIdentifier[] {}),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, (byte) 0xF3, 0x54},
                                                 "4",
                                                 null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x63, 0x54}, null, "5"),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, null)
-                                },
+                                ),
                                 0)
                         .add(
                                 EuiccProfileInfo.POLICY_RULE_DO_NOT_DELETE
                                         | EuiccProfileInfo.POLICY_RULE_DO_NOT_DISABLE,
-                                new CarrierIdentifier[] {
+                                Arrays.asList(
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x69, 0x54}, "5", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, "4", null),
                                         new CarrierIdentifier(
                                                 new byte[] {0x21, 0x6E, 0x54}, null, "4")
-                                },
+                                ),
                                 EuiccRulesAuthTable.POLICY_RULE_FLAG_CONSENT_REQUIRED)
                         .build();
         assertFalse(rat.equals(that));
