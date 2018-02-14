@@ -337,7 +337,18 @@ public class UiccCarrierPrivilegeRules extends Handler {
      * @return Access status.
      */
     public int getCarrierPrivilegeStatusForCurrentTransaction(PackageManager packageManager) {
-        String[] packages = packageManager.getPackagesForUid(Binder.getCallingUid());
+        return getCarrierPrivilegeStatusForUid(packageManager, Binder.getCallingUid());
+    }
+
+    /**
+     * Returns the status of the carrier privileges for the caller of the current transaction.
+     *
+     * @param packageManager PackageManager for getting signatures and package names.
+     * @return Access status.
+     */
+    public int getCarrierPrivilegeStatusForUid(
+            PackageManager packageManager, int uid) {
+        String[] packages = packageManager.getPackagesForUid(uid);
 
         for (String pkg : packages) {
             int accessStatus = getCarrierPrivilegeStatus(packageManager, pkg);
