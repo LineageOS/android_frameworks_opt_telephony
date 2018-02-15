@@ -60,7 +60,7 @@ public class ImsRttTextHandler extends Handler {
     // limiter. msg.arg1 should be set to N.
     private static final int EXPIRE_SENT_CODEPOINT_COUNT = 5;
     // Indicates that the call is over and we should teardown everything we have set up.
-    private static final int TEARDOWN = 6;
+    private static final int TEARDOWN = 9999;
 
     private Connection.RttTextStream mRttTextStream;
     // For synchronization during testing
