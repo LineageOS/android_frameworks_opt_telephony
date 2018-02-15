@@ -49,19 +49,19 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCall;
-import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsException;
-import android.telephony.ims.ImsReasonInfo;
-import android.telephony.ims.ImsStreamMediaProfile;
 import com.android.ims.internal.IImsCallSession;
-import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
@@ -83,6 +83,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;
     private ImsCTHandlerThread mImsCTHandlerThread;
     private MmTelFeature.Listener mMmTelListener;
+    private ImsRegistrationImplBase.Callback mRegistrationCallback;
     private ImsFeature.CapabilityCallback mCapabilityCallback;
     private ImsCall.Listener mImsCallListener;
     private ImsCall mImsCall;
@@ -211,6 +212,11 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 (ImsCall.Listener) any());
 
         doAnswer(invocation -> {
+            mRegistrationCallback = invocation.getArgument(0);
+            return mRegistrationCallback;
+        }).when(mImsManager).addRegistrationCallback(any(ImsRegistrationImplBase.Callback.class));
+
+        doAnswer(invocation -> {
             mCapabilityCallback = (ImsFeature.CapabilityCallback) invocation.getArguments()[0];
             return mCapabilityCallback;
 
@@ -232,6 +238,72 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mCTUT = null;
         mImsCTHandlerThread.quit();
         super.tearDown();
+    }
+
+    @Test
+    @SmallTest
+    public void testImsRegistered() {
+        // when IMS is registered
+        mRegistrationCallback.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        // then service state should be IN_SERVICE and ImsPhone state set to registered
+        verify(mImsPhone).setServiceState(eq(ServiceState.STATE_IN_SERVICE));
+        verify(mImsPhone).setImsRegistered(eq(true));
+    }
+
+    @Test
+    @SmallTest
+    public void testImsRegistering() {
+        // when IMS is registering
+        mRegistrationCallback.onRegistering(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        // then service state should be OUT_OF_SERVICE and ImsPhone state set to not registered
+        verify(mImsPhone).setServiceState(eq(ServiceState.STATE_OUT_OF_SERVICE));
+        verify(mImsPhone).setImsRegistered(eq(false));
+    }
+
+    @Test
+    @SmallTest
+    public void testImsDeregistered() {
+        // when IMS is deregistered
+        mRegistrationCallback.onDeregistered(new ImsReasonInfo());
+        // then service state should be OUT_OF_SERVICE and ImsPhone state set to not registered
+        verify(mImsPhone).setServiceState(eq(ServiceState.STATE_OUT_OF_SERVICE));
+        verify(mImsPhone).setImsRegistered(eq(false));
+    }
+
+    @Test
+    @SmallTest
+    public void testVowifiDisabledOnLte() {
+        // LTE is registered.
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_LTE).when(
+                mImsManager).getRegistrationTech();
+        assertFalse(mCTUT.isVowifiEnabled());
+
+        // enable Voice over LTE
+        ImsFeature.Capabilities caps = new ImsFeature.Capabilities();
+        caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
+        mCapabilityCallback.onCapabilitiesStatusChanged(caps);
+        waitForHandlerAction(mCTHander, 1000);
+
+        // Voice over IWLAN is still disabled
+        assertFalse(mCTUT.isVowifiEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testVowifiDisabledOnIwlan() {
+        // LTE is registered.
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN).when(
+                mImsManager).getRegistrationTech();
+        assertFalse(mCTUT.isVowifiEnabled());
+
+        // enable Voice over IWLAN
+        ImsFeature.Capabilities caps = new ImsFeature.Capabilities();
+        caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
+        mCapabilityCallback.onCapabilitiesStatusChanged(caps);
+        waitForHandlerAction(mCTHander, 1000);
+
+        // Voice over IWLAN is enabled
+        assertTrue(mCTUT.isVowifiEnabled());
     }
 
     @Test

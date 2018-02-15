@@ -3330,7 +3330,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return mState;
     }
 
-    private int getImsRegistrationTech() {
+    public int getImsRegistrationTech() {
         if (mImsManager != null) {
             return mImsManager.getRegistrationTech();
         }
