@@ -303,12 +303,8 @@ public class UiccController extends Handler {
             for (int idx = 0; idx < mUiccSlots.length; idx++) {
                 if (mUiccSlots[idx] != null) {
                     UiccCard uiccCard = mUiccSlots[idx].getUiccCard();
-                    if (uiccCard != null) {
-                        // todo: uncomment this once getCardId() is added
-                        //if (cardId.equals(uiccCard.getCardId())) {
-                        if (false) {
-                            return idx;
-                        }
+                    if (uiccCard != null && cardId.equals(uiccCard.getCardId())) {
+                        return idx;
                     }
                 }
             }
