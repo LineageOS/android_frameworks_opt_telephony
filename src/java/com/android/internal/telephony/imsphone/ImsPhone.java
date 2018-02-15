@@ -129,6 +129,59 @@ public class ImsPhone extends ImsPhoneBase {
     // Default Emergency Callback Mode exit timer
     private static final int DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
 
+    public static class ImsDialArgs extends DialArgs {
+        public static class Builder extends DialArgs.Builder<ImsDialArgs.Builder> {
+            private android.telecom.Connection.RttTextStream mRttTextStream;
+            private int mClirMode = CommandsInterface.CLIR_DEFAULT;
+
+            public static ImsDialArgs.Builder from(DialArgs dialArgs) {
+                return new ImsDialArgs.Builder()
+                        .setUusInfo(dialArgs.uusInfo)
+                        .setVideoState(dialArgs.videoState)
+                        .setIntentExtras(dialArgs.intentExtras);
+            }
+
+            public static ImsDialArgs.Builder from(ImsDialArgs dialArgs) {
+                return new ImsDialArgs.Builder()
+                        .setUusInfo(dialArgs.uusInfo)
+                        .setVideoState(dialArgs.videoState)
+                        .setIntentExtras(dialArgs.intentExtras)
+                        .setRttTextStream(dialArgs.rttTextStream)
+                        .setClirMode(dialArgs.clirMode);
+            }
+
+            public ImsDialArgs.Builder setRttTextStream(
+                    android.telecom.Connection.RttTextStream s) {
+                mRttTextStream = s;
+                return this;
+            }
+
+            public ImsDialArgs.Builder setClirMode(int clirMode) {
+                this.mClirMode = clirMode;
+                return this;
+            }
+
+            public ImsDialArgs build() {
+                return new ImsDialArgs(this);
+            }
+        }
+
+        /**
+         * The RTT text stream. If non-null, indicates that connection supports RTT
+         * communication with the in-call app.
+         */
+        public final android.telecom.Connection.RttTextStream rttTextStream;
+
+        /** The CLIR mode to use */
+        public final int clirMode;
+
+        private ImsDialArgs(ImsDialArgs.Builder b) {
+            super(b);
+            this.rttTextStream = b.mRttTextStream;
+            this.clirMode = b.mClirMode;
+        }
+    }
+
     // Instance Variables
     Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
@@ -405,7 +458,7 @@ public class ImsPhone extends ImsPhoneBase {
             return true;
         }
         try {
-            dialInternal(ussdRequest, VideoProfile.STATE_AUDIO_ONLY, null, wrappedCallback);
+            dialInternal(ussdRequest, new ImsDialArgs.Builder().build(), wrappedCallback);
         } catch (CallStateException cse) {
             if (CS_FALLBACK.equals(cse.getMessage())) {
                 throw cse;
@@ -599,27 +652,14 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public Connection
-    dial(String dialString, int videoState) throws CallStateException {
-        return dialInternal(dialString, videoState, null, null);
+    public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
+        return dialInternal(dialString, dialArgs, null);
     }
 
-    @Override
-    public Connection
-    dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+    private Connection dialInternal(String dialString, DialArgs dialArgs,
+                                    ResultReceiver wrappedCallback)
             throws CallStateException {
-        // ignore UUSInfo
-        return dialInternal (dialString, videoState, intentExtras, null);
-    }
 
-    protected Connection dialInternal(String dialString, int videoState, Bundle intentExtras)
-            throws CallStateException {
-        return dialInternal(dialString, videoState, intentExtras, null);
-    }
-
-    private Connection dialInternal(String dialString, int videoState,
-                                    Bundle intentExtras, ResultReceiver wrappedCallback)
-            throws CallStateException {
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
 
@@ -628,8 +668,17 @@ public class ImsPhone extends ImsPhoneBase {
             return null;
         }
 
+        ImsDialArgs.Builder imsDialArgsBuilder;
+        // Get the CLIR info if needed
+        if (!(dialArgs instanceof ImsDialArgs)) {
+            imsDialArgsBuilder = ImsDialArgs.Builder.from(dialArgs);
+        } else {
+            imsDialArgsBuilder = ImsDialArgs.Builder.from((ImsDialArgs) dialArgs);
+        }
+        imsDialArgsBuilder.setClirMode(mCT.getClirMode());
+
         if (mDefaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            return mCT.dial(dialString, videoState, intentExtras);
+            return mCT.dial(dialString, imsDialArgsBuilder.build());
         }
 
         // Only look at the Network portion for mmi
@@ -640,9 +689,10 @@ public class ImsPhone extends ImsPhoneBase {
                 "dialInternal: dialing w/ mmi '" + mmi + "'...");
 
         if (mmi == null) {
-            return mCT.dial(dialString, videoState, intentExtras);
+            return mCT.dial(dialString, imsDialArgsBuilder.build());
         } else if (mmi.isTemporaryModeCLIR()) {
-            return mCT.dial(mmi.getDialingNumber(), mmi.getCLIRMode(), videoState, intentExtras);
+            imsDialArgsBuilder.setClirMode(mmi.getCLIRMode());
+            return mCT.dial(dialString, imsDialArgsBuilder.build());
         } else if (!mmi.isSupportedOverImsPhone()) {
             // If the mmi is not supported by IMS service,
             // try to initiate dialing with default phone
