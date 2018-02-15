@@ -260,6 +260,16 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseSignalStrength(responseInfo, sigStrength);
     }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param signalStrength Current signal strength of camped/connected cells
+     */
+    public void getSignalStrengthResponse_1_2(
+            RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_2.SignalStrength signalStrength) {
+        responseSignalStrength_1_2(responseInfo, signalStrength);
+    }
+
     /*
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param voiceRegResponse Current Voice registration response as defined by VoiceRegStateResult
@@ -1641,12 +1651,27 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
-    private void responseSignalStrength(RadioResponseInfo responseInfo,
-                                        android.hardware.radio.V1_0.SignalStrength sigStrength) {
+    private void responseSignalStrength(
+            RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_0.SignalStrength signalStrength) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = RIL.convertHalSignalStrength(sigStrength);
+            SignalStrength ret = RIL.convertHalSignalStrength(signalStrength);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responseSignalStrength_1_2(
+            RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_2.SignalStrength signalStrength) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            SignalStrength ret = RIL.convertHalSignalStrength_1_2(signalStrength);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
