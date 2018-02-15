@@ -39,6 +39,7 @@ public class NotificationChannelController {
     public static final String CHANNEL_ID_ALERT = "alert";
     public static final String CHANNEL_ID_CALL_FORWARD = "callForward";
     public static final String CHANNEL_ID_MOBILE_DATA_STATUS = "mobileDataAlertNew";
+    public static final String CHANNEL_ID_SIM = "sim";
     public static final String CHANNEL_ID_SMS = "sms";
     public static final String CHANNEL_ID_VOICE_MAIL = "voiceMail";
     public static final String CHANNEL_ID_WFC = "wfc";
@@ -65,6 +66,14 @@ public class NotificationChannelController {
         // allow users to block notifications from system
         mobileDataStatusChannel.setBlockableSystem(true);
 
+        final NotificationChannel simChannel = new NotificationChannel(
+                CHANNEL_ID_SIM,
+                context.getText(R.string.notification_channel_sim),
+                NotificationManager.IMPORTANCE_LOW
+        );
+
+        simChannel.setSound(null, null);
+
         context.getSystemService(NotificationManager.class)
                 .createNotificationChannels(Arrays.asList(
                 new NotificationChannel(CHANNEL_ID_CALL_FORWARD,
@@ -77,7 +86,8 @@ public class NotificationChannelController {
                         context.getText(R.string.notification_channel_wfc),
                         NotificationManager.IMPORTANCE_LOW),
                 alertChannel,
-                mobileDataStatusChannel));
+                mobileDataStatusChannel,
+                simChannel));
         // only for update
         if (getChannel(CHANNEL_ID_VOICE_MAIL, context) != null) {
             migrateVoicemailNotificationSettings(context);
