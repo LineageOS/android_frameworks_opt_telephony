@@ -5246,8 +5246,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             cellInfoWcdma.cellIdentityWcdma.base.mnc,
                             cellInfoWcdma.cellIdentityWcdma.operatorNames.alphaLong,
                             cellInfoWcdma.cellIdentityWcdma.operatorNames.alphaShort,
-                            cellInfoWcdma.signalStrengthWcdma.signalStrength,
-                            cellInfoWcdma.signalStrengthWcdma.bitErrorRate);
+                            cellInfoWcdma.signalStrengthWcdma.base.signalStrength,
+                            cellInfoWcdma.signalStrengthWcdma.base.bitErrorRate);
                     break;
                 }
 
@@ -5266,8 +5266,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     static SignalStrength convertHalSignalStrength(
             android.hardware.radio.V1_0.SignalStrength signalStrength) {
-        return new SignalStrength(signalStrength.gw.signalStrength,
+        return new SignalStrength(
+                signalStrength.gw.signalStrength,
                 signalStrength.gw.bitErrorRate,
+                signalStrength.cdma.dbm,
+                signalStrength.cdma.ecio,
+                signalStrength.evdo.dbm,
+                signalStrength.evdo.ecio,
+                signalStrength.evdo.signalNoiseRatio,
+                signalStrength.lte.signalStrength,
+                signalStrength.lte.rsrp,
+                signalStrength.lte.rsrq,
+                signalStrength.lte.rssnr,
+                signalStrength.lte.cqi,
+                signalStrength.tdScdma.rscp);
+    }
+
+    static SignalStrength convertHalSignalStrength_1_2(
+            android.hardware.radio.V1_2.SignalStrength signalStrength) {
+        // TODO: Pipe WCDMA up
+        return new SignalStrength(
+                signalStrength.gsm.signalStrength,
+                signalStrength.gsm.bitErrorRate,
                 signalStrength.cdma.dbm,
                 signalStrength.cdma.ecio,
                 signalStrength.evdo.dbm,
