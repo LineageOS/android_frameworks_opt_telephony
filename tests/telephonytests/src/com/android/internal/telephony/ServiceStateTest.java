@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import android.os.Bundle;
 import android.os.Parcel;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.NetworkRegistrationState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -263,5 +265,45 @@ public class ServiceStateTest extends TestCase {
         ServiceState newSs = ServiceState.newFromBundle(b);
 
         assertEquals(ss, newSs);
+    }
+
+    @SmallTest
+    public void testNetworkRegistrationState() {
+        NetworkRegistrationState wwanVoiceRegState = new NetworkRegistrationState(
+                AccessNetworkConstants.TransportType.WWAN, NetworkRegistrationState.DOMAIN_CS,
+                0, 0, 0, false,
+                null, null, true, 0, 0, 0);
+
+
+        NetworkRegistrationState wwanDataRegState = new NetworkRegistrationState(
+                AccessNetworkConstants.TransportType.WWAN, NetworkRegistrationState.DOMAIN_PS,
+                0, 0, 0, false,
+                null, null, 0);
+
+        NetworkRegistrationState wlanRegState = new NetworkRegistrationState(
+                AccessNetworkConstants.TransportType.WLAN, NetworkRegistrationState.DOMAIN_PS,
+                0, 0, 0, false,
+                null, null);
+
+        ServiceState ss = new ServiceState();
+
+        ss.addNetworkRegistrationState(wwanVoiceRegState);
+        ss.addNetworkRegistrationState(wwanDataRegState);
+        ss.addNetworkRegistrationState(wlanRegState);
+
+        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.DOMAIN_CS), wwanVoiceRegState);
+        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.DOMAIN_PS), wwanDataRegState);
+        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WLAN,
+                NetworkRegistrationState.DOMAIN_PS), wlanRegState);
+
+        wwanDataRegState = new NetworkRegistrationState(
+                AccessNetworkConstants.TransportType.WWAN, NetworkRegistrationState.DOMAIN_PS,
+                0, 0, 0, true,
+                null, null, 0);
+        ss.addNetworkRegistrationState(wwanDataRegState);
+        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.DOMAIN_PS), wwanDataRegState);
     }
 }
