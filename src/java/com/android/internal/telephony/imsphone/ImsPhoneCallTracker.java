@@ -52,6 +52,9 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsSuppServiceNotification;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsConfigImplBase;
@@ -63,15 +66,12 @@ import android.util.Pair;
 import android.util.SparseIntArray;
 
 import com.android.ims.ImsCall;
-import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsConfigListener;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsMultiEndpoint;
-import android.telephony.ims.ImsReasonInfo;
-import android.telephony.ims.ImsSuppServiceNotification;
 import com.android.ims.ImsUtInterface;
 import com.android.ims.MmTelFeatureConnection;
 import com.android.ims.internal.IImsCallSession;
@@ -3314,7 +3314,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return mState;
     }
 
-    private int getImsRegistrationTech() {
+    public int getImsRegistrationTech() {
         if (mImsManager != null) {
             return mImsManager.getRegistrationTech();
         }
