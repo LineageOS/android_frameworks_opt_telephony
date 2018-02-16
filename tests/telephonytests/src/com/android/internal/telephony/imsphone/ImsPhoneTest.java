@@ -389,8 +389,9 @@ public class ImsPhoneTest extends TelephonyTest {
         String dialString = "1234567890";
         int videoState = 0;
 
-        mImsPhoneUT.dial(dialString, videoState);
-        verify(mImsCT).dial(dialString, videoState, null);
+        mImsPhoneUT.dial(dialString,
+                new ImsPhone.ImsDialArgs.Builder().setVideoState(videoState).build());
+        verify(mImsCT).dial(eq(dialString), any(ImsPhone.ImsDialArgs.class));
     }
 
     @Test
