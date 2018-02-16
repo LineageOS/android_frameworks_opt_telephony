@@ -1518,8 +1518,10 @@ public class RILTest extends TelephonyTest {
         cellinfo.cellIdentityWcdma.base.mnc = mnc;
         cellinfo.cellIdentityWcdma.operatorNames.alphaLong = alphaLong;
         cellinfo.cellIdentityWcdma.operatorNames.alphaShort = alphaShort;
-        cellinfo.signalStrengthWcdma.signalStrength = SIGNAL_STRENGTH;
-        cellinfo.signalStrengthWcdma.bitErrorRate = BIT_ERROR_RATE;
+        cellinfo.signalStrengthWcdma.base.signalStrength = SIGNAL_STRENGTH;
+        cellinfo.signalStrengthWcdma.base.bitErrorRate = BIT_ERROR_RATE;
+        cellinfo.signalStrengthWcdma.rscp = 10;
+        cellinfo.signalStrengthWcdma.ecno = 5;
         android.hardware.radio.V1_2.CellInfo record = new android.hardware.radio.V1_2.CellInfo();
         record.cellInfoType = TYPE_WCDMA;
         record.registered = false;
