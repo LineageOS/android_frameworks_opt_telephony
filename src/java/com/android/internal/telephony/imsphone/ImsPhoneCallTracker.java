@@ -49,6 +49,10 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsStreamMediaProfile;
+import android.telephony.ims.ImsSuppServiceNotification;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsConfigImplBase;
@@ -60,15 +64,12 @@ import android.util.Pair;
 import android.util.SparseIntArray;
 
 import com.android.ims.ImsCall;
-import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsConfigListener;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsMultiEndpoint;
-import android.telephony.ims.ImsReasonInfo;
-import android.telephony.ims.ImsSuppServiceNotification;
 import com.android.ims.ImsUtInterface;
 import com.android.ims.MmTelFeatureConnection;
 import com.android.ims.internal.IImsCallSession;
@@ -85,6 +86,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneInternalInterface;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -870,29 +872,35 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mVoiceCallEndedRegistrants.remove(h);
     }
 
-    public Connection dial(String dialString, int videoState, Bundle intentExtras) throws
-            CallStateException {
-        int oirMode;
+    public int getClirMode() {
         if (mSharedPreferenceProxy != null && mPhone.getDefaultPhone() != null) {
             SharedPreferences sp = mSharedPreferenceProxy.getDefaultSharedPreferences(
                     mPhone.getContext());
-            oirMode = sp.getInt(Phone.CLIR_KEY + mPhone.getDefaultPhone().getPhoneId(),
+            return sp.getInt(Phone.CLIR_KEY + mPhone.getDefaultPhone().getPhoneId(),
                     CommandsInterface.CLIR_DEFAULT);
         } else {
             loge("dial; could not get default CLIR mode.");
-            oirMode = CommandsInterface.CLIR_DEFAULT;
+            return CommandsInterface.CLIR_DEFAULT;
         }
-        return dial(dialString, oirMode, videoState, intentExtras);
     }
 
-    /**
-     * oirMode is one of the CLIR_ constants
-     */
-    synchronized Connection
-    dial(String dialString, int clirMode, int videoState, Bundle intentExtras)
+    public Connection dial(String dialString, int videoState, Bundle intentExtras) throws
+            CallStateException {
+        ImsPhone.ImsDialArgs dialArgs =  new ImsPhone.ImsDialArgs.Builder()
+                .setIntentExtras(intentExtras)
+                .setVideoState(videoState)
+                .setClirMode(getClirMode())
+                .build();
+        return dial(dialString, dialArgs);
+    }
+
+    public synchronized Connection dial(String dialString, ImsPhone.ImsDialArgs dialArgs)
             throws CallStateException {
         boolean isPhoneInEcmMode = isPhoneInEcbMode();
         boolean isEmergencyNumber = mPhoneNumberUtilsProxy.isEmergencyNumber(dialString);
+
+        int clirMode = dialArgs.clirMode;
+        int videoState = dialArgs.videoState;
 
         if (DBG) log("dial clirMode=" + clirMode);
         if (isEmergencyNumber) {
@@ -937,7 +945,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             holdBeforeDial = true;
             // Cache the video state for pending MO call.
             mPendingCallVideoState = videoState;
-            mPendingIntentExtras = intentExtras;
+            mPendingIntentExtras = dialArgs.intentExtras;
             switchWaitingOrHoldingAndActive();
         }
 
@@ -966,12 +974,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     checkForTestEmergencyNumber(dialString), this, mForegroundCall,
                     isEmergencyNumber);
             mPendingMO.setVideoState(videoState);
+            if (dialArgs.rttTextStream != null) {
+                log("dial: setting RTT stream on mPendingMO");
+                mPendingMO.setCurrentRttTextStream(dialArgs.rttTextStream);
+            }
         }
         addConnection(mPendingMO);
 
         if (!holdBeforeDial) {
             if ((!isPhoneInEcmMode) || (isPhoneInEcmMode && isEmergencyNumber)) {
-                dialInternal(mPendingMO, clirMode, videoState, intentExtras);
+                dialInternal(mPendingMO, clirMode, videoState, dialArgs.intentExtras);
             } else {
                 try {
                     getEcbmInterface().exitEmergencyCallbackMode();
@@ -1130,6 +1142,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                             cleanseInstantLetteringMessage(intentExtras.getString(
                                     android.telecom.TelecomManager.EXTRA_CALL_SUBJECT))
                     );
+                }
+
+                if (conn.hasRttTextStream()) {
+                    profile.mMediaProfile.mRttMode = ImsStreamMediaProfile.RTT_MODE_FULL;
                 }
 
                 if (intentExtras.containsKey(ImsCallProfile.EXTRA_IS_CALL_PULL)) {
@@ -2040,7 +2056,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @return true if the phone is in Emergency Callback mode, otherwise false
      */
     private boolean isPhoneInEcbMode() {
-        return mPhone.isInEcm();
+        return mPhone != null && mPhone.isInEcm();
     }
 
     /**

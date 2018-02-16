@@ -105,6 +105,8 @@ public abstract class Connection {
         public void onRttModifyRequestReceived();
         public void onRttModifyResponseReceived(int status);
         public void onDisconnect(int cause);
+        public void onRttInitiated();
+        public void onRttTerminated();
     }
 
     /**
@@ -146,6 +148,10 @@ public abstract class Connection {
         public void onRttModifyResponseReceived(int status) {}
         @Override
         public void onDisconnect(int cause) {}
+        @Override
+        public void onRttInitiated() {}
+        @Override
+        public void onRttTerminated() {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -1062,6 +1068,17 @@ public abstract class Connection {
         }
     }
 
+    public void onRttInitiated() {
+        for (Listener l : mListeners) {
+            l.onRttInitiated();
+        }
+    }
+
+    public void onRttTerminated() {
+        for (Listener l : mListeners) {
+            l.onRttTerminated();
+        }
+    }
     /**
      * Notify interested parties that this connection disconnected.
      * {@code TelephonyConnection}, for example, uses this.
