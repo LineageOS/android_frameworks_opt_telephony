@@ -892,10 +892,17 @@ public class UiccProfile extends Handler implements IccCard {
                 checkIndexLocked(mImsSubscriptionAppIndex, AppType.APPTYPE_ISIM, null);
     }
 
+    /**
+     * Checks if the app is supported for the purposes of checking if all apps are ready/loaded, so
+     * this only checks for SIM/USIM and CSIM/RUIM apps. ISIM is considered not supported for this
+     * purpose as there are cards that have ISIM app that is never read (there are SIMs for which
+     * the state of ISIM goes to DETECTED but never to READY).
+     */
     private boolean isSupportedApplication(UiccCardApplication app) {
+        // TODO: 2/15/18 Add check to see if ISIM app will go to READY state, and if yes, check for
+        // ISIM also (currently ISIM is considered as not supported in this function)
         if (app.getType() != AppType.APPTYPE_USIM && app.getType() != AppType.APPTYPE_CSIM
-                && app.getType() != AppType.APPTYPE_ISIM && app.getType() != AppType.APPTYPE_SIM
-                && app.getType() != AppType.APPTYPE_RUIM) {
+                && app.getType() != AppType.APPTYPE_SIM && app.getType() != AppType.APPTYPE_RUIM) {
             return false;
         }
         return true;
