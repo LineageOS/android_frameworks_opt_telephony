@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,14 @@
 package com.android.internal.telephony.uicc;
 
 import android.app.ActivityManager;
-import android.app.AlertDialog;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
-import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
@@ -45,10 +43,9 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.LocalLog;
-import android.view.WindowManager;
 
-import com.android.internal.R;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
@@ -66,8 +63,10 @@ import com.android.internal.telephony.uicc.euicc.EuiccCard;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class represents the carrier profiles in the {@link UiccCard}. Each profile contains
@@ -139,6 +138,17 @@ public class UiccProfile extends Handler implements IccCard {
     public static final String ACTION_INTERNAL_SIM_STATE_CHANGED =
             "android.intent.action.internal_sim_state_changed";
 
+    private final ContentObserver mProvisionCompleteContentObserver =
+            new ContentObserver(new Handler()) {
+                @Override
+                public void onChange(boolean selfChange) {
+                    mContext.getContentResolver().unregisterContentObserver(this);
+                    for (String pkgName : getUninstalledCarrierPackages()) {
+                        InstallCarrierAppUtils.showNotification(mContext, pkgName);
+                        InstallCarrierAppUtils.registerPackageInstallReceiver(mContext);
+                    }
+                }
+            };
     /*----------------------------------------------------*/
 
     public UiccProfile(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId,
@@ -177,6 +187,9 @@ public class UiccProfile extends Handler implements IccCard {
 
             unregisterAllAppEvents();
             unregisterCurrAppEvents();
+
+            InstallCarrierAppUtils.hideAllNotifications(mContext);
+            InstallCarrierAppUtils.unregisterPackageInstallReceiver(mContext);
 
             if (mUiccCard instanceof EuiccCard) {
                 ((EuiccCard) mUiccCard).unregisterForEidReady(this);
@@ -258,7 +271,7 @@ public class UiccProfile extends Handler implements IccCard {
 
             case EVENT_CARRIER_PRIVILEGES_LOADED:
                 if (VDBG) log("EVENT_CARRIER_PRIVILEGES_LOADED");
-                onCarrierPriviligesLoadedMessage();
+                onCarrierPrivilegesLoadedMessage();
                 updateExternalState();
                 break;
 
@@ -879,10 +892,17 @@ public class UiccProfile extends Handler implements IccCard {
                 checkIndexLocked(mImsSubscriptionAppIndex, AppType.APPTYPE_ISIM, null);
     }
 
+    /**
+     * Checks if the app is supported for the purposes of checking if all apps are ready/loaded, so
+     * this only checks for SIM/USIM and CSIM/RUIM apps. ISIM is considered not supported for this
+     * purpose as there are cards that have ISIM app that is never read (there are SIMs for which
+     * the state of ISIM goes to DETECTED but never to READY).
+     */
     private boolean isSupportedApplication(UiccCardApplication app) {
+        // TODO: 2/15/18 Add check to see if ISIM app will go to READY state, and if yes, check for
+        // ISIM also (currently ISIM is considered as not supported in this function)
         if (app.getType() != AppType.APPTYPE_USIM && app.getType() != AppType.APPTYPE_CSIM
-                && app.getType() != AppType.APPTYPE_ISIM && app.getType() != AppType.APPTYPE_SIM
-                && app.getType() != AppType.APPTYPE_RUIM) {
+                && app.getType() != AppType.APPTYPE_SIM && app.getType() != AppType.APPTYPE_RUIM) {
             return false;
         }
         return true;
@@ -969,8 +989,8 @@ public class UiccProfile extends Handler implements IccCard {
         }
     }
 
-    private boolean isPackageInstalled(String pkgName) {
-        PackageManager pm = mContext.getPackageManager();
+    static boolean isPackageInstalled(Context context, String pkgName) {
+        PackageManager pm = context.getPackageManager();
         try {
             pm.getPackageInfo(pkgName, PackageManager.GET_ACTIVITIES);
             if (DBG) log(pkgName + " is installed.");
@@ -981,70 +1001,63 @@ public class UiccProfile extends Handler implements IccCard {
         }
     }
 
-    private class ClickListener implements DialogInterface.OnClickListener {
-        String mPkgName;
-        ClickListener(String pkgName) {
-            this.mPkgName = pkgName;
-        }
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            synchronized (mLock) {
-                if (which == DialogInterface.BUTTON_POSITIVE) {
-                    Intent market = new Intent(Intent.ACTION_VIEW);
-                    market.setData(Uri.parse("market://details?id=" + mPkgName));
-                    market.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    mContext.startActivity(market);
-                } else if (which == DialogInterface.BUTTON_NEGATIVE) {
-                    if (DBG) log("Not now clicked for carrier app dialog.");
-                }
-            }
-        }
-    }
-
     private void promptInstallCarrierApp(String pkgName) {
-        DialogInterface.OnClickListener listener = new ClickListener(pkgName);
-
-        Resources r = Resources.getSystem();
-        String message = r.getString(R.string.carrier_app_dialog_message);
-        String buttonTxt = r.getString(R.string.carrier_app_dialog_button);
-        String notNowTxt = r.getString(R.string.carrier_app_dialog_not_now);
-
-        AlertDialog dialog = new AlertDialog.Builder(mContext)
-                .setMessage(message)
-                .setNegativeButton(notNowTxt, listener)
-                .setPositiveButton(buttonTxt, listener)
-                .create();
-        dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
-        dialog.show();
+        Intent showDialogIntent = InstallCarrierAppTrampolineActivity.get(mContext, pkgName);
+        mContext.startActivity(showDialogIntent);
     }
 
-    private void onCarrierPriviligesLoadedMessage() {
+    private void onCarrierPrivilegesLoadedMessage() {
         UsageStatsManager usm = (UsageStatsManager) mContext.getSystemService(
                 Context.USAGE_STATS_SERVICE);
         if (usm != null) {
             usm.onCarrierPrivilegedAppsChanged();
         }
+
+        InstallCarrierAppUtils.hideAllNotifications(mContext);
+        InstallCarrierAppUtils.unregisterPackageInstallReceiver(mContext);
+
         synchronized (mLock) {
             mCarrierPrivilegeRegistrants.notifyRegistrants();
-            String whitelistSetting = Settings.Global.getString(mContext.getContentResolver(),
-                    Settings.Global.CARRIER_APP_WHITELIST);
-            if (TextUtils.isEmpty(whitelistSetting)) {
-                return;
-            }
-            HashSet<String> carrierAppSet = new HashSet<String>(
-                    Arrays.asList(whitelistSetting.split("\\s*;\\s*")));
-            if (carrierAppSet.isEmpty()) {
-                return;
-            }
-
-            List<String> pkgNames = mCarrierPrivilegeRules.getPackageNames();
-            for (String pkgName : pkgNames) {
-                if (!TextUtils.isEmpty(pkgName) && carrierAppSet.contains(pkgName)
-                        && !isPackageInstalled(pkgName)) {
+            boolean isProvisioned = Settings.Global.getInt(
+                    mContext.getContentResolver(),
+                    Settings.Global.DEVICE_PROVISIONED, 1) == 1;
+            // Only show dialog if the phone is through with Setup Wizard.  Otherwise, wait for
+            // completion and show a notification instead
+            if (isProvisioned) {
+                for (String pkgName : getUninstalledCarrierPackages()) {
                     promptInstallCarrierApp(pkgName);
                 }
+            } else {
+                final Uri uri = Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED);
+                mContext.getContentResolver().registerContentObserver(
+                        uri,
+                        false,
+                        mProvisionCompleteContentObserver);
             }
         }
+    }
+
+    private Set<String> getUninstalledCarrierPackages() {
+        String whitelistSetting = Settings.Global.getString(mContext.getContentResolver(),
+                Settings.Global.CARRIER_APP_WHITELIST);
+        if (TextUtils.isEmpty(whitelistSetting)) {
+            return Collections.emptySet();
+        }
+        HashSet<String> carrierAppSet = new HashSet<String>(
+                Arrays.asList(whitelistSetting.split("\\s*;\\s*")));
+        if (carrierAppSet.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        Set<String> uninstalledCarrierPackages = new ArraySet<>();
+        List<String> pkgNames = mCarrierPrivilegeRules.getPackageNames();
+        for (String pkgName : pkgNames) {
+            if (!TextUtils.isEmpty(pkgName) && carrierAppSet.contains(pkgName)
+                    && !isPackageInstalled(mContext, pkgName)) {
+                uninstalledCarrierPackages.add(pkgName);
+            }
+        }
+        return uninstalledCarrierPackages;
     }
 
     /**
@@ -1383,11 +1396,11 @@ public class UiccProfile extends Handler implements IccCard {
         Rlog.d(LOG_TAG, msg);
     }
 
-    private void loge(String msg) {
+    private static void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
     }
 
-    private void loglocal(String msg) {
+    private static void loglocal(String msg) {
         if (DBG) sLocalLog.log(msg);
     }
 
