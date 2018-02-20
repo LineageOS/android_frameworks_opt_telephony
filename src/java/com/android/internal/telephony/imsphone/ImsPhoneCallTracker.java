@@ -86,7 +86,6 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneInternalInterface;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -3106,11 +3105,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     @Override
     protected void log(String msg) {
-        Rlog.d(LOG_TAG, "[ImsPhoneCallTracker] " + msg);
+        Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 
     protected void loge(String msg) {
-        Rlog.e(LOG_TAG, "[ImsPhoneCallTracker] " + msg);
+        Rlog.e(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 
     /**
