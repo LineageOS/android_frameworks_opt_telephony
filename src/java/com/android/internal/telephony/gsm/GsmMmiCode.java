@@ -236,7 +236,6 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             ret.mSic = makeEmptyNull(m.group(MATCH_GROUP_SIC));
             ret.mPwd = makeEmptyNull(m.group(MATCH_GROUP_PWD_CONFIRM));
             ret.mDialingNumber = makeEmptyNull(m.group(MATCH_GROUP_DIALING_NUMBER));
-            ret.mCallbackReceiver = wrappedCallback;
 
             if(ret.mDialingNumber != null &&
                     ret.mDialingNumber.endsWith("#") &&
@@ -266,6 +265,10 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             // this may be a short code, as defined in TS 22.030, 6.5.3.2
             ret = new GsmMmiCode(phone, app);
             ret.mDialingNumber = dialString;
+        }
+
+        if (ret != null) {
+            ret.mCallbackReceiver = wrappedCallback;
         }
 
         return ret;
