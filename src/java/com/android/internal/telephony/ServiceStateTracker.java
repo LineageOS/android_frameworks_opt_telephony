@@ -1431,6 +1431,11 @@ public class ServiceStateTracker extends Handler {
                                 + list);
                     }
                     mPhone.notifyPhysicalChannelConfiguration(list);
+
+                    // only notify if bandwidths changed
+                    if (RatRatcheter.updateBandwidths(getBandwidthsFromConfigs(list), mSS)) {
+                        mPhone.notifyServiceStateChanged(mSS);
+                    }
                 }
                 break;
 
@@ -1438,6 +1443,13 @@ public class ServiceStateTracker extends Handler {
                 log("Unhandled message with number: " + msg.what);
                 break;
         }
+    }
+
+    private int[] getBandwidthsFromConfigs(List<PhysicalChannelConfig> list) {
+        return list.stream()
+                .map(PhysicalChannelConfig::getCellBandwidthDownlink)
+                .mapToInt(Integer::intValue)
+                .toArray();
     }
 
     protected boolean isSidsAllZeros() {
@@ -2645,11 +2657,12 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
-        // ratchet the new tech up through it's rat family but don't drop back down
+        // ratchet the new tech up through its rat family but don't drop back down
         // until cell change or device is OOS
         boolean isDataInService = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
-        if (isDataInService) {
-            mRatRatcheter.ratchetRat(mSS, mNewSS, hasLocationChanged);
+
+        if (!hasLocationChanged && isDataInService) {
+            mRatRatcheter.ratchet(mSS, mNewSS, hasLocationChanged);
         }
 
         boolean hasRilVoiceRadioTechnologyChanged =
