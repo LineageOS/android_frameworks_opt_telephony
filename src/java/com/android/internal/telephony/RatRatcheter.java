@@ -22,12 +22,12 @@ import android.content.IntentFilter;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
-import android.telephony.ServiceState;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * This class loads configuration from CarrierConfig and uses it to determine
@@ -49,6 +49,28 @@ public class RatRatcheter {
 
     private final Phone mPhone;
 
+    /**
+     * Updates the ServiceState with a new set of cell bandwidths IFF the new bandwidth list has a
+     * higher aggregate bandwidth.
+     *
+     * @return Whether the bandwidths were updated.
+     */
+    public static boolean updateBandwidths(int[] bandwidths, ServiceState serviceState) {
+        if (bandwidths == null) {
+            return false;
+        }
+
+        int ssAggregateBandwidth = Arrays.stream(serviceState.getCellBandwidths()).sum();
+        int newAggregateBandwidth = Arrays.stream(bandwidths).sum();
+
+        if (newAggregateBandwidth > ssAggregateBandwidth) {
+            serviceState.setCellBandwidths(bandwidths);
+            return true;
+        }
+
+        return false;
+    }
+
     /** Constructor */
     public RatRatcheter(Phone phone) {
         mPhone = phone;
@@ -60,7 +82,7 @@ public class RatRatcheter {
         resetRatFamilyMap();
     }
 
-    public int ratchetRat(int oldRat, int newRat) {
+    private int ratchetRat(int oldRat, int newRat) {
         synchronized (mRatFamilyMap) {
             final SparseIntArray oldFamily = mRatFamilyMap.get(oldRat);
             if (oldFamily == null) return newRat;
@@ -75,17 +97,31 @@ public class RatRatcheter {
         }
     }
 
-    public void ratchetRat(ServiceState oldSS, ServiceState newSS) {
+    /** Ratchets RATs and cell bandwidths if oldSS and newSS have the same RAT family. */
+    public void ratchet(ServiceState oldSS, ServiceState newSS) {
         int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
                 newSS.getRilVoiceRadioTechnology());
         int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
                 newSS.getRilDataRadioTechnology());
-        boolean newUsingCA = oldSS.isUsingCarrierAggregation() ||
-                newSS.isUsingCarrierAggregation();
+
+        if (isSameRatFamily(oldSS, newSS)) {
+            updateBandwidths(oldSS.getCellBandwidths(), newSS);
+        }
+
+        boolean newUsingCA = oldSS.isUsingCarrierAggregation()
+                || newSS.isUsingCarrierAggregation()
+                || newSS.getCellBandwidths().length > 1;
 
         newSS.setRilVoiceRadioTechnology(newVoiceRat);
         newSS.setRilDataRadioTechnology(newDataRat);
         newSS.setIsUsingCarrierAggregation(newUsingCA);
+    }
+
+    private boolean isSameRatFamily(ServiceState ss1, ServiceState ss2) {
+        synchronized (mRatFamilyMap) {
+            return mRatFamilyMap.get(ss1.getRilDataRadioTechnology())
+                    == mRatFamilyMap.get(ss2.getRilDataRadioTechnology());
+        }
     }
 
     private BroadcastReceiver mConfigChangedReceiver = new BroadcastReceiver() {
