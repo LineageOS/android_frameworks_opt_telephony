@@ -2341,9 +2341,7 @@ public class GsmCdmaPhone extends Phone {
 
                 // Load the ERI based on carrier config. Carrier might have their specific ERI.
                 prepareEri();
-                if (!isPhoneTypeGsm()) {
-                    mSST.pollState();
-                }
+                mSST.pollState();
 
                 break;
 

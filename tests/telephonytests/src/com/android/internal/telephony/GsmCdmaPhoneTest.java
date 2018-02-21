@@ -149,14 +149,19 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testHandleActionCarrierConfigChanged() {
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        mContext.sendBroadcast(intent);
+        waitForMs(50);
+        verify(mSST, times(1)).pollState();
+
         // set voice radio tech in RIL to 1xRTT. ACTION_CARRIER_CONFIG_CHANGED should trigger a
         // query and change phone type
         mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         assertTrue(mPhoneUT.isPhoneTypeGsm());
-        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mContext.sendBroadcast(intent);
         waitForMs(50);
         assertTrue(mPhoneUT.isPhoneTypeCdmaLte());
+        verify(mSST, times(2)).pollState();
     }
 
     @Test
