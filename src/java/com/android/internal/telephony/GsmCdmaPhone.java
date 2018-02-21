@@ -3553,15 +3553,15 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void logd(String s) {
-        Rlog.d(LOG_TAG, "[GsmCdmaPhone] " + s);
+        Rlog.d(LOG_TAG, "[" + mPhoneId + "] " + s);
     }
 
     private void logi(String s) {
-        Rlog.i(LOG_TAG, "[GsmCdmaPhone] " + s);
+        Rlog.i(LOG_TAG, "[" + mPhoneId + "] " + s);
     }
 
     private void loge(String s) {
-        Rlog.e(LOG_TAG, "[GsmCdmaPhone] " + s);
+        Rlog.e(LOG_TAG, "[" + mPhoneId + "] " + s);
     }
 
     @Override
