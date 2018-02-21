@@ -89,7 +89,6 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneInternalInterface;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -577,6 +576,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 PreciseDisconnectCause.ACCESS_CLASS_BLOCKED);
         PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_NETWORK_DETACH,
                 PreciseDisconnectCause.NETWORK_DETACH);
+        PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_UNOBTAINABLE_NUMBER,
+                PreciseDisconnectCause.UNOBTAINABLE_NUMBER);
         PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_OEM_CAUSE_1,
                 PreciseDisconnectCause.OEM_CAUSE_1);
         PRECISE_CAUSE_MAP.append(ImsReasonInfo.CODE_OEM_CAUSE_2,
@@ -2090,6 +2091,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case ImsReasonInfo.CODE_DIAL_VIDEO_MODIFIED_TO_USSD:
                 return DisconnectCause.DIAL_VIDEO_MODIFIED_TO_USSD;
 
+            case ImsReasonInfo.CODE_UNOBTAINABLE_NUMBER:
+                return DisconnectCause.UNOBTAINABLE_NUMBER;
+
             default:
         }
 
@@ -3199,11 +3203,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     @Override
     protected void log(String msg) {
-        Rlog.d(LOG_TAG, "[ImsPhoneCallTracker] " + msg);
+        Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 
     protected void loge(String msg) {
-        Rlog.e(LOG_TAG, "[ImsPhoneCallTracker] " + msg);
+        Rlog.e(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 
     /**

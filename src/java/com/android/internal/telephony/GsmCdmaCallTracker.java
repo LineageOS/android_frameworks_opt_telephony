@@ -1634,7 +1634,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
     @Override
     protected void log(String msg) {
-        Rlog.d(LOG_TAG, "[GsmCdmaCallTracker] " + msg);
+        Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 
     @Override
