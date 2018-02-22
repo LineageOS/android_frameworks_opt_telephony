@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.RemoteException;
-import android.os.Message;
+import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.aidl.IImsSmsListener;
@@ -26,12 +26,10 @@ import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase.SendStatusResult;
-import android.provider.Telephony.Sms.Intents;
 import android.util.Pair;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
-import com.android.ims.MmTelFeatureConnection;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
@@ -47,12 +45,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @hide
  */
 public class ImsSmsDispatcher extends SMSDispatcher {
-    // Initial condition for ims connection retry.
-    private static final int IMS_RETRY_STARTING_TIMEOUT_MS = 500; // ms
-    // Ceiling bitshift amount for service query timeout, calculated as:
-    // 2^mImsServiceRetryCount * IMS_RETRY_STARTING_TIMEOUT_MS, where
-    // mImsServiceRetryCount ∊ [0, CEILING_SERVICE_RETRY_COUNT].
-    private static final int CEILING_SERVICE_RETRY_COUNT = 6;
+
+    private static final String TAG = "ImsSmsDispacher";
 
     @VisibleForTesting
     public Map<Integer, SmsTracker> mTrackers = new ConcurrentHashMap<>();
@@ -62,20 +56,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     private volatile boolean mIsSmsCapable;
     private volatile boolean mIsImsServiceUp;
     private volatile boolean mIsRegistered;
-    private volatile int mImsServiceRetryCount;
-
-    /**
-     * Default implementation of interface that calculates the ImsService retry timeout.
-     * Override-able for testing.
-     */
-    private IRetryTimeout mRetryTimeout = () -> {
-        int timeout = (1 << mImsServiceRetryCount) * IMS_RETRY_STARTING_TIMEOUT_MS;
-        if (mImsServiceRetryCount <= CEILING_SERVICE_RETRY_COUNT) {
-            mImsServiceRetryCount++;
-        }
-        return timeout;
-    };
-
+    private final ImsManager.Connector mImsManagerConnector;
     /**
      * Listen to the IMS service state change
      *
@@ -119,45 +100,6 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     }
                 }
     };
-
-    // Callback fires when ImsManager MMTel Feature changes state
-    private MmTelFeatureConnection.IFeatureUpdate mNotifyStatusChangedCallback =
-            new MmTelFeatureConnection.IFeatureUpdate() {
-                @Override
-                public void notifyStateChanged() {
-                    try {
-                        int status = getImsManager().getImsServiceState();
-                        Rlog.d(TAG, "Status Changed: " + status);
-                        switch (status) {
-                            case android.telephony.ims.feature.ImsFeature.STATE_READY: {
-                                synchronized (mLock) {
-                                    setListeners();
-                                    mIsImsServiceUp = true;
-                                }
-                                break;
-                            }
-                            case android.telephony.ims.feature.ImsFeature.STATE_INITIALIZING:
-                                // fall through
-                            case ImsFeature.STATE_UNAVAILABLE:
-                                synchronized (mLock) {
-                                    mIsImsServiceUp = false;
-                                }
-                                break;
-                            default: {
-                                Rlog.w(TAG, "Unexpected State!");
-                            }
-                        }
-                    } catch (ImsException e) {
-                        // Could not get the ImsService, retry!
-                        retryGetImsService();
-                    }
-                }
-
-                @Override
-                public void notifyUnavailable() {
-                    retryGetImsService();
-                }
-            };
 
     private final IImsSmsListener mImsSmsListener = new IImsSmsListener.Stub() {
         @Override
@@ -235,36 +177,26 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     public ImsSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController) {
         super(phone, smsDispatchersController);
 
-        mImsServiceRetryCount = 0;
-        // Send a message to connect to the Ims Service and open a connection through
-        // getImsService().
-        sendEmptyMessage(EVENT_GET_IMS_SERVICE);
-    }
+        mImsManagerConnector = new ImsManager.Connector(mContext, mPhone.getPhoneId(),
+                new ImsManager.Connector.Listener() {
+                    @Override
+                    public void connectionReady(ImsManager manager) throws ImsException {
+                        Rlog.d(TAG, "ImsManager: connection ready.");
+                        synchronized (mLock) {
+                            setListeners();
+                            mIsImsServiceUp = true;
+                        }
+                    }
 
-    @Override
-    public void handleMessage(Message msg) {
-        switch (msg.what) {
-            case EVENT_GET_IMS_SERVICE:
-                try {
-                    getImsService();
-                } catch (ImsException e) {
-                    Rlog.e(TAG, "setListeners: " + e);
-                    retryGetImsService();
-                }
-                break;
-            default:
-                super.handleMessage(msg);
-        }
-    }
-
-    private void getImsService() throws ImsException {
-        Rlog.d(TAG, "getImsService");
-        // Adding to set, will be safe adding multiple times. If the ImsService is not active yet,
-        // this method will throw an ImsException.
-        getImsManager().addNotifyStatusChangedCallbackIfAvailable(mNotifyStatusChangedCallback);
-        // Wait for ImsService.STATE_READY to start listening for SMS.
-        // Call the callback right away for compatibility with older devices that do not use states.
-        mNotifyStatusChangedCallback.notifyStateChanged();
+                    @Override
+                    public void connectionUnavailable() {
+                        Rlog.d(TAG, "ImsManager: connection unavailable.");
+                        synchronized (mLock) {
+                            mIsImsServiceUp = false;
+                        }
+                    }
+                });
+        mImsManagerConnector.connect();
     }
 
     private void setListeners() throws ImsException {
@@ -272,25 +204,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         getImsManager().addCapabilitiesCallback(mCapabilityCallback);
         getImsManager().setSmsListener(mImsSmsListener);
         getImsManager().onSmsReady();
-        mImsServiceRetryCount = 0;
-    }
-
-    private void retryGetImsService() {
-        // The binder connection is already up. Do not try to get it again.
-        if (getImsManager().isServiceAvailable()) {
-            return;
-        }
-        // remove callback so we do not receive updates from old MmTelFeatureConnection when switching
-        // between ImsServices.
-        getImsManager().removeNotifyStatusChangedCallback(mNotifyStatusChangedCallback);
-        // Exponential backoff during retry, limited to 32 seconds.
-        Rlog.e(TAG, "getImsService: Retrying getting ImsService...");
-        removeMessages(EVENT_GET_IMS_SERVICE);
-        sendEmptyMessageDelayed(EVENT_GET_IMS_SERVICE, mRetryTimeout.get());
     }
 
     public boolean isAvailable() {
         synchronized (mLock) {
+            Rlog.d(TAG, "isAvailable: up=" + mIsImsServiceUp + ", reg= " + mIsRegistered
+                    + ", cap= " + mIsSmsCapable);
             return mIsImsServiceUp && mIsRegistered && mIsSmsCapable;
         }
     }
@@ -381,10 +300,5 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     @Override
     protected boolean isCdmaMo() {
         return mSmsDispatchersController.isCdmaFormat(getFormat());
-    }
-
-    @VisibleForTesting
-    public interface IRetryTimeout {
-        int get();
     }
 }
