@@ -105,6 +105,8 @@ public class ImsPhoneConnection extends Connection implements
 
     private ImsRttTextHandler mRttTextHandler;
     private android.telecom.Connection.RttTextStream mRttTextStream;
+    // This reflects the RTT status as reported to us by the IMS stack via the media profile.
+    private boolean mIsRttEnabledForCall = false;
 
     /**
      * Used to indicate that this call is in the midst of being merged into a conference.
@@ -893,15 +895,15 @@ public class ImsPhoneConnection extends Connection implements
                 }
 
                 if (negotiatedCallProfile.mMediaProfile != null) {
-                    boolean isRttOn = negotiatedCallProfile.mMediaProfile.isRttCall();
+                    mIsRttEnabledForCall = negotiatedCallProfile.mMediaProfile.isRttCall();
 
-                    if (isRttOn && mRttTextHandler == null) {
+                    if (mIsRttEnabledForCall && mRttTextHandler == null) {
                         Rlog.d(LOG_TAG, "updateMediaCapabilities -- turning RTT on, profile="
                                 + negotiatedCallProfile);
                         startRttTextProcessing();
                         onRttInitiated();
                         changed = true;
-                    } else if (!isRttOn && mRttTextHandler != null) {
+                    } else if (!mIsRttEnabledForCall && mRttTextHandler != null) {
                         Rlog.d(LOG_TAG, "updateMediaCapabilities -- turning RTT off, profile="
                                 + negotiatedCallProfile);
                         mRttTextHandler.tearDown();
@@ -999,6 +1001,10 @@ public class ImsPhoneConnection extends Connection implements
 
     public boolean hasRttTextStream() {
         return mRttTextStream != null;
+    }
+
+    public boolean isRttEnabledForCall() {
+        return mIsRttEnabledForCall;
     }
 
     public void startRttTextProcessing() {

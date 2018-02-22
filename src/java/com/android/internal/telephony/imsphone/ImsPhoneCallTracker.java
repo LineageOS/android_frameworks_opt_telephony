@@ -2127,6 +2127,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {
+                if (DBG) log("onCallUpdated: profile is " + imsCall.getCallProfile());
                 processCallStateChange(imsCall, conn.getCall().mState,
                         DisconnectCause.NOT_DISCONNECTED, true /*ignore state update*/);
                 mMetrics.writeImsCallState(mPhone.getPhoneId(),
