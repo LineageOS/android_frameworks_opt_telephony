@@ -23,6 +23,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := guava \
                                platform-test-annotations
 
 LOCAL_PACKAGE_NAME := FrameworksTelephonyTests
+LOCAL_PRIVATE_PLATFORM_APIS := true
 
 LOCAL_COMPATIBILITY_SUITE := device-tests
 
