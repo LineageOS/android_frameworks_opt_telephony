@@ -16,6 +16,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := guava \
                                legacy-android-test
 
 LOCAL_PACKAGE_NAME := FrameworksTelephonyTests
+LOCAL_PRIVATE_PLATFORM_APIS := true
 
 LOCAL_COMPATIBILITY_SUITE := device-tests
 
