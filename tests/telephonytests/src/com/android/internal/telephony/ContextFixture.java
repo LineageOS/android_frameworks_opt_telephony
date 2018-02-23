@@ -452,6 +452,11 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void enforcePermission(String permission, int pid, int uid, String message) {
+            enforceCallingOrSelfPermission(permission, message);
+        }
+
+        @Override
         public int checkCallingOrSelfPermission(String permission) {
             if (mPermissionTable.contains(permission)
                     || mPermissionTable.contains(PERMISSION_ENABLE_ALL)) {
@@ -461,6 +466,11 @@ public class ContextFixture implements TestFixture<Context> {
                 logd("checkCallingOrSelfPermission: " + permission + " return DENIED");
                 return PackageManager.PERMISSION_DENIED;
             }
+        }
+
+        @Override
+        public int checkPermission(String permission, int pid, int uid) {
+            return checkCallingOrSelfPermission(permission);
         }
 
         @Override
