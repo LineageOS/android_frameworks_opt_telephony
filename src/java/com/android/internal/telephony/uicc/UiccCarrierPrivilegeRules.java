@@ -36,6 +36,7 @@ import com.android.internal.telephony.CommandException;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -247,6 +248,16 @@ public class UiccCarrierPrivilegeRules extends Handler {
             }
         }
         return pkgNames;
+    }
+
+    /**
+     * Returns list of access rules.
+     */
+    public List<UiccAccessRule> getAccessRules() {
+        if (mAccessRules == null) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(mAccessRules);
     }
 
     /**
