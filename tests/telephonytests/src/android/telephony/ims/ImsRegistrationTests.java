@@ -68,8 +68,8 @@ public class ImsRegistrationTests {
     @Test
     public void testRegistrationConfigParcel() {
         ImsFeatureConfiguration testConfig = new ImsFeatureConfiguration.Builder()
-                .addFeature(ImsFeature.FEATURE_MMTEL)
-                .addFeature(ImsFeature.FEATURE_RCS)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_MMTEL)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_RCS)
                 .build();
         Parcel p = Parcel.obtain();
         testConfig.writeToParcel(p, 0);
@@ -85,14 +85,14 @@ public class ImsRegistrationTests {
     @Test
     public void testRegistrationConfigPermutationEqual() {
         ImsFeatureConfiguration testConfig = new ImsFeatureConfiguration.Builder()
-                .addFeature(ImsFeature.FEATURE_MMTEL)
-                .addFeature(ImsFeature.FEATURE_RCS)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_MMTEL)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_RCS)
                 .build();
 
         // Permute field insertion ordering to ensure order doesn't matter.
         ImsFeatureConfiguration testConfig2 = new ImsFeatureConfiguration.Builder()
-                .addFeature(ImsFeature.FEATURE_RCS)
-                .addFeature(ImsFeature.FEATURE_MMTEL)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_RCS)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_MMTEL)
                 .build();
 
         assertEquals(testConfig, testConfig2);
@@ -101,13 +101,16 @@ public class ImsRegistrationTests {
     @SmallTest
     @Test
     public void testRegistrationConfigConstructorsEqual() {
-        ImsFeatureConfiguration testConfig = new ImsFeatureConfiguration(
-                new int[] {ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS});
+        // Permute field insertion ordering to ensure order doesn't matter.
+        ImsFeatureConfiguration testConfig = new ImsFeatureConfiguration.Builder()
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_MMTEL)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_RCS)
+                .build();
 
         // Permute field insertion ordering to ensure order doesn't matter.
         ImsFeatureConfiguration testConfig2 = new ImsFeatureConfiguration.Builder()
-                .addFeature(ImsFeature.FEATURE_RCS)
-                .addFeature(ImsFeature.FEATURE_MMTEL)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_RCS)
+                .addFeature(/*slotId*/ 0, ImsFeature.FEATURE_MMTEL)
                 .build();
 
         assertEquals(testConfig, testConfig2);

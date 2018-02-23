@@ -175,8 +175,8 @@ public class ImsServiceTest {
     @SmallTest
     public void testQuerySupportedImsFeatures() throws RemoteException {
         ImsFeatureConfiguration config = new ImsFeatureConfiguration.Builder()
-                .addFeature(ImsFeature.FEATURE_MMTEL)
-                .addFeature(ImsFeature.FEATURE_RCS)
+                .addFeature(0, ImsFeature.FEATURE_MMTEL)
+                .addFeature(0, ImsFeature.FEATURE_RCS)
                 .build();
         mTestImsService.testFeatureConfig = config;
 
