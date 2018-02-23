@@ -232,32 +232,6 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[SubscriptionController] init by Phone");
     }
 
-    /**
-     * Make sure the caller can read phone state which requires holding the
-     * READ_PHONE_STATE permission and the OP_READ_PHONE_STATE app op being
-     * set to MODE_ALLOWED.
-     *
-     * @param callingPackage The package claiming to make the IPC.
-     * @param message The name of the access protected method.
-     *
-     * @throws SecurityException if the caller does not have READ_PHONE_STATE permission.
-     */
-    private boolean canReadPhoneState(String callingPackage, String message) {
-        try {
-            mContext.enforceCallingOrSelfPermission(
-                    android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
-
-            // SKIP checking run-time permission since self or using PRIVILEDGED permission
-            return true;
-        } catch (SecurityException e) {
-            mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
-                    message);
-        }
-
-        return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
-                callingPackage) == AppOpsManager.MODE_ALLOWED;
-    }
-
     private void enforceModifyPhoneState(String message) {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE, message);
@@ -443,7 +417,8 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public SubscriptionInfo getActiveSubscriptionInfo(int subId, String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfo")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getActiveSubscriptionInfo")) {
             return null;
         }
 
@@ -482,8 +457,8 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public SubscriptionInfo getActiveSubscriptionInfoForIccId(String iccId, String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoForIccId") ||
-                iccId == null) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getActiveSubscriptionInfoForIccId") || iccId == null) {
             return null;
         }
 
@@ -521,7 +496,8 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIndex,
             String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoForSimSlotIndex")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getActiveSubscriptionInfoForSimSlotIndex")) {
             return null;
         }
 
@@ -566,7 +542,8 @@ public class SubscriptionController extends ISub.Stub {
     public List<SubscriptionInfo> getAllSubInfoList(String callingPackage) {
         if (DBG) logd("[getAllSubInfoList]+");
 
-        if (!canReadPhoneState(callingPackage, "getAllSubInfoList")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getAllSubInfoList")) {
             return null;
         }
 
@@ -594,7 +571,8 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
 
-        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoList")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getActiveSubscriptionInfoList")) {
             return null;
         }
 
@@ -677,7 +655,8 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int getActiveSubInfoCount(String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "getActiveSubInfoCount")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getActiveSubInfoCount")) {
             return 0;
         }
 
@@ -706,7 +685,8 @@ public class SubscriptionController extends ISub.Stub {
     public int getAllSubInfoCount(String callingPackage) {
         if (DBG) logd("[getAllSubInfoCount]+");
 
-        if (!canReadPhoneState(callingPackage, "getAllSubInfoCount")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getAllSubInfoCount")) {
             return 0;
         }
 
@@ -745,7 +725,8 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public List<SubscriptionInfo> getAvailableSubscriptionInfoList(String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "getAvailableSubscriptionInfoList")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getAvailableSubscriptionInfoList")) {
             throw new SecurityException("Need READ_PHONE_STATE to call "
                     + " getAvailableSubscriptionInfoList");
         }
@@ -1885,7 +1866,8 @@ public class SubscriptionController extends ISub.Stub {
                                                                     boolean needCheck,
                                                                     String callingPackage) {
         if (DBG) logd("[getSubInfoUsingSlotIndexWithCheck]+ slotIndex:" + slotIndex);
-        if (!canReadPhoneState(callingPackage, "getSubInfoUsingSlotIndexWithCheck")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getSubInfoUsingSlotIndexWithCheck")) {
             return null;
         }
 
@@ -2076,7 +2058,8 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public String getSubscriptionProperty(int subId, String propKey, String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "getSubInfoUsingSlotIndexWithCheck")) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, callingPackage, "getSubInfoUsingSlotIndexWithCheck")) {
             return null;
         }
         String resultValue = null;
