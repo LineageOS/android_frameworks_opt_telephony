@@ -509,7 +509,7 @@ public class UiccController extends Handler {
                     != CommandException.Error.REQUEST_NOT_SUPPORTED) {
                 // this is not expected; there should be no exception other than
                 // REQUEST_NOT_SUPPORTED
-                Rlog.e(LOG_TAG, "Unexpected error getting slot status.", ar.exception);
+                Rlog.e(LOG_TAG, "Unexpected error getting slot status: " + ar.exception);
             } else {
                 // REQUEST_NOT_SUPPORTED
                 log("onGetSlotStatusDone: request not supported; marking mIsSlotStatusSupported "
