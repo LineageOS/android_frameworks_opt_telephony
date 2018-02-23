@@ -222,17 +222,18 @@ public class CarrierIdentifier extends Handler {
                 }
                 break;
             case ICC_CHANGED_EVENT:
-                IccRecords newIccRecords = UiccController.getInstance().getIccRecords(
-                        mPhone.getPhoneId(), UiccController.APP_FAM_3GPP);
+                final IccRecords newIccRecords = mPhone.getIccRecords();
                 if (mIccRecords != newIccRecords) {
                     if (mIccRecords != null) {
                         logd("Removing stale icc objects.");
                         mIccRecords.unregisterForSpnUpdate(this);
+                        mIccRecords.unregisterForRecordsLoaded(this);
                         mIccRecords = null;
                     }
                     if (newIccRecords != null) {
                         logd("new Icc object");
                         newIccRecords.registerForSpnUpdate(this, SPN_OVERRIDE_EVENT, null);
+                        newIccRecords.registerForRecordsLoaded(this, SIM_LOAD_EVENT, null);
                         mIccRecords = newIccRecords;
                     }
                 }
