@@ -2027,8 +2027,6 @@ public class DataConnection extends StateMachine {
             super(l, c, TAG, ni, nc, lp, score, misc);
             mNetCapsLocalLog.log("New network agent created. capabilities=" + nc);
             mNetworkCapabilities = nc;
-            mPhone.mCi.registerForNattKeepaliveStatus(
-                    getHandler(), EVENT_KEEPALIVE_STATUS, null);
         }
 
         @Override
