@@ -2226,11 +2226,24 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
+    public void registerForNattKeepaliveStatus(Handler h, int what, Object obj) {
+        SimulatedCommandsVerifier.getInstance().registerForNattKeepaliveStatus(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForNattKeepaliveStatus(Handler h) {
+        SimulatedCommandsVerifier.getInstance().unregisterForNattKeepaliveStatus(h);
+    }
+
+    @Override
     public void startNattKeepalive(
             int contextId, KeepalivePacketData packetData, int intervalMillis, Message result) {
+        SimulatedCommandsVerifier.getInstance().startNattKeepalive(
+                contextId, packetData, intervalMillis, result);
     }
 
     @Override
     public void stopNattKeepalive(int sessionHandle, Message result) {
+        SimulatedCommandsVerifier.getInstance().stopNattKeepalive(sessionHandle, result);
     }
 }
