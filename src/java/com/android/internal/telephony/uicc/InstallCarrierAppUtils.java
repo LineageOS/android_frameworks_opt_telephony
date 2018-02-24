@@ -30,15 +30,21 @@ import android.net.Uri;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
+import android.text.TextUtils;
 
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.NotificationChannelController;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Utility methods for installing the carrier app when a SIM is insterted without the carrier app
  * for that SIM installed.
  */
-class InstallCarrierAppUtils {
+@VisibleForTesting
+public class InstallCarrierAppUtils {
     // TODO(b/72714040) centralize notification IDs
     private static final int ACTIVATE_CELL_SERVICE_NOTIFICATION_ID = 12;
     private static CarrierAppInstallReceiver sCarrierAppInstallReceiver = null;
@@ -47,8 +53,14 @@ class InstallCarrierAppUtils {
         Resources res = Resources.getSystem();
         String title = res.getString(
                 com.android.internal.R.string.install_carrier_app_notification_title);
-        // TODO(b/70042722): insert correct app name
-        String message = res.getString(R.string.install_carrier_app_notification_text);
+        String appName = getAppNameFromPackageName(context, pkgName);
+        String message;
+        if (TextUtils.isEmpty(appName)) {
+            message = res.getString(R.string.install_carrier_app_notification_text);
+        } else {
+            message = res.getString(R.string.install_carrier_app_notification_text_app_name,
+                    appName);
+        }
         String downloadButtonText = res.getString(R.string.install_carrier_app_notification_button);
 
         boolean persistent = Settings.Global.getInt(
@@ -150,6 +162,46 @@ class InstallCarrierAppUtils {
         return false;
     }
 
+    static String getAppNameFromPackageName(Context context, String packageName) {
+        String whitelistSetting = Settings.Global.getString(
+                context.getContentResolver(),
+                Settings.Global.CARRIER_APP_NAMES);
+        return getAppNameFromPackageName(packageName, whitelistSetting);
+    }
+
+    /**
+     * @param packageName the name of the package.  Will be used as a key into the map
+     * @param mapString map of package name to application name in the format:
+     *                  packageName1:appName1;packageName2:appName2;
+     * @return the name of the application for the package name provided.
+     */
+    @VisibleForTesting
+    public static String getAppNameFromPackageName(String packageName, String mapString) {
+        packageName = packageName.toLowerCase();
+        final String pairDelim = "\\s*;\\s*";
+        final String keyValueDelim = "\\s*:\\s*";
+
+        if (TextUtils.isEmpty(mapString)) {
+            return null;
+        }
+
+        List<String> keyValuePairList = Arrays.asList(mapString.split(pairDelim));
+
+        if (keyValuePairList.isEmpty()) {
+            return null;
+        }
+
+        for (String keyValueString: keyValuePairList) {
+            String[] keyValue = keyValueString.split(keyValueDelim);
+
+            if (keyValue.length == 2) {
+                if (keyValue[0].equals(packageName)) {
+                    return keyValue[1];
+                }
+            }
+        }
+        return null;
+    }
     private static NotificationManager getNotificationManager(Context context) {
         return (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
     }

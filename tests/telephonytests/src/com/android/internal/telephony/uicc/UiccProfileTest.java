@@ -175,6 +175,7 @@ public class UiccProfileTest extends TelephonyTest {
     }
 
     @Test
+    @SmallTest
     public void testParseWhitelistMapFromString() {
         String whitelist = "";
         Map<String, String> parsedMap = UiccProfile.parseToCertificateToPackageMap(whitelist);
