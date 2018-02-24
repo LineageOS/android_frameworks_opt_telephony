@@ -250,11 +250,6 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public List<SubscriptionInfo> getSubInfoUsingSlotIndexWithCheck(int slotId, boolean needCheck,
-                                                                    String callingPackage) {
-        throw new RuntimeException("not implemented");
-    }
-    @Override
     public void updatePhonesAvailability(Phone[] phones) {
         throw new RuntimeException("not implemented");
     }
