@@ -23,6 +23,7 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.concurrent.TimeUnit;
@@ -35,11 +36,18 @@ public class InstallCarrierAppTrampolineActivity extends Activity {
     private static final String LOG_TAG = "CarrierAppInstall";
     private static final int INSTALL_CARRIER_APP_DIALOG_REQUEST = 1;
 
+    // TODO(b/73648962): Move DOWNLOAD_RESULT and CARRIER_NAME to a shared location
     /**
      * This must remain in sync with
      * {@link com.android.simappdialog.InstallCarrierAppActivity#DOWNLOAD_RESULT}
      */
     private static final int DOWNLOAD_RESULT = 2;
+
+    /**
+     * This must remain in sync with
+     * {@link com.android.simappdialog.InstallCarrierAppActivity#BUNDLE_KEY_CARRIER_NAME}
+     */
+    private static final String CARRIER_NAME = "carrier_name";
 
     /** Bundle key for the name of the package to be downloaded */
     private static final String BUNDLE_KEY_PACKAGE_NAME = "package_name";
@@ -81,6 +89,10 @@ public class InstallCarrierAppTrampolineActivity extends Activity {
                 Resources.getSystem().getString(
                         com.android.internal.R.string.config_carrierAppInstallDialogComponent));
         showDialogIntent.setComponent(dialogComponentName);
+        String appName = InstallCarrierAppUtils.getAppNameFromPackageName(this, mPackageName);
+        if (!TextUtils.isEmpty(appName)) {
+            showDialogIntent.putExtra(CARRIER_NAME, appName);
+        }
 
         if (showDialogIntent.resolveActivity(getPackageManager()) == null) {
             Log.d(LOG_TAG, "Could not resolve activity for installing the carrier app");

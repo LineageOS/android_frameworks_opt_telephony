@@ -32,6 +32,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
@@ -39,11 +40,13 @@ import static org.mockito.Mockito.verify;
 
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkUtils;
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -54,6 +57,7 @@ import android.telephony.ServiceState;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
+import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.R;
@@ -249,6 +253,9 @@ public class DataConnectionTest extends TelephonyTest {
                 eq(DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED), eq(null));
         verify(mCT, times(1)).registerForVoiceCallEnded(any(Handler.class),
                 eq(DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_ENDED), eq(null));
+        verify(mSimulatedCommandsVerifier, times(1))
+                .registerForNattKeepaliveStatus(any(Handler.class),
+                        eq(DataConnection.EVENT_KEEPALIVE_STATUS), eq(null));
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
@@ -268,6 +275,8 @@ public class DataConnectionTest extends TelephonyTest {
         mDc.sendMessage(DataConnection.EVENT_DISCONNECT, mDcp);
         waitForMs(100);
 
+        verify(mSimulatedCommandsVerifier, times(1))
+                .unregisterForNattKeepaliveStatus(any(Handler.class));
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(eq(1),
                 eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
 
@@ -509,5 +518,144 @@ public class DataConnectionTest extends TelephonyTest {
         // Make sure no exception was thrown
         LinkProperties linkProperties = new LinkProperties();
         assertEquals(SetupResult.SUCCESS, setLinkProperties(response, linkProperties));
+    }
+
+    public void checkStartStopNattKeepalive(boolean useCondensedFlow) throws Exception {
+        testConnectEvent();
+        waitForMs(200);
+
+        final int sessionHandle = 0xF00;
+        final int slotId = 3;
+        final int interval = 10; // seconds
+        // Construct a new KeepalivePacketData request as we would receive from a Network Agent,
+        // and check that the packet is sent to the RIL.
+        KeepalivePacketData kd = KeepalivePacketData.nattKeepalivePacket(
+                NetworkUtils.numericToInetAddress("1.2.3.4"),
+                1234,
+                NetworkUtils.numericToInetAddress("8.8.8.8"),
+                4500);
+        mDc.obtainMessage(
+                DataConnection.EVENT_KEEPALIVE_START_REQUEST, slotId, interval, kd).sendToTarget();
+        waitForMs(100);
+        verify(mSimulatedCommandsVerifier, times(1))
+                .startNattKeepalive(anyInt(), eq(kd), eq(interval * 1000), any(Message.class));
+
+        Message kaStarted = mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STARTED, slotId, 0);
+        if (useCondensedFlow) {
+            // Send a singled condensed response that a keepalive have been requested and the
+            // activation is completed. This flow should be used if the keepalive offload request
+            // is handled by a high-priority signalling path.
+            AsyncResult.forMessage(
+                    kaStarted, new KeepaliveStatus(
+                            sessionHandle, KeepaliveStatus.STATUS_ACTIVE), null);
+            kaStarted.sendToTarget();
+        } else {
+            // Send the sequential responses indicating first that the request was received and
+            // then that the keepalive is running. This should create an active record of the
+            // keepalive in DataConnection while permitting the status from a low priority or other
+            // high-latency handler to activate the keepalive without blocking a request.
+            AsyncResult.forMessage(
+                    kaStarted, new KeepaliveStatus(
+                            sessionHandle, KeepaliveStatus.STATUS_PENDING), null);
+            kaStarted.sendToTarget();
+            Message kaRunning = mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STATUS);
+            AsyncResult.forMessage(
+                    kaRunning, new KeepaliveStatus(
+                            sessionHandle, KeepaliveStatus.STATUS_ACTIVE), null);
+            kaRunning.sendToTarget();
+        }
+        waitForMs(100);
+
+        // Verify that we can stop the connection, which checks that the record in DataConnection
+        // has a valid mapping between slotId (from network agent) to sessionHandle (from Radio).
+        mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STOP_REQUEST, slotId).sendToTarget();
+        waitForMs(100);
+        verify(mSimulatedCommandsVerifier, times(1))
+                .stopNattKeepalive(eq(sessionHandle), any(Message.class));
+
+        Message kaStopped = mDc.obtainMessage(
+                DataConnection.EVENT_KEEPALIVE_STOPPED, sessionHandle, slotId);
+        AsyncResult.forMessage(kaStopped);
+        kaStopped.sendToTarget();
+        // Verify that after the connection is stopped, the mapping for a Keepalive Session is
+        // removed. Thus, subsequent calls to stop the same keepalive are ignored.
+        mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STOP_REQUEST, slotId).sendToTarget();
+        waitForMs(100);
+        // Check that the mock has not been called subsequent to the previous invocation
+        // while avoiding the use of reset()
+        verify(mSimulatedCommandsVerifier, times(1))
+                .stopNattKeepalive(anyInt(), any(Message.class));
+    }
+
+    @Test
+    @MediumTest
+    public void testStartStopNattKeepalive() throws Exception {
+        checkStartStopNattKeepalive(false);
+    }
+
+    @Test
+    @MediumTest
+    public void testStartStopNattKeepaliveCondensed() throws Exception {
+        checkStartStopNattKeepalive(true);
+    }
+
+    public void checkStartNattKeepaliveFail(boolean useCondensedFlow) throws Exception {
+        testConnectEvent();
+        waitForMs(200);
+
+        final int sessionHandle = 0xF00;
+        final int slotId = 3;
+        final int interval = 10; // seconds
+        // Construct a new KeepalivePacketData request as we would receive from a Network Agent,
+        // and check that the packet is sent to the RIL.
+        KeepalivePacketData kd = KeepalivePacketData.nattKeepalivePacket(
+                NetworkUtils.numericToInetAddress("1.2.3.4"),
+                1234,
+                NetworkUtils.numericToInetAddress("8.8.8.8"),
+                4500);
+        mDc.obtainMessage(
+                DataConnection.EVENT_KEEPALIVE_START_REQUEST, slotId, interval, kd).sendToTarget();
+        waitForMs(100);
+        verify(mSimulatedCommandsVerifier, times(1))
+                .startNattKeepalive(anyInt(), eq(kd), eq(interval * 1000), any(Message.class));
+
+        Message kaStarted = mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STARTED, slotId, 0);
+        if (useCondensedFlow) {
+            // Indicate in the response that the keepalive has failed.
+            AsyncResult.forMessage(
+                    kaStarted, new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED), null);
+            kaStarted.sendToTarget();
+        } else {
+            // Indicate that the keepalive is queued, and then signal a failure from the modem
+            // such that a pending keepalive fails to activate.
+            AsyncResult.forMessage(
+                    kaStarted, new KeepaliveStatus(
+                            sessionHandle, KeepaliveStatus.STATUS_PENDING), null);
+            kaStarted.sendToTarget();
+            Message kaRunning = mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STATUS);
+            AsyncResult.forMessage(
+                    kaRunning, new KeepaliveStatus(
+                            sessionHandle, KeepaliveStatus.STATUS_INACTIVE), null);
+            kaRunning.sendToTarget();
+        }
+        waitForMs(100);
+        // Verify that a failed connection request cannot be stopped due to no record in
+        // the DataConnection.
+        mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STOP_REQUEST, slotId).sendToTarget();
+        waitForMs(100);
+        verify(mSimulatedCommandsVerifier, times(0))
+                .stopNattKeepalive(anyInt(), any(Message.class));
+    }
+
+    @Test
+    @SmallTest
+    public void testStartNattKeepaliveFail() throws Exception {
+        checkStartNattKeepaliveFail(false);
+    }
+
+    @Test
+    @SmallTest
+    public void testStartNattKeepaliveFailCondensed() throws Exception {
+        checkStartNattKeepaliveFail(true);
     }
 }

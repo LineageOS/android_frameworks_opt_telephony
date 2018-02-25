@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc.euicc;
 
 import android.annotation.Nullable;
 import android.content.Context;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Registrant;
@@ -83,6 +84,16 @@ public class EuiccCard extends UiccCard {
     private static final int CODE_NO_RESULT_AVAILABLE = 1;
 
     private static final EuiccSpecVersion SGP_2_0 = new EuiccSpecVersion(2, 0, 0);
+
+    // Device capabilities.
+    private static final String DEV_CAP_GSM = "gsm";
+    private static final String DEV_CAP_UTRAN = "utran";
+    private static final String DEV_CAP_CDMA_1X = "cdma_1x";
+    private static final String DEV_CAP_HRPD = "hrpd";
+    private static final String DEV_CAP_EHRPD = "ehrpd";
+    private static final String DEV_CAP_EUTRAN = "eutran";
+    private static final String DEV_CAP_NFC = "nfc";
+    private static final String DEV_CAP_CRL = "crl";
 
     // These interfaces are used for simplifying the code by leveraging lambdas.
     private interface ApduRequestBuilder {
@@ -599,8 +610,16 @@ public class EuiccCard extends UiccCard {
                     byte[] tacBytes = new byte[4];
                     System.arraycopy(imeiBytes, 0, tacBytes, 0, 4);
 
-                    // TODO: Get device capabilities.
                     Asn1Node.Builder devCapsBuilder = Asn1Node.newBuilder(Tags.TAG_CTX_COMP_1);
+                    String[] devCapsStrings = getResources().getStringArray(
+                            com.android.internal.R.array.config_telephonyEuiccDeviceCapabilities);
+                    if (devCapsStrings != null) {
+                        for (String devCapItem : devCapsStrings) {
+                            addDeviceCapability(devCapsBuilder, devCapItem);
+                        }
+                    } else {
+                        if (DBG) logd("No device capabilities set.");
+                    }
 
                     Asn1Node.Builder ctxParams1Builder = Asn1Node.newBuilder(Tags.TAG_CTX_COMP_0)
                             .addChildAsString(Tags.TAG_CTX_0, matchingId)
@@ -875,6 +894,62 @@ public class EuiccCard extends UiccCard {
                 callback, handler);
     }
 
+    /**
+     * Sets a device capability version as the child of the given device capability ASN1 node
+     * builder.
+     *
+     * @param devCapBuilder The ASN1 node builder to modify.
+     * @param devCapItem The device capability and its supported version in pair.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void addDeviceCapability(Asn1Node.Builder devCapBuilder, String devCapItem) {
+        String[] split = devCapItem.split(",");
+        if (split.length != 2) {
+            loge("Invalid device capability item: " + Arrays.toString(split));
+            return;
+        }
+
+        String devCap = split[0].trim();
+        Integer version;
+        try {
+            version = Integer.parseInt(split[1].trim());
+        } catch (NumberFormatException e) {
+            loge("Invalid device capability version number.", e);
+            return;
+        }
+
+        byte[] versionBytes = new byte[] { version.byteValue(), 0, 0 };
+        switch (devCap) {
+            case DEV_CAP_GSM:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_0, versionBytes);
+                break;
+            case DEV_CAP_UTRAN:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_1, versionBytes);
+                break;
+            case DEV_CAP_CDMA_1X:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_2, versionBytes);
+                break;
+            case DEV_CAP_HRPD:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_3, versionBytes);
+                break;
+            case DEV_CAP_EHRPD:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_4, versionBytes);
+                break;
+            case DEV_CAP_EUTRAN:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_5, versionBytes);
+                break;
+            case DEV_CAP_NFC:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_6, versionBytes);
+                break;
+            case DEV_CAP_CRL:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_7, versionBytes);
+                break;
+            default:
+                loge("Invalid device capability name: " + devCap);
+                break;
+        }
+    }
+
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected byte[] getDeviceId() {
         byte[] imeiBytes = new byte[8];
@@ -883,6 +958,11 @@ public class EuiccCard extends UiccCard {
             IccUtils.bcdToBytes(phone.getDeviceId(), imeiBytes);
         }
         return imeiBytes;
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected Resources getResources()  {
+        return Resources.getSystem();
     }
 
     private RequestProvider newRequestProvider(ApduRequestBuilder builder) {
@@ -1148,6 +1228,10 @@ public class EuiccCard extends UiccCard {
 
     private static void loge(String message) {
         Rlog.e(LOG_TAG, message);
+    }
+
+    private static void loge(String message, Throwable tr) {
+        Rlog.e(LOG_TAG, message, tr);
     }
 
     private static void logi(String message) {

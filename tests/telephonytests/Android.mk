@@ -23,7 +23,11 @@ LOCAL_STATIC_JAVA_LIBRARIES := guava \
                                platform-test-annotations
 
 LOCAL_PACKAGE_NAME := FrameworksTelephonyTests
+LOCAL_PRIVATE_PLATFORM_APIS := true
 
 LOCAL_COMPATIBILITY_SUITE := device-tests
+
+# b/72575505
+LOCAL_ERROR_PRONE_FLAGS := -Xep:JUnit4TestNotRun:WARN
 
 include $(BUILD_PACKAGE)
