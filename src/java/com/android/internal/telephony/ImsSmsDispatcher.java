@@ -161,12 +161,23 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             Rlog.d(TAG, "SMS received.");
             mSmsDispatchersController.injectSmsPdu(pdu, format, result -> {
                 Rlog.d(TAG, "SMS handled result: " + result);
+                int mappedResult;
+                switch (result) {
+                    case Intents.RESULT_SMS_HANDLED:
+                        mappedResult = ImsSmsImplBase.STATUS_REPORT_STATUS_OK;
+                        break;
+                    case Intents.RESULT_SMS_OUT_OF_MEMORY:
+                        mappedResult = ImsSmsImplBase.DELIVER_STATUS_ERROR_NO_MEMORY;
+                        break;
+                    case Intents.RESULT_SMS_UNSUPPORTED:
+                        mappedResult = ImsSmsImplBase.DELIVER_STATUS_ERROR_REQUEST_NOT_SUPPORTED;
+                        break;
+                    default:
+                        mappedResult = ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC;
+                        break;
+                }
                 try {
-                    getImsManager().acknowledgeSms(token,
-                            0,
-                            result == Intents.RESULT_SMS_HANDLED
-                                    ? ImsSmsImplBase.STATUS_REPORT_STATUS_OK
-                                    : ImsSmsImplBase.DELIVER_STATUS_ERROR);
+                    getImsManager().acknowledgeSms(token, 0, mappedResult);
                 } catch (ImsException e) {
                     Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
                 }
