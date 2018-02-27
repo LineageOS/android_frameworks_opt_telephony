@@ -2753,10 +2753,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {
                 conn.onRttModifyResponseReceived(status);
-                if (status ==
-                        android.telecom.Connection.RttModifyStatus.SESSION_MODIFY_REQUEST_SUCCESS) {
-                    conn.startRttTextProcessing();
-                }
             }
         }
 
