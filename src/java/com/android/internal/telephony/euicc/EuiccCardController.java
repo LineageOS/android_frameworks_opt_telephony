@@ -18,19 +18,27 @@ package com.android.internal.telephony.euicc;
 
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.ComponentInfo;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.service.euicc.EuiccProfileInfo;
+import android.telephony.TelephonyManager;
 import android.telephony.euicc.EuiccCardManager;
 import android.telephony.euicc.EuiccNotification;
 import android.telephony.euicc.EuiccRulesAuthTable;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
@@ -43,15 +51,30 @@ import java.io.PrintWriter;
 /** Backing implementation of {@link EuiccCardManager}. */
 public class EuiccCardController extends IEuiccCardController.Stub {
     private static final String TAG = "EuiccCardController";
+    private static final String KEY_LAST_BOOT_COUNT = "last_boot_count";
 
     private final Context mContext;
     private AppOpsManager mAppOps;
     private String mCallingPackage;
     private ComponentInfo mBestComponent;
-
     private Handler mEuiccMainThreadHandler;
+    private SimSlotStatusChangedBroadcastReceiver mSimSlotStatusChangeReceiver;
+    private EuiccController mEuiccController;
+    private UiccController mUiccController;
 
     private static EuiccCardController sInstance;
+
+    private class SimSlotStatusChangedBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED.equals(intent.getAction())) {
+                if (isEmbeddedSlotActivated()) {
+                    mEuiccController.startOtaUpdatingIfNecessary();
+                }
+                mContext.unregisterReceiver(mSimSlotStatusChangeReceiver);
+            }
+        }
+    }
 
     /** Initialize the instance. Should only be called once. */
     public static EuiccCardController init(Context context) {
@@ -78,12 +101,62 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     private EuiccCardController(Context context) {
+        this(context, new Handler(), EuiccController.get(), UiccController.getInstance());
+        ServiceManager.addService("euicc_card_controller", this);
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public EuiccCardController(
+            Context context,
+            Handler handler,
+            EuiccController euiccController,
+            UiccController uiccController) {
         mContext = context;
         mAppOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
 
-        mEuiccMainThreadHandler = new Handler();
+        mEuiccMainThreadHandler = handler;
+        mUiccController = uiccController;
+        mEuiccController = euiccController;
 
-        ServiceManager.addService("euicc_card_controller", this);
+        if (isBootUp(mContext)) {
+            mSimSlotStatusChangeReceiver = new SimSlotStatusChangedBroadcastReceiver();
+            mContext.registerReceiver(
+                    mSimSlotStatusChangeReceiver,
+                    new IntentFilter(TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED));
+        }
+    }
+
+    /**
+     * Check whether the restored boot count is the same as current one. If not, update the restored
+     * one.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public static boolean isBootUp(Context context) {
+        int bootCount = Settings.Global.getInt(
+                context.getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        int lastBootCount = sp.getInt(KEY_LAST_BOOT_COUNT, -1);
+        if (bootCount == -1 || lastBootCount == -1 || bootCount != lastBootCount) {
+            sp.edit().putInt(KEY_LAST_BOOT_COUNT, bootCount).apply();
+            return true;
+        }
+        return false;
+    }
+
+    /** Whether embedded slot is activated or not. */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public boolean isEmbeddedSlotActivated() {
+        UiccSlot[] slots = mUiccController.getUiccSlots();
+        if (slots == null) {
+            return false;
+        }
+        for (int i = 0; i < slots.length; ++i) {
+            UiccSlot slotInfo = slots[i];
+            if (slotInfo.isEuicc() && slotInfo.isActive()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void checkCallingPackage(String callingPackage) {

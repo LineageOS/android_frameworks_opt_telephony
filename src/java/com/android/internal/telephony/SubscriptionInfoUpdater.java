@@ -342,7 +342,16 @@ public class SubscriptionInfoUpdater extends Handler {
 
         String iccId = mIccId[slotId];
         if (iccId == null) {
-            IccRecords records = mPhone[slotId].getIccCard().getIccRecords();
+            IccCard iccCard = mPhone[slotId].getIccCard();
+            if (iccCard == null) {
+                logd("handleSimLoaded: IccCard null");
+                return;
+            }
+            IccRecords records = iccCard.getIccRecords();
+            if (records == null) {
+                logd("handleSimLoaded: IccRecords null");
+                return;
+            }
             if (IccUtils.stripTrailingFs(records.getFullIccId()) == null) {
                 logd("handleSimLocked: IccID null");
                 return;

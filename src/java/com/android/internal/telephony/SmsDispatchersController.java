@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PERIOD_NOT_SPECIFIED;
+import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PRIORITY_NOT_SPECIFIED;
+
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
@@ -412,13 +415,69 @@ public class SmsDispatchersController extends Handler {
                             String callingPkg, boolean persistMessage) {
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
-                    messageUri, callingPkg, persistMessage);
-        } else if (isCdmaMo()) {
+                    messageUri, callingPkg, persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
+                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+        } else {
+            sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, messageUri, callingPkg,
+                    persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED, false /*expectMore*/,
+                    SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+        }
+    }
+
+    /**
+     * Send a text based SMS.
+     *  @param destAddr the address to send the message to
+     * @param scAddr is the service center address or null to use
+     *  the current default SMSC
+     * @param text the body of the message to send
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed.
+     *  The result code will be <code>Activity.RESULT_OK<code> for success,
+     *  or one of these errors:<br>
+     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>RESULT_ERROR_NULL_PDU</code><br>
+     *  <code>RESULT_ERROR_NO_SERVICE</code><br>.
+     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
+     *  the extra "errorCode" containing a radio technology specific value,
+     *  generally only useful for troubleshooting.<br>
+     *  The per-application based SMS control checks sentIntent. If sentIntent
+     *  is NULL the caller will be checked against all unknown applications,
+     *  which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is delivered to the recipient.  The
+     * @param messageUri optional URI of the message if it is already stored in the system
+     * @param callingPkg the calling package name
+     * @param persistMessage whether to save the sent message into SMS DB for a
+     *   non-default SMS app.
+     * @param priority Priority level of the message
+     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
+     *  ---------------------------------
+     *  PRIORITY      | Level of Priority
+     *  ---------------------------------
+     *      '00'      |     Normal
+     *      '01'      |     Interactive
+     *      '10'      |     Urgent
+     *      '11'      |     Emergency
+     *  ----------------------------------
+     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
+     * @param expectMore is a boolean to indicate the sending messages through same link or not.
+     * @param validityPeriod Validity Period of the message in mins.
+     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
+     *  Validity Period(Minimum) -> 5 mins
+     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
+     *  Any Other values included Negative considered as Invalid Validity Period of the message.
+     */
+    public void sendText(String destAddr, String scAddr, String text,
+                            PendingIntent sentIntent, PendingIntent deliveryIntent, Uri messageUri,
+                            String callingPkg, boolean persistMessage, int priority,
+                            boolean expectMore, int validityPeriod) {
+        if (isCdmaMo()) {
             mCdmaDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, messageUri,
-                    callingPkg, persistMessage);
+                    callingPkg, persistMessage, priority, expectMore, validityPeriod);
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, messageUri,
-                    callingPkg, persistMessage);
+                    callingPkg, persistMessage, priority, expectMore, validityPeriod);
         }
     }
 
@@ -456,13 +515,73 @@ public class SmsDispatchersController extends Handler {
             boolean persistMessage) {
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents, messageUri, callingPkg, persistMessage);
-        } else if (isCdmaMo()) {
+                    deliveryIntents, messageUri, callingPkg, persistMessage,
+                    SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
+                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+        } else {
+            sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
+                    messageUri, callingPkg, persistMessage,
+                    SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
+                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+        }
+    }
+
+    /**
+     * Send a multi-part text based SMS.
+     *  @param destAddr the address to send the message to
+     * @param scAddr is the service center address or null to use
+     *   the current default SMSC
+     * @param parts an <code>ArrayList</code> of strings that, in order,
+     *   comprise the original message
+     * @param sentIntents if not null, an <code>ArrayList</code> of
+     *   <code>PendingIntent</code>s (one for each message part) that is
+     *   broadcast when the corresponding message part has been sent.
+     *   The result code will be <code>Activity.RESULT_OK<code> for success,
+     *   or one of these errors:
+     *   <code>RESULT_ERROR_GENERIC_FAILURE</code>
+     *   <code>RESULT_ERROR_RADIO_OFF</code>
+     *   <code>RESULT_ERROR_NULL_PDU</code>
+     *   <code>RESULT_ERROR_NO_SERVICE</code>.
+     *  The per-application based SMS control checks sentIntent. If sentIntent
+     *  is NULL the caller will be checked against all unknown applications,
+     *  which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntents if not null, an <code>ArrayList</code> of
+     *   <code>PendingIntent</code>s (one for each message part) that is
+     *   broadcast when the corresponding message part has been delivered
+     *   to the recipient.  The raw pdu of the status report is in the
+     * @param messageUri optional URI of the message if it is already stored in the system
+     * @param callingPkg the calling package name
+     * @param persistMessage whether to save the sent message into SMS DB for a
+     *   non-default SMS app.
+     * @param priority Priority level of the message
+     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
+     *  ---------------------------------
+     *  PRIORITY      | Level of Priority
+     *  ---------------------------------
+     *      '00'      |     Normal
+     *      '01'      |     Interactive
+     *      '10'      |     Urgent
+     *      '11'      |     Emergency
+     *  ----------------------------------
+     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
+     * @param expectMore is a boolean to indicate the sending messages through same link or not.
+     * @param validityPeriod Validity Period of the message in mins.
+     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
+     *  Validity Period(Minimum) -> 5 mins
+     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
+     *  Any Other values included Negative considered as Invalid Validity Period of the message.
+
+     */
+    protected void sendMultipartText(String destAddr, String scAddr,
+            ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
+            ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
+            boolean persistMessage, int priority, boolean expectMore, int validityPeriod) {
+        if (isCdmaMo()) {
             mCdmaDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
-                    messageUri, callingPkg, persistMessage);
+                    messageUri, callingPkg, persistMessage, priority, expectMore, validityPeriod);
         } else {
             mGsmDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
-                    messageUri, callingPkg, persistMessage);
+                    messageUri, callingPkg, persistMessage, priority, expectMore, validityPeriod);
         }
     }
 

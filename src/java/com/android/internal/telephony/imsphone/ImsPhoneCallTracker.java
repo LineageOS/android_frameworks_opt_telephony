@@ -74,7 +74,6 @@ import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsMultiEndpoint;
 import com.android.ims.ImsUtInterface;
-import com.android.ims.MmTelFeatureConnection;
 import com.android.ims.internal.IImsCallSession;
 import com.android.ims.internal.IImsVideoCallProvider;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
@@ -273,19 +272,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_EXIT_ECBM_BEFORE_PENDINGMO = 21;
     private static final int EVENT_VT_DATA_USAGE_UPDATE = 22;
     private static final int EVENT_DATA_ENABLED_CHANGED = 23;
-    private static final int EVENT_GET_IMS_SERVICE = 24;
     private static final int EVENT_CHECK_FOR_WIFI_HANDOVER = 25;
     private static final int EVENT_ON_FEATURE_CAPABILITY_CHANGED = 26;
     private static final int EVENT_SUPP_SERVICE_INDICATION = 27;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
-
-    // Initial condition for ims connection retry.
-    private static final int IMS_RETRY_STARTING_TIMEOUT_MS = 500; // ms
-    // Ceiling bitshift amount for service query timeout, calculated as:
-    // 2^mImsServiceRetryCount * IMS_RETRY_STARTING_TIMEOUT_MS, where
-    // mImsServiceRetryCount ∊ [0, CEILING_SERVICE_RETRY_COUNT].
-    private static final int CEILING_SERVICE_RETRY_COUNT = 6;
 
     private static final int HANDOVER_TO_WIFI_TIMEOUT_MS = 60000; // ms
 
@@ -325,7 +316,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
-    private int mImsServiceRetryCount;
     private ImsManager mImsManager;
     private ImsUtInterface mUtInterface;
 
@@ -677,58 +667,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return PhoneNumberUtils.isEmergencyNumber(string);
     };
 
-    // Callback fires when ImsManager MMTel Feature changes state
-    private MmTelFeatureConnection.IFeatureUpdate mNotifyStatusChangedCallback =
-            new MmTelFeatureConnection.IFeatureUpdate() {
-                @Override
-                public void notifyStateChanged() {
-                    try {
-                        int status = mImsManager.getImsServiceState();
-                        log("Status Changed: " + status);
-                        switch (status) {
-                            case ImsFeature.STATE_READY: {
-                                startListeningForCalls();
-                                break;
-                            }
-                            case ImsFeature.STATE_INITIALIZING:
-                                // fall through
-                            case ImsFeature.STATE_UNAVAILABLE: {
-                                stopListeningForCalls();
-                                break;
-                            }
-                            default: {
-                                Log.w(LOG_TAG, "Unexpected State!");
-                            }
-                        }
-                    } catch (ImsException e) {
-                        // Could not get the ImsService, retry!
-                        retryGetImsService();
-                    }
-                }
-
-                @Override
-                public void notifyUnavailable() {
-                    retryGetImsService();
-                }
-            };
-
-    @VisibleForTesting
-    public interface IRetryTimeout {
-        int get();
-    }
-
-    /**
-     * Default implementation of interface that calculates the ImsService retry timeout.
-     * Override-able for testing.
-     */
-    @VisibleForTesting
-    public IRetryTimeout mRetryTimeout = () -> {
-        int timeout = (1 << mImsServiceRetryCount) * IMS_RETRY_STARTING_TIMEOUT_MS;
-        if (mImsServiceRetryCount <= CEILING_SERVICE_RETRY_COUNT) {
-            mImsServiceRetryCount++;
-        }
-        return timeout;
-    };
+    private final ImsManager.Connector mImsManagerConnector;
 
     //***** Events
 
@@ -749,8 +688,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getDefaultPhone().registerForDataEnabledChanged(
                 this, EVENT_DATA_ENABLED_CHANGED, null);
 
-        mImsServiceRetryCount = 0;
-
         final TelecomManager telecomManager =
                 (TelecomManager) mPhone.getContext().getSystemService(Context.TELECOM_SERVICE);
         mDefaultDialerUid.set(
@@ -760,9 +697,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mVtDataUsageSnapshot = new NetworkStats(currentTime, 1);
         mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
 
-        // Send a message to connect to the Ims Service and open a connection through
-        // getImsService().
-        sendEmptyMessage(EVENT_GET_IMS_SERVICE);
+        mImsManagerConnector = new ImsManager.Connector(phone.getContext(), phone.getPhoneId(),
+                new ImsManager.Connector.Listener() {
+                    @Override
+                    public void connectionReady(ImsManager manager) throws ImsException {
+                        mImsManager = manager;
+                        startListeningForCalls();
+                    }
+
+                    @Override
+                    public void connectionUnavailable() {
+                        stopListeningForCalls();
+                    }
+                });
+        mImsManagerConnector.connect();
     }
 
     /**
@@ -784,6 +732,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhoneNumberUtilsProxy = phoneNumberUtilsProxy;
     }
 
+    /**
+     * Test-only method used to set the ImsService retry timeout.
+     */
+    @VisibleForTesting
+    public void setRetryTimeout(ImsManager.Connector.RetryTimeout retryTimeout) {
+        mImsManagerConnector.mRetryTimeout = retryTimeout;
+    }
+
     private int getPackageUid(Context context, String pkg) {
         if (pkg == null) {
             return NetworkStats.UID_ALL;
@@ -800,19 +756,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return uid;
     }
 
-    private void getImsService() throws ImsException {
-        if (DBG) log("getImsService");
-        mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId());
-        // Adding to set, will be safe adding multiple times. If the ImsService is not active yet,
-        // this method will throw an ImsException.
-        mImsManager.addNotifyStatusChangedCallbackIfAvailable(mNotifyStatusChangedCallback);
-        // Wait for ImsService.STATE_READY to start listening for calls.
-        // Call the callback right away for compatibility with older devices that do not use states.
-        mNotifyStatusChangedCallback.notifyStateChanged();
-    }
-
     private void startListeningForCalls() throws ImsException {
-        mImsServiceRetryCount = 0;
+        log("startListeningForCalls");
         mImsManager.open(mMmTelFeatureListener);
         mImsManager.addRegistrationCallback(mImsRegistrationCallback);
         mImsManager.addCapabilitiesCallback(mImsCapabilityCallback);
@@ -852,6 +797,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     private void stopListeningForCalls() {
+        log("stopListeningForCalls");
         resetImsCapabilities();
         // Only close on valid session.
         if (mImsManager != null) {
@@ -877,7 +823,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
         mPhone.getContext().unregisterReceiver(mReceiver);
         mPhone.getDefaultPhone().unregisterForDataEnabledChanged(this);
-        removeMessages(EVENT_GET_IMS_SERVICE);
+        mImsManagerConnector.disconnect();
     }
 
     @Override
@@ -3089,14 +3035,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     onDataEnabledChanged(p.first, p.second);
                 }
                 break;
-            case EVENT_GET_IMS_SERVICE:
-                try {
-                    getImsService();
-                } catch (ImsException e) {
-                    loge("getImsService: " + e);
-                    retryGetImsService();
-                }
-                break;
             case EVENT_CHECK_FOR_WIFI_HANDOVER:
                 if (msg.obj instanceof ImsCall) {
                     ImsCall imsCall = (ImsCall) msg.obj;
@@ -3347,15 +3285,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (mImsManager.isServiceAvailable()) {
             return;
         }
-        // remove callback so we do not receive updates from old ImsServiceProxy when switching
-        // between ImsServices.
-        mImsManager.removeNotifyStatusChangedCallback(mNotifyStatusChangedCallback);
-        //Leave mImsManager as null, then CallStateException will be thrown when dialing
-        mImsManager = null;
-        // Exponential backoff during retry, limited to 32 seconds.
-        loge("getImsService: Retrying getting ImsService...");
-        removeMessages(EVENT_GET_IMS_SERVICE);
-        sendEmptyMessageDelayed(EVENT_GET_IMS_SERVICE, mRetryTimeout.get());
+
+        mImsManagerConnector.connect();
     }
 
     private void setVideoCallProvider(ImsPhoneConnection conn, ImsCall imsCall)

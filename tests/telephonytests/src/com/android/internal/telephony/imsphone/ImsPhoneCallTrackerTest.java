@@ -25,6 +25,7 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
@@ -223,6 +224,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }).when(mImsManager).addCapabilitiesCallback(any(ImsFeature.CapabilityCallback.class));
 
         doReturn(mImsConfig).when(mImsManager).getConfigInterface();
+
+        doNothing().when(mImsManager).addNotifyStatusChangedCallbackIfAvailable(any());
 
         mImsCTHandlerThread = new ImsCTHandlerThread(this.getClass().getSimpleName());
         mImsCTHandlerThread.start();
@@ -616,7 +619,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     public void testDialImsServiceUnavailable() throws ImsException {
         doThrow(new ImsException("Test Exception", ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN)).when(
                 mImsManager).createCallProfile(anyInt(), anyInt());
-        mCTUT.mRetryTimeout = () -> 0; //ms
+        mCTUT.setRetryTimeout(() -> 0);
         assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
 
@@ -645,7 +648,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 mImsManager).setUiTTYMode(nullable(Context.class), anyInt(),
                 nullable(Message.class));
         // Remove retry timeout delay
-        mCTUT.mRetryTimeout = () -> 0; //ms
+        mCTUT.setRetryTimeout(() -> 0); //ms
 
         mCTUT.setUiTTYMode(0, new Message());
 
