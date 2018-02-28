@@ -26,7 +26,7 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.HandlerThread;
-import android.provider.Telephony.CarrierIdentification;
+import android.provider.Telephony.CarrierId;
 import android.provider.Telephony.Carriers;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
@@ -83,7 +83,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
         logd("CarrierIdentifierTest +Setup!");
         super.setUp(getClass().getSimpleName());
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
-                CarrierIdentification.AUTHORITY, new CarrierIdContentProvider());
+                CarrierId.AUTHORITY, new CarrierIdContentProvider());
         // start handler thread
         mCarrierIdentifierHandler = new CarrierIdentifierHandler(getClass().getSimpleName());
         mCarrierIdentifierHandler.start();
@@ -202,20 +202,20 @@ public class CarrierIdentifierTest extends TelephonyTest {
             logd("   selectionArgs = " + Arrays.toString(selectionArgs));
             logd("   sortOrder = " + sortOrder);
 
-            if (CarrierIdentification.All.CONTENT_URI.getAuthority().equals(
+            if (CarrierId.All.CONTENT_URI.getAuthority().equals(
                     uri.getAuthority())) {
                 MatrixCursor mc = new MatrixCursor(
-                        new String[]{CarrierIdentification._ID,
-                                CarrierIdentification.All.MCCMNC,
-                                CarrierIdentification.All.GID1,
-                                CarrierIdentification.All.GID2,
-                                CarrierIdentification.All.PLMN,
-                                CarrierIdentification.All.IMSI_PREFIX_XPATTERN,
-                                CarrierIdentification.All.ICCID_PREFIX,
-                                CarrierIdentification.All.SPN,
-                                CarrierIdentification.All.APN,
-                                CarrierIdentification.NAME,
-                                CarrierIdentification.CID});
+                        new String[]{CarrierId._ID,
+                                CarrierId.All.MCCMNC,
+                                CarrierId.All.GID1,
+                                CarrierId.All.GID2,
+                                CarrierId.All.PLMN,
+                                CarrierId.All.IMSI_PREFIX_XPATTERN,
+                                CarrierId.All.ICCID_PREFIX,
+                                CarrierId.All.SPN,
+                                CarrierId.All.APN,
+                                CarrierId.CARRIER_NAME,
+                                CarrierId.CARRIER_ID});
 
                 mc.addRow(new Object[] {
                         1,                      // id
