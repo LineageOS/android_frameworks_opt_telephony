@@ -179,13 +179,14 @@ public class ImsServiceController {
     // Binder interfaces to the features set in mImsFeatures;
     private HashSet<ImsFeatureContainer> mImsFeatureBinders = new HashSet<>();
     private IImsServiceController mIImsServiceController;
-    // Easier for testing.
     private IBinder mImsServiceControllerBinder;
     private ImsServiceConnection mImsServiceConnection;
     private ImsDeathRecipient mImsDeathRecipient;
     private Set<IImsServiceFeatureCallback> mImsStatusCallbacks = new HashSet<>();
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
+    // Determines whether or not emergency calls can be placed through this ImsService.
+    private boolean mCanPlaceEmergencyCalls = false;
 
     protected final Object mLock = new Object();
     protected final Context mContext;
@@ -406,6 +407,30 @@ public class ImsServiceController {
             Log.i(LOG_TAG, "Features changed (" + mImsFeatures + "->" + newImsFeatures + ") for "
                     + "ImsService: " + mComponentName);
             mImsFeatures = newImsFeatures;
+        }
+    }
+
+    /**
+     * Sets the ability for the ImsService to place emergency calls. This is controlled by the
+     * {@link ImsFeature#FEATURE_EMERGENCY_MMTEL} feature attribute, which is set either as metadata
+     * in the AndroidManifest service definition or via dynamic query in
+     * {@link ImsService#querySupportedImsFeatures()}.
+     */
+    public void setCanPlaceEmergencyCalls(boolean canPlaceEmergencyCalls) {
+        synchronized (mLock) {
+            mCanPlaceEmergencyCalls = canPlaceEmergencyCalls;
+        }
+    }
+
+    /**
+     * Whether or not the ImsService connected to this controller is able to place emergency calls
+     * over IMS.
+     * @return true if this ImsService can place emergency calls over IMS, false if the framework
+     * should instead place the emergency call over circuit switch.
+     */
+    public boolean canPlaceEmergencyCalls() {
+        synchronized (mLock) {
+            return mCanPlaceEmergencyCalls;
         }
     }
 

@@ -104,6 +104,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
             ImsServiceInfo that = (ImsServiceInfo) o;
 
+            if (supportsEmergencyMmTel != that.supportsEmergencyMmTel) return false;
             if (name != null ? !name.equals(that.name) : that.name != null) return false;
             if (supportedFeatures != null ? !supportedFeatures.equals(that.supportedFeatures)
                     : that.supportedFeatures != null) {
@@ -117,6 +118,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         public int hashCode() {
             int result = name != null ? name.hashCode() : 0;
             result = 31 * result + (supportedFeatures != null ? supportedFeatures.hashCode() : 0);
+            result = 31 * result + (supportsEmergencyMmTel ? 1 : 0);
             result = 31 * result + (controllerFactory != null ? controllerFactory.hashCode() : 0);
             return result;
         }
@@ -447,6 +449,19 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return null;
     }
 
+    /**
+     * @return true if the ImsService associated with this slot supports emergency calling over IMS,
+     * false if the call should be placed over circuit switch instead.
+     */
+    public boolean isEmergencyMmTelAvailable(int slotId) {
+        ImsServiceController controller = getImsServiceController(slotId, ImsFeature.FEATURE_MMTEL);
+        if (controller != null) {
+            return controller.canPlaceEmergencyCalls();
+        }
+        Log.w(TAG, "isEmergencyMmTelAvailable: No controller found for slot " + slotId);
+        return false;
+    }
+
     @VisibleForTesting
     public ImsServiceController getImsServiceController(int slotId, int feature) {
         if (slotId < 0 || slotId >= mNumSlots) {
@@ -545,7 +560,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 // update features in the cache
                 Log.i(TAG, "Updating features in cached ImsService: " + info.name);
                 Log.d(TAG, "Updating features - Old features: " + match.get().supportedFeatures
-                        + " new features: " + info.supportedFeatures);
+                        + " new features: " + info.supportedFeatures
+                        + ", supports emergency: " + info.supportsEmergencyMmTel);
+                match.get().supportsEmergencyMmTel = info.supportsEmergencyMmTel;
                 match.get().supportedFeatures = info.supportedFeatures;
                 updateImsServiceFeatures(info);
             } else {
@@ -638,6 +655,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         Optional<ImsServiceController> o = getControllerByServiceInfo(mActiveControllers,
                 newInfo);
         if (o.isPresent()) {
+            Log.d(TAG, "Updating canPlaceEmergencyCalls: " + newInfo.supportsEmergencyMmTel);
+            o.get().setCanPlaceEmergencyCalls(newInfo.supportsEmergencyMmTel);
             Log.i(TAG, "Updating features for ImsService: " + o.get().getComponentName());
             HashSet<Pair<Integer, Integer>> features = calculateFeaturesToCreate(newInfo);
             try {
@@ -671,10 +690,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
         ImsServiceController controller = info.controllerFactory.create(mContext, info.name, this);
         HashSet<Pair<Integer, Integer>> features = calculateFeaturesToCreate(info);
+        controller.setCanPlaceEmergencyCalls(info.supportsEmergencyMmTel);
         // Only bind if there are features that will be created by the service.
         if (features.size() > 0) {
             Log.i(TAG, "Binding ImsService: " + controller.getComponentName() + " with features: "
-                    + features);
+                    + features + ", supports emergency calling: " + info.supportsEmergencyMmTel);
             controller.bind(features);
             mActiveControllers.add(controller);
         }
