@@ -109,6 +109,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             if (tracker == null) {
                 throw new IllegalArgumentException("Invalid token.");
             }
+            tracker.mMessageRef = messageRef;
             switch(reason) {
                 case ImsSmsImplBase.SEND_STATUS_OK:
                     tracker.onSent(mContext);
