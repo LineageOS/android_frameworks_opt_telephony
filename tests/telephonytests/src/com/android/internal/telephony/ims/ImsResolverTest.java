@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,10 +43,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
+import android.support.test.runner.AndroidJUnit4;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.feature.ImsFeature;
-import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
 
@@ -114,7 +115,10 @@ public class ImsResolverTest extends ImsTestBase {
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, features, true));
-        when(mMockPM.queryIntentServicesAsUser(any(), anyInt(), anyInt())).thenReturn(info);
+        // Only return info if not using the compat argument
+        when(mMockPM.queryIntentServicesAsUser(
+                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
+                anyInt(), anyInt())).thenReturn(info);
         setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
 
         mTestImsResolver.populateCacheAndStartBind();
@@ -142,7 +146,10 @@ public class ImsResolverTest extends ImsTestBase {
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_RCS_FEATURE);
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, features, true));
-        when(mMockPM.queryIntentServicesAsUser(any(), anyInt(), anyInt())).thenReturn(info);
+        // Only return info if not using the compat argument
+        when(mMockPM.queryIntentServicesAsUser(
+                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
+                anyInt(), anyInt())).thenReturn(info);
         ImsServiceController controller = mock(ImsServiceController.class);
         mTestImsResolver.setImsServiceControllerFactory(
                 new ImsResolver.ImsServiceControllerFactory() {
@@ -166,6 +173,118 @@ public class ImsResolverTest extends ImsTestBase {
         verify(controller).bind(convertToHashSet(features, 0));
         verify(controller, never()).unbind();
         assertEquals(TEST_CARRIER_DEFAULT_NAME, controller.getComponentName());
+    }
+
+    /**
+     * Creates a carrier ImsService with a manifest that defines METADATA_EMERGENCY_MMTEL_FEATURE,
+     * ensure that the controller sets this capability.
+     */
+    @Test
+    @SmallTest
+    public void testCarrierPackageBindWithEmergencyCalling() throws RemoteException {
+        setupResolver(1/*numSlots*/);
+        // Set CarrierConfig default package name and make it available to the package manager
+        setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
+        List<ResolveInfo> info = new ArrayList<>();
+        Set<String> features = new HashSet<>();
+        features.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
+        features.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        features.add(ImsResolver.METADATA_RCS_FEATURE);
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, features, true));
+        // Only return info if not using the compat argument
+        when(mMockPM.queryIntentServicesAsUser(
+                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
+                anyInt(), anyInt())).thenReturn(info);
+        ImsServiceController controller = mock(ImsServiceController.class);
+        mTestImsResolver.setImsServiceControllerFactory(
+                new ImsResolver.ImsServiceControllerFactory() {
+                    @Override
+                    public String getServiceInterface() {
+                        return ImsService.SERVICE_INTERFACE;
+                    }
+
+                    @Override
+                    public ImsServiceController create(Context context, ComponentName componentName,
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                        when(controller.getComponentName()).thenReturn(componentName);
+                        return controller;
+                    }
+                });
+
+
+        mTestImsResolver.populateCacheAndStartBind();
+        waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
+        verify(controller).bind(convertToHashSet(features, 0));
+        verify(controller, never()).unbind();
+        assertEquals(TEST_CARRIER_DEFAULT_NAME, controller.getComponentName());
+
+        verify(controller).setCanPlaceEmergencyCalls(eq(true));
+    }
+
+    /**
+     * Creates a carrier ImsService with a manifest that doesn't define
+     * METADATA_EMERGENCY_MMTEL_FEATURE and then update the ImsService to define it. Ensure that the
+     * controller sets this capability once enabled.
+     */
+    @Test
+    @SmallTest
+    public void testCarrierPackageChangeEmergencyCalling() throws RemoteException {
+        setupResolver(1/*numSlots*/);
+        // Set CarrierConfig default package name and make it available to the package manager
+        setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
+        List<ResolveInfo> info = new ArrayList<>();
+        Set<String> features = new HashSet<>();
+        features.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, features, true));
+        // Only return info if not using the compat argument
+        when(mMockPM.queryIntentServicesAsUser(
+                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
+                anyInt(), anyInt())).thenReturn(info);
+        ImsServiceController controller = mock(ImsServiceController.class);
+        mTestImsResolver.setImsServiceControllerFactory(
+                new ImsResolver.ImsServiceControllerFactory() {
+                    @Override
+                    public String getServiceInterface() {
+                        return ImsService.SERVICE_INTERFACE;
+                    }
+
+                    @Override
+                    public ImsServiceController create(Context context, ComponentName componentName,
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                        when(controller.getComponentName()).thenReturn(componentName);
+                        return controller;
+                    }
+                });
+
+        // Bind without emergency calling
+        mTestImsResolver.populateCacheAndStartBind();
+        waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
+        verify(controller).bind(convertToHashSet(features, 0));
+        verify(controller, never()).unbind();
+        assertEquals(TEST_CARRIER_DEFAULT_NAME, controller.getComponentName());
+        // ensure emergency calling is disabled
+        verify(controller, never()).setCanPlaceEmergencyCalls(eq(true));
+
+        // Tell package manager that app has changed and service now supports emergency calling
+        Set<String> newFeatures = new HashSet<>();
+        newFeatures.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
+        newFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        info.clear();
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, newFeatures, true));
+
+        Intent addPackageIntent = new Intent();
+        addPackageIntent.setAction(Intent.ACTION_PACKAGE_ADDED);
+        addPackageIntent.setData(new Uri.Builder().scheme("package")
+                .opaquePart(TEST_CARRIER_DEFAULT_NAME.getPackageName()).build());
+        mTestPackageBroadcastReceiver.onReceive(null, addPackageIntent);
+        waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
+
+        //Verify new feature is added to the carrier override.
+        // add all features for slot 0
+        HashSet<Pair<Integer, Integer>> newCarrierFeatureSet =
+                convertToHashSet(newFeatures, 0);
+        verify(controller, atLeastOnce()).changeImsServiceFeatures(newCarrierFeatureSet);
+        verify(controller).setCanPlaceEmergencyCalls(eq(true));
     }
 
     /**
@@ -222,7 +341,10 @@ public class ImsResolverTest extends ImsTestBase {
         // Use device default package, which will load the ImsService that the device provides
         info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, features, true));
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, features, true));
-        when(mMockPM.queryIntentServicesAsUser(any(), anyInt(), anyInt())).thenReturn(info);
+        // Only return info if not using the compat argument
+        when(mMockPM.queryIntentServicesAsUser(
+                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
+                anyInt(), anyInt())).thenReturn(info);
         ImsServiceController controller = mock(ImsServiceController.class);
         mTestImsResolver.setImsServiceControllerFactory(
                 new ImsResolver.ImsServiceControllerFactory() {
@@ -272,7 +394,10 @@ public class ImsResolverTest extends ImsTestBase {
         // Use device default package, which will load the ImsService that the device provides
         info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true));
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, true));
-        when(mMockPM.queryIntentServicesAsUser(any(), anyInt(), anyInt())).thenReturn(info);
+        // Only return info if not using the compat argument
+        when(mMockPM.queryIntentServicesAsUser(
+                argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
+                anyInt(), anyInt())).thenReturn(info);
         ImsServiceController deviceController = mock(ImsServiceController.class);
         ImsServiceController carrierController = mock(ImsServiceController.class);
         setImsServiceControllerFactory(deviceController, carrierController);
@@ -899,6 +1024,8 @@ public class ImsResolverTest extends ImsTestBase {
 
     private HashSet<Pair<Integer, Integer>> convertToHashSet(Set<String> features, int subId) {
         HashSet<Pair<Integer, Integer>> featureSet = features.stream()
+                // We do not count this as a valid feature set member.
+                .filter(f -> !ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE.equals(f))
                 .map(f -> new Pair<>(subId, metadataStringToFeature(f)))
                 .collect(Collectors.toCollection(HashSet::new));
         return featureSet;
