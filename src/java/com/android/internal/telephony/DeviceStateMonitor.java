@@ -32,7 +32,9 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
 import android.util.LocalLog;
+import android.util.SparseIntArray;
 import android.view.Display;
 
 import com.android.internal.util.IndentingPrintWriter;
@@ -55,10 +57,11 @@ public class DeviceStateMonitor extends Handler {
     protected static final String TAG = DeviceStateMonitor.class.getSimpleName();
 
     private static final int EVENT_RIL_CONNECTED                = 0;
-    private static final int EVENT_SCREEN_STATE_CHANGED         = 1;
-    private static final int EVENT_POWER_SAVE_MODE_CHANGED      = 2;
-    private static final int EVENT_CHARGING_STATE_CHANGED       = 3;
-    private static final int EVENT_TETHERING_STATE_CHANGED      = 4;
+    private static final int EVENT_UPDATE_MODE_CHANGED          = 1;
+    private static final int EVENT_SCREEN_STATE_CHANGED         = 2;
+    private static final int EVENT_POWER_SAVE_MODE_CHANGED      = 3;
+    private static final int EVENT_CHARGING_STATE_CHANGED       = 4;
+    private static final int EVENT_TETHERING_STATE_CHANGED      = 5;
 
     private final Phone mPhone;
 
@@ -95,6 +98,8 @@ public class DeviceStateMonitor extends Handler {
      * doesn't mean no data is expected.
      */
     private boolean mIsLowDataExpected;
+
+    private SparseIntArray mUpdateModes = new SparseIntArray();
 
     /**
      * The unsolicited response filter. See IndicationFilter defined in types.hal for the definition
@@ -203,7 +208,25 @@ public class DeviceStateMonitor extends Handler {
      * @return True if signal strength update should be turned off.
      */
     private boolean shouldTurnOffSignalStrength() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsScreenOn);
+        // We don't want to get signal strength update when the device is in power save mode.
+        if (mIsPowerSaveOn) {
+            return true;
+        }
+
+        // We should not turn off signal strength update if one of the following condition is true.
+        // 1. The device is charging.
+        // 2. When the screen is on.
+        // 3. When the update mode is IGNORE_SCREEN_OFF. This mode is used in some corner cases like
+        //    when Bluetooth carkit is connected, we still want to update signal strength even
+        //    when screen is off.
+        if (mIsCharging || mIsScreenOn
+                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH)
+                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+            return false;
+        }
+
+        // In all other cases, we turn off signal strength update.
+        return true;
     }
 
     /**
@@ -211,14 +234,70 @@ public class DeviceStateMonitor extends Handler {
      * trigger the network update unsolicited response.
      */
     private boolean shouldTurnOffFullNetworkUpdate() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsScreenOn && !mIsTetheringOn);
+        // We don't want to get full network update when the device is in power save mode.
+        if (mIsPowerSaveOn) {
+            return true;
+        }
+
+        // We should not turn off full network update if one of the following condition is true.
+        // 1. The device is charging.
+        // 2. When the screen is on.
+        // 3. When data tethering is on.
+        // 4. When the update mode is IGNORE_SCREEN_OFF.
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn
+                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_FULL_NETWORK_STATE)
+                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+            return false;
+        }
+
+        // In all other cases, we turn off full network state update.
+        return true;
     }
 
     /**
      * @return True if data dormancy status update should be turned off.
      */
     private boolean shouldTurnOffDormancyUpdate() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsTetheringOn && !mIsScreenOn);
+        // We don't want to get dormancy status update when the device is in power save mode.
+        if (mIsPowerSaveOn) {
+            return true;
+        }
+
+        // We should not turn off data dormancy update if one of the following condition is true.
+        // 1. The device is charging.
+        // 2. When the screen is on.
+        // 3. When data tethering is on.
+        // 4. When the update mode is IGNORE_SCREEN_OFF.
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn
+                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED)
+                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+            return false;
+        }
+
+        // In all other cases, we turn off data dormancy update.
+        return true;
+    }
+
+    /**
+     * Set indication update mode
+     *
+     * @param filters Indication filters. Should be a bitmask of INDICATION_FILTER_XXX.
+     * @param mode The voice activation state
+     */
+    public void setIndicationUpdateMode(int filters, int mode) {
+        sendMessage(obtainMessage(EVENT_UPDATE_MODE_CHANGED, filters, mode));
+    }
+
+    private void onSetIndicationUpdateMode(int filters, int mode) {
+        if ((filters & TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH) != 0) {
+            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH, mode);
+        }
+        if ((filters & TelephonyManager.INDICATION_FILTER_FULL_NETWORK_STATE) != 0) {
+            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_FULL_NETWORK_STATE, mode);
+        }
+        if ((filters & TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED) != 0) {
+            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED, mode);
+        }
     }
 
     /**
@@ -233,8 +312,17 @@ public class DeviceStateMonitor extends Handler {
             case EVENT_RIL_CONNECTED:
                 onRilConnected();
                 break;
+            case EVENT_UPDATE_MODE_CHANGED:
+                onSetIndicationUpdateMode(msg.arg1, msg.arg2);
+                break;
+            case EVENT_SCREEN_STATE_CHANGED:
+            case EVENT_POWER_SAVE_MODE_CHANGED:
+            case EVENT_CHARGING_STATE_CHANGED:
+            case EVENT_TETHERING_STATE_CHANGED:
+                onUpdateDeviceState(msg.what, msg.arg1 != 0);
+                break;
             default:
-                updateDeviceState(msg.what, msg.arg1 != 0);
+                throw new IllegalStateException("Unexpected message arrives. msg = " + msg.what);
         }
     }
 
@@ -244,7 +332,7 @@ public class DeviceStateMonitor extends Handler {
      * @param eventType Device state event type
      * @param state True if enabled/on, otherwise disabled/off.
      */
-    private void updateDeviceState(int eventType, boolean state) {
+    private void onUpdateDeviceState(int eventType, boolean state) {
         switch (eventType) {
             case EVENT_SCREEN_STATE_CHANGED:
                 if (mIsScreenOn == state) return;

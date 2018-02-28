@@ -158,7 +158,6 @@ public class GsmCdmaPhone extends Phone {
     public ServiceStateTracker mSST;
     private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
     private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
-    private DeviceStateMonitor mDeviceStateMonitor;
     // Used for identify the carrier of current subscription
     private CarrierIdentifier mCarrerIdentifier;
 
@@ -3414,10 +3413,6 @@ public class GsmCdmaPhone extends Phone {
         }
         pw.println(" isCspPlmnEnabled()=" + isCspPlmnEnabled());
         pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        pw.println("DeviceStateMonitor:");
-        mDeviceStateMonitor.dump(fd, pw, args);
-        pw.println("++++++++++++++++++++++++++++++++");
     }
 
     @Override
