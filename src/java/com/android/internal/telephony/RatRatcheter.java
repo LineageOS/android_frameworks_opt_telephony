@@ -27,8 +27,6 @@ import android.telephony.Rlog;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
-import java.util.ArrayList;
-
 /**
  * This class loads configuration from CarrierConfig and uses it to determine
  * what RATs are within a ratcheting family.  For example all the HSPA/HSDPA/HSUPA RATs.
@@ -48,6 +46,9 @@ public class RatRatcheter {
     private final SparseArray<SparseIntArray> mRatFamilyMap = new SparseArray<>();
 
     private final Phone mPhone;
+
+    private boolean mVoiceRatchetEnabled = true;
+    private boolean mDataRatchetEnabled = true;
 
     /** Constructor */
     public RatRatcheter(Phone phone) {
@@ -75,16 +76,33 @@ public class RatRatcheter {
         }
     }
 
-    public void ratchetRat(ServiceState oldSS, ServiceState newSS) {
-        int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
-                newSS.getRilVoiceRadioTechnology());
-        int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
-                newSS.getRilDataRadioTechnology());
+    public void ratchetRat(ServiceState oldSS, ServiceState newSS, boolean locationChange) {
+        // temporarily disable rat ratchet on location change.
+        if (locationChange) {
+            mVoiceRatchetEnabled = false;
+            mDataRatchetEnabled = false;
+            return;
+        }
+        if (mVoiceRatchetEnabled) {
+            int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
+                    newSS.getRilVoiceRadioTechnology());
+            newSS.setRilVoiceRadioTechnology(newVoiceRat);
+        } else if (oldSS.getRilVoiceRadioTechnology() != newSS.getRilVoiceRadioTechnology()) {
+            // resume rat ratchet on following rat change within the same location
+            mVoiceRatchetEnabled = true;
+        }
+
+        if (mDataRatchetEnabled) {
+            int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
+                    newSS.getRilDataRadioTechnology());
+            newSS.setRilDataRadioTechnology(newDataRat);
+        } else if (oldSS.getRilVoiceRadioTechnology() != newSS.getRilVoiceRadioTechnology()) {
+            // resume rat ratchet on following rat change within the same location
+            mVoiceRatchetEnabled = true;
+        }
+
         boolean newUsingCA = oldSS.isUsingCarrierAggregation() ||
                 newSS.isUsingCarrierAggregation();
-
-        newSS.setRilVoiceRadioTechnology(newVoiceRat);
-        newSS.setRilDataRadioTechnology(newDataRat);
         newSS.setIsUsingCarrierAggregation(newUsingCA);
     }
 
