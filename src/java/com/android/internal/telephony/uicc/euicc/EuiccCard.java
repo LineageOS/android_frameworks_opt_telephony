@@ -112,7 +112,7 @@ public class EuiccCard extends UiccCard {
 
     private final ApduSender mApduSender;
     private final Object mLock = new Object();
-    private final RegistrantList mEidReadyRegistrants = new RegistrantList();
+    private RegistrantList mEidReadyRegistrants;
     private EuiccSpecVersion mSpecVersion;
     private volatile String mEid;
 
@@ -133,6 +133,9 @@ public class EuiccCard extends UiccCard {
         if (mEid != null) {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         } else {
+            if (mEidReadyRegistrants == null) {
+                mEidReadyRegistrants = new RegistrantList();
+            }
             mEidReadyRegistrants.add(r);
         }
     }
@@ -141,7 +144,9 @@ public class EuiccCard extends UiccCard {
      * Unregisters to be notified when EID is ready.
      */
     public void unregisterForEidReady(Handler h) {
-        mEidReadyRegistrants.remove(h);
+        if (mEidReadyRegistrants != null) {
+            mEidReadyRegistrants.remove(h);
+        }
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -150,7 +155,9 @@ public class EuiccCard extends UiccCard {
         AsyncResultCallback<String> cardCb = new AsyncResultCallback<String>() {
             @Override
             public void onResult(String result) {
-                mEidReadyRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+                if (mEidReadyRegistrants != null) {
+                    mEidReadyRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+                }
             }
 
             @Override
