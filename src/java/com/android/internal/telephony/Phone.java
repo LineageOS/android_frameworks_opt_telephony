@@ -277,6 +277,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private String mName;
     private final String mActionDetached;
     private final String mActionAttached;
+    protected DeviceStateMonitor mDeviceStateMonitor;
 
     protected int mPhoneId;
 
@@ -3571,6 +3572,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.setSimCardPower(state, null);
     }
 
+    public void setRadioIndicationUpdateMode(int filters, int mode) {
+        if (mDeviceStateMonitor != null) {
+            mDeviceStateMonitor.setIndicationUpdateMode(filters, mode);
+        }
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
@@ -3683,6 +3690,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             }
 
             pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (mDeviceStateMonitor != null) {
+            pw.println("DeviceStateMonitor:");
+            mDeviceStateMonitor.dump(fd, pw, args);
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
