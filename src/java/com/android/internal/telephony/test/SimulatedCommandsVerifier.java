@@ -1213,6 +1213,14 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void registerForPhysicalChannelConfiguration(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForPhysicalChannelConfiguration(Handler h) {
+    }
+
+    @Override
     public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result) {
 
     }
