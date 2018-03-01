@@ -1146,14 +1146,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             dpi, dataProfile.isModemCognitive(), allowRoaming, isRoaming);
                 } else {
                     // IRadio V1.2
-                    ArrayList<String> addresses = null;
-                    ArrayList<String> dnses = null;
+                    ArrayList<String> addresses = new ArrayList<>();
+                    ArrayList<String> dnses = new ArrayList<>();
                     if (linkProperties != null) {
-                        addresses = new ArrayList<>();
                         for (InetAddress address : linkProperties.getAddresses()) {
                             addresses.add(address.getHostAddress());
                         }
-                        dnses = new ArrayList<>();
                         for (InetAddress dns : linkProperties.getDnsServers()) {
                             dnses.add(dns.getHostAddress());
                         }
