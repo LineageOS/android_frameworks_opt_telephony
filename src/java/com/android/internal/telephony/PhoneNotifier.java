@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.telephony.CellInfo;
+import android.telephony.PhysicalChannelConfig;
 import android.telephony.VoLteServiceState;
 
 import java.util.List;
@@ -49,6 +50,9 @@ public interface PhoneNotifier {
     public void notifyOtaspChanged(Phone sender, int otaspMode);
 
     public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
+
+    /** Notify of change to PhysicalChannelConfiguration. */
+    void notifyPhysicalChannelConfiguration(Phone sender, List<PhysicalChannelConfig> configs);
 
     public void notifyPreciseCallState(Phone sender);
 

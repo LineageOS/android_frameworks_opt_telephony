@@ -48,6 +48,7 @@ import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
+import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -2141,6 +2142,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void notifyCellInfo(List<CellInfo> cellInfo) {
         mNotifier.notifyCellInfo(this, privatizeCellInfoList(cellInfo));
+    }
+
+    /** Notify {@link PhysicalChannelConfig} changes. */
+    public void notifyPhysicalChannelConfiguration(List<PhysicalChannelConfig> configs) {
+        mNotifier.notifyPhysicalChannelConfiguration(this, configs);
     }
 
     public void notifyVoLteServiceStateChanged(VoLteServiceState lteState) {
