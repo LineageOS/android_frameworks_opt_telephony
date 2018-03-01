@@ -52,7 +52,7 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
 
     public static final String ACTION_IMS_INCOMING_CALL = "com.android.ims.IMS_INCOMING_CALL";
 
-    private static final int WAIT_TIMEOUT_MS = 5000;
+    private static final int WAIT_TIMEOUT_MS = 2000;
 
     private final MmTelInterfaceAdapter mCompatFeature;
     private ImsRegistrationCompatAdapter mRegCompatAdapter;
@@ -319,9 +319,9 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
         }
         try {
             IImsConfig imsConfig = mCompatFeature.getConfigInterface();
-            CountDownLatch latch = new CountDownLatch(1);
             // Disable Capabilities
             for (CapabilityChangeRequest.CapabilityPair cap : request.getCapabilitiesToDisable()) {
+                CountDownLatch latch = new CountDownLatch(1);
                 int capConverted = convertCapability(cap.getCapability(), cap.getRadioTech());
                 int radioTechConverted = REG_TECH_TO_NET_TYPE.getOrDefault(cap.getRadioTech(),
                         ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
@@ -338,12 +338,15 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
                                     c.onChangeCapabilityConfigurationError(cap.getCapability(),
                                             cap.getRadioTech(), CAPABILITY_ERROR_GENERIC);
                                 }
+                                Log.i(TAG, "changeEnabledCapabilities - setFeatureValueReceived"
+                                        + " with value " + value);
                             }
                         });
                 latch.await(WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             }
             // Enable Capabilities
             for (CapabilityChangeRequest.CapabilityPair cap : request.getCapabilitiesToEnable()) {
+                CountDownLatch latch = new CountDownLatch(1);
                 int capConverted = convertCapability(cap.getCapability(), cap.getRadioTech());
                 int radioTechConverted = REG_TECH_TO_NET_TYPE.getOrDefault(cap.getRadioTech(),
                         ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
@@ -360,6 +363,8 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
                                     c.onChangeCapabilityConfigurationError(cap.getCapability(),
                                             cap.getRadioTech(), CAPABILITY_ERROR_GENERIC);
                                 }
+                                Log.i(TAG, "changeEnabledCapabilities - setFeatureValueReceived"
+                                        + " with value " + value);
                             }
                         });
                 latch.await(WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
