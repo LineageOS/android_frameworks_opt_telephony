@@ -188,7 +188,7 @@ public class RILTest extends TelephonyTest {
     private static final int RSSNR = 2147483647;
     private static final int RSRP = 96;
     private static final int RSRQ = 10;
-    private static final int SIGNAL_NOICE_RATIO = 6;
+    private static final int SIGNAL_NOISE_RATIO = 6;
     private static final int SIGNAL_STRENGTH = 24;
     private static final int SYSTEM_ID = 65533;
     private static final int TAC = 65535;
@@ -1159,7 +1159,7 @@ public class RILTest extends TelephonyTest {
         cellinfo.signalStrengthCdma.ecio = ECIO;
         cellinfo.signalStrengthEvdo.dbm = DBM;
         cellinfo.signalStrengthEvdo.ecio = ECIO;
-        cellinfo.signalStrengthEvdo.signalNoiseRatio = SIGNAL_NOICE_RATIO;
+        cellinfo.signalStrengthEvdo.signalNoiseRatio = SIGNAL_NOISE_RATIO;
         android.hardware.radio.V1_0.CellInfo record = new android.hardware.radio.V1_0.CellInfo();
         record.cellInfoType = TYPE_CDMA;
         record.registered = false;
@@ -1182,7 +1182,7 @@ public class RILTest extends TelephonyTest {
                 NETWORK_ID, SYSTEM_ID, BASESTATION_ID, LONGITUDE, LATITUDE,
                 EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
         CellSignalStrengthCdma cs = new CellSignalStrengthCdma(
-                -DBM, -ECIO, -DBM, -ECIO, SIGNAL_NOICE_RATIO);
+                DBM, ECIO, DBM, ECIO, SIGNAL_NOISE_RATIO);
         expected.setCellIdentity(ci);
         expected.setCellSignalStrength(cs);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_UNKNOWN);
@@ -1393,7 +1393,7 @@ public class RILTest extends TelephonyTest {
                 NETWORK_ID, SYSTEM_ID, BASESTATION_ID, LONGITUDE, LATITUDE,
                 ALPHA_LONG, ALPHA_SHORT);
         CellSignalStrengthCdma cs = new CellSignalStrengthCdma(
-                -DBM, -ECIO, -DBM, -ECIO, SIGNAL_NOICE_RATIO);
+                DBM, ECIO, DBM, ECIO, SIGNAL_NOISE_RATIO);
         expected.setCellIdentity(ci);
         expected.setCellSignalStrength(cs);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
@@ -1401,7 +1401,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForCdmaWithEmptyOperatorInfd() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForCdmaWithEmptyOperatorInfo() throws Exception {
         ArrayList<CellInfo> ret = getCellInfoListForCdma(EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
 
         assertEquals(1, ret.size());
@@ -1414,7 +1414,7 @@ public class RILTest extends TelephonyTest {
                 NETWORK_ID, SYSTEM_ID, BASESTATION_ID, LONGITUDE, LATITUDE,
                 EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
         CellSignalStrengthCdma cs = new CellSignalStrengthCdma(
-                -DBM, -ECIO, -DBM, -ECIO, SIGNAL_NOICE_RATIO);
+                DBM, ECIO, DBM, ECIO, SIGNAL_NOISE_RATIO);
         expected.setCellIdentity(ci);
         expected.setCellSignalStrength(cs);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
@@ -1525,7 +1525,7 @@ public class RILTest extends TelephonyTest {
         cellinfo.signalStrengthCdma.ecio = ECIO;
         cellinfo.signalStrengthEvdo.dbm = DBM;
         cellinfo.signalStrengthEvdo.ecio = ECIO;
-        cellinfo.signalStrengthEvdo.signalNoiseRatio = SIGNAL_NOICE_RATIO;
+        cellinfo.signalStrengthEvdo.signalNoiseRatio = SIGNAL_NOISE_RATIO;
         android.hardware.radio.V1_2.CellInfo record = new android.hardware.radio.V1_2.CellInfo();
         record.cellInfoType = TYPE_CDMA;
         record.registered = false;
