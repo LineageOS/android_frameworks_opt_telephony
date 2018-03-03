@@ -3383,6 +3383,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void startLceService(int reportIntervalMs, boolean pullMode, Message result) {
         IRadio radioProxy = getRadioProxy(result);
+        android.hardware.radio.V1_2.IRadio radioProxy12 =
+                android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+        if (radioProxy12 != null) {
+            // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
+            // Instead the LCE functionality is always-on and provides unsolicited indications.
+            return;
+        }
+
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_START_LCE, result,
                     mRILDefaultWorkSource);
@@ -3403,6 +3411,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void stopLceService(Message result) {
         IRadio radioProxy = getRadioProxy(result);
+        android.hardware.radio.V1_2.IRadio radioProxy12 =
+                android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+        if (radioProxy12 != null) {
+            // We have a 1.2 or later radio, so the LCE 1.0 LCE service control is unused.
+            // Instead the LCE functionality is always-on and provides unsolicited indications.
+            return;
+        }
+
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_STOP_LCE, result,
                     mRILDefaultWorkSource);
@@ -3419,6 +3435,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * This will only be called if the LCE service is started in PULL mode, which is
+     * only enabled when using Radio HAL versions 1.1 and earlier.
+     *
+     * It is still possible for vendors to override this behavior and use the 1.1 version
+     * of LCE; however, this is strongly discouraged and this functionality will be removed
+     * when HAL 1.x support is dropped.
+     *
+     * @deprecated HAL 1.2 and later use an always-on LCE that relies on indications.
+     */
+    @Deprecated
     @Override
     public void pullLceData(Message response) {
         IRadio radioProxy = getRadioProxy(response);
@@ -4949,21 +4976,24 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rc;
     }
 
-    static ArrayList<Integer> convertHalLceData(LceDataInfo lce, RIL ril) {
-        final ArrayList<Integer> capacityResponse = new ArrayList<Integer>();
-        final int capacityDownKbps = lce.lastHopCapacityKbps;
-        final int confidenceLevel = Byte.toUnsignedInt(lce.confidenceLevel);
-        final int lceSuspended = lce.lceSuspended ? 1 : 0;
+    static LinkCapacityEstimate convertHalLceData(LceDataInfo halData, RIL ril) {
+        final LinkCapacityEstimate lce = new LinkCapacityEstimate(
+                halData.lastHopCapacityKbps,
+                Byte.toUnsignedInt(halData.confidenceLevel),
+                halData.lceSuspended ? LinkCapacityEstimate.STATUS_SUSPENDED
+                        : LinkCapacityEstimate.STATUS_ACTIVE);
 
-        ril.riljLog("LCE capacity information received:" +
-                " capacity=" + capacityDownKbps +
-                " confidence=" + confidenceLevel +
-                " lceSuspended=" + lceSuspended);
+        ril.riljLog("LCE capacity information received:" + lce);
+        return lce;
+    }
 
-        capacityResponse.add(capacityDownKbps);
-        capacityResponse.add(confidenceLevel);
-        capacityResponse.add(lceSuspended);
-        return capacityResponse;
+    static LinkCapacityEstimate convertHalLceData(
+            android.hardware.radio.V1_2.LinkCapacityEstimate halData, RIL ril) {
+        final LinkCapacityEstimate lce = new LinkCapacityEstimate(
+                halData.downlinkCapacityKbps,
+                halData.uplinkCapacityKbps);
+        ril.riljLog("LCE capacity information received:" + lce);
+        return lce;
     }
 
     private static void writeToParcelForGsm(

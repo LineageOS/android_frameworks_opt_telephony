@@ -2009,7 +2009,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<Integer> ret = RIL.convertHalLceData(lceInfo, mRil);
+            LinkCapacityEstimate ret = RIL.convertHalLceData(lceInfo, mRil);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
