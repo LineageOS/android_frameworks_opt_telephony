@@ -69,7 +69,9 @@ import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CellIdentity;
+import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
+import android.telephony.CellSignalStrengthCdma;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.ModemActivityInfo;
@@ -5022,21 +5024,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForCdma(
             Parcel p, int ni, int si, int bsi, int lon, int lat, String al, String as,
             int dbm, int ecio, int eDbm, int eEcio, int eSnr) {
-        p.writeInt(CellIdentity.TYPE_CDMA);
-        p.writeString(null);
-        p.writeString(null);
-        p.writeInt(ni);
-        p.writeInt(si);
-        p.writeInt(bsi);
-        p.writeInt(lon);
-        p.writeInt(lat);
-        p.writeString(al);
-        p.writeString(as);
-        p.writeInt(dbm);
-        p.writeInt(ecio);
-        p.writeInt(eDbm);
-        p.writeInt(eEcio);
-        p.writeInt(eSnr);
+        new CellIdentityCdma(ni, si, bsi, lon, lat, al, as).writeToParcel(p, 0);
+        new CellSignalStrengthCdma(dbm, ecio, eDbm, eEcio, eSnr).writeToParcel(p, 0);
     }
 
     private static void writeToParcelForLte(
