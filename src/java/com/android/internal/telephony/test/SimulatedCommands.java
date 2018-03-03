@@ -2004,7 +2004,6 @@ public class SimulatedCommands extends BaseCommands
     public void startLceService(int report_interval_ms, boolean pullMode, Message result) {
         SimulatedCommandsVerifier.getInstance().startLceService(report_interval_ms, pullMode,
                 result);
-        unimplemented(result);
     }
 
     @Override
@@ -2015,6 +2014,16 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void pullLceData(Message result) {
         unimplemented(result);
+    }
+
+    @Override
+    public void registerForLceInfo(Handler h, int what, Object obj) {
+        SimulatedCommandsVerifier.getInstance().registerForLceInfo(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForLceInfo(Handler h) {
+        SimulatedCommandsVerifier.getInstance().unregisterForLceInfo(h);
     }
 
     @Override
