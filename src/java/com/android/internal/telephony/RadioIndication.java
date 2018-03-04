@@ -241,7 +241,15 @@ public class RadioIndication extends IRadioIndication.Stub {
      */
     public void currentLinkCapacityEstimate(int indicationType,
                                             android.hardware.radio.V1_2.LinkCapacityEstimate lce) {
-      // TODO(b/70638175) Implement method.
+        mRil.processIndication(indicationType);
+
+        LinkCapacityEstimate response = RIL.convertHalLceData(lce, mRil);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
+
+        if (mRil.mLceInfoRegistrants != null) {
+            mRil.mLceInfoRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+        }
     }
 
     /**
@@ -831,12 +839,12 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void lceData(int indicationType, LceDataInfo lce) {
         mRil.processIndication(indicationType);
 
-        ArrayList<Integer> response = RIL.convertHalLceData(lce, mRil);
+        LinkCapacityEstimate response = RIL.convertHalLceData(lce, mRil);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
-        if (mRil.mLceInfoRegistrant != null) {
-            mRil.mLceInfoRegistrant.notifyRegistrant(new AsyncResult(null, response, null));
+        if (mRil.mLceInfoRegistrants != null) {
+            mRil.mLceInfoRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
         }
     }
 

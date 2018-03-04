@@ -56,6 +56,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CarrierSignalAgent;
 import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.LinkCapacityEstimate;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
@@ -74,7 +75,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Locale;
@@ -217,9 +217,10 @@ public class DataConnection extends StateMachine {
     static final int EVENT_KEEPALIVE_STOPPED = BASE + 20;
     static final int EVENT_KEEPALIVE_START_REQUEST = BASE + 21;
     static final int EVENT_KEEPALIVE_STOP_REQUEST = BASE + 22;
+    static final int EVENT_LINK_CAPACITY_CHANGED = BASE + 23;
 
     private static final int CMD_TO_STRING_COUNT =
-            EVENT_KEEPALIVE_STOP_REQUEST - BASE + 1;
+            EVENT_LINK_CAPACITY_CHANGED - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -249,6 +250,7 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_KEEPALIVE_STOPPED - BASE] = "EVENT_KEEPALIVE_STOPPED";
         sCmdToString[EVENT_KEEPALIVE_START_REQUEST - BASE] = "EVENT_KEEPALIVE_START_REQUEST";
         sCmdToString[EVENT_KEEPALIVE_STOP_REQUEST - BASE] = "EVENT_KEEPALIVE_STOP_REQUEST";
+        sCmdToString[EVENT_LINK_CAPACITY_CHANGED - BASE] = "EVENT_LINK_CAPACITY_CHANGED";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -1693,6 +1695,8 @@ public class DataConnection extends StateMachine {
                     50, misc);
             mPhone.mCi.registerForNattKeepaliveStatus(
                     getHandler(), DataConnection.EVENT_KEEPALIVE_STATUS, null);
+            mPhone.mCi.registerForLceInfo(
+                    getHandler(), DataConnection.EVENT_LINK_CAPACITY_CHANGED, null);
         }
 
         @Override
@@ -1712,6 +1716,7 @@ public class DataConnection extends StateMachine {
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
                     reason, mNetworkInfo.getExtraInfo());
             mPhone.mCi.unregisterForNattKeepaliveStatus(getHandler());
+            mPhone.mCi.unregisterForLceInfo(getHandler());
             if (mNetworkAgent != null) {
                 mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                 mNetworkAgent = null;
@@ -1806,11 +1811,10 @@ public class DataConnection extends StateMachine {
                     if (ar.exception != null) {
                         log("EVENT_BW_REFRESH_RESPONSE: error ignoring, e=" + ar.exception);
                     } else {
-                        final ArrayList<Integer> capInfo = (ArrayList<Integer>)ar.result;
-                        final int lceBwDownKbps = capInfo.get(0);
+                        final LinkCapacityEstimate lce = (LinkCapacityEstimate) ar.result;
                         NetworkCapabilities nc = getNetworkCapabilities();
                         if (mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {
-                            nc.setLinkDownstreamBandwidthKbps(lceBwDownKbps);
+                            nc.setLinkDownstreamBandwidthKbps(lce.downlinkCapacityKbps);
                             if (mNetworkAgent != null) {
                                 mNetworkAgent.sendNetworkCapabilities(nc);
                             }
@@ -1905,6 +1909,26 @@ public class DataConnection extends StateMachine {
                         log("Keepalive Stop Requested for handle=" + handle);
                         mNetworkAgent.keepaliveTracker.handleKeepaliveStatus(
                                 new KeepaliveStatus(handle, KeepaliveStatus.STATUS_INACTIVE));
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_LINK_CAPACITY_CHANGED: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    if (ar.exception != null) {
+                        loge("EVENT_LINK_CAPACITY_CHANGED e=" + ar.exception);
+                    } else {
+                        LinkCapacityEstimate lce = (LinkCapacityEstimate) ar.result;
+                        NetworkCapabilities nc = getNetworkCapabilities();
+                        if (lce.downlinkCapacityKbps != LinkCapacityEstimate.INVALID) {
+                            nc.setLinkDownstreamBandwidthKbps(lce.downlinkCapacityKbps);
+                        }
+                        if (lce.uplinkCapacityKbps != LinkCapacityEstimate.INVALID) {
+                            nc.setLinkUpstreamBandwidthKbps(lce.uplinkCapacityKbps);
+                        }
+                        if (mNetworkAgent != null) {
+                            mNetworkAgent.sendNetworkCapabilities(nc);
+                        }
                     }
                     retVal = HANDLED;
                     break;

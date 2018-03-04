@@ -54,8 +54,8 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
         CellIdentityTdscdma ci =
                 new CellIdentityTdscdma(MCC_STR, MNC_STR, LAC, CID, CPID);
 
-        assertEquals(MCC_STR, ci.getMccStr());
-        assertEquals(MNC_STR, ci.getMncStr());
+        assertEquals(MCC_STR, ci.getMccString());
+        assertEquals(MNC_STR, ci.getMncString());
         assertEquals(LAC, ci.getLac());
         assertEquals(CID, ci.getCid());
         assertEquals(CPID, ci.getCpid());
@@ -65,23 +65,23 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
     public void testConstructorWithEmptyMccMnc() {
         CellIdentityTdscdma ci = new CellIdentityTdscdma(null, null, LAC, CID, CPID);
 
-        assertNull(ci.getMccStr());
-        assertNull(ci.getMncStr());
+        assertNull(ci.getMccString());
+        assertNull(ci.getMncString());
 
         ci = new CellIdentityTdscdma(MCC_STR, null, LAC, CID, CPID);
 
-        assertEquals(MCC_STR, ci.getMccStr());
-        assertNull(ci.getMncStr());
+        assertEquals(MCC_STR, ci.getMccString());
+        assertNull(ci.getMncString());
 
         ci = new CellIdentityTdscdma(null, MNC_STR, LAC, CID, CPID);
 
-        assertEquals(MNC_STR, ci.getMncStr());
-        assertNull(ci.getMccStr());
+        assertEquals(MNC_STR, ci.getMncString());
+        assertNull(ci.getMccString());
 
         ci = new CellIdentityTdscdma("", "", LAC, CID, CPID);
 
-        assertNull(ci.getMccStr());
-        assertNull(ci.getMncStr());
+        assertNull(ci.getMccString());
+        assertNull(ci.getMncString());
     }
 
     @SmallTest

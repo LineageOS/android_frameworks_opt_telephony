@@ -910,6 +910,10 @@ message TelephonyEvent {
     // Group id level 1. Logged only if gid1 is configured from subscription
     // but its matching rule is unknown
     optional string gid1 = 2;
+
+    // MCC and MNC that map to this carrier. Logged only if mccmnc is configured
+    // from subscription but its matching rule is unknown
+    optional string mccmnc = 3;
   }
 
   // Time when event happened on device, in milliseconds since epoch

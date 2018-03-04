@@ -48,8 +48,19 @@ public class CellIdentityCdmaTest extends AndroidTestCase {
 
         assertEquals(NETWORK_ID, ci.getNetworkId());
         assertEquals(LATITUDE, ci.getLatitude());
+        assertEquals(LONGITUDE, ci.getLongitude());
         assertEquals(ALPHA_LONG, ci.getOperatorAlphaLong());
         assertEquals(ALPHA_SHORT, ci.getOperatorAlphaShort());
+    }
+
+    @SmallTest
+    public void testNullIsland() {
+        CellIdentityCdma  ci =
+                new CellIdentityCdma(NETWORK_ID, SYSTEM_ID, BASESTATION_ID, -1, 0,
+                        ALPHA_LONG, ALPHA_SHORT);
+
+        assertEquals(Integer.MAX_VALUE, ci.getLatitude());
+        assertEquals(Integer.MAX_VALUE, ci.getLongitude());
     }
 
     @SmallTest
