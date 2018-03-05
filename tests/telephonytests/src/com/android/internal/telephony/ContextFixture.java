@@ -43,6 +43,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -264,6 +265,11 @@ public class ContextFixture implements TestFixture<Context> {
         @Override
         public int getUserId() {
             return 0;
+        }
+
+        @Override
+        public AssetManager getAssets() {
+            return mAssetManager;
         }
 
         @Override
@@ -524,6 +530,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final CarrierConfigManager mCarrierConfigManager = mock(CarrierConfigManager.class);
     private final SubscriptionManager mSubscriptionManager = mock(SubscriptionManager.class);
     private final AlarmManager mAlarmManager = mock(AlarmManager.class);
+    private final AssetManager mAssetManager = new AssetManager();
     private final ConnectivityManager mConnectivityManager = mock(ConnectivityManager.class);
     private final UsageStatsManager mUsageStatManager = null;
     private final WifiManager mWifiManager = mock(WifiManager.class);
