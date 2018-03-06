@@ -5295,7 +5295,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     static SignalStrength convertHalSignalStrength_1_2(
             android.hardware.radio.V1_2.SignalStrength signalStrength) {
-        // TODO: Pipe WCDMA up
         return new SignalStrength(
                 signalStrength.gsm.signalStrength,
                 signalStrength.gsm.bitErrorRate,
@@ -5309,6 +5308,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.lte.rsrq,
                 signalStrength.lte.rssnr,
                 signalStrength.lte.cqi,
-                signalStrength.tdScdma.rscp);
+                signalStrength.tdScdma.rscp,
+                signalStrength.wcdma.base.signalStrength,
+                signalStrength.wcdma.rscp);
     }
 }
