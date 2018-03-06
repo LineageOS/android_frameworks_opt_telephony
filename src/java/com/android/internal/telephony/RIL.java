@@ -5275,7 +5275,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
-    static SignalStrength convertHalSignalStrength(
+    /** Convert HAL 1.0 Signal Strength to android SignalStrength */
+    @VisibleForTesting
+    public static SignalStrength convertHalSignalStrength(
             android.hardware.radio.V1_0.SignalStrength signalStrength) {
         int tdscdmaRscp_1_2 = 255; // 255 is the value for unknown/unreported ASU.
         // The HAL 1.0 range is 25..120; the ASU/ HAL 1.2 range is 0..96;
@@ -5302,7 +5304,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 tdscdmaRscp_1_2);
     }
 
-    static SignalStrength convertHalSignalStrength_1_2(
+    /** Convert HAL 1.2 Signal Strength to android SignalStrength */
+    @VisibleForTesting
+    public static SignalStrength convertHalSignalStrength_1_2(
             android.hardware.radio.V1_2.SignalStrength signalStrength) {
         return new SignalStrength(
                 signalStrength.gsm.signalStrength,
