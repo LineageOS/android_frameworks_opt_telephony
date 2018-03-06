@@ -3945,8 +3945,16 @@ public class ServiceStateTracker extends Handler {
                 mSignalStrength.setGsm(isGsm);
             }
             mSignalStrength.setLteRsrpBoost(mSS.getLteEarfcnRsrpBoost());
-            mSignalStrength.setUseOnlyRsrpForLteLevel(isUseOnlyRsrpForLteLevel());
-            mSignalStrength.setLteRsrpThresholds(getLteRsrpThresholds());
+
+            PersistableBundle config = getCarrierConfig();
+            mSignalStrength.setUseOnlyRsrpForLteLevel(config.getBoolean(
+                    CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL));
+            mSignalStrength.setLteRsrpThresholds(config.getIntArray(
+                    CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY));
+            mSignalStrength.setWcdmaDefaultSignalMeasurement(config.getString(
+                    CarrierConfigManager.KEY_WCDMA_DEFAULT_SIGNAL_STRENGTH_MEASUREMENT_STRING));
+            mSignalStrength.setWcdmaRscpThresholds(config.getIntArray(
+                    CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY));
         } else {
             log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
             mSignalStrength = new SignalStrength(isGsm);
@@ -4517,26 +4525,6 @@ public class ServiceStateTracker extends Handler {
             regState = dataRegState;
         }
         return regState;
-    }
-
-    /**
-     * Check whether to use only RSRP for the number of LTE signal bar.
-     *
-     * @return true if it should use only RSRP for the number of LTE signal bar.
-     */
-    private boolean isUseOnlyRsrpForLteLevel() {
-        return getCarrierConfig().getBoolean(
-                CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL);
-    }
-
-    /**
-     * Gets the threshold array for determining the display level of LTE signal bar.
-     *
-     * @return int array for determining the display level.
-     */
-    private int[] getLteRsrpThresholds() {
-        return getCarrierConfig().getIntArray(
-                CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY);
     }
 
     /**
