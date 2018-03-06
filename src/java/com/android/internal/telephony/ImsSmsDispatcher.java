@@ -182,7 +182,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 } catch (ImsException e) {
                     Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
                 }
-            });
+            }, true);
         }
     };
 
