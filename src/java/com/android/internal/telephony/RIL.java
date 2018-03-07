@@ -5275,8 +5275,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
-    static SignalStrength convertHalSignalStrength(
+    /** Convert HAL 1.0 Signal Strength to android SignalStrength */
+    @VisibleForTesting
+    public static SignalStrength convertHalSignalStrength(
             android.hardware.radio.V1_0.SignalStrength signalStrength) {
+        int tdscdmaRscp_1_2 = 255; // 255 is the value for unknown/unreported ASU.
+        // The HAL 1.0 range is 25..120; the ASU/ HAL 1.2 range is 0..96;
+        // yes, this means the range in 1.0 cannot express -24dBm = 96
+        if (signalStrength.tdScdma.rscp >= 25 && signalStrength.tdScdma.rscp <= 120) {
+            // First we flip the sign to convert from the HALs -rscp to the actual RSCP value.
+            int rscpDbm = -signalStrength.tdScdma.rscp;
+            // Then to convert from RSCP to ASU, we apply the offset which aligns 0 ASU to -120dBm.
+            tdscdmaRscp_1_2 = rscpDbm + 120;
+        }
         return new SignalStrength(
                 signalStrength.gw.signalStrength,
                 signalStrength.gw.bitErrorRate,
@@ -5290,12 +5301,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.lte.rsrq,
                 signalStrength.lte.rssnr,
                 signalStrength.lte.cqi,
-                signalStrength.tdScdma.rscp);
+                tdscdmaRscp_1_2);
     }
 
-    static SignalStrength convertHalSignalStrength_1_2(
+    /** Convert HAL 1.2 Signal Strength to android SignalStrength */
+    @VisibleForTesting
+    public static SignalStrength convertHalSignalStrength_1_2(
             android.hardware.radio.V1_2.SignalStrength signalStrength) {
-        // TODO: Pipe WCDMA up
         return new SignalStrength(
                 signalStrength.gsm.signalStrength,
                 signalStrength.gsm.bitErrorRate,
@@ -5309,6 +5321,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.lte.rsrq,
                 signalStrength.lte.rssnr,
                 signalStrength.lte.cqi,
-                signalStrength.tdScdma.rscp);
+                signalStrength.tdScdma.rscp,
+                signalStrength.wcdma.base.signalStrength,
+                signalStrength.wcdma.rscp);
     }
 }
