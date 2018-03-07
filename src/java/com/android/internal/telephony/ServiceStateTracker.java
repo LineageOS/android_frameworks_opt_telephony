@@ -279,6 +279,7 @@ public class ServiceStateTracker extends Handler {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
             int subId = mPhone.getSubId();
+            ServiceStateTracker.this.mPrevSubId = mPreviousSubId.get();
             if (mPreviousSubId.getAndSet(subId) != subId) {
                 if (SubscriptionManager.isValidSubscriptionId(subId)) {
                     Context context = mPhone.getContext();
@@ -1064,7 +1065,9 @@ public class ServiceStateTracker extends Handler {
             case EVENT_SIM_READY:
                 // Reset the mPreviousSubId so we treat a SIM power bounce
                 // as a first boot.  See b/19194287
-                mOnSubscriptionsChangedListener.mPreviousSubId.set(-1);
+                mOnSubscriptionsChangedListener.mPreviousSubId.set(
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+                mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
                 mIsSimReady = true;
                 pollState();
                 // Signal strength polling stops when radio is off
@@ -3471,17 +3474,19 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Cancels all notifications posted to NotificationManager. These notifications for restricted
-     * state and rejection cause for cs registration are no longer valid after the SIM has been
-     * removed.
+     * Cancels all notifications posted to NotificationManager for this subId. These notifications
+     * for restricted state and rejection cause for cs registration are no longer valid after the
+     * SIM has been removed.
      */
     private void cancelAllNotifications() {
-        if (DBG) log("setNotification: cancelAllNotifications");
+        if (DBG) log("cancelAllNotifications: mPrevSubId=" + mPrevSubId);
         NotificationManager notificationManager = (NotificationManager)
                 mPhone.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(PS_NOTIFICATION);
-        notificationManager.cancel(CS_NOTIFICATION);
-        notificationManager.cancel(CS_REJECT_CAUSE_NOTIFICATION);
+        if (SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
+            notificationManager.cancel(Integer.toString(mPrevSubId), PS_NOTIFICATION);
+            notificationManager.cancel(Integer.toString(mPrevSubId), CS_NOTIFICATION);
+            notificationManager.cancel(Integer.toString(mPrevSubId), CS_REJECT_CAUSE_NOTIFICATION);
+        }
     }
 
     /**
@@ -3596,7 +3601,7 @@ public class ServiceStateTracker extends Handler {
 
         if (DBG) {
             log("setNotification, create notification, notifyType: " + notifyType
-                    + ", title: " + title + ", details: " + details);
+                    + ", title: " + title + ", details: " + details + ", subId: " + mSubId);
         }
 
         mNotification = new Notification.Builder(context)
@@ -3617,7 +3622,7 @@ public class ServiceStateTracker extends Handler {
 
         if (notifyType == PS_DISABLED || notifyType == CS_DISABLED) {
             // cancel previous post notification
-            notificationManager.cancel(notificationId);
+            notificationManager.cancel(Integer.toString(mSubId), notificationId);
         } else {
             boolean show = false;
             if (mNewSS.isEmergencyOnly() && notifyType == CS_EMERGENCY_ENABLED) {
@@ -3632,9 +3637,9 @@ public class ServiceStateTracker extends Handler {
                 // issue if phone go to OOS and camp to other networks and received restricted ind.
                 show = true;
             }
-            // update restricted state notification
+            // update restricted state notification for this subId
             if (show) {
-                notificationManager.notify(notificationId, mNotification);
+                notificationManager.notify(Integer.toString(mSubId), notificationId, mNotification);
             }
         }
     }
