@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc;
 
 import android.annotation.Nullable;
 import android.telephony.Rlog;
+import android.util.ArrayMap;
 
 import com.android.internal.annotations.VisibleForTesting;
 
@@ -35,6 +36,10 @@ import java.util.Objects;
 public class AnswerToReset {
     private static final String TAG = "AnswerToReset";
     private static final boolean VDBG = false; // STOPSHIP if true
+    private static final int TAG_CARD_CAPABILITIES = 0x07;
+    private static final int EXTENDED_APDU_INDEX = 2;
+    private static final int B7_MASK = 0x40;
+    private static final int B2_MASK = 0x02;
 
     public static final byte EUICC_SUPPORTED = (byte) 0x82;
     public static final byte DIRECT_CONVENTION = (byte) 0x3B;
@@ -52,8 +57,78 @@ public class AnswerToReset {
     private boolean mIsEuiccSupported;
     private byte mFormatByte;
     private ArrayList<InterfaceByte> mInterfaceBytes = new ArrayList<>();
-    private byte[] mHistoricalBytes;
+    private HistoricalBytes mHistoricalBytes;
     private Byte mCheckByte;
+
+    /** Class for the historical bytes. */
+    public static class HistoricalBytes {
+        private static final int TAG_MASK = 0xF0;
+        private static final int LENGTH_MASK = 0x0F;
+
+        private final byte[] mRawData;
+        private final ArrayMap<Integer, byte[]> mNodes;
+        private final byte mCategory;
+
+        /** Get the category of the historical bytes. */
+        public byte getCategory() {
+            return mCategory;
+        }
+
+        /** Get the raw data of historical bytes. */
+        public byte[] getRawData() {
+            return mRawData;
+        }
+
+        /** Get the value of the tag in historical bytes. */
+        @Nullable
+        public byte[] getValue(int tag) {
+            return mNodes.get(tag);
+        }
+
+        @Nullable
+        private static HistoricalBytes parseHistoricalBytes(
+                byte[] originalData, int startIndex, int length) {
+            if (length <= 0 || startIndex + length > originalData.length) {
+                return null;
+            }
+            ArrayMap<Integer, byte[]> nodes = new ArrayMap<>();
+
+            // Start parsing from second byte since the first one is category.
+            int index = startIndex + 1;
+            while (index < startIndex + length && index > 0) {
+                index = parseLtvNode(index, nodes, originalData, startIndex + length - 1);
+            }
+            if (index < 0) {
+                return null;
+            }
+            byte[] rawData = new byte[length];
+            System.arraycopy(originalData, startIndex, rawData, 0, length);
+            return new HistoricalBytes(rawData, nodes, rawData[0]);
+        }
+
+        private HistoricalBytes(byte[] rawData, ArrayMap<Integer, byte[]> nodes, byte category) {
+            mRawData = rawData;
+            mNodes = nodes;
+            mCategory = category;
+        }
+
+        private static int parseLtvNode(
+                int index, ArrayMap<Integer, byte[]> nodes, byte[] data, int lastByteIndex) {
+            if (index > lastByteIndex) {
+                return -1;
+            }
+            int tag = (data[index] & TAG_MASK) >> 4;
+            int length = data[index++] & LENGTH_MASK;
+            if (index + length > lastByteIndex + 1 || length == 0) {
+                return -1;
+            }
+            byte[] value = new byte[length];
+            System.arraycopy(data, index, value, 0, length);
+            nodes.put(tag, value);
+            return index + length;
+        }
+    }
+
 
     /**
      * Returns an AnswerToReset by parsing the input atr string, return null if the parsing fails.
@@ -108,8 +183,7 @@ public class AnswerToReset {
             return -1;
         }
         mFormatByte = atrBytes[index];
-        mHistoricalBytes = new byte[mFormatByte & T_MASK];
-        if (VDBG) log("mHistoricalBytesLength: " + mHistoricalBytes.length);
+        if (VDBG) log("mHistoricalBytesLength: " + (mFormatByte & T_MASK));
         return index + 1;
     }
 
@@ -178,14 +252,15 @@ public class AnswerToReset {
     }
 
     private int parseHistoricalBytes(byte[] atrBytes, int index) {
-        if (mHistoricalBytes.length + index > atrBytes.length) {
+        int length = mFormatByte & T_MASK;
+        if (length + index > atrBytes.length) {
             loge("Failed to read the historical bytes.");
             return -1;
         }
-        if (mHistoricalBytes.length > 0) {
-            System.arraycopy(atrBytes, index, mHistoricalBytes, 0, mHistoricalBytes.length);
+        if (length > 0) {
+            mHistoricalBytes = HistoricalBytes.parseHistoricalBytes(atrBytes, index, length);
         }
-        return index + mHistoricalBytes.length;
+        return index + length;
     }
 
     private int parseCheckBytes(byte[] atrBytes, int index) {
@@ -372,7 +447,7 @@ public class AnswerToReset {
     }
 
     @Nullable
-    public byte[] getHistoricalBytes() {
+    public HistoricalBytes getHistoricalBytes() {
         return mHistoricalBytes;
     }
 
@@ -383,6 +458,22 @@ public class AnswerToReset {
 
     public boolean isEuiccSupported() {
         return mIsEuiccSupported;
+    }
+
+    /** Return whether the extended LC & LE is supported. */
+    public boolean isExtendedApduSupported() {
+        if (mHistoricalBytes == null) {
+            return false;
+        }
+        byte[] cardCapabilities = mHistoricalBytes.getValue(TAG_CARD_CAPABILITIES);
+        if (cardCapabilities == null || cardCapabilities.length < 3) {
+            return false;
+        }
+        if (mIsDirectConvention) {
+            return (cardCapabilities[EXTENDED_APDU_INDEX] & B7_MASK) > 0;
+        } else {
+            return (cardCapabilities[EXTENDED_APDU_INDEX] & B2_MASK) > 0;
+        }
     }
 
     @Override
@@ -399,8 +490,10 @@ public class AnswerToReset {
         }
         sb.append("},");
         sb.append("mHistoricalBytes={");
-        for (byte b : mHistoricalBytes) {
-            sb.append(IccUtils.byteToHex(b)).append(",");
+        if (mHistoricalBytes != null) {
+            for (byte b : mHistoricalBytes.getRawData()) {
+                sb.append(IccUtils.byteToHex(b)).append(",");
+            }
         }
         sb.append("},");
         sb.append("mCheckByte=").append(byteToStringHex(mCheckByte));
