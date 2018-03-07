@@ -33,14 +33,14 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestNullString() {
+    public void testAnswerToRestNullString() {
         AnswerToReset atr = AnswerToReset.parseAtr(null);
         assertNull(atr);
     }
 
     @Test
     @SmallTest
-    public void tesAnswerToRestOddLength() {
+    public void testAnswerToRestOddLength() {
         String str = "3B02145";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNull(atr);
@@ -48,7 +48,7 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestTooShortLength() {
+    public void testAnswerToRestTooShortLength() {
         String str = "3B";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNull(atr);
@@ -56,20 +56,20 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestNoInterfaceByteNoHistoricalByte() {
+    public void testAnswerToRestNoInterfaceByteNoHistoricalByte() {
         String str = "3B00";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
         assertEquals(atr.getConventionByte(), (byte) 0x3B);
         assertEquals(atr.getFormatByte(), (byte) 0x00);
         assertTrue(atr.getInterfaceBytes().isEmpty());
-        assertEquals(atr.getHistoricalBytes().length, 0);
+        assertNull(atr.getHistoricalBytes());
         assertNull(atr.getCheckByte());
     }
 
     @Test
     @SmallTest
-    public void tesAnswerToRestNoHistoricalByte() {
+    public void testAnswerToRestNoHistoricalByte() {
         String str = "3F909580B1FE001F4297";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
@@ -90,30 +90,30 @@ public class AnswerToResetTest {
         );
         assertEquals(expect, atr.getInterfaceBytes());
 
-        assertEquals(atr.getHistoricalBytes().length, 0);
+        assertNull(atr.getHistoricalBytes());
         assertEquals(atr.getCheckByte(), Byte.valueOf((byte) 0x97));
     }
 
     @Test
     @SmallTest
-    public void tesAnswerToRestNoInterfaceByte() {
+    public void testAnswerToRestNoInterfaceByte() {
         String str = "3F078031A073BE211797";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
         assertEquals(atr.getConventionByte(), (byte) 0x3F);
         assertEquals(atr.getFormatByte(), (byte) 0x07);
         assertTrue(atr.getInterfaceBytes().isEmpty());
-        assertEquals(atr.getHistoricalBytes().length, 7);
+        assertEquals(atr.getHistoricalBytes().getRawData().length, 7);
         byte[] expect = new byte[]{
                 (byte) 0x80, (byte) 0x31, (byte) 0xA0, (byte) 0x73,
                 (byte) 0xBE, (byte) 0x21, (byte) 0x17};
-        assertTrue(Arrays.equals(atr.getHistoricalBytes(), expect));
+        assertTrue(Arrays.equals(atr.getHistoricalBytes().getRawData(), expect));
         assertEquals(atr.getCheckByte(), Byte.valueOf((byte) 0x97));
     }
 
     @Test
     @SmallTest
-    public void tesAnswerToRestSuccess() {
+    public void testAnswerToRestSuccess() {
         String str = "3F979580B1FE001F428031A073BE211797";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
@@ -133,17 +133,17 @@ public class AnswerToResetTest {
                 Arrays.asList(expect_t1, expect_t2, expect_t3, expect_t4)
         );
         assertEquals(expect_ib, atr.getInterfaceBytes());
-        assertEquals(atr.getHistoricalBytes().length, 7);
+        assertEquals(atr.getHistoricalBytes().getRawData().length, 7);
         byte[] expect_hb = new byte[]{
                 (byte) 0x80, (byte) 0x31, (byte) 0xA0, (byte) 0x73,
                 (byte) 0xBE, (byte) 0x21, (byte) 0x17};
-        assertTrue(Arrays.equals(atr.getHistoricalBytes(), expect_hb));
+        assertTrue(Arrays.equals(atr.getHistoricalBytes().getRawData(), expect_hb));
         assertEquals(atr.getCheckByte(), Byte.valueOf((byte) 0x97));
     }
 
     @Test
     @SmallTest
-    public void tesAnswerToRestSuccessWithoutCheckByte() {
+    public void testAnswerToRestSuccessWithoutCheckByte() {
         String str = "3F979580B0FE0010428031A073BE2117";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
@@ -164,11 +164,11 @@ public class AnswerToResetTest {
         );
         assertEquals(expect_ib, atr.getInterfaceBytes());
 
-        assertEquals(atr.getHistoricalBytes().length, 7);
+        assertEquals(atr.getHistoricalBytes().getRawData().length, 7);
         byte[] expect_hb = new byte[]{
                 (byte) 0x80, (byte) 0x31, (byte) 0xA0, (byte) 0x73,
                 (byte) 0xBE, (byte) 0x21, (byte) 0x17};
-        assertTrue(Arrays.equals(atr.getHistoricalBytes(), expect_hb));
+        assertTrue(Arrays.equals(atr.getHistoricalBytes().getRawData(), expect_hb));
 
         assertEquals(atr.getCheckByte(), null);
         assertFalse(atr.isEuiccSupported());
@@ -176,7 +176,7 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestFailWithoutCheckByte() {
+    public void testAnswerToRestFailWithoutCheckByte() {
         String str = "3F979581B0FE0010428031A073BE2117";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNull(atr);
@@ -184,7 +184,7 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestFailWithExtraByte() {
+    public void testAnswerToRestFailWithExtraByte() {
         String str = "3F979580B1FE001F428031A073BE21179718";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNull(atr);
@@ -192,7 +192,7 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestEuiccSupported() {
+    public void testAnswerToRestEuiccSupported() {
         String str = "3F979580BFFE8210428031A073BE211797";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
@@ -213,11 +213,11 @@ public class AnswerToResetTest {
         );
         assertEquals(expect_ib, atr.getInterfaceBytes());
 
-        assertEquals(atr.getHistoricalBytes().length, 7);
+        assertEquals(atr.getHistoricalBytes().getRawData().length, 7);
         byte[] expect_hb = new byte[]{
                 (byte) 0x80, (byte) 0x31, (byte) 0xA0, (byte) 0x73,
                 (byte) 0xBE, (byte) 0x21, (byte) 0x17};
-        assertTrue(Arrays.equals(atr.getHistoricalBytes(), expect_hb));
+        assertTrue(Arrays.equals(atr.getHistoricalBytes().getRawData(), expect_hb));
 
         assertEquals(atr.getCheckByte(), Byte.valueOf((byte) 0x97));
 
@@ -226,7 +226,7 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestEuiccSupportedWithLowerCaseString() {
+    public void testAnswerToRestEuiccSupportedWithLowerCaseString() {
         String str = "3f979580bffe8210428031a073be211797";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
@@ -247,11 +247,11 @@ public class AnswerToResetTest {
         );
         assertEquals(expect_ib, atr.getInterfaceBytes());
 
-        assertEquals(atr.getHistoricalBytes().length, 7);
+        assertEquals(atr.getHistoricalBytes().getRawData().length, 7);
         byte[] expect_hb = new byte[]{
             (byte) 0x80, (byte) 0x31, (byte) 0xA0, (byte) 0x73,
             (byte) 0xBE, (byte) 0x21, (byte) 0x17};
-        assertTrue(Arrays.equals(atr.getHistoricalBytes(), expect_hb));
+        assertTrue(Arrays.equals(atr.getHistoricalBytes().getRawData(), expect_hb));
 
         assertEquals(atr.getCheckByte(), Byte.valueOf((byte) 0x97));
 
@@ -260,7 +260,7 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestEuiccNotSupportedDueToIncorrectT() {
+    public void testAnswerToRestEuiccNotSupportedDueToIncorrectT() {
         String str = "3F979580BEFE8210428031A073BE211797";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
@@ -281,11 +281,11 @@ public class AnswerToResetTest {
         );
         assertEquals(expect_ib, atr.getInterfaceBytes());
 
-        assertEquals(atr.getHistoricalBytes().length, 7);
+        assertEquals(atr.getHistoricalBytes().getRawData().length, 7);
         byte[] expect_hb = new byte[]{
                 (byte) 0x80, (byte) 0x31, (byte) 0xA0, (byte) 0x73,
                 (byte) 0xBE, (byte) 0x21, (byte) 0x17};
-        assertTrue(Arrays.equals(atr.getHistoricalBytes(), expect_hb));
+        assertTrue(Arrays.equals(atr.getHistoricalBytes().getRawData(), expect_hb));
 
         assertEquals(atr.getCheckByte(), Byte.valueOf((byte) 0x97));
 
@@ -294,7 +294,7 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
-    public void tesAnswerToRestEuiccNotSupportedDueToIncorrectTB() {
+    public void testAnswerToRestEuiccNotSupportedDueToIncorrectTB() {
         String str = "3F979580BFFE8110428031A073BE211797";
         AnswerToReset atr = AnswerToReset.parseAtr(str);
         assertNotNull(atr);
@@ -315,14 +315,70 @@ public class AnswerToResetTest {
         );
         assertEquals(expect_ib, atr.getInterfaceBytes());
 
-        assertEquals(atr.getHistoricalBytes().length, 7);
+        assertEquals(atr.getHistoricalBytes().getRawData().length, 7);
         byte[] expect_hb = new byte[]{
                 (byte) 0x80, (byte) 0x31, (byte) 0xA0, (byte) 0x73,
                 (byte) 0xBE, (byte) 0x21, (byte) 0x17};
-        assertTrue(Arrays.equals(atr.getHistoricalBytes(), expect_hb));
+        assertTrue(Arrays.equals(atr.getHistoricalBytes().getRawData(), expect_hb));
 
         assertEquals(atr.getCheckByte(), Byte.valueOf((byte) 0x97));
 
         assertFalse(atr.isEuiccSupported());
+    }
+
+    @Test
+    @SmallTest
+    public void testAnswerToResetExtendedApduSupported() {
+        String str = "3B9F96803FC7828031E073F62158574A4D020C6030005F";
+        AnswerToReset atr = AnswerToReset.parseAtr(str);
+        assertTrue(atr.isExtendedApduSupported());
+
+        str = "3B9F96803FC7828031E073F62182574A4D020C6030005F";
+        atr = AnswerToReset.parseAtr(str);
+        assertFalse(atr.isExtendedApduSupported());
+
+        str = "3F9F96803FC7828031E073F62158574A4D020C6030005F";
+        atr = AnswerToReset.parseAtr(str);
+        assertFalse(atr.isExtendedApduSupported());
+
+        str = "3F9F96803FC7828031E073F62182574A4D020C6030005F";
+        atr = AnswerToReset.parseAtr(str);
+        assertTrue(atr.isExtendedApduSupported());
+    }
+
+    @Test
+    @SmallTest
+    public void testAnswerToResetExtendedApduNotSupportedDueToNoTag() {
+        String str = "3F6D000080318065B00501025E83009000";
+        AnswerToReset atr = AnswerToReset.parseAtr(str);
+        assertFalse(atr.isExtendedApduSupported());
+
+        str = "3B6D000080318065B00501025E83009000";
+        atr = AnswerToReset.parseAtr(str);
+        assertFalse(atr.isExtendedApduSupported());
+    }
+
+    @Test
+    @SmallTest
+    public void testAnswerToResetExtendedApduNotSupportedDueToLessLength() {
+        String str = "3B9E96803FC7828031E072F621574A4D020C6030005F";
+        AnswerToReset atr = AnswerToReset.parseAtr(str);
+        assertFalse(atr.isExtendedApduSupported());
+
+        str = "3F9D96803FC7828031E071F6574A4D020C6030005F";
+        atr = AnswerToReset.parseAtr(str);
+        assertFalse(atr.isExtendedApduSupported());
+    }
+
+    @Test
+    @SmallTest
+    public void testAnswerToResetParseLtvNodeWithIncorrectLength() {
+        String str = "3B9E96803FC7828031E073F621574A4D020C6030005F";
+        AnswerToReset atr = AnswerToReset.parseAtr(str);
+        assertNull(atr.getHistoricalBytes());
+
+        str = "3B9E96803FC7828031E071F621574A4D020C6030005F";
+        atr = AnswerToReset.parseAtr(str);
+        assertNull(atr.getHistoricalBytes());
     }
 }
