@@ -24,12 +24,14 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.storage.StorageManager;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.format.Time;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RadioConfig;
 
@@ -643,6 +645,12 @@ public class UiccController extends Handler {
         }
 
         if (changed && resp.refreshResult == IccRefreshResponse.REFRESH_RESULT_RESET) {
+            // If there is any change on RESET, reset carrier config as well. From carrier config
+            // perspective, this is treated the same as sim state unknown
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            configManager.updateConfigForPhoneId(index, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
+
             boolean requirePowerOffOnSimRefreshReset = mContext.getResources().getBoolean(
                     com.android.internal.R.bool.config_requireRadioPowerOffOnSimRefreshReset);
             if (requirePowerOffOnSimRefreshReset) {
