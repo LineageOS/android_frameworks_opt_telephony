@@ -1765,9 +1765,6 @@ public class ImsPhone extends ImsPhoneBase {
                         imsReasonInfo.mExtraMessage); // Fill IMS error code into notification
             }
 
-            // UX requirement is to disable WFC in case of "permanent" registration failures.
-            ImsManager.getInstance(mContext, mPhoneId).setWfcSetting(false);
-
             // If WfcSettings are active then alert will be shown
             // otherwise notification will be added.
             Intent intent = new Intent(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
