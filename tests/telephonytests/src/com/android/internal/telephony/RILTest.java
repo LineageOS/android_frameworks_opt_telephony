@@ -1564,4 +1564,62 @@ public class RILTest extends TelephonyTest {
 
         return RIL.convertHalCellInfoList_1_2(records);
     }
+
+    public android.telephony.SignalStrength getTdScdmaSignalStrength_1_0(int tdscdmaNegDbm) {
+        android.hardware.radio.V1_0.SignalStrength halSs =
+                new android.hardware.radio.V1_0.SignalStrength();
+        halSs.lte.signalStrength = SIGNAL_STRENGTH;
+        halSs.lte.rsrp = RSRP;
+        halSs.lte.rsrq = RSRQ;
+        halSs.lte.rssnr = RSSNR;
+        halSs.gw.signalStrength = SIGNAL_STRENGTH;
+        halSs.gw.bitErrorRate = BIT_ERROR_RATE;
+        halSs.cdma.dbm = DBM;
+        halSs.cdma.ecio = ECIO;
+        halSs.evdo.dbm = DBM;
+        halSs.evdo.ecio = ECIO;
+        halSs.evdo.signalNoiseRatio = SIGNAL_NOISE_RATIO;
+        halSs.tdScdma.rscp = tdscdmaNegDbm;
+        android.telephony.SignalStrength ss = RIL.convertHalSignalStrength(halSs);
+        // FIXME: We should not need to call validateInput here b/74115980.
+        ss.validateInput();
+        return ss;
+    }
+
+    public android.telephony.SignalStrength getTdScdmaSignalStrength_1_2(int tdscdmaAsu) {
+        android.hardware.radio.V1_2.SignalStrength halSs =
+                new android.hardware.radio.V1_2.SignalStrength();
+        halSs.lte.signalStrength = SIGNAL_STRENGTH;
+        halSs.lte.rsrp = RSRP;
+        halSs.lte.rsrq = RSRQ;
+        halSs.lte.rssnr = RSSNR;
+        halSs.gsm.signalStrength = SIGNAL_STRENGTH;
+        halSs.gsm.bitErrorRate = BIT_ERROR_RATE;
+        halSs.cdma.dbm = DBM;
+        halSs.cdma.ecio = ECIO;
+        halSs.evdo.dbm = DBM;
+        halSs.evdo.ecio = ECIO;
+        halSs.evdo.signalNoiseRatio = SIGNAL_NOISE_RATIO;
+        halSs.wcdma.base.signalStrength = 99;
+        halSs.wcdma.rscp = 255;
+        halSs.tdScdma.rscp = tdscdmaAsu;
+        android.telephony.SignalStrength ss = RIL.convertHalSignalStrength_1_2(halSs);
+        // FIXME: We should not need to call validateInput here b/74115980
+        // but unless we call it, we have to pass Integer.MAX_VALUE for wcdma RSCP,
+        // which is outside the allowable range for the HAL. This value is being
+        // coerced inside SignalStrength.validateInput().
+        ss.validateInput();
+        return ss;
+    }
+
+    @Test
+    public void testHalSignalStrengthTdScdma() throws Exception {
+        // Check that the minimum value is the same.
+        assertEquals(getTdScdmaSignalStrength_1_0(120), getTdScdmaSignalStrength_1_2(0));
+        // Check that the maximum common value is the same.
+        assertEquals(getTdScdmaSignalStrength_1_0(25), getTdScdmaSignalStrength_1_2(95));
+        // Check that an invalid value is the same.
+        assertEquals(getTdScdmaSignalStrength_1_0(-1), getTdScdmaSignalStrength_1_2(255));
+    }
+
 }
