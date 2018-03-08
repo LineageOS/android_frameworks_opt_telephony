@@ -50,6 +50,7 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
 import android.util.SparseArray;
+import android.util.StatsLog;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -1463,6 +1464,12 @@ public class DataConnection extends StateMachine {
         public void enter() {
             mTag += 1;
             if (DBG) log("DcInactiveState: enter() mTag=" + mTag);
+            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__INACTIVE,
+                    mPhone.getPhoneId(), mId,
+                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null
+                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
 
             if (mConnectionParams != null) {
                 if (DBG) {
@@ -1552,6 +1559,15 @@ public class DataConnection extends StateMachine {
      * The state machine is activating a connection.
      */
     private class DcActivatingState extends State {
+        @Override
+        public void enter() {
+            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVATING,
+                    mPhone.getPhoneId(), mId,
+                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null
+                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+        }
         @Override
         public boolean processMessage(Message msg) {
             boolean retVal;
@@ -1660,6 +1676,12 @@ public class DataConnection extends StateMachine {
 
         @Override public void enter() {
             if (DBG) log("DcActiveState: enter dc=" + DataConnection.this);
+            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVE,
+                    mPhone.getPhoneId(), mId,
+                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null
+                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
 
             updateNetworkInfo();
 
@@ -1950,6 +1972,15 @@ public class DataConnection extends StateMachine {
      */
     private class DcDisconnectingState extends State {
         @Override
+        public void enter() {
+            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTING,
+                    mPhone.getPhoneId(), mId,
+                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null
+                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+        }
+        @Override
         public boolean processMessage(Message msg) {
             boolean retVal;
 
@@ -1998,6 +2029,15 @@ public class DataConnection extends StateMachine {
      * The state machine is disconnecting after an creating a connection.
      */
     private class DcDisconnectionErrorCreatingConnection extends State {
+        @Override
+        public void enter() {
+            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTION_ERROR_CREATING_CONNECTION,
+                    mPhone.getPhoneId(), mId,
+                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null
+                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+        }
         @Override
         public boolean processMessage(Message msg) {
             boolean retVal;
