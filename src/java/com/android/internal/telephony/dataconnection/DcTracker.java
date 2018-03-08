@@ -1082,13 +1082,30 @@ public class DcTracker extends Handler {
         return null;
     }
 
-    // Return state of specific apn type
+    /**
+     * Returns {@link DctConstants.State} based on the state of the {@link DataConnection} that
+     * contains a {@link ApnSetting} that supported the given apn type {@code anpType}.
+     *
+     * <p>
+     * Assumes there is less than one {@link ApnSetting} can support the given apn type.
+     */
     public DctConstants.State getState(String apnType) {
-        ApnContext apnContext = mApnContexts.get(apnType);
-        if (apnContext != null) {
-            return apnContext.getState();
+        for (DataConnection dc : mDataConnections.values()) {
+            ApnSetting apnSetting = dc.getApnSetting();
+            if (apnSetting != null && apnSetting.canHandleType(apnType)) {
+                if (dc.isActive()) {
+                    return DctConstants.State.CONNECTED;
+                } else if (dc.isActivating()) {
+                    return DctConstants.State.CONNECTING;
+                } else if (dc.isInactive()) {
+                    return DctConstants.State.IDLE;
+                } else if (dc.isDisconnecting()) {
+                    return DctConstants.State.DISCONNECTING;
+                }
+            }
         }
-        return DctConstants.State.FAILED;
+
+        return DctConstants.State.IDLE;
     }
 
     // Return if apn type is a provisioning apn.
