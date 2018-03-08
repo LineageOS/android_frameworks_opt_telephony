@@ -34,7 +34,6 @@ import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.util.Pair;
 
-import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
@@ -177,7 +176,7 @@ public class SmsDispatchersController extends Handler {
     }
 
     /**
-     * Inject an SMS PDU into the android platform.
+     * Inject an SMS PDU into the android platform only if it is class 1.
      *
      * @param pdu is the byte array of pdu to be injected into android telephony layer
      * @param format is the format of SMS pdu (3gpp or 3gpp2)
@@ -187,6 +186,22 @@ public class SmsDispatchersController extends Handler {
      */
     @VisibleForTesting
     public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback) {
+        injectSmsPdu(pdu, format, callback, false /* ignoreClass */);
+    }
+
+    /**
+     * Inject an SMS PDU into the android platform.
+     *
+     * @param pdu is the byte array of pdu to be injected into android telephony layer
+     * @param format is the format of SMS pdu (3gpp or 3gpp2)
+     * @param callback if not NULL this callback is triggered when the message is successfully
+     *                 received by the android telephony layer. This callback is triggered at
+     *                 the same time an SMS received from radio is responded back.
+     * @param ignoreClass if set to false, this method will inject class 1 sms only.
+     */
+    @VisibleForTesting
+    public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback,
+            boolean ignoreClass) {
         Rlog.d(TAG, "SmsDispatchersController:injectSmsPdu");
         try {
             // TODO We need to decide whether we should allow injecting GSM(3gpp)
@@ -194,12 +209,15 @@ public class SmsDispatchersController extends Handler {
             android.telephony.SmsMessage msg =
                     android.telephony.SmsMessage.createFromPdu(pdu, format);
 
-            // Only class 1 SMS are allowed to be injected.
-            if (msg == null
-                    || msg.getMessageClass() != android.telephony.SmsMessage.MessageClass.CLASS_1) {
-                if (msg == null) {
-                    Rlog.e(TAG, "injectSmsPdu: createFromPdu returned null");
-                }
+            if (msg == null) {
+                Rlog.e(TAG, "injectSmsPdu: createFromPdu returned null");
+                callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
+                return;
+            }
+
+            if (!ignoreClass
+                    && msg.getMessageClass() != android.telephony.SmsMessage.MessageClass.CLASS_1) {
+                Rlog.e(TAG, "injectSmsPdu: not class 1");
                 callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
                 return;
             }
@@ -409,47 +427,6 @@ public class SmsDispatchersController extends Handler {
      * @param callingPkg the calling package name
      * @param persistMessage whether to save the sent message into SMS DB for a
      *   non-default SMS app.
-     */
-    public void sendText(String destAddr, String scAddr, String text,
-                            PendingIntent sentIntent, PendingIntent deliveryIntent, Uri messageUri,
-                            String callingPkg, boolean persistMessage) {
-        if (mImsSmsDispatcher.isAvailable()) {
-            mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
-                    messageUri, callingPkg, persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
-        } else {
-            sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, messageUri, callingPkg,
-                    persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED, false /*expectMore*/,
-                    SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
-        }
-    }
-
-    /**
-     * Send a text based SMS.
-     *  @param destAddr the address to send the message to
-     * @param scAddr is the service center address or null to use
-     *  the current default SMSC
-     * @param text the body of the message to send
-     * @param sentIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is successfully sent, or failed.
-     *  The result code will be <code>Activity.RESULT_OK<code> for success,
-     *  or one of these errors:<br>
-     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
-     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
-     *  <code>RESULT_ERROR_NULL_PDU</code><br>
-     *  <code>RESULT_ERROR_NO_SERVICE</code><br>.
-     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
-     *  the extra "errorCode" containing a radio technology specific value,
-     *  generally only useful for troubleshooting.<br>
-     *  The per-application based SMS control checks sentIntent. If sentIntent
-     *  is NULL the caller will be checked against all unknown applications,
-     *  which cause smaller number of SMS to be sent in checking period.
-     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is delivered to the recipient.  The
-     * @param messageUri optional URI of the message if it is already stored in the system
-     * @param callingPkg the calling package name
-     * @param persistMessage whether to save the sent message into SMS DB for a
-     *   non-default SMS app.
      * @param priority Priority level of the message
      *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
      *  ---------------------------------
@@ -472,57 +449,20 @@ public class SmsDispatchersController extends Handler {
                             PendingIntent sentIntent, PendingIntent deliveryIntent, Uri messageUri,
                             String callingPkg, boolean persistMessage, int priority,
                             boolean expectMore, int validityPeriod) {
-        if (isCdmaMo()) {
-            mCdmaDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, messageUri,
-                    callingPkg, persistMessage, priority, expectMore, validityPeriod);
-        } else {
-            mGsmDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, messageUri,
-                    callingPkg, persistMessage, priority, expectMore, validityPeriod);
-        }
-    }
-
-    /**
-     * Send a multi-part text based SMS.
-     *  @param destAddr the address to send the message to
-     * @param scAddr is the service center address or null to use
-     *   the current default SMSC
-     * @param parts an <code>ArrayList</code> of strings that, in order,
-     *   comprise the original message
-     * @param sentIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been sent.
-     *   The result code will be <code>Activity.RESULT_OK<code> for success,
-     *   or one of these errors:
-     *   <code>RESULT_ERROR_GENERIC_FAILURE</code>
-     *   <code>RESULT_ERROR_RADIO_OFF</code>
-     *   <code>RESULT_ERROR_NULL_PDU</code>
-     *   <code>RESULT_ERROR_NO_SERVICE</code>.
-     *  The per-application based SMS control checks sentIntent. If sentIntent
-     *  is NULL the caller will be checked against all unknown applications,
-     *  which cause smaller number of SMS to be sent in checking period.
-     * @param deliveryIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been delivered
-     *   to the recipient.  The raw pdu of the status report is in the
-     * @param messageUri optional URI of the message if it is already stored in the system
-     * @param callingPkg the calling package name
-     * @param persistMessage whether to save the sent message into SMS DB for a
-     *   non-default SMS app.
-     */
-    protected void sendMultipartText(String destAddr, String scAddr,
-            ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
-            boolean persistMessage) {
         if (mImsSmsDispatcher.isAvailable()) {
-            mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents, messageUri, callingPkg, persistMessage,
-                    SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
+            mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
+                    messageUri, callingPkg, persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
                     false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
         } else {
-            sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
-                    messageUri, callingPkg, persistMessage,
-                    SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+            if (isCdmaMo()) {
+                mCdmaDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
+                        messageUri, callingPkg, persistMessage, priority, expectMore,
+                        validityPeriod);
+            } else {
+                mGsmDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
+                        messageUri, callingPkg, persistMessage, priority, expectMore,
+                        validityPeriod);
+            }
         }
     }
 
@@ -576,12 +516,21 @@ public class SmsDispatchersController extends Handler {
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             boolean persistMessage, int priority, boolean expectMore, int validityPeriod) {
-        if (isCdmaMo()) {
-            mCdmaDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
-                    messageUri, callingPkg, persistMessage, priority, expectMore, validityPeriod);
+        if (mImsSmsDispatcher.isAvailable()) {
+            mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
+                    deliveryIntents, messageUri, callingPkg, persistMessage,
+                    SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
+                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
         } else {
-            mGsmDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
-                    messageUri, callingPkg, persistMessage, priority, expectMore, validityPeriod);
+            if (isCdmaMo()) {
+                mCdmaDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
+                        deliveryIntents, messageUri, callingPkg, persistMessage, priority,
+                        expectMore, validityPeriod);
+            } else {
+                mGsmDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
+                        deliveryIntents, messageUri, callingPkg, persistMessage, priority,
+                        expectMore, validityPeriod);
+            }
         }
     }
 
