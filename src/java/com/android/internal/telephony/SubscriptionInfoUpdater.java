@@ -38,6 +38,7 @@ import android.os.ServiceManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.Global;
+import android.provider.Settings.SettingNotFoundException;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
@@ -478,6 +479,14 @@ public class SubscriptionInfoUpdater extends Handler {
 
                     if (networkType == -1) {
                         networkType = RILConstants.PREFERRED_NETWORK_MODE;
+                        try {
+                            networkType = TelephonyManager.getIntAtIndex(
+                                    mContext.getContentResolver(),
+                                    Settings.Global.PREFERRED_NETWORK_MODE, slotId);
+                        } catch (SettingNotFoundException retrySnfe) {
+                            Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for "
+                                    + "Settings.Global.PREFERRED_NETWORK_MODE");
+                        }
                         Settings.Global.putInt(
                                 mPhone[slotId].getContext().getContentResolver(),
                                 Global.PREFERRED_NETWORK_MODE + subId,
