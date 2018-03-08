@@ -39,6 +39,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
@@ -179,7 +180,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 return (EuiccCard) controller.getUiccCardForSlot(slotId);
             }
         }
-        Log.e(TAG, "EuiccCard is null. CardId : " + cardId);
+        loge("EuiccCard is null. CardId : " + cardId);
         return null;
     }
 
@@ -200,7 +201,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getAllProfiles callback failure.", exception);
             }
             return;
         }
@@ -212,7 +213,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getAllProfiles callback failure.", exception);
                 }
             }
 
@@ -221,7 +222,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getAllProfiles callback failure.", exception);
                 }
             }
         };
@@ -239,7 +240,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getProfile callback failure.", exception);
             }
             return;
         }
@@ -250,7 +251,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(EuiccCardManager.RESULT_OK, result);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("getProfile callback failure.", exception);
                         }
                     }
 
@@ -259,7 +260,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(getResultCode(e), null);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("getProfile callback failure.", exception);
                         }
                     }
                 };
@@ -277,7 +278,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("disableProfile callback failure.", exception);
             }
             return;
         }
@@ -288,7 +289,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("disableProfile callback failure.", exception);
                 }
             }
 
@@ -297,7 +298,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("disableProfile callback failure.", exception);
                 }
             }
         };
@@ -315,7 +316,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("switchToProfile callback failure.", exception);
             }
             return;
         }
@@ -330,7 +331,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(EuiccCardManager.RESULT_OK, profile);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("switchToProfile callback failure.", exception);
                         }
                     }
 
@@ -339,7 +340,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(getResultCode(e), profile);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("switchToProfile callback failure.", exception);
                         }
                     }
                 };
@@ -352,7 +353,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("switchToProfile callback failure.", exception);
                 }
             }
         };
@@ -370,7 +371,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("setNickname callback failure.", exception);
             }
             return;
         }
@@ -381,7 +382,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("setNickname callback failure.", exception);
                 }
             }
 
@@ -390,7 +391,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("setNickname callback failure.", exception);
                 }
             }
         };
@@ -408,7 +409,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("deleteProfile callback failure.", exception);
             }
             return;
         }
@@ -416,19 +417,22 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         AsyncResultCallback<Void> cardCb = new AsyncResultCallback<Void>() {
             @Override
             public void onResult(Void result) {
-                try {
-                    callback.onComplete(EuiccCardManager.RESULT_OK);
-                } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
-                }
-            }
+                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh(
+                        () -> {
+                            try {
+                                callback.onComplete(EuiccCardManager.RESULT_OK);
+                            } catch (RemoteException exception) {
+                                loge("deleteProfile callback failure.", exception);
+                            }
+                        });
+            };
 
             @Override
             public void onException(Throwable e) {
                 try {
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("deleteProfile callback failure.", exception);
                 }
             }
         };
@@ -446,7 +450,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("resetMemory callback failure.", exception);
             }
             return;
         }
@@ -454,11 +458,14 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         AsyncResultCallback<Void> cardCb = new AsyncResultCallback<Void>() {
             @Override
             public void onResult(Void result) {
-                try {
-                    callback.onComplete(EuiccCardManager.RESULT_OK);
-                } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
-                }
+                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh(
+                        () -> {
+                            try {
+                                callback.onComplete(EuiccCardManager.RESULT_OK);
+                            } catch (RemoteException exception) {
+                                loge("resetMemory callback failure.", exception);
+                            }
+                        });
             }
 
             @Override
@@ -466,7 +473,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("resetMemory callback failure.", exception);
                 }
             }
         };
@@ -484,7 +491,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getDefaultSmdpAddress callback failure.", exception);
             }
             return;
         }
@@ -495,7 +502,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getDefaultSmdpAddress callback failure.", exception);
                 }
             }
 
@@ -504,7 +511,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getDefaultSmdpAddress callback failure.", exception);
                 }
             }
         };
@@ -522,7 +529,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getSmdsAddress callback failure.", exception);
             }
             return;
         }
@@ -533,7 +540,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getSmdsAddress callback failure.", exception);
                 }
             }
 
@@ -542,7 +549,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getSmdsAddress callback failure.", exception);
                 }
             }
         };
@@ -560,7 +567,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("setDefaultSmdpAddress callback failure.", exception);
             }
             return;
         }
@@ -571,7 +578,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("setDefaultSmdpAddress callback failure.", exception);
                 }
             }
 
@@ -580,7 +587,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("setDefaultSmdpAddress callback failure.", exception);
                 }
             }
         };
@@ -598,7 +605,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getRulesAuthTable callback failure.", exception);
             }
             return;
         }
@@ -610,7 +617,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getRulesAuthTable callback failure.", exception);
                 }
             }
 
@@ -619,7 +626,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getRulesAuthTable callback failure.", exception);
                 }
             }
         };
@@ -637,7 +644,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getEuiccChallenge callback failure.", exception);
             }
             return;
         }
@@ -648,7 +655,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getEuiccChallenge callback failure.", exception);
                 }
             }
 
@@ -657,7 +664,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getEuiccChallenge callback failure.", exception);
                 }
             }
         };
@@ -675,7 +682,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getEuiccInfo1 callback failure.", exception);
             }
             return;
         }
@@ -686,7 +693,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getEuiccInfo1 callback failure.", exception);
                 }
             }
 
@@ -695,7 +702,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getEuiccInfo1 callback failure.", exception);
                 }
             }
         };
@@ -713,7 +720,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("getEuiccInfo2 callback failure.", exception);
             }
             return;
         }
@@ -724,7 +731,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getEuiccInfo2 callback failure.", exception);
                 }
             }
 
@@ -733,7 +740,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("getEuiccInfo2 callback failure.", exception);
                 }
             }
         };
@@ -752,7 +759,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("authenticateServer callback failure.", exception);
             }
             return;
         }
@@ -763,7 +770,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("authenticateServer callback failure.", exception);
                 }
             }
 
@@ -772,7 +779,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("authenticateServer callback failure.", exception);
                 }
             }
         };
@@ -792,7 +799,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("prepareDownload callback failure.", exception);
             }
             return;
         }
@@ -803,7 +810,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("prepareDownload callback failure.", exception);
                 }
             }
 
@@ -812,7 +819,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("prepareDownload callback failure.", exception);
                 }
             }
         };
@@ -831,7 +838,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("loadBoundProfilePackage callback failure.", exception);
             }
             return;
         }
@@ -839,11 +846,14 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         AsyncResultCallback<byte[]> cardCb = new AsyncResultCallback<byte[]>() {
             @Override
             public void onResult(byte[] result) {
-                try {
-                    callback.onComplete(EuiccCardManager.RESULT_OK, result);
-                } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
-                }
+                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh(
+                        () -> {
+                            try {
+                                callback.onComplete(EuiccCardManager.RESULT_OK, result);
+                            } catch (RemoteException exception) {
+                                loge("loadBoundProfilePackage callback failure.", exception);
+                            }
+                        });
             }
 
             @Override
@@ -851,7 +861,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("loadBoundProfilePackage callback failure.", exception);
                 }
             }
         };
@@ -869,7 +879,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("cancelSession callback failure.", exception);
             }
             return;
         }
@@ -880,7 +890,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("cancelSession callback failure.", exception);
                 }
             }
 
@@ -889,7 +899,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("cancelSession callback failure.", exception);
                 }
             }
         };
@@ -907,7 +917,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("listNotifications callback failure.", exception);
             }
             return;
         }
@@ -919,7 +929,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("listNotifications callback failure.", exception);
                 }
             }
 
@@ -928,7 +938,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                 try {
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
-                    throw exception.rethrowFromSystemServer();
+                    loge("listNotifications callback failure.", exception);
                 }
             }
         };
@@ -946,7 +956,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("retrieveNotificationList callback failure.", exception);
             }
             return;
         }
@@ -958,7 +968,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(EuiccCardManager.RESULT_OK, result);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("retrieveNotificationList callback failure.", exception);
                         }
                     }
 
@@ -967,7 +977,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(getResultCode(e), null);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("retrieveNotificationList callback failure.", exception);
                         }
                     }
                 };
@@ -985,7 +995,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("retrieveNotification callback failure.", exception);
             }
             return;
         }
@@ -997,7 +1007,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(EuiccCardManager.RESULT_OK, result);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("retrieveNotification callback failure.", exception);
                         }
                     }
 
@@ -1006,7 +1016,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(getResultCode(e), null);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("retrieveNotification callback failure.", exception);
                         }
                     }
                 };
@@ -1024,7 +1034,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
-                throw exception.rethrowFromSystemServer();
+                loge("removeNotificationFromList callback failure.", exception);
             }
             return;
         }
@@ -1035,7 +1045,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(EuiccCardManager.RESULT_OK);
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("removeNotificationFromList callback failure.", exception);
                         }
 
                     }
@@ -1045,7 +1055,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                         try {
                             callback.onComplete(getResultCode(e));
                         } catch (RemoteException exception) {
-                            throw exception.rethrowFromSystemServer();
+                            loge("removeNotificationFromList callback failure.", exception);
                         }
                     }
                 };
@@ -1064,5 +1074,13 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         pw.println("mBestComponent=" + mBestComponent);
 
         Binder.restoreCallingIdentity(token);
+    }
+
+    private static void loge(String message) {
+        Log.e(TAG, message);
+    }
+
+    private static void loge(String message, Throwable tr) {
+        Log.e(TAG, message, tr);
     }
 }
