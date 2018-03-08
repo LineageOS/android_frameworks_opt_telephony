@@ -26,7 +26,7 @@ import android.os.RegistrantList;
 import android.os.storage.StorageManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
-import android.text.format.Time;
+import android.util.LocalLog;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
@@ -38,7 +38,6 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
 
 /**
@@ -123,14 +122,13 @@ public class UiccController extends Handler {
     private UiccStateChangedLauncher mLauncher;
     private RadioConfig mRadioConfig;
 
-    // Logging for dumpsys. Useful in cases when the cards run into errors.
-    private static final int MAX_PROACTIVE_COMMANDS_TO_LOG = 20;
-    private LinkedList<String> mCardLogs = new LinkedList<String>();
+    // LocalLog buffer to hold important SIM related events for debugging
+    static LocalLog sLocalLog = new LocalLog(100);
 
     public static UiccController make(Context c, CommandsInterface[] ci) {
         synchronized (mLock) {
             if (mInstance != null) {
-                throw new RuntimeException("MSimUiccController.make() should only be called once");
+                throw new RuntimeException("UiccController.make() should only be called once");
             }
             mInstance = new UiccController(c, ci);
             return mInstance;
@@ -141,9 +139,11 @@ public class UiccController extends Handler {
         if (DBG) log("Creating UiccController");
         mContext = c;
         mCis = ci;
-        if (VDBG) {
-            log("config_num_physical_slots = " + c.getResources().getInteger(
-                    com.android.internal.R.integer.config_num_physical_slots));
+        if (DBG) {
+            String logStr = "config_num_physical_slots = " + c.getResources().getInteger(
+                    com.android.internal.R.integer.config_num_physical_slots);
+            log(logStr);
+            sLocalLog.log(logStr);
         }
         int numPhysicalSlots = c.getResources().getInteger(
                 com.android.internal.R.integer.config_num_physical_slots);
@@ -369,6 +369,8 @@ public class UiccController extends Handler {
                 return;
             }
 
+            sLocalLog.log("handleMessage: Received " + msg.what + " for phoneId " + phoneId);
+
             AsyncResult ar = (AsyncResult)msg.obj;
             switch (msg.what) {
                 case EVENT_ICC_STATUS_CHANGED:
@@ -471,6 +473,8 @@ public class UiccController extends Handler {
 
         IccCardStatus status = (IccCardStatus)ar.result;
 
+        sLocalLog.log("onGetIccCardStatusDone: phoneId " + index + " IccCardStatus: " + status);
+
         int slotId = status.physicalSlotIndex;
         if (VDBG) log("onGetIccCardStatusDone: phoneId " + index + " physicalSlotIndex " + slotId);
         if (slotId == INVALID_SLOT_ID) {
@@ -501,15 +505,20 @@ public class UiccController extends Handler {
         }
         Throwable e = ar.exception;
         if (e != null) {
+            String logStr;
             if (!(e instanceof CommandException) || ((CommandException) e).getCommandError()
                     != CommandException.Error.REQUEST_NOT_SUPPORTED) {
                 // this is not expected; there should be no exception other than
                 // REQUEST_NOT_SUPPORTED
-                Rlog.e(LOG_TAG, "Unexpected error getting slot status: " + ar.exception);
+                logStr = "Unexpected error getting slot status: " + ar.exception;
+                Rlog.e(LOG_TAG, logStr);
+                sLocalLog.log(logStr);
             } else {
                 // REQUEST_NOT_SUPPORTED
-                log("onGetSlotStatusDone: request not supported; marking mIsSlotStatusSupported "
-                        + "to false");
+                logStr = "onGetSlotStatusDone: request not supported; marking "
+                        + "mIsSlotStatusSupported to false";
+                log(logStr);
+                sLocalLog.log(logStr);
                 mIsSlotStatusSupported = false;
             }
             return;
@@ -521,6 +530,8 @@ public class UiccController extends Handler {
             log("onGetSlotStatusDone: No change in slot status");
             return;
         }
+
+        sLastSlotStatus = status;
 
         int numActiveSlots = 0;
         for (int i = 0; i < status.size(); i++) {
@@ -587,22 +598,10 @@ public class UiccController extends Handler {
             log("    phoneId " + i + " slotId " + mPhoneIdToSlotId[i]);
         }
     }
-    /**
-     * Slots are initialized when none of them are null.
-     * todo: is this even needed?
-     */
-    private synchronized boolean areSlotsInitialized() {
-        for (UiccSlot slot : mUiccSlots) {
-            if (slot == null) {
-                return false;
-            }
-        }
-        return true;
-    }
 
     private void onSimRefresh(AsyncResult ar, Integer index) {
         if (ar.exception != null) {
-            Rlog.e(LOG_TAG, "Sim REFRESH with exception: " + ar.exception);
+            Rlog.e(LOG_TAG, "onSimRefresh: Sim REFRESH with exception: " + ar.exception);
             return;
         }
 
@@ -613,6 +612,7 @@ public class UiccController extends Handler {
 
         IccRefreshResponse resp = (IccRefreshResponse) ar.result;
         log("onSimRefresh: " + resp);
+        sLocalLog.log("onSimRefresh: " + resp);
 
         if (resp == null) {
             Rlog.e(LOG_TAG, "onSimRefresh: received without input");
@@ -625,7 +625,6 @@ public class UiccController extends Handler {
             return;
         }
 
-        log("Handling refresh: " + resp);
         boolean changed = false;
         switch(resp.refreshResult) {
             case IccRefreshResponse.REFRESH_RESULT_RESET:
@@ -662,14 +661,8 @@ public class UiccController extends Handler {
         Rlog.d(LOG_TAG, string);
     }
 
-    // TODO: This is hacky. We need a better way of saving the logs.
     public void addCardLog(String data) {
-        Time t = new Time();
-        t.setToNow();
-        mCardLogs.addLast(t.format("%m-%d %H:%M:%S") + " " + data);
-        if (mCardLogs.size() > MAX_PROACTIVE_COMMANDS_TO_LOG) {
-            mCardLogs.removeFirst();
-        }
+        sLocalLog.log(data);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -692,9 +685,7 @@ public class UiccController extends Handler {
                 mUiccSlots[i].dump(fd, pw, args);
             }
         }
-        pw.println("mCardLogs: ");
-        for (int i = 0; i < mCardLogs.size(); ++i) {
-            pw.println("  " + mCardLogs.get(i));
-        }
+        pw.println(" sLocalLog= ");
+        sLocalLog.dump(fd, pw, args);
     }
 }
