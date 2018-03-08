@@ -176,7 +176,7 @@ public class SmsDispatchersController extends Handler {
     }
 
     /**
-     * Inject an SMS PDU into the android platform.
+     * Inject an SMS PDU into the android platform only if it is class 1.
      *
      * @param pdu is the byte array of pdu to be injected into android telephony layer
      * @param format is the format of SMS pdu (3gpp or 3gpp2)
@@ -186,6 +186,22 @@ public class SmsDispatchersController extends Handler {
      */
     @VisibleForTesting
     public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback) {
+        injectSmsPdu(pdu, format, callback, false /* ignoreClass */);
+    }
+
+    /**
+     * Inject an SMS PDU into the android platform.
+     *
+     * @param pdu is the byte array of pdu to be injected into android telephony layer
+     * @param format is the format of SMS pdu (3gpp or 3gpp2)
+     * @param callback if not NULL this callback is triggered when the message is successfully
+     *                 received by the android telephony layer. This callback is triggered at
+     *                 the same time an SMS received from radio is responded back.
+     * @param ignoreClass if set to false, this method will inject class 1 sms only.
+     */
+    @VisibleForTesting
+    public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback,
+            boolean ignoreClass) {
         Rlog.d(TAG, "SmsDispatchersController:injectSmsPdu");
         try {
             // TODO We need to decide whether we should allow injecting GSM(3gpp)
@@ -193,12 +209,15 @@ public class SmsDispatchersController extends Handler {
             android.telephony.SmsMessage msg =
                     android.telephony.SmsMessage.createFromPdu(pdu, format);
 
-            // Only class 1 SMS are allowed to be injected.
-            if (msg == null
-                    || msg.getMessageClass() != android.telephony.SmsMessage.MessageClass.CLASS_1) {
-                if (msg == null) {
-                    Rlog.e(TAG, "injectSmsPdu: createFromPdu returned null");
-                }
+            if (msg == null) {
+                Rlog.e(TAG, "injectSmsPdu: createFromPdu returned null");
+                callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
+                return;
+            }
+
+            if (!ignoreClass
+                    && msg.getMessageClass() != android.telephony.SmsMessage.MessageClass.CLASS_1) {
+                Rlog.e(TAG, "injectSmsPdu: not class 1");
                 callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
                 return;
             }
