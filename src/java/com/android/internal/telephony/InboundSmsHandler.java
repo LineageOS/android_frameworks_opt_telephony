@@ -762,7 +762,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (messageCount == 1) {
             // single-part message
             pdus = new byte[][]{tracker.getPdu()};
-            block = BlockChecker.isBlocked(mContext, tracker.getDisplayAddress());
+            block = BlockChecker.isBlocked(mContext, tracker.getDisplayAddress(), null);
         } else {
             // multi-part message
             Cursor cursor = null;
@@ -819,7 +819,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                         // could be used for block checking purpose.
                         block = BlockChecker.isBlocked(mContext,
                                 cursor.getString(PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING
-                                        .get(DISPLAY_ADDRESS_COLUMN)));
+                                        .get(DISPLAY_ADDRESS_COLUMN)), null);
                     }
                 }
             } catch (SQLException e) {
