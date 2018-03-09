@@ -306,4 +306,44 @@ public class ServiceStateTest extends TestCase {
         assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WWAN,
                 NetworkRegistrationState.DOMAIN_PS), wwanDataRegState);
     }
+
+    @SmallTest
+    public void testDuplexMode_notLte() {
+        ServiceState ss = new ServiceState();
+        ss.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_GSM);
+        ss.setChannelNumber(2400);
+
+        assertEquals(ss.getDuplexMode(), ServiceState.DUPLEX_MODE_UNKNOWN);
+    }
+
+    @SmallTest
+    public void testDuplexMode_invalidEarfcn() {
+        ServiceState ss = new ServiceState();
+        ss.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        ss.setChannelNumber(-1);
+
+        assertEquals(ss.getDuplexMode(), ServiceState.DUPLEX_MODE_UNKNOWN);
+
+        ss.setChannelNumber(Integer.MAX_VALUE);
+
+        assertEquals(ss.getDuplexMode(), ServiceState.DUPLEX_MODE_UNKNOWN);
+    }
+
+    @SmallTest
+    public void testDuplexMode_FddChannel() {
+        ServiceState ss = new ServiceState();
+        ss.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        ss.setChannelNumber(2400); // band 5
+
+        assertEquals(ss.getDuplexMode(), ServiceState.DUPLEX_MODE_FDD);
+    }
+
+    @SmallTest
+    public void testDuplexMode_TddChannel() {
+        ServiceState ss = new ServiceState();
+        ss.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        ss.setChannelNumber(36000); // band 33
+
+        assertEquals(ss.getDuplexMode(), ServiceState.DUPLEX_MODE_TDD);
+    }
 }

@@ -50,6 +50,8 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
         assertEquals(LAC, ci.getLac());
         assertEquals(CID, ci.getCid());
         assertEquals(PSC, ci.getPsc());
+        assertEquals(UARFCN, ci.getUarfcn());
+        assertEquals(UARFCN, ci.getChannelNumber());
         assertEquals(MCC, ci.getMcc());
         assertEquals(MNC, ci.getMnc());
         assertEquals(MCC_STR, ci.getMccString());

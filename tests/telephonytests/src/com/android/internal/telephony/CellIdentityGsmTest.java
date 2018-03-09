@@ -51,6 +51,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         assertEquals(LAC, ci.getLac());
         assertEquals(CID, ci.getCid());
         assertEquals(ARFCN, ci.getArfcn());
+        assertEquals(ARFCN, ci.getChannelNumber());
         assertEquals(BSIC, ci.getBsic());
         assertEquals(MCC, ci.getMcc());
         assertEquals(MNC, ci.getMnc());
