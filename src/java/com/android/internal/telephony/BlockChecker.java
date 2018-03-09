@@ -17,6 +17,23 @@ public class BlockChecker {
      * <p>
      * This method catches all underlying exceptions to ensure that this method never throws any
      * exception.
+     * <p>
+     * @deprecated use {@link #isBlocked(Context, String, Bundle)} instead.
+     *
+     * @param context the context of the caller.
+     * @param phoneNumber the number to check.
+     * @return {@code true} if the number is blocked. {@code false} otherwise.
+     */
+    @Deprecated
+    public static boolean isBlocked(Context context, String phoneNumber) {
+        return isBlocked(context, phoneNumber, null /* extras */);
+    }
+
+    /**
+     * Returns {@code true} if {@code phoneNumber} is blocked according to {@code extras}.
+     * <p>
+     * This method catches all underlying exceptions to ensure that this method never throws any
+     * exception.
      *
      * @param context the context of the caller.
      * @param phoneNumber the number to check.
