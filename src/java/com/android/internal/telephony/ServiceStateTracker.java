@@ -2244,11 +2244,7 @@ public class ServiceStateTracker extends Handler {
                 showSpn = false;
             }
 
-            int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-            int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
-            if (subIds != null && subIds.length > 0) {
-                subId = subIds[0];
-            }
+            int subId = mPhone.getSubId();
 
             // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
             if (mSubId != subId ||
@@ -2290,11 +2286,7 @@ public class ServiceStateTracker extends Handler {
 
             showPlmn = plmn != null;
 
-            int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-            int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
-            if (subIds != null && subIds.length > 0) {
-                subId = subIds[0];
-            }
+            int subId = mPhone.getSubId();
 
             if (!TextUtils.isEmpty(plmn) && !TextUtils.isEmpty(wfcVoiceSpnFormat)) {
                 // In Wi-Fi Calling mode show SPN+WiFi
