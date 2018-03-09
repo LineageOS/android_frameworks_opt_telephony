@@ -628,8 +628,6 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         //check if the inserted SIM is new SIM
-        int nNewCardCount = 0;
-        int nNewSimStatus = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             if (mInsertSimState[i] == SIM_NOT_INSERT) {
                 logd("updateSubscriptionInfoByIccId: No SIM inserted in slot " + i + " this time");
@@ -644,22 +642,6 @@ public class SubscriptionInfoUpdater extends Handler {
                     mSubscriptionManager.addSubscriptionInfoRecord(mIccId[i], i);
                 }
                 if (isNewSim(mIccId[i], decIccId[i], oldIccId)) {
-                    nNewCardCount++;
-                    switch (i) {
-                        case PhoneConstants.SUB1:
-                            nNewSimStatus |= STATUS_SIM1_INSERTED;
-                            break;
-                        case PhoneConstants.SUB2:
-                            nNewSimStatus |= STATUS_SIM2_INSERTED;
-                            break;
-                        case PhoneConstants.SUB3:
-                            nNewSimStatus |= STATUS_SIM3_INSERTED;
-                            break;
-                        //case PhoneConstants.SUB3:
-                        //    nNewSimStatus |= STATUS_SIM4_INSERTED;
-                        //    break;
-                    }
-
                     mInsertSimState[i] = SIM_NEW;
                 }
             }
