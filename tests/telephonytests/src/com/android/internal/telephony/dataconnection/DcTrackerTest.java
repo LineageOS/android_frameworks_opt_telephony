@@ -1085,6 +1085,37 @@ public class DcTrackerTest extends TelephonyTest {
                 any(Message.class));
     }
 
+    // Test the restricted data request when roaming is disabled.
+    @Test
+    @SmallTest
+    public void testTrySetupRestrictedRoamingDisabled() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        doReturn(false).when(mApnContext).hasNoRestrictedRequests(eq(true));
+
+        mDct.setUserDataEnabled(true);
+        mDct.setDataRoamingEnabledByUser(false);
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+        //user is in roaming
+        doReturn(true).when(mServiceState).getDataRoaming();
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        // expect no restricted data connection
+        verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(anyInt(), any(DataProfile.class),
+                eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                any(Message.class));
+    }
+
     // Test the default data when data is not connectable.
     @Test
     @SmallTest
