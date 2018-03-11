@@ -24,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.isA;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,7 +32,7 @@ import static org.mockito.Mockito.verify;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.test.suitebuilder.annotation.SmallTest;
+import android.support.test.filters.SmallTest;
 
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.TelephonyTest;
@@ -428,5 +429,29 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded since there is no applications.
         assertEquals(State.NOT_READY, mUiccProfile.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateExternalState() {
+        // IO_ERROR
+        doReturn(IccCardStatus.CardState.CARDSTATE_ERROR).when(mUiccCard).getCardState();
+        mUiccProfile.updateExternalState();
+        assertEquals(State.CARD_IO_ERROR, mUiccProfile.getState());
+
+        // RESTRICTED
+        doReturn(IccCardStatus.CardState.CARDSTATE_RESTRICTED).when(mUiccCard).getCardState();
+        mUiccProfile.updateExternalState();
+        assertEquals(State.CARD_RESTRICTED, mUiccProfile.getState());
+
+        // CARD PRESENT; no mUiccApplication - state should be NOT_READY
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccCard).getCardState();
+        mUiccProfile.updateExternalState();
+        assertEquals(State.NOT_READY, mUiccProfile.getState());
+
+        // set mUiccApplication
+        testUpdateUiccProfileApplicationAllReady();
+        mUiccProfile.updateExternalState();
+        assertEquals(State.LOADED, mUiccProfile.getState());
     }
 }
