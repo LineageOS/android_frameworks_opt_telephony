@@ -1337,11 +1337,11 @@ public class DcTracker extends Handler {
             reasons.add(DataAllowedReasonType.UNMETERED_APN);
         }
 
-        // If the request is restricted and there are only soft disallowed reasons (e.g. data
-        // disabled, data roaming disabled) existing, we should allow the data.
+        // If the request is restricted and there are only disallowed reasons due to data
+        // disabled, we should allow the data.
         if (apnContext != null
                 && !apnContext.hasNoRestrictedRequests(true)
-                && !reasons.allowed()) {
+                && reasons.contains(DataDisallowedReasonType.DATA_DISABLED)) {
             reasons.add(DataAllowedReasonType.RESTRICTED_REQUEST);
         }
 
