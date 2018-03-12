@@ -60,15 +60,15 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getDeviceIdForPhone(int phoneId, String callingPackage) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                mContext, callingPackage, "getDeviceId")) {
-            return null;
-        }
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             phoneId = 0;
         }
         final Phone phone = mPhone[phoneId];
         if (phone != null) {
+            if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                    mContext, phone.getSubId(), callingPackage, "getDeviceId")) {
+                return null;
+            }
             return phone.getDeviceId();
         } else {
             loge("getDeviceIdForPhone phone " + phoneId + " is null");
@@ -80,7 +80,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getNai")) {
+                    mContext, subId, callingPackage, "getNai")) {
                 return null;
             }
             return phone.getNai();
@@ -94,7 +94,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getImei")) {
+                    mContext, subId, callingPackage, "getImei")) {
                 return null;
             }
             return phone.getImei();
@@ -109,7 +109,8 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getCarrierInfoForImsiEncryption")) {
+                    mContext, subId, callingPackage,
+                    "getCarrierInfoForImsiEncryption")) {
                 return null;
             }
             return phone.getCarrierInfoForImsiEncryption(keyType);
@@ -159,7 +160,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getDeviceSvn")) {
+                    mContext, subId, callingPackage, "getDeviceSvn")) {
                 return null;
             }
             return phone.getDeviceSvn();
@@ -177,7 +178,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getSubscriberId")) {
+                    mContext, subId, callingPackage, "getSubscriberId")) {
                 return null;
             }
             return phone.getSubscriberId();
@@ -198,7 +199,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getIccSerialNumber")) {
+                    mContext, subId, callingPackage, "getIccSerialNumber")) {
                 return null;
             }
             return phone.getIccSerialNumber();
@@ -217,7 +218,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         if (phone != null) {
             // This is open to apps with WRITE_SMS.
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneNumber(
-                    mContext, callingPackage, "getLine1Number")) {
+                    mContext, subId, callingPackage, "getLine1Number")) {
                 return null;
             }
             return phone.getLine1Number();
@@ -235,7 +236,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getLine1AlphaTag")) {
+                    mContext, subId, callingPackage, "getLine1AlphaTag")) {
                 return null;
             }
             return phone.getLine1AlphaTag();
@@ -253,7 +254,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getMsisdn")) {
+                    mContext, subId, callingPackage, "getMsisdn")) {
                 return null;
             }
             return phone.getMsisdn();
@@ -271,7 +272,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getVoiceMailNumber")) {
+                    mContext, subId, callingPackage, "getVoiceMailNumber")) {
                 return null;
             }
             String number = PhoneNumberUtils.extractNetworkPortion(phone.getVoiceMailNumber());
@@ -309,7 +310,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getVoiceMailAlphaTag")) {
+                    mContext, subId, callingPackage, "getVoiceMailAlphaTag")) {
                 return null;
             }
             return phone.getVoiceMailAlphaTag();
@@ -498,7 +499,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Phone phone = getPhone(subId);
         if (phone != null) {
             if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, callingPackage, "getGroupIdLevel1")) {
+                    mContext, subId, callingPackage, "getGroupIdLevel1")) {
                 return null;
             }
             return phone.getGroupIdLevel1();

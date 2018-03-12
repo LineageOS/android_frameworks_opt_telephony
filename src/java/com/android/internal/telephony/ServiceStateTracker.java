@@ -1765,6 +1765,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setRilVoiceRadioTechnology(newVoiceRat);
                 mNewSS.addNetworkRegistrationState(networkRegState);
+                setChannelNumberFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 //Denial reason if registrationState = 3
                 int reasonForDenial = networkRegState.getReasonForDenial();
@@ -1840,6 +1841,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setDataRegState(serviceState);
                 mNewSS.setRilDataRadioTechnology(newDataRat);
                 mNewSS.addNetworkRegistrationState(networkRegState);
+                setChannelNumberFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 if (mPhone.isPhoneTypeGsm()) {
 
@@ -1975,6 +1977,20 @@ public class ServiceStateTracker extends Handler {
 
             default:
                 loge("handlePollStateResultMessage: Unexpected RIL response received: " + what);
+        }
+    }
+
+    private void setChannelNumberFromCellIdentity(ServiceState ss, CellIdentity cellIdentity) {
+        if (cellIdentity == null) {
+            if (DBG) {
+                log("Could not set ServiceState channel number. CellIdentity null");
+            }
+            return;
+        }
+
+        ss.setChannelNumber(cellIdentity.getChannelNumber());
+        if (VDBG) {
+            log("Setting channel number: " + cellIdentity.getChannelNumber());
         }
     }
 
@@ -2244,11 +2260,7 @@ public class ServiceStateTracker extends Handler {
                 showSpn = false;
             }
 
-            int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-            int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
-            if (subIds != null && subIds.length > 0) {
-                subId = subIds[0];
-            }
+            int subId = mPhone.getSubId();
 
             // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
             if (mSubId != subId ||
@@ -2290,11 +2302,7 @@ public class ServiceStateTracker extends Handler {
 
             showPlmn = plmn != null;
 
-            int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-            int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
-            if (subIds != null && subIds.length > 0) {
-                subId = subIds[0];
-            }
+            int subId = mPhone.getSubId();
 
             if (!TextUtils.isEmpty(plmn) && !TextUtils.isEmpty(wfcVoiceSpnFormat)) {
                 // In Wi-Fi Calling mode show SPN+WiFi

@@ -38,6 +38,7 @@ import android.os.ServiceManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.Global;
+import android.provider.Settings.SettingNotFoundException;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
@@ -464,6 +465,14 @@ public class SubscriptionInfoUpdater extends Handler {
 
                     if (networkType == -1) {
                         networkType = RILConstants.PREFERRED_NETWORK_MODE;
+                        try {
+                            networkType = TelephonyManager.getIntAtIndex(
+                                    mContext.getContentResolver(),
+                                    Settings.Global.PREFERRED_NETWORK_MODE, slotId);
+                        } catch (SettingNotFoundException retrySnfe) {
+                            Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for "
+                                    + "Settings.Global.PREFERRED_NETWORK_MODE");
+                        }
                         Settings.Global.putInt(
                                 mPhone[slotId].getContext().getContentResolver(),
                                 Global.PREFERRED_NETWORK_MODE + subId,
@@ -580,9 +589,8 @@ public class SubscriptionInfoUpdater extends Handler {
         String[] decIccId = new String[PROJECT_SIM_NUM];
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             oldIccId[i] = null;
-            List<SubscriptionInfo> oldSubInfo =
-                    SubscriptionController.getInstance().getSubInfoUsingSlotIndexWithCheck(i, false,
-                    mContext.getOpPackageName());
+            List<SubscriptionInfo> oldSubInfo = SubscriptionController.getInstance()
+                    .getSubInfoUsingSlotIndexPrivileged(i, false);
             decIccId[i] = IccUtils.getDecimalSubstring(mIccId[i]);
             if (oldSubInfo != null && oldSubInfo.size() > 0) {
                 oldIccId[i] = oldSubInfo.get(0).getIccId();
@@ -619,8 +627,6 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         //check if the inserted SIM is new SIM
-        int nNewCardCount = 0;
-        int nNewSimStatus = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             if (mInsertSimState[i] == SIM_NOT_INSERT) {
                 logd("updateSubscriptionInfoByIccId: No SIM inserted in slot " + i + " this time");
@@ -635,22 +641,6 @@ public class SubscriptionInfoUpdater extends Handler {
                     mSubscriptionManager.addSubscriptionInfoRecord(mIccId[i], i);
                 }
                 if (isNewSim(mIccId[i], decIccId[i], oldIccId)) {
-                    nNewCardCount++;
-                    switch (i) {
-                        case PhoneConstants.SUB1:
-                            nNewSimStatus |= STATUS_SIM1_INSERTED;
-                            break;
-                        case PhoneConstants.SUB2:
-                            nNewSimStatus |= STATUS_SIM2_INSERTED;
-                            break;
-                        case PhoneConstants.SUB3:
-                            nNewSimStatus |= STATUS_SIM3_INSERTED;
-                            break;
-                        //case PhoneConstants.SUB3:
-                        //    nNewSimStatus |= STATUS_SIM4_INSERTED;
-                        //    break;
-                    }
-
                     mInsertSimState[i] = SIM_NEW;
                 }
             }
