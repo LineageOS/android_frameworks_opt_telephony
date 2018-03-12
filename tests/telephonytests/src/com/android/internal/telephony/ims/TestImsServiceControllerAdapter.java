@@ -71,11 +71,6 @@ public class TestImsServiceControllerAdapter {
         }
 
         @Override
-        public void notifyImsFeatureReady(int slotId, int featureType)
-                throws RemoteException {
-        }
-
-        @Override
         public IImsConfig getConfig(int slotId) throws RemoteException {
             return new ImsConfigImplBase().getIImsConfig();
         }
