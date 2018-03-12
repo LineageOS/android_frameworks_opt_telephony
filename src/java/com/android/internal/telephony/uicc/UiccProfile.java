@@ -49,6 +49,7 @@ import android.util.LocalLog;
 import android.view.WindowManager;
 
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
@@ -316,7 +317,11 @@ public class UiccProfile extends Handler implements IccCard {
         }
     }
 
-    private void updateExternalState() {
+    /**
+     * Update the external SIM state
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void updateExternalState() {
         // First check if card state is IO_ERROR or RESTRICTED
         if (mUiccCard.getCardState() == IccCardStatus.CardState.CARDSTATE_ERROR) {
             setExternalState(IccCardConstants.State.CARD_IO_ERROR);
