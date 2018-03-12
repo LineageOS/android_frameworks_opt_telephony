@@ -105,7 +105,7 @@ import java.util.regex.Pattern;
 /**
  * {@hide}
  */
-public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
+public class ImsPhoneCallTracker extends AbstractImsPhoneCallTracker implements ImsPullCall {
     static final String LOG_TAG = "ImsPhoneCallTracker";
     static final String VERBOSE_STATE_TAG = "IPCTState";
 

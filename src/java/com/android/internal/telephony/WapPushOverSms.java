@@ -66,7 +66,7 @@ import com.google.android.mms.pdu.ReadOrigInd;
  *
  * @hide
  */
-public class WapPushOverSms implements ServiceConnection {
+public class WapPushOverSms extends AbstractWapPushOverSms implements ServiceConnection {
     private static final String TAG = "WAP PUSH";
     private static final boolean DBG = false;
 

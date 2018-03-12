@@ -22,7 +22,7 @@ import android.graphics.Bitmap;
  * Container class for proactive command parameters.
  *
  */
-class CommandParams {
+public class CommandParams {
     CommandDetails mCmdDet;
     // Variable to track if an optional icon load has failed.
     boolean mLoadIconFailed = false;

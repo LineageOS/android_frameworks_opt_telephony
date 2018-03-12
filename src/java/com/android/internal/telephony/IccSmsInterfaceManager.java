@@ -59,7 +59,7 @@ import java.util.List;
  * IccSmsInterfaceManager to provide an inter-process communication to
  * access Sms in Icc.
  */
-public class IccSmsInterfaceManager {
+public class IccSmsInterfaceManager extends AbstractIccSmsInterfaceManager {
     static final String LOG_TAG = "IccSmsInterfaceManager";
     static final boolean DBG = true;
 

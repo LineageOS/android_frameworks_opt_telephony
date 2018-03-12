@@ -62,7 +62,7 @@ import java.util.List;
 /**
  * {@hide}
  */
-public class UiccCard {
+public class UiccCard extends AbstractUiccCard {
     protected static final String LOG_TAG = "UiccCard";
     protected static final boolean DBG = true;
 

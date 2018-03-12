@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * {@hide}
  */
-public abstract class IccRecords extends Handler implements IccConstants {
+public abstract class IccRecords extends AbstractIccRecords implements IccConstants {
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false; // STOPSHIP if true
 
@@ -830,5 +830,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
             pw.println(" mFakeSpn=" + ((mFakeSpn != null) ? mFakeSpn : "null"));
         }
         pw.flush();
+    }
+
+    public String getCdmaGsmImsi() {
+        return null;
+    }
+
+    public void disableRequestIccRecords() {
+        this.mRecordsRequested = false;
     }
 }

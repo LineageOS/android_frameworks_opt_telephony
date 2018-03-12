@@ -96,7 +96,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  */
 
-public abstract class Phone extends Handler implements PhoneInternalInterface {
+public abstract class Phone extends AbstractPhoneBase implements PhoneInternalInterface {
     private static final String LOG_TAG = "Phone";
 
     protected final static Object lockForRadioTechnologyChange = new Object();
@@ -3711,5 +3711,46 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
         }
+    }
+
+    public String getCdmaGsmImsi() {
+        IccRecords r = (IccRecords) this.mIccRecords.get();
+        if (r != null) {
+            return r.getCdmaGsmImsi();
+        }
+        return null;
+    }
+
+    public int getUiccCardType() {
+        AppType at = getCurrentUiccAppType();
+        Rlog.d(this.LOG_TAG, "at = " + at);
+        switch (at) {
+            case APPTYPE_CSIM:
+            case APPTYPE_ISIM:
+            case APPTYPE_USIM:
+                return 2;
+            case APPTYPE_RUIM:
+            case APPTYPE_SIM:
+                return 1;
+            default:
+                return 0;
+        }
+    }
+
+    public String getCdmaMlplVersion() {
+        return null;
+    }
+
+    public String getCdmaMsplVersion() {
+        return null;
+    }
+
+    public void testVoiceLoopBack(int mode) {
+    }
+
+    public void registerForCdmaWaitingNumberChanged(Handler h, int what, Object obj) {
+    }
+
+    public void unregisterForCdmaWaitingNumberChanged(Handler h) {
     }
 }

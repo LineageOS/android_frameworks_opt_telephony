@@ -81,7 +81,7 @@ import java.util.stream.Collectors;
  * getSubInfoForSubscriber(INVALID_SUBSCRIPTION_ID) will return null.
  *
  */
-public class SubscriptionController extends ISub.Stub {
+public class SubscriptionController extends AbstractSubscriptionController {
     static final String LOG_TAG = "SubscriptionController";
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false;

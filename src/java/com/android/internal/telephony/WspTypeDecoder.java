@@ -23,7 +23,7 @@ import java.util.HashMap;
  *
  * @hide
  */
-public class WspTypeDecoder {
+public class WspTypeDecoder extends AbstractWspTypeDecoder {
 
     private static final int WAP_PDU_SHORT_LENGTH_MAX = 30;
     private static final int WAP_PDU_LENGTH_QUOTE = 31;

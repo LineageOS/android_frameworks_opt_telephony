@@ -22,6 +22,7 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 
+import com.android.internal.telephony.AbstractBaseCommands;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.UUSInfo;
@@ -31,7 +32,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 import java.util.List;
 
-public class SimulatedCommandsVerifier implements CommandsInterface {
+public class SimulatedCommandsVerifier extends AbstractBaseCommands implements CommandsInterface {
     private static SimulatedCommandsVerifier sInstance;
 
     private SimulatedCommandsVerifier() {

@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.LocalServerSocket;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.ServiceManager;
 import android.preference.PreferenceManager;
@@ -531,5 +532,42 @@ public class PhoneFactory {
         }
         pw.flush();
         pw.decreaseIndent();
+    }
+
+/*
+    public static int getTopPrioritySubscriptionId() {
+        if (sPhoneSwitcher != null) {
+            return sPhoneSwitcher.getTopPrioritySubscriptionId();
+        }
+        return SubscriptionManager.getDefaultDataSubscriptionId();
+    }
+
+    public static int onDataSubChange(int what, Handler handler) {
+        if (sPhoneSwitcher != null) {
+            return sPhoneSwitcher.onDataSubChange(what, handler);
+        }
+        return 0;
+    }
+*/
+
+    public static void resendDataAllowed(int phoneId) {
+        if (sPhoneSwitcher != null) {
+            sPhoneSwitcher.resendDataAllowed(phoneId);
+        }
+    }
+
+    public static TelephonyNetworkFactory getTelephonyNetworkFactory(int phoneId) {
+        if (sTelephonyNetworkFactories != null) {
+            return sTelephonyNetworkFactories[phoneId];
+        }
+        return null;
+    }
+
+    public static boolean getInitState() {
+        boolean z;
+        synchronized (sLockProxyPhones) {
+            z = sMadeDefaults;
+        }
+        return z;
     }
 }

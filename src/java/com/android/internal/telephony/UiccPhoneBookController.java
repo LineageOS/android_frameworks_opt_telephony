@@ -29,7 +29,7 @@ import java.lang.ArrayIndexOutOfBoundsException;
 import java.lang.NullPointerException;
 import java.util.List;
 
-public class UiccPhoneBookController extends IIccPhoneBook.Stub {
+public class UiccPhoneBookController extends AbstractUiccPhoneBookController {
     private static final String TAG = "UiccPhoneBookController";
     private Phone[] mPhone;
 

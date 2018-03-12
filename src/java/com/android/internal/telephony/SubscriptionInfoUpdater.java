@@ -66,7 +66,7 @@ import java.util.List;
 /**
  *@hide
  */
-public class SubscriptionInfoUpdater extends Handler {
+public class SubscriptionInfoUpdater extends AbstractSubscriptionInfoUpdater {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
 
