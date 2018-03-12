@@ -2188,4 +2188,12 @@ public class SIMRecords extends IccRecords {
         pw.println(" mEhplmns[]=" + Arrays.toString(mEhplmns));
         pw.flush();
     }
+
+    public int getSlotId() {
+        if (this.mParentApp != null && this.mParentApp.getUiccCard() != null) {
+            return this.mParentApp.getUiccCard().getPhoneId();
+        }
+        log("error , mParentApp.getUiccCard  is null");
+        return 0;
+    }
 }

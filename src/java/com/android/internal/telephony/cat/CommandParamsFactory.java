@@ -40,7 +40,7 @@ import static com.android.internal.telephony.cat.CatCmdMessage.
  * into a CommandParams object.
  *
  */
-class CommandParamsFactory extends Handler {
+class CommandParamsFactory extends AbstractCommandParamsFactory {
     private static CommandParamsFactory sInstance = null;
     private IconLoader mIconLoader;
     private CommandParams mCmdParams = null;

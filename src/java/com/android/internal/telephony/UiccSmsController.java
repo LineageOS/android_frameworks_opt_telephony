@@ -39,7 +39,7 @@ import java.util.List;
  * UiccSmsController to provide an inter-process communication to
  * access Sms in Icc.
  */
-public class UiccSmsController extends ISms.Stub {
+public class UiccSmsController extends AbstractUiccSmsController {
     static final String LOG_TAG = "RIL_UiccSmsController";
 
     protected UiccSmsController() {

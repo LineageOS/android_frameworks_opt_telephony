@@ -28,7 +28,7 @@ import android.telephony.TelephonyManager;
 /**
  * {@hide}
  */
-public abstract class BaseCommands implements CommandsInterface {
+public abstract class BaseCommands extends AbstractBaseCommands implements CommandsInterface {
     //***** Instance Variables
     protected Context mContext;
     protected RadioState mState = RadioState.RADIO_UNAVAILABLE;

@@ -76,7 +76,7 @@ import java.util.LinkedList;
  * See also {@link com.android.internal.telephony.IccCard}
  * and {@link com.android.internal.telephony.uicc.IccCardProxy}
  */
-public class UiccController extends Handler {
+public class UiccController extends AbstractUiccController {
     private static final boolean DBG = true;
     private static final String LOG_TAG = "UiccController";
 

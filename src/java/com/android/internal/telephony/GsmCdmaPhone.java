@@ -100,7 +100,7 @@ import java.util.regex.Pattern;
 /**
  * {@hide}
  */
-public class GsmCdmaPhone extends Phone {
+public class GsmCdmaPhone extends AbstractGsmCdmaPhone {
     // NOTE that LOG_TAG here is "GsmCdma", which means that log messages
     // from this file will go into the radio log rather than the main
     // log.  (Use "adb logcat -b radio" to see them.)

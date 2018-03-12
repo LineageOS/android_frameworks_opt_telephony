@@ -88,7 +88,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class SMSDispatcher extends Handler {
+public abstract class SMSDispatcher extends AbstractSMSDispatcher {
     static final String TAG = "SMSDispatcher";    // accessed from inner class
     static final boolean DBG = false;
     private static final String SEND_NEXT_MSG_EXTRA = "SendNextMsg";

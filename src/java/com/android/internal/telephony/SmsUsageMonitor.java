@@ -62,7 +62,7 @@ import java.util.regex.Pattern;
  * into a separate class to support instantiation of multiple SMSDispatchers on
  * dual-mode devices that require support for both 3GPP and 3GPP2 format messages.
  */
-public class SmsUsageMonitor {
+public class SmsUsageMonitor extends AbstractSmsUsageMonitor {
     private static final String TAG = "SmsUsageMonitor";
     private static final boolean DBG = false;
     private static final boolean VDBG = false;

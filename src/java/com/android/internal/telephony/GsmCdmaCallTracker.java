@@ -53,7 +53,7 @@ import java.util.List;
 /**
  * {@hide}
  */
-public class GsmCdmaCallTracker extends CallTracker {
+public class GsmCdmaCallTracker extends AbstractGsmCdmaCallTracker {
     private static final String LOG_TAG = "GsmCdmaCallTracker";
     private static final boolean REPEAT_POLLING = false;
 
@@ -144,6 +144,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     //***** Constructors
 
     public GsmCdmaCallTracker (GsmCdmaPhone phone) {
+        super(phone);
         this.mPhone = phone;
         mCi = phone.mCi;
         mCi.registerForCallStateChanged(this, EVENT_CALL_STATE_CHANGE, null);

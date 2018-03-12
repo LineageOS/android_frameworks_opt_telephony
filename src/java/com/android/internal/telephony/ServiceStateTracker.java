@@ -111,7 +111,7 @@ public class ServiceStateTracker extends Handler {
 
     private static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
 
-    private CommandsInterface mCi;
+    protected CommandsInterface mCi;
     private UiccController mUiccController = null;
     private UiccCardApplication mUiccApplcation = null;
     private IccRecords mIccRecords = null;

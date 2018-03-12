@@ -38,7 +38,7 @@ import java.util.List;
  * {@hide}
  *
  */
-public interface PhoneInternalInterface {
+public interface PhoneInternalInterface extends AbstractPhoneInternalInterface {
 
     /** used to enable additional debug messages */
     static final boolean DEBUG_PHONE = true;

@@ -55,7 +55,7 @@ import java.util.List;
  *
  *
  */
-public class CallManager {
+public class CallManager extends AbstractCallManager {
 
     private static final String LOG_TAG ="CallManager";
     private static final boolean DBG = true;
@@ -554,7 +554,7 @@ public class CallManager {
         return mRegistrantidentifier;
     }
 
-    private void registerForPhoneStates(Phone phone) {
+    protected void registerForPhoneStates(Phone phone) {
         // We need to keep a mapping of handler to Phone for proper unregistration.
         // TODO: Clean up this solution as it is just a work around for each Phone instance
         // using the same Handler to register with the RIL. When time permits, we should consider
@@ -622,7 +622,7 @@ public class CallManager {
         phone.registerForTtyModeReceived(handler, EVENT_TTY_MODE_RECEIVED, null);
     }
 
-    private void unregisterForPhoneStates(Phone phone) {
+    protected void unregisterForPhoneStates(Phone phone) {
         // Make sure that we clean up our map of handlers to Phones.
         CallManagerHandler handler = mHandlerMap.get(phone);
         if (handler == null) {

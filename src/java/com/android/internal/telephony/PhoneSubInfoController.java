@@ -40,7 +40,7 @@ import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 import static android.Manifest.permission.READ_SMS;
 import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
 
-public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
+public class PhoneSubInfoController extends AbstractPhoneSubInfo {
     private static final String TAG = "PhoneSubInfoController";
     private static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true

@@ -36,7 +36,7 @@ import java.util.ArrayList;
  *
  * {@hide}
  */
-public class UsimPhoneBookManager extends Handler implements IccConstants {
+public class UsimPhoneBookManager extends AbstractUsimPhoneBookManager implements IccConstants {
     private static final String LOG_TAG = "UsimPhoneBookManager";
     private static final boolean DBG = true;
     private ArrayList<PbrRecord> mPbrRecords;
