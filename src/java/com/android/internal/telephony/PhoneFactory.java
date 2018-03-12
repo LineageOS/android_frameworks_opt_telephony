@@ -155,7 +155,7 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
                 sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones,
                         isDynamicBinding);
-                sImsResolver.populateCacheAndStartBind();
+                sImsResolver.initPopulateCacheAndStartBind();
 
                 int[] networkModes = new int[numPhones];
                 sPhones = new Phone[numPhones];
