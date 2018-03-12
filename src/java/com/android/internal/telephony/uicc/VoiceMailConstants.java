@@ -34,7 +34,7 @@ import com.android.internal.util.XmlUtils;
 /**
  * {@hide}
  */
-class VoiceMailConstants {
+public class VoiceMailConstants extends AbstractVoiceMailConstants {
     private HashMap<String, String[]> CarrierVmMap;
 
 

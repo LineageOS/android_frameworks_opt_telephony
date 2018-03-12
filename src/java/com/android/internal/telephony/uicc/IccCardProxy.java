@@ -71,7 +71,7 @@ import java.io.PrintWriter;
  * application on the uicc card, so that external apps won't break.
  */
 
-public class IccCardProxy extends Handler implements IccCard {
+public class IccCardProxy extends AbstractIccCardProxy implements IccCard {
     private static final boolean DBG = true;
     private static final String LOG_TAG = "IccCardProxy";
 

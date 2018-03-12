@@ -111,7 +111,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * {@hide}
  */
-public class DcTracker extends Handler {
+public class DcTracker extends AbstractDcTrackerBase {
     protected String LOG_TAG = "DCT";
     protected static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true
@@ -524,7 +524,7 @@ public class DcTracker extends Handler {
     private HashMap<String, Integer> mApnToDataConnectionId = new HashMap<String, Integer>();
 
     /** Phone.APN_TYPE_* ===> ApnContext */
-    private final ConcurrentHashMap<String, ApnContext> mApnContexts =
+    protected final ConcurrentHashMap<String, ApnContext> mApnContexts =
             new ConcurrentHashMap<String, ApnContext>();
 
     private final SparseArray<ApnContext> mApnContextsById = new SparseArray<ApnContext>();
@@ -926,6 +926,26 @@ public class DcTracker extends Handler {
         final ApnContext apnContext = mApnContextsById.get(apnId);
         log.log("DcTracker.releaseNetwork for " + networkRequest + " found " + apnContext);
         if (apnContext != null) apnContext.releaseNetwork(networkRequest, log);
+    }
+
+    public void clearDefaultLink() {
+        ApnContext apnContext = (ApnContext) this.mApnContextsById.get(0);
+        if (apnContext != null) {
+            DcAsyncChannel dcac = apnContext.getDcAc();
+            if (dcac != null) {
+                dcac.clearLink(null, null, null);
+            }
+        }
+    }
+
+    public void resumeDefaultLink() {
+        ApnContext apnContext = (ApnContext) this.mApnContextsById.get(0);
+        if (apnContext != null) {
+            DcAsyncChannel dcac = apnContext.getDcAc();
+            if (dcac != null) {
+                dcac.resumeLink(null, null, null);
+            }
+        }
     }
 
     public boolean isApnSupported(String name) {
@@ -4187,6 +4207,13 @@ public class DcTracker extends Handler {
         msg.arg1 = (enable ? DctConstants.ENABLED : DctConstants.DISABLED);
         sendMessage(msg);
         return true;
+    }
+
+    public void setDataAllowed(boolean enable, Message response) {
+        log("setDataAllowed: enable=" + enable);
+        this.isCleanupRequired.set(enable ^ true);
+        this.mPhone.mCi.setDataAllowed(enable, response);
+        this.mDataEnabledSettings.setInternalDataEnabled(enable);
     }
 
     protected void log(String s) {

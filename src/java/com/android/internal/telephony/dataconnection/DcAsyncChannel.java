@@ -399,6 +399,16 @@ public class DcAsyncChannel extends AsyncChannel {
                         new DisconnectParams(apnContext, reason, onCompletedMsg));
     }
 
+    public void clearLink(ApnContext apnContext, String reason, Message onCompletedMsg) {
+        log("clearLink: apnContext=" + apnContext + " reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+        sendMessage(262161, new DisconnectParams(apnContext, reason, onCompletedMsg));
+    }
+
+    public void resumeLink(ApnContext apnContext, String reason, Message onCompletedMsg) {
+        log("resumeLink: apnContext=" + apnContext + " reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+        sendMessage(262162, new DisconnectParams(apnContext, reason, onCompletedMsg));
+    }
+
     /**
      * Tear down the connection through the apn on the network.  Ignores refcount and
      * and always tears down.

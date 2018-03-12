@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * SimPhoneBookInterfaceManager to provide an inter-process communication to
  * access ADN-like SIM records.
  */
-public class IccPhoneBookInterfaceManager {
+public class IccPhoneBookInterfaceManager extends AbstractIccPhoneBookInterfaceManager {
     static final String LOG_TAG = "IccPhoneBookIM";
     protected static final boolean DBG = true;
 

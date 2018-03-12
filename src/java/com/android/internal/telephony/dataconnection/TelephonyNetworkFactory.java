@@ -300,4 +300,20 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         }
         pw.decreaseIndent();
     }
+
+    public void reApplyDefaultRequests() {
+        if (this.mIsDefault && this.mIsActive) {
+            String logString = "reApplyDefaultRequests(" + this.mIsActive + "," + this.mIsDefault + ")";
+            log(logString);
+            applyRequests(this.mDefaultRequests, true, logString);
+        }
+    }
+
+    public void resumeDefaultLink() {
+        this.mDcTracker.resumeDefaultLink();
+    }
+
+    public DcTracker getDcTracker() {
+        return this.mDcTracker;
+    }
 }

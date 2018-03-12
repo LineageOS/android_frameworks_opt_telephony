@@ -73,7 +73,7 @@ class RilMessage {
  *
  * {@hide}
  */
-public class CatService extends Handler implements AppInterface {
+public class CatService extends AbstractCatService implements AppInterface {
     private static final boolean DBG = false;
 
     // Class members

@@ -29,7 +29,7 @@ import java.util.Iterator;
 /**
  * {@hide}
  */
-public class AdnRecordCache extends Handler implements IccConstants {
+public class AdnRecordCache extends AbstractAdnRecordCache implements IccConstants {
     //***** Instance Variables
 
     private IccFileHandler mFh;

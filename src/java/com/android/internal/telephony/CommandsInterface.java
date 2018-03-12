@@ -34,7 +34,7 @@ import java.util.List;
 /**
  * {@hide}
  */
-public interface CommandsInterface {
+public interface CommandsInterface extends AbstractCommandsInterface {
     enum RadioState {
         RADIO_OFF,         /* Radio explicitly powered off (eg CFUN=0) */
         RADIO_UNAVAILABLE, /* Radio unavailable (eg, resetting or not booted) */

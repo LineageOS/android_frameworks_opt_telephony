@@ -39,7 +39,7 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 /**
  * {@hide}
  */
-public class GsmCdmaConnection extends Connection {
+public class GsmCdmaConnection extends AbstractGsmCdmaConnection {
     private static final String LOG_TAG = "GsmCdmaConnection";
     private static final boolean DBG = true;
     private static final boolean VDBG = false;

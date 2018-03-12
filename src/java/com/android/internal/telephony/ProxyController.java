@@ -38,6 +38,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ProxyController {
     static final String LOG_TAG = "ProxyController";
 
+    public static final String MODEM_0 = "0";
+    public static final String MODEM_1 = "1";
+    public static final String MODEM_2 = "2";
+
     private static final int EVENT_NOTIFICATION_RC_CHANGED        = 1;
     private static final int EVENT_START_RC_RESPONSE        = 2;
     private static final int EVENT_APPLY_RC_RESPONSE        = 3;
