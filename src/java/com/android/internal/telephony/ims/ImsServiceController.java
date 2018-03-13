@@ -100,6 +100,7 @@ public class ImsServiceController {
                         service.linkToDeath(mImsDeathRecipient, 0);
                         mImsServiceControllerBinder = service;
                         setServiceController(service);
+                        notifyImsServiceReady();
                         // create all associated features in the ImsService
                         for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
                             addImsServiceFeature(i);
@@ -540,6 +541,18 @@ public class ImsServiceController {
     public IImsConfig getConfig(int slotId) throws RemoteException {
         synchronized (mLock) {
             return isServiceControllerAvailable() ? mIImsServiceController.getConfig(slotId) : null;
+        }
+    }
+
+    /**
+     * notify the ImsService that the ImsService is ready for feature creation.
+     */
+    protected void notifyImsServiceReady() throws RemoteException {
+        synchronized (mLock) {
+            if (isServiceControllerAvailable()) {
+                Log.d(LOG_TAG, "notifyImsServiceReady");
+                mIImsServiceController.notifyImsServiceReadyForFeatureCreation();
+            }
         }
     }
 
