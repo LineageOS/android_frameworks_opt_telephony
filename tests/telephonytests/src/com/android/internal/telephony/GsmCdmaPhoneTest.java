@@ -475,8 +475,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(imsi).when(mSimRecords).getIMSI();
         mPhoneUT.getCallForwardingOption(CF_REASON_UNCONDITIONAL, null);
         verify(mSimulatedCommandsVerifier).queryCallForwardStatus(
-                eq(CF_REASON_UNCONDITIONAL), anyInt(), nullable(String.class),
-                nullable(Message.class));
+                eq(CF_REASON_UNCONDITIONAL), eq(CommandsInterface.SERVICE_CLASS_VOICE),
+                nullable(String.class), nullable(Message.class));
         waitForMs(50);
         verify(mSimRecords).setVoiceCallForwardingFlag(anyInt(), anyBoolean(),
                 nullable(String.class));
