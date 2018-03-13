@@ -102,7 +102,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     @VisibleForTesting
     public static class ImsServiceInfo {
         public ComponentName name;
-        public boolean supportsEmergencyMmTel = false;
         // Determines if features were created from metadata in the manifest or through dynamic
         // query.
         public boolean featureFromMetadata = true;
@@ -124,19 +123,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
 
         void replaceFeatures(Set<ImsFeatureConfiguration.FeatureSlotPair> newFeatures) {
-            // Emergency is a special case, filter out and if any slot supports it, set it to true.
-            // TODO: support per-slot emergency call filtering
-            List<ImsFeatureConfiguration.FeatureSlotPair> emergencyFeatures = newFeatures.stream()
-                    .filter(f -> f.featureType == ImsFeature.FEATURE_EMERGENCY_MMTEL)
-                    .collect(Collectors.toList());
-            if (!emergencyFeatures.isEmpty()) {
-                Log.i(TAG, "replaceFeatures: emergency calls enabled.");
-                supportsEmergencyMmTel = true;
-                newFeatures.removeAll(emergencyFeatures);
-            } else {
-                Log.i(TAG, "replaceFeatures: emergency calls disabled.");
-                supportsEmergencyMmTel = false;
-            }
             mSupportedFeatures.clear();
             mSupportedFeatures.addAll(newFeatures);
         }
@@ -153,7 +139,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
             ImsServiceInfo that = (ImsServiceInfo) o;
 
-            if (supportsEmergencyMmTel != that.supportsEmergencyMmTel) return false;
             if (name != null ? !name.equals(that.name) : that.name != null) return false;
             if (!mSupportedFeatures.equals(that.mSupportedFeatures)) {
                 return false;
@@ -167,7 +152,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             // We do not include mSupportedFeatures in hashcode because the internal structure
             // changes after adding.
             int result = name != null ? name.hashCode() : 0;
-            result = 31 * result + (supportsEmergencyMmTel ? 1 : 0);
             result = 31 * result + (controllerFactory != null ? controllerFactory.hashCode() : 0);
             return result;
         }
@@ -185,8 +169,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 res.append(feature.featureType);
                 res.append(") ");
             }
-            res.append("], supportsEmergency=");
-            res.append(supportsEmergencyMmTel);
             return res.toString();
         }
     }
@@ -571,19 +553,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return null;
     }
 
-    /**
-     * @return true if the ImsService associated with this slot supports emergency calling over IMS,
-     * false if the call should be placed over circuit switch instead.
-     */
-    public boolean isEmergencyMmTelAvailable(int slotId) {
-        ImsServiceController controller = getImsServiceController(slotId, ImsFeature.FEATURE_MMTEL);
-        if (controller != null) {
-            return controller.canPlaceEmergencyCalls();
-        }
-        Log.w(TAG, "isEmergencyMmTelAvailable: No controller found for slot " + slotId);
-        return false;
-    }
-
     @VisibleForTesting
     public ImsServiceController getImsServiceController(int slotId, int feature) {
         if (slotId < 0 || slotId >= mNumSlots) {
@@ -619,7 +588,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         ImsServiceController controller = getImsServiceController(slotId, feature);
 
         if (controller != null) {
-            controller.addImsServiceFeatureListener(callback);
+            controller.addImsServiceFeatureCallback(callback);
             return controller;
         }
         return null;
@@ -791,14 +760,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         // features because it is not carrier/device.
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> features =
                 calculateFeaturesToCreate(newInfo);
-        if (features.size() > 0) {
+        if (shouldFeaturesCauseBind(features)) {
             try {
                 if (controller != null) {
                     Log.i(TAG, "Updating features for ImsService: "
                             + controller.getComponentName());
-                    Log.d(TAG, "Updating canPlaceEmergencyCalls: "
-                            + newInfo.supportsEmergencyMmTel);
-                    controller.setCanPlaceEmergencyCalls(newInfo.supportsEmergencyMmTel);
                     Log.d(TAG, "Updating Features - New Features: " + features);
                     controller.changeImsServiceFeatures(features);
                 } else {
@@ -835,12 +801,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     private void bindImsServiceWithFeatures(ImsServiceInfo info,
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> features) {
         // Only bind if there are features that will be created by the service.
-        if (features.size() > 0) {
+        if (shouldFeaturesCauseBind(features)) {
             // Check to see if an active controller already exists
             ImsServiceController controller = getControllerByServiceInfo(mActiveControllers, info);
             if (controller != null) {
-                Log.i(TAG, "ImsService connection exists, updating features " + features
-                        + ", updating supports emergency calling: " + info.supportsEmergencyMmTel);
+                Log.i(TAG, "ImsService connection exists, updating features " + features);
                 try {
                     controller.changeImsServiceFeatures(features);
                     // Features have been set, there was an error adding/removing. When the
@@ -851,11 +816,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             } else {
                 controller = info.controllerFactory.create(mContext, info.name, this);
                 Log.i(TAG, "Binding ImsService: " + controller.getComponentName()
-                        + " with features: " + features + ", supports emergency calling: "
-                        + info.supportsEmergencyMmTel);
+                        + " with features: " + features);
                 controller.bind(features);
             }
-            controller.setCanPlaceEmergencyCalls(info.supportsEmergencyMmTel);
             mActiveControllers.put(info.name, controller);
         }
     }
@@ -935,6 +898,20 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      */
     public void imsServiceFeatureRemoved(int slotId, int feature, ImsServiceController controller) {
         removeImsController(slotId, feature);
+    }
+
+    /**
+     * Determines if the features specified should cause a bind or keep a binding active to an
+     * ImsService.
+     * @return true if MMTEL or RCS features are present, false if they are not or only
+     * EMERGENCY_MMTEL is specified.
+     */
+    private boolean shouldFeaturesCauseBind(
+            HashSet<ImsFeatureConfiguration.FeatureSlotPair> features) {
+        long bindableFeatures = features.stream()
+                // remove all emergency features
+                .filter(f -> f.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL).count();
+        return bindableFeatures > 0;
     }
 
     // Possibly rebind to another ImsService if currently installed ImsServices were changed or if
@@ -1129,7 +1106,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         ImsServiceInfo info = new ImsServiceInfo(mNumSlots);
         info.name = mStaticComponent;
         info.controllerFactory = mImsServiceControllerFactoryStaticBindingCompat;
-        info.supportsEmergencyMmTel = true;
+        info.addFeatureForAllSlots(ImsFeature.FEATURE_EMERGENCY_MMTEL);
         info.addFeatureForAllSlots(ImsFeature.FEATURE_MMTEL);
         infos.add(info);
         return infos;
@@ -1164,7 +1141,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     if (serviceInfo.metaData != null) {
                         if (serviceInfo.metaData.getBoolean(METADATA_EMERGENCY_MMTEL_FEATURE,
                                 false)) {
-                            info.supportsEmergencyMmTel = true;
+                            info.addFeatureForAllSlots(ImsFeature.FEATURE_EMERGENCY_MMTEL);
                         }
                         if (serviceInfo.metaData.getBoolean(METADATA_MMTEL_FEATURE, false)) {
                             info.addFeatureForAllSlots(ImsFeature.FEATURE_MMTEL);
