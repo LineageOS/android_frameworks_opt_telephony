@@ -89,7 +89,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
         super.setUp();
         mTestImsServiceController = new ImsServiceController(mMockContext, mTestComponentName,
                 mMockCallbacks, mHandler, REBIND_RETRY);
-        mTestImsServiceController.addImsServiceFeatureListener(mMockProxyCallbacks);
+        mTestImsServiceController.addImsServiceFeatureCallback(mMockProxyCallbacks);
         when(mMockContext.bindService(any(), any(), anyInt())).thenReturn(true);
     }
 
@@ -167,6 +167,62 @@ public class ImsServiceControllerTest extends ImsTestBase {
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(2));
+        assertEquals(mMockServiceControllerBinder.getBinder(),
+                mTestImsServiceController.getImsServiceControllerBinder());
+    }
+
+    /**
+     * Tests Emergency MMTEL ImsServiceController callbacks are properly called when an ImsService
+     * is bound and connected.
+     */
+    @FlakyTest
+    @Test
+    public void testBindEmergencyMmTel() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        // Slot 1, Emergency MMTel
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 0));
+        // Slot 1, MmTel
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+
+        bindAndConnectService(testFeatures);
+
+        IBinder binder = mMockServiceControllerBinder.getBinder().asBinder();
+        verify(binder).linkToDeath(any(), anyInt());
+        verify(mMockServiceControllerBinder).createMMTelFeature(eq(1));
+        // We do not want this callback to happen for emergency MMTEL
+        verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(1), eq(0),
+                eq(mTestImsServiceController));
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(1), eq(1),
+                eq(mTestImsServiceController));
+        // Make sure this callback happens, which will notify the framework of emergency calling
+        // availability.
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(0));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
+        assertEquals(mMockServiceControllerBinder.getBinder(),
+                mTestImsServiceController.getImsServiceControllerBinder());
+    }
+
+    /**
+     * Tests that if a callback is added after the ImsServiceController is already bound, we get a
+     * imsFeatureCreated callback.
+     */
+    @FlakyTest
+    @Test
+    public void testCallbacksHappenWhenAddedAfterBind() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        // Slot 1, Emergency MMTel
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 0));
+        // Slot 1, MmTel
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+        mTestImsServiceController.removeImsServiceFeatureCallbacks();
+
+        bindAndConnectService(testFeatures);
+        // add the callback after bind
+        mTestImsServiceController.addImsServiceFeatureCallback(mMockProxyCallbacks);
+
+        // Make sure this callback happens for Emergency MMTEL and MMTEL
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(0));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
         assertEquals(mMockServiceControllerBinder.getBinder(),
                 mTestImsServiceController.getImsServiceControllerBinder());
     }
