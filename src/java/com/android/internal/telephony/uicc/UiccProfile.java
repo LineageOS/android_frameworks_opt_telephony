@@ -46,7 +46,6 @@ import android.telephony.UiccAccessRule;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
-import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
@@ -87,7 +86,6 @@ public class UiccProfile extends Handler implements IccCard {
     protected static final String LOG_TAG = "UiccProfile";
     protected static final boolean DBG = true;
     private static final boolean VDBG = false; //STOPSHIP if true
-    private static final boolean ICC_CARD_PROXY_REMOVED = true;
 
     private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
 
@@ -113,8 +111,6 @@ public class UiccProfile extends Handler implements IccCard {
     private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 18;
     private static final int EVENT_SIM_IO_DONE = 19;
     private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 20;
-
-    private static final LocalLog sLocalLog = new LocalLog(100);
 
     private final int mPhoneId;
 
@@ -159,13 +155,11 @@ public class UiccProfile extends Handler implements IccCard {
         if (DBG) log("Creating profile");
         mUiccCard = uiccCard;
         mPhoneId = phoneId;
-        if (ICC_CARD_PROXY_REMOVED) {
-            // set current app type based on phone type - do this before calling update() as that
-            // calls updateIccAvailability() which uses mCurrentAppType
-            Phone phone = PhoneFactory.getPhone(phoneId);
-            if (phone != null) {
-                setCurrentAppType(phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM);
-            }
+        // set current app type based on phone type - do this before calling update() as that
+        // calls updateIccAvailability() which uses mCurrentAppType
+        Phone phone = PhoneFactory.getPhone(phoneId);
+        if (phone != null) {
+            setCurrentAppType(phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM);
         }
 
         if (mUiccCard instanceof EuiccCard) {
@@ -173,12 +167,8 @@ public class UiccProfile extends Handler implements IccCard {
         }
 
         update(c, ci, ics);
-
-        if (ICC_CARD_PROXY_REMOVED) {
-            ci.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
-
-            resetProperties();
-        }
+        ci.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
+        resetProperties();
     }
 
     /**
@@ -198,9 +188,7 @@ public class UiccProfile extends Handler implements IccCard {
                 ((EuiccCard) mUiccCard).unregisterForEidReady(this);
             }
 
-            if (ICC_CARD_PROXY_REMOVED) {
-                mCi.unregisterForOffOrNotAvailable(this);
-            }
+            mCi.unregisterForOffOrNotAvailable(this);
 
             if (mCatService != null) mCatService.dispose();
             for (UiccCardApplication app : mUiccApplications) {
@@ -248,6 +236,7 @@ public class UiccProfile extends Handler implements IccCard {
             loge("handleMessage: Received " + msg.what + " after dispose(); ignoring the message");
             return;
         }
+        loglocal("handleMessage: Received " + msg.what + " for phoneId " + mPhoneId);
         switch (msg.what) {
             case EVENT_NETWORK_LOCKED:
                 mNetworkLockedRegistrants.notifyRegistrants();
@@ -273,7 +262,7 @@ public class UiccProfile extends Handler implements IccCard {
                 break;
 
             case EVENT_CARRIER_PRIVILEGES_LOADED:
-                if (VDBG) log("EVENT_CARRIER_PRIVILEGES_LOADED");
+                if (VDBG) log("handleMessage: EVENT_CARRIER_PRIVILEGES_LOADED");
                 onCarrierPrivilegesLoadedMessage();
                 updateExternalState();
                 break;
@@ -285,15 +274,15 @@ public class UiccProfile extends Handler implements IccCard {
             case EVENT_SIM_IO_DONE:
                 AsyncResult ar = (AsyncResult) msg.obj;
                 if (ar.exception != null) {
-                    loglocal("Exception: " + ar.exception);
-                    log("Error in SIM access with exception" + ar.exception);
+                    loglocal("handleMessage: Exception " + ar.exception);
+                    log("handleMessage: Error in SIM access with exception" + ar.exception);
                 }
                 AsyncResult.forMessage((Message) ar.userObj, ar.result, ar.exception);
                 ((Message) ar.userObj).sendToTarget();
                 break;
 
             default:
-                loge("Unhandled message with number: " + msg.what);
+                loge("handleMessage: Unhandled message with number: " + msg.what);
                 break;
         }
     }
@@ -504,8 +493,10 @@ public class UiccProfile extends Handler implements IccCard {
         intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
         intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
         intent.putExtra(PhoneConstants.PHONE_KEY, phoneId);  // SubId may not be valid.
-        log("Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
-                + " for mPhoneId : " + phoneId);
+        String logStr = "Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
+                + " for mPhoneId : " + phoneId;
+        log(logStr);
+        UiccController.sLocalLog.log("UiccProfile[" + phoneId + "]: " + logStr);
         ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
     }
 
@@ -1221,7 +1212,7 @@ public class UiccProfile extends Handler implements IccCard {
      * Exposes {@link CommandsInterface#iccOpenLogicalChannel}
      */
     public void iccOpenLogicalChannel(String aid, int p2, Message response) {
-        loglocal("Open Logical Channel: " + aid + " , " + p2 + " by pid:" + Binder.getCallingPid()
+        loglocal("iccOpenLogicalChannel: " + aid + " , " + p2 + " by pid:" + Binder.getCallingPid()
                 + " uid:" + Binder.getCallingUid());
         mCi.iccOpenLogicalChannel(aid, p2,
                 obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, response));
@@ -1231,7 +1222,7 @@ public class UiccProfile extends Handler implements IccCard {
      * Exposes {@link CommandsInterface#iccCloseLogicalChannel}
      */
     public void iccCloseLogicalChannel(int channel, Message response) {
-        loglocal("Close Logical Channel: " + channel);
+        loglocal("iccCloseLogicalChannel: " + channel);
         mCi.iccCloseLogicalChannel(channel,
                 obtainMessage(EVENT_CLOSE_LOGICAL_CHANNEL_DONE, response));
     }
@@ -1449,8 +1440,8 @@ public class UiccProfile extends Handler implements IccCard {
         Rlog.e(LOG_TAG, msg);
     }
 
-    private static void loglocal(String msg) {
-        if (DBG) sLocalLog.log(msg);
+    private void loglocal(String msg) {
+        if (DBG) UiccController.sLocalLog.log("UiccProfile[" + mPhoneId + "]: " + msg);
     }
 
     /**
@@ -1509,22 +1500,16 @@ public class UiccProfile extends Handler implements IccCard {
         }
         pw.flush();
 
-        if (ICC_CARD_PROXY_REMOVED) {
-            pw.println(" mNetworkLockedRegistrants: size=" + mNetworkLockedRegistrants.size());
-            for (int i = 0; i < mNetworkLockedRegistrants.size(); i++) {
-                pw.println("  mNetworkLockedRegistrants[" + i + "]="
-                        + ((Registrant) mNetworkLockedRegistrants.get(i)).getHandler());
-            }
-            pw.println(" mCurrentAppType=" + mCurrentAppType);
-            pw.println(" mUiccCard=" + mUiccCard);
-            pw.println(" mUiccApplication=" + mUiccApplication);
-            pw.println(" mIccRecords=" + mIccRecords);
-            pw.println(" mExternalState=" + mExternalState);
-            pw.flush();
+        pw.println(" mNetworkLockedRegistrants: size=" + mNetworkLockedRegistrants.size());
+        for (int i = 0; i < mNetworkLockedRegistrants.size(); i++) {
+            pw.println("  mNetworkLockedRegistrants[" + i + "]="
+                    + ((Registrant) mNetworkLockedRegistrants.get(i)).getHandler());
         }
-
-        pw.println("sLocalLog:");
-        sLocalLog.dump(fd, pw, args);
+        pw.println(" mCurrentAppType=" + mCurrentAppType);
+        pw.println(" mUiccCard=" + mUiccCard);
+        pw.println(" mUiccApplication=" + mUiccApplication);
+        pw.println(" mIccRecords=" + mIccRecords);
+        pw.println(" mExternalState=" + mExternalState);
         pw.flush();
     }
 }

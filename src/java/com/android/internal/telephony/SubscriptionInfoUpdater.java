@@ -344,12 +344,12 @@ public class SubscriptionInfoUpdater extends Handler {
         if (iccId == null) {
             IccCard iccCard = mPhone[slotId].getIccCard();
             if (iccCard == null) {
-                logd("handleSimLoaded: IccCard null");
+                logd("handleSimLocked: IccCard null");
                 return;
             }
             IccRecords records = iccCard.getIccRecords();
             if (records == null) {
-                logd("handleSimLoaded: IccRecords null");
+                logd("handleSimLocked: IccRecords null");
                 return;
             }
             if (IccUtils.stripTrailingFs(records.getFullIccId()) == null) {
@@ -580,9 +580,8 @@ public class SubscriptionInfoUpdater extends Handler {
         String[] decIccId = new String[PROJECT_SIM_NUM];
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             oldIccId[i] = null;
-            List<SubscriptionInfo> oldSubInfo =
-                    SubscriptionController.getInstance().getSubInfoUsingSlotIndexWithCheck(i, false,
-                    mContext.getOpPackageName());
+            List<SubscriptionInfo> oldSubInfo = SubscriptionController.getInstance()
+                    .getSubInfoUsingSlotIndexPrivileged(i, false);
             decIccId[i] = IccUtils.getDecimalSubstring(mIccId[i]);
             if (oldSubInfo != null && oldSubInfo.size() > 0) {
                 oldIccId[i] = oldSubInfo.get(0).getIccId();
@@ -857,6 +856,7 @@ public class SubscriptionInfoUpdater extends Handler {
             sSimCardState[phoneId] = state;
             Intent i = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
             i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+            i.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
             logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
@@ -874,6 +874,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 && sSimApplicationState[phoneId] == TelephonyManager.SIM_STATE_UNKNOWN))) {
             sSimApplicationState[phoneId] = state;
             Intent i = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
+            i.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
