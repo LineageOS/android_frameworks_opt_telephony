@@ -580,9 +580,8 @@ public class SubscriptionInfoUpdater extends Handler {
         String[] decIccId = new String[PROJECT_SIM_NUM];
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             oldIccId[i] = null;
-            List<SubscriptionInfo> oldSubInfo =
-                    SubscriptionController.getInstance().getSubInfoUsingSlotIndexWithCheck(i, false,
-                    mContext.getOpPackageName());
+            List<SubscriptionInfo> oldSubInfo = SubscriptionController.getInstance()
+                    .getSubInfoUsingSlotIndexPrivileged(i, false);
             decIccId[i] = IccUtils.getDecimalSubstring(mIccId[i]);
             if (oldSubInfo != null && oldSubInfo.size() > 0) {
                 oldIccId[i] = oldSubInfo.get(0).getIccId();

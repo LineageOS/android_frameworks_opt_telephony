@@ -15,15 +15,10 @@
  */
 package com.android.internal.telephony;
 
-import android.app.AppOpsManager;
-import android.content.Context;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-
 import static android.Manifest.permission.READ_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 import static android.Manifest.permission.READ_SMS;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -31,11 +26,16 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+
+import android.app.AppOpsManager;
+import android.content.Context;
+import android.test.suitebuilder.annotation.SmallTest;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-
-
-import android.test.suitebuilder.annotation.SmallTest;
 
 public class PhoneSubInfoControllerTest extends TelephonyTest {
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
@@ -92,7 +92,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getDeviceId", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getDeviceId"));
         }
 
         try {
@@ -100,7 +100,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getDeviceId", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getDeviceId"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -142,7 +142,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getNai", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getNai"));
         }
 
         try {
@@ -150,7 +150,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getNai", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getNai"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -192,7 +192,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getImei", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getImei"));
         }
 
         try {
@@ -200,7 +200,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getImei", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getImei"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -242,7 +242,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getDeviceSvn", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getDeviceSvn"));
         }
 
         try {
@@ -250,7 +250,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getDeviceSvn", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getDeviceSvn"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -295,7 +295,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getSubscriberId", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getSubscriberId"));
         }
 
         try {
@@ -303,7 +303,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getSubscriberId", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getSubscriberId"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -350,7 +350,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getIccSerialNumber", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getIccSerialNumber"));
         }
 
         try {
@@ -358,7 +358,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getIccSerialNumber", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getIccSerialNumber"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -483,7 +483,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getLine1AlphaTag", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getLine1AlphaTag"));
         }
 
         try {
@@ -491,7 +491,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getLine1AlphaTag", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getLine1AlphaTag"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -535,7 +535,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getMsisdn", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getMsisdn"));
         }
 
         try {
@@ -543,7 +543,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getMsisdn", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getMsisdn"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -587,7 +587,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getVoiceMailNumber", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getVoiceMailNumber"));
         }
 
         try {
@@ -595,7 +595,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getVoiceMailNumber", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getVoiceMailNumber"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
@@ -641,7 +641,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getVoiceMailAlphaTag", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getVoiceMailAlphaTag"));
         }
 
         try {
@@ -649,7 +649,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
-            assertEquals(READ_PHONE_STATE + " denied: getVoiceMailAlphaTag", ex.getMessage());
+            assertTrue(ex.getMessage().contains("getVoiceMailAlphaTag"));
         }
 
         //case 2: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
