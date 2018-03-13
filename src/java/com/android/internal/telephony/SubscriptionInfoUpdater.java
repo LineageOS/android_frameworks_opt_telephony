@@ -345,12 +345,12 @@ public class SubscriptionInfoUpdater extends Handler {
         if (iccId == null) {
             IccCard iccCard = mPhone[slotId].getIccCard();
             if (iccCard == null) {
-                logd("handleSimLoaded: IccCard null");
+                logd("handleSimLocked: IccCard null");
                 return;
             }
             IccRecords records = iccCard.getIccRecords();
             if (records == null) {
-                logd("handleSimLoaded: IccRecords null");
+                logd("handleSimLocked: IccRecords null");
                 return;
             }
             if (IccUtils.stripTrailingFs(records.getFullIccId()) == null) {
