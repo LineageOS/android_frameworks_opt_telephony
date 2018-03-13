@@ -103,6 +103,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     /**
      * @return the IImsRegistration that corresponds to the slot id specified.
      */
+    @Override
     public IImsRegistration getRegistration(int slotId) throws RemoteException {
         ImsRegistrationCompatAdapter adapter = mRegCompatAdapters.get(slotId);
         if (adapter == null) {
@@ -115,6 +116,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     /**
      * @return the IImsConfig that corresponds to the slot id specified.
      */
+    @Override
     public IImsConfig getConfig(int slotId) throws RemoteException {
         ImsConfigCompatAdapter adapter = mConfigCompatAdapters.get(slotId);
         if (adapter == null) {
@@ -122,6 +124,12 @@ public class ImsServiceControllerCompat extends ImsServiceController {
             return null;
         }
         return adapter.getIImsConfig();
+    }
+
+    @Override
+    protected void notifyImsServiceReady() throws RemoteException {
+        Log.d(TAG, "notifyImsServiceReady");
+        // don't do anything for compat impl.
     }
 
     @Override
