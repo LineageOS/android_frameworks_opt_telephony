@@ -1712,7 +1712,8 @@ public class GsmCdmaPhone extends Phone {
                 } else {
                     resp = onComplete;
                 }
-                mCi.queryCallForwardStatus(commandInterfaceCFReason, 0, null, resp);
+                mCi.queryCallForwardStatus(commandInterfaceCFReason,
+                        CommandsInterface.SERVICE_CLASS_VOICE, null, resp);
             }
         } else {
             loge("getCallForwardingOption: not possible in CDMA");
