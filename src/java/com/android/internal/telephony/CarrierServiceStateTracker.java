@@ -324,6 +324,7 @@ public class CarrierServiceStateTracker extends Handler {
         public Notification.Builder getNotificationBuilder() {
             Context context = mPhone.getContext();
             Intent notificationIntent = new Intent(Settings.ACTION_DATA_ROAMING_SETTINGS);
+            notificationIntent.putExtra("expandable", true);
             PendingIntent settingsIntent = PendingIntent.getActivity(context, 0, notificationIntent,
                     PendingIntent.FLAG_ONE_SHOT);
             CharSequence title = context.getText(
