@@ -16,10 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Message;
@@ -30,7 +27,6 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
-import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -172,7 +168,6 @@ public class SIMRecords extends IccRecords {
 
     // TODO: Possibly move these to IccRecords.java
     private static final int SYSTEM_EVENT_BASE = 0x100;
-    private static final int EVENT_CARRIER_CONFIG_CHANGED = 1 + SYSTEM_EVENT_BASE;
     private static final int EVENT_APP_LOCKED = 2 + SYSTEM_EVENT_BASE;
     private static final int EVENT_APP_NETWORK_LOCKED = 3 + SYSTEM_EVENT_BASE;
 
@@ -225,20 +220,7 @@ public class SIMRecords extends IccRecords {
         mParentApp.registerForLocked(this, EVENT_APP_LOCKED, null);
         mParentApp.registerForNetworkLocked(this, EVENT_APP_NETWORK_LOCKED, null);
         if (DBG) log("SIMRecords X ctor this=" + this);
-
-        IntentFilter intentfilter = new IntentFilter();
-        intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        c.registerReceiver(mReceiver, intentfilter);
     }
-
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
-            }
-        }
-    };
 
     @Override
     public void dispose() {
@@ -248,7 +230,6 @@ public class SIMRecords extends IccRecords {
         mParentApp.unregisterForReady(this);
         mParentApp.unregisterForLocked(this);
         mParentApp.unregisterForNetworkLocked(this);
-        mContext.unregisterReceiver(mReceiver);
         resetRecords();
         super.dispose();
     }
@@ -1365,10 +1346,6 @@ public class SIMRecords extends IccRecords {
                     }
                     break;
 
-                case EVENT_CARRIER_CONFIG_CHANGED:
-                    handleCarrierNameOverride();
-                    break;
-
                 default:
                     super.handleMessage(msg);   // IccRecords handles generic record load responses
             }
@@ -1606,63 +1583,6 @@ public class SIMRecords extends IccRecords {
     }
 
     //***** Private methods
-
-    /**
-     * Override the carrier name with either carrier config or SPN
-     * if an override is provided.
-     */
-    private void handleCarrierNameOverride() {
-        final int phoneId = mParentApp.getPhoneId();
-        SubscriptionController subCon = SubscriptionController.getInstance();
-        final int subId = subCon.getSubIdUsingPhoneId(phoneId);
-        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            loge("subId not valid for Phone " + phoneId);
-            return;
-        }
-
-        CarrierConfigManager configLoader = (CarrierConfigManager)
-                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        if (configLoader == null) {
-            loge("Failed to load a Carrier Config");
-            return;
-        }
-
-        PersistableBundle config = configLoader.getConfigForSubId(subId);
-        boolean preferCcName = config.getBoolean(
-                CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, false);
-        String ccName = config.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
-        // If carrier config is priority, use it regardless - the preference
-        // and the name were both set by the carrier, so this is safe;
-        // otherwise, if the SPN is priority but we don't have one *and* we have
-        // a name in carrier config, use the carrier config name as a backup.
-        if (preferCcName || (TextUtils.isEmpty(getServiceProviderName())
-                             && !TextUtils.isEmpty(ccName))) {
-            setServiceProviderName(ccName);
-            mTelephonyManager.setSimOperatorNameForPhone(phoneId, ccName);
-        }
-
-        updateCarrierNameForSubscription(subCon, subId);
-    }
-
-    private void updateCarrierNameForSubscription(SubscriptionController subCon, int subId) {
-        /* update display name with carrier override */
-        SubscriptionInfo subInfo = subCon.getActiveSubscriptionInfo(
-                subId, mContext.getOpPackageName());
-
-        if (subInfo == null || subInfo.getNameSource()
-                == SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-            // either way, there is no subinfo to update
-            return;
-        }
-
-        CharSequence oldSubName = subInfo.getDisplayName();
-        String newCarrierName = mTelephonyManager.getSimOperatorName(subId);
-
-        if (!TextUtils.isEmpty(newCarrierName) && !newCarrierName.equals(oldSubName)) {
-            log("sim name[" + mParentApp.getPhoneId() + "] = " + newCarrierName);
-            subCon.setDisplayName(newCarrierName, subId);
-        }
-    }
 
     private void setVoiceMailByCountry (String spn) {
         if (mVmConfig.containsCarrier(spn)) {
