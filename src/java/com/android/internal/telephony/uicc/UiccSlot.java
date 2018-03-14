@@ -198,6 +198,10 @@ public class UiccSlot extends Handler {
         }
     }
 
+    public boolean isExtendedApduSupported() {
+        return  (mAtr != null && mAtr.isExtendedApduSupported());
+    }
+
     @Override
     protected void finalize() {
         if (DBG) log("UiccSlot finalized");
