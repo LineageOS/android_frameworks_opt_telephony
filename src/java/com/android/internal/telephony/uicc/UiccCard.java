@@ -25,7 +25,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
-import android.util.LocalLog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyComponentFactory;
@@ -47,8 +46,6 @@ public class UiccCard {
     public static final String EXTRA_ICC_CARD_ADDED =
             "com.android.internal.telephony.uicc.ICC_CARD_ADDED";
 
-    private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
-
     private final Object mLock = new Object();
     private CardState mCardState;
     private String mIccid;
@@ -56,7 +53,6 @@ public class UiccCard {
     private UiccProfile mUiccProfile;
     private Context mContext;
     private CommandsInterface mCi;
-    private static final LocalLog mLocalLog = new LocalLog(100);
     private final int mPhoneId;
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId) {
@@ -504,10 +500,6 @@ public class UiccCard {
 
     private void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
-    }
-
-    private void loglocal(String msg) {
-        if (DBG) mLocalLog.log(msg);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

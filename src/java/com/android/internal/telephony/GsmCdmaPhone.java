@@ -525,12 +525,6 @@ public class GsmCdmaPhone extends Phone {
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else { /* mSST.gprsState == ServiceState.STATE_IN_SERVICE */
             switch (mDcTracker.getState(apnType)) {
-                case RETRYING:
-                case FAILED:
-                case IDLE:
-                    ret = PhoneConstants.DataState.DISCONNECTED;
-                break;
-
                 case CONNECTED:
                 case DISCONNECTING:
                     if ( mCT.mState != PhoneConstants.State.IDLE
@@ -539,12 +533,12 @@ public class GsmCdmaPhone extends Phone {
                     } else {
                         ret = PhoneConstants.DataState.CONNECTED;
                     }
-                break;
-
+                    break;
                 case CONNECTING:
-                case SCANNING:
                     ret = PhoneConstants.DataState.CONNECTING;
-                break;
+                    break;
+                default:
+                    ret = PhoneConstants.DataState.DISCONNECTED;
             }
         }
 
@@ -1712,7 +1706,8 @@ public class GsmCdmaPhone extends Phone {
                 } else {
                     resp = onComplete;
                 }
-                mCi.queryCallForwardStatus(commandInterfaceCFReason, 0, null, resp);
+                mCi.queryCallForwardStatus(commandInterfaceCFReason,
+                        CommandsInterface.SERVICE_CLASS_VOICE, null, resp);
             }
         } else {
             loge("getCallForwardingOption: not possible in CDMA");

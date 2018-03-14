@@ -27,6 +27,7 @@ import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArrayMap;
+import android.util.ArraySet;
 
 import org.junit.Test;
 import org.mockito.Mock;
@@ -38,7 +39,11 @@ import java.util.List;
 
 public class CarrierAppUtilsTest extends InstrumentationTestCase {
     private static final String CARRIER_APP = "com.example.carrier";
-    private static final String[] CARRIER_APPS = new String[] { CARRIER_APP };
+    private static final ArraySet<String> CARRIER_APPS = new ArraySet<>();
+    static {
+        CARRIER_APPS.add(CARRIER_APP);
+    }
+
     private static final String ASSOCIATED_APP = "com.example.associated";
     private static final ArrayMap<String, List<String>> ASSOCIATED_APPS = new ArrayMap<>();
     static {
@@ -73,7 +78,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_EmptyList() {
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, mContentResolver, USER_ID, new String[0],
+                mTelephonyManager, mContentResolver, USER_ID, new ArraySet<>(),
                 ASSOCIATED_APPS);
         Mockito.verifyNoMoreInteractions(mPackageManager, mTelephonyManager);
     }
@@ -83,9 +88,11 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     public void testDisableCarrierAppsUntilPrivileged_MissingApp() throws Exception {
         Mockito.when(mPackageManager.getApplicationInfo("com.example.missing.app",
                 PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(null);
+        ArraySet<String> systemCarrierAppsDisabledUntilUsed = new ArraySet<>();
+        systemCarrierAppsDisabledUntilUsed.add("com.example.missing.app");
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
                 mTelephonyManager, mContentResolver, USER_ID,
-                new String[] { "com.example.missing.app" }, ASSOCIATED_APPS);
+                systemCarrierAppsDisabledUntilUsed, ASSOCIATED_APPS);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
