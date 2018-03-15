@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -522,6 +523,36 @@ public class DataConnectionTest extends TelephonyTest {
         // Make sure no exception was thrown
         LinkProperties linkProperties = new LinkProperties();
         assertEquals(SetupResult.SUCCESS, setLinkProperties(response, linkProperties));
+    }
+
+    @Test
+    @SmallTest
+    public void testStartKeepaliveWLAN() throws Exception {
+        testConnectEvent();
+        waitForMs(200);
+
+        DataServiceManager mockDsm = mock(DataServiceManager.class);
+        doReturn(TransportType.WLAN).when(mockDsm).getTransportType();
+        replaceInstance(DataConnection.class, "mDataServiceManager", mDc, mockDsm);
+
+        final int sessionHandle = 0xF00;
+        final int slotId = 3;
+        final int interval = 10; // seconds
+        // Construct a new KeepalivePacketData request as we would receive from a Network Agent,
+        // and check that the packet is sent to the RIL.
+        KeepalivePacketData kd = KeepalivePacketData.nattKeepalivePacket(
+                NetworkUtils.numericToInetAddress("1.2.3.4"),
+                1234,
+                NetworkUtils.numericToInetAddress("8.8.8.8"),
+                4500);
+        mDc.obtainMessage(
+                DataConnection.EVENT_KEEPALIVE_START_REQUEST, slotId, interval, kd).sendToTarget();
+        waitForMs(100);
+        // testStartStopNattKeepalive() verifies that this request is passed with WWAN.
+        // Thus, even though we can't see the response in NetworkAgent, we can verify that the
+        // CommandsInterface never receives a request and infer that it was dropped due to WLAN.
+        verify(mSimulatedCommandsVerifier, times(0))
+                .startNattKeepalive(anyInt(), eq(kd), eq(interval * 1000), any(Message.class));
     }
 
     public void checkStartStopNattKeepalive(boolean useCondensedFlow) throws Exception {
