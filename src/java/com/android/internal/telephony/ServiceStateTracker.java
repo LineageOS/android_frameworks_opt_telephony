@@ -1618,7 +1618,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setEmergencyOnly(mEmergencyOnly);
             } else {
                 boolean namMatch = false;
-                if (!isSidsAllZeros() && isHomeSid(mNewSS.getSystemId())) {
+                if (!isSidsAllZeros() && isHomeSid(mNewSS.getCdmaSystemId())) {
                     namMatch = true;
                 }
 
@@ -1793,7 +1793,7 @@ public class ServiceStateTracker extends Handler {
                         systemId = ((CellIdentityCdma) cellIdentity).getSystemId();
                         networkId = ((CellIdentityCdma) cellIdentity).getNetworkId();
                     }
-                    mNewSS.setSystemAndNetworkId(systemId, networkId);
+                    mNewSS.setCdmaSystemAndNetworkId(systemId, networkId);
 
                     if (reasonForDenial == 0) {
                         mRegistrationDeniedReason = ServiceStateTracker.REGISTRATION_DENIED_GEN;
@@ -2060,7 +2060,7 @@ public class ServiceStateTracker extends Handler {
             if (configLoader != null) {
                 try {
                     PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
-                    String systemId = Integer.toString(mNewSS.getSystemId());
+                    String systemId = Integer.toString(mNewSS.getCdmaSystemId());
 
                     if (alwaysOnHomeNetwork(b)) {
                         log("updateRoamingState: carrier config override always on home network");
@@ -2802,7 +2802,7 @@ public class ServiceStateTracker extends Handler {
             if (!mPhone.isPhoneTypeGsm()) {
                 // try to fix the invalid Operator Numeric
                 if (isInvalidOperatorNumeric(operatorNumeric)) {
-                    int sid = mSS.getSystemId();
+                    int sid = mSS.getCdmaSystemId();
                     operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
                 }
             }
@@ -3000,9 +3000,9 @@ public class ServiceStateTracker extends Handler {
                         ((RuimRecords) mIccRecords).getCsimSpnDisplayCondition();
                 int iconIndex = mSS.getCdmaEriIconIndex();
 
-                if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
-                        isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
-                        mIccRecords != null) {
+                if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF)
+                        && isInHomeSidNid(mSS.getCdmaSystemId(), mSS.getCdmaNetworkId())
+                        && mIccRecords != null) {
                     mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
                 }
             }
