@@ -39,6 +39,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -1850,10 +1851,26 @@ public class DataConnection extends StateMachine {
                     KeepalivePacketData pkt = (KeepalivePacketData) msg.obj;
                     int slotId = msg.arg1;
                     int intervalMillis = msg.arg2 * 1000;
-                    mPhone.mCi.startNattKeepalive(
-                            DataConnection.this.mCid, pkt, intervalMillis,
-                            DataConnection.this.obtainMessage(
-                                    EVENT_KEEPALIVE_STARTED, slotId, 0, null));
+                    if (mDataServiceManager.getTransportType()
+                            == AccessNetworkConstants.TransportType.WWAN) {
+                        mPhone.mCi.startNattKeepalive(
+                                DataConnection.this.mCid, pkt, intervalMillis,
+                                DataConnection.this.obtainMessage(
+                                        EVENT_KEEPALIVE_STARTED, slotId, 0, null));
+                    } else {
+                        // We currently do not support NATT Keepalive requests using the
+                        // DataService API, so unless the request is WWAN (always bound via
+                        // the CommandsInterface), the request cannot be honored.
+                        //
+                        // TODO: b/72331356 to add support for Keepalive to the DataService
+                        // so that keepalive requests can be handled (if supported) by the
+                        // underlying transport.
+                        if (mNetworkAgent != null) {
+                            mNetworkAgent.onPacketKeepaliveEvent(
+                                    msg.arg1,
+                                    ConnectivityManager.PacketKeepalive.ERROR_INVALID_NETWORK);
+                        }
+                    }
                     retVal = HANDLED;
                     break;
                 }
