@@ -52,6 +52,7 @@ public class CellIdentityLteTest extends AndroidTestCase {
         assertEquals(PCI, ci.getPci());
         assertEquals(TAC, ci.getTac());
         assertEquals(EARFCN, ci.getEarfcn());
+        assertEquals(EARFCN, ci.getChannelNumber());
         assertEquals(BANDWIDTH, ci.getBandwidth());
         assertEquals(MCC, ci.getMcc());
         assertEquals(MNC, ci.getMnc());
