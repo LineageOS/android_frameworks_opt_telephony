@@ -34,8 +34,8 @@ import com.android.internal.telephony.uicc.IccRecords;
  * Apps (those that have access to Phone object) can retrieve this object
  * by calling phone.getIccCard()
  *
- * This interface is implemented by IccCardProxy and the object PhoneApp
- * gets when it calls getIccCard is IccCardProxy.
+ * This interface is implemented by UiccProfile and the object PhoneApp
+ * gets when it calls getIccCard is UiccProfile.
  */
 public interface IccCard {
     /**

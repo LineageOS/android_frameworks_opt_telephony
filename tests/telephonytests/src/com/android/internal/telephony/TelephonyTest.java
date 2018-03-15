@@ -64,7 +64,6 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
-import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IsimUiccRecords;
@@ -108,8 +107,6 @@ public abstract class TelephonyTest {
     protected ImsPhoneCallTracker mImsCT;
     @Mock
     protected UiccController mUiccController;
-    @Mock
-    protected IccCardProxy mIccCardProxy;
     @Mock
     protected UiccProfile mUiccProfile;
     @Mock
@@ -328,9 +325,6 @@ public abstract class TelephonyTest {
         doReturn(mSST).when(mTelephonyComponentFactory)
                 .makeServiceStateTracker(nullable(GsmCdmaPhone.class),
                         nullable(CommandsInterface.class));
-        doReturn(mIccCardProxy).when(mTelephonyComponentFactory)
-                .makeIccCardProxy(nullable(Context.class), nullable(CommandsInterface.class),
-                        anyInt());
         doReturn(mUiccProfile).when(mTelephonyComponentFactory)
                 .makeUiccProfile(nullable(Context.class), nullable(CommandsInterface.class),
                         nullable(IccCardStatus.class), anyInt(), nullable(UiccCard.class));
@@ -419,7 +413,7 @@ public abstract class TelephonyTest {
         doReturn(mRuimRecords).when(mUiccCardApplication3gpp2).getIccRecords();
         doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
 
-        //mIccCardProxy
+        //mUiccProfile
         doReturn(mSimRecords).when(mUiccProfile).getIccRecords();
         doAnswer(new Answer<IccRecords>() {
             public IccRecords answer(InvocationOnMock invocation) {
