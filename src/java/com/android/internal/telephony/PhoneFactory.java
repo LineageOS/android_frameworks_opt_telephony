@@ -307,6 +307,10 @@ public class PhoneFactory {
         }
     }
 
+    public static SubscriptionInfoUpdater getSubscriptionInfoUpdater() {
+        return sSubInfoRecordUpdater;
+    }
+
     public static ImsResolver getImsResolver() {
         return sImsResolver;
     }
