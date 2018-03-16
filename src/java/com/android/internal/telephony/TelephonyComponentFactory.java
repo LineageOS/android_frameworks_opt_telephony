@@ -29,7 +29,6 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccProfile;
@@ -98,10 +97,6 @@ public class TelephonyComponentFactory {
 
     public IccSmsInterfaceManager makeIccSmsInterfaceManager(Phone phone) {
         return new IccSmsInterfaceManager(phone);
-    }
-
-    public IccCardProxy makeIccCardProxy(Context context, CommandsInterface ci, int phoneId) {
-        return new IccCardProxy(context, ci, phoneId);
     }
 
     /**
