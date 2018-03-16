@@ -199,9 +199,9 @@ public class ServiceStateTest extends TestCase {
         ss.setIsManualSelection(true);
         assertTrue(ss.getIsManualSelection());
 
-        ss.setSystemAndNetworkId(123, 456);
-        assertEquals(123, ss.getSystemId());
-        assertEquals(456, ss.getNetworkId());
+        ss.setCdmaSystemAndNetworkId(123, 456);
+        assertEquals(123, ss.getCdmaSystemId());
+        assertEquals(456, ss.getCdmaNetworkId());
 
         ss.setEmergencyOnly(true);
         assertTrue(ss.isEmergencyOnly());
@@ -220,7 +220,7 @@ public class ServiceStateTest extends TestCase {
         ss.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         ss.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0);
         ss.setCssIndicator(1);
-        ss.setSystemAndNetworkId(2, 3);
+        ss.setCdmaSystemAndNetworkId(2, 3);
         ss.setCdmaRoamingIndicator(4);
         ss.setCdmaDefaultRoamingIndicator(5);
         ss.setCdmaEriIconIndex(6);
@@ -250,7 +250,7 @@ public class ServiceStateTest extends TestCase {
         ss.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         ss.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0);
         ss.setCssIndicator(1);
-        ss.setSystemAndNetworkId(2, 3);
+        ss.setCdmaSystemAndNetworkId(2, 3);
         ss.setCdmaRoamingIndicator(4);
         ss.setCdmaDefaultRoamingIndicator(5);
         ss.setCdmaEriIconIndex(6);
