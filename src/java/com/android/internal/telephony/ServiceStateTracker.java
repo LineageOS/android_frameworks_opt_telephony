@@ -139,7 +139,8 @@ public class ServiceStateTracker extends Handler {
      * and ignore stale responses.  The value is a count-down of
      * expected responses in this pollingContext.
      */
-    private int[] mPollingContext;
+    @VisibleForTesting
+    public int[] mPollingContext;
     private boolean mDesiredPowerState;
 
     /**
@@ -2647,8 +2648,8 @@ public class ServiceStateTracker extends Handler {
         // ratchet the new tech up through it's rat family but don't drop back down
         // until cell change or device is OOS
         boolean isDataInService = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
-        if (!hasLocationChanged && isDataInService) {
-            mRatRatcheter.ratchetRat(mSS, mNewSS);
+        if (isDataInService) {
+            mRatRatcheter.ratchetRat(mSS, mNewSS, hasLocationChanged);
         }
 
         boolean hasRilVoiceRadioTechnologyChanged =
