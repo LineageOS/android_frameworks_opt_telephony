@@ -96,7 +96,7 @@ public class UiccSlot extends Handler {
                     sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
                 }
 
-                UiccProfile.broadcastInternalIccStateChangedIntent(
+                UiccController.updateInternalIccState(
                         IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, mPhoneId);
 
                 // no card present in the slot now; dispose card and make mUiccCard null
@@ -324,7 +324,7 @@ public class UiccSlot extends Handler {
         mUiccCard = null;
 
         if (mPhoneId != INVALID_PHONE_ID) {
-            UiccProfile.broadcastInternalIccStateChangedIntent(
+            UiccController.updateInternalIccState(
                     IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null, mPhoneId);
         }
 
