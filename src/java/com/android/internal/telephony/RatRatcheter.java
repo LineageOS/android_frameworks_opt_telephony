@@ -22,11 +22,12 @@ import android.content.IntentFilter;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.Rlog;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -48,6 +49,8 @@ public class RatRatcheter {
     private final SparseArray<SparseIntArray> mRatFamilyMap = new SparseArray<>();
 
     private final Phone mPhone;
+    private boolean mVoiceRatchetEnabled = true;
+    private boolean mDataRatchetEnabled = true;
 
     /**
      * Updates the ServiceState with a new set of cell bandwidths IFF the new bandwidth list has a
@@ -98,22 +101,37 @@ public class RatRatcheter {
     }
 
     /** Ratchets RATs and cell bandwidths if oldSS and newSS have the same RAT family. */
-    public void ratchet(ServiceState oldSS, ServiceState newSS) {
-        int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
-                newSS.getRilVoiceRadioTechnology());
-        int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
-                newSS.getRilDataRadioTechnology());
-
+    public void ratchet(ServiceState oldSS, ServiceState newSS, boolean locationChange) {
         if (isSameRatFamily(oldSS, newSS)) {
             updateBandwidths(oldSS.getCellBandwidths(), newSS);
+        }
+        // temporarily disable rat ratchet on location change.
+        if (locationChange) {
+            mVoiceRatchetEnabled = false;
+            mDataRatchetEnabled = false;
+            return;
+        }
+        if (mVoiceRatchetEnabled) {
+            int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
+                    newSS.getRilVoiceRadioTechnology());
+            newSS.setRilVoiceRadioTechnology(newVoiceRat);
+        } else if (oldSS.getRilVoiceRadioTechnology() != newSS.getRilVoiceRadioTechnology()) {
+            // resume rat ratchet on following rat change within the same location
+            mVoiceRatchetEnabled = true;
+        }
+
+        if (mDataRatchetEnabled) {
+            int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
+                    newSS.getRilDataRadioTechnology());
+            newSS.setRilDataRadioTechnology(newDataRat);
+        } else if (oldSS.getRilVoiceRadioTechnology() != newSS.getRilVoiceRadioTechnology()) {
+            // resume rat ratchet on following rat change within the same location
+            mVoiceRatchetEnabled = true;
         }
 
         boolean newUsingCA = oldSS.isUsingCarrierAggregation()
                 || newSS.isUsingCarrierAggregation()
                 || newSS.getCellBandwidths().length > 1;
-
-        newSS.setRilVoiceRadioTechnology(newVoiceRat);
-        newSS.setRilDataRadioTechnology(newDataRat);
         newSS.setIsUsingCarrierAggregation(newUsingCA);
     }
 

@@ -139,7 +139,8 @@ public class ServiceStateTracker extends Handler {
      * and ignore stale responses.  The value is a count-down of
      * expected responses in this pollingContext.
      */
-    private int[] mPollingContext;
+    @VisibleForTesting
+    public int[] mPollingContext;
     private boolean mDesiredPowerState;
 
     /**
@@ -1634,7 +1635,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setEmergencyOnly(mEmergencyOnly);
             } else {
                 boolean namMatch = false;
-                if (!isSidsAllZeros() && isHomeSid(mNewSS.getSystemId())) {
+                if (!isSidsAllZeros() && isHomeSid(mNewSS.getCdmaSystemId())) {
                     namMatch = true;
                 }
 
@@ -1810,7 +1811,7 @@ public class ServiceStateTracker extends Handler {
                         systemId = ((CellIdentityCdma) cellIdentity).getSystemId();
                         networkId = ((CellIdentityCdma) cellIdentity).getNetworkId();
                     }
-                    mNewSS.setSystemAndNetworkId(systemId, networkId);
+                    mNewSS.setCdmaSystemAndNetworkId(systemId, networkId);
 
                     if (reasonForDenial == 0) {
                         mRegistrationDeniedReason = ServiceStateTracker.REGISTRATION_DENIED_GEN;
@@ -2092,7 +2093,7 @@ public class ServiceStateTracker extends Handler {
             if (configLoader != null) {
                 try {
                     PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
-                    String systemId = Integer.toString(mNewSS.getSystemId());
+                    String systemId = Integer.toString(mNewSS.getCdmaSystemId());
 
                     if (alwaysOnHomeNetwork(b)) {
                         log("updateRoamingState: carrier config override always on home network");
@@ -2655,8 +2656,8 @@ public class ServiceStateTracker extends Handler {
         // ratchet the new tech up through its rat family but don't drop back down
         // until cell change or device is OOS
         boolean isDataInService = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
-        if (!hasLocationChanged && isDataInService) {
-            mRatRatcheter.ratchet(mSS, mNewSS);
+        if (isDataInService) {
+            mRatRatcheter.ratchet(mSS, mNewSS, hasLocationChanged);
         }
 
         boolean hasRilVoiceRadioTechnologyChanged =
@@ -2826,7 +2827,7 @@ public class ServiceStateTracker extends Handler {
             if (!mPhone.isPhoneTypeGsm()) {
                 // try to fix the invalid Operator Numeric
                 if (isInvalidOperatorNumeric(operatorNumeric)) {
-                    int sid = mSS.getSystemId();
+                    int sid = mSS.getCdmaSystemId();
                     operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
                 }
             }
@@ -3024,9 +3025,9 @@ public class ServiceStateTracker extends Handler {
                         ((RuimRecords) mIccRecords).getCsimSpnDisplayCondition();
                 int iconIndex = mSS.getCdmaEriIconIndex();
 
-                if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
-                        isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
-                        mIccRecords != null) {
+                if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF)
+                        && isInHomeSidNid(mSS.getCdmaSystemId(), mSS.getCdmaNetworkId())
+                        && mIccRecords != null) {
                     mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
                 }
             }
