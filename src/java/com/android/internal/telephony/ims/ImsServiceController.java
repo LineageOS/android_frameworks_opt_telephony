@@ -155,11 +155,11 @@ public class ImsServiceController {
      */
     public interface ImsServiceControllerCallbacks {
         /**
-         * Called by ImsServiceController when a new feature has been created.
+         * Called by ImsServiceController when a new MMTEL or RCS feature has been created.
          */
         void imsServiceFeatureCreated(int slotId, int feature, ImsServiceController controller);
         /**
-         * Called by ImsServiceController when a new feature has been removed.
+         * Called by ImsServiceController when a new MMTEL or RCS feature has been removed.
          */
         void imsServiceFeatureRemoved(int slotId, int feature, ImsServiceController controller);
     }
@@ -204,8 +204,6 @@ public class ImsServiceController {
     private Set<IImsServiceFeatureCallback> mImsStatusCallbacks = new HashSet<>();
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
-    // Determines whether or not emergency calls can be placed through this ImsService.
-    private boolean mCanPlaceEmergencyCalls = false;
 
     protected final Object mLock = new Object();
     protected final Context mContext;
@@ -394,7 +392,7 @@ public class ImsServiceController {
             }
             // Clean up all features
             changeImsServiceFeatures(new HashSet<>());
-            removeImsServiceFeatureListener();
+            removeImsServiceFeatureCallbacks();
             mImsServiceControllerBinder.unlinkToDeath(mImsDeathRecipient, 0);
             Log.i(LOG_TAG, "Unbinding ImsService: " + mComponentName);
             mContext.unbindService(mImsServiceConnection);
@@ -435,30 +433,6 @@ public class ImsServiceController {
         }
     }
 
-    /**
-     * Sets the ability for the ImsService to place emergency calls. This is controlled by the
-     * {@link ImsFeature#FEATURE_EMERGENCY_MMTEL} feature attribute, which is set either as metadata
-     * in the AndroidManifest service definition or via dynamic query in
-     * {@link ImsService#querySupportedImsFeatures()}.
-     */
-    public void setCanPlaceEmergencyCalls(boolean canPlaceEmergencyCalls) {
-        synchronized (mLock) {
-            mCanPlaceEmergencyCalls = canPlaceEmergencyCalls;
-        }
-    }
-
-    /**
-     * Whether or not the ImsService connected to this controller is able to place emergency calls
-     * over IMS.
-     * @return true if this ImsService can place emergency calls over IMS, false if the framework
-     * should instead place the emergency call over circuit switch.
-     */
-    public boolean canPlaceEmergencyCalls() {
-        synchronized (mLock) {
-            return mCanPlaceEmergencyCalls;
-        }
-    }
-
     @VisibleForTesting
     public IImsServiceController getImsServiceController() {
         return mIImsServiceController;
@@ -481,9 +455,20 @@ public class ImsServiceController {
     /**
      * Add a callback to ImsManager that signals a new feature that the ImsServiceProxy can handle.
      */
-    public void addImsServiceFeatureListener(IImsServiceFeatureCallback callback) {
+    public void addImsServiceFeatureCallback(IImsServiceFeatureCallback callback) {
         synchronized (mLock) {
             mImsStatusCallbacks.add(callback);
+            if (mImsFeatures == null || mImsFeatures.isEmpty()) {
+                return;
+            }
+            // notify the new status callback of the features that are available.
+            try {
+                for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
+                    callback.imsFeatureCreated(i.slotId, i.featureType);
+                }
+            } catch (RemoteException e) {
+                Log.w(LOG_TAG, "addImsServiceFeatureCallback: exception notifying callback");
+            }
         }
     }
 
@@ -600,7 +585,8 @@ public class ImsServiceController {
         return mIImsServiceController != null;
     }
 
-    private void removeImsServiceFeatureListener() {
+    @VisibleForTesting
+    public void removeImsServiceFeatureCallbacks() {
         synchronized (mLock) {
             mImsStatusCallbacks.clear();
         }
@@ -684,15 +670,21 @@ public class ImsServiceController {
             Log.w(LOG_TAG, "addImsServiceFeature called with null values.");
             return;
         }
-        ImsFeatureStatusCallback c = new ImsFeatureStatusCallback(featurePair.slotId,
-                featurePair.featureType);
-        mFeatureStatusCallbacks.add(c);
-        IInterface f = createImsFeature(featurePair.slotId, featurePair.featureType,
-                c.getCallback());
-        addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f);
-        // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
-        mCallbacks.imsServiceFeatureCreated(featurePair.slotId, featurePair.featureType, this);
-        // Send callback to ImsServiceProxy to change supported ImsFeatures
+        if (featurePair.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
+            ImsFeatureStatusCallback c = new ImsFeatureStatusCallback(featurePair.slotId,
+                    featurePair.featureType);
+            mFeatureStatusCallbacks.add(c);
+            IInterface f = createImsFeature(featurePair.slotId, featurePair.featureType,
+                    c.getCallback());
+            addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f);
+            // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
+            mCallbacks.imsServiceFeatureCreated(featurePair.slotId, featurePair.featureType, this);
+        } else {
+            // Don't update ImsService for emergency MMTEL feature.
+            Log.i(LOG_TAG, "supports emergency calling on slot " + featurePair.slotId);
+        }
+        // Send callback to ImsServiceProxy to change supported ImsFeatures including emergency
+        // MMTEL state.
         sendImsFeatureCreatedCallback(featurePair.slotId, featurePair.featureType);
     }
 
@@ -703,18 +695,23 @@ public class ImsServiceController {
             Log.w(LOG_TAG, "removeImsServiceFeature called with null values.");
             return;
         }
-        ImsFeatureStatusCallback callbackToRemove = mFeatureStatusCallbacks.stream().filter(c ->
-                c.mSlotId == featurePair.slotId && c.mFeatureType == featurePair.featureType)
-                .findFirst().orElse(null);
-        // Remove status callbacks from list.
-        if (callbackToRemove != null) {
-            mFeatureStatusCallbacks.remove(callbackToRemove);
+        if (featurePair.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
+            ImsFeatureStatusCallback callbackToRemove = mFeatureStatusCallbacks.stream().filter(c ->
+                    c.mSlotId == featurePair.slotId && c.mFeatureType == featurePair.featureType)
+                    .findFirst().orElse(null);
+            // Remove status callbacks from list.
+            if (callbackToRemove != null) {
+                mFeatureStatusCallbacks.remove(callbackToRemove);
+            }
+            removeImsFeature(featurePair.slotId, featurePair.featureType,
+                    (callbackToRemove != null ? callbackToRemove.getCallback() : null));
+            removeImsFeatureBinder(featurePair.slotId, featurePair.featureType);
+            // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
+            mCallbacks.imsServiceFeatureRemoved(featurePair.slotId, featurePair.featureType, this);
+        } else {
+            // Don't update ImsService for emergency MMTEL feature.
+            Log.i(LOG_TAG, "doesn't support emergency calling on slot " + featurePair.slotId);
         }
-        removeImsFeature(featurePair.slotId, featurePair.featureType,
-                (callbackToRemove != null ? callbackToRemove.getCallback() : null));
-        removeImsFeatureBinder(featurePair.slotId, featurePair.featureType);
-        // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
-        mCallbacks.imsServiceFeatureRemoved(featurePair.slotId, featurePair.featureType, this);
         // Send callback to ImsServiceProxy to change supported ImsFeatures
         // Ensure that ImsServiceProxy callback occurs after ImsResolver callback. If an
         // ImsManager requests the ImsService while it is being removed in ImsResolver, this
@@ -772,7 +769,10 @@ public class ImsServiceController {
         }
         synchronized (mLock) {
             for (ImsFeatureConfiguration.FeatureSlotPair feature : mImsFeatures) {
-                mCallbacks.imsServiceFeatureRemoved(feature.slotId, feature.featureType, this);
+                if (feature.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
+                    // don't update ImsServiceController for emergency MMTEL.
+                    mCallbacks.imsServiceFeatureRemoved(feature.slotId, feature.featureType, this);
+                }
                 sendImsFeatureRemovedCallback(feature.slotId, feature.featureType);
             }
         }
