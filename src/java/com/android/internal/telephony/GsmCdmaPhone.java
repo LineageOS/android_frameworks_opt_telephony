@@ -88,7 +88,6 @@ import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -106,6 +105,7 @@ import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.telephony.Rlog;
+import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1278,9 +1278,6 @@ public class GsmCdmaPhone extends Phone {
         boolean allowWpsOverIms = configManager.getConfigForSubId(getSubId())
                 .getBoolean(CarrierConfigManager.KEY_SUPPORT_WPS_OVER_IMS_BOOL);
 
-        boolean useImsForCall = useImsForCall(dialArgs)
-                 && (isWpsCall ? allowWpsOverIms : true);
-
         boolean useImsForEmergency = imsPhone != null
                 && isEmergency
                 && alwaysTryImsForEmergencyCarrierConfig
@@ -1289,16 +1286,21 @@ public class GsmCdmaPhone extends Phone {
 
         String dialPart = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
                 stripSeparators(dialString));
-        boolean isUt = (dialPart.startsWith("*") || dialPart.startsWith("#"))
+        boolean isMmiCode = (dialPart.startsWith("*") || dialPart.startsWith("#"))
                 && dialPart.endsWith("#");
-
+        boolean isSuppServiceCode = ImsPhoneMmiCode.isSuppServiceCodes(dialPart, this);
+        boolean isPotentialUssdCode = isMmiCode && !isSuppServiceCode;
         boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled();
+        boolean useImsForCall = useImsForCall(dialArgs)
+                && (isWpsCall ? allowWpsOverIms : true);
 
         if (DBG) {
             logd("useImsForCall=" + useImsForCall
                     + ", useImsForEmergency=" + useImsForEmergency
                     + ", useImsForUt=" + useImsForUt
-                    + ", isUt=" + isUt
+                    + ", isUt=" + isMmiCode
+                    + ", isSuppServiceCode=" + isSuppServiceCode
+                    + ", isPotentialUssdCode=" + isPotentialUssdCode
                     + ", isWpsCall=" + isWpsCall
                     + ", allowWpsOverIms=" + allowWpsOverIms
                     + ", imsPhone=" + imsPhone
@@ -1314,7 +1316,9 @@ public class GsmCdmaPhone extends Phone {
 
         Phone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mPhoneId, mContext);
 
-        if ((useImsForCall && !isUt) || (isUt && useImsForUt) || useImsForEmergency) {
+        if ((useImsForCall && (!isMmiCode || isPotentialUssdCode))
+                || (isMmiCode && useImsForUt)
+                || useImsForEmergency) {
             try {
                 if (DBG) logd("Trying IMS PS call");
                 return imsPhone.dial(dialString, dialArgs);
@@ -1343,7 +1347,9 @@ public class GsmCdmaPhone extends Phone {
         if (mSST != null && mSST.mSS.getState() == ServiceState.STATE_POWER_OFF /* CS POWER_OFF */
                 && !VideoProfile.isVideo(dialArgs.videoState) /* voice call */
                 && !isEmergency /* non-emergency call */
-                && !(isUt && useImsForUt) /* not UT */) {
+                && !(isMmiCode && useImsForUt) /* not UT */
+                /* If config_allow_ussd_over_ims is false, USSD is sent over the CS pipe instead */
+                && !isPotentialUssdCode) {
             throw new CallStateException(
                 CallStateException.ERROR_POWER_OFF,
                 "cannot dial voice call in airplane mode");
@@ -1356,7 +1362,9 @@ public class GsmCdmaPhone extends Phone {
                 && ServiceState.isPsOnlyTech(
                         mSST.mSS.getRilDataRadioTechnology())) /* PS not in LTE/NR */
                 && !VideoProfile.isVideo(dialArgs.videoState) /* voice call */
-                && !isEmergency /* non-emergency call */) {
+                && !isEmergency /* non-emergency call */
+                /* If config_allow_ussd_over_ims is false, USSD is sent over the CS pipe instead */
+                && !isPotentialUssdCode) {
             throw new CallStateException(
                 CallStateException.ERROR_OUT_OF_SERVICE,
                 "cannot dial voice call in out of service");
