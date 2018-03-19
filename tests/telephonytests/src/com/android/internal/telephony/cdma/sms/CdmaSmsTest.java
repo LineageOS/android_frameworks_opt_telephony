@@ -16,19 +16,28 @@
 
 package com.android.internal.telephony.cdma.sms;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import android.telephony.TelephonyManager;
-import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsHeader;
+import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cdma.SmsMessage;
 import com.android.internal.util.HexDump;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class CdmaSmsTest extends AndroidTestCase {
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class CdmaSmsTest extends TelephonyTest {
 
     // CJK ideographs, Hiragana, Katakana, full width letters, Cyrillic, etc.
     private static final String sUnicodeChars = "\u4e00\u4e01\u4e02\u4e03" +
@@ -43,7 +52,18 @@ public class CdmaSmsTest extends AndroidTestCase {
     // "Hello, world" in Japanese.
     private static final String sHelloWorldJa = "\u3053\u3093\u306b\u3061\u306f\u4e16\u754c";
 
+    @Before
+    public void setUp() throws Exception {
+        super.setUp(this.getClass().getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
+    }
+
     @SmallTest
+    @Test
     public void testCdmaSmsAddrParsing() throws Exception {
         CdmaSmsAddress addr = CdmaSmsAddress.parse("6502531000");
         assertEquals(addr.ton, CdmaSmsAddress.TON_UNKNOWN);
@@ -115,6 +135,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserData7bitGsm() throws Exception {
         String pdu = "00031040900112488ea794e074d69e1b7392c270326cde9e98";
         BearerData bearerData = BearerData.decode(HexDump.hexStringToByteArray(pdu));
@@ -122,6 +143,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserData7bitAscii() throws Exception {
         String pdu = "0003100160010610262d5ab500";
         BearerData bearerData = BearerData.decode(HexDump.hexStringToByteArray(pdu));
@@ -129,6 +151,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserData7bitAsciiTwo() throws Exception {
         String pdu = "00031001d00109104539b4d052ebb3d0";
         BearerData bearerData = BearerData.decode(HexDump.hexStringToByteArray(pdu));
@@ -136,6 +159,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserDataIa5() throws Exception {
         String pdu = "00031002100109184539b4d052ebb3d0";
         BearerData bearerData = BearerData.decode(HexDump.hexStringToByteArray(pdu));
@@ -143,6 +167,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserData7bitAsciiFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -173,6 +198,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserData7bitGsmFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -227,6 +253,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserDataUtf16Feedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -263,6 +290,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testMonolithicOne() throws Exception {
         String pdu = "0003200010010410168d2002010503060812011101590501c706069706180000000701c108" +
                 "01c00901800a01e00b01030c01c00d01070e05039acc13880f018011020566";
@@ -310,6 +338,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testMonolithicTwo() throws Exception {
         String pdu = "0003200010010410168d200201050306081201110159050192060697061800000007013d0" +
                 "801c00901800a01e00b01030c01c00d01070e05039acc13880f018011020566";
@@ -357,6 +386,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserDataHeaderConcatRefFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -390,6 +420,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserDataHeaderIllegalConcatRef() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -427,6 +458,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserDataHeaderMixedFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -469,6 +501,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testReplyOption() throws Exception {
         String pdu1 = "0003104090011648b6a794e0705476bf77bceae934fe5f6d94d87450080a0180";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -501,6 +534,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testReplyOptionFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -543,6 +577,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testNumberOfMessages() throws Exception {
         // Note that the message text below does not properly reflect
         // the message count.  The author of these messages was
@@ -560,6 +595,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testCallbackNum() throws Exception {
         String pdu1 = "00031040900112488ea794e070d436cb638bc5e035ce2f97900e06910431323334";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -572,6 +608,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testCallbackNumDtmf() throws Exception {
         String pdu1 = "00031002300109104539b4d052ebb3d00e07052d4c90a55080";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -584,6 +621,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testCallbackNumFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -621,6 +659,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testPrivacyIndicator() throws Exception {
         String pdu1 = "0003104090010c485f4194dfea34becf61b840090140";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -634,6 +673,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testPrivacyIndicatorFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -656,6 +696,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testMsgDeliveryAlert() throws Exception {
         String pdu1 = "0003104090010d4866a794e07055965b91d040300c0100";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -686,6 +727,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testMiscParams() throws Exception {
         String pdu1 = "00031002400109104539b4d052ebb3d00c0180";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -707,6 +749,7 @@ public class CdmaSmsTest extends AndroidTestCase {
         assertEquals(bd4.userData.payloadStr, "SMS Rulz");
     }
    @SmallTest
+   @Test
     public void testMsgDeliveryAlertFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -731,6 +774,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testLanguageIndicator() throws Exception {
         String pdu1 = "0003104090011748bea794e0731436ef3bd7c2e0352eef27a1c263fe58080d0101";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -743,6 +787,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testLanguageIndicatorFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -767,6 +812,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testDisplayMode() throws Exception {
         String pdu1 = "0003104090010c485f4194dfea34becf61b8400f0100";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -780,6 +826,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testDisplayModeFeedback() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -804,6 +851,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testIs91() throws Exception {
         String pdu1 = "000320001001070c2039acc13880";
         BearerData bd1 = BearerData.decode(HexDump.hexStringToByteArray(pdu1));
@@ -814,6 +862,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUserDataHeaderWithEightCharMsg() throws Exception {
         SmsHeader smsHeader = getConcatUserDataHeader(2, 2);
         encodeDecodeAssertEquals("01234567", smsHeader, -1);
@@ -822,12 +871,14 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testShiftJis() throws Exception {
         encodeDecodeAssertEquals(sHelloWorldJa, null, UserData.ENCODING_UNICODE_16);
         encodeDecodeAssertEquals(sHelloWorldJa, null, UserData.ENCODING_SHIFT_JIS);
     }
 
     @SmallTest
+    @Test
     public void testIgnoreReservedSubparam() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
@@ -910,6 +961,7 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testFragmentText() throws Exception {
         boolean isCdmaPhone = (TelephonyManager.getDefault().getPhoneType() ==
                 TelephonyManager.PHONE_TYPE_CDMA);

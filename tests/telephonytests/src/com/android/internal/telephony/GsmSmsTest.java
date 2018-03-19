@@ -16,8 +16,11 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import android.telephony.TelephonyManager;
-import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.gsm.SmsMessage;
@@ -25,9 +28,24 @@ import com.android.internal.util.HexDump;
 
 import java.util.ArrayList;
 
-public class GsmSmsTest extends AndroidTestCase {
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class GsmSmsTest extends TelephonyTest {
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp(this.getClass().getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
+    }
 
     @SmallTest
+    @Test
     public void testAddressing() throws Exception {
         String pdu = "07914151551512f2040B916105551511f100006060605130308A04D4F29C0E";
         SmsMessage sms = SmsMessage.createFromPdu(HexDump.hexStringToByteArray(pdu));
@@ -48,6 +66,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUdh() throws Exception {
         String pdu = "07914140279510F6440A8111110301003BF56080207130138A8C0B05040B8423F"
                 + "000032A02010106276170706C69636174696F6E2F766E642E7761702E6D6D732D"
@@ -86,6 +105,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testUcs2() throws Exception {
         String pdu = "07912160130300F4040B914151245584F600087010807121352B1021220"
                 + "0A900AE00680065006C006C006F";
@@ -94,6 +114,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testMultipart() throws Exception {
         /*
          * Multi-part text SMS with septet data.
@@ -118,6 +139,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testCPHSVoiceMail() throws Exception {
         // "set MWI flag"
 
@@ -151,6 +173,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testCingularVoiceMail() throws Exception {
         // "set MWI flag"
 
@@ -170,6 +193,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testEmailGateway() throws Exception {
         String pdu = "07914151551512f204038105f300007011103164638a28e6f71b50c687db" +
                 "7076d9357eb7412f7a794e07cdeb6275794c07bde8e5391d247e93f3";
@@ -201,6 +225,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testExtendedCharacterTable() throws Exception {
         String pdu = "07914151551512f2040B916105551511f100006080615131728A44D4F29C0E2" +
                 "AE3E96537B94C068DD16179784C2FCB41F4B0985D06B958ADD00FB0E94536AF9749" +
@@ -239,6 +264,7 @@ public class GsmSmsTest extends AndroidTestCase {
     };
 
     @SmallTest
+    @Test
     public void testFragmentText() throws Exception {
         boolean isGsmPhone = (TelephonyManager.getDefault().getPhoneType() ==
                 TelephonyManager.PHONE_TYPE_GSM);
@@ -278,6 +304,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testFragmentTurkishText() throws Exception {
         boolean isGsmPhone = (TelephonyManager.getDefault().getPhoneType() ==
                 TelephonyManager.PHONE_TYPE_GSM);
@@ -343,6 +370,7 @@ public class GsmSmsTest extends AndroidTestCase {
 
 
     @SmallTest
+    @Test
     public void testDecode() throws Exception {
         decodeSingle(0);    // default table
         decodeSingle(1);    // Turkish locking shift table
@@ -418,6 +446,7 @@ public class GsmSmsTest extends AndroidTestCase {
     };
 
     @SmallTest
+    @Test
     public void testDecodeExtended() throws Exception {
         for (int language = 0; language < 3; language++) {
             int[] tableIndex = sExtendedTableIndexes[language];
@@ -468,6 +497,7 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testDecodeExtendedFallback() throws Exception {
         // verify that unmapped characters in extension table fall back to locking shift table
         for (int language = 0; language < 3; language++) {
