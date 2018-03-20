@@ -77,6 +77,7 @@ import android.util.EventLog;
 import android.util.LocalLog;
 import android.util.Pair;
 import android.util.SparseArray;
+import android.util.StatsLog;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -2794,6 +2795,9 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRilDataRadioTechnologyChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
+            StatsLog.write(StatsLog.MOBILE_RADIO_TECHNOLOGY_CHANGED,
+                    ServiceState.rilRadioTechnologyToNetworkType(mSS.getRilDataRadioTechnology()),
+                    mPhone.getPhoneId());
 
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                     == mSS.getRilDataRadioTechnology()) {

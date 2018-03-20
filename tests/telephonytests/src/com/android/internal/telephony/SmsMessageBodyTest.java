@@ -16,18 +16,18 @@
 
 package com.android.internal.telephony;
 
-import android.telephony.SmsMessage;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
-import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.LargeTest;
-import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Log;
 
 import com.android.internal.telephony.SmsConstants;
 
-import java.util.Random;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Test cases to verify selection of the optimal 7 bit encoding tables
@@ -39,7 +39,7 @@ import java.util.Random;
  * Tests both encoding variations: unsupported characters mapped to space,
  * and unsupported characters force entire message to UCS-2.
  */
-public class SmsMessageBodyTest extends AndroidTestCase {
+public class SmsMessageBodyTest extends TelephonyTest {
     private static final String TAG = "SmsMessageBodyTest";
 
     // ASCII chars in the GSM 7 bit default alphabet
@@ -256,7 +256,18 @@ public class SmsMessageBodyTest extends AndroidTestCase {
      */
     private static final int UDH_SEPTET_COST_CONCATENATED_MESSAGE = 6;
 
+    @Before
+    public void setUp() throws Exception {
+        super.setUp(this.getClass().getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
+    }
+
     @SmallTest
+    @Test
     public void testCalcLengthAscii() throws Exception {
         StringBuilder sb = new StringBuilder(320);
         int[] values = {0, 0, 0, SmsConstants.ENCODING_7BIT, 0, 0};
@@ -289,6 +300,7 @@ public class SmsMessageBodyTest extends AndroidTestCase {
     }
 
     @SmallTest
+    @Test
     public void testCalcLengthUnicode() throws Exception {
         StringBuilder sb = new StringBuilder(160);
         int[] values = {0, 0, 0, SmsConstants.ENCODING_16BIT, 0, 0};
