@@ -58,6 +58,8 @@ public class NotificationChannelController {
                 NotificationManager.IMPORTANCE_DEFAULT);
         alertChannel.setSound(Settings.System.DEFAULT_NOTIFICATION_URI,
                 new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
+        // allow users to block notifications from system
+        alertChannel.setBlockableSystem(true);
 
         final NotificationChannel mobileDataStatusChannel = new NotificationChannel(
                 CHANNEL_ID_MOBILE_DATA_STATUS,
