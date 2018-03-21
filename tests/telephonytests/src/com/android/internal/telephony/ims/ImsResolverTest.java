@@ -124,6 +124,7 @@ public class ImsResolverTest extends ImsTestBase {
         features.add(ImsResolver.METADATA_MMTEL_FEATURE);
         features.add(ImsResolver.METADATA_RCS_FEATURE);
         setupPackageQuery(TEST_DEVICE_DEFAULT_NAME, features, true);
+        setupController();
 
         // Complete package manager lookup and cache.
         startBind();
