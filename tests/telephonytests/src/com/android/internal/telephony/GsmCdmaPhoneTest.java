@@ -57,8 +57,10 @@ import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.test.SimulatedCommands;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.UiccProfile;
 
 import org.junit.After;
 import org.junit.Before;
@@ -79,6 +81,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 1;
     private static final int EVENT_EMERGENCY_CALL_TOGGLE = 2;
+    private static final int EVENT_SET_ICC_LOCK_ENABLED = 3;
 
     private class GsmCdmaPhoneTestHandler extends HandlerThread {
 
@@ -811,5 +814,41 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 null));
         waitForMs(100);
         verify(mEriManager, times(1)).loadEriFile();
+    }
+
+    @Test
+    @SmallTest
+    public void testGetEmptyIccCard() {
+        doReturn(null).when(mUiccController).getUiccProfileForPhone(anyInt());
+
+        IccCard iccCard = mPhoneUT.getIccCard();
+
+        // The iccCard should be a dummy object, not null.
+        assertTrue(!(iccCard instanceof UiccProfile));
+
+        assertTrue(iccCard != null);
+        assertEquals(IccCardConstants.State.UNKNOWN, iccCard.getState());
+        assertEquals(null, iccCard.getIccRecords());
+        assertEquals(false, iccCard.getIccLockEnabled());
+        assertEquals(false, iccCard.getIccFdnEnabled());
+        assertEquals(false, iccCard.isApplicationOnIcc(
+                IccCardApplicationStatus.AppType.APPTYPE_SIM));
+        assertEquals(false, iccCard.hasIccCard());
+        assertEquals(false, iccCard.getIccPin2Blocked());
+        assertEquals(false, iccCard.getIccPuk2Blocked());
+
+        Message onComplete = mTestHandler.obtainMessage(EVENT_SET_ICC_LOCK_ENABLED);
+        iccCard.setIccLockEnabled(true, "password", onComplete);
+
+        waitForMs(100);
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        // Verify that message is sent back with exception.
+        verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+        Message message = messageArgumentCaptor.getAllValues().get(0);
+        AsyncResult ret = (AsyncResult) message.obj;
+        assertEquals(EVENT_SET_ICC_LOCK_ENABLED, message.what);
+        assertTrue(ret.exception != null);
     }
 }
