@@ -492,8 +492,8 @@ public class UiccController extends Handler {
         if (VDBG) log("onGetIccCardStatusDone: phoneId " + index + " physicalSlotIndex " + slotId);
         if (slotId == INVALID_SLOT_ID) {
             slotId = index;
-            mPhoneIdToSlotId[index] = slotId;
         }
+        mPhoneIdToSlotId[index] = slotId;
 
         if (VDBG) logPhoneIdToSlotIdMapping();
 
