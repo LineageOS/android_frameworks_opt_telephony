@@ -98,12 +98,15 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
 
     @SmallTest
     public void testParcelWithUnknowMccMnc() {
-        CellIdentityTdscdma ci = new CellIdentityTdscdma(null, null, LAC, CID, CPID);
+        CellIdentityTdscdma ci =
+                new CellIdentityTdscdma(null, null, LAC, CID, CPID, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentity.TYPE_TDSCDMA);
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(CPID);
@@ -117,12 +120,15 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
     public void testParcelWithInvalidMccMnc() {
         final String invalidMcc = "randomStuff";
         final String invalidMnc = "randomStuff";
-        CellIdentityTdscdma ci = new CellIdentityTdscdma(null, null, LAC, CID, CPID);
+        CellIdentityTdscdma ci =
+                new CellIdentityTdscdma(null, null, LAC, CID, CPID, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentity.TYPE_TDSCDMA);
         p.writeString(invalidMcc);
         p.writeString(invalidMnc);
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(CPID);
