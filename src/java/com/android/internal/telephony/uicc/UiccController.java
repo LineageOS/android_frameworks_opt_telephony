@@ -33,7 +33,9 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
+import com.android.internal.telephony.SubscriptionInfoUpdater;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -461,6 +463,15 @@ public class UiccController extends Handler {
         }
     }
 
+    static void updateInternalIccState(String value, String reason, int phoneId) {
+        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
+        if (subInfoUpdator != null) {
+            subInfoUpdator.updateInternalIccState(value, reason, phoneId);
+        } else {
+            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
+        }
+    }
+
     private synchronized void onGetIccCardStatusDone(AsyncResult ar, Integer index) {
         if (ar.exception != null) {
             Rlog.e(LOG_TAG,"Error getting ICC status. "
@@ -481,8 +492,8 @@ public class UiccController extends Handler {
         if (VDBG) log("onGetIccCardStatusDone: phoneId " + index + " physicalSlotIndex " + slotId);
         if (slotId == INVALID_SLOT_ID) {
             slotId = index;
-            mPhoneIdToSlotId[index] = slotId;
         }
+        mPhoneIdToSlotId[index] = slotId;
 
         if (VDBG) logPhoneIdToSlotIdMapping();
 

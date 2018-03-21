@@ -307,6 +307,10 @@ public class PhoneFactory {
         }
     }
 
+    public static SubscriptionInfoUpdater getSubscriptionInfoUpdater() {
+        return sSubInfoRecordUpdater;
+    }
+
     public static ImsResolver getImsResolver() {
         return sImsResolver;
     }
@@ -454,7 +458,10 @@ public class PhoneFactory {
             pw.println("++++++++++++++++++++++++++++++++");
 
             try {
-                ((UiccProfile) phone.getIccCard()).dump(fd, pw, args);
+                UiccProfile uiccProfile = (UiccProfile) phone.getIccCard();
+                if (uiccProfile != null) {
+                    uiccProfile.dump(fd, pw, args);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
