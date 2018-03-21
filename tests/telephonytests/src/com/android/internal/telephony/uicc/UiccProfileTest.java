@@ -29,10 +29,13 @@ import static org.mockito.Mockito.isA;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.support.test.filters.SmallTest;
+import android.telephony.CarrierConfigManager;
 
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.TelephonyTest;
@@ -54,8 +57,6 @@ public class UiccProfileTest extends TelephonyTest {
     }
 
     private IccIoResult mIccIoResult;
-    // Must match UiccProfile.EVENT_APP_READY
-    private static final int EVENT_APP_READY = 6;
     private static final int SCARY_SLEEP_MS = 200;
 
     private UiccProfileHandlerThread mTestHandlerThread;
@@ -309,7 +310,7 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(3, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         assertEquals(mUiccProfile.getState(), State.NOT_READY);
     }
@@ -341,7 +342,7 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(3, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -375,7 +376,7 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(3, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -399,7 +400,7 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(0, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded since there is no applications.
         assertEquals(State.NOT_READY, mUiccProfile.getState());
@@ -425,7 +426,7 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(1, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(EVENT_APP_READY));
+        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded since there is no applications.
         assertEquals(State.NOT_READY, mUiccProfile.getState());
@@ -453,5 +454,35 @@ public class UiccProfileTest extends TelephonyTest {
         testUpdateUiccProfileApplicationAllReady();
         mUiccProfile.updateExternalState();
         assertEquals(State.LOADED, mUiccProfile.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testCarrierConfigHandling() {
+        testUpdateUiccProfileApplication();
+
+        // Fake carrier name
+        String fakeCarrierName = "fakeCarrierName";
+        PersistableBundle carrierConfigBundle = mContextFixture.getCarrierConfigBundle();
+        carrierConfigBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, true);
+        carrierConfigBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING,
+                fakeCarrierName);
+
+        // broadcast CARRIER_CONFIG_CHANGED
+        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        waitForMs(200);
+
+        // verify that setSimOperatorNameForPhone() is called with fakeCarrierName
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mTelephonyManager, atLeast(1)).setSimOperatorNameForPhone(anyInt(),
+                stringArgumentCaptor.capture());
+        boolean carrierFound = false;
+        for (String carrierName : stringArgumentCaptor.getAllValues()) {
+            if (fakeCarrierName.equals(carrierName)) {
+                carrierFound = true;
+                break;
+            }
+        }
+        assertTrue(carrierFound);
     }
 }
