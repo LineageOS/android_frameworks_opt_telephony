@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.app.ActivityManager;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
@@ -33,7 +32,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
@@ -133,9 +131,6 @@ public class UiccProfile extends Handler implements IccCard {
     private UiccCardApplication mUiccApplication = null;
     private IccRecords mIccRecords = null;
     private IccCardConstants.State mExternalState = IccCardConstants.State.UNKNOWN;
-
-    public static final String ACTION_INTERNAL_SIM_STATE_CHANGED =
-            "android.intent.action.internal_sim_state_changed";
 
     private final ContentObserver mProvisionCompleteContentObserver =
             new ContentObserver(new Handler()) {
@@ -485,21 +480,6 @@ public class UiccProfile extends Handler implements IccCard {
         }
     }
 
-    static void broadcastInternalIccStateChangedIntent(String value, String reason, int phoneId) {
-        Intent intent = new Intent(ACTION_INTERNAL_SIM_STATE_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
-                | Intent.FLAG_RECEIVER_FOREGROUND);
-        intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
-        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
-        intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
-        intent.putExtra(PhoneConstants.PHONE_KEY, phoneId);  // SubId may not be valid.
-        String logStr = "Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
-                + " for mPhoneId : " + phoneId;
-        log(logStr);
-        UiccController.sLocalLog.log("UiccProfile[" + phoneId + "]: " + logStr);
-        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
-    }
-
     private void setExternalState(IccCardConstants.State newState, boolean override) {
         synchronized (mLock) {
             if (!SubscriptionManager.isValidSlotIndex(mPhoneId)) {
@@ -535,7 +515,7 @@ public class UiccProfile extends Handler implements IccCard {
             log("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
             mTelephonyManager.setSimStateForPhone(mPhoneId, getState().toString());
 
-            broadcastInternalIccStateChangedIntent(getIccStateIntentString(mExternalState),
+            UiccController.updateInternalIccState(getIccStateIntentString(mExternalState),
                     getIccStateReason(mExternalState), mPhoneId);
         }
     }
