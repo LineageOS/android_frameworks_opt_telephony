@@ -212,7 +212,13 @@ public class UiccProfile extends Handler implements IccCard {
 
     @Override
     public void handleMessage(Message msg) {
-        if (mDisposed) {
+        // We still need to handle the following response messages even the UiccProfile has been
+        // disposed because whoever sent the request may be still waiting for the response.
+        if (mDisposed && msg.what != EVENT_OPEN_LOGICAL_CHANNEL_DONE
+                && msg.what != EVENT_CLOSE_LOGICAL_CHANNEL_DONE
+                && msg.what != EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE
+                && msg.what != EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE
+                && msg.what != EVENT_SIM_IO_DONE) {
             loge("handleMessage: Received " + msg.what + " after dispose(); ignoring the message");
             return;
         }
