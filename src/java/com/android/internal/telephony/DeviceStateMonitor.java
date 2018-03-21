@@ -208,8 +208,11 @@ public class DeviceStateMonitor extends Handler {
      * @return True if signal strength update should be turned off.
      */
     private boolean shouldTurnOffSignalStrength() {
-        // We don't want to get signal strength update when the device is in power save mode.
-        if (mIsPowerSaveOn) {
+        // Depending on the configuration, we might not want to get signal strength update
+        // when the device is in power save mode.
+        if (mIsPowerSaveOn && mPhone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool
+                    .config_disable_signal_strength_update_in_powersave_mode)) {
             return true;
         }
 
