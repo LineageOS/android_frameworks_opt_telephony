@@ -228,9 +228,7 @@ public class UiccProfile extends Handler implements IccCard {
     private void setCurrentAppType(boolean isGsm) {
         if (VDBG) log("setCurrentAppType");
         synchronized (mLock) {
-            boolean isLteOnCdmaMode = TelephonyManager.getLteOnCdmaModeStatic()
-                    == PhoneConstants.LTE_ON_CDMA_TRUE;
-            if (isGsm || isLteOnCdmaMode) {
+            if (isGsm) {
                 mCurrentAppType = UiccController.APP_FAM_3GPP;
             } else {
                 mCurrentAppType = UiccController.APP_FAM_3GPP2;
