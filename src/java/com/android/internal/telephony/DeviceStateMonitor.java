@@ -201,18 +201,13 @@ public class DeviceStateMonitor extends Handler {
      * @return True if low data is expected
      */
     private boolean isLowDataExpected() {
-        return mIsPowerSaveOn || (!mIsCharging && !mIsTetheringOn && !mIsScreenOn);
+        return !mIsCharging && !mIsTetheringOn && !mIsScreenOn;
     }
 
     /**
      * @return True if signal strength update should be turned off.
      */
     private boolean shouldTurnOffSignalStrength() {
-        // We don't want to get signal strength update when the device is in power save mode.
-        if (mIsPowerSaveOn) {
-            return true;
-        }
-
         // We should not turn off signal strength update if one of the following condition is true.
         // 1. The device is charging.
         // 2. When the screen is on.
@@ -234,11 +229,6 @@ public class DeviceStateMonitor extends Handler {
      * trigger the network update unsolicited response.
      */
     private boolean shouldTurnOffFullNetworkUpdate() {
-        // We don't want to get full network update when the device is in power save mode.
-        if (mIsPowerSaveOn) {
-            return true;
-        }
-
         // We should not turn off full network update if one of the following condition is true.
         // 1. The device is charging.
         // 2. When the screen is on.
@@ -258,11 +248,6 @@ public class DeviceStateMonitor extends Handler {
      * @return True if data dormancy status update should be turned off.
      */
     private boolean shouldTurnOffDormancyUpdate() {
-        // We don't want to get dormancy status update when the device is in power save mode.
-        if (mIsPowerSaveOn) {
-            return true;
-        }
-
         // We should not turn off data dormancy update if one of the following condition is true.
         // 1. The device is charging.
         // 2. When the screen is on.
