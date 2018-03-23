@@ -30,6 +30,7 @@ public class SmsMessageTest {
         // should return null instead of SmsMessage with null wrappedMessage
         assertEquals(null, SmsMessage.createFromPdu(null, SmsConstants.FORMAT_3GPP2));
         assertEquals(null, SmsMessage.createFromPdu(null, SmsConstants.FORMAT_3GPP));
+        assertEquals(null, SmsMessage.createFromPdu(null));
         assertEquals(null, SmsMessage.newFromCMT(null));
     }
 }

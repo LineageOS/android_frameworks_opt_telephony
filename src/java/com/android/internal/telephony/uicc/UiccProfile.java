@@ -16,10 +16,11 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.app.ActivityManager;
 import android.app.usage.UsageStatsManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -33,7 +34,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
@@ -105,25 +105,23 @@ public class UiccProfile extends Handler implements IccCard {
 
     private RegistrantList mCarrierPrivilegeRegistrants = new RegistrantList();
 
-    private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 15;
-    private static final int EVENT_CLOSE_LOGICAL_CHANNEL_DONE = 16;
-    private static final int EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE = 17;
-    private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 18;
-    private static final int EVENT_SIM_IO_DONE = 19;
-    private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 20;
-
     private final int mPhoneId;
 
-    /*----------------------------------------------------*/
-    // logic moved over from IccCardProxy
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 1;
-    private static final int EVENT_ICC_LOCKED = 5;
-    private static final int EVENT_APP_READY = 6;
-    private static final int EVENT_RECORDS_LOADED = 7;
-    private static final int EVENT_NETWORK_LOCKED = 9;
-    private static final int EVENT_EID_READY = 10;
-
-    private static final int EVENT_ICC_RECORD_EVENTS = 500;
+    private static final int EVENT_ICC_LOCKED = 2;
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public static final int EVENT_APP_READY = 3;
+    private static final int EVENT_RECORDS_LOADED = 4;
+    private static final int EVENT_NETWORK_LOCKED = 5;
+    private static final int EVENT_EID_READY = 6;
+    private static final int EVENT_ICC_RECORD_EVENTS = 7;
+    private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 8;
+    private static final int EVENT_CLOSE_LOGICAL_CHANNEL_DONE = 9;
+    private static final int EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE = 10;
+    private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 11;
+    private static final int EVENT_SIM_IO_DONE = 12;
+    private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 13;
+    private static final int EVENT_CARRIER_CONFIG_CHANGED = 14;
 
     private TelephonyManager mTelephonyManager;
 
@@ -133,9 +131,6 @@ public class UiccProfile extends Handler implements IccCard {
     private UiccCardApplication mUiccApplication = null;
     private IccRecords mIccRecords = null;
     private IccCardConstants.State mExternalState = IccCardConstants.State.UNKNOWN;
-
-    public static final String ACTION_INTERNAL_SIM_STATE_CHANGED =
-            "android.intent.action.internal_sim_state_changed";
 
     private final ContentObserver mProvisionCompleteContentObserver =
             new ContentObserver(new Handler()) {
@@ -148,7 +143,15 @@ public class UiccProfile extends Handler implements IccCard {
                     }
                 }
             };
-    /*----------------------------------------------------*/
+
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
+            }
+        }
+    };
 
     public UiccProfile(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId,
             UiccCard uiccCard) {
@@ -169,6 +172,10 @@ public class UiccProfile extends Handler implements IccCard {
         update(c, ci, ics);
         ci.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
         resetProperties();
+
+        IntentFilter intentfilter = new IntentFilter();
+        intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        c.registerReceiver(mReceiver, intentfilter);
     }
 
     /**
@@ -189,6 +196,7 @@ public class UiccProfile extends Handler implements IccCard {
             }
 
             mCi.unregisterForOffOrNotAvailable(this);
+            mContext.unregisterReceiver(mReceiver);
 
             if (mCatService != null) mCatService.dispose();
             for (UiccCardApplication app : mUiccApplications) {
@@ -220,9 +228,7 @@ public class UiccProfile extends Handler implements IccCard {
     private void setCurrentAppType(boolean isGsm) {
         if (VDBG) log("setCurrentAppType");
         synchronized (mLock) {
-            boolean isLteOnCdmaMode = TelephonyManager.getLteOnCdmaModeStatic()
-                    == PhoneConstants.LTE_ON_CDMA_TRUE;
-            if (isGsm || isLteOnCdmaMode) {
+            if (isGsm) {
                 mCurrentAppType = UiccController.APP_FAM_3GPP;
             } else {
                 mCurrentAppType = UiccController.APP_FAM_3GPP2;
@@ -232,7 +238,13 @@ public class UiccProfile extends Handler implements IccCard {
 
     @Override
     public void handleMessage(Message msg) {
-        if (mDisposed) {
+        // We still need to handle the following response messages even the UiccProfile has been
+        // disposed because whoever sent the request may be still waiting for the response.
+        if (mDisposed && msg.what != EVENT_OPEN_LOGICAL_CHANNEL_DONE
+                && msg.what != EVENT_CLOSE_LOGICAL_CHANNEL_DONE
+                && msg.what != EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE
+                && msg.what != EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE
+                && msg.what != EVENT_SIM_IO_DONE) {
             loge("handleMessage: Received " + msg.what + " after dispose(); ignoring the message");
             return;
         }
@@ -267,6 +279,10 @@ public class UiccProfile extends Handler implements IccCard {
                 updateExternalState();
                 break;
 
+            case EVENT_CARRIER_CONFIG_CHANGED:
+                handleCarrierNameOverride();
+                break;
+
             case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
             case EVENT_CLOSE_LOGICAL_CHANNEL_DONE:
             case EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE:
@@ -284,6 +300,64 @@ public class UiccProfile extends Handler implements IccCard {
             default:
                 loge("handleMessage: Unhandled message with number: " + msg.what);
                 break;
+        }
+    }
+
+    /**
+     * Override the carrier name with either carrier config or SPN
+     * if an override is provided.
+     */
+    private void handleCarrierNameOverride() {
+        SubscriptionController subCon = SubscriptionController.getInstance();
+        final int subId = subCon.getSubIdUsingPhoneId(mPhoneId);
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            loge("subId not valid for Phone " + mPhoneId);
+            return;
+        }
+
+        CarrierConfigManager configLoader = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configLoader == null) {
+            loge("Failed to load a Carrier Config");
+            return;
+        }
+
+        PersistableBundle config = configLoader.getConfigForSubId(subId);
+        boolean preferCcName = config.getBoolean(
+                CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, false);
+        String ccName = config.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+        // If carrier config is priority, use it regardless - the preference
+        // and the name were both set by the carrier, so this is safe;
+        // otherwise, if the SPN is priority but we don't have one *and* we have
+        // a name in carrier config, use the carrier config name as a backup.
+        if (preferCcName || (TextUtils.isEmpty(getServiceProviderName())
+                && !TextUtils.isEmpty(ccName))) {
+            if (mIccRecords != null) {
+                mIccRecords.setServiceProviderName(ccName);
+            }
+            mTelephonyManager.setSimOperatorNameForPhone(mPhoneId, ccName);
+        }
+
+        updateCarrierNameForSubscription(subCon, subId);
+    }
+
+    private void updateCarrierNameForSubscription(SubscriptionController subCon, int subId) {
+        /* update display name with carrier override */
+        SubscriptionInfo subInfo = subCon.getActiveSubscriptionInfo(
+                subId, mContext.getOpPackageName());
+
+        if (subInfo == null || subInfo.getNameSource()
+                == SubscriptionManager.NAME_SOURCE_USER_INPUT) {
+            // either way, there is no subinfo to update
+            return;
+        }
+
+        CharSequence oldSubName = subInfo.getDisplayName();
+        String newCarrierName = mTelephonyManager.getSimOperatorName(subId);
+
+        if (!TextUtils.isEmpty(newCarrierName) && !newCarrierName.equals(oldSubName)) {
+            log("sim name[" + mPhoneId + "] = " + newCarrierName);
+            subCon.setDisplayName(newCarrierName, subId);
         }
     }
 
@@ -485,21 +559,6 @@ public class UiccProfile extends Handler implements IccCard {
         }
     }
 
-    static void broadcastInternalIccStateChangedIntent(String value, String reason, int phoneId) {
-        Intent intent = new Intent(ACTION_INTERNAL_SIM_STATE_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
-                | Intent.FLAG_RECEIVER_FOREGROUND);
-        intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
-        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
-        intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
-        intent.putExtra(PhoneConstants.PHONE_KEY, phoneId);  // SubId may not be valid.
-        String logStr = "Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED value=" + value
-                + " for mPhoneId : " + phoneId;
-        log(logStr);
-        UiccController.sLocalLog.log("UiccProfile[" + phoneId + "]: " + logStr);
-        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
-    }
-
     private void setExternalState(IccCardConstants.State newState, boolean override) {
         synchronized (mLock) {
             if (!SubscriptionManager.isValidSlotIndex(mPhoneId)) {
@@ -516,7 +575,7 @@ public class UiccProfile extends Handler implements IccCard {
                 // Update the MCC/MNC.
                 if (mIccRecords != null) {
                     String operator = mIccRecords.getOperatorNumeric();
-                    log("operator=" + operator + " mPhoneId=" + mPhoneId);
+                    log("setExternalState: operator=" + operator + " mPhoneId=" + mPhoneId);
 
                     if (!TextUtils.isEmpty(operator)) {
                         mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, operator);
@@ -525,17 +584,17 @@ public class UiccProfile extends Handler implements IccCard {
                             mTelephonyManager.setSimCountryIsoForPhone(mPhoneId,
                                     MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
                         } else {
-                            loge("EVENT_RECORDS_LOADED Country code is null");
+                            loge("setExternalState: state LOADED; Country code is null");
                         }
                     } else {
-                        loge("EVENT_RECORDS_LOADED Operator name is null");
+                        loge("setExternalState: state LOADED; Operator name is null");
                     }
                 }
             }
             log("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
             mTelephonyManager.setSimStateForPhone(mPhoneId, getState().toString());
 
-            broadcastInternalIccStateChangedIntent(getIccStateIntentString(mExternalState),
+            UiccController.updateInternalIccState(getIccStateIntentString(mExternalState),
                     getIccStateReason(mExternalState), mPhoneId);
         }
     }
