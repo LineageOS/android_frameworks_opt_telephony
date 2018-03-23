@@ -28,6 +28,7 @@ import android.util.Pair;
 import junit.framework.TestCase;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ServiceStateTest extends TestCase {
 
@@ -164,6 +165,17 @@ public class ServiceStateTest extends TestCase {
                 assertTrue("RAT " + rat + " should be GSM", ServiceState.isGsm(rat.first));
             }
         }
+    }
+    @SmallTest
+    public void testGetCellBandwidths() {
+        ServiceState ss = new ServiceState();
+
+        ss.setCellBandwidths(null);
+        assertTrue(Arrays.equals(ss.getCellBandwidths(), new int[0]));
+
+        int[] cellBandwidths = new int[]{5000, 10000};
+        ss.setCellBandwidths(cellBandwidths);
+        assertTrue(Arrays.equals(ss.getCellBandwidths(), cellBandwidths));
     }
 
     @SmallTest
