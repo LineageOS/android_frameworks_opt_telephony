@@ -74,6 +74,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import android.util.EventLog;
 
 /**
  * This class broadcasts incoming SMS messages to interested apps after storing them in
@@ -803,6 +804,19 @@ public abstract class InboundSmsHandler extends StateMachine {
         int destPort = tracker.getDestPort();
         boolean block = false;
 
+        // Do not process when the message count is invalid.
+        if (messageCount <= 0) {
+            EventLog.writeEvent(
+                    0x534e4554 /* snetTagId */,
+                    "72298611" /* buganizer id */,
+                    -1 /* uid */,
+                    String.format(
+                            "processMessagePart: invalid messageCount = %d",
+                            messageCount));
+
+            return false;
+        }
+
         if (messageCount == 1) {
             // single-part message
             pdus = new byte[][]{tracker.getPdu()};
@@ -837,6 +851,21 @@ public abstract class InboundSmsHandler extends StateMachine {
                     // subtract offset to convert sequence to 0-based array index
                     int index = cursor.getInt(PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING
                             .get(SEQUENCE_COLUMN)) - tracker.getIndexOffset();
+
+                    // The invalid PDUs can be received and stored in the raw table. The range
+                    // check ensures the process not crash even if the seqNumber in the
+                    // UserDataHeader is invalid.
+                    if (index >= pdus.length || index < 0) {
+                        EventLog.writeEvent(
+                                0x534e4554 /* snetTagId */,
+                                "72298611" /* buganizer id */,
+                                -1 /* uid */,
+                                String.format(
+                                        "processMessagePart: invalid seqNumber = %d, messageCount = %d",
+                                        index + tracker.getIndexOffset(),
+                                        messageCount));
+                        continue;
+                    }
 
                     pdus[index] = HexDump.hexStringToByteArray(cursor.getString(
                             PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING.get(PDU_COLUMN)));
