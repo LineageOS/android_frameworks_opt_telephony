@@ -92,7 +92,6 @@ public class ImsServiceController {
             synchronized (mLock) {
                 mIsBound = true;
                 mIsBinding = false;
-                grantPermissionsToService();
                 Log.d(LOG_TAG, "ImsService(" + name + "): onServiceConnected with binder: "
                         + service);
                 if (service != null) {
@@ -346,6 +345,7 @@ public class ImsServiceController {
             if (!mIsBound && !mIsBinding) {
                 mIsBinding = true;
                 mImsFeatures = imsFeatureSet;
+                grantPermissionsToService();
                 Intent imsServiceIntent = new Intent(getServiceInterface()).setComponent(
                         mComponentName);
                 mImsServiceConnection = new ImsServiceConnection();
