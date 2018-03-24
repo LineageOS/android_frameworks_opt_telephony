@@ -286,7 +286,8 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(3, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
+        mUiccProfile.mHandler.sendMessage(
+                mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         assertEquals(mUiccProfile.getState(), State.NOT_READY);
     }
@@ -318,7 +319,8 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(3, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
+        mUiccProfile.mHandler.sendMessage(
+                mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -352,7 +354,8 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(3, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
+        mUiccProfile.mHandler.sendMessage(
+                mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -376,7 +379,8 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(0, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
+        mUiccProfile.mHandler.sendMessage(
+                mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded since there is no applications.
         assertEquals(State.NOT_READY, mUiccProfile.getState());
@@ -402,7 +406,8 @@ public class UiccProfileTest extends TelephonyTest {
         waitForMs(50);
         assertEquals(1, mUiccProfile.getNumApplications());
 
-        mUiccProfile.sendMessage(mUiccProfile.obtainMessage(UiccProfile.EVENT_APP_READY));
+        mUiccProfile.mHandler.sendMessage(
+                mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
         waitForMs(SCARY_SLEEP_MS);
         // state is loaded since there is no applications.
         assertEquals(State.NOT_READY, mUiccProfile.getState());
