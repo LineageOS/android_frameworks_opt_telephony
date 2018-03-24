@@ -162,7 +162,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         public void onSmsReceived(int token, String format, byte[] pdu)
                 throws RemoteException {
             Rlog.d(TAG, "SMS received.");
-            mSmsDispatchersController.injectSmsPdu(pdu, format, result -> {
+            android.telephony.SmsMessage message =
+                    android.telephony.SmsMessage.createFromPdu(pdu, format);
+            mSmsDispatchersController.injectSmsPdu(message, format, result -> {
                 Rlog.d(TAG, "SMS handled result: " + result);
                 int mappedResult;
                 switch (result) {
@@ -180,7 +182,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         break;
                 }
                 try {
-                    getImsManager().acknowledgeSms(token, 0, mappedResult);
+                    if (message != null && message.mWrappedSmsMessage != null) {
+                        getImsManager().acknowledgeSms(token,
+                                message.mWrappedSmsMessage.mMessageRef, mappedResult);
+                    } else {
+                        Rlog.w(TAG, "SMS Received with a PDU that could not be parsed.");
+                        getImsManager().acknowledgeSms(token, 0, mappedResult);
+                    }
                 } catch (ImsException e) {
                     Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
                 }

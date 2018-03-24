@@ -32,6 +32,7 @@ import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -186,13 +187,17 @@ public class SmsDispatchersController extends Handler {
      */
     @VisibleForTesting
     public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback) {
-        injectSmsPdu(pdu, format, callback, false /* ignoreClass */);
+        // TODO We need to decide whether we should allow injecting GSM(3gpp)
+        // SMS pdus when the phone is camping on CDMA(3gpp2) network and vice versa.
+        android.telephony.SmsMessage msg =
+                android.telephony.SmsMessage.createFromPdu(pdu, format);
+        injectSmsPdu(msg, format, callback, false /* ignoreClass */);
     }
 
     /**
      * Inject an SMS PDU into the android platform.
      *
-     * @param pdu is the byte array of pdu to be injected into android telephony layer
+     * @param msg is the {@link SmsMessage} to be injected into android telephony layer
      * @param format is the format of SMS pdu (3gpp or 3gpp2)
      * @param callback if not NULL this callback is triggered when the message is successfully
      *                 received by the android telephony layer. This callback is triggered at
@@ -200,15 +205,10 @@ public class SmsDispatchersController extends Handler {
      * @param ignoreClass if set to false, this method will inject class 1 sms only.
      */
     @VisibleForTesting
-    public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback,
+    public void injectSmsPdu(SmsMessage msg, String format, SmsInjectionCallback callback,
             boolean ignoreClass) {
         Rlog.d(TAG, "SmsDispatchersController:injectSmsPdu");
         try {
-            // TODO We need to decide whether we should allow injecting GSM(3gpp)
-            // SMS pdus when the phone is camping on CDMA(3gpp2) network and vice versa.
-            android.telephony.SmsMessage msg =
-                    android.telephony.SmsMessage.createFromPdu(pdu, format);
-
             if (msg == null) {
                 Rlog.e(TAG, "injectSmsPdu: createFromPdu returned null");
                 callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
