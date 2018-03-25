@@ -759,6 +759,13 @@ public abstract class InboundSmsHandler extends StateMachine {
         int destPort = tracker.getDestPort();
         boolean block = false;
 
+        // Do not process when the message count is invalid.
+        if (messageCount <= 0) {
+            loge("processMessagePart: returning false due to invalid message count "
+                    + messageCount);
+            return false;
+        }
+
         if (messageCount == 1) {
             // single-part message
             pdus = new byte[][]{tracker.getPdu()};
@@ -793,6 +800,17 @@ public abstract class InboundSmsHandler extends StateMachine {
                     // subtract offset to convert sequence to 0-based array index
                     int index = cursor.getInt(PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING
                             .get(SEQUENCE_COLUMN)) - tracker.getIndexOffset();
+
+                    // The invalid PDUs can be received and stored in the raw table. The range
+                    // check ensures the process not crash even if the seqNumber in the
+                    // UserDataHeader is invalid.
+                    if (index >= pdus.length || index < 0) {
+                        loge(String.format(
+                                "processMessagePart: invalid seqNumber = %d, messageCount = %d",
+                                index + tracker.getIndexOffset(),
+                                messageCount));
+                        continue;
+                    }
 
                     pdus[index] = HexDump.hexStringToByteArray(cursor.getString(
                             PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING.get(PDU_COLUMN)));
