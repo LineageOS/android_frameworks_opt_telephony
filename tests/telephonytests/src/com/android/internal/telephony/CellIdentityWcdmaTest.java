@@ -179,12 +179,15 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
 
     @SmallTest
     public void testParcelWithUnknowMccMnc() {
-        CellIdentityWcdma ci = new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, null, null);
+        CellIdentityWcdma ci =
+                new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentity.TYPE_WCDMA);
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(PSC);
@@ -199,12 +202,15 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
     public void testParcelWithInvalidMccMnc() {
         final String invalidMcc = "randomStuff";
         final String invalidMnc = "randomStuff";
-        CellIdentityWcdma ci = new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, null, null);
+        CellIdentityWcdma ci =
+                new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentity.TYPE_WCDMA);
         p.writeString(invalidMcc);
         p.writeString(invalidMnc);
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(PSC);
