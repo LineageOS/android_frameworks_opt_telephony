@@ -31,8 +31,10 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.IAlarmManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
@@ -48,6 +50,7 @@ import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.support.test.filters.FlakyTest;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellInfo;
@@ -75,6 +78,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -429,6 +433,41 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(300);
         assertEquals(sst.getSignalStrength(), ss);
         assertEquals(sst.getSignalStrength().isGsm(), false);
+    }
+
+    @Test
+    public void testSetsNewSignalStrengthReportingCriteria() {
+        int[] wcdmaThresholds = {
+                -110, /* SIGNAL_STRENGTH_POOR */
+                -100, /* SIGNAL_STRENGTH_MODERATE */
+                -90, /* SIGNAL_STRENGTH_GOOD */
+                -80  /* SIGNAL_STRENGTH_GREAT */
+        };
+        mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY,
+                wcdmaThresholds);
+
+        int[] lteThresholds = {
+                -130, /* SIGNAL_STRENGTH_POOR */
+                -120, /* SIGNAL_STRENGTH_MODERATE */
+                -110, /* SIGNAL_STRENGTH_GOOD */
+                -100,  /* SIGNAL_STRENGTH_GREAT */
+        };
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
+                lteThresholds);
+
+        CarrierConfigManager mockConfigManager = Mockito.mock(CarrierConfigManager.class);
+        when(mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE))
+                .thenReturn(mockConfigManager);
+        when(mockConfigManager.getConfigForSubId(anyInt())).thenReturn(mBundle);
+
+        Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        mContext.sendBroadcast(intent);
+        waitForMs(300);
+
+        verify(mPhone).setSignalStrengthReportingCriteria(eq(wcdmaThresholds),
+                eq(AccessNetworkType.UTRAN));
+        verify(mPhone).setSignalStrengthReportingCriteria(eq(lteThresholds),
+                eq(AccessNetworkType.EUTRAN));
     }
 
     @Test
