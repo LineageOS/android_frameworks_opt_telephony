@@ -1394,6 +1394,17 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void setSignalStrengthReportingCriteria(int hysteresisMs, int hysteresisDb,
+            int[] thresholdsDbm, int ran, Message result) {
+    }
+
+    @Override
+    public void setLinkCapacityReportingCriteria(int hysteresisMs, int hysteresisDlKbps,
+            int hysteresisUlKbps, int[] thresholdsDlKbps, int[] thresholdsUlKbps, int ran,
+            Message result) {
+    }
+
+    @Override
     public void setSimCardPower(int state, Message result) {
     }
 

@@ -25,12 +25,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
-import android.hardware.radio.V1_0.IndicationFilter;
+import android.hardware.radio.V1_2.IndicationFilter;
 import android.net.ConnectivityManager;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
@@ -62,6 +64,9 @@ public class DeviceStateMonitor extends Handler {
     private static final int EVENT_POWER_SAVE_MODE_CHANGED      = 3;
     private static final int EVENT_CHARGING_STATE_CHANGED       = 4;
     private static final int EVENT_TETHERING_STATE_CHANGED      = 5;
+
+    // TODO(b/74006656) load hysteresis values from a property when DeviceStateMonitor starts
+    private static final int HYSTERESIS_KBPS = 50;
 
     private final Phone mPhone;
 
@@ -264,6 +269,44 @@ public class DeviceStateMonitor extends Handler {
     }
 
     /**
+     * @return True if link capacity estimate update should be turned off.
+     */
+    private boolean shouldTurnOffLinkCapacityEstimate() {
+        // We should not turn off link capacity update if one of the following condition is true.
+        // 1. The device is charging.
+        // 2. When the screen is on.
+        // 3. When data tethering is on.
+        // 4. When the update mode is IGNORE_SCREEN_OFF.
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn
+                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_LINK_CAPACITY_ESTIMATE)
+                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+            return false;
+        }
+
+        // In all other cases, we turn off link capacity update.
+        return true;
+    }
+
+    /**
+     * @return True if physical channel config update should be turned off.
+     */
+    private boolean shouldTurnOffPhysicalChannelConfig() {
+        // We should not turn off physical channel update if one of the following condition is true.
+        // 1. The device is charging.
+        // 2. When the screen is on.
+        // 3. When data tethering is on.
+        // 4. When the update mode is IGNORE_SCREEN_OFF.
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn
+                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_PHYSICAL_CHANNEL_CONFIG)
+                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+            return false;
+        }
+
+        // In all other cases, we turn off physical channel config update.
+        return true;
+    }
+
+    /**
      * Set indication update mode
      *
      * @param filters Indication filters. Should be a bitmask of INDICATION_FILTER_XXX.
@@ -282,6 +325,12 @@ public class DeviceStateMonitor extends Handler {
         }
         if ((filters & TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED) != 0) {
             mUpdateModes.put(TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED, mode);
+        }
+        if ((filters & TelephonyManager.INDICATION_FILTER_LINK_CAPACITY_ESTIMATE) != 0) {
+            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_LINK_CAPACITY_ESTIMATE, mode);
+        }
+        if ((filters & TelephonyManager.INDICATION_FILTER_PHYSICAL_CHANNEL_CONFIG) != 0) {
+            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_PHYSICAL_CHANNEL_CONFIG, mode);
         }
     }
 
@@ -359,6 +408,14 @@ public class DeviceStateMonitor extends Handler {
             newFilter |= IndicationFilter.DATA_CALL_DORMANCY_CHANGED;
         }
 
+        if (!shouldTurnOffLinkCapacityEstimate()) {
+            newFilter |= IndicationFilter.LINK_CAPACITY_ESTIMATE;
+        }
+
+        if (!shouldTurnOffPhysicalChannelConfig()) {
+            newFilter |= IndicationFilter.PHYSICAL_CHANNEL_CONFIG;
+        }
+
         setUnsolResponseFilter(newFilter, false);
     }
 
@@ -375,6 +432,8 @@ public class DeviceStateMonitor extends Handler {
         sendDeviceState(LOW_DATA_EXPECTED, mIsLowDataExpected);
         sendDeviceState(POWER_SAVE_MODE, mIsPowerSaveOn);
         setUnsolResponseFilter(mUnsolicitedResponseFilter, true);
+        setSignalStrengthReportingCriteria();
+        setLinkCapacityReportingCriteria();
     }
 
     /**
@@ -415,6 +474,28 @@ public class DeviceStateMonitor extends Handler {
             mPhone.mCi.setUnsolResponseFilter(newFilter, null);
             mUnsolicitedResponseFilter = newFilter;
         }
+    }
+
+    private void setSignalStrengthReportingCriteria() {
+        mPhone.setSignalStrengthReportingCriteria(
+                AccessNetworkThresholds.GERAN, AccessNetworkType.GERAN);
+        mPhone.setSignalStrengthReportingCriteria(
+                AccessNetworkThresholds.UTRAN, AccessNetworkType.UTRAN);
+        mPhone.setSignalStrengthReportingCriteria(
+                AccessNetworkThresholds.EUTRAN, AccessNetworkType.EUTRAN);
+        mPhone.setSignalStrengthReportingCriteria(
+                AccessNetworkThresholds.CDMA2000, AccessNetworkType.CDMA2000);
+    }
+
+    private void setLinkCapacityReportingCriteria() {
+        mPhone.setLinkCapacityReportingCriteria(LINK_CAPACITY_DOWNLINK_THRESHOLDS,
+                LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.GERAN);
+        mPhone.setLinkCapacityReportingCriteria(LINK_CAPACITY_DOWNLINK_THRESHOLDS,
+                LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.UTRAN);
+        mPhone.setLinkCapacityReportingCriteria(LINK_CAPACITY_DOWNLINK_THRESHOLDS,
+                LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.EUTRAN);
+        mPhone.setLinkCapacityReportingCriteria(LINK_CAPACITY_DOWNLINK_THRESHOLDS,
+                LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.CDMA2000);
     }
 
     /**
@@ -502,4 +583,85 @@ public class DeviceStateMonitor extends Handler {
         ipw.decreaseIndent();
         ipw.flush();
     }
+
+    /**
+     * dBm thresholds that correspond to changes in signal strength indications.
+     */
+    private static final class AccessNetworkThresholds {
+
+        /**
+         * List of dBm thresholds for GERAN {@link AccessNetworkType}.
+         *
+         * Calculated from GSM asu level thresholds - TS 27.007 Sec 8.5
+         */
+        public static final int[] GERAN = new int[] {
+            -109,
+            -103,
+            -97,
+            -89,
+        };
+
+        /**
+         * List of default dBm thresholds for UTRAN {@link AccessNetworkType}.
+         *
+         * These thresholds are taken from the WCDMA RSCP defaults in {@link CarrierConfigManager}.
+         * See TS 27.007 Sec 8.69.
+         */
+        public static final int[] UTRAN = new int[] {
+            -114, /* SIGNAL_STRENGTH_POOR */
+            -104, /* SIGNAL_STRENGTH_MODERATE */
+            -94,  /* SIGNAL_STRENGTH_GOOD */
+            -84   /* SIGNAL_STRENGTH_GREAT */
+        };
+
+        /**
+         * List of default dBm thresholds for EUTRAN {@link AccessNetworkType}.
+         *
+         * These thresholds are taken from the LTE RSRP defaults in {@link CarrierConfigManager}.
+         */
+        public static final int[] EUTRAN = new int[] {
+            -140, /* SIGNAL_STRENGTH_NONE_OR_UNKNOWN */
+            -128, /* SIGNAL_STRENGTH_POOR */
+            -118, /* SIGNAL_STRENGTH_MODERATE */
+            -108, /* SIGNAL_STRENGTH_GOOD */
+            -98,  /* SIGNAL_STRENGTH_GREAT */
+            -44   /* SIGNAL_STRENGTH_NONE_OR_UNKNOWN */
+        };
+
+        /**
+         * List of dBm thresholds for CDMA2000 {@link AccessNetworkType}.
+         *
+         * These correspond to EVDO level thresholds.
+         */
+        public static final int[] CDMA2000 = new int[] {
+            -105,
+            -90,
+            -75,
+            -65
+        };
+    }
+
+    /**
+     * Downlink reporting thresholds in kbps
+     *
+     * <p>Threshold values taken from FCC Speed Guide
+     * (https://www.fcc.gov/reports-research/guides/broadband-speed-guide) and Android WiFi speed
+     * labels (https://support.google.com/pixelphone/answer/2819519#strength_speed).
+     */
+    private static final int[] LINK_CAPACITY_DOWNLINK_THRESHOLDS = new int[] {
+            500,   // Web browsing
+            1000,  // SD video streaming
+            5000,  // HD video streaming
+            10000, // file downloading
+            20000, // 4K video streaming
+    };
+
+    /** Uplink reporting thresholds in kbps */
+    private static final int[] LINK_CAPACITY_UPLINK_THRESHOLDS = new int[] {
+            100,   // VoIP calls
+            500,
+            1000,
+            5000,
+            10000,
+    };
 }
