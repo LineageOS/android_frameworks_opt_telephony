@@ -48,6 +48,7 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
@@ -413,7 +414,7 @@ public class ServiceStateTracker extends Handler {
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(
                     CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                updateLteEarfcnLists();
+                onCarrierConfigChanged();
                 return;
             }
 
@@ -3921,17 +3922,35 @@ public class ServiceStateTracker extends Handler {
 
         return earfcnPairList;
     }
-    private void updateLteEarfcnLists() {
+
+    private void onCarrierConfigChanged() {
         CarrierConfigManager configManager = (CarrierConfigManager)
                 mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
+        PersistableBundle config = configManager.getConfigForSubId(mPhone.getSubId());
+
+        if (config != null) {
+            updateLteEarfcnLists(config);
+            updateReportingCriteria(config);
+        }
+    }
+
+    private void updateLteEarfcnLists(PersistableBundle config) {
         synchronized (mLteRsrpBoostLock) {
-            mLteRsrpBoost = b.getInt(CarrierConfigManager.KEY_LTE_EARFCNS_RSRP_BOOST_INT, 0);
-            String[] earfcnsStringArrayForRsrpBoost = b.getStringArray(
+            mLteRsrpBoost = config.getInt(CarrierConfigManager.KEY_LTE_EARFCNS_RSRP_BOOST_INT, 0);
+            String[] earfcnsStringArrayForRsrpBoost = config.getStringArray(
                     CarrierConfigManager.KEY_BOOSTED_LTE_EARFCNS_STRING_ARRAY);
             mEarfcnPairListForRsrpBoost = convertEarfcnStringArrayToPairList(
                     earfcnsStringArrayForRsrpBoost);
         }
+    }
+
+    private void updateReportingCriteria(PersistableBundle config) {
+        mPhone.setSignalStrengthReportingCriteria(
+                config.getIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY),
+                AccessNetworkType.EUTRAN);
+        mPhone.setSignalStrengthReportingCriteria(
+                config.getIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY),
+                AccessNetworkType.UTRAN);
     }
 
     private void updateServiceStateLteEarfcnBoost(ServiceState serviceState, int lteEarfcn) {

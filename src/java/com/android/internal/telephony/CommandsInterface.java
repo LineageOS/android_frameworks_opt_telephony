@@ -2126,6 +2126,38 @@ public interface CommandsInterface {
     void setUnsolResponseFilter(int filter, Message result);
 
     /**
+     * Send the signal strength reporting criteria to the modem.
+     *
+     * @param hysteresisMs A hysteresis time in milliseconds. A value of 0 disables hysteresis.
+     * @param hysteresisDb An interval in dB defining the required magnitude change between reports.
+     *     A value of 0 disables hysteresis.
+     * @param thresholdsDbm An array of trigger thresholds in dBm. A size of 0 disables thresholds.
+     * @param ran RadioAccessNetwork for which to apply criteria.
+     * @param result callback message contains the information of SUCCESS/FAILURE
+     */
+    void setSignalStrengthReportingCriteria(int hysteresisMs, int hysteresisDb, int[] thresholdsDbm,
+            int ran, Message result);
+
+    /**
+     * Send the link capacity reporting criteria to the modem
+     *
+     * @param hysteresisMs A hysteresis time in milliseconds. A value of 0 disables hysteresis.
+     * @param hysteresisDlKbps An interval in kbps defining the required magnitude change between DL
+     *     reports. A value of 0 disables hysteresis.
+     * @param hysteresisUlKbps An interval in kbps defining the required magnitude change between UL
+     *     reports. A value of 0 disables hysteresis.
+     * @param thresholdsDlKbps An array of trigger thresholds in kbps for downlink reports. A size
+     *     of 0 disables thresholds.
+     * @param thresholdsUlKbps An array of trigger thresholds in kbps for uplink reports. A size
+     *     of 0 disables thresholds.
+     * @param ran RadioAccessNetwork for which to apply criteria.
+     * @param result callback message contains the information of SUCCESS/FAILURE
+     */
+    void setLinkCapacityReportingCriteria(int hysteresisMs, int hysteresisDlKbps,
+            int hysteresisUlKbps, int[] thresholdsDlKbps, int[] thresholdsUlKbps, int ran,
+            Message result);
+
+    /**
      * Set SIM card power up or down
      *
      * @param state  State of SIM (power down, power up, pass through)
