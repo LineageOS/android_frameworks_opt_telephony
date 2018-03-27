@@ -5004,12 +5004,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeInt(CellIdentity.TYPE_GSM);
         p.writeString(mcc);
         p.writeString(mnc);
+        p.writeString(al);
+        p.writeString(as);
         p.writeInt(lac);
         p.writeInt(cid);
         p.writeInt(arfcn);
         p.writeInt(bsic);
-        p.writeString(al);
-        p.writeString(as);
         p.writeInt(ss);
         p.writeInt(ber);
         p.writeInt(ta);
@@ -5028,13 +5028,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeInt(CellIdentity.TYPE_LTE);
         p.writeString(mcc);
         p.writeString(mnc);
+        p.writeString(al);
+        p.writeString(as);
         p.writeInt(ci);
         p.writeInt(pci);
         p.writeInt(tac);
         p.writeInt(earfcn);
         p.writeInt(bandwidth);
-        p.writeString(al);
-        p.writeString(as);
         p.writeInt(ss);
         p.writeInt(rsrp);
         p.writeInt(rsrq);
@@ -5049,12 +5049,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeInt(CellIdentity.TYPE_WCDMA);
         p.writeString(mcc);
         p.writeString(mnc);
+        p.writeString(al);
+        p.writeString(as);
         p.writeInt(lac);
         p.writeInt(cid);
         p.writeInt(psc);
         p.writeInt(uarfcn);
-        p.writeString(al);
-        p.writeString(as);
         p.writeInt(ss);
         p.writeInt(ber);
     }
