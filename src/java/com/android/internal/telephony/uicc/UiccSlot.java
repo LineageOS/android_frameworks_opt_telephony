@@ -69,7 +69,7 @@ public class UiccSlot extends Handler {
         if (DBG) log("Creating");
         mContext = c;
         mActive = isActive;
-        mCardState = CardState.CARDSTATE_ABSENT;
+        mCardState = null;
     }
 
     /**
@@ -100,9 +100,11 @@ public class UiccSlot extends Handler {
                         IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, mPhoneId);
 
                 // no card present in the slot now; dispose card and make mUiccCard null
-                mUiccCard.dispose();
-                mUiccCard = null;
-            } else if (oldState == CardState.CARDSTATE_ABSENT
+                if (mUiccCard != null) {
+                    mUiccCard.dispose();
+                    mUiccCard = null;
+                }
+            } else if ((oldState == null || oldState == CardState.CARDSTATE_ABSENT)
                     && mCardState != CardState.CARDSTATE_ABSENT) {
                 // No notifications while radio is off or we just powering up
                 if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
@@ -301,7 +303,11 @@ public class UiccSlot extends Handler {
      */
     public CardState getCardState() {
         synchronized (mLock) {
-            return mCardState;
+            if (mCardState == null) {
+                return CardState.CARDSTATE_ABSENT;
+            } else {
+                return mCardState;
+            }
         }
     }
 
