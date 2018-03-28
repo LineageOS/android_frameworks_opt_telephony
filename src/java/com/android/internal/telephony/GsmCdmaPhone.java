@@ -1388,7 +1388,11 @@ public class GsmCdmaPhone extends Phone {
             if (b != null) {
                 String defaultVmNumber =
                         b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING);
-                if (!TextUtils.isEmpty(defaultVmNumber)) {
+                String defaultVmNumberRoaming =
+                        b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING);
+                if (!TextUtils.isEmpty(defaultVmNumberRoaming) && mSST.mSS.getRoaming()) {
+                    number = defaultVmNumberRoaming;
+                } else {
                     number = defaultVmNumber;
                 }
             }
