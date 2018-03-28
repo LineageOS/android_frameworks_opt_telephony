@@ -29,6 +29,7 @@ import android.hardware.radio.V1_0.CdmaSmsWriteArgs;
 import android.hardware.radio.V1_0.CellInfoCdma;
 import android.hardware.radio.V1_0.CellInfoGsm;
 import android.hardware.radio.V1_0.CellInfoLte;
+import android.hardware.radio.V1_0.CellInfoTdscdma;
 import android.hardware.radio.V1_0.CellInfoType;
 import android.hardware.radio.V1_0.CellInfoWcdma;
 import android.hardware.radio.V1_0.DataProfileInfo;
@@ -5263,7 +5264,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private static void writeToParcelForWcdma(
             Parcel p, int lac, int cid, int psc, int uarfcn, String mcc, String mnc,
-            String al, String as, int ss, int ber) {
+            String al, String as, int ss, int ber, int rscp, int ecno) {
         p.writeInt(CellIdentity.TYPE_WCDMA);
         p.writeString(mcc);
         p.writeString(mnc);
@@ -5275,6 +5276,25 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeInt(uarfcn);
         p.writeInt(ss);
         p.writeInt(ber);
+        p.writeInt(rscp);
+        p.writeInt(ecno);
+    }
+
+    private static void writeToParcelForTdscdma(
+            Parcel p, int lac, int cid, int cpid, int uarfcn, String mcc, String mnc,
+            String al, String as, int ss, int ber, int rscp) {
+        p.writeInt(CellIdentity.TYPE_TDSCDMA);
+        p.writeString(mcc);
+        p.writeString(mnc);
+        p.writeString(al);
+        p.writeString(as);
+        p.writeInt(lac);
+        p.writeInt(cid);
+        p.writeInt(cpid);
+        p.writeInt(uarfcn);
+        p.writeInt(ss);
+        p.writeInt(ber);
+        p.writeInt(rscp);
     }
 
     /**
@@ -5368,10 +5388,29 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             EMPTY_ALPHA_LONG,
                             EMPTY_ALPHA_SHORT,
                             cellInfoWcdma.signalStrengthWcdma.signalStrength,
-                            cellInfoWcdma.signalStrengthWcdma.bitErrorRate);
+                            cellInfoWcdma.signalStrengthWcdma.bitErrorRate,
+                            Integer.MAX_VALUE,
+                            Integer.MAX_VALUE);
                     break;
                 }
 
+                case CellInfoType.TD_SCDMA: {
+                    CellInfoTdscdma cellInfoTdscdma = record.tdscdma.get(0);
+                    writeToParcelForTdscdma(
+                            p,
+                            cellInfoTdscdma.cellIdentityTdscdma.lac,
+                            cellInfoTdscdma.cellIdentityTdscdma.cid,
+                            cellInfoTdscdma.cellIdentityTdscdma.cpid,
+                            Integer.MAX_VALUE,
+                            cellInfoTdscdma.cellIdentityTdscdma.mcc,
+                            cellInfoTdscdma.cellIdentityTdscdma.mnc,
+                            EMPTY_ALPHA_LONG,
+                            EMPTY_ALPHA_SHORT,
+                            Integer.MAX_VALUE,
+                            Integer.MAX_VALUE,
+                            convertTdscdmaRscpTo1_2(cellInfoTdscdma.signalStrengthTdscdma.rscp));
+                    break;
+                }
                 default:
                     throw new RuntimeException("unexpected cellinfotype: " + record.cellInfoType);
             }
@@ -5476,7 +5515,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             cellInfoWcdma.cellIdentityWcdma.operatorNames.alphaLong,
                             cellInfoWcdma.cellIdentityWcdma.operatorNames.alphaShort,
                             cellInfoWcdma.signalStrengthWcdma.base.signalStrength,
-                            cellInfoWcdma.signalStrengthWcdma.base.bitErrorRate);
+                            cellInfoWcdma.signalStrengthWcdma.base.bitErrorRate,
+                            cellInfoWcdma.signalStrengthWcdma.rscp,
+                            cellInfoWcdma.signalStrengthWcdma.ecno);
+                    break;
+                }
+
+                case CellInfoType.TD_SCDMA: {
+                    android.hardware.radio.V1_2.CellInfoTdscdma cellInfoTdscdma =
+                            record.tdscdma.get(0);
+                    writeToParcelForTdscdma(
+                            p,
+                            cellInfoTdscdma.cellIdentityTdscdma.base.lac,
+                            cellInfoTdscdma.cellIdentityTdscdma.base.cid,
+                            cellInfoTdscdma.cellIdentityTdscdma.base.cpid,
+                            cellInfoTdscdma.cellIdentityTdscdma.uarfcn,
+                            cellInfoTdscdma.cellIdentityTdscdma.base.mcc,
+                            cellInfoTdscdma.cellIdentityTdscdma.base.mnc,
+                            cellInfoTdscdma.cellIdentityTdscdma.operatorNames.alphaLong,
+                            cellInfoTdscdma.cellIdentityTdscdma.operatorNames.alphaShort,
+                            cellInfoTdscdma.signalStrengthTdscdma.signalStrength,
+                            cellInfoTdscdma.signalStrengthTdscdma.bitErrorRate,
+                            cellInfoTdscdma.signalStrengthTdscdma.rscp);
                     break;
                 }
 
@@ -5493,19 +5553,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
+    private static int convertTdscdmaRscpTo1_2(int rscp) {
+        // The HAL 1.0 range is 25..120; the ASU/ HAL 1.2 range is 0..96;
+        // yes, this means the range in 1.0 cannot express -24dBm = 96
+        if (rscp >= 25 && rscp <= 120) {
+            // First we flip the sign to convert from the HALs -rscp to the actual RSCP value.
+            int rscpDbm = -rscp;
+            // Then to convert from RSCP to ASU, we apply the offset which aligns 0 ASU to -120dBm.
+            return rscpDbm + 120;
+        }
+        return Integer.MAX_VALUE;
+    }
+
     /** Convert HAL 1.0 Signal Strength to android SignalStrength */
     @VisibleForTesting
     public static SignalStrength convertHalSignalStrength(
             android.hardware.radio.V1_0.SignalStrength signalStrength) {
-        int tdscdmaRscp_1_2 = 255; // 255 is the value for unknown/unreported ASU.
-        // The HAL 1.0 range is 25..120; the ASU/ HAL 1.2 range is 0..96;
-        // yes, this means the range in 1.0 cannot express -24dBm = 96
-        if (signalStrength.tdScdma.rscp >= 25 && signalStrength.tdScdma.rscp <= 120) {
-            // First we flip the sign to convert from the HALs -rscp to the actual RSCP value.
-            int rscpDbm = -signalStrength.tdScdma.rscp;
-            // Then to convert from RSCP to ASU, we apply the offset which aligns 0 ASU to -120dBm.
-            tdscdmaRscp_1_2 = rscpDbm + 120;
-        }
         return new SignalStrength(
                 signalStrength.gw.signalStrength,
                 signalStrength.gw.bitErrorRate,
@@ -5519,7 +5582,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.lte.rsrq,
                 signalStrength.lte.rssnr,
                 signalStrength.lte.cqi,
-                tdscdmaRscp_1_2);
+                convertTdscdmaRscpTo1_2(signalStrength.tdScdma.rscp));
     }
 
     /** Convert HAL 1.2 Signal Strength to android SignalStrength */
