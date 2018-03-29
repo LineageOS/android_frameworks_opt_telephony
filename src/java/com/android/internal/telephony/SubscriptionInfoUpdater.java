@@ -169,6 +169,8 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     public void updateInternalIccState(String simStatus, String reason, int slotId) {
+        logd("updateInternalIccState to simStatus " + simStatus + " reason " + reason
+                + " slotId " + slotId);
         int message = internalIccStateToMessage(simStatus);
         if (message != EVENT_INVALID) {
             sendMessage(obtainMessage(message, slotId, -1, reason));

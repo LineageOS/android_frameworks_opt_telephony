@@ -108,6 +108,13 @@ public class GsmCdmaPhone extends Phone {
     private static final boolean DBG = true;
     private static final boolean VDBG = false; /* STOPSHIP if true */
 
+    /** Required magnitude change between unsolicited SignalStrength reports. */
+    private static final int REPORTING_HYSTERESIS_DB = 2;
+    /** Required throughput change between unsolicited LinkCapacityEstimate reports. */
+    private static final int REPORTING_HYSTERESIS_KBPS = 50;
+    /** Minimum time between unsolicited SignalStrength and LinkCapacityEstimate reports. */
+    private static final int REPORTING_HYSTERESIS_MILLIS = 3000;
+
     //GSM
     // Key used to read/write voice mail number
     private static final String VM_NUMBER = "vm_number_key";
@@ -1381,7 +1388,11 @@ public class GsmCdmaPhone extends Phone {
             if (b != null) {
                 String defaultVmNumber =
                         b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING);
-                if (!TextUtils.isEmpty(defaultVmNumber)) {
+                String defaultVmNumberRoaming =
+                        b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING);
+                if (!TextUtils.isEmpty(defaultVmNumberRoaming) && mSST.mSS.getRoaming()) {
+                    number = defaultVmNumberRoaming;
+                } else {
                     number = defaultVmNumber;
                 }
             }
@@ -3347,6 +3358,18 @@ public class GsmCdmaPhone extends Phone {
                     " is not CDMA or GSM (error) - aborting!");
             return;
         }
+    }
+
+    @Override
+    public void setSignalStrengthReportingCriteria(int[] thresholds, int ran) {
+        mCi.setSignalStrengthReportingCriteria(REPORTING_HYSTERESIS_MILLIS, REPORTING_HYSTERESIS_DB,
+                thresholds, ran, null);
+    }
+
+    @Override
+    public void setLinkCapacityReportingCriteria(int[] dlThresholds, int[] ulThresholds, int ran) {
+        mCi.setLinkCapacityReportingCriteria(REPORTING_HYSTERESIS_MILLIS, REPORTING_HYSTERESIS_KBPS,
+                REPORTING_HYSTERESIS_KBPS, dlThresholds, ulThresholds, ran, null);
     }
 
     @Override
