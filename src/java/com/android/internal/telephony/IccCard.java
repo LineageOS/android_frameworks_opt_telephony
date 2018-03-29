@@ -105,15 +105,6 @@ public interface IccCard {
     public boolean getIccLockEnabled();
 
     /**
-     * Check whether fdn (fixed dialing number) service is available.
-     * @return true if ICC fdn service available
-     *         false if ICC fdn service not available
-     */
-    public boolean getIccFdnAvailable() {
-        return false;
-    }
-
-    /**
      * Check whether ICC fdn (fixed dialing number) is enabled
      * This is a sync call which returns the cached pin enabled state
      *
