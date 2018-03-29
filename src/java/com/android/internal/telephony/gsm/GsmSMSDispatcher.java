@@ -106,8 +106,9 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected boolean shouldBlockSms() {
-        return SMSDispatcherUtil.shouldBlockSms(isCdmaMo(), mPhone);
+    protected boolean shouldBlockSmsForEcbm() {
+        // There is no such thing as ECBM for GSM. This only applies to CDMA.
+        return false;
     }
 
     @Override
