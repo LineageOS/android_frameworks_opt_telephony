@@ -190,12 +190,14 @@ public class CellIdentityLteTest extends AndroidTestCase {
     @SmallTest
     public void testParcelWithUnknownMccMnc() {
         CellIdentityLte ci = new CellIdentityLte(
-                CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, null, null);
+                CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentity.TYPE_LTE);
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(CI);
         p.writeInt(PCI);
         p.writeInt(TAC);
@@ -212,12 +214,14 @@ public class CellIdentityLteTest extends AndroidTestCase {
         final String invalidMcc = "randomStuff";
         final String invalidMnc = "randomStuff";
         CellIdentityLte ci = new CellIdentityLte(
-                CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, null, null);
+                CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentity.TYPE_LTE);
         p.writeString(invalidMcc);
         p.writeString(invalidMnc);
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(CI);
         p.writeInt(PCI);
         p.writeInt(TAC);
