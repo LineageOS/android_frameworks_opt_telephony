@@ -69,6 +69,8 @@ public class EuiccController extends IEuiccController.Stub {
             EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR;
     private static final int ERROR =
             EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR;
+    private static final String EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION =
+            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION;
 
     private static EuiccController sInstance;
 
@@ -263,7 +265,7 @@ public class EuiccController extends IEuiccController.Stub {
                 case EuiccService.RESULT_OK:
                     resultCode = OK;
                     extrasIntent.putExtra(
-                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION,
+                            EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION,
                             result.getDownloadableSubscription());
                     break;
                 case EuiccService.RESULT_MUST_DEACTIVATE_SIM:
@@ -446,6 +448,9 @@ public class EuiccController extends IEuiccController.Stub {
                                         mContext.getContentResolver(),
                                         Settings.Global.EUICC_PROVISIONED,
                                         1);
+                                extrasIntent.putExtra(
+                                        EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION,
+                                        subscription);
                                 if (!switchAfterDownload) {
                                     // Since we're not switching, nothing will trigger a
                                     // subscription list refresh on its own, so request one here.
