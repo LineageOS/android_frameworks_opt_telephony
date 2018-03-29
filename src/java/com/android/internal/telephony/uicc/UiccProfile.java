@@ -761,13 +761,6 @@ public class UiccProfile extends IccCard {
     }
 
     @Override
-    public boolean getIccFdnAvailable() {
-        synchronized (mLock) {
-            return mUiccApplication != null && mUiccApplication.getIccFdnAvailable();
-        }
-    }
-
-    @Override
     public boolean getIccPin2Blocked() {
         /* defaults to disabled */
         return mUiccApplication != null && mUiccApplication.getIccPin2Blocked();
