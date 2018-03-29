@@ -3396,7 +3396,10 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public IccCard getIccCard() {
-        return UiccController.getInstance().getUiccProfileForPhone(mPhoneId);
+        // This used to always return a non-null object. But getUiccProfile() can return null.
+        // For backward compatibility consideration, we return a dummy object instead of null.
+        IccCard iccCard = getUiccProfile();
+        return (iccCard != null) ? iccCard : new IccCard();
     }
 
     private UiccProfile getUiccProfile() {
