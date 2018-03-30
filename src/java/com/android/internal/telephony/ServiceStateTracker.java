@@ -1605,6 +1605,10 @@ public class ServiceStateTracker extends Handler {
         if (ar.exception != null) {
             CommandException.Error err=null;
 
+            if (ar.exception instanceof IllegalStateException) {
+                log("handlePollStateResult exception " + ar.exception);
+            }
+
             if (ar.exception instanceof CommandException) {
                 err = ((CommandException)(ar.exception)).getCommandError();
             }
