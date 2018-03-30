@@ -73,8 +73,9 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected boolean shouldBlockSms() {
-        return SMSDispatcherUtil.shouldBlockSms(isCdmaMo(), mPhone);
+    protected boolean shouldBlockSmsForEcbm() {
+        // We only block outgoing SMS during ECBM when using CDMA.
+        return mPhone.isInEcm() && isCdmaMo() && !isIms();
     }
 
     @Override

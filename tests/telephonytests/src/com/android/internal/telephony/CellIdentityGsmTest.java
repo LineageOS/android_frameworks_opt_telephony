@@ -181,12 +181,15 @@ public class CellIdentityGsmTest extends AndroidTestCase {
 
     @SmallTest
     public void testParcelWithUnknowMccMnc() {
-        CellIdentityGsm ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, null, null);
+        CellIdentityGsm ci =
+                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentityGsm.TYPE_GSM);
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(String.valueOf(Integer.MAX_VALUE));
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(ARFCN);
@@ -201,12 +204,15 @@ public class CellIdentityGsmTest extends AndroidTestCase {
     public void testParcelWithInvalidMccMnc() {
         final String invalidMcc = "randomStuff";
         final String invalidMnc = "randomStuff";
-        CellIdentityGsm ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, null, null);
+        CellIdentityGsm ci =
+                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
         p.writeInt(CellIdentity.TYPE_GSM);
         p.writeString(invalidMcc);
         p.writeString(invalidMnc);
+        p.writeString(ALPHA_LONG);
+        p.writeString(ALPHA_SHORT);
         p.writeInt(LAC);
         p.writeInt(CID);
         p.writeInt(ARFCN);

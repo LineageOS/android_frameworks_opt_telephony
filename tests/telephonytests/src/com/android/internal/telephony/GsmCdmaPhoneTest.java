@@ -366,6 +366,21 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING, voiceMailNumber);
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
 
+        // voicemail number from config for roaming network
+        String voiceMailNumberForRoaming = "1234567892";
+        mContextFixture.getCarrierConfigBundle()
+                .putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING,
+                        voiceMailNumberForRoaming);
+        //Verify voicemail number for home
+        doReturn(false).when(mSST.mSS).getRoaming();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+        //Move to roaming condition, verify voicemail number for roaming
+        doReturn(true).when(mSST.mSS).getRoaming();
+        assertEquals(voiceMailNumberForRoaming, mPhoneUT.getVoiceMailNumber());
+        //Move to home condition, verify voicemail number for home
+        doReturn(false).when(mSST.mSS).getRoaming();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
         // voicemail number that is explicitly set
         voiceMailNumber = "1234567891";
         mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
@@ -396,6 +411,21 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         voiceMailNumber = "1234567891";
         mContextFixture.getCarrierConfigBundle().
                 putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING, voiceMailNumber);
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
+        // voicemail number from config for roaming network
+        String voiceMailNumberForRoaming = "1234567892";
+        mContextFixture.getCarrierConfigBundle()
+                .putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING,
+                        voiceMailNumberForRoaming);
+        //Verify voicemail number for home
+        doReturn(false).when(mSST.mSS).getRoaming();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+        //Move to roaming condition, verify voicemail number for roaming
+        doReturn(true).when(mSST.mSS).getRoaming();
+        assertEquals(voiceMailNumberForRoaming, mPhoneUT.getVoiceMailNumber());
+        //Move to home condition, verify voicemail number for home
+        doReturn(false).when(mSST.mSS).getRoaming();
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
 
         // voicemail number from sharedPreference
