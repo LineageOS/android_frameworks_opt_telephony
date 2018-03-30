@@ -1073,8 +1073,7 @@ public class GsmCdmaPhone extends Phone {
                 && isEmergency
                 && alwaysTryImsForEmergencyCarrierConfig
                 && ImsManager.getInstance(mContext, mPhoneId).isNonTtyOrTtyOnVolteEnabledForSlot()
-                && imsPhone.isImsAvailable()
-                && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
+                && imsPhone.isImsAvailable();
 
         String dialPart = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
                 stripSeparators(dialString));
