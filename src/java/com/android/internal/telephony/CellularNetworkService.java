@@ -18,9 +18,7 @@ package com.android.internal.telephony;
 
 import android.annotation.CallSuper;
 import android.hardware.radio.V1_0.CellInfoType;
-import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.RegState;
-import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -202,8 +200,21 @@ public class CellularNetworkService extends NetworkService {
 
             // TODO: unify when voiceRegStateResult and DataRegStateResult are unified.
             if (domain == NetworkRegistrationState.DOMAIN_CS) {
-                VoiceRegStateResult voiceRegState = (VoiceRegStateResult) result;
-                int transportType = TransportType.WWAN;
+                return createRegistrationStateFromVoiceRegState(result);
+            } else if (domain == NetworkRegistrationState.DOMAIN_PS) {
+                return createRegistrationStateFromDataRegState(result);
+            } else {
+                return null;
+            }
+        }
+
+        private NetworkRegistrationState createRegistrationStateFromVoiceRegState(Object result) {
+            int transportType = TransportType.WWAN;
+            int domain = NetworkRegistrationState.DOMAIN_CS;
+
+            if (result instanceof android.hardware.radio.V1_0.VoiceRegStateResult) {
+                android.hardware.radio.V1_0.VoiceRegStateResult voiceRegState =
+                        (android.hardware.radio.V1_0.VoiceRegStateResult) result;
                 int regState = getRegStateFromHalRegState(voiceRegState.regState);
                 int accessNetworkTechnology = getAccessNetworkTechnologyFromRat(voiceRegState.rat);
                 int reasonForDenial = voiceRegState.reasonForDenial;
@@ -221,9 +232,38 @@ public class CellularNetworkService extends NetworkService {
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, cssSupported, roamingIndicator, systemIsInPrl,
                         defaultRoamingIndicator);
-            } else if (domain == NetworkRegistrationState.DOMAIN_PS) {
-                DataRegStateResult dataRegState = (DataRegStateResult) result;
-                int transportType = TransportType.WWAN;
+            } else if (result instanceof android.hardware.radio.V1_2.VoiceRegStateResult) {
+                android.hardware.radio.V1_2.VoiceRegStateResult voiceRegState =
+                        (android.hardware.radio.V1_2.VoiceRegStateResult) result;
+                int regState = getRegStateFromHalRegState(voiceRegState.regState);
+                int accessNetworkTechnology = getAccessNetworkTechnologyFromRat(voiceRegState.rat);
+                int reasonForDenial = voiceRegState.reasonForDenial;
+                boolean emergencyOnly = isEmergencyOnly(voiceRegState.regState);
+                boolean cssSupported = voiceRegState.cssSupported;
+                int roamingIndicator = voiceRegState.roamingIndicator;
+                int systemIsInPrl = voiceRegState.systemIsInPrl;
+                int defaultRoamingIndicator = voiceRegState.defaultRoamingIndicator;
+                int[] availableServices = getAvailableServices(
+                        regState, domain, emergencyOnly);
+                CellIdentity cellIdentity =
+                        convertHalCellIdentityToCellIdentity(voiceRegState.cellIdentity);
+
+                return new NetworkRegistrationState(transportType, domain, regState,
+                        accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
+                        cellIdentity, cssSupported, roamingIndicator, systemIsInPrl,
+                        defaultRoamingIndicator);
+            }
+
+            return null;
+        }
+
+        private NetworkRegistrationState createRegistrationStateFromDataRegState(Object result) {
+            int transportType = TransportType.WWAN;
+            int domain = NetworkRegistrationState.DOMAIN_PS;
+
+            if (result instanceof android.hardware.radio.V1_0.DataRegStateResult) {
+                android.hardware.radio.V1_0.DataRegStateResult dataRegState =
+                        (android.hardware.radio.V1_0.DataRegStateResult) result;
                 int regState = getRegStateFromHalRegState(dataRegState.regState);
                 int accessNetworkTechnology = getAccessNetworkTechnologyFromRat(dataRegState.rat);
                 int reasonForDenial = dataRegState.reasonDataDenied;
@@ -232,12 +272,28 @@ public class CellularNetworkService extends NetworkService {
                 int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.cellIdentity);
+
                 return new NetworkRegistrationState(transportType, domain, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls);
-            } else {
-                return null;
+            } else if (result instanceof android.hardware.radio.V1_2.DataRegStateResult) {
+                android.hardware.radio.V1_2.DataRegStateResult dataRegState =
+                        (android.hardware.radio.V1_2.DataRegStateResult) result;
+                int regState = getRegStateFromHalRegState(dataRegState.regState);
+                int accessNetworkTechnology = getAccessNetworkTechnologyFromRat(dataRegState.rat);
+                int reasonForDenial = dataRegState.reasonDataDenied;
+                boolean emergencyOnly = isEmergencyOnly(dataRegState.regState);
+                int maxDataCalls = dataRegState.maxDataCalls;
+                int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
+                CellIdentity cellIdentity =
+                        convertHalCellIdentityToCellIdentity(dataRegState.cellIdentity);
+
+                return new NetworkRegistrationState(transportType, domain, regState,
+                        accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
+                        cellIdentity, maxDataCalls);
             }
+
+            return null;
         }
 
         private CellIdentity convertHalCellIdentityToCellIdentity(
@@ -297,6 +353,106 @@ public class CellularNetworkService extends NetworkService {
                         result = new CellIdentityCdma(cellIdentityCdma.networkId,
                                 cellIdentityCdma.systemId, cellIdentityCdma.baseStationId,
                                 cellIdentityCdma.longitude, cellIdentityCdma.latitude);
+                    }
+                    break;
+                }
+                case CellInfoType.NONE:
+                default:
+                    break;
+            }
+
+            return result;
+        }
+
+        private CellIdentity convertHalCellIdentityToCellIdentity(
+                android.hardware.radio.V1_2.CellIdentity cellIdentity) {
+            if (cellIdentity == null) {
+                return null;
+            }
+
+            CellIdentity result = null;
+            switch(cellIdentity.cellInfoType) {
+                case CellInfoType.GSM: {
+                    if (cellIdentity.cellIdentityGsm.size() == 1) {
+                        android.hardware.radio.V1_2.CellIdentityGsm cellIdentityGsm =
+                                cellIdentity.cellIdentityGsm.get(0);
+
+                        result = new CellIdentityGsm(
+                                cellIdentityGsm.base.lac,
+                                cellIdentityGsm.base.cid,
+                                cellIdentityGsm.base.arfcn,
+                                cellIdentityGsm.base.bsic,
+                                cellIdentityGsm.base.mcc,
+                                cellIdentityGsm.base.mnc,
+                                cellIdentityGsm.operatorNames.alphaLong,
+                                cellIdentityGsm.operatorNames.alphaShort);
+                    }
+                    break;
+                }
+                case CellInfoType.WCDMA: {
+                    if (cellIdentity.cellIdentityWcdma.size() == 1) {
+                        android.hardware.radio.V1_2.CellIdentityWcdma cellIdentityWcdma =
+                                cellIdentity.cellIdentityWcdma.get(0);
+
+                        result = new CellIdentityWcdma(
+                                cellIdentityWcdma.base.lac,
+                                cellIdentityWcdma.base.cid,
+                                cellIdentityWcdma.base.psc,
+                                cellIdentityWcdma.base.uarfcn,
+                                cellIdentityWcdma.base.mcc,
+                                cellIdentityWcdma.base.mnc,
+                                cellIdentityWcdma.operatorNames.alphaLong,
+                                cellIdentityWcdma.operatorNames.alphaShort);
+                    }
+                    break;
+                }
+                case CellInfoType.TD_SCDMA: {
+                    if (cellIdentity.cellIdentityTdscdma.size() == 1) {
+                        android.hardware.radio.V1_2.CellIdentityTdscdma cellIdentityTdscdma =
+                                cellIdentity.cellIdentityTdscdma.get(0);
+
+                        result = new  CellIdentityTdscdma(
+                                cellIdentityTdscdma.base.mcc,
+                                cellIdentityTdscdma.base.mnc,
+                                cellIdentityTdscdma.base.lac,
+                                cellIdentityTdscdma.base.cid,
+                                cellIdentityTdscdma.base.cpid,
+                                cellIdentityTdscdma.operatorNames.alphaLong,
+                                cellIdentityTdscdma.operatorNames.alphaShort);
+                    }
+                    break;
+                }
+                case CellInfoType.LTE: {
+                    if (cellIdentity.cellIdentityLte.size() == 1) {
+                        android.hardware.radio.V1_2.CellIdentityLte cellIdentityLte =
+                                cellIdentity.cellIdentityLte.get(0);
+
+                        result = new CellIdentityLte(
+                                cellIdentityLte.base.ci,
+                                cellIdentityLte.base.pci,
+                                cellIdentityLte.base.tac,
+                                cellIdentityLte.base.earfcn,
+                                cellIdentityLte.bandwidth,
+                                cellIdentityLte.base.mcc,
+                                cellIdentityLte.base.mnc,
+                                cellIdentityLte.operatorNames.alphaLong,
+                                cellIdentityLte.operatorNames.alphaShort);
+                    }
+                    break;
+                }
+                case CellInfoType.CDMA: {
+                    if (cellIdentity.cellIdentityCdma.size() == 1) {
+                        android.hardware.radio.V1_2.CellIdentityCdma cellIdentityCdma =
+                                cellIdentity.cellIdentityCdma.get(0);
+
+                        result = new CellIdentityCdma(
+                                cellIdentityCdma.base.networkId,
+                                cellIdentityCdma.base.systemId,
+                                cellIdentityCdma.base.baseStationId,
+                                cellIdentityCdma.base.longitude,
+                                cellIdentityCdma.base.latitude,
+                                cellIdentityCdma.operatorNames.alphaLong,
+                                cellIdentityCdma.operatorNames.alphaShort);
                     }
                     break;
                 }
