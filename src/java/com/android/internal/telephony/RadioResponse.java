@@ -270,7 +270,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseSignalStrength_1_2(responseInfo, signalStrength);
     }
 
-    /*
+    /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param voiceRegResponse Current Voice registration response as defined by VoiceRegStateResult
      *        in types.hal
@@ -289,11 +289,45 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param voiceRegResponse Current Voice registration response as defined by VoiceRegStateResult
+     *        in 1.2/types.hal
+     */
+    public void getVoiceRegistrationStateResponse_1_2(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_2.VoiceRegStateResult voiceRegResponse) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, voiceRegResponse);
+            }
+            mRil.processResponseDone(rr, responseInfo, voiceRegResponse);
+        }
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param dataRegResponse Current Data registration response as defined by DataRegStateResult in
      *        types.hal
      */
     public void getDataRegistrationStateResponse(RadioResponseInfo responseInfo,
                                                  DataRegStateResult dataRegResponse) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dataRegResponse);
+            }
+            mRil.processResponseDone(rr, responseInfo, dataRegResponse);
+        }
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dataRegResponse Current Data registration response as defined by DataRegStateResult in
+     *        1.2/types.hal
+     */
+    public void getDataRegistrationStateResponse_1_2(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_2.DataRegStateResult dataRegResponse) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
