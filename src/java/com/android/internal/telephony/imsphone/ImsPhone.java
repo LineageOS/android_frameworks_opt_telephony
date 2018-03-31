@@ -1280,12 +1280,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     private CallForwardInfo getCallForwardInfo(ImsCallForwardInfo info) {
         CallForwardInfo cfInfo = new CallForwardInfo();
-        cfInfo.status = info.mStatus;
-        cfInfo.reason = getCFReasonFromCondition(info.mCondition);
+        cfInfo.status = info.getStatus();
+        cfInfo.reason = getCFReasonFromCondition(info.getCondition());
         cfInfo.serviceClass = SERVICE_CLASS_VOICE;
-        cfInfo.toa = info.mToA;
-        cfInfo.number = info.mNumber;
-        cfInfo.timeSeconds = info.mTimeSeconds;
+        cfInfo.toa = info.getToA();
+        cfInfo.number = info.getNumber();
+        cfInfo.timeSeconds = info.getTimeSeconds();
         return cfInfo;
     }
 
@@ -1309,10 +1309,10 @@ public class ImsPhone extends ImsPhoneBase {
             }
         } else {
             for (int i = 0, s = infos.length; i < s; i++) {
-                if (infos[i].mCondition == ImsUtInterface.CDIV_CF_UNCONDITIONAL) {
+                if (infos[i].getCondition() == ImsUtInterface.CDIV_CF_UNCONDITIONAL) {
                     if (r != null) {
-                        setVoiceCallForwardingFlag(r, 1, (infos[i].mStatus == 1),
-                            infos[i].mNumber);
+                        setVoiceCallForwardingFlag(r, 1, (infos[i].getStatus() == 1),
+                                infos[i].getNumber());
                     }
                 }
                 cfInfos[i] = getCallForwardInfo(infos[i]);
@@ -1326,7 +1326,7 @@ public class ImsPhone extends ImsPhoneBase {
         int[] cbInfos = new int[1];
         cbInfos[0] = SERVICE_CLASS_NONE;
 
-        if (infos[0].mStatus == 1) {
+        if (infos[0].getStatus() == 1) {
             cbInfos[0] = SERVICE_CLASS_VOICE;
         }
 
@@ -1337,7 +1337,7 @@ public class ImsPhone extends ImsPhoneBase {
         int[] cwInfos = new int[2];
         cwInfos[0] = 0;
 
-        if (infos[0].mStatus == 1) {
+        if (infos[0].getStatus() == 1) {
             cwInfos[0] = 1;
             cwInfos[1] = SERVICE_CLASS_VOICE;
         }
