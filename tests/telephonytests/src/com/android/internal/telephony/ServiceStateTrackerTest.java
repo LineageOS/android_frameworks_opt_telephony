@@ -25,19 +25,26 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.IAlarmManager;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.ServiceInfo;
+import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -1201,6 +1208,127 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(serviceStateTracker, times(times)).setNotification(intArgumentCaptor.capture());
         assertEquals(intArgumentCaptor.getValue().intValue(), restrictedState[1]);
+    }
+
+    private boolean notificationHasTitleSet(Notification n) {
+        // Notification has no methods to check the actual title, but #toString() includes the
+        // word "tick" if the title is set so we check this as a workaround
+        return n.toString().contains("tick");
+    }
+
+    private String getNotificationTitle(Notification n) {
+        return n.extras.getString(Notification.EXTRA_TITLE);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetPsNotifications() {
+        sst.mSubId = 1;
+        final NotificationManager nm = (NotificationManager)
+                mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mContextFixture.putBooleanResource(
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+        doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
+        Drawable mockDrawable = mock(Drawable.class);
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
+
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnDataTitle, "test1");
+        sst.setNotification(ServiceStateTracker.PS_ENABLED);
+        ArgumentCaptor<Notification> notificationArgumentCaptor =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(nm).notify(anyString(), anyInt(), notificationArgumentCaptor.capture());
+        // if the postedNotification has title set then it must have been the correct notification
+        Notification postedNotification = notificationArgumentCaptor.getValue();
+        assertTrue(notificationHasTitleSet(postedNotification));
+        assertEquals("test1", getNotificationTitle(postedNotification));
+
+        sst.setNotification(ServiceStateTracker.PS_DISABLED);
+        verify(nm).cancel(anyString(), anyInt());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetCsNotifications() {
+        sst.mSubId = 1;
+        final NotificationManager nm = (NotificationManager)
+                mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mContextFixture.putBooleanResource(
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+        doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
+        Drawable mockDrawable = mock(Drawable.class);
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
+
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnAllVoiceTitle,
+                "test2");
+        sst.setNotification(ServiceStateTracker.CS_ENABLED);
+        ArgumentCaptor<Notification> notificationArgumentCaptor =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(nm).notify(anyString(), anyInt(), notificationArgumentCaptor.capture());
+        // if the postedNotification has title set then it must have been the correct notification
+        Notification postedNotification = notificationArgumentCaptor.getValue();
+        assertTrue(notificationHasTitleSet(postedNotification));
+        assertEquals("test2", getNotificationTitle(postedNotification));
+
+        sst.setNotification(ServiceStateTracker.CS_DISABLED);
+        verify(nm).cancel(anyString(), anyInt());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetCsNormalNotifications() {
+        sst.mSubId = 1;
+        final NotificationManager nm = (NotificationManager)
+                mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mContextFixture.putBooleanResource(
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+        doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
+        Drawable mockDrawable = mock(Drawable.class);
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
+
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnNormalTitle, "test3");
+        sst.setNotification(ServiceStateTracker.CS_NORMAL_ENABLED);
+        ArgumentCaptor<Notification> notificationArgumentCaptor =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(nm).notify(anyString(), anyInt(), notificationArgumentCaptor.capture());
+        // if the postedNotification has title set then it must have been the correct notification
+        Notification postedNotification = notificationArgumentCaptor.getValue();
+        assertTrue(notificationHasTitleSet(postedNotification));
+        assertEquals("test3", getNotificationTitle(postedNotification));
+
+        sst.setNotification(ServiceStateTracker.CS_DISABLED);
+        verify(nm).cancel(anyString(), anyInt());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetCsEmergencyNotifications() {
+        sst.mSubId = 1;
+        final NotificationManager nm = (NotificationManager)
+                mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mContextFixture.putBooleanResource(
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+        doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
+        Drawable mockDrawable = mock(Drawable.class);
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
+
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnEmergencyTitle,
+                "test4");
+        sst.setNotification(ServiceStateTracker.CS_EMERGENCY_ENABLED);
+        ArgumentCaptor<Notification> notificationArgumentCaptor =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(nm).notify(anyString(), anyInt(), notificationArgumentCaptor.capture());
+        // if the postedNotification has title set then it must have been the correct notification
+        Notification postedNotification = notificationArgumentCaptor.getValue();
+        assertTrue(notificationHasTitleSet(postedNotification));
+        assertEquals("test4", getNotificationTitle(postedNotification));
+
+        sst.setNotification(ServiceStateTracker.CS_DISABLED);
+        verify(nm).cancel(anyString(), anyInt());
+        sst.setNotification(ServiceStateTracker.CS_REJECT_CAUSE_ENABLED);
     }
 
     @Test
