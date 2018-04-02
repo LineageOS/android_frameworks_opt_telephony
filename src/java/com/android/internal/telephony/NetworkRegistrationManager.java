@@ -36,6 +36,9 @@ import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
 import android.telephony.Rlog;
 
+import java.util.Hashtable;
+import java.util.Map;
+
 /**
  * Class that serves as the layer between NetworkService and ServiceStateTracker. It helps binding,
  * sending request and registering for state change to NetworkService.
@@ -79,22 +82,27 @@ public class NetworkRegistrationManager {
         mRegStateChangeRegistrants.addUnique(h, what, obj);
     }
 
+    private final Map<NetworkRegStateCallback, Message> mCallbackTable = new Hashtable();
+
     public void getNetworkRegistrationState(int domain, Message onCompleteMessage) {
         if (onCompleteMessage == null) return;
 
         logd("getNetworkRegistrationState domain " + domain);
         if (!isServiceConnected()) {
+            logd("service not connected.");
             onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, null,
                     new IllegalStateException("Service not connected."));
             onCompleteMessage.sendToTarget();
             return;
         }
 
+        NetworkRegStateCallback callback = new NetworkRegStateCallback();
         try {
-            mServiceBinder.getNetworkRegistrationState(mPhone.getPhoneId(), domain,
-                    new NetworkRegStateCallback(onCompleteMessage));
+            mCallbackTable.put(callback, onCompleteMessage);
+            mServiceBinder.getNetworkRegistrationState(mPhone.getPhoneId(), domain, callback);
         } catch (RemoteException e) {
             Rlog.e(TAG, "getNetworkRegistrationState RemoteException " + e);
+            mCallbackTable.remove(callback);
             onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, null, e);
             onCompleteMessage.sendToTarget();
         }
@@ -119,13 +127,14 @@ public class NetworkRegistrationManager {
     private class NetworkServiceConnection implements ServiceConnection {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            logd("service connected.");
             mServiceBinder = (INetworkService.Stub) service;
             mDeathRecipient = new RegManagerDeathRecipient(name);
             try {
                 mServiceBinder.linkToDeath(mDeathRecipient, 0);
                 mServiceBinder.createNetworkServiceProvider(mPhone.getPhoneId());
                 mServiceBinder.registerForNetworkRegistrationStateChanged(mPhone.getPhoneId(),
-                        new NetworkRegStateCallback(null));
+                        new NetworkRegStateCallback());
             } catch (RemoteException exception) {
                 // Remote exception means that the binder already died.
                 mDeathRecipient.binderDied();
@@ -143,23 +152,19 @@ public class NetworkRegistrationManager {
     }
 
     private class NetworkRegStateCallback extends INetworkServiceCallback.Stub {
-        // Message only used upon onGetNetworkRegistrationStateComplete.
-        // If the callback is passed to listen to network state change,
-        // this message is null.
-        private final Message mOnCompleteMessage;
-
-        NetworkRegStateCallback(Message onCompleteMessage) {
-            mOnCompleteMessage = onCompleteMessage;
-        }
-
         @Override
         public void onGetNetworkRegistrationStateComplete(
                 int result, NetworkRegistrationState state) {
             logd("onGetNetworkRegistrationStateComplete result "
                     + result + " state " + state);
-            mOnCompleteMessage.arg1 = result;
-            mOnCompleteMessage.obj = new AsyncResult(mOnCompleteMessage.obj, state, null);
-            mOnCompleteMessage.sendToTarget();
+            Message onCompleteMessage = mCallbackTable.remove(this);
+            if (onCompleteMessage != null) {
+                onCompleteMessage.arg1 = result;
+                onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, state, null);
+                onCompleteMessage.sendToTarget();
+            } else {
+                loge("onCompleteMessage is null");
+            }
         }
 
         @Override
