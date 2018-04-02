@@ -288,6 +288,11 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public Resources.Theme getTheme() {
+            return null;
+        }
+
+        @Override
         public void unregisterReceiver(BroadcastReceiver receiver) {
         }
 
