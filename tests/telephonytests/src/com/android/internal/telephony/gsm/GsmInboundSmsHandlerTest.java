@@ -47,6 +47,7 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.support.test.filters.FlakyTest;
+import android.support.test.filters.LargeTest;
 import android.support.test.filters.MediumTest;
 import android.test.mock.MockContentResolver;
 
@@ -785,7 +786,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     @FlakyTest
     @Ignore
     @Test
-    @MediumTest
+    @LargeTest
     public void testWaitingStateTimeout() throws Exception {
         transitionFromStartupToIdle();
 
