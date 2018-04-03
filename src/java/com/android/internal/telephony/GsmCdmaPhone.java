@@ -1541,6 +1541,11 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public int getCarrierIdListVersion() {
+        return mCarrerIdentifier.getCarrierListVersion();
+    }
+
+    @Override
     public void resetCarrierKeysForImsiEncryption() {
         mCIM.resetCarrierKeysForImsiEncryption(mContext, mPhoneId);
     }

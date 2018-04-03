@@ -532,6 +532,7 @@ public class CarrierIdentifier extends Handler {
 
         if (VDBG) {
             logd("[matchCarrier]"
+                    + " mnnmnc:" + mccmnc
                     + " gid1: " + gid1
                     + " gid2: " + gid2
                     + " imsi: " + Rlog.pii(LOG_TAG, imsi)
@@ -584,7 +585,7 @@ public class CarrierIdentifier extends Handler {
                 unknownMccmncToLog, unknownGid1ToLog);
     }
 
-    private int getCarrierListVersion() {
+    public int getCarrierListVersion() {
         final Cursor cursor = mContext.getContentResolver().query(
                 Uri.withAppendedPath(CarrierId.All.CONTENT_URI,
                 "get_version"), null, null, null);

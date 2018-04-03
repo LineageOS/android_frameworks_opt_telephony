@@ -80,7 +80,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected int mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
 
     protected String mIccId;  // Includes only decimals (no hex)
-    protected String mFakeIccId;
 
     protected String mFullIccId;  // Includes hex characters in ICCID
     protected String mMsisdn = null;  // My mobile number
@@ -93,22 +92,17 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mNewVoiceMailTag = null;
     protected boolean mIsVoiceMailFixed = false;
     protected String mImsi;
-    protected String mFakeImsi;
     private IccIoResult auth_rsp;
 
     protected int mMncLength = UNINITIALIZED;
     protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
 
     private String mSpn;
-    private String mFakeSpn;
 
     protected String mGid1;
-    protected String mFakeGid1;
     protected String mGid2;
-    protected String mFakeGid2;
 
     protected String mPnnHomeName;
-    protected String mFakePnnHomeName;
 
     protected String mPrefLang;
 
@@ -170,7 +164,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsRequested=" + mRecordsRequested
                 + " lockedRecordsReqReason=" + mLockedRecordsReqReason
                 + " iccid=" + iccIdToPrint
-                + (mCarrierTestOverride.isInTestMode() ? "mFakeIccid=" + mFakeIccId : "")
+                + (mCarrierTestOverride.isInTestMode() ? "mFakeIccid="
+                + mCarrierTestOverride.getFakeIccid() : "")
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + Rlog.pii(VDBG, mVoiceMailNum)
                 + " voiceMailTag=" + mVoiceMailTag
@@ -179,11 +174,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " isVoiceMailFixed=" + mIsVoiceMailFixed
                 + " mImsi=" + ((mImsi != null) ?
                 mImsi.substring(0, 6) + Rlog.pii(VDBG, mImsi.substring(6)) : "null")
-                + (mCarrierTestOverride.isInTestMode() ? " mFakeImsi=" + mFakeImsi : "")
+                + (mCarrierTestOverride.isInTestMode() ? " mFakeImsi="
+                + mCarrierTestOverride.getFakeIMSI() : "")
                 + " mncLength=" + mMncLength
                 + " mailboxIndex=" + mMailboxIndex
                 + " spn=" + mSpn
-                + (mCarrierTestOverride.isInTestMode() ? " mFakeSpn=" + mFakeSpn : "");
+                + (mCarrierTestOverride.isInTestMode() ? " mFakeSpn="
+                + mCarrierTestOverride.getFakeSpn() : "");
     }
 
     /**
@@ -212,27 +209,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 Context.TELEPHONY_SERVICE);
 
         mCarrierTestOverride = new CarrierTestOverride();
-
-        if (mCarrierTestOverride.isInTestMode()) {
-            mFakeImsi = mCarrierTestOverride.getFakeIMSI();
-            log("load mFakeImsi: " + mFakeImsi);
-
-            mFakeGid1 = mCarrierTestOverride.getFakeGid1();
-            log("load mFakeGid1: " + mFakeGid1);
-
-            mFakeGid2 = mCarrierTestOverride.getFakeGid2();
-            log("load mFakeGid2: " + mFakeGid2);
-
-            mFakeSpn = mCarrierTestOverride.getFakeSpn();
-            log("load mFakeSpn: " + mFakeSpn);
-
-            mFakePnnHomeName = mCarrierTestOverride.getFakePnnHomeName();
-            log("load mFakePnnHomeName: " + mFakePnnHomeName);
-
-            mFakeIccId = mCarrierTestOverride.getFakeIccid();
-            log("load mFakeIccId: " + mFakeIccId);
-        }
         mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
+    }
+
+    // Override IccRecords for testing
+    public void setCarrierTestOverride(String mccmnc, String imsi, String iccid, String gid1,
+            String gid2, String pnn, String spn)  {
+        mCarrierTestOverride.override(mccmnc, imsi, iccid, gid1, gid2, pnn, spn);
+        mTelephonyManager.setSimOperatorNameForPhone(mParentApp.getPhoneId(), spn);
+        mTelephonyManager.setSimOperatorNumericForPhone(mParentApp.getPhoneId(), mccmnc);
+        mRecordsLoadedRegistrants.notifyRegistrants();
     }
 
     /**
@@ -295,8 +281,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return ICC ID without hex digits
      */
     public String getIccId() {
-        if (mCarrierTestOverride.isInTestMode() && mFakeIccId != null) {
-            return mFakeIccId;
+        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeIccid() != null) {
+            return mCarrierTestOverride.getFakeIccid();
         } else {
             return mIccId;
         }
@@ -442,8 +428,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready or unavailable
      */
     public String getIMSI() {
-        if (mCarrierTestOverride.isInTestMode() && mFakeImsi != null) {
-            return mFakeImsi;
+        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeIMSI() != null) {
+            return mCarrierTestOverride.getFakeIMSI();
         } else {
             return mImsi;
         }
@@ -477,8 +463,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready
      */
     public String getGid1() {
-        if (mCarrierTestOverride.isInTestMode() && mFakeGid1 != null) {
-            return mFakeGid1;
+        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeGid1() != null) {
+            return mCarrierTestOverride.getFakeGid1();
         } else {
             return mGid1;
         }
@@ -489,8 +475,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready
      */
     public String getGid2() {
-        if (mCarrierTestOverride.isInTestMode() && mFakeGid2 != null) {
-            return mFakeGid2;
+        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeGid2() != null) {
+            return mCarrierTestOverride.getFakeGid2();
         } else {
             return mGid2;
         }
@@ -501,8 +487,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready
      */
     public String getPnnHomeName() {
-        if (mCarrierTestOverride.isInTestMode() && mFakePnnHomeName != null) {
-            return mFakePnnHomeName;
+        if (mCarrierTestOverride.isInTestMode()
+                && mCarrierTestOverride.getFakePnnHomeName() != null) {
+            return mCarrierTestOverride.getFakePnnHomeName();
         } else {
             return mPnnHomeName;
         }
@@ -531,8 +518,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready or no RUIM entry
      */
     public String getServiceProviderName() {
-        if (mCarrierTestOverride.isInTestMode() && mFakeSpn != null) {
-            return mFakeSpn;
+        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeSpn() != null) {
+            return mCarrierTestOverride.getFakeSpn();
         }
         String providerName = mSpn;
 
@@ -981,13 +968,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mImsi=" + ((mImsi != null) ?
                 mImsi.substring(0, 6) + Rlog.pii(VDBG, mImsi.substring(6)) : "null"));
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeImsi=" + mFakeImsi);
+            pw.println(" mFakeImsi=" + mCarrierTestOverride.getFakeIMSI());
         }
         pw.println(" mMncLength=" + mMncLength);
         pw.println(" mMailboxIndex=" + mMailboxIndex);
         pw.println(" mSpn=" + mSpn);
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeSpn=" + mFakeSpn);
+            pw.println(" mFakeSpn=" + mCarrierTestOverride.getFakeSpn());
         }
         pw.flush();
     }

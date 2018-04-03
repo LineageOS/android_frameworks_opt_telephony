@@ -2134,15 +2134,15 @@ public class SIMRecords extends IccRecords {
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeGid1=" + mFakeGid1);
+            pw.println(" mFakeGid1=" + mCarrierTestOverride.getFakeGid1());
         }
         pw.println(" mGid2=" + mGid2);
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakeGid2=" + mFakeGid2);
+            pw.println(" mFakeGid2=" + mCarrierTestOverride.getFakeGid2());
         }
         pw.println(" mPnnHomeName=" + mPnnHomeName);
         if (mCarrierTestOverride.isInTestMode()) {
-            pw.println(" mFakePnnHomeName=" + mFakePnnHomeName);
+            pw.println(" mFakePnnHomeName=" + mCarrierTestOverride.getFakePnnHomeName());
         }
         pw.println(" mPlmnActRecords[]=" + Arrays.toString(mPlmnActRecords));
         pw.println(" mOplmnActRecords[]=" + Arrays.toString(mOplmnActRecords));
