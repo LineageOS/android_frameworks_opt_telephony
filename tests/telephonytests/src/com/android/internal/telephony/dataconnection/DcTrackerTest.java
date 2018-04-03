@@ -77,6 +77,7 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.server.pm.PackageManagerService;
 
 import org.junit.After;
 import org.junit.Before;
@@ -136,6 +137,8 @@ public class DcTrackerTest extends TelephonyTest {
     ApnSetting mApnSetting;
     @Mock
     DcAsyncChannel mDcac;
+    @Mock
+    PackageManagerService mMockPackageManagerInternal;
 
     private DcTracker mDct;
     private DcTrackerTestHandler mDcTrackerTestHandler;
@@ -433,6 +436,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(1).when(mIsub).getDefaultDataSubId();
         doReturn(mIsub).when(mBinder).queryLocalInterface(anyString());
         mServiceManagerMockedServices.put("isub", mBinder);
+        mServiceManagerMockedServices.put("package", mMockPackageManagerInternal);
 
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_cell_retries_per_error_code,
