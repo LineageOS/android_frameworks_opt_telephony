@@ -19,8 +19,10 @@ package com.android.internal.telephony;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
+import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.TelephonyManager;
@@ -34,6 +36,16 @@ import java.util.Date;
  */
 public class CarrierInfoManager {
     private static final String LOG_TAG = "CarrierInfoManager";
+    private static final String KEY_TYPE = "KEY_TYPE";
+
+    /*
+    * Rate limit (in milliseconds) the number of times the Carrier keys can be reset.
+    * Do it at most once every 12 hours.
+    */
+    private static final int RESET_CARRIER_KEY_RATE_LIMIT = 12 * 60 * 60 * 1000;
+
+    // Last time the resetCarrierKeysForImsiEncryption API was called successfully.
+    private long mLastAccessResetCarrierKey = 0;
 
     /**
      * Returns Carrier specific information that will be used to encrypt the IMSI and IMPI.
@@ -157,5 +169,70 @@ public class CarrierInfoManager {
         Log.i(LOG_TAG, "inserting carrier key: " + imsiEncryptionInfo);
         updateOrInsertCarrierKey(imsiEncryptionInfo, mContext);
         //todo send key to modem. Will be done in a subsequent CL.
+    }
+
+    /**
+     * Resets the Carrier Keys in the database. This involves 2 steps:
+     *  1. Delete the keys from the database.
+     *  2. Send an intent to download new Certificates.
+     * @param context Context
+     * @param mPhoneId phoneId
+     *
+     */
+    public void resetCarrierKeysForImsiEncryption(Context context, int mPhoneId) {
+        Log.i(LOG_TAG, "resetting carrier key");
+        // Check rate limit.
+        long now = System.currentTimeMillis();
+        if (now - mLastAccessResetCarrierKey < RESET_CARRIER_KEY_RATE_LIMIT) {
+            Log.i(LOG_TAG, "resetCarrierKeysForImsiEncryption: Access rate exceeded");
+            return;
+        }
+        mLastAccessResetCarrierKey = now;
+        deleteCarrierInfoForImsiEncryption(context);
+        Intent resetIntent = new Intent(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
+        resetIntent.putExtra(PhoneConstants.PHONE_KEY, mPhoneId);
+        context.sendBroadcastAsUser(resetIntent, UserHandle.ALL);
+    }
+
+    /**
+     * Deletes all the keys for a given Carrier from the device keystore.
+     * @param context Context
+     */
+    public static void deleteCarrierInfoForImsiEncryption(Context context) {
+        Log.i(LOG_TAG, "deleting carrier key from db");
+        String mcc = "";
+        String mnc = "";
+        final TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        String simOperator = telephonyManager.getSimOperator();
+        if (!TextUtils.isEmpty(simOperator)) {
+            mcc = simOperator.substring(0, 3);
+            mnc = simOperator.substring(3);
+        } else {
+            Log.e(LOG_TAG, "Invalid networkOperator: " + simOperator);
+            return;
+        }
+        ContentResolver mContentResolver = context.getContentResolver();
+        try {
+            String whereClause = "mcc=? and mnc=?";
+            String[] whereArgs = new String[] { mcc, mnc };
+            mContentResolver.delete(Telephony.CarrierColumns.CONTENT_URI, whereClause, whereArgs);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Delete failed" + e);
+        }
+    }
+
+    /**
+     * Deletes all the keys from the device keystore.
+     * @param context Context
+     */
+    public static void deleteAllCarrierKeysForImsiEncryption(Context context) {
+        Log.i(LOG_TAG, "deleting ALL carrier keys from db");
+        ContentResolver mContentResolver = context.getContentResolver();
+        try {
+            mContentResolver.delete(Telephony.CarrierColumns.CONTENT_URI, null, null);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Delete failed" + e);
+        }
     }
 }
