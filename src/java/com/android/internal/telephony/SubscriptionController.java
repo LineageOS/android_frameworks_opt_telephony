@@ -64,7 +64,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -94,7 +93,7 @@ public class SubscriptionController extends ISub.Stub {
     private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
 
     /* The Cache of Active SubInfoRecord(s) list of currently in use SubInfoRecord(s) */
-    private AtomicReference<List<SubscriptionInfo>> mCacheActiveSubInfoList = new AtomicReference();
+    private final List<SubscriptionInfo> mCacheActiveSubInfoList = new ArrayList<>();
 
     /**
      * Copied from android.util.LocalLog with flush() adding flush and line number
@@ -368,7 +367,7 @@ public class SubscriptionController extends ISub.Stub {
                             subList = new ArrayList<SubscriptionInfo>();
                         }
                         subList.add(subInfo);
-                }
+                    }
                 }
             } else {
                 if (DBG) logd("Query fail");
@@ -598,6 +597,11 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
+        if (!isSubInfoReady()) {
+            if (DBG) logdl("[getActiveSubInfoList] Sub Controller not ready");
+            return null;
+        }
+
         boolean canReadAllPhoneState;
         try {
             canReadAllPhoneState = TelephonyPermissions.checkReadPhoneState(mContext,
@@ -607,96 +611,54 @@ public class SubscriptionController extends ISub.Stub {
             canReadAllPhoneState = false;
         }
 
-        // Perform the operation as ourselves. If the caller cannot read phone state, they may still
-        // have carrier privileges for that subscription, so we always need to make the query and
-        // then filter the results.
-        List<SubscriptionInfo> subList;
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            if (!isSubInfoReady()) {
-                if (DBG) logdl("[getActiveSubInfoList] Sub Controller not ready");
-                return null;
+        synchronized (mCacheActiveSubInfoList) {
+            // If the caller can read all phone state, just return the full list.
+            if (canReadAllPhoneState) {
+                return new ArrayList<>(mCacheActiveSubInfoList);
             }
 
-            // Get the active subscription info list from the cache if the cache is not null
-            List<SubscriptionInfo> tmpCachedSubList = mCacheActiveSubInfoList.get();
-            if (tmpCachedSubList != null) {
-                if (DBG_CACHE) {
-                    for (SubscriptionInfo si : tmpCachedSubList) {
-                        logd("[getActiveSubscriptionInfoList] Getting Cached subInfo=" + si);
-                    }
-                }
-                subList = tmpCachedSubList;
-            } else {
-                if (DBG_CACHE) {
-                    logd("[getActiveSubscriptionInfoList] Cached subInfo is null");
-                }
-                return null;
-            }
-        } finally {
-            Binder.restoreCallingIdentity(identity);
+            // Filter the list to only include subscriptions which the caller can manage.
+            return mCacheActiveSubInfoList.stream()
+                    .filter(subscriptionInfo -> {
+                        try {
+                            return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext,
+                                    subscriptionInfo.getSubscriptionId(), callingPackage,
+                                    "getActiveSubscriptionInfoList");
+                        } catch (SecurityException e) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
         }
-
-        // If the caller can read all phone state, just return the full list.
-        if (canReadAllPhoneState) {
-            return new ArrayList<>(subList);
-        }
-
-        // Filter the list to only include subscriptions which the (restored) caller can manage.
-        return subList.stream()
-                .filter(subscriptionInfo -> {
-                    try {
-                        return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext,
-                                subscriptionInfo.getSubscriptionId(), callingPackage,
-                                "getActiveSubscriptionInfoList");
-                    } catch (SecurityException e) {
-                        return false;
-                    }
-                })
-                .collect(Collectors.toList());
     }
 
     /**
      * Refresh the cache of SubInfoRecord(s) of the currently inserted SIM(s)
      */
-    @VisibleForTesting
-    protected void refreshCachedActiveSubscriptionInfoList() {
-
-        // Now that all security checks passes, perform the operation as ourselves.
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            if (!isSubInfoReady()) {
-                if (DBG_CACHE) {
-                    logdl("[refreshCachedActiveSubscriptionInfoList] "
-                            + "Sub Controller not ready ");
-                }
-                return;
-            }
-
-            List<SubscriptionInfo> subList = getSubInfo(
-                    SubscriptionManager.SIM_SLOT_INDEX + ">=0", null);
-
-            if (subList != null) {
-                // FIXME: Unnecessary when an insertion sort is used!
-                subList.sort(SUBSCRIPTION_INFO_COMPARATOR);
-
-                if (DBG_CACHE) {
-                    logdl("[refreshCachedActiveSubscriptionInfoList]- " + subList.size()
-                            + " infos return");
-                }
-            } else {
-                if (DBG_CACHE) logdl("[refreshCachedActiveSubscriptionInfoList]- no info return");
-            }
-
+    @VisibleForTesting  // For mockito to mock this method
+    public void refreshCachedActiveSubscriptionInfoList() {
+        if (!isSubInfoReady()) {
             if (DBG_CACHE) {
-                for (SubscriptionInfo si : subList) {
-                    logd("[refreshCachedActiveSubscriptionInfoList] Setting Cached subInfo=" + si);
+                logdl("[refreshCachedActiveSubscriptionInfoList] "
+                        + "Sub Controller not ready ");
+            }
+            return;
+        }
+
+        synchronized (mCacheActiveSubInfoList) {
+            mCacheActiveSubInfoList.clear();
+            mCacheActiveSubInfoList.addAll(getSubInfo(
+                    SubscriptionManager.SIM_SLOT_INDEX + ">=0", null));
+            if (DBG_CACHE) {
+                if (mCacheActiveSubInfoList != null) {
+                    for (SubscriptionInfo si : mCacheActiveSubInfoList) {
+                        logd("[refreshCachedActiveSubscriptionInfoList] Setting Cached info="
+                                + si);
+                    }
+                } else {
+                    logdl("[refreshCachedActiveSubscriptionInfoList]- no info return");
                 }
             }
-            mCacheActiveSubInfoList.set(subList);
-
-        } finally {
-            Binder.restoreCallingIdentity(identity);
         }
     }
 
