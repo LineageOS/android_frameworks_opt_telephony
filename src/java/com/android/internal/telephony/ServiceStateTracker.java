@@ -3625,13 +3625,13 @@ public class ServiceStateTracker extends Handler {
             notificationManager.cancel(Integer.toString(mSubId), notificationId);
         } else {
             boolean show = false;
-            if (mNewSS.isEmergencyOnly() && notifyType == CS_EMERGENCY_ENABLED) {
+            if (mSS.isEmergencyOnly() && notifyType == CS_EMERGENCY_ENABLED) {
                 // if reg state is emergency only, always show restricted emergency notification.
                 show = true;
             } else if (notifyType == CS_REJECT_CAUSE_ENABLED) {
                 // always show notification due to CS reject irrespective of service state.
                 show = true;
-            } else if (mNewSS.getState() == ServiceState.STATE_IN_SERVICE) {
+            } else if (mSS.getState() == ServiceState.STATE_IN_SERVICE) {
                 // for non in service states, we have system UI and signal bar to indicate limited
                 // service. No need to show notification again. This also helps to mitigate the
                 // issue if phone go to OOS and camp to other networks and received restricted ind.
