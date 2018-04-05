@@ -1959,8 +1959,8 @@ public class DcTracker extends Handler {
         // a dun-profiled connection so we can't share an existing one
         // On GSM/LTE we can share existing apn connections provided they support
         // this type.
-        if (apnContext.getApnType() != PhoneConstants.APN_TYPE_DUN ||
-                teardownForDun() == false) {
+        if (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DUN)
+                || ServiceState.isGsm(mPhone.getServiceState().getRilDataRadioTechnology())) {
             dcac = checkForCompatibleConnectedApnContext(apnContext);
             if (dcac != null) {
                 // Get the dcacApnSetting for the connection we want to share.
