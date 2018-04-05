@@ -216,7 +216,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(TelephonyEvent.Type.CARRIER_ID_MATCHING, log.events[0].type);
         assertEquals(1, log.events[0].carrierIdMatching.cidTableVersion);
         assertEquals(1, log.events[0].carrierIdMatching.result.carrierId);
-        assertTrue(log.events[0].carrierIdMatching.result.mccmnc.isEmpty());
+        assertEquals("mccmncTest", log.events[0].carrierIdMatching.result.mccmnc);
         assertEquals("gid1Test", log.events[0].carrierIdMatching.result.gid1);
     }
 
