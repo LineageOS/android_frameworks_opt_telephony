@@ -149,6 +149,16 @@ public class ImsServiceController {
         }
     }
 
+    private ImsService.Listener mFeatureChangedListener = new ImsService.Listener() {
+        @Override
+        public void onUpdateSupportedImsFeatures(ImsFeatureConfiguration c) {
+            if (mCallbacks == null) {
+                return;
+            }
+            mCallbacks.imsServiceFeaturesChanged(c, ImsServiceController.this);
+        }
+    };
+
     /**
      * Defines callbacks that are used by the ImsServiceController to notify when an ImsService
      * has created or removed a new feature as well as the associated ImsServiceController.
@@ -162,6 +172,13 @@ public class ImsServiceController {
          * Called by ImsServiceController when a new MMTEL or RCS feature has been removed.
          */
         void imsServiceFeatureRemoved(int slotId, int feature, ImsServiceController controller);
+
+        /**
+         * Called by the ImsServiceController when the ImsService has notified the framework that
+         * its features have changed.
+         */
+        void imsServiceFeaturesChanged(ImsFeatureConfiguration config,
+                ImsServiceController controller);
     }
 
     /**
@@ -552,6 +569,7 @@ public class ImsServiceController {
         synchronized (mLock) {
             if (isServiceControllerAvailable()) {
                 Log.d(LOG_TAG, "notifyImsServiceReady");
+                mIImsServiceController.setListener(mFeatureChangedListener);
                 mIImsServiceController.notifyImsServiceReadyForFeatureCreation();
             }
         }
