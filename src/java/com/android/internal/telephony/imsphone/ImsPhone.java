@@ -2117,8 +2117,9 @@ public class ImsPhone extends ImsPhoneBase {
         }
 
         ImsCallProfile fromProfile = getForegroundCall().getImsCall().getCallProfile();
-        ImsCallProfile toProfile = fromProfile;
-        toProfile.mMediaProfile = new ImsStreamMediaProfile(data);
+        ImsCallProfile toProfile = new ImsCallProfile(fromProfile.mServiceType,
+                fromProfile.mCallType);
+        toProfile.mMediaProfile.setRttMode(data);
 
         Rlog.d(LOG_TAG, "RTT: packRttModifyRequestToProfile");
         sendRttModifyRequest(toProfile);
