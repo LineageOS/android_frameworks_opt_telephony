@@ -1524,6 +1524,15 @@ public class UiccProfile extends IccCard {
     }
 
     /**
+     * Reloads carrier privileges as if a change were just detected.  Useful to force a profile
+     * refresh without having to physically insert or remove a SIM card.
+     */
+    @VisibleForTesting
+    public void refresh() {
+        mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
+    }
+
+    /**
      * Dump
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
