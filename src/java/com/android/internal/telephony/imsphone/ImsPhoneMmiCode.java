@@ -1277,10 +1277,18 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 sb.append(mContext.getText(
                         com.android.internal.R.string.serviceEnabled));
             }
+            // Record CLIR setting
+            if (mSc.equals(SC_CLIR)) {
+                mPhone.saveClirSetting(CommandsInterface.CLIR_INVOCATION);
+            }
         } else if (isDeactivate()) {
             mState = State.COMPLETE;
             sb.append(mContext.getText(
                     com.android.internal.R.string.serviceDisabled));
+            // Record CLIR setting
+            if (mSc.equals(SC_CLIR)) {
+                mPhone.saveClirSetting(CommandsInterface.CLIR_SUPPRESSION);
+            }
         } else if (isRegister()) {
             mState = State.COMPLETE;
             sb.append(mContext.getText(
