@@ -647,10 +647,13 @@ public class SubscriptionController extends ISub.Stub {
 
         synchronized (mCacheActiveSubInfoList) {
             mCacheActiveSubInfoList.clear();
-            mCacheActiveSubInfoList.addAll(getSubInfo(
-                    SubscriptionManager.SIM_SLOT_INDEX + ">=0", null));
+            List<SubscriptionInfo> activeSubscriptionInfoList = getSubInfo(
+                    SubscriptionManager.SIM_SLOT_INDEX + ">=0", null);
+            if (activeSubscriptionInfoList != null) {
+                mCacheActiveSubInfoList.addAll(activeSubscriptionInfoList);
+            }
             if (DBG_CACHE) {
-                if (mCacheActiveSubInfoList != null) {
+                if (!mCacheActiveSubInfoList.isEmpty()) {
                     for (SubscriptionInfo si : mCacheActiveSubInfoList) {
                         logd("[refreshCachedActiveSubscriptionInfoList] Setting Cached info="
                                 + si);
