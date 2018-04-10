@@ -568,7 +568,7 @@ public class CarrierIdentifier extends Handler {
 
         /*
          * Write Carrier Identification Matching event, logging with the
-         * carrierId, gid1 and carrier list version to differentiate below cases of metrics:
+         * carrierId, mccmnc, gid1 and carrier list version to differentiate below cases of metrics:
          * 1) unknown mccmnc - the Carrier Id provider contains no rule that matches the
          * read mccmnc.
          * 2) the Carrier Id provider contains some rule(s) that match the read mccmnc,
@@ -578,7 +578,8 @@ public class CarrierIdentifier extends Handler {
          */
         String unknownGid1ToLog = ((maxScore & CarrierMatchingRule.SCORE_GID1) == 0
                 && !TextUtils.isEmpty(subscriptionRule.mGid1)) ? subscriptionRule.mGid1 : null;
-        String unknownMccmncToLog = (maxScore == CarrierMatchingRule.SCORE_INVALID
+        String unknownMccmncToLog = ((maxScore == CarrierMatchingRule.SCORE_INVALID
+                || (maxScore & CarrierMatchingRule.SCORE_GID1) == 0)
                 && !TextUtils.isEmpty(subscriptionRule.mMccMnc)) ? subscriptionRule.mMccMnc : null;
         TelephonyMetrics.getInstance().writeCarrierIdMatchingEvent(
                 mPhone.getPhoneId(), getCarrierListVersion(), mCarrierId,
