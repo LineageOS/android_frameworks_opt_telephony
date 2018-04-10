@@ -89,8 +89,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     private static final int HANDLER_CONFIG_CHANGED = 2;
     // A query has been started for an ImsService to relay the features they support.
     private static final int HANDLER_START_DYNAMIC_FEATURE_QUERY = 3;
-    // A query to request ImsService features has completed.
-    private static final int HANDLER_DYNAMIC_FEATURE_QUERY_COMPLETE = 4;
+    // A query to request ImsService features has completed or the ImsService has updated features.
+    private static final int HANDLER_DYNAMIC_FEATURE_CHANGE = 4;
     // Testing: Overrides the current configuration for ImsService binding
     private static final int HANDLER_OVERRIDE_IMS_SERVICE_CONFIG = 5;
 
@@ -358,7 +358,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 startDynamicQuery(info);
                 break;
             }
-            case HANDLER_DYNAMIC_FEATURE_QUERY_COMPLETE: {
+            case HANDLER_DYNAMIC_FEATURE_CHANGE: {
                 SomeArgs args = (SomeArgs) msg.obj;
                 ComponentName name = (ComponentName) args.arg1;
                 Set<ImsFeatureConfiguration.FeatureSlotPair> features =
@@ -401,7 +401,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                         Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
                     Log.d(TAG, "onComplete called for name: " + name + "features:"
                             + printFeatures(features));
-                    handleFeatureQueryComplete(name, features);
+                    handleFeaturesChanged(name, features);
                 }
 
                 @Override
@@ -953,6 +953,21 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     /**
+     * Implementation of
+     * {@link ImsServiceController.ImsServiceControllerCallbacks#imsServiceFeaturesChanged, which
+     * notify the ImsResolver of a change to the supported ImsFeatures of a connected ImsService.
+     */
+    public void imsServiceFeaturesChanged(ImsFeatureConfiguration config,
+            ImsServiceController controller) {
+        if (controller == null || config == null) {
+            return;
+        }
+        Log.i(TAG, "imsServiceFeaturesChanged: config=" + config.getServiceFeatures()
+                + ", ComponentName=" + controller.getComponentName());
+        handleFeaturesChanged(controller.getComponentName(), config.getServiceFeatures());
+    }
+
+    /**
      * Determines if the features specified should cause a bind or keep a binding active to an
      * ImsService.
      * @return true if MMTEL or RCS features are present, false if they are not or only
@@ -1058,12 +1073,12 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     /**
      * Schedules the processing of a completed query.
      */
-    private void handleFeatureQueryComplete(ComponentName name,
+    private void handleFeaturesChanged(ComponentName name,
             Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
         SomeArgs args = SomeArgs.obtain();
         args.arg1 = name;
         args.arg2 = features;
-        mHandler.obtainMessage(HANDLER_DYNAMIC_FEATURE_QUERY_COMPLETE, args).sendToTarget();
+        mHandler.obtainMessage(HANDLER_DYNAMIC_FEATURE_CHANGE, args).sendToTarget();
     }
 
     // Starts a dynamic query. Called from handler ONLY.
@@ -1083,7 +1098,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
         ImsServiceInfo service = getImsServiceInfoFromCache(name.getPackageName());
         if (service == null) {
-            Log.w(TAG, "handleFeatureQueryComplete: Couldn't find cached info for name: "
+            Log.w(TAG, "handleFeaturesChanged: Couldn't find cached info for name: "
                     + name);
             return;
         }
@@ -1108,7 +1123,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     public boolean isResolvingBinding() {
         return mHandler.hasMessages(HANDLER_START_DYNAMIC_FEATURE_QUERY)
                 // We haven't processed this message yet, so it is still resolving.
-                || mHandler.hasMessages(HANDLER_DYNAMIC_FEATURE_QUERY_COMPLETE)
+                || mHandler.hasMessages(HANDLER_DYNAMIC_FEATURE_CHANGE)
                 || mFeatureQueryManager.isQueryInProgress();
     }
 
