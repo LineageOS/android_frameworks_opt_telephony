@@ -1835,12 +1835,18 @@ public class TelephonyMetrics {
         final CarrierIdMatchingResult carrierIdMatchingResult = new CarrierIdMatchingResult();
 
         if (cid != TelephonyManager.UNKNOWN_CARRIER_ID) {
+            // Successful matching event if result only has carrierId
             carrierIdMatchingResult.carrierId = cid;
+            // Unknown Gid1 event if result only has carrierId, gid1 and mccmnc
             if (gid1 != null) {
+                carrierIdMatchingResult.mccmnc = mccmnc;
                 carrierIdMatchingResult.gid1 = gid1;
             }
         } else {
-            carrierIdMatchingResult.mccmnc = mccmnc;
+            // Unknown mccmnc event if result only has mccmnc
+            if (mccmnc != null) {
+                carrierIdMatchingResult.mccmnc = mccmnc;
+            }
         }
 
         carrierIdMatching.cidTableVersion = version;
