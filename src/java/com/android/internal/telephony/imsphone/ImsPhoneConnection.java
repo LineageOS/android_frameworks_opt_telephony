@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Messenger;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
@@ -79,6 +80,7 @@ public class ImsPhoneConnection extends Connection implements
 
     private UUSInfo mUusInfo;
     private Handler mHandler;
+    private Messenger mHandlerMessenger;
 
     private PowerManager.WakeLock mPartialWakeLock;
 
@@ -171,6 +173,7 @@ public class ImsPhoneConnection extends Connection implements
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
+        mHandlerMessenger = new Messenger(mHandler);
         mImsCall = imsCall;
 
         if ((imsCall != null) && (imsCall.getCallProfile() != null)) {
@@ -495,7 +498,9 @@ public class ImsPhoneConnection extends Connection implements
     private boolean
     processPostDialChar(char c) {
         if (PhoneNumberUtils.is12Key(c)) {
-            mOwner.sendDtmf(c, mHandler.obtainMessage(EVENT_DTMF_DONE));
+            Message dtmfComplete = mHandler.obtainMessage(EVENT_DTMF_DONE);
+            dtmfComplete.replyTo = mHandlerMessenger;
+            mOwner.sendDtmf(c, dtmfComplete);
         } else if (c == PhoneNumberUtils.PAUSE) {
             // From TS 22.101:
             // It continues...
