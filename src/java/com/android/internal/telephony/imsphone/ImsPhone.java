@@ -689,7 +689,7 @@ public class ImsPhone extends ImsPhoneBase {
             return mCT.dial(dialString, imsDialArgsBuilder.build());
         } else if (mmi.isTemporaryModeCLIR()) {
             imsDialArgsBuilder.setClirMode(mmi.getCLIRMode());
-            return mCT.dial(dialString, imsDialArgsBuilder.build());
+            return mCT.dial(mmi.getDialingNumber(), imsDialArgsBuilder.build());
         } else if (!mmi.isSupportedOverImsPhone()) {
             // If the mmi is not supported by IMS service,
             // try to initiate dialing with default phone
