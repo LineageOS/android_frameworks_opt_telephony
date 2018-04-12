@@ -491,10 +491,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         return uiccApp.getIccRecords().getIccSimChallengeResponse(authType, data);
     }
 
-    public String getGroupIdLevel1(String callingPackage) {
-        return getGroupIdLevel1ForSubscriber(getDefaultSubscription(), callingPackage);
-    }
-
     public String getGroupIdLevel1ForSubscriber(int subId, String callingPackage) {
         Phone phone = getPhone(subId);
         if (phone != null) {
