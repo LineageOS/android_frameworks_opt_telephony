@@ -88,7 +88,8 @@ public class RILRequest {
             rr = new RILRequest();
         }
 
-        rr.mSerial = sNextSerial.getAndIncrement();
+        // Increment serial number. Wrap to 0 when reaching Integer.MAX_VALUE.
+        rr.mSerial = sNextSerial.getAndUpdate(n -> ((n + 1) % Integer.MAX_VALUE));
 
         rr.mRequest = request;
         rr.mResult = result;
@@ -176,9 +177,9 @@ public class RILRequest {
     }
 
     static void resetSerial() {
-        // use a random so that on recovery we probably don't mix old requests
+        // Use a non-negative random number so that on recovery we probably don't mix old requests
         // with new.
-        sNextSerial.set(sRandom.nextInt());
+        sNextSerial.set(sRandom.nextInt(Integer.MAX_VALUE));
     }
 
     String serialString() {
@@ -186,9 +187,9 @@ public class RILRequest {
         StringBuilder sb = new StringBuilder(8);
         String sn;
 
-        long adjustedSerial = (((long) mSerial) - Integer.MIN_VALUE) % 10000;
-
-        sn = Long.toString(adjustedSerial);
+        // Truncate mSerial to a number with maximum 4 digits.
+        int adjustedSerial = mSerial % 10000;
+        sn = Integer.toString(adjustedSerial);
 
         //sb.append("J[");
         sb.append('[');
