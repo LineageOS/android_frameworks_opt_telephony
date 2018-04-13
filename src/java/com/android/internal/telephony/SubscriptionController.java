@@ -2780,27 +2780,38 @@ public class SubscriptionController extends ISub.Stub {
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void migrateImsSettings() {
-        migrateImsSettingHelper(
-                Settings.Global.ENHANCED_4G_MODE_ENABLED,
-                SubscriptionManager.ENHANCED_4G_MODE_ENABLED);
-        migrateImsSettingHelper(
-                Settings.Global.VT_IMS_ENABLED,
-                SubscriptionManager.VT_IMS_ENABLED);
-        migrateImsSettingHelper(
-                Settings.Global.WFC_IMS_ENABLED,
-                SubscriptionManager.WFC_IMS_ENABLED);
-        migrateImsSettingHelper(
-                Settings.Global.WFC_IMS_MODE,
-                SubscriptionManager.WFC_IMS_MODE);
-        migrateImsSettingHelper(
-                Settings.Global.WFC_IMS_ROAMING_MODE,
-                SubscriptionManager.WFC_IMS_ROAMING_MODE);
-        migrateImsSettingHelper(
-                Settings.Global.WFC_IMS_ROAMING_ENABLED,
-                SubscriptionManager.WFC_IMS_ROAMING_ENABLED);
+        SubscriptionManager sm = SubscriptionManager.from(mContext);
+        if (sm != null) {
+            List<SubscriptionInfo> subInfoList = sm.getAllSubscriptionInfoList();
+            for (SubscriptionInfo si : subInfoList) {
+                int subId = si.getSubscriptionId();
+                if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    continue;
+                }
+                migrateImsSettingHelper(
+                        Settings.Global.ENHANCED_4G_MODE_ENABLED + subId,
+                        SubscriptionManager.ENHANCED_4G_MODE_ENABLED, subId);
+                migrateImsSettingHelper(
+                        Settings.Global.VT_IMS_ENABLED + subId,
+                        SubscriptionManager.VT_IMS_ENABLED, subId);
+                migrateImsSettingHelper(
+                        Settings.Global.WFC_IMS_ENABLED + subId,
+                        SubscriptionManager.WFC_IMS_ENABLED, subId);
+                migrateImsSettingHelper(
+                        Settings.Global.WFC_IMS_MODE + subId,
+                        SubscriptionManager.WFC_IMS_MODE, subId);
+                migrateImsSettingHelper(
+                        Settings.Global.WFC_IMS_ROAMING_MODE + subId,
+                        SubscriptionManager.WFC_IMS_ROAMING_MODE, subId);
+                migrateImsSettingHelper(
+                        Settings.Global.WFC_IMS_ROAMING_ENABLED + subId,
+                        SubscriptionManager.WFC_IMS_ROAMING_ENABLED, subId);
+            }
+        }
     }
 
-    private void migrateImsSettingHelper(String settingGlobal, String subscriptionProperty) {
+    private void migrateImsSettingHelper(String settingGlobal, String subscriptionProperty,
+                int subId) {
         ContentResolver resolver = mContext.getContentResolver();
         int defaultSubId = getDefaultVoiceSubId();
         if (defaultSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
@@ -2811,7 +2822,7 @@ public class SubscriptionController extends ISub.Stub {
 
             if (prevSetting != DEPRECATED_SETTING) {
                 // Write previous setting into Subscription DB.
-                setSubscriptionPropertyIntoContentResolver(defaultSubId, subscriptionProperty,
+                setSubscriptionPropertyIntoContentResolver(subId, subscriptionProperty,
                         Integer.toString(prevSetting), resolver);
                 // Write global setting value with DEPRECATED_SETTING making sure
                 // migration only happen once.
