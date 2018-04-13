@@ -588,7 +588,7 @@ public class UiccProfile extends IccCard {
                         String countryCode = operator.substring(0, 3);
                         if (countryCode != null) {
                             mTelephonyManager.setSimCountryIsoForPhone(mPhoneId,
-                                    MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
+                                    MccTable.countryCodeForMcc(countryCode));
                         } else {
                             loge("setExternalState: state LOADED; Country code is null");
                         }
