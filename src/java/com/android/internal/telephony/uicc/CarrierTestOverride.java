@@ -43,6 +43,7 @@ public class CarrierTestOverride {
      * Sample xml:
      * <carrierTestOverrides>
        <carrierTestOverride key="isInTestMode" value="true"/>
+       <carrierTestOverride key="mccmnc" value="310010" />
        <carrierTestOverride key="gid1" value="bae0000000000000"/>
        <carrierTestOverride key="gid2" value="ffffffffffffffff"/>
        <carrierTestOverride key="imsi" value="310010123456789"/>
@@ -58,6 +59,7 @@ public class CarrierTestOverride {
     static final String CARRIER_TEST_XML_ITEM_KEY = "key";
     static final String CARRIER_TEST_XML_ITEM_VALUE = "value";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_ISINTESTMODE = "isInTestMode";
+    static final String CARRIER_TEST_XML_ITEM_KEY_STRING_MCCMNC = "mccmnc";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_GID1 = "gid1";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_GID2 = "gid2";
     static final String CARRIER_TEST_XML_ITEM_KEY_STRING_IMSI = "imsi";
@@ -142,6 +144,29 @@ public class CarrierTestOverride {
             Rlog.w(LOG_TAG, "No iccid in CarrierTestConfig file ");
             return null;
         }
+    }
+
+    String getFakeMccMnc() {
+        try {
+            String mccmnc = mCarrierTestParamMap.get(CARRIER_TEST_XML_ITEM_KEY_STRING_MCCMNC);
+            Rlog.d(LOG_TAG, "reading mccmnc from CarrierTestConfig file: " + mccmnc);
+            return mccmnc;
+        } catch (NullPointerException e) {
+            Rlog.w(LOG_TAG, "No mccmnc in CarrierTestConfig file ");
+            return null;
+        }
+    }
+
+    void override(String mccmnc, String imsi, String iccid, String gid1, String gid2, String pnn,
+            String spn) {
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_ISINTESTMODE, "true");
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_MCCMNC, mccmnc);
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_IMSI, imsi);
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_ICCID, iccid);
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_GID1, gid1);
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_GID2, gid2);
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_PNN, pnn);
+        mCarrierTestParamMap.put(CARRIER_TEST_XML_ITEM_KEY_STRING_SPN, spn);
     }
 
     private void loadCarrierTestOverrides() {
