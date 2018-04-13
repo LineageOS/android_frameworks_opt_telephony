@@ -3603,10 +3603,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void setCarrierTestOverride(String mccmnc, String imsi, String iccid, String gid1,
             String gid2, String pnn, String spn) {
-        IccRecords r = mIccRecords.get();
-        if (r != null) {
-            r.setCarrierTestOverride(mccmnc, imsi, iccid, gid1, gid2, pnn, spn);
-        }
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

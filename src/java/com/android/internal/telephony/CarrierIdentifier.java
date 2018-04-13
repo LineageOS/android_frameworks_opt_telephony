@@ -20,13 +20,11 @@ import static android.provider.Telephony.CarrierId;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
-import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
@@ -38,6 +36,7 @@ import android.util.Log;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -85,12 +84,11 @@ public class CarrierIdentifier extends Handler {
     private Context mContext;
     private Phone mPhone;
     private IccRecords mIccRecords;
+    private UiccProfile mUiccProfile;
     private final LocalLog mCarrierIdLocalLog = new LocalLog(20);
     private final TelephonyManager mTelephonyMgr;
     private final SubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new SubscriptionsChangedListener();
-    private final SharedPreferenceChangedListener mSharedPrefListener =
-            new SharedPreferenceChangedListener();
 
     private final ContentObserver mContentObserver = new ContentObserver(this) {
         @Override
@@ -130,20 +128,6 @@ public class CarrierIdentifier extends Handler {
         }
     }
 
-    private class SharedPreferenceChangedListener implements
-            SharedPreferences.OnSharedPreferenceChangeListener {
-        @Override
-        public void onSharedPreferenceChanged(
-                SharedPreferences sharedPreferences, String key) {
-            if (TextUtils.equals(key, OPERATOR_BRAND_OVERRIDE_PREFIX
-                    + mPhone.getIccSerialNumber())) {
-                // SPN override from carrier privileged apps
-                logd("[onSharedPreferenceChanged]: " + key);
-                sendEmptyMessage(SPN_OVERRIDE_EVENT);
-            }
-        }
-    }
-
     public CarrierIdentifier(Phone phone) {
         logd("Creating CarrierIdentifier[" + phone.getPhoneId() + "]");
         mContext = phone.getContext();
@@ -157,8 +141,6 @@ public class CarrierIdentifier extends Handler {
                 CarrierId.All.CONTENT_URI, false, mContentObserver);
         SubscriptionManager.from(mContext).addOnSubscriptionsChangedListener(
                 mOnSubscriptionsChangedListener);
-        PreferenceManager.getDefaultSharedPreferences(mContext)
-                .registerOnSharedPreferenceChangeListener(mSharedPrefListener);
         UiccController.getInstance().registerForIccChanged(this, ICC_CHANGED_EVENT, null);
     }
 
@@ -222,19 +204,34 @@ public class CarrierIdentifier extends Handler {
                 }
                 break;
             case ICC_CHANGED_EVENT:
-                final IccRecords newIccRecords = mPhone.getIccRecords();
+                // all records used for carrier identification are from SimRecord
+                final IccRecords newIccRecords = UiccController.getInstance().getIccRecords(
+                        mPhone.getPhoneId(), UiccController.APP_FAM_3GPP);
                 if (mIccRecords != newIccRecords) {
                     if (mIccRecords != null) {
                         logd("Removing stale icc objects.");
-                        mIccRecords.unregisterForSpnUpdate(this);
                         mIccRecords.unregisterForRecordsLoaded(this);
                         mIccRecords = null;
                     }
                     if (newIccRecords != null) {
                         logd("new Icc object");
-                        newIccRecords.registerForSpnUpdate(this, SPN_OVERRIDE_EVENT, null);
                         newIccRecords.registerForRecordsLoaded(this, SIM_LOAD_EVENT, null);
                         mIccRecords = newIccRecords;
+                    }
+                }
+                // check UICC profile
+                final UiccProfile uiccProfile = UiccController.getInstance()
+                        .getUiccProfileForPhone(mPhone.getPhoneId());
+                if (mUiccProfile != uiccProfile) {
+                    if (mUiccProfile != null) {
+                        logd("unregister operatorBrandOverride");
+                        mUiccProfile.unregisterForOperatorBrandOverride(this);
+                        mUiccProfile = null;
+                    }
+                    if (uiccProfile != null) {
+                        logd("register operatorBrandOverride");
+                        uiccProfile.registerForOpertorBrandOverride(this, SPN_OVERRIDE_EVENT, null);
+                        mUiccProfile = uiccProfile;
                     }
                 }
                 break;
@@ -568,7 +565,7 @@ public class CarrierIdentifier extends Handler {
 
         /*
          * Write Carrier Identification Matching event, logging with the
-         * carrierId, gid1 and carrier list version to differentiate below cases of metrics:
+         * carrierId, mccmnc, gid1 and carrier list version to differentiate below cases of metrics:
          * 1) unknown mccmnc - the Carrier Id provider contains no rule that matches the
          * read mccmnc.
          * 2) the Carrier Id provider contains some rule(s) that match the read mccmnc,
@@ -578,7 +575,8 @@ public class CarrierIdentifier extends Handler {
          */
         String unknownGid1ToLog = ((maxScore & CarrierMatchingRule.SCORE_GID1) == 0
                 && !TextUtils.isEmpty(subscriptionRule.mGid1)) ? subscriptionRule.mGid1 : null;
-        String unknownMccmncToLog = (maxScore == CarrierMatchingRule.SCORE_INVALID
+        String unknownMccmncToLog = ((maxScore == CarrierMatchingRule.SCORE_INVALID
+                || (maxScore & CarrierMatchingRule.SCORE_GID1) == 0)
                 && !TextUtils.isEmpty(subscriptionRule.mMccMnc)) ? subscriptionRule.mMccMnc : null;
         TelephonyMetrics.getInstance().writeCarrierIdMatchingEvent(
                 mPhone.getPhoneId(), getCarrierListVersion(), mCarrierId,
