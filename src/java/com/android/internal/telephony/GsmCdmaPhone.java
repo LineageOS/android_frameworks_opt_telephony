@@ -1553,6 +1553,22 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public void setCarrierTestOverride(String mccmnc, String imsi, String iccid, String gid1,
+            String gid2, String pnn, String spn) {
+        IccRecords r = null;
+        if (isPhoneTypeGsm()) {
+            r = mIccRecords.get();
+        } else if (isPhoneTypeCdmaLte()) {
+            r = mSimRecords;
+        } else {
+            loge("setCarrierTestOverride fails in CDMA only");
+        }
+        if (r != null) {
+            r.setCarrierTestOverride(mccmnc, imsi, iccid, gid1, gid2, pnn, spn);
+        }
+    }
+
+    @Override
     public String getGroupIdLevel1() {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
