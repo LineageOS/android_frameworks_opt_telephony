@@ -17,14 +17,19 @@
 package android.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
-import android.os.RemoteException;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.os.Messenger;
 import android.support.test.runner.AndroidJUnit4;
+import android.telecom.TelecomManager;
 import android.telephony.ims.aidl.IImsMmTelFeature;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
@@ -32,6 +37,7 @@ import android.telephony.ims.stub.ImsCallSessionImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.internal.IImsCallSession;
+import com.android.internal.telephony.ims.ImsTestBase;
 
 import org.junit.After;
 import org.junit.Before;
@@ -41,23 +47,55 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 @RunWith(AndroidJUnit4.class)
-public class MmTelFeatureTests {
+public class MmTelFeatureTests extends ImsTestBase {
 
     private static final int TEST_CAPABILITY = 1;
     private static final int TEST_RADIO_TECH = 0;
+
+    private static final int TEST_TTY_RESULT = 0;
+    private static final int TEST_SEND_DTMF_RESULT = 1;
+    private static final int TEST_RESULT_MAX = 2;
+
+    private static final int TEST_RESULT_DELAY_MS = 5000;
 
     private android.telephony.ims.TestMmTelFeature mFeature;
     private IImsMmTelFeature mFeatureBinder;
     private ImsFeature.CapabilityCallback mCapabilityCallback;
     private MmTelFeature.Listener mListener;
 
+    // set to true when the handler receives a message back from the Feature.
+    private boolean[] mHandlerResults;
+
+    private class TestHandler extends Handler {
+
+        TestHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case TEST_TTY_RESULT:
+                    mHandlerResults[TEST_TTY_RESULT] = true;
+                    break;
+                case TEST_SEND_DTMF_RESULT:
+                    mHandlerResults[TEST_SEND_DTMF_RESULT] = true;
+                    break;
+            }
+        }
+    }
+    private final Handler mHandler = new TestHandler(Looper.getMainLooper());
+    private final Messenger mHandlerMessenger = new Messenger(mHandler);
+
     @Before
-    public void setup() throws RemoteException {
+    public void setup() throws Exception {
+        super.setUp();
         mFeature = new TestMmTelFeature();
         mFeatureBinder = mFeature.getBinder();
         mCapabilityCallback = spy(new ImsFeature.CapabilityCallback());
         mListener = spy(new MmTelFeature.Listener());
         mFeatureBinder.setListener(mListener);
+        mHandlerResults = new boolean[TEST_RESULT_MAX];
     }
 
     @After
@@ -90,5 +128,26 @@ public class MmTelFeatureTests {
         verify(mListener).onIncomingCall(captor.capture(), any());
 
         assertEquals(sessionBinder, captor.getValue());
+    }
+
+    @SmallTest
+    @Test
+    public void testSetTtyMessageMessenger() throws Exception {
+        Message resultMessage = Message.obtain(mHandler, TEST_TTY_RESULT);
+        resultMessage.replyTo = mHandlerMessenger;
+        mFeatureBinder.setUiTtyMode(TelecomManager.TTY_MODE_FULL, resultMessage);
+        waitForHandlerAction(mHandler, TEST_RESULT_DELAY_MS);
+        assertTrue(mHandlerResults[TEST_TTY_RESULT]);
+    }
+
+    @SmallTest
+    @Test
+    public void testSendDtmfMessageMessenger() throws Exception {
+        Message resultMessage = Message.obtain(mHandler, TEST_SEND_DTMF_RESULT);
+        resultMessage.replyTo = mHandlerMessenger;
+        IImsCallSession callSession = mFeatureBinder.createCallSession(null);
+        callSession.sendDtmf('0', resultMessage);
+        waitForHandlerAction(mHandler, TEST_RESULT_DELAY_MS);
+        assertTrue(mHandlerResults[TEST_SEND_DTMF_RESULT]);
     }
 }
