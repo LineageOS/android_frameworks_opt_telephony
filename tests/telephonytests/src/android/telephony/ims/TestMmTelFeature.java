@@ -16,6 +16,7 @@
 
 package android.telephony.ims;
 
+import android.os.Message;
 import android.os.RemoteException;
 import android.telephony.ims.feature.CapabilityChangeRequest;
 import android.telephony.ims.feature.ImsFeature;
@@ -33,6 +34,22 @@ public class TestMmTelFeature extends MmTelFeature {
     public CapabilityChangeRequest lastRequest;
     public boolean isUtInterfaceCalled = false;
 
+    private final TestImsCallSession mCallSession = new TestImsCallSession();
+    private class TestImsCallSession extends ImsCallSessionImplBase {
+
+        @Override
+        public void sendDtmf(char c, Message result) {
+            // Just call result to signify complete for test.
+            if (result.replyTo != null) {
+                try {
+                    result.replyTo.send(result);
+                } catch (RemoteException e) {
+                    // eat error, test will fail.
+                }
+            }
+        }
+    }
+
     public void incomingCall(ImsCallSessionImplBase c) throws RemoteException {
         notifyIncomingCall(c, null);
     }
@@ -44,7 +61,7 @@ public class TestMmTelFeature extends MmTelFeature {
 
     @Override
     public ImsCallSessionImplBase createCallSession(ImsCallProfile profile) {
-        return super.createCallSession(profile);
+        return mCallSession;
     }
 
     @Override
@@ -61,6 +78,16 @@ public class TestMmTelFeature extends MmTelFeature {
     @Override
     public ImsMultiEndpointImplBase getMultiEndpoint() {
         return super.getMultiEndpoint();
+    }
+
+    @Override
+    public void setUiTtyMode(int mode, Message onCompleteMessage) {
+        try {
+            // just send complete message.
+            onCompleteMessage.replyTo.send(onCompleteMessage);
+        } catch (RemoteException e) {
+            // do nothing, test will fail.
+        }
     }
 
     @Override
