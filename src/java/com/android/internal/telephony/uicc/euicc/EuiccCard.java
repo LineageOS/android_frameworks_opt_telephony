@@ -183,6 +183,15 @@ public class EuiccCard extends UiccCard {
                 (byte[] response) -> mSpecVersion, callback, handler);
     }
 
+    @Override
+    protected void updateCardId() {
+        if (TextUtils.isEmpty(mEid)) {
+            super.updateCardId();
+        } else {
+            mCardId = mEid;
+        }
+    }
+
     /**
      * Gets a list of user-visible profiles.
      *
