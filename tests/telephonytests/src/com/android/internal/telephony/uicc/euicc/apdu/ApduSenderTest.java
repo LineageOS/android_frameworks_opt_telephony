@@ -244,6 +244,50 @@ public class ApduSenderTest {
     }
 
     @Test
+    public void testSendStoreDataLongDataMod0() throws InterruptedException {
+        String aid = "B2C3D4";
+        ApduSender sender = new ApduSender(mMockCi, aid, false /* supportExtendedApdu */);
+
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel, "9000", "B2222B9000");
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel);
+
+        // Each segment has 0xFF (the limit of a single command) bytes.
+        String s1 = new String(new char[0xFF]).replace("\0", "AA");
+        String s2 = new String(new char[0xFF]).replace("\0", "BB");
+        String longData = s1 + s2;
+        sender.send((selectResponse, requestBuilder) -> {
+            requestBuilder.addStoreData(longData);
+        }, mResponseCaptor, mHandler);
+        mResponseCaptor.await();
+
+        assertEquals("B2222B", IccUtils.bytesToHexString(mResponseCaptor.response));
+        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x11),
+                eq(0), eq(0xFF), eq(s1), any());
+        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
+                eq(1), eq(0xFF), eq(s2), any());
+    }
+
+    @Test
+    public void testSendStoreDataLen0() throws InterruptedException {
+        String aid = "B2C3D4";
+        ApduSender sender = new ApduSender(mMockCi, aid, false /* supportExtendedApdu */);
+
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel, "B2222B9000");
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel);
+
+        sender.send((selectResponse, requestBuilder) -> {
+            requestBuilder.addStoreData("");
+        }, mResponseCaptor, mHandler);
+        mResponseCaptor.await();
+
+        assertEquals("B2222B", IccUtils.bytesToHexString(mResponseCaptor.response));
+        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
+                eq(0), eq(0), eq(""), any());
+    }
+
+    @Test
     public void testSendErrorResponseInMiddle() throws InterruptedException {
         String aid = "B2C3D4";
         ApduSender sender = new ApduSender(mMockCi, aid, false /* supportExtendedApdu */);
