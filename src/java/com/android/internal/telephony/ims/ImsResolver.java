@@ -80,6 +80,10 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             "android.telephony.ims.EMERGENCY_MMTEL_FEATURE";
     public static final String METADATA_MMTEL_FEATURE = "android.telephony.ims.MMTEL_FEATURE";
     public static final String METADATA_RCS_FEATURE = "android.telephony.ims.RCS_FEATURE";
+    // Overrides the sanity permission check of android.permission.BIND_IMS_SERVICE for any
+    // ImsService that is connecting to the platform.
+    // This should ONLY be used for testing and should not be used in production ImsServices.
+    private static final String METADATA_OVERRIDE_PERM_CHECK = "override_bind_check";
 
     // Based on updates from PackageManager
     private static final int HANDLER_ADD_PACKAGE = 0;
@@ -382,7 +386,18 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                         unbindImsService(getImsServiceInfoFromCache(mDeviceService));
                     }
                     mDeviceService = packageName;
-                    bindImsService(getImsServiceInfoFromCache(packageName));
+                    ImsServiceInfo deviceInfo = getImsServiceInfoFromCache(mDeviceService);
+                    if (deviceInfo == null) {
+                        // The package name is either "" or does not exist on the device.
+                        break;
+                    }
+                    if (deviceInfo.featureFromMetadata) {
+                        bindImsService(deviceInfo);
+                    } else {
+                        // newly added ImsServiceInfo that has not had features queried yet. Start
+                        // async bind and query features.
+                        scheduleQueryForFeatures(deviceInfo);
+                    }
                 }
                 break;
             }
@@ -1240,9 +1255,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 Log.i(TAG, "service name: " + info.name + ", manifest query: "
                         + info.featureFromMetadata);
                 // Check manifest permission to be sure that the service declares the correct
-                // permissions.
-                if (TextUtils.equals(serviceInfo.permission,
-                        Manifest.permission.BIND_IMS_SERVICE)) {
+                // permissions. Overridden if the METADATA_OVERRIDE_PERM_CHECK metadata is set to
+                // true.
+                // NOTE: METADATA_OVERRIDE_PERM_CHECK should only be set for testing.
+                if (TextUtils.equals(serviceInfo.permission, Manifest.permission.BIND_IMS_SERVICE)
+                        || serviceInfo.metaData.getBoolean(METADATA_OVERRIDE_PERM_CHECK, false)) {
                     infos.add(info);
                 } else {
                     Log.w(TAG, "ImsService is not protected with BIND_IMS_SERVICE permission: "
