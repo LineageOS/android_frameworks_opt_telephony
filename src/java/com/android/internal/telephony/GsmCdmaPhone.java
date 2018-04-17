@@ -89,6 +89,7 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
+import com.android.internal.telephony.uicc.UiccSlot;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -3417,10 +3418,20 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public IccCard getIccCard() {
-        // This used to always return a non-null object. But getUiccProfile() can return null.
-        // For backward compatibility consideration, we return a dummy object instead of null.
-        IccCard iccCard = getUiccProfile();
-        return (iccCard != null) ? iccCard : new IccCard();
+        // This function doesn't return null for backwards compatability purposes.
+        // To differentiate between cases where SIM is absent vs. unknown we return a dummy
+        // IccCard with the sim state set.
+        IccCard card = getUiccProfile();
+        if (card != null) {
+            return card;
+        } else {
+            UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
+            if (slot == null || slot.isStateUnknown()) {
+                return new IccCard(IccCardConstants.State.UNKNOWN);
+            } else {
+                return new IccCard(IccCardConstants.State.ABSENT);
+            }
+        }
     }
 
     private UiccProfile getUiccProfile() {
