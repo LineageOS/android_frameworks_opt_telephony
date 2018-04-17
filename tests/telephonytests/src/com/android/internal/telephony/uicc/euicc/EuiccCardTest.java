@@ -274,7 +274,7 @@ public class EuiccCardTest extends TelephonyTest {
                                 "com.google.android.apps.myapp", 1)
                 },
                 profile.getUiccAccessRules().toArray());
-        verifyStoreData(channel, "BF2D195A0A896700000000004523015C0B5A909192B79F709599BF76");
+        verifyStoreData(channel, "BF2D1BA00C5A0A896700000000004523015C0B5A909192B79F709599BF76");
     }
 
     @Test
@@ -608,11 +608,11 @@ public class EuiccCardTest extends TelephonyTest {
         assertUnexpectedException(resultCaptor.exception);
         assertEquals("BF3802A000", IccUtils.bytesToHexString(resultCaptor.result));
         verifyStoreData(channel,
-                "BF3846" + "A000" + "A100" + "A200" + "A300" + "A03C"
+                "BF384B" + "A000" + "A100" + "A200" + "A300" + "A041"
                         + "800D4131423243332D583459355A36" // Matching id
-                        + "A12B800489674523" // TAC
+                        + "A130800489674523" // TAC
                         // Device capabilities
-                        + "A11980030B000081030B0000830303000084030C000085030B0000"
+                        + "A11E80030B000081030B00008203010000830303000084030C000085030B0000"
                         + "82088967452301214305"); // IMEI
     }
 
@@ -927,7 +927,7 @@ public class EuiccCardTest extends TelephonyTest {
         child = node.getChild(Tags.TAG_CTX_1);
         assertTrue(Arrays.equals(new byte[] {11, 0 , 0}, child.asBytes()));
 
-        devCapItem = "cdma_1x,1";
+        devCapItem = "cdma1x,1";
         mEuiccCard.addDeviceCapability(devCapsBuilder, devCapItem);
         node = devCapsBuilder.build();
 
