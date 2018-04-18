@@ -333,6 +333,15 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
+    public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData) {
+        try {
+            mRegistry.notifyOemHookRawEventForSubscriber(subId, rawData);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
     /**
      * Convert the {@link Phone.DataActivityState} enum into the TelephonyManager.DATA_* constants
      * for the public API.
