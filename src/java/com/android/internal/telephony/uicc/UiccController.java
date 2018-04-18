@@ -492,13 +492,6 @@ public class UiccController extends Handler {
         if (VDBG) log("onGetIccCardStatusDone: phoneId " + index + " physicalSlotIndex " + slotId);
         if (slotId == INVALID_SLOT_ID) {
             slotId = index;
-            // TODO(b/78136265): Remove the below logic once modem fixes the bug in b/78135516.
-            for (int i = 0; i < mUiccSlots.length; i++) {
-                if (mUiccSlots[i] != null && mUiccSlots[i].isActive()) {
-                    slotId = i;
-                    break;
-                }
-            }
         }
         mPhoneIdToSlotId[index] = slotId;
 
