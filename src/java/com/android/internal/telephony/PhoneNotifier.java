@@ -68,4 +68,6 @@ public interface PhoneNotifier {
     public void notifyDataActivationStateChanged(Phone sender, int activationState);
 
     public void notifyUserMobileDataStateChanged(Phone sender, boolean state);
+
+    public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData);
 }
