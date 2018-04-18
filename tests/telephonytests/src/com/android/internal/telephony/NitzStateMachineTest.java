@@ -375,9 +375,7 @@ public class NitzStateMachineTest extends TelephonyTest {
                 .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
 
         // Check NitzStateMachine state.
-        // TODO(nfuller): The following line should probably be assertTrue but the logic under test
-        // may be buggy. Look at whether it needs to change.
-        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(scenario.getNitzSignal().mValue, mNitzStateMachine.getCachedNitzData());
         assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
@@ -413,9 +411,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         script.verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId(), 2 /* times */);
 
         // Check NitzStateMachine state.
-        // TODO(nfuller): The following line should probably be assertTrue but the logic under test
-        // may be buggy. Look at whether it needs to change.
-        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(scenario.getNitzSignal().mValue, mNitzStateMachine.getCachedNitzData());
         assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
