@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,6 +36,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
+import com.android.ims.MmTelFeatureConnection;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -61,6 +63,7 @@ public class ImsManagerTest extends TelephonyTest {
     Hashtable<Integer, String> mProvisionedStringVals = new Hashtable<>();
     ImsConfigImplBase.ImsConfigStub mImsConfigStub;
     ImsConfig mImsConfig;
+    @Mock MmTelFeatureConnection mMmTelFeatureConnection;
 
     private final int[] mSubId = {0};
     private int mPhoneId;
@@ -75,6 +78,8 @@ public class ImsManagerTest extends TelephonyTest {
 
         doReturn(mSubscriptionController).when(mBinder).queryLocalInterface(anyString());
         mServiceManagerMockedServices.put("isub", mBinder);
+
+        doReturn(true).when(mMmTelFeatureConnection).isBinderAlive();
 
         mImsManagerInstances.remove(mPhoneId);
 
@@ -234,6 +239,39 @@ public class ImsManagerTest extends TelephonyTest {
 
     }
 
+    @Test @SmallTest
+    public void testSetWfcSetting_true_shouldSetWfcModeWrtRoamingState() throws Exception {
+        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED))
+                .when(mSubscriptionController).getSubscriptionProperty(
+                        anyInt(),
+                        eq(SubscriptionManager.WFC_IMS_MODE),
+                        anyString());
+        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED))
+                .when(mSubscriptionController).getSubscriptionProperty(
+                        anyInt(),
+                        eq(SubscriptionManager.WFC_IMS_ROAMING_MODE),
+                        anyString());
+        ImsManager imsManager = initializeProvisionedValues();
+
+        // Roaming
+        doReturn(true).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
+        // Turn on WFC
+        imsManager.setWfcSetting(true);
+        // Roaming mode (WIFI_PREFERRED) should be set. With 1000 ms timeout.
+        verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
+                eq(ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED));
+
+        // Not roaming
+        doReturn(false).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
+        // Turn on WFC
+        imsManager.setWfcSetting(true);
+        // Home mode (CELLULAR_PREFERRED) should be set. With 1000 ms timeout.
+        verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
+                eq(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED));
+    }
+
     private ImsManager initializeProvisionedValues() {
         when(mImsConfigImplBaseMock.getConfigInt(anyInt()))
                 .thenAnswer(invocation ->  {
@@ -259,6 +297,8 @@ public class ImsManagerTest extends TelephonyTest {
         ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
         try {
             replaceInstance(ImsManager.class, "mConfig", imsManager, mImsConfig);
+            replaceInstance(ImsManager.class, "mMmTelFeatureConnection", imsManager,
+                    mMmTelFeatureConnection);
         } catch (Exception ex) {
             fail("failed with " + ex);
         }
