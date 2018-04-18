@@ -39,11 +39,25 @@ import com.android.internal.telephony.uicc.IccRecords;
  * gets when it calls getIccCard is UiccProfile.
  */
 public class IccCard {
+    private State mIccCardState = State.UNKNOWN;
+
+    /**
+     * Empty constructor.
+     */
+    public IccCard() {}
+
+    /**
+     * Set the state of the IccCard to be returned in {@link getState}.
+     */
+    public IccCard(State state) {
+        mIccCardState = state;
+    }
+
     /**
      * @return combined Card and current App state
      */
     public State getState() {
-        return State.UNKNOWN;
+        return mIccCardState;
     }
 
     // todo: delete

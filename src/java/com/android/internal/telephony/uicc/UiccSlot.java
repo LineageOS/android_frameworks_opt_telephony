@@ -52,6 +52,7 @@ public class UiccSlot extends Handler {
 
     private final Object mLock = new Object();
     private boolean mActive;
+    private boolean mStateIsUnknown = true;
     private CardState mCardState;
     private Context mContext;
     private CommandsInterface mCi;
@@ -104,7 +105,7 @@ public class UiccSlot extends Handler {
                 // no card present in the slot now; dispose card and make mUiccCard null
                 if (mUiccCard != null) {
                     mUiccCard.dispose();
-                    mUiccCard = null;
+                    nullifyUiccCard(false /* sim state is not unknown */);
                 }
             // Because mUiccCard may be updated in both IccCardStatus and IccSlotStatus, we need to
             // create a new UiccCard instance in two scenarios:
@@ -151,7 +152,7 @@ public class UiccSlot extends Handler {
                     mLastRadioState = RadioState.RADIO_UNAVAILABLE;
                     mPhoneId = INVALID_PHONE_ID;
                     if (mUiccCard != null) mUiccCard.dispose();
-                    mUiccCard = null;
+                    nullifyUiccCard(true /* sim state is unknown */);
                 }
                 parseAtr(iss.atr);
                 mCardState = iss.cardState;
@@ -166,6 +167,18 @@ public class UiccSlot extends Handler {
                 //      iss.logicalSlotIndex;
             }
         }
+    }
+
+    // whenever we set mUiccCard to null, we lose the ability to differentiate between absent and
+    // unknown states. To mitigate this, we will us mStateIsUnknown to keep track. The sim is only
+    // unknown if we haven't heard from the radio or if the radio has become unavailable.
+    private void nullifyUiccCard(boolean stateUnknown) {
+        mStateIsUnknown = stateUnknown;
+        mUiccCard = null;
+    }
+
+    public boolean isStateUnknown() {
+        return mStateIsUnknown;
     }
 
     private void checkIsEuiccSupported() {
@@ -333,7 +346,7 @@ public class UiccSlot extends Handler {
         if (mUiccCard != null) {
             mUiccCard.dispose();
         }
-        mUiccCard = null;
+        nullifyUiccCard(true /* sim state is unknown */);
 
         if (mPhoneId != INVALID_PHONE_ID) {
             UiccController.updateInternalIccState(
