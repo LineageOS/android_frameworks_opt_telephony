@@ -864,6 +864,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     // Test the default data switch scenario.
+    @FlakyTest /* flakes 1.57% of the time */
     @Test
     @MediumTest
     public void testDDSResetAutoAttach() throws Exception {
@@ -1231,6 +1232,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     // Test update waiting apn list when on data rat change
+    @FlakyTest /* flakes 0.86% of the time */
     @Test
     @SmallTest
     public void testUpdateWaitingApnListOnDataRatChange() throws Exception {
