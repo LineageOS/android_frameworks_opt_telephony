@@ -640,6 +640,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(3, cl.getCid());
     }
 
+    @FlakyTest /* flakes 0.86% of the time */
     @Test
     @MediumTest
     public void testUpdatePhoneType() {
@@ -1011,6 +1012,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 ((AsyncResult)messageArgumentCaptor.getValue().obj).result);
     }
 
+    @FlakyTest /* flakes 0.43% of the time */
     @Test
     @MediumTest
     public void testRegAndUnregForNetworkAttached() throws Exception {
