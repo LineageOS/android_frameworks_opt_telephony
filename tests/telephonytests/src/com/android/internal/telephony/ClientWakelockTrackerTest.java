@@ -17,6 +17,9 @@
 package com.android.internal.telephony;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
+import android.support.test.filters.FlakyTest;
+
 import junit.framework.TestCase;
 
 public class ClientWakelockTrackerTest extends TestCase {
@@ -35,6 +38,7 @@ public class ClientWakelockTrackerTest extends TestCase {
     client "PQR" sends a message at t+20 and gets response at t+120. Verify that
     "ABC" is attributed 30ms and "PQR" 90ms of the total wakelock time of 120ms
      */
+    @FlakyTest /* flakes 0.37% of the time */
     public void testTwoClients() throws Exception {
         myTracker.startTracking("ABC", 101, 1, 1);
         waitForMs(20);
@@ -69,6 +73,7 @@ public class ClientWakelockTrackerTest extends TestCase {
     and sends another message at t+20 and gets response at t+120. Verify that
     "ABC" is attributed 120ms
      */
+    @FlakyTest /* flakes 0.37% of the time */
     public void testOneClient() throws Exception {
         myTracker.startTracking("ABC", 101, 1, 1);
         waitForMs(20);
@@ -95,6 +100,7 @@ public class ClientWakelockTrackerTest extends TestCase {
     /* This test has client "ABC" send 1 message at time t and another at time t+20
     and gets response for all at t+40. Verify that "ABC" is attributed 40ms
      */
+    @FlakyTest /* flakes 0.37% of the time */
     public void testStopTrackingAllOneClient() throws Exception {
         myTracker.startTracking("ABC", 101, 1, 1);
         waitForMs(20);

@@ -20,6 +20,7 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.config.V1_0.IRadioConfigResponse;
 import android.hardware.radio.config.V1_0.SimSlotStatus;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 
@@ -30,6 +31,7 @@ import java.util.ArrayList;
  */
 public class RadioConfigResponse extends IRadioConfigResponse.Stub {
     private final RadioConfig mRadioConfig;
+    private static final String TAG = "RadioConfigResponse";
 
     public RadioConfigResponse(RadioConfig radioConfig) {
         mRadioConfig = radioConfig;
@@ -47,9 +49,17 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             if (responseInfo.error == RadioError.NONE) {
                 // send response
                 RadioResponse.sendMessageResponse(rr.mResult, ret);
+                Rlog.d(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " " + ret.toString());
             } else {
                 rr.onError(responseInfo.error, ret);
+                Rlog.e(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " error "
+                        + responseInfo.error);
             }
+
+        } else {
+            Rlog.e(TAG, "getSimSlotsStatusResponse: Error " + responseInfo.toString());
         }
     }
 
@@ -63,9 +73,18 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             if (responseInfo.error == RadioError.NONE) {
                 // send response
                 RadioResponse.sendMessageResponse(rr.mResult, null);
+                Rlog.d(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest));
             } else {
                 rr.onError(responseInfo.error, null);
+                Rlog.e(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " error "
+                        + responseInfo.error);
             }
+        } else {
+            Rlog.e(TAG, "setSimSlotsMappingResponse: Error " + responseInfo.toString());
         }
     }
+
+
 }

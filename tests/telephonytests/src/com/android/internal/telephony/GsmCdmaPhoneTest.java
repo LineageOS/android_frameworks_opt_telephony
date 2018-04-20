@@ -31,6 +31,7 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -61,6 +62,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccProfile;
+import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
 import org.junit.Before;
@@ -844,6 +846,26 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 null));
         waitForMs(100);
         verify(mEriManager, times(1)).loadEriFile();
+    }
+
+    @Test
+    @SmallTest
+    public void testGetIccCardUnknownAndAbsent() {
+        // If UiccSlot.isStateUnknown is true, we should return a dummy IccCard with the state
+        // set to UNKNOWN
+        doReturn(null).when(mUiccController).getUiccProfileForPhone(anyInt());
+        UiccSlot mockSlot = mock(UiccSlot.class);
+        doReturn(mockSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
+        doReturn(true).when(mockSlot).isStateUnknown();
+
+        IccCard iccCard = mPhoneUT.getIccCard();
+        assertEquals(IccCardConstants.State.UNKNOWN, iccCard.getState());
+
+        // if isStateUnknown is false, we should return a dummy IccCard with the state set to
+        // ABSENT
+        doReturn(false).when(mockSlot).isStateUnknown();
+        iccCard = mPhoneUT.getIccCard();
+        assertEquals(IccCardConstants.State.ABSENT, iccCard.getState());
     }
 
     @Test
