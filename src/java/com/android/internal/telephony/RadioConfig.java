@@ -39,6 +39,7 @@ import android.util.SparseArray;
 import com.android.internal.telephony.uicc.IccSlotStatus;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -266,7 +267,8 @@ public class RadioConfig extends Handler {
                     mDefaultWorkSource);
 
             if (DBG) {
-                logd(rr.serialString() + "> " + requestToString(rr.mRequest));
+                logd(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " " + Arrays.toString(physicalSlots));
             }
 
             try {
@@ -286,7 +288,7 @@ public class RadioConfig extends Handler {
         return arrayList;
     }
 
-    private static String requestToString(int request) {
+    static String requestToString(int request) {
         switch (request) {
             case RIL_REQUEST_GET_SLOT_STATUS:
                 return "GET_SLOT_STATUS";
