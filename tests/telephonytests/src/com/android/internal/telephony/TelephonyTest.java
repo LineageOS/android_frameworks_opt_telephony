@@ -39,6 +39,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.IDeviceIdleController;
+import android.os.Looper;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
@@ -195,6 +196,8 @@ public abstract class TelephonyTest {
     protected RadioConfig mMockRadioConfig;
     @Mock
     protected SubscriptionInfoUpdater mSubInfoRecordUpdater;
+    @Mock
+    protected LocaleTracker mLocaleTracker;
 
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
@@ -368,6 +371,8 @@ public abstract class TelephonyTest {
                 .makeDeviceStateMonitor(nullable(Phone.class));
         doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
                 .makeNitzStateMachine(nullable(GsmCdmaPhone.class));
+        doReturn(mLocaleTracker).when(mTelephonyComponentFactory)
+                .makeLocaleTracker(nullable(Phone.class), nullable(Looper.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
