@@ -91,7 +91,7 @@ public class UiccSlot extends Handler {
                 log("update: radioState=" + radioState + " mLastRadioState=" + mLastRadioState);
             }
 
-            if (oldState != CardState.CARDSTATE_ABSENT
+            if ((oldState != CardState.CARDSTATE_ABSENT || mUiccCard != null)
                     && mCardState == CardState.CARDSTATE_ABSENT) {
                 // No notifications while radio is off or we just powering up
                 if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
@@ -146,6 +146,9 @@ public class UiccSlot extends Handler {
         if (DBG) log("slotStatus update: " + iss.toString());
         synchronized (mLock) {
             mCi = ci;
+            parseAtr(iss.atr);
+            mCardState = iss.cardState;
+            mIccId = iss.iccid;
             if (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_INACTIVE) {
                 if (mActive) {
                     mActive = false;
@@ -154,17 +157,8 @@ public class UiccSlot extends Handler {
                     if (mUiccCard != null) mUiccCard.dispose();
                     nullifyUiccCard(true /* sim state is unknown */);
                 }
-                parseAtr(iss.atr);
-                mCardState = iss.cardState;
-                mIccId = iss.iccid;
             } else if (!mActive && iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_ACTIVE) {
                 mActive = true;
-                parseAtr(iss.atr);
-                // todo - ignoring these fields for now; relying on sim state changed to update
-                // these
-                //      iss.cardState;
-                //      iss.iccid;
-                //      iss.logicalSlotIndex;
             }
         }
     }
