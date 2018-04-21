@@ -20,6 +20,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
+import android.os.Looper;
 import android.os.ServiceManager;
 import android.telephony.AccessNetworkConstants.TransportType;
 
@@ -171,5 +172,9 @@ public class TelephonyComponentFactory {
     public IDeviceIdleController getIDeviceIdleController() {
         return IDeviceIdleController.Stub.asInterface(
                 ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
+    }
+
+    public LocaleTracker makeLocaleTracker(Phone phone, Looper looper) {
+        return new LocaleTracker(phone, looper);
     }
 }
