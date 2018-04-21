@@ -23,7 +23,6 @@ import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.BadParcelableException;
 import android.os.Build;
-import android.telephony.NetworkRegistrationState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ims.ImsCallProfile;
@@ -115,6 +114,7 @@ public class TelephonyTester {
     private static final String EXTRA_DATA_REG_STATE = "data_reg_state";
     private static final String EXTRA_VOICE_ROAMING_TYPE = "voice_roaming_type";
     private static final String EXTRA_DATA_ROAMING_TYPE = "data_roaming_type";
+    private static final String EXTRA_OPERATOR = "operator";
 
     private static final String ACTION_RESET = "reset";
 
@@ -341,13 +341,13 @@ public class TelephonyTester {
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_REG_STATE)) {
             ss.setVoiceRegState(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_REG_STATE,
-                    NetworkRegistrationState.REG_STATE_UNKNOWN));
-            log("Override voice reg state with " + ss.getVoiceRegState());
+                    ServiceState.STATE_OUT_OF_SERVICE));
+            log("Override voice service state with " + ss.getVoiceRegState());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_REG_STATE)) {
             ss.setDataRegState(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_REG_STATE,
-                    NetworkRegistrationState.REG_STATE_UNKNOWN));
-            log("Override data reg state with " + ss.getDataRegState());
+                    ServiceState.STATE_OUT_OF_SERVICE));
+            log("Override data service state with " + ss.getDataRegState());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_RAT)) {
             ss.setRilVoiceRadioTechnology(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_RAT,
@@ -368,6 +368,11 @@ public class TelephonyTester {
             ss.setDataRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_ROAMING_TYPE,
                     ServiceState.ROAMING_TYPE_UNKNOWN));
             log("Override data roaming type with " + ss.getDataRoamingType());
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_OPERATOR)) {
+            String operator = mServiceStateTestIntent.getStringExtra(EXTRA_OPERATOR);
+            ss.setOperatorName(operator, operator, "");
+            log("Override operator with " + operator);
         }
     }
 }
