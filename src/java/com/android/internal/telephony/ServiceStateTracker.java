@@ -37,6 +37,7 @@ import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
@@ -259,6 +260,9 @@ public class ServiceStateTracker extends Handler {
 
 
     private final RatRatcheter mRatRatcheter;
+
+    private final HandlerThread mHandlerThread;
+    private final LocaleTracker mLocaleTracker;
 
     private final LocalLog mRoamingLog = new LocalLog(10);
     private final LocalLog mAttachLog = new LocalLog(10);
@@ -509,6 +513,13 @@ public class ServiceStateTracker extends Handler {
                     this, EVENT_NETWORK_STATE_CHANGED, null);
         }
 
+        // Create a new handler thread dedicated for locale tracker because the blocking
+        // getAllCellInfo call requires clients calling from a different thread.
+        mHandlerThread = new HandlerThread(LocaleTracker.class.getSimpleName());
+        mHandlerThread.start();
+        mLocaleTracker = TelephonyComponentFactory.getInstance().makeLocaleTracker(
+                mPhone, mHandlerThread.getLooper());
+
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
         mCi.setOnNITZTime(this, EVENT_NITZ_TIME, null);
@@ -656,6 +667,7 @@ public class ServiceStateTracker extends Handler {
         mCi.unregisterForPhysicalChannelConfiguration(this);
         mSubscriptionManager
             .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mHandlerThread.quit();
         mCi.unregisterForImsNetworkStateChanged(this);
         mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
                 CARRIER_ACTION_SET_RADIO_ENABLED);
@@ -2843,11 +2855,12 @@ public class ServiceStateTracker extends Handler {
             }
 
             tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
-            updateCarrierMccMncConfiguration(operatorNumeric,
-                    prevOperatorNumeric, mPhone.getContext());
+
             if (isInvalidOperatorNumeric(operatorNumeric)) {
                 if (DBG) log("operatorNumeric " + operatorNumeric + " is invalid");
-                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
+                // Passing empty string is important for the first update. The initial value of
+                // operator numeric in locale tracker is null.
+                mLocaleTracker.updateOperatorNumeric("");
                 mNitzState.handleNetworkUnavailable();
             } else if (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
                 // If the device is on IWLAN, modems manufacture a ServiceState with the MCC/MNC of
@@ -2859,15 +2872,8 @@ public class ServiceStateTracker extends Handler {
                     setOperatorIdd(operatorNumeric);
                 }
 
-                // Update ISO.
-                String countryIsoCode = "";
-                try {
-                    String mcc = operatorNumeric.substring(0, 3);
-                    countryIsoCode = MccTable.countryCodeForMcc(Integer.parseInt(mcc));
-                } catch (NumberFormatException | StringIndexOutOfBoundsException ex) {
-                    loge("pollStateDone: countryCodeForMcc error: " + ex);
-                }
-                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), countryIsoCode);
+                mLocaleTracker.updateOperatorNumeric(operatorNumeric);
+                String countryIsoCode = mLocaleTracker.getCurrentCountry();
 
                 // Update Time Zone.
                 boolean iccCardExists = iccCardExists();
@@ -4329,6 +4335,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mLteRsrpBoost=" + mLteRsrpBoost);
         dumpEarfcnPairList(pw);
 
+        mLocaleTracker.dump(fd, pw, args);
+
         pw.println(" Roaming Log:");
         IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
         ipw.increaseIndent();
@@ -4381,15 +4389,6 @@ public class ServiceStateTracker extends Handler {
         return value;
     }
 
-    protected void updateCarrierMccMncConfiguration(String newOp, String oldOp, Context context) {
-        // if we have a change in operator, notify wifi (even to/from none)
-        if (((newOp == null) && (TextUtils.isEmpty(oldOp) == false)) ||
-                ((newOp != null) && (newOp.equals(oldOp) == false))) {
-            log("update mccmnc=" + newOp + " fromServiceState=true");
-            MccTable.updateMccMncConfiguration(context, newOp, true);
-        }
-    }
-
     /**
      * Check ISO country by MCC to see if phone is roaming in same registered country
      */
@@ -4406,8 +4405,8 @@ public class ServiceStateTracker extends Handler {
         boolean inSameCountry = true;
         final String networkMCC = operatorNumeric.substring(0, 3);
         final String homeMCC = homeNumeric.substring(0, 3);
-        final String networkCountry = MccTable.countryCodeForMcc(Integer.parseInt(networkMCC));
-        final String homeCountry = MccTable.countryCodeForMcc(Integer.parseInt(homeMCC));
+        final String networkCountry = MccTable.countryCodeForMcc(networkMCC);
+        final String homeCountry = MccTable.countryCodeForMcc(homeMCC);
         if (networkCountry.isEmpty() || homeCountry.isEmpty()) {
             // Not a valid country
             return false;
@@ -4647,5 +4646,9 @@ public class ServiceStateTracker extends Handler {
         }
         // Return static default defined in CarrierConfigManager.
         return CarrierConfigManager.getDefaultConfig();
+    }
+
+    public LocaleTracker getLocaleTracker() {
+        return mLocaleTracker;
     }
 }

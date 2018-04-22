@@ -338,7 +338,7 @@ public class GsmCdmaPhone extends Phone {
                 setIsoCountryProperty(operatorNumeric);
                 // Updates MCC MNC device configuration information
                 logd("update mccmnc=" + operatorNumeric);
-                MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
+                MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
             }
 
             // Sets current entry in the telephony carrier table
@@ -359,10 +359,7 @@ public class GsmCdmaPhone extends Phone {
         } else {
             String iso = "";
             try {
-                iso = MccTable.countryCodeForMcc(Integer.parseInt(
-                        operatorNumeric.substring(0,3)));
-            } catch (NumberFormatException ex) {
-                Rlog.e(LOG_TAG, "setIsoCountryProperty: countryCodeForMcc error", ex);
+                iso = MccTable.countryCodeForMcc(operatorNumeric.substring(0, 3));
             } catch (StringIndexOutOfBoundsException ex) {
                 Rlog.e(LOG_TAG, "setIsoCountryProperty: countryCodeForMcc error", ex);
             }
@@ -2708,7 +2705,7 @@ public class GsmCdmaPhone extends Phone {
 
                     // Updates MCC MNC device configuration information
                     logd("update mccmnc=" + operatorNumeric);
-                    MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
+                    MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
 
                     return true;
                 } catch (SQLException e) {
