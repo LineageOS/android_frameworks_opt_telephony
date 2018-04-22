@@ -211,11 +211,13 @@ public class CarrierIdentifier extends Handler {
                     if (mIccRecords != null) {
                         logd("Removing stale icc objects.");
                         mIccRecords.unregisterForRecordsLoaded(this);
+                        mIccRecords.unregisterForRecordsOverride(this);
                         mIccRecords = null;
                     }
                     if (newIccRecords != null) {
                         logd("new Icc object");
                         newIccRecords.registerForRecordsLoaded(this, SIM_LOAD_EVENT, null);
+                        newIccRecords.registerForRecordsOverride(this, SIM_LOAD_EVENT, null);
                         mIccRecords = newIccRecords;
                     }
                 }
