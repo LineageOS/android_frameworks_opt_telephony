@@ -713,7 +713,7 @@ public class SIMRecords extends IccRecords {
                         // finally have both the imsi and the mncLength and
                         // can parse the imsi properly
                         MccTable.updateMccMncConfiguration(mContext,
-                                imsi.substring(0, 3 + mMncLength), false);
+                                imsi.substring(0, 3 + mMncLength));
                     }
                     mImsiReadyRegistrants.notifyRegistrants();
                     break;
@@ -990,7 +990,7 @@ public class SIMRecords extends IccRecords {
                             // the imsi properly
                             log("update mccmnc=" + imsi.substring(0, 3 + mMncLength));
                             MccTable.updateMccMncConfiguration(mContext,
-                                    imsi.substring(0, 3 + mMncLength), false);
+                                    imsi.substring(0, 3 + mMncLength));
                         }
                     }
                     break;
@@ -1571,8 +1571,7 @@ public class SIMRecords extends IccRecords {
         if (!TextUtils.isEmpty(imsi) && imsi.length() >= 3) {
             log("onAllRecordsLoaded set mcc imsi" + (VDBG ? ("=" + imsi) : ""));
             mTelephonyManager.setSimCountryIsoForPhone(
-                    mParentApp.getPhoneId(), MccTable.countryCodeForMcc(
-                    Integer.parseInt(imsi.substring(0, 3))));
+                    mParentApp.getPhoneId(), MccTable.countryCodeForMcc(imsi.substring(0, 3)));
         } else {
             log("onAllRecordsLoaded empty imsi skipping setting mcc");
         }

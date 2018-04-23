@@ -4389,15 +4389,6 @@ public class ServiceStateTracker extends Handler {
         return value;
     }
 
-    protected void updateCarrierMccMncConfiguration(String newOp, String oldOp, Context context) {
-        // if we have a change in operator, notify wifi (even to/from none)
-        if (((newOp == null) && (TextUtils.isEmpty(oldOp) == false)) ||
-                ((newOp != null) && (newOp.equals(oldOp) == false))) {
-            log("update mccmnc=" + newOp + " fromServiceState=true");
-            MccTable.updateMccMncConfiguration(context, newOp, true);
-        }
-    }
-
     /**
      * Check ISO country by MCC to see if phone is roaming in same registered country
      */
@@ -4414,8 +4405,8 @@ public class ServiceStateTracker extends Handler {
         boolean inSameCountry = true;
         final String networkMCC = operatorNumeric.substring(0, 3);
         final String homeMCC = homeNumeric.substring(0, 3);
-        final String networkCountry = MccTable.countryCodeForMcc(Integer.parseInt(networkMCC));
-        final String homeCountry = MccTable.countryCodeForMcc(Integer.parseInt(homeMCC));
+        final String networkCountry = MccTable.countryCodeForMcc(networkMCC);
+        final String homeCountry = MccTable.countryCodeForMcc(homeMCC);
         if (networkCountry.isEmpty() || homeCountry.isEmpty()) {
             // Not a valid country
             return false;

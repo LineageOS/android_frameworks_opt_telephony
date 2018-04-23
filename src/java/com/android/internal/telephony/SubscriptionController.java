@@ -1793,7 +1793,7 @@ public class SubscriptionController extends ISub.Stub {
                 mDefaultFallbackSubId = subId;
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = mTelephonyManager.getSimOperatorNumericForPhone(phoneId);
-                MccTable.updateMccMncConfiguration(mContext, defaultMccMnc, false);
+                MccTable.updateMccMncConfiguration(mContext, defaultMccMnc);
 
                 // Broadcast an Intent for default sub change
                 Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);

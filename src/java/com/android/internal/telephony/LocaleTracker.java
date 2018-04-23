@@ -38,7 +38,6 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
-import com.android.internal.util.CollectionUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -257,7 +256,8 @@ public class LocaleTracker extends Handler {
         String msg = "getCellInfo: cell info=" + mCellInfo;
         if (DBG) log(msg);
         mLocalLog.log(msg);
-        if (CollectionUtils.isEmpty(mCellInfo)) {
+
+        if (mCellInfo == null || mCellInfo.size() == 0) {
             // If we can't get a valid cell info. Try it again later.
             long delay = getCellInfoDelayTime(++mFailCellInfoCount);
             if (DBG) log("Can't get cell info. Try again in " + delay / 1000 + " secs.");
@@ -280,8 +280,8 @@ public class LocaleTracker extends Handler {
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
             try {
                 mcc = mOperatorNumeric.substring(0, 3);
-                countryIso = MccTable.countryCodeForMcc(Integer.parseInt(mcc));
-            } catch (StringIndexOutOfBoundsException | NumberFormatException ex) {
+                countryIso = MccTable.countryCodeForMcc(mcc);
+            } catch (StringIndexOutOfBoundsException ex) {
                 loge("updateLocale: Can't get country from operator numeric. mcc = "
                         + mcc + ". ex=" + ex);
             }
@@ -291,14 +291,7 @@ public class LocaleTracker extends Handler {
         // info.
         if (TextUtils.isEmpty(countryIso)) {
             mcc = getMccFromCellInfo();
-            if (!TextUtils.isEmpty(mcc)) {
-                try {
-                    countryIso = MccTable.countryCodeForMcc(Integer.parseInt(mcc));
-                } catch (NumberFormatException ex) {
-                    loge("updateLocale: Can't get country from cell info. mcc = "
-                            + mcc + ". ex=" + ex);
-                }
-            }
+            countryIso = MccTable.countryCodeForMcc(mcc);
         }
 
         String msg = "updateLocale: mcc = " + mcc + ", country = " + countryIso;
