@@ -382,7 +382,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
                 if (!TextUtils.isEmpty(operator)) {
                     if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
-                        MccTable.updateMccMncConfiguration(mContext, operator, false);
+                        MccTable.updateMccMncConfiguration(mContext, operator);
                     }
                     SubscriptionController.getInstance().setMccMnc(operator, subId);
                 } else {
