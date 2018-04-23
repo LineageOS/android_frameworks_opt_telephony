@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.hardware.radio.config.V1_0.IRadioConfigIndication;
 import android.hardware.radio.config.V1_0.SimSlotStatus;
 import android.os.AsyncResult;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 
@@ -29,6 +30,7 @@ import java.util.ArrayList;
  */
 public class RadioConfigIndication extends IRadioConfigIndication.Stub {
     private final RadioConfig mRadioConfig;
+    private static final String TAG = "RadioConfigIndication";
 
     public RadioConfigIndication(RadioConfig radioConfig) {
         mRadioConfig = radioConfig;
@@ -39,7 +41,7 @@ public class RadioConfigIndication extends IRadioConfigIndication.Stub {
      */
     public void simSlotsStatusChanged(int indicationType, ArrayList<SimSlotStatus> slotStatus) {
         ArrayList<IccSlotStatus> ret = RadioConfig.convertHalSlotStatus(slotStatus);
-
+        Rlog.d(TAG, "[UNSL]< " + " UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
         if (mRadioConfig.mSimSlotStatusRegistrant != null) {
             mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
                     new AsyncResult(null, ret, null));
