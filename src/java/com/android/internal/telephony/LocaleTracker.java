@@ -38,7 +38,6 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
-import com.android.internal.util.CollectionUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -257,7 +256,8 @@ public class LocaleTracker extends Handler {
         String msg = "getCellInfo: cell info=" + mCellInfo;
         if (DBG) log(msg);
         mLocalLog.log(msg);
-        if (CollectionUtils.isEmpty(mCellInfo)) {
+
+        if (mCellInfo == null || mCellInfo.size() == 0) {
             // If we can't get a valid cell info. Try it again later.
             long delay = getCellInfoDelayTime(++mFailCellInfoCount);
             if (DBG) log("Can't get cell info. Try again in " + delay / 1000 + " secs.");

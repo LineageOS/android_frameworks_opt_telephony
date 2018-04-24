@@ -257,7 +257,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     private void waitUntilPhoneState(PhoneConstants.State expected) {
         while (expected != mCTUT.getState()) {
-            waitForMs(10);
+            waitForHandlerAction(mCTUT, 100);
         }
     }
 
