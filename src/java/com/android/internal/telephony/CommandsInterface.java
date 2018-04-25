@@ -1456,8 +1456,6 @@ public interface CommandsInterface {
      */
     void reportStkServiceIsRunning(Message result);
 
-    void invokeOemRilRequestRaw(byte[] data, Message response);
-
     /**
      * Sends carrier specific information to the vendor ril that can be used to
      * encrypt the IMSI and IMPI.
@@ -1469,14 +1467,6 @@ public interface CommandsInterface {
      */
     void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
                                          Message response);
-
-    void invokeOemRilRequestStrings(String[] strings, Message response);
-
-    /**
-     * Fires when RIL_UNSOL_OEM_HOOK_RAW is received from the RIL.
-     */
-    void setOnUnsolOemHookRaw(Handler h, int what, Object obj);
-    void unSetOnUnsolOemHookRaw(Handler h);
 
     /**
      * Send TERMINAL RESPONSE to the SIM, after processing a proactive command
