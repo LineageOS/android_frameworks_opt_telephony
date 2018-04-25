@@ -316,11 +316,6 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData) {
-        throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void notifyCarrierNetworkChange(boolean active) {
         throw new RuntimeException("Not implemented");
     }
