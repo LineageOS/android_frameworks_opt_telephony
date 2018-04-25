@@ -101,7 +101,6 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.V1_0.SmsWriteArgs;
-import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -139,7 +138,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class RILTest extends TelephonyTest {
 
@@ -153,8 +151,6 @@ public class RILTest extends TelephonyTest {
     private ConnectivityManager mConnectionManager;
     @Mock
     private IRadio mRadioProxy;
-    @Mock
-    private IOemHook mOemHookProxy;
 
     private RilHandler mRilHandler;
     private RIL mRILInstance;
@@ -227,7 +223,6 @@ public class RILTest extends TelephonyTest {
                     Phone.PREFERRED_CDMA_SUBSCRIPTION, 0);
             mRILUnderTest = spy(mRILInstance);
             doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
-            doReturn(mOemHookProxy).when(mRILUnderTest).getOemHookProxy(any());
 
             mRilHandler = mRILUnderTest.getRilHandler();
 
@@ -999,22 +994,6 @@ public class RILTest extends TelephonyTest {
 
         // The wake lock should be released after processed the time out event.
         assertFalse(mRILInstance.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
-    }
-
-    @Test
-    public void testInvokeOemRilRequestStrings() throws Exception {
-        String[] strings = new String[]{"a", "b", "c"};
-        mRILUnderTest.invokeOemRilRequestStrings(strings, obtainMessage());
-        verify(mOemHookProxy).sendRequestStrings(
-                mSerialNumberCaptor.capture(), eq(new ArrayList<>(Arrays.asList(strings))));
-    }
-
-    @Test
-    public void testInvokeOemRilRequestRaw() throws Exception {
-        byte[] data = new byte[]{1, 2, 3};
-        mRILUnderTest.invokeOemRilRequestRaw(data, obtainMessage());
-        verify(mOemHookProxy).sendRequestRaw(
-                mSerialNumberCaptor.capture(), eq(mRILUnderTest.primitiveArrayToArrayList(data)));
     }
 
     private Message obtainMessage() {

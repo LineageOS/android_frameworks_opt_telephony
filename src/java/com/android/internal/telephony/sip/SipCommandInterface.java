@@ -405,14 +405,6 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void invokeOemRilRequestRaw(byte[] data, Message response) {
-    }
-
-    @Override
-    public void invokeOemRilRequestStrings(String[] strings, Message response) {
-    }
-
-    @Override
     public void setBandMode (int bandMode, Message response) {
     }
 

@@ -48,7 +48,6 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mIccSlotStatusChangedRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOnRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOffRegistrants = new RegistrantList();
-    protected Registrant mUnsolOemHookRawRegistrant;
     protected RegistrantList mOtaProvisionRegistrants = new RegistrantList();
     protected RegistrantList mCallWaitingInfoRegistrants = new RegistrantList();
     protected RegistrantList mDisplayInfoRegistrants = new RegistrantList();
@@ -595,17 +594,6 @@ public abstract class BaseCommands implements CommandsInterface {
     public void registerForSignalInfo(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mSignalInfoRegistrants.add(r);
-    }
-
-    public void setOnUnsolOemHookRaw(Handler h, int what, Object obj) {
-        mUnsolOemHookRawRegistrant = new Registrant (h, what, obj);
-    }
-
-    public void unSetOnUnsolOemHookRaw(Handler h) {
-        if (mUnsolOemHookRawRegistrant != null && mUnsolOemHookRawRegistrant.getHandler() == h) {
-            mUnsolOemHookRawRegistrant.clear();
-            mUnsolOemHookRawRegistrant = null;
-        }
     }
 
     @Override

@@ -1058,26 +1058,6 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void invokeOemRilRequestRaw(byte[] data, Message response) {
-
-    }
-
-    @Override
-    public void invokeOemRilRequestStrings(String[] strings, Message response) {
-
-    }
-
-    @Override
-    public void setOnUnsolOemHookRaw(Handler h, int what, Object obj) {
-
-    }
-
-    @Override
-    public void unSetOnUnsolOemHookRaw(Handler h) {
-
-    }
-
-    @Override
     public void sendTerminalResponse(String contents, Message response) {
 
     }
