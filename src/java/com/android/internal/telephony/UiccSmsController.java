@@ -33,6 +33,10 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
+import com.android.internal.util.IndentingPrintWriter;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.List;
 
 /**
@@ -412,6 +416,23 @@ public class UiccSmsController extends ISms.Stub {
     public String createAppSpecificSmsToken(int subId, String callingPkg, PendingIntent intent) {
         return getPhone(subId).getAppSmsManager().createAppSpecificSmsToken(callingPkg, intent);
     }
+
+    @Override
+    protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        IndentingPrintWriter indentingPW =
+                new IndentingPrintWriter(pw, "    " /* singleIndent */);
+        for (Phone phone : PhoneFactory.getPhones()) {
+            int subId = phone.getSubId();
+            indentingPW.println(String.format("SmsManager for subId = %d:", subId));
+            indentingPW.increaseIndent();
+            if (getIccSmsInterfaceManager(subId) != null) {
+                getIccSmsInterfaceManager(subId).dump(fd, indentingPW, args);
+            }
+            indentingPW.decreaseIndent();
+        }
+        indentingPW.flush();
+    }
+
 
     private void sendErrorInPendingIntent(@Nullable PendingIntent intent, int errorCode) {
         if (intent != null) {
