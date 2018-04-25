@@ -41,6 +41,8 @@ import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
 import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -626,5 +628,10 @@ public class SmsDispatchersController extends Handler {
 
     public interface SmsInjectionCallback {
         void onSmsInjectedResult(int result);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        mGsmInboundSmsHandler.dump(fd, pw, args);
+        mCdmaInboundSmsHandler.dump(fd, pw, args);
     }
 }
