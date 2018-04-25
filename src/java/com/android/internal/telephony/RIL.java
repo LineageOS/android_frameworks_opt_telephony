@@ -119,6 +119,18 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_GPRS;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_EDGE;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_UMTS;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_HSPA;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_HSPAP;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_GSM;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE_CA;
+
 /**
  * RIL implementation of the CommandsInterface.
  *
@@ -195,6 +207,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     final AtomicLong mRadioProxyCookie = new AtomicLong(0);
     final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
+
+    private static RIL sRil;
 
     //***** Events
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
@@ -470,6 +484,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mOemHookIndication = new OemHookIndication(this);
         mRilHandler = new RilHandler();
         mRadioProxyDeathRecipient = new RadioProxyDeathRecipient();
+
+        sRil = this;
 
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_WAKELOCK_TAG);
@@ -5504,10 +5520,147 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
+    static SignalStrength convertHalSignalStrengthHuawei(
+            android.hardware.radio.V1_0.SignalStrength signalStrength, int phoneId) {
+        String[] signalCustGsm = SystemProperties.get("gsm.sigcust.gsm",
+                "5,false,-109,-103,-97,-91,-85").split(",");
+        String[] signalCustLte = SystemProperties.get("gsm.sigcust.lte",
+                "5,false,-120,-115,-110,-105,-97").split(",");
+        String[] signalCustUmts = SystemProperties.get("gsm.sigcust.umts",
+                "5,false,-112,-105,-99,-93,-87").split(",");
+
+        int gsmSignalStrength = signalStrength.gw.signalStrength;
+        int gsmBitErrorRate = signalStrength.gw.bitErrorRate;
+        int cdmaDbm = signalStrength.cdma.dbm;
+        int cdmaEcio = signalStrength.cdma.ecio;
+        int evdoDbm = signalStrength.evdo.dbm;
+        int evdoEcio = signalStrength.evdo.ecio;
+        int evdoSnr = signalStrength.evdo.signalNoiseRatio;
+        int lteSignalStrength = signalStrength.lte.signalStrength;
+        int lteRsrp = signalStrength.lte.rsrp;
+        int lteRsrq = signalStrength.lte.rsrq;
+        int lteRssnr = signalStrength.lte.rssnr;
+        int lteCqi = signalStrength.lte.cqi;
+
+        int tdscdmaRscp_1_2 = 255; // 255 is the value for unknown/unreported ASU.
+        // The HAL 1.0 range is 25..120; the ASU/ HAL 1.2 range is 0..96;
+        // yes, this means the range in 1.0 cannot express -24dBm = 96
+        if (signalStrength.tdScdma.rscp >= 25 && signalStrength.tdScdma.rscp <= 120) {
+            // First we flip the sign to convert from the HALs -rscp to the actual RSCP value.
+            int rscpDbm = -signalStrength.tdScdma.rscp;
+            // Then to convert from RSCP to ASU, we apply the offset which aligns 0 ASU to -120dBm.
+            tdscdmaRscp_1_2 = rscpDbm + 120;
+        }
+
+        TelephonyManager tm = (TelephonyManager)
+                sRil.mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        int radioTech = tm.getDataNetworkType(phoneId);
+
+        if (radioTech == NETWORK_TYPE_UNKNOWN) {
+            radioTech = tm.getVoiceNetworkType(phoneId);
+        }
+
+        if (signalCustLte.length == 7 &&
+                (radioTech == NETWORK_TYPE_LTE || radioTech == NETWORK_TYPE_LTE_CA)) {
+            if (lteRsrp > -44) { // None or Unknown
+                lteSignalStrength = 64;
+                lteRssnr = -200;
+            } else if (lteRsrp >= Integer.parseInt(signalCustLte[5])) { // Great
+                lteSignalStrength = 63;
+                lteRssnr = 300;
+            } else if (lteRsrp >= Integer.parseInt(signalCustLte[4])) { // Good
+                lteSignalStrength = 11;
+                lteRssnr = 129;
+            } else if (lteRsrp >= Integer.parseInt(signalCustLte[3])) { // Moderate
+                lteSignalStrength = 7;
+                lteRssnr = 44;
+            } else if (lteRsrp >= Integer.parseInt(signalCustLte[2])) { // Poor
+                lteSignalStrength = 4;
+                lteRssnr = 9;
+            } else if (lteRsrp >= -140) { // None or Unknown
+                lteSignalStrength = 64;
+                lteRssnr = -200;
+            }
+        } else if (signalCustUmts.length == 7 &&
+                (radioTech == NETWORK_TYPE_HSPAP || radioTech == NETWORK_TYPE_HSPA ||
+                radioTech == NETWORK_TYPE_HSUPA || radioTech == NETWORK_TYPE_HSDPA ||
+                radioTech == NETWORK_TYPE_UMTS)) {
+            lteRsrp = (gsmSignalStrength & 0xFF) - 256;
+            if (lteRsrp > -20) { // None or Unknown
+                lteSignalStrength = 64;
+                lteRssnr = -200;
+            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[5])) { // Great
+                lteSignalStrength = 63;
+                lteRssnr = 300;
+            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[4])) { // Good
+                lteSignalStrength = 11;
+                lteRssnr = 129;
+            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[3])) { // Moderate
+                lteSignalStrength = 7;
+                lteRssnr = 44;
+            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[2])) { // Poor
+                lteSignalStrength = 4;
+                lteRssnr = 9;
+            } else if (lteRsrp >= -140) { // None or Unknown
+                lteSignalStrength = 64;
+                lteRssnr = -200;
+            }
+        } else if (signalCustGsm.length == 7 &&
+                (radioTech == NETWORK_TYPE_GSM || radioTech == NETWORK_TYPE_EDGE ||
+                radioTech == NETWORK_TYPE_GPRS || radioTech == NETWORK_TYPE_UNKNOWN)) {
+            lteRsrp = (gsmSignalStrength & 0xFF) - 256;
+            if (lteRsrp > -20) { // None or Unknown
+                lteSignalStrength = 64;
+                lteRsrq = -21;
+                lteRssnr = -200;
+            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[5])) { // Great
+                lteSignalStrength = 63;
+                lteRsrq = -3;
+                lteRssnr = 300;
+            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[4])) { // Good
+                lteSignalStrength = 11;
+                lteRsrq = -7;
+                lteRssnr = 129;
+            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[3])) { // Moderate
+                lteSignalStrength = 7;
+                lteRsrq = -12;
+                lteRssnr = 44;
+            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[2])) { // Poor
+                lteSignalStrength = 4;
+                lteRsrq = -17;
+                lteRssnr = 9;
+            } else if (lteRsrp >= -140) { // None or Unknown
+                lteSignalStrength = 64;
+                lteRsrq = -21;
+                lteRssnr = -200;
+            }
+        }
+
+        return new SignalStrength(gsmSignalStrength,
+                gsmSignalStrength,
+                cdmaDbm,
+                cdmaEcio,
+                evdoDbm,
+                evdoEcio,
+                evdoSnr,
+                lteSignalStrength,
+                lteRsrp,
+                lteRsrq,
+                lteRssnr,
+                lteCqi,
+                tdscdmaRscp_1_2);
+    }
+
     /** Convert HAL 1.0 Signal Strength to android SignalStrength */
     @VisibleForTesting
     public static SignalStrength convertHalSignalStrength(
-            android.hardware.radio.V1_0.SignalStrength signalStrength) {
+            android.hardware.radio.V1_0.SignalStrength signalStrength, int phoneId) {
+	Boolean prop = android.os.SystemProperties.getBoolean("ro.telephony.ril.huawei_signalstrength", false);
+
+        if (prop && phoneId >= 0) {
+            return convertHalSignalStrengthHuawei(signalStrength, phoneId);
+        }
+
         int tdscdmaRscp_1_2 = 255; // 255 is the value for unknown/unreported ASU.
         // The HAL 1.0 range is 25..120; the ASU/ HAL 1.2 range is 0..96;
         // yes, this means the range in 1.0 cannot express -24dBm = 96
@@ -5531,6 +5684,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.lte.rssnr,
                 signalStrength.lte.cqi,
                 tdscdmaRscp_1_2);
+    }
+
+    static SignalStrength convertHalSignalStrength(
+            android.hardware.radio.V1_0.SignalStrength signalStrength) {
+        return convertHalSignalStrength(signalStrength, -1);
     }
 
     /** Convert HAL 1.2 Signal Strength to android SignalStrength */
