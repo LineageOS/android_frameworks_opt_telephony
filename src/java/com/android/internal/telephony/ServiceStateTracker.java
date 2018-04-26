@@ -2684,7 +2684,7 @@ public class ServiceStateTracker extends Handler {
         // until cell change or device is OOS
         boolean isDataInService = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
 
-        if (!hasLocationChanged && isDataInService) {
+        if (isDataInService) {
             mRatRatcheter.ratchet(mSS, mNewSS, hasLocationChanged);
         }
 
