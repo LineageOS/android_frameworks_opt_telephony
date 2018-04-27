@@ -637,6 +637,9 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseDataCallList(responseInfo, dataCallResultList);
     }
 
+    public void sendOemRilRequestRawResponse(RadioResponseInfo responseInfo,
+                                             ArrayList<Byte> var2) {}
+
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
