@@ -59,6 +59,7 @@ public class GSMPhoneTest extends AndroidTestCase implements PerformanceTestCase
     private static final int EVENT_IN_SERVICE = 10;
     private static final int SUPP_SERVICE_FAILED = 11;
     private static final int SERVICE_STATE_CHANGED = 12;
+    private static final int EVENT_OEM_RIL_MESSAGE = 13;
     public static final int ANY_MESSAGE = -1;
 
     @Override
@@ -1779,6 +1780,95 @@ public class GSMPhoneTest extends AndroidTestCase implements PerformanceTestCase
         mmi = (MmiCode) ar.result;
 
         assertEquals(MmiCode.State.CANCELLED, mmi.getState());
+    }
+
+    public void testRilHooks() throws Exception {
+        //
+        // These test cases all assume the RIL OEM hooks
+        // just echo back their input
+        //
+
+        Message msg;
+        AsyncResult ar;
+
+        // null byte array
+
+        mGSMPhone.invokeOemRilRequestRaw(null, mHandler.obtainMessage(EVENT_OEM_RIL_MESSAGE));
+
+        msg = mGSMTestHandler.waitForMessage(EVENT_OEM_RIL_MESSAGE);
+        assertNotNull("Message Time Out", msg);
+
+        ar = ((AsyncResult) msg.obj);
+
+        assertNull(ar.result);
+        assertNull(ar.exception);
+
+        // empty byte array
+
+        mGSMPhone.invokeOemRilRequestRaw(new byte[0], mHandler.obtainMessage(EVENT_OEM_RIL_MESSAGE));
+
+        msg = mGSMTestHandler.waitForMessage(EVENT_OEM_RIL_MESSAGE);
+        assertNotNull("Message Time Out", msg);
+
+        ar = ((AsyncResult) msg.obj);
+
+        assertEquals(0, ((byte[]) (ar.result)).length);
+        assertNull(ar.exception);
+
+        // byte array with data
+
+        mGSMPhone.invokeOemRilRequestRaw("Hello".getBytes("utf-8"),
+                mHandler.obtainMessage(EVENT_OEM_RIL_MESSAGE));
+
+        msg = mGSMTestHandler.waitForMessage(EVENT_OEM_RIL_MESSAGE);
+        assertNotNull("Message Time Out", msg);
+
+        ar = ((AsyncResult) msg.obj);
+
+        assertEquals("Hello", new String(((byte[]) (ar.result)), "utf-8"));
+        assertNull(ar.exception);
+
+        // null strings
+
+        mGSMPhone.invokeOemRilRequestStrings(null, mHandler.obtainMessage(EVENT_OEM_RIL_MESSAGE));
+
+        msg = mGSMTestHandler.waitForMessage(EVENT_OEM_RIL_MESSAGE);
+        assertNotNull("Message Time Out", msg);
+
+        ar = ((AsyncResult) msg.obj);
+
+        assertNull(ar.result);
+        assertNull(ar.exception);
+
+        // empty byte array
+
+        mGSMPhone.invokeOemRilRequestStrings(new String[0],
+                mHandler.obtainMessage(EVENT_OEM_RIL_MESSAGE));
+
+        msg = mGSMTestHandler.waitForMessage(EVENT_OEM_RIL_MESSAGE);
+        assertNotNull("Message Time Out", msg);
+
+        ar = ((AsyncResult) msg.obj);
+
+        assertEquals(0, ((String[]) (ar.result)).length);
+        assertNull(ar.exception);
+
+        // Strings with data
+
+        String s[] = new String[1];
+
+        s[0] = "Hello";
+
+        mGSMPhone.invokeOemRilRequestStrings(s, mHandler.obtainMessage(EVENT_OEM_RIL_MESSAGE));
+
+        msg = mGSMTestHandler.waitForMessage(EVENT_OEM_RIL_MESSAGE);
+        assertNotNull("Message Time Out", msg);
+
+        ar = ((AsyncResult) msg.obj);
+
+        assertEquals("Hello", ((String[]) (ar.result))[0]);
+        assertEquals(1, ((String[]) (ar.result)).length);
+        assertNull(ar.exception);
     }
 
     public void testMmi() throws Exception {
