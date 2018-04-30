@@ -416,7 +416,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         try {
             mOemHookProxy = IOemHook.getService(
-                    HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
+                    HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId], true);
             if (mOemHookProxy != null) {
                 // not calling linkToDeath() as ril service runs in the same process and death
                 // notification for that should be sufficient
@@ -435,12 +435,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
                 result.sendToTarget();
             }
-
-            // if service is not up, treat it like death notification to try to get service again
-            mRilHandler.sendMessageDelayed(
-                    mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD,
-                            mRadioProxyCookie.incrementAndGet()),
-                    IRADIO_GET_SERVICE_DELAY_MILLIS);
         }
 
         return mOemHookProxy;
