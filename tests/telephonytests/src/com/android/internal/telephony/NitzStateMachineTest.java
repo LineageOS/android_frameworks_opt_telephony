@@ -667,6 +667,125 @@ public class NitzStateMachineTest extends TelephonyTest {
         assertNull(mNitzStateMachine.getSavedTimeZoneId());
     }
 
+    @Test
+    public void test_emulatorNitzExtensionUsedForTimeZone() throws Exception {
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
+        Device device = new DeviceBuilder()
+                .setClocksFromScenario(scenario)
+                .setTimeDetectionEnabled(false)
+                .setTimeZoneDetectionEnabled(true)
+                .setTimeZoneSettingInitialized(true)
+                .initialize();
+        Script script = new Script(device);
+
+        TimeStampedValue<NitzData> originalNitzSignal = scenario.getNitzSignal();
+
+        // Create an NITZ signal with an explicit time zone (as can happen on emulators)
+        NitzData originalNitzData = originalNitzSignal.mValue;
+        // A time zone that is obviously not in the US, but it should not be questioned.
+        String emulatorTimeZoneId = "Europe/London";
+        NitzData emulatorNitzData = NitzData.createForTests(
+                originalNitzData.getLocalOffsetMillis(),
+                originalNitzData.getDstAdjustmentMillis(),
+                originalNitzData.getCurrentTimeInMillis(),
+                java.util.TimeZone.getTimeZone(emulatorTimeZoneId) /* emulatorHostTimeZone */);
+        TimeStampedValue<NitzData> emulatorNitzSignal = new TimeStampedValue<>(
+                emulatorNitzData, originalNitzSignal.mElapsedRealtime);
+
+        // Simulate receiving the emulator NITZ signal.
+        script.nitzReceived(emulatorNitzSignal)
+                .verifyOnlyTimeZoneWasSetAndReset(emulatorTimeZoneId);
+
+        // Check NitzStateMachine state.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+        assertEquals(emulatorNitzSignal.mValue, mNitzStateMachine.getCachedNitzData());
+        assertEquals(emulatorTimeZoneId, mNitzStateMachine.getSavedTimeZoneId());
+    }
+
+    @Test
+    public void test_emptyCountryStringUsTime_countryReceivedFirst() throws Exception {
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
+        Device device = new DeviceBuilder()
+                .setClocksFromScenario(scenario)
+                .setTimeDetectionEnabled(true)
+                .setTimeZoneDetectionEnabled(true)
+                .setTimeZoneSettingInitialized(true)
+                .initialize();
+        Script script = new Script(device);
+
+        String expectedZoneId = checkNitzOnlyLookupIsAmbiguousAndReturnZoneId(scenario);
+
+        // Nothing should be set. The country is not valid.
+        script.countryReceived("").verifyNothingWasSetAndReset();
+
+        // Check NitzStateMachine state.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+        assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
+
+        // Simulate receiving the NITZ signal.
+        script.nitzReceived(scenario.getNitzSignal())
+                .verifyTimeAndZoneSetAndReset(scenario.getActualTimeMillis(), expectedZoneId);
+
+        // Check NitzStateMachine state.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+        assertEquals(scenario.getNitzSignal().mValue, mNitzStateMachine.getCachedNitzData());
+        assertEquals(expectedZoneId, mNitzStateMachine.getSavedTimeZoneId());
+    }
+
+    @Test
+    public void test_emptyCountryStringUsTime_nitzReceivedFirst() throws Exception {
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
+        Device device = new DeviceBuilder()
+                .setClocksFromScenario(scenario)
+                .setTimeDetectionEnabled(true)
+                .setTimeZoneDetectionEnabled(true)
+                .setTimeZoneSettingInitialized(true)
+                .initialize();
+        Script script = new Script(device);
+
+        String expectedZoneId = checkNitzOnlyLookupIsAmbiguousAndReturnZoneId(scenario);
+
+        // Simulate receiving the NITZ signal.
+        script.nitzReceived(scenario.getNitzSignal())
+                .verifyOnlyTimeWasSetAndReset(scenario.getActualTimeMillis());
+
+        // Check NitzStateMachine state.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+        assertEquals(scenario.getNitzSignal().mValue, mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
+
+        // The time zone should be set (but the country is not valid so it's unlikely to be
+        // correct).
+        script.countryReceived("").verifyOnlyTimeZoneWasSetAndReset(expectedZoneId);
+
+        // Check NitzStateMachine state.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+        assertEquals(scenario.getNitzSignal().mValue, mNitzStateMachine.getCachedNitzData());
+        assertEquals(expectedZoneId, mNitzStateMachine.getSavedTimeZoneId());
+    }
+
+    /**
+     * Asserts a test scenario has the properties we expect for NITZ-only lookup. There are
+     * usually multiple zones that will share the same UTC offset so we get a low quality / low
+     * confidence answer, but the zone we find should at least have the correct offset.
+     */
+    private String checkNitzOnlyLookupIsAmbiguousAndReturnZoneId(Scenario scenario) {
+        OffsetResult result =
+                mRealTimeZoneLookupHelper.lookupByNitz(scenario.getNitzSignal().mValue);
+        String expectedZoneId = result.zoneId;
+        // All our scenarios should return multiple matches. The only cases where this wouldn't be
+        // true are places that use offsets like XX:15, XX:30 and XX:45.
+        assertFalse(result.isOnlyMatch);
+        assertSameOffset(scenario.getActualTimeMillis(), expectedZoneId, scenario.getTimeZoneId());
+        return expectedZoneId;
+    }
+
+    private static void assertSameOffset(long timeMillis, String zoneId1, String zoneId2) {
+        assertEquals(TimeZone.getTimeZone(zoneId1).getOffset(timeMillis),
+                TimeZone.getTimeZone(zoneId2).getOffset(timeMillis));
+    }
+
     private static long createUtcTime(int year, int monthInYear, int day, int hourOfDay, int minute,
             int second) {
         Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("Etc/UTC"));
