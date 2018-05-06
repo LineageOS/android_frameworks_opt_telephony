@@ -20,6 +20,7 @@ import static com.android.internal.telephony.RILConstants.*;
 import static com.android.internal.util.Preconditions.checkNotNull;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
@@ -209,6 +210,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     final RilHandler mRilHandler;
 
     private static RIL sRil;
+    private static int[][] sSignalCust;
 
     //***** Events
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
@@ -486,6 +488,47 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mRadioProxyDeathRecipient = new RadioProxyDeathRecipient();
 
         sRil = this;
+
+        // Create custom signal strength thresholds based on Huawei's
+        if (sSignalCust == null) {
+            final int THRESHOLDS = 4;
+            final int STEPS = THRESHOLDS - 1;
+            sSignalCust = new int[3][THRESHOLDS];
+            String[][] hwSignalCust = {
+                   SystemProperties.get("gsm.sigcust.gsm",
+                           "5,false,-109,-103,-97,-91,-85").split(","),
+                   SystemProperties.get("gsm.sigcust.lte",
+                           "5,false,-120,-115,-110,-105,-97").split(","),
+                   SystemProperties.get("gsm.sigcust.umts",
+                           "5,false,-112,-105,-99,-93,-87").split(",")
+            };
+            for (int i = 0; i < sSignalCust.length; i++) {
+                // Get the highest and the lowest dBm values
+                int max = Integer.parseInt(hwSignalCust[i][hwSignalCust[i].length - 1]);
+                int min = Integer.parseInt(hwSignalCust[i][hwSignalCust[i].length -
+                        Integer.parseInt(hwSignalCust[i][0])]);
+                // Default distance between thresholds
+                int step = (max - min) / STEPS;
+                // Extra distance that needs to be accounted for
+                int rem = (max - min) % STEPS;
+
+                // Fill the array with the basic step distance
+                for (int j = 0; j < sSignalCust[i].length; j++) {
+                    sSignalCust[i][j] = min + step * j;
+                }
+
+                // Make the max line up
+                sSignalCust[i][sSignalCust[i].length - 1] += rem;
+
+                // Distribute the remainder
+                int j = sSignalCust[i].length - 2;
+                while (rem > 0 && j > 0) {
+                    sSignalCust[i][j]++;
+                    j--;
+                    rem--;
+                }
+            }
+        }
 
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_WAKELOCK_TAG);
@@ -5522,13 +5565,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     static SignalStrength convertHalSignalStrengthHuawei(
             android.hardware.radio.V1_0.SignalStrength signalStrength, int phoneId) {
-        String[] signalCustGsm = SystemProperties.get("gsm.sigcust.gsm",
-                "5,false,-109,-103,-97,-91,-85").split(",");
-        String[] signalCustLte = SystemProperties.get("gsm.sigcust.lte",
-                "5,false,-120,-115,-110,-105,-97").split(",");
-        String[] signalCustUmts = SystemProperties.get("gsm.sigcust.umts",
-                "5,false,-112,-105,-99,-93,-87").split(",");
-
         int gsmSignalStrength = signalStrength.gw.signalStrength;
         int gsmBitErrorRate = signalStrength.gw.bitErrorRate;
         int cdmaDbm = signalStrength.cdma.dbm;
@@ -5560,79 +5596,98 @@ public class RIL extends BaseCommands implements CommandsInterface {
             radioTech = tm.getVoiceNetworkType(phoneId);
         }
 
-        if (signalCustLte.length == 7 &&
-                (radioTech == NETWORK_TYPE_LTE || radioTech == NETWORK_TYPE_LTE_CA)) {
-            if (lteRsrp > -44) { // None or Unknown
-                lteSignalStrength = 64;
-                lteRssnr = -200;
-            } else if (lteRsrp >= Integer.parseInt(signalCustLte[5])) { // Great
-                lteSignalStrength = 63;
-                lteRssnr = 300;
-            } else if (lteRsrp >= Integer.parseInt(signalCustLte[4])) { // Good
-                lteSignalStrength = 11;
-                lteRssnr = 129;
-            } else if (lteRsrp >= Integer.parseInt(signalCustLte[3])) { // Moderate
-                lteSignalStrength = 7;
-                lteRssnr = 44;
-            } else if (lteRsrp >= Integer.parseInt(signalCustLte[2])) { // Poor
-                lteSignalStrength = 4;
-                lteRssnr = 9;
-            } else if (lteRsrp >= -140) { // None or Unknown
-                lteSignalStrength = 64;
-                lteRssnr = -200;
-            }
-        } else if (signalCustUmts.length == 7 &&
-                (radioTech == NETWORK_TYPE_HSPAP || radioTech == NETWORK_TYPE_HSPA ||
-                radioTech == NETWORK_TYPE_HSUPA || radioTech == NETWORK_TYPE_HSDPA ||
-                radioTech == NETWORK_TYPE_UMTS)) {
-            lteRsrp = (gsmSignalStrength & 0xFF) - 256;
-            if (lteRsrp > -20) { // None or Unknown
-                lteSignalStrength = 64;
-                lteRssnr = -200;
-            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[5])) { // Great
-                lteSignalStrength = 63;
-                lteRssnr = 300;
-            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[4])) { // Good
-                lteSignalStrength = 11;
-                lteRssnr = 129;
-            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[3])) { // Moderate
-                lteSignalStrength = 7;
-                lteRssnr = 44;
-            } else if (lteRsrp >= Integer.parseInt(signalCustUmts[2])) { // Poor
-                lteSignalStrength = 4;
-                lteRssnr = 9;
-            } else if (lteRsrp >= -140) { // None or Unknown
-                lteSignalStrength = 64;
-                lteRssnr = -200;
-            }
-        } else if (signalCustGsm.length == 7 &&
-                (radioTech == NETWORK_TYPE_GSM || radioTech == NETWORK_TYPE_EDGE ||
-                radioTech == NETWORK_TYPE_GPRS || radioTech == NETWORK_TYPE_UNKNOWN)) {
-            lteRsrp = (gsmSignalStrength & 0xFF) - 256;
-            if (lteRsrp > -20) { // None or Unknown
-                lteSignalStrength = 64;
-                lteRsrq = -21;
-                lteRssnr = -200;
-            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[5])) { // Great
-                lteSignalStrength = 63;
-                lteRsrq = -3;
-                lteRssnr = 300;
-            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[4])) { // Good
-                lteSignalStrength = 11;
-                lteRsrq = -7;
-                lteRssnr = 129;
-            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[3])) { // Moderate
-                lteSignalStrength = 7;
-                lteRsrq = -12;
-                lteRssnr = 44;
-            } else if (lteRsrp >= Integer.parseInt(signalCustGsm[2])) { // Poor
-                lteSignalStrength = 4;
-                lteRsrq = -17;
-                lteRssnr = 9;
-            } else if (lteRsrp >= -140) { // None or Unknown
-                lteSignalStrength = 64;
-                lteRsrq = -21;
-                lteRssnr = -200;
+        int[] threshRsrp = Resources.getSystem().getIntArray(
+                com.android.internal.R.array.config_lteDbmThresholds);
+
+         if (sSignalCust != null && threshRsrp.length == 6) {
+            switch (radioTech) {
+                case NETWORK_TYPE_LTE_CA:
+                case NETWORK_TYPE_LTE:
+                    if (lteRsrp > -44) { // None or Unknown
+                        lteRsrp = threshRsrp[5] + 1;
+                        lteRssnr = 301;
+                        lteSignalStrength = 99;
+                    } else if (lteRsrp >= sSignalCust[1][3]) { // Great
+                        lteRsrp = threshRsrp[4];
+                        lteRssnr = 130;
+                        lteSignalStrength = 12;
+                    } else if (lteRsrp >= sSignalCust[1][2]) { // Good
+                        lteRsrp = threshRsrp[3];
+                        lteRssnr = 45;
+                        lteSignalStrength = 8;
+                    } else if (lteRsrp >= sSignalCust[1][1]) { // Moderate
+                        lteRsrp = threshRsrp[2];
+                        lteRssnr = 10;
+                        lteSignalStrength = 5;
+                    } else if (lteRsrp >= sSignalCust[1][0]) { // Poor
+                        lteRsrp = threshRsrp[1];
+                        lteRssnr = -30;
+                        lteSignalStrength = 0;
+                    } else { // None or Unknown
+                        lteRsrp = threshRsrp[0];
+                        lteRssnr = -200;
+                        lteSignalStrength = 99;
+                    }
+                    break;
+                case NETWORK_TYPE_HSPAP:
+                case NETWORK_TYPE_HSPA:
+                case NETWORK_TYPE_HSUPA:
+                case NETWORK_TYPE_HSDPA:
+                case NETWORK_TYPE_UMTS:
+                    lteRsrp = (gsmSignalStrength & 0xFF) - 256;
+                    if (lteRsrp > -20) { // None or Unknown
+                        lteRsrp = threshRsrp[5] + 1;
+                        lteRssnr = 301;
+                        lteSignalStrength = 99;
+                    } else if (lteRsrp >= sSignalCust[2][3]) { // Great
+                        lteRsrp = threshRsrp[4];
+                        lteRssnr = 130;
+                        lteSignalStrength = 12;
+                    } else if (lteRsrp >= sSignalCust[2][2]) { // Good
+                        lteRsrp = threshRsrp[3];
+                        lteRssnr = 45;
+                        lteSignalStrength = 8;
+                    } else if (lteRsrp >= sSignalCust[2][1]) { // Moderate
+                        lteRsrp = threshRsrp[2];
+                        lteRssnr = 10;
+                        lteSignalStrength = 5;
+                    } else if (lteRsrp >= sSignalCust[2][0]) { // Poor
+                        lteRsrp = threshRsrp[1];
+                        lteRssnr = -30;
+                        lteSignalStrength = 0;
+                    } else { // None or Unknown
+                        lteRsrp = threshRsrp[0];
+                        lteRssnr = -200;
+                        lteSignalStrength = 99;
+                    }
+                    break;
+                default:
+                    lteRsrp = (gsmSignalStrength & 0xFF) - 256;
+                    if (lteRsrp > -20) { // None or Unknown
+                        lteRsrp = threshRsrp[5] + 1;
+                        lteRssnr = 301;
+                        lteSignalStrength = 99;
+                    } else if (lteRsrp >= sSignalCust[0][3]) { // Great
+                        lteRsrp = threshRsrp[4];
+                        lteRssnr = 130;
+                        lteSignalStrength = 12;
+                    } else if (lteRsrp >= sSignalCust[0][2]) { // Good
+                        lteRsrp = threshRsrp[3];
+                        lteRssnr = 45;
+                        lteSignalStrength = 8;
+                    } else if (lteRsrp >= sSignalCust[0][1]) { // Moderate
+                        lteRsrp = threshRsrp[2];
+                        lteRssnr = 10;
+                        lteSignalStrength = 5;
+                    } else if (lteRsrp >= sSignalCust[0][0]) { // Poor
+                        lteRsrp = threshRsrp[1];
+                        lteRssnr = -30;
+                        lteSignalStrength = 0;
+                    } else { // None or Unknown
+                        lteRsrp = threshRsrp[0];
+                        lteRssnr = -200;
+                        lteSignalStrength = 99;
+                    }
             }
         }
 
