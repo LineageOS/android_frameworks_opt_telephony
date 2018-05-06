@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c979ceae_c135ae97",
+        "filename": "src/java/com/android/internal/telephony/TelephonyComponentFactory.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-05-06T22:19:20Z",
+      "side": 1,
+      "message": "Is this being overridden by the QTI RIL JAR? Otherwise this seems kind of useless.",
+      "range": {
+        "startLine": 242,
+        "startChar": 15,
+        "endLine": 242,
+        "endChar": 22
+      },
+      "revId": "e07448e64ec0fc4faa55f1d55d1806aa005d5d95",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
