@@ -460,8 +460,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 Context.CONNECTIVITY_SERVICE);
         mIsMobileNetworkSupported = cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
 
-        mRadioResponse = new RadioResponse(this);
-        mRadioIndication = new RadioIndication(this);
+        mRadioResponse = createRadioResponse(this);
+        mRadioIndication = createRadioIndication(this);
         mOemHookResponse = new OemHookResponse(this);
         mOemHookIndication = new OemHookIndication(this);
         mRilHandler = new RilHandler();
@@ -489,10 +489,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
         getOemHookProxy(null);
     }
 
+    protected RadioResponse createRadioResponse(RIL ril) {
+        return new RadioResponse(ril);
+    }
+
+    protected RadioIndication createRadioIndication(RIL ril) {
+        return new RadioIndication(ril);
+    }
+
     @Override
     public void setOnNITZTime(Handler h, int what, Object obj) {
         super.setOnNITZTime(h, what, obj);
-
         // Send the last NITZ time if we have it
         if (mLastNITZTimeInfo != null) {
             mNITZTimeRegistrant
