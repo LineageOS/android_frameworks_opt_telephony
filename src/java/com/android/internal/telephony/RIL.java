@@ -102,169 +102,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-/**
- * {@hide}
- */
-
-class RILRequest {
-    static final String LOG_TAG = "RilRequest";
-
-    //***** Class Variables
-    static Random sRandom = new Random();
-    static AtomicInteger sNextSerial = new AtomicInteger(0);
-    private static Object sPoolSync = new Object();
-    private static RILRequest sPool = null;
-    private static int sPoolSize = 0;
-    private static final int MAX_POOL_SIZE = 4;
-
-    //***** Instance Variables
-    int mSerial;
-    int mRequest;
-    Message mResult;
-    RILRequest mNext;
-    int mWakeLockType;
-    WorkSource mWorkSource;
-    String mClientId;
-    // time in ms when RIL request was made
-    long mStartTimeMs;
-
-    /**
-     * Retrieves a new RILRequest instance from the pool.
-     *
-     * @param request RIL_REQUEST_*
-     * @param result sent when operation completes
-     * @return a RILRequest instance from the pool.
-     */
-    private static RILRequest obtain(int request, Message result) {
-        RILRequest rr = null;
-
-        synchronized(sPoolSync) {
-            if (sPool != null) {
-                rr = sPool;
-                sPool = rr.mNext;
-                rr.mNext = null;
-                sPoolSize--;
-            }
-        }
-
-        if (rr == null) {
-            rr = new RILRequest();
-        }
-
-        rr.mSerial = sNextSerial.getAndIncrement();
-
-        rr.mRequest = request;
-        rr.mResult = result;
-
-        rr.mWakeLockType = RIL.INVALID_WAKELOCK;
-        rr.mWorkSource = null;
-        rr.mStartTimeMs = SystemClock.elapsedRealtime();
-        if (result != null && result.getTarget() == null) {
-            throw new NullPointerException("Message target must not be null");
-        }
-
-        return rr;
-    }
-
-
-    /**
-     * Retrieves a new RILRequest instance from the pool and sets the clientId
-     *
-     * @param request RIL_REQUEST_*
-     * @param result sent when operation completes
-     * @param workSource WorkSource to track the client
-     * @return a RILRequest instance from the pool.
-     */
-    static RILRequest obtain(int request, Message result, WorkSource workSource) {
-        RILRequest rr = null;
-
-        rr = obtain(request, result);
-        if(workSource != null) {
-            rr.mWorkSource = workSource;
-            rr.mClientId = String.valueOf(workSource.get(0)) + ":" + workSource.getName(0);
-        } else {
-            Rlog.e(LOG_TAG, "null workSource " + request);
-        }
-
-        return rr;
-    }
-
-    /**
-     * Returns a RILRequest instance to the pool.
-     *
-     * Note: This should only be called once per use.
-     */
-    void release() {
-        synchronized (sPoolSync) {
-            if (sPoolSize < MAX_POOL_SIZE) {
-                mNext = sPool;
-                sPool = this;
-                sPoolSize++;
-                mResult = null;
-                if(mWakeLockType != RIL.INVALID_WAKELOCK) {
-                    //This is OK for some wakelock types and not others
-                    if(mWakeLockType == RIL.FOR_WAKELOCK) {
-                        Rlog.e(LOG_TAG, "RILRequest releasing with held wake lock: "
-                                + serialString());
-                    }
-                }
-            }
-        }
-    }
-
-    private RILRequest() {
-    }
-
-    static void
-    resetSerial() {
-        // use a random so that on recovery we probably don't mix old requests
-        // with new.
-        sNextSerial.set(sRandom.nextInt());
-    }
-
-    String
-    serialString() {
-        //Cheesy way to do %04d
-        StringBuilder sb = new StringBuilder(8);
-        String sn;
-
-        long adjustedSerial = (((long)mSerial) - Integer.MIN_VALUE)%10000;
-
-        sn = Long.toString(adjustedSerial);
-
-        //sb.append("J[");
-        sb.append('[');
-        for (int i = 0, s = sn.length() ; i < 4 - s; i++) {
-            sb.append('0');
-        }
-
-        sb.append(sn);
-        sb.append(']');
-        return sb.toString();
-    }
-
-    void
-    onError(int error, Object ret) {
-        CommandException ex;
-
-        ex = CommandException.fromRilErrno(error);
-
-        if (RIL.RILJ_LOGD) Rlog.d(LOG_TAG, serialString() + "< "
-            + RIL.requestToString(mRequest)
-            + " error: " + ex + " ret=" + RIL.retToString(mRequest, ret));
-
-        if (mResult != null) {
-            AsyncResult.forMessage(mResult, ret, ex);
-            mResult.sendToTarget();
-        }
-    }
-}
-
 
 /**
  * RIL implementation of the CommandsInterface.
@@ -275,8 +114,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final String RILJ_LOG_TAG = "RILJ";
     // Have a separate wakelock instance for Ack
     static final String RILJ_ACK_WAKELOCK_NAME = "RILJ_ACK_WL";
-    static final boolean RILJ_LOGD = true;
-    static final boolean RILJ_LOGV = false; // STOPSHIP if true
+    public static final boolean RILJ_LOGD = true;
+    public static final boolean RILJ_LOGV = false; // STOPSHIP if true
     static final int RIL_HISTOGRAM_BUCKET_COUNT = 5;
 
     /**
@@ -619,8 +458,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 Context.CONNECTIVITY_SERVICE);
         mIsMobileNetworkSupported = cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
 
-        mRadioResponse = new RadioResponse(this);
-        mRadioIndication = new RadioIndication(this);
+        mRadioResponse = createRadioResponse(this);
+        mRadioIndication = createRadioIndication(this);
         mOemHookResponse = new OemHookResponse(this);
         mOemHookIndication = new OemHookIndication(this);
         mRilHandler = new RilHandler();
@@ -646,6 +485,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // wakelock stuff is initialized above as callbacks are received on separate binder threads)
         getRadioProxy(null);
         getOemHookProxy(null);
+    }
+
+    protected RadioResponse createRadioResponse(RIL ril) {
+        return new RadioResponse(ril);
+    }
+
+    protected RadioIndication createRadioIndication(RIL ril) {
+        return new RadioIndication(ril);
     }
 
     @Override public void
@@ -3916,7 +3763,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      * It takes care of acquiring wakelock and sending ack if needed.
      * @param indicationType RadioIndicationType received
      */
-    void processIndication(int indicationType) {
+    protected void processIndication(int indicationType) {
         if (indicationType == RadioIndicationType.UNSOLICITED_ACK_EXP) {
             sendAck();
             if (RILJ_LOGD) riljLog("Unsol response received; Sending ack to ril.cpp");
@@ -4057,7 +3904,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      * @param responseInfo RadioResponseInfo received in the callback
      * @param ret object to be returned to request sender
      */
-    void processResponseDone(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
+    protected void processResponseDone(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
         if (responseInfo.error == 0) {
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
