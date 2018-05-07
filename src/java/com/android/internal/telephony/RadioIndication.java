@@ -108,7 +108,7 @@ import java.util.List;
 public class RadioIndication extends IRadioIndication.Stub {
     RIL mRil;
 
-    RadioIndication(RIL ril) {
+    public RadioIndication(RIL ril) {
         mRil = ril;
     }
 
