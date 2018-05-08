@@ -600,6 +600,8 @@ public class SubscriptionInfoUpdater extends Handler {
                             + Integer.toString(mInsertSimState[i]), i);
                     logd("SUB" + (i + 1) + " has invalid IccId");
                 } else /*if (sInsertSimState[i] != SIM_NOT_INSERT)*/ {
+                    logd("updateSubscriptionInfoByIccId: adding subscription info record: iccid: "
+                            + mIccId[i] + "slot: " + i);
                     mSubscriptionManager.addSubscriptionInfoRecord(mIccId[i], i);
                 }
                 if (isNewSim(mIccId[i], decIccId[i], oldIccId)) {
