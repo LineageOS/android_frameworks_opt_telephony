@@ -97,7 +97,7 @@ public class UiccProfile extends IccCard {
             new UiccCardApplication[IccCardStatus.CARD_MAX_APPS];
     private Context mContext;
     private CommandsInterface mCi;
-    private UiccCard mUiccCard; //parent
+    private final UiccCard mUiccCard; //parent
     private CatService mCatService;
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
     private boolean mDisposed = false;
@@ -242,15 +242,16 @@ public class UiccProfile extends IccCard {
      * Dispose the UiccProfile.
      */
     public void dispose() {
-        synchronized (mLock) {
-            if (DBG) log("Disposing profile");
+        if (DBG) log("Disposing profile");
 
+        // mUiccCard is outside of mLock in order to prevent deadlocking. This is safe because
+        // EuiccCard#unregisterForEidReady handles its own lock
+        if (mUiccCard instanceof EuiccCard) {
+            ((EuiccCard) mUiccCard).unregisterForEidReady(mHandler);
+        }
+        synchronized (mLock) {
             unregisterAllAppEvents();
             unregisterCurrAppEvents();
-
-            if (mUiccCard instanceof EuiccCard) {
-                ((EuiccCard) mUiccCard).unregisterForEidReady(mHandler);
-            }
 
             mCi.unregisterForOffOrNotAvailable(mHandler);
             mContext.unregisterReceiver(mReceiver);
@@ -849,15 +850,14 @@ public class UiccProfile extends IccCard {
 
     @Override
     public boolean hasIccCard() {
-        synchronized (mLock) {
-            if (mUiccCard != null && mUiccCard.getCardState()
-                    != IccCardStatus.CardState.CARDSTATE_ABSENT) {
-                return true;
-            }
-            loge("hasIccCard: UiccProfile is not null but UiccCard is null or card state is "
-                    + "ABSENT");
-            return false;
+        // mUiccCard is initialized in constructor, so won't be null
+        if (mUiccCard.getCardState()
+                != IccCardStatus.CardState.CARDSTATE_ABSENT) {
+            return true;
         }
+        loge("hasIccCard: UiccProfile is not null but UiccCard is null or card state is "
+                + "ABSENT");
+        return false;
     }
 
     /**
