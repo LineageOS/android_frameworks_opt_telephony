@@ -56,7 +56,10 @@ public class LocaleTracker extends Handler {
     private static final String TAG = LocaleTracker.class.getSimpleName();
 
     /** Event to trigger get cell info from the modem */
-    private static final int EVENT_GET_CELL_INFO = 1;
+    private static final int EVENT_GET_CELL_INFO                = 1;
+
+    /** Event to trigger update operator numeric */
+    private static final int EVENT_UPDATE_OPERATOR_NUMERIC      = 2;
 
     // Todo: Read this from Settings.
     /** The minimum delay to get cell info from the modem */
@@ -115,6 +118,9 @@ public class LocaleTracker extends Handler {
                     getCellInfo();
                     updateLocale();
                 }
+                break;
+            case EVENT_UPDATE_OPERATOR_NUMERIC:
+                updateOperatorNumericSync((String) msg.obj);
                 break;
             default:
                 throw new IllegalStateException("Unexpected message arrives. msg = " + msg.what);
@@ -202,11 +208,14 @@ public class LocaleTracker extends Handler {
     }
 
     /**
-     * Update MCC/MNC from network service state.
+     * Update MCC/MNC from network service state synchronously. Note if this is called from phone
+     * process's main thread and if the update operation requires getting cell info from the modem,
+     * the cached cell info will be used to determine the locale. If the cached cell info is not
+     * acceptable, use {@link #updateOperatorNumericAsync(String)} instead.
      *
      * @param operatorNumeric MCC/MNC of the operator
      */
-    public synchronized void updateOperatorNumeric(String operatorNumeric) {
+    public synchronized void updateOperatorNumericSync(String operatorNumeric) {
         // Check if the operator numeric changes.
         String msg = "updateOperatorNumeric. mcc/mnc=" + operatorNumeric;
         if (DBG) log(msg);
@@ -224,9 +233,26 @@ public class LocaleTracker extends Handler {
                     log("Operator numeric unavailable. Get latest cell info from the modem.");
                 }
                 getCellInfo();
+            } else {
+                // If operator numeric is available, that means we camp on network. So reset the
+                // fail cell info count.
+                mFailCellInfoCount = 0;
             }
             updateLocale();
         }
+    }
+
+    /**
+     * Update MCC/MNC from network service state asynchronously. The update operation will run
+     * in locale tracker's handler's thread, which can get cell info synchronously from service
+     * state tracker. Note that the country code will not be available immediately after calling
+     * this method.
+     *
+     * @param operatorNumeric MCC/MNC of the operator
+     */
+    public void updateOperatorNumericAsync(String operatorNumeric) {
+        if (DBG) log("updateOperatorNumericAsync. mcc/mnc=" + operatorNumeric);
+        sendMessage(obtainMessage(EVENT_UPDATE_OPERATOR_NUMERIC, operatorNumeric));
     }
 
     /**
@@ -251,10 +277,18 @@ public class LocaleTracker extends Handler {
      * Get cell info from the modem.
      */
     private void getCellInfo() {
+        String msg;
+        if (!mPhone.getServiceStateTracker().getDesiredPowerState()) {
+            msg = "Radio is off. No need to get cell info.";
+            if (DBG) log(msg);
+            mLocalLog.log(msg);
+            return;
+        }
+
         // Get all cell info. Passing null to use default worksource, which indicates the original
         // request is from telephony internally.
         mCellInfo = mPhone.getAllCellInfo(null);
-        String msg = "getCellInfo: cell info=" + mCellInfo;
+        msg = "getCellInfo: cell info=" + mCellInfo;
         if (DBG) log(msg);
         mLocalLog.log(msg);
         if (CollectionUtils.isEmpty(mCellInfo)) {
@@ -276,7 +310,7 @@ public class LocaleTracker extends Handler {
     private void updateLocale() {
         // If MCC is available from network service state, use it first.
         String mcc = null;
-        String countryIso = null;
+        String countryIso = "";
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
             try {
                 mcc = mOperatorNumeric.substring(0, 3);
@@ -305,7 +339,9 @@ public class LocaleTracker extends Handler {
         log(msg);
         mLocalLog.log(msg);
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
-            log("updateLocale: Change the current country to " + countryIso);
+            msg = "updateLocale: Change the current country to " + countryIso;
+            log(msg);
+            mLocalLog.log(msg);
             mCurrentCountryIso = countryIso;
 
             TelephonyManager.setTelephonyProperty(mPhone.getPhoneId(),
