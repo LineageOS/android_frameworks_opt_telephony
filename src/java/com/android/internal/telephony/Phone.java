@@ -3134,6 +3134,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Returns the subscription id.
      */
     public int getSubId() {
+        if (SubscriptionController.getInstance() == null) {
+            // TODO b/78359408 getInstance sometimes returns null in Treehugger tests, which causes
+            // flakiness. Even though we haven't seen this crash in the wild we should keep this
+            // check in until we've figured out the root cause.
+            Rlog.e(LOG_TAG, "SubscriptionController.getInstance = null! Returning default subId");
+            return SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+        }
         return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
     }
 
