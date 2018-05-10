@@ -162,6 +162,7 @@ public class SubscriptionController extends ISub.Stub {
     private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
     private int[] colorArr;
+    private long mLastISubServiceRegTime;
 
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
@@ -207,7 +208,8 @@ public class SubscriptionController extends ISub.Stub {
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
 
         if(ServiceManager.getService("isub") == null) {
-                ServiceManager.addService("isub", this);
+            ServiceManager.addService("isub", this);
+            mLastISubServiceRegTime = System.currentTimeMillis();
         }
 
         if (DBG) logdl("[SubscriptionController] init by Context");
@@ -2135,6 +2137,7 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
         try {
             pw.println("SubscriptionController:");
+            pw.println(" mLastISubServiceRegTime=" + mLastISubServiceRegTime);
             pw.println(" defaultSubId=" + getDefaultSubId());
             pw.println(" defaultDataSubId=" + getDefaultDataSubId());
             pw.println(" defaultVoiceSubId=" + getDefaultVoiceSubId());
