@@ -18,7 +18,6 @@
 
 package com.android.internal.telephony;
 
-import static android.Manifest.permission.CALL_PRIVILEGED;
 import static android.Manifest.permission.MODIFY_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 
@@ -280,24 +279,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             return number;
         } else {
             loge("getVoiceMailNumber phone is null for Subscription:" + subId);
-            return null;
-        }
-    }
-
-    // TODO: change getCompleteVoiceMailNumber() to require READ_PRIVILEGED_PHONE_STATE
-    public String getCompleteVoiceMailNumber() {
-        return getCompleteVoiceMailNumberForSubscriber(getDefaultSubscription());
-    }
-
-    public String getCompleteVoiceMailNumberForSubscriber(int subId) {
-        Phone phone = getPhone(subId);
-        if (phone != null) {
-            mContext.enforceCallingOrSelfPermission(CALL_PRIVILEGED, "Requires CALL_PRIVILEGED");
-            String number = phone.getVoiceMailNumber();
-            if (VDBG) log("VM: getCompleteVoiceMailNUmber: " + number);
-            return number;
-        } else {
-            loge("getCompleteVoiceMailNumber phone is null for Subscription:" + subId);
             return null;
         }
     }
