@@ -38,6 +38,7 @@ import static org.mockito.Mockito.verify;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -122,6 +123,9 @@ public class DcTrackerTest extends TelephonyTest {
             1 << (TelephonyManager.NETWORK_TYPE_LTE - 1);
     private static final int NETWORK_TYPE_EHRPD_BITMASK =
             1 << (TelephonyManager.NETWORK_TYPE_EHRPD - 1);
+    private static final Uri PREFERAPN_URI = Uri.parse(
+            Telephony.Carriers.CONTENT_URI + "/preferapn");
+
 
     @Mock
     ISub mIsub;
@@ -225,7 +229,8 @@ public class DcTrackerTest extends TelephonyTest {
                                     Telephony.Carriers.MAX_CONNS_TIME, Telephony.Carriers.MTU,
                                     Telephony.Carriers.MVNO_TYPE,
                                     Telephony.Carriers.MVNO_MATCH_DATA,
-                                    Telephony.Carriers.NETWORK_TYPE_BITMASK});
+                                    Telephony.Carriers.NETWORK_TYPE_BITMASK,
+                                    Telephony.Carriers.APN_SET_ID});
 
                     mc.addRow(new Object[]{
                             2163,                   // id
@@ -254,7 +259,8 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // mtu
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
-                            NETWORK_TYPE_LTE_BITMASK // network_type_bitmask
+                            NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
+                            0                       // apn_set_id
                     });
 
                     mc.addRow(new Object[]{
@@ -284,7 +290,8 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // mtu
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
-                            NETWORK_TYPE_LTE_BITMASK // network_type_bitmask
+                            NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
+                            0                       // apn_set_id
                     });
 
                     mc.addRow(new Object[]{
@@ -314,7 +321,8 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // mtu
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
-                            0                       // network_type_bitmask
+                            0,                      // network_type_bitmask
+                            0                       // apn_set_id
                     });
 
                     mc.addRow(new Object[]{
@@ -344,7 +352,8 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // mtu
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
-                            NETWORK_TYPE_EHRPD_BITMASK // network_type_bitmask
+                            NETWORK_TYPE_EHRPD_BITMASK, // network_type_bitmask
+                            0                       // apn_set_id
                     });
 
                     mc.addRow(new Object[]{
@@ -374,13 +383,19 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // mtu
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
-                            0                       // network_type_bitmask
+                            0,                      // network_type_bitmask
+                            0                       // apn_set_id
                     });
                     return mc;
                 }
             }
 
             return null;
+        }
+
+        @Override
+        public int update(Uri url, ContentValues values, String where, String[] whereArgs) {
+            return 0;
         }
     }
 
@@ -1293,7 +1308,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
     }
 
-// Test for fetchDunApn()
+    // Test for fetchDunApn()
     @Test
     @SmallTest
     public void testFetchDunApn() {
@@ -1317,6 +1332,39 @@ public class DcTrackerTest extends TelephonyTest {
         dunApn = mDct.fetchDunApn();
         assertEquals(FAKE_APN5, dunApn.apn);
     }
+
+    // Test for fetchDunApn() with apn set id
+    @Test
+    @SmallTest
+    @Ignore
+    public void testFetchDunApnWithPreferredApnSet() {
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        // apnSetId=1
+        String dunApnString1 = "[ApnSettingV5]HOT mobile PC,pc.hotm,,,,,,,,,440,10,,DUN,,,true,"
+                + "0,,,,,,,,,1";
+        // apnSetId=2
+        String dunApnString2 = "[ApnSettingV5]HOT mobile PC,pc.hotm,,,,,,,,,440,10,,DUN,,,true,"
+                + "0,,,,,,,,,2";
+
+        ApnSetting dunApnExpected = ApnSetting.fromString(dunApnString1);
+
+        ContentResolver cr = mContext.getContentResolver();
+        Settings.Global.putString(cr, Settings.Global.TETHER_DUN_APN,
+                dunApnString1 + ";" + dunApnString2);
+
+        // set that we prefer apn set 1
+        ContentValues values = new ContentValues();
+        values.put(Telephony.Carriers.APN_SET_ID, 1);
+        cr.update(PREFERAPN_URI, values, null, null); // currently a noop
+
+        // TODO(70172263) should return APN from Setting with apnSetId=1
+        ApnSetting dunApn = mDct.fetchDunApn();
+        assertTrue(dunApnExpected.equals(dunApn));
+    }
+
     // Test oos
     @Test
     @SmallTest
