@@ -293,11 +293,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             " mRadioProxyCookie = " + mRadioProxyCookie.get());
                     if ((long) msg.obj == mRadioProxyCookie.get()) {
                         resetProxyAndRequestList();
-
-                        // todo: rild should be back up since message was sent with a delay. this is
-                        // a hack.
-                        getRadioProxy(null);
-                        getOemHookProxy(null);
                     }
                     break;
             }
@@ -350,6 +345,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         clearRequestList(RADIO_NOT_AVAILABLE, false);
 
         getRadioProxy(null);
+        getOemHookProxy(null);
     }
 
     /** Returns a {@link IRadio} instance or null if the service is not available. */
@@ -2005,6 +2001,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "invokeOemRilRequestRaw", e);
             }
+        } else {
+            // OEM Hook service is disabled for P and later devices.
+            // Deprecated OEM Hook APIs will perform dummy before being removed.
+            if (RILJ_LOGD) riljLog("Radio Oem Hook Service is disabled for P and later devices. ");
         }
     }
 
@@ -2030,6 +2030,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "invokeOemRilRequestStrings", e);
             }
+        } else {
+            // OEM Hook service is disabled for P and later devices.
+            // Deprecated OEM Hook APIs will perform dummy before being removed.
+            if (RILJ_LOGD) riljLog("Radio Oem Hook Service is disabled for P and later devices. ");
         }
     }
 
