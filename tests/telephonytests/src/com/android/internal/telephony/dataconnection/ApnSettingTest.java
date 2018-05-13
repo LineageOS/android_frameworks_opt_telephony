@@ -138,6 +138,7 @@ public class ApnSettingTest extends TelephonyTest {
         assertEquals(a1.mvnoType, a2.mvnoType);
         assertEquals(a1.mvnoMatchData, a2.mvnoMatchData);
         assertEquals(a1.networkTypeBitmask, a2.networkTypeBitmask);
+        assertEquals(a1.apnSetId, a2.apnSetId);
     }
 
     @Test
@@ -230,6 +231,22 @@ public class ApnSettingTest extends TelephonyTest {
                 "testspn");
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
+        // A v5 string with apnSetId=0
+        testString =
+                "[ApnSettingV5] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,0,0";
+        expectedApn = new ApnSetting(
+                -1, "12345", "Name", "apn", "", "", "", "", "", "", "", 0, mmsTypes, "IPV6",
+                "IP", true, 0, 0, 0, false, 0, 0, 0, 0, "spn", "testspn");
+        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
+
+        // A v5 string with apnSetId=3
+        testString =
+                "[ApnSettingV5] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,0,3";
+        expectedApn = new ApnSetting(
+                -1, "12345", "Name", "apn", "", "", "", "", "", "", "", 0, mmsTypes, "IPV6",
+                "IP", true, 0, 0, false, 0, 0, 0, 0, "spn", "testspn", 3);
+        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
+
         // Return no apn if insufficient fields given.
         testString = "[ApnSettingV3] Name,apn,,,,,,,,,123, 45,,mms|*";
         assertEquals(null, ApnSetting.fromString(testString));
@@ -248,6 +265,8 @@ public class ApnSettingTest extends TelephonyTest {
                 " ;[ApnSettingV3] Name1,apn1,,,,,,,,,123,46,,mms,IPV6,IP,true,12,,,,,,,gid,testGid";
         testString +=
                 " ;[ApnSettingV3] Name1,apn2,,,,,,,,,123,46,,mms,IPV6,IP,true,12,,,,,,,,";
+        testString +=
+                " ;[ApnSettingV5] Name1,apn2,,,,,,,,,123,46,,mms,IPV6,IP,true,0,,,,,,,,,,3";
         List<ApnSetting> expectedApns = new ArrayList<ApnSetting>();
         expectedApns.add(new ApnSetting(
                 -1, "12345", "Name", "apn", "", "", "", "", "", "", "", 0, new String[]{"mms"}, "IPV6",
@@ -258,6 +277,9 @@ public class ApnSettingTest extends TelephonyTest {
         expectedApns.add(new ApnSetting(
                 -1, "12346", "Name1", "apn2", "", "", "", "", "", "", "", 0, new String[]{"mms"}, "IPV6",
                 "IP", true, 12, 0, 0, false, 0, 0, 0, 0, "", ""));
+        expectedApns.add(new ApnSetting(
+                -1, "12346", "Name1", "apn2", "", "", "", "", "", "", "", 0, new String[]{"mms"}, "IPV6",
+                "IP", true, 0, 0, false, 0, 0, 0, 0, "", "", 3));
         assertApnSettingsEqual(expectedApns, ApnSetting.arrayFromString(testString));
     }
 
@@ -265,13 +287,25 @@ public class ApnSettingTest extends TelephonyTest {
     @SmallTest
     public void testToString() throws Exception {
         String[] types = {"default", "*"};
+        // use default apn_set_id constructor
         ApnSetting apn = new ApnSetting(
                 99, "12345", "Name", "apn", "proxy", "port",
                 "mmsc", "mmsproxy", "mmsport", "user", "password", 0,
                 types, "IPV6", "IP", true, 14, 0, 0, false, 0, 0, 0, 0, "", "");
-        String expected = "[ApnSettingV4] Name, 99, 12345, apn, proxy, "
+        String expected = "[ApnSettingV5] Name, 99, 12345, apn, proxy, "
                 + "mmsc, mmsproxy, mmsport, port, 0, default | *, "
-                + "IPV6, IP, true, 14, 8192, 0, false, 0, 0, 0, 0, , , false, 4096";
+                + "IPV6, IP, true, 14, 8192, 0, false, 0, 0, 0, 0, , , false, 4096, 0";
+        assertEquals(expected, apn.toString());
+
+        int networkTypeBitmask = 1 << (14 - 1);
+        int bearerBitmask =
+                ServiceState.convertNetworkTypeBitmaskToBearerBitmask(networkTypeBitmask);
+        apn = new ApnSetting(99, "12345", "Name", "apn", "proxy", "port",
+                "mmsc", "mmsproxy", "mmsport", "user", "password", 0,
+                types, "IPV6", "IP", true, networkTypeBitmask, 0, false, 0, 0, 0, 0, "", "", 3);
+        expected = "[ApnSettingV5] Name, 99, 12345, apn, proxy, "
+                + "mmsc, mmsproxy, mmsport, port, 0, default | *, IPV6, IP, true, 0, "
+                + bearerBitmask + ", 0, false, 0, 0, 0, 0, , , false, 8192, 3";
         assertEquals(expected, apn.toString());
     }
 

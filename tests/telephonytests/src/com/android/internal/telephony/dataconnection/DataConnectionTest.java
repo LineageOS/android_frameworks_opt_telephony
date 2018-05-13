@@ -129,6 +129,34 @@ public class DataConnectionTest extends TelephonyTest {
             "",                     // mvno_type
             "");                    // mnvo_match_data
 
+    private ApnSetting mApn2 = new ApnSetting(
+            2164,                   // id
+            "44010",                // numeric
+            "sp-mode",              // name
+            "spmode.ne.jp",         // apn
+            "",                     // proxy
+            "",                     // port
+            "",                     // mmsc
+            "",                     // mmsproxy
+            "",                     // mmsport
+            "",                     // user
+            "",                     // password
+            -1,                     // authtype
+            new String[]{"default", "dun"},     // types
+            "IP",                   // protocol
+            "IP",                   // roaming_protocol
+            true,                   // carrier_enabled
+            0,                      // bearer
+            0,                      // bearer_bitmask
+            0,                      // profile_id
+            false,                  // modem_cognitive
+            0,                      // max_conns
+            0,                      // wait_time
+            0,                      // max_conns_time
+            0,                      // mtu
+            "",                     // mvno_type
+            "");                    // mnvo_match_data
+
     private class DataConnectionTestHandler extends HandlerThread {
 
         private DataConnectionTestHandler(String name) {
@@ -174,6 +202,7 @@ public class DataConnectionTest extends TelephonyTest {
                 ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         doReturn(mApn1).when(mApnContext).getApnSetting();
         doReturn(PhoneConstants.APN_TYPE_DEFAULT).when(mApnContext).getApnType();
+        doReturn(true).when(mDcTracker).isDataEnabled();
 
         mDcFailBringUp.saveParameters(0, 0, -2);
         doReturn(mDcFailBringUp).when(mDcTesterFailBringUpAll).getDcFailBringUp();
@@ -372,6 +401,36 @@ public class DataConnectionTest extends TelephonyTest {
         Method method = DataConnection.class.getDeclaredMethod("getNetworkCapabilities");
         method.setAccessible(true);
         return (NetworkCapabilities) method.invoke(mDc);
+    }
+
+    @Test
+    @SmallTest
+    public void testNetworkCapability() throws Exception {
+        mContextFixture.getCarrierConfigBundle().putStringArray(
+                CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[] { "default" });
+        doReturn(mApn2).when(mApnContext).getApnSetting();
+        testConnectEvent();
+
+        assertTrue("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN));
+        assertTrue("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        assertFalse("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS));
+
+        mDc.sendMessage(DataConnection.EVENT_DISCONNECT, mDcp);
+        waitForMs(100);
+        doReturn(mApn1).when(mApnContext).getApnSetting();
+        mDc.sendMessage(DataConnection.EVENT_CONNECT, mCp);
+        waitForMs(200);
+
+        assertFalse("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN));
+        assertTrue("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        assertTrue("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL));
     }
 
     @Test
