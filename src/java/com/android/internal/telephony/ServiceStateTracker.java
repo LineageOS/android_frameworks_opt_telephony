@@ -2855,8 +2855,9 @@ public class ServiceStateTracker extends Handler {
             if (isInvalidOperatorNumeric(operatorNumeric)) {
                 if (DBG) log("operatorNumeric " + operatorNumeric + " is invalid");
                 // Passing empty string is important for the first update. The initial value of
-                // operator numeric in locale tracker is null.
-                mLocaleTracker.updateOperatorNumeric("");
+                // operator numeric in locale tracker is null. The async update will allow getting
+                // cell info from the modem instead of using the cached one.
+                mLocaleTracker.updateOperatorNumericAsync("");
                 mNitzState.handleNetworkUnavailable();
             } else if (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
                 // If the device is on IWLAN, modems manufacture a ServiceState with the MCC/MNC of
@@ -2868,7 +2869,7 @@ public class ServiceStateTracker extends Handler {
                     setOperatorIdd(operatorNumeric);
                 }
 
-                mLocaleTracker.updateOperatorNumeric(operatorNumeric);
+                mLocaleTracker.updateOperatorNumericSync(operatorNumeric);
                 String countryIsoCode = mLocaleTracker.getCurrentCountry();
 
                 // Update Time Zone.
