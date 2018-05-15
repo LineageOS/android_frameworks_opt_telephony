@@ -36,6 +36,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RE
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_SS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RADIO_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESEND_INCALL_MUTE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED;
@@ -294,6 +295,8 @@ public class RadioIndication extends IRadioIndication.Stub {
 
             response.add(new PhysicalChannelConfig(status, config.cellBandwidthDownlink));
         }
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
 
         mRil.mPhysicalChannelConfigurationRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
