@@ -179,8 +179,8 @@ public class UiccSlot extends Handler {
         // no card present in the slot now; dispose card and make mUiccCard null
         if (mUiccCard != null) {
             mUiccCard.dispose();
-            nullifyUiccCard(false /* sim state is not unknown */);
         }
+        nullifyUiccCard(false /* sim state is not unknown */);
         mLastRadioState = radioState;
     }
 
@@ -193,7 +193,7 @@ public class UiccSlot extends Handler {
     }
 
     public boolean isStateUnknown() {
-        return mStateIsUnknown;
+        return (mCardState == null || mCardState == CardState.CARDSTATE_ABSENT) && mStateIsUnknown;
     }
 
     private void checkIsEuiccSupported() {
