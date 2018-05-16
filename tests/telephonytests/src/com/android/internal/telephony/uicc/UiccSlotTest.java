@@ -102,8 +102,9 @@ public class UiccSlotTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testUpdateSlotStatus() {
+    public void testUpdateInactiveSlotStatus() {
         IccSlotStatus iss = new IccSlotStatus();
+        iss.logicalSlotIndex = 0;
         iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_INACTIVE;
         iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
         iss.iccid = "fake-iccid";
@@ -122,8 +123,35 @@ public class UiccSlotTest extends TelephonyTest {
         assertNull(mUiccSlot.getUiccCard());
         assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
         assertEquals(iss.iccid, mUiccSlot.getIccId());
+    }
 
+    @Test
+    @SmallTest
+    public void testUpdateActiveSlotStatus() {
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+        assertNull(mUiccSlot.getIccId());
+
+        mSimulatedCommands.setRadioPower(true, null);
+        int phoneId = 0;
+        IccSlotStatus iss = new IccSlotStatus();
+        iss.logicalSlotIndex = phoneId;
         iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_ACTIVE;
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_ABSENT;
+        iss.iccid = "fake-iccid";
+
+        // update slot to inactive
+        mUiccSlot.update(mSimulatedCommands, iss);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+        assertEquals(iss.iccid, mUiccSlot.getIccId());
+        verify(mSubInfoRecordUpdater).updateInternalIccState(
+                IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, phoneId);
 
         // update slot to active
         mUiccSlot.update(mSimulatedCommands, iss);
@@ -136,6 +164,7 @@ public class UiccSlotTest extends TelephonyTest {
     @SmallTest
     public void testUpdateSlotStatusEuiccIsSupported() {
         IccSlotStatus iss = new IccSlotStatus();
+        iss.logicalSlotIndex = 0;
         iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_INACTIVE;
         iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
         iss.iccid = "fake-iccid";
@@ -170,6 +199,7 @@ public class UiccSlotTest extends TelephonyTest {
     @SmallTest
     public void testUpdateSlotStatusEuiccIsNotSupported() {
         IccSlotStatus iss = new IccSlotStatus();
+        iss.logicalSlotIndex = 0;
         iss.slotState = IccSlotStatus.SlotState.SLOTSTATE_INACTIVE;
         iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
         iss.iccid = "fake-iccid";
