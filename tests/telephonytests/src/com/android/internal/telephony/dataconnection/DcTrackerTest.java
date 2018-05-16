@@ -90,6 +90,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -185,6 +186,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     private class ApnSettingContentProvider extends MockContentProvider {
+        private int mPreferredApnSet = 0;
 
         @Override
         public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
@@ -386,8 +388,17 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // network_type_bitmask
                             0                       // apn_set_id
                     });
+
                     return mc;
                 }
+            } else if (uri.isPathPrefixMatch(
+                    Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "preferapnset"))) {
+                MatrixCursor mc = new MatrixCursor(
+                        new String[]{Telephony.Carriers.APN_SET_ID});
+                // apn_set_id is the only field used with this URL
+                mc.addRow(new Object[]{ mPreferredApnSet });
+                mc.addRow(new Object[]{ 0 });
+                return mc;
             }
 
             return null;
@@ -395,7 +406,8 @@ public class DcTrackerTest extends TelephonyTest {
 
         @Override
         public int update(Uri url, ContentValues values, String where, String[] whereArgs) {
-            return 0;
+            mPreferredApnSet = values.getAsInteger(Telephony.Carriers.APN_SET_ID);
+            return 1;
         }
     }
 
@@ -1308,7 +1320,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
     }
 
-    // Test for fetchDunApn()
+    // Test for fetchDunApns()
     @Test
     @SmallTest
     public void testFetchDunApn() {
@@ -1323,20 +1335,19 @@ public class DcTrackerTest extends TelephonyTest {
         Settings.Global.putString(mContext.getContentResolver(),
                 Settings.Global.TETHER_DUN_APN, dunApnString);
         // should return APN from Setting
-        ApnSetting dunApn = mDct.fetchDunApn();
+        ApnSetting dunApn = mDct.fetchDunApns().get(0);
         assertTrue(dunApnExpected.equals(dunApn));
 
         Settings.Global.putString(mContext.getContentResolver(),
                 Settings.Global.TETHER_DUN_APN, null);
         // should return APN from db
-        dunApn = mDct.fetchDunApn();
+        dunApn = mDct.fetchDunApns().get(0);
         assertEquals(FAKE_APN5, dunApn.apn);
     }
 
-    // Test for fetchDunApn() with apn set id
+    // Test for fetchDunApns() with apn set id
     @Test
     @SmallTest
-    @Ignore
     public void testFetchDunApnWithPreferredApnSet() {
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -1344,10 +1355,10 @@ public class DcTrackerTest extends TelephonyTest {
 
         // apnSetId=1
         String dunApnString1 = "[ApnSettingV5]HOT mobile PC,pc.hotm,,,,,,,,,440,10,,DUN,,,true,"
-                + "0,,,,,,,,,1";
-        // apnSetId=2
-        String dunApnString2 = "[ApnSettingV5]HOT mobile PC,pc.hotm,,,,,,,,,440,10,,DUN,,,true,"
-                + "0,,,,,,,,,2";
+                + "0,,,,,,,,,,1";
+        // apnSetId=0
+        String dunApnString2 = "[ApnSettingV5]HOT mobile PC,pc.coldm,,,,,,,,,440,10,,DUN,,,true,"
+                + "0,,,,,,,,,,0";
 
         ApnSetting dunApnExpected = ApnSetting.fromString(dunApnString1);
 
@@ -1358,11 +1369,12 @@ public class DcTrackerTest extends TelephonyTest {
         // set that we prefer apn set 1
         ContentValues values = new ContentValues();
         values.put(Telephony.Carriers.APN_SET_ID, 1);
-        cr.update(PREFERAPN_URI, values, null, null); // currently a noop
+        cr.update(PREFERAPN_URI, values, null, null);
 
-        // TODO(70172263) should return APN from Setting with apnSetId=1
-        ApnSetting dunApn = mDct.fetchDunApn();
-        assertTrue(dunApnExpected.equals(dunApn));
+        // return APN from Setting with apnSetId=1
+        ArrayList<ApnSetting> dunApns = mDct.sortApnListByPreferred(mDct.fetchDunApns());
+        assertEquals(2, dunApns.size());
+        assertTrue(dunApnExpected.equals(dunApns.get(0)));
     }
 
     // Test oos
