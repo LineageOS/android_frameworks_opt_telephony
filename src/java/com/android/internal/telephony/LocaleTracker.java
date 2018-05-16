@@ -216,11 +216,13 @@ public class LocaleTracker extends Handler {
      */
     public synchronized void updateOperatorNumericSync(String operatorNumeric) {
         // Check if the operator numeric changes.
-        if (DBG) log("updateOperatorNumericSync. mcc/mnc=" + operatorNumeric);
+        String msg = "updateOperatorNumeric. mcc/mnc=" + operatorNumeric;
+        if (DBG) log(msg);
+        mLocalLog.log(msg);
         if (!Objects.equals(mOperatorNumeric, operatorNumeric)) {
-            String msg = "Operator numeric changes to " + operatorNumeric;
-            if (DBG) log(msg);
-            mLocalLog.log(msg);
+            if (DBG) {
+                log("onUpdateOperatorNumeric: operator numeric changes to " + operatorNumeric);
+            }
             mOperatorNumeric = operatorNumeric;
 
             // If the operator numeric becomes unavailable, we need to get the latest cell info so
@@ -276,8 +278,7 @@ public class LocaleTracker extends Handler {
     private void getCellInfo() {
         String msg;
         if (!mPhone.getServiceStateTracker().getDesiredPowerState()) {
-            msg = "Radio is off. Skipped getting cell info. Cleared the previous cached cell info.";
-            mCellInfo.clear();
+            msg = "Radio is off. No need to get cell info.";
             if (DBG) log(msg);
             mLocalLog.log(msg);
             return;
