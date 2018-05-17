@@ -5029,6 +5029,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_UNSOL_ICC_SLOT_STATUS";
             case RIL_UNSOL_KEEPALIVE_STATUS:
                 return "RIL_UNSOL_KEEPALIVE_STATUS";
+            case RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG:
+                return "RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG";
             default:
                 return "<unknown response>";
         }
