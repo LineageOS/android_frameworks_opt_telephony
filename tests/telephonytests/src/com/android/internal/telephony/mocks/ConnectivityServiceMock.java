@@ -499,6 +499,11 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
         throw new RuntimeException("not implemented");
     }
 
+    @Override
+    public boolean isActiveNetworkMeteredForUid(int uid) {
+        throw new RuntimeException("not implemented");
+    }
+
     public boolean requestRouteToHostAddress(int networkType, byte[] hostAddress) {
         throw new RuntimeException("not implemented");
     }
