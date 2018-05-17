@@ -55,6 +55,7 @@ import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
@@ -101,60 +102,58 @@ public class DataConnectionTest extends TelephonyTest {
     private DataConnectionTestHandler mDataConnectionTestHandler;
     private DcController mDcc;
 
-    private ApnSetting mApn1 = new ApnSetting(
+    private ApnSetting mApn1 = ApnSetting.makeApnSetting(
             2163,                   // id
             "44010",                // numeric
             "sp-mode",              // name
             "spmode.ne.jp",         // apn
-            "",                     // proxy
-            "",                     // port
-            "",                     // mmsc
-            "",                     // mmsproxy
-            "",                     // mmsport
+            null,                     // proxy
+            -1,                     // port
+            null,                     // mmsc
+            null,                     // mmsproxy
+            -1,                     // mmsport
             "",                     // user
             "",                     // password
             -1,                     // authtype
-            new String[]{"default", "supl"},     // types
-            "IP",                   // protocol
-            "IP",                   // roaming_protocol
+            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
+            ApnSetting.PROTOCOL_IP,                   // protocol
+            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
             true,                   // carrier_enabled
-            0,                      // bearer
-            0,                      // bearer_bitmask
+            0,                      // networktype_bitmask
             0,                      // profile_id
             false,                  // modem_cognitive
             0,                      // max_conns
             0,                      // wait_time
             0,                      // max_conns_time
             0,                      // mtu
-            "",                     // mvno_type
+            -1,                     // mvno_type
             "");                    // mnvo_match_data
 
-    private ApnSetting mApn2 = new ApnSetting(
+    private ApnSetting mApn2 = ApnSetting.makeApnSetting(
             2164,                   // id
             "44010",                // numeric
             "sp-mode",              // name
             "spmode.ne.jp",         // apn
-            "",                     // proxy
-            "",                     // port
-            "",                     // mmsc
-            "",                     // mmsproxy
-            "",                     // mmsport
+            null,                     // proxy
+            -1,                     // port
+            null,                     // mmsc
+            null,                     // mmsproxy
+            -1,                     // mmsport
             "",                     // user
             "",                     // password
             -1,                     // authtype
-            new String[]{"default", "dun"},     // types
-            "IP",                   // protocol
-            "IP",                   // roaming_protocol
+            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_DUN,     // types
+            ApnSetting.PROTOCOL_IP,                   // protocol
+            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
             true,                   // carrier_enabled
-            0,                      // bearer
-            0,                      // bearer_bitmask
+            0,                      // networktype_bitmask
             0,                      // profile_id
             false,                  // modem_cognitive
             0,                      // max_conns
             0,                      // wait_time
             0,                      // max_conns_time
             0,                      // mtu
-            "",                     // mvno_type
+            -1,                     // mvno_type
             "");                    // mnvo_match_data
 
     private class DataConnectionTestHandler extends HandlerThread {
