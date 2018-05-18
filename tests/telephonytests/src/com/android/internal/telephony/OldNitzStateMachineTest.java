@@ -43,7 +43,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-public class NitzStateMachineTest extends TelephonyTest {
+public class OldNitzStateMachineTest extends TelephonyTest {
 
     // A country with a single zone : the zone can be guessed from the country.
     // The UK uses UTC for part of the year so it is not good for detecting bogus NITZ signals.
@@ -77,14 +77,14 @@ public class NitzStateMachineTest extends TelephonyTest {
             .build();
 
     @Mock
-    private NitzStateMachine.DeviceState mDeviceState;
+    private OldNitzStateMachine.DeviceState mDeviceState;
 
     @Mock
     private TimeServiceHelper mTimeServiceHelper;
 
     private TimeZoneLookupHelper mRealTimeZoneLookupHelper;
 
-    private NitzStateMachine mNitzStateMachine;
+    private OldNitzStateMachine mNitzStateMachine;
 
     @Before
     public void setUp() throws Exception {
@@ -93,7 +93,7 @@ public class NitzStateMachineTest extends TelephonyTest {
 
         // In tests we use the real TimeZoneLookupHelper.
         mRealTimeZoneLookupHelper = new TimeZoneLookupHelper();
-        mNitzStateMachine = new NitzStateMachine(
+        mNitzStateMachine = new OldNitzStateMachine(
                 mPhone, mTimeServiceHelper, mDeviceState, mRealTimeZoneLookupHelper);
 
         logd("ServiceStateTrackerTest -Setup!");
@@ -948,7 +948,7 @@ public class NitzStateMachineTest extends TelephonyTest {
         }
 
         void checkNoUnverifiedSetOperations() {
-            NitzStateMachineTest.checkNoUnverifiedSetOperations(mTimeServiceHelper);
+            OldNitzStateMachineTest.checkNoUnverifiedSetOperations(mTimeServiceHelper);
         }
     }
 
