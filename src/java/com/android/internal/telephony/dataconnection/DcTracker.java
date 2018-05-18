@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
 
+import android.annotation.NonNull;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
@@ -1708,27 +1709,27 @@ public class DcTracker extends Handler {
     }
 
     /**
-     * Fetch dun apn
-     * @return ApnSetting to be used for dun
+     * Fetch the DUN apns
+     * @return a list of DUN ApnSetting objects
      */
     @VisibleForTesting
-    public ApnSetting fetchDunApn() {
+    public @NonNull ArrayList<ApnSetting> fetchDunApns() {
         if (SystemProperties.getBoolean("net.tethering.noprovisioning", false)) {
-            log("fetchDunApn: net.tethering.noprovisioning=true ret: null");
-            return null;
+            log("fetchDunApns: net.tethering.noprovisioning=true ret: empty list");
+            return new ArrayList<ApnSetting>(0);
         }
         int bearer = mPhone.getServiceState().getRilDataRadioTechnology();
         IccRecords r = mIccRecords.get();
         String operator = (r != null) ? r.getOperatorNumeric() : "";
         ArrayList<ApnSetting> dunCandidates = new ArrayList<ApnSetting>();
-        ApnSetting retDunSetting = null;
+        ArrayList<ApnSetting> retDunSettings = new ArrayList<ApnSetting>();
 
         // Places to look for tether APN in order: TETHER_DUN_APN setting (to be deprecated soon),
         // APN database, and config_tether_apndata resource (to be deprecated soon).
         String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
         if (!TextUtils.isEmpty(apnData)) {
             dunCandidates.addAll(ApnSetting.arrayFromString(apnData));
-            if (VDBG) log("fetchDunApn: dunCandidates from Setting: " + dunCandidates);
+            if (VDBG) log("fetchDunApns: dunCandidates from Setting: " + dunCandidates);
         }
 
         // todo: remove this and config_tether_apndata after APNs are moved from overlay to apns xml
@@ -1743,7 +1744,7 @@ public class DcTracker extends Handler {
                     // apn may be null if apnString isn't valid or has error parsing
                     if (apn != null) dunCandidates.add(apn);
                 }
-                if (VDBG) log("fetchDunApn: dunCandidates from resource: " + dunCandidates);
+                if (VDBG) log("fetchDunApns: dunCandidates from resource: " + dunCandidates);
             }
         }
 
@@ -1754,7 +1755,7 @@ public class DcTracker extends Handler {
                         dunCandidates.add(apn);
                     }
                 }
-                if (VDBG) log("fetchDunApn: dunCandidates from database: " + dunCandidates);
+                if (VDBG) log("fetchDunApns: dunCandidates from database: " + dunCandidates);
             }
         }
 
@@ -1767,24 +1768,36 @@ public class DcTracker extends Handler {
                 if (dunSetting.hasMvnoParams()) {
                     if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
                             dunSetting.mvnoMatchData)) {
-                        retDunSetting = dunSetting;
-                        break;
+                        retDunSettings.add(dunSetting);
                     }
                 } else if (mMvnoMatched == false) {
-                    retDunSetting = dunSetting;
-                    break;
+                    retDunSettings.add(dunSetting);
                 }
             }
         }
 
-        if (VDBG) log("fetchDunApn: dunSetting=" + retDunSetting);
-        return retDunSetting;
+        if (VDBG) log("fetchDunApns: dunSettings=" + retDunSettings);
+        return retDunSettings;
+    }
+
+    private int getPreferredApnSetId() {
+        Cursor c = mPhone.getContext().getContentResolver()
+                .query(Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI,
+                    "preferapnset/subId/" + mPhone.getSubId()),
+                        new String[] {Telephony.Carriers.APN_SET_ID}, null, null, null);
+        if (c.getCount() < 1) {
+            loge("getPreferredApnSetId: no APNs found");
+            return Telephony.Carriers.NO_SET_SET;
+        } else {
+            c.moveToFirst();
+            return c.getInt(0 /* index of Telephony.Carriers.APN_SET_ID */);
+        }
     }
 
     public boolean hasMatchedTetherApnSetting() {
-        ApnSetting matched = fetchDunApn();
-        log("hasMatchedTetherApnSetting: APN=" + matched);
-        return matched != null;
+        ArrayList<ApnSetting> matches = fetchDunApns();
+        log("hasMatchedTetherApnSetting: APNs=" + matches);
+        return matches.size() > 0;
     }
 
     /**
@@ -1795,7 +1808,8 @@ public class DcTracker extends Handler {
         final int rilRat = mPhone.getServiceState().getRilDataRadioTechnology();
         if (ServiceState.isCdma(rilRat)) return true;
 
-        return (fetchDunApn() != null);
+        ArrayList<ApnSetting> apns = fetchDunApns();
+        return apns.size() > 0;
     }
 
     /**
@@ -2468,10 +2482,10 @@ public class DcTracker extends Handler {
 
     private DcAsyncChannel checkForCompatibleConnectedApnContext(ApnContext apnContext) {
         String apnType = apnContext.getApnType();
-        ApnSetting dunSetting = null;
+        ArrayList<ApnSetting> dunSettings = null;
 
         if (PhoneConstants.APN_TYPE_DUN.equals(apnType)) {
-            dunSetting = fetchDunApn();
+            dunSettings = sortApnListByPreferred(fetchDunApns());
         }
         if (DBG) {
             log("checkForCompatibleConnectedApnContext: apnContext=" + apnContext );
@@ -2484,23 +2498,26 @@ public class DcTracker extends Handler {
             if (curDcac != null) {
                 ApnSetting apnSetting = curApnCtx.getApnSetting();
                 log("apnSetting: " + apnSetting);
-                if (dunSetting != null) {
-                    if (dunSetting.equals(apnSetting)) {
-                        switch (curApnCtx.getState()) {
-                            case CONNECTED:
-                                if (DBG) {
-                                    log("checkForCompatibleConnectedApnContext:"
-                                            + " found dun conn=" + curDcac
-                                            + " curApnCtx=" + curApnCtx);
-                                }
-                                return curDcac;
-                            case RETRYING:
-                            case CONNECTING:
-                                potentialDcac = curDcac;
-                                potentialApnCtx = curApnCtx;
-                            default:
-                                // Not connected, potential unchanged
-                                break;
+                if (dunSettings != null && dunSettings.size() > 0) {
+                    for (ApnSetting dunSetting : dunSettings) {
+                        if (dunSetting.equals(apnSetting)) {
+                            switch (curApnCtx.getState()) {
+                                case CONNECTED:
+                                    if (DBG) {
+                                        log("checkForCompatibleConnectedApnContext:"
+                                                + " found dun conn=" + curDcac
+                                                + " curApnCtx=" + curApnCtx);
+                                    }
+                                    return curDcac;
+                                case RETRYING:
+                                case CONNECTING:
+                                    potentialDcac = curDcac;
+                                    potentialApnCtx = curApnCtx;
+                                    break;
+                                default:
+                                    // Not connected, potential unchanged
+                                    break;
+                            }
                         }
                     }
                 } else if (apnSetting != null && apnSetting.canHandleType(apnType)) {
@@ -2516,6 +2533,7 @@ public class DcTracker extends Handler {
                         case CONNECTING:
                             potentialDcac = curDcac;
                             potentialApnCtx = curApnCtx;
+                            break;
                         default:
                             // Not connected, potential unchanged
                             break;
@@ -3453,11 +3471,13 @@ public class DcTracker extends Handler {
         ArrayList<ApnSetting> apnList = new ArrayList<ApnSetting>();
 
         if (requestedApnType.equals(PhoneConstants.APN_TYPE_DUN)) {
-            ApnSetting dun = fetchDunApn();
-            if (dun != null) {
-                apnList.add(dun);
-                if (DBG) log("buildWaitingApns: X added APN_TYPE_DUN apnList=" + apnList);
-                return apnList;
+            ArrayList<ApnSetting> dunApns = fetchDunApns();
+            if (dunApns.size() > 0) {
+                for (ApnSetting dun : dunApns) {
+                    apnList.add(dun);
+                    if (DBG) log("buildWaitingApns: X added APN_TYPE_DUN apnList=" + apnList);
+                }
+                return sortApnListByPreferred(apnList);
             }
         }
 
@@ -3498,6 +3518,7 @@ public class DcTracker extends Handler {
                 if (ServiceState.bitmaskHasTech(mPreferredApn.networkTypeBitmask,
                         ServiceState.rilRadioTechnologyToNetworkType(radioTech))) {
                     apnList.add(mPreferredApn);
+                    apnList = sortApnListByPreferred(apnList);
                     if (DBG) log("buildWaitingApns: X added preferred apnList=" + apnList);
                     return apnList;
                 } else {
@@ -3534,8 +3555,39 @@ public class DcTracker extends Handler {
         } else {
             loge("mAllApnSettings is null!");
         }
+
+        apnList = sortApnListByPreferred(apnList);
         if (DBG) log("buildWaitingApns: " + apnList.size() + " APNs in the list: " + apnList);
         return apnList;
+    }
+
+    /**
+     * Sort a list of ApnSetting objects, with the preferred APNs at the front of the list
+     *
+     * e.g. if the preferred APN set = 2 and we have
+     *   1. APN with apn_set_id = 0 = Carriers.NO_SET_SET (no set is set)
+     *   2. APN with apn_set_id = 1 (not preferred set)
+     *   3. APN with apn_set_id = 2 (preferred set)
+     * Then the return order should be (3, 1, 2) or (3, 2, 1)
+     *
+     * e.g. if the preferred APN set = Carriers.NO_SET_SET (no preferred set) then the
+     * return order can be anything
+     */
+    @VisibleForTesting
+    public ArrayList<ApnSetting> sortApnListByPreferred(ArrayList<ApnSetting> list) {
+        if (list == null || list.size() <= 1) return list;
+        int preferredApnSetId = getPreferredApnSetId();
+        if (preferredApnSetId != Telephony.Carriers.NO_SET_SET) {
+            list.sort(new Comparator<ApnSetting>() {
+                @Override
+                public int compare(ApnSetting apn1, ApnSetting apn2) {
+                    if (apn1.apnSetId == preferredApnSetId) return -1;
+                    if (apn2.apnSetId == preferredApnSetId) return 1;
+                    return 0;
+                }
+            });
+        }
+        return list;
     }
 
     private String apnListToString (ArrayList<ApnSetting> apns) {

@@ -91,22 +91,8 @@ public class UiccSlot extends Handler {
                 log("update: radioState=" + radioState + " mLastRadioState=" + mLastRadioState);
             }
 
-            if ((oldState != CardState.CARDSTATE_ABSENT || mUiccCard != null)
-                    && mCardState == CardState.CARDSTATE_ABSENT) {
-                // No notifications while radio is off or we just powering up
-                if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
-                    if (DBG) log("update: notify card removed");
-                    sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
-                }
-
-                UiccController.updateInternalIccState(
-                        IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, mPhoneId);
-
-                // no card present in the slot now; dispose card and make mUiccCard null
-                if (mUiccCard != null) {
-                    mUiccCard.dispose();
-                    nullifyUiccCard(false /* sim state is not unknown */);
-                }
+            if (absentStateUpdateNeeded(oldState)) {
+                updateCardStateAbsent();
             // Because mUiccCard may be updated in both IccCardStatus and IccSlotStatus, we need to
             // create a new UiccCard instance in two scenarios:
             //   1. mCardState is changing from ABSENT to non ABSENT.
@@ -145,11 +131,14 @@ public class UiccSlot extends Handler {
     public void update(CommandsInterface ci, IccSlotStatus iss) {
         if (DBG) log("slotStatus update: " + iss.toString());
         synchronized (mLock) {
+            CardState oldState = mCardState;
             mCi = ci;
             parseAtr(iss.atr);
             mCardState = iss.cardState;
             mIccId = iss.iccid;
             if (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_INACTIVE) {
+                // TODO: (b/79432584) evaluate whether should broadcast card state change
+                // even if it's inactive.
                 if (mActive) {
                     mActive = false;
                     mLastRadioState = RadioState.RADIO_UNAVAILABLE;
@@ -157,10 +146,42 @@ public class UiccSlot extends Handler {
                     if (mUiccCard != null) mUiccCard.dispose();
                     nullifyUiccCard(true /* sim state is unknown */);
                 }
-            } else if (!mActive && iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_ACTIVE) {
+            } else {
                 mActive = true;
+                mPhoneId = iss.logicalSlotIndex;
+                if (absentStateUpdateNeeded(oldState)) {
+                    updateCardStateAbsent();
+                }
+                // TODO: (b/79432584) Create UiccCard or EuiccCard object here.
+                // Right now It's OK not creating it because Card status update will do it.
+                // But we should really make them symmetric.
             }
         }
+    }
+
+    private boolean absentStateUpdateNeeded(CardState oldState) {
+        return (oldState != CardState.CARDSTATE_ABSENT || mUiccCard != null)
+                && mCardState == CardState.CARDSTATE_ABSENT;
+    }
+
+    private void updateCardStateAbsent() {
+        RadioState radioState =
+                (mCi == null) ? RadioState.RADIO_UNAVAILABLE : mCi.getRadioState();
+        // No notifications while radio is off or we just powering up
+        if (radioState == RadioState.RADIO_ON && mLastRadioState == RadioState.RADIO_ON) {
+            if (DBG) log("update: notify card removed");
+            sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
+        }
+
+        UiccController.updateInternalIccState(
+                IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, mPhoneId);
+
+        // no card present in the slot now; dispose card and make mUiccCard null
+        if (mUiccCard != null) {
+            mUiccCard.dispose();
+        }
+        nullifyUiccCard(false /* sim state is not unknown */);
+        mLastRadioState = radioState;
     }
 
     // whenever we set mUiccCard to null, we lose the ability to differentiate between absent and
@@ -172,7 +193,7 @@ public class UiccSlot extends Handler {
     }
 
     public boolean isStateUnknown() {
-        return mStateIsUnknown;
+        return (mCardState == null || mCardState == CardState.CARDSTATE_ABSENT) && mStateIsUnknown;
     }
 
     private void checkIsEuiccSupported() {

@@ -50,6 +50,8 @@ import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.HexDump;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -1335,4 +1337,7 @@ public class IccSmsInterfaceManager {
         return result != null ? result : destAddr;
     }
 
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        mDispatchersController.dump(fd, pw, args);
+    }
 }
