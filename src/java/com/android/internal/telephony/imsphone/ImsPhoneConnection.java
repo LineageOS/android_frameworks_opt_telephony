@@ -305,6 +305,10 @@ public class ImsPhoneConnection extends Connection implements
                         Connection.Capability.SUPPORTS_VT_REMOTE_BIDIRECTIONAL);
                 break;
         }
+
+        if (remoteProfile.getMediaProfile().getRttMode() == ImsStreamMediaProfile.RTT_MODE_FULL) {
+            capabilities = addCapability(capabilities, Connection.Capability.SUPPORTS_RTT_REMOTE);
+        }
         return capabilities;
     }
 
