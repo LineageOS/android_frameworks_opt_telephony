@@ -1569,6 +1569,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         super.dump(fd, pw, args);
+        if (mCellBroadcastHandler != null) {
+            mCellBroadcastHandler.dump(fd, pw, args);
+        }
         mLocalLog.dump(fd, pw, args);
     }
 
