@@ -298,8 +298,20 @@ public class DataConnection extends StateMachine {
         return new LinkProperties(mLinkProperties);
     }
 
-    boolean getIsInactive() {
+    boolean isInactive() {
         return getCurrentState() == mInactiveState;
+    }
+
+    boolean isDisconnecting() {
+        return getCurrentState() == mDisconnectingState;
+    }
+
+    boolean isActive() {
+        return getCurrentState() == mActiveState;
+    }
+
+    boolean isActivating() {
+        return getCurrentState() == mActivatingState;
     }
 
     int getCid() {
@@ -1265,7 +1277,7 @@ public class DataConnection extends StateMachine {
                     break;
                 }
                 case DcAsyncChannel.REQ_IS_INACTIVE: {
-                    boolean val = getIsInactive();
+                    boolean val = isInactive();
                     if (VDBG) log("REQ_IS_INACTIVE  isInactive=" + val);
                     mAc.replyToMessage(msg, DcAsyncChannel.RSP_IS_INACTIVE, val ? 1 : 0);
                     break;
