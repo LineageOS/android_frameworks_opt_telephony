@@ -1583,6 +1583,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public void onFeatureCapabilityChanged() {
+        updateVoiceServiceState();
         mDefaultPhone.getServiceStateTracker().onImsCapabilityChanged();
     }
 
@@ -1618,11 +1619,30 @@ public class ImsPhone extends ImsPhoneBase {
 
     public void setImsRegistered(boolean value) {
         mImsRegistered = value;
+        updateVoiceServiceState();
     }
 
     @Override
     public void callEndCleanupHandOverCallIfAny() {
         mCT.callEndCleanupHandOverCallIfAny();
+    }
+
+    /**
+     * Determines what the voice registration state for ImsPhone is. Considered "in service" if
+     * we are both registered for IMS and have voice capability (either through LTE or IWLAN).
+     */
+    private void updateVoiceServiceState() {
+        if (!isImsRegistered()) {
+            // We are considered out of service is not registered to IMS
+            setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+            return;
+        }
+        // We are registered for IMS
+        if (isVolteEnabled() || isWifiCallingEnabled()) {
+            setServiceState(ServiceState.STATE_IN_SERVICE);
+        } else {
+            setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        }
     }
 
     private BroadcastReceiver mResultReceiver = new BroadcastReceiver() {

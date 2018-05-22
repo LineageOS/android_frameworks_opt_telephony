@@ -2865,7 +2865,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 public void onRegistered(
                         @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
                     if (DBG) log("onImsConnected imsRadioTech=" + imsRadioTech);
-                    mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
                     mPhone.setImsRegistered(true);
                     mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
                             ImsConnectionState.State.CONNECTED, null);
@@ -2875,7 +2874,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 public void onRegistering(
                         @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
                     if (DBG) log("onImsProgressing imsRadioTech=" + imsRadioTech);
-                    mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
                     mPhone.setImsRegistered(false);
                     mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
                             ImsConnectionState.State.PROGRESSING, null);
@@ -2885,7 +2883,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 public void onDeregistered(ImsReasonInfo imsReasonInfo) {
                     if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
                     resetImsCapabilities();
-                    mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
                     mPhone.setImsRegistered(false);
                     mPhone.processDisconnectReason(imsReasonInfo);
                     mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
