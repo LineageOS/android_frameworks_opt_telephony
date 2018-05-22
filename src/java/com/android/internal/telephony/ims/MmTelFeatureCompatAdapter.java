@@ -155,6 +155,10 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
 
         @Override
         public void registrationDisconnected(ImsReasonInfo imsReasonInfo) throws RemoteException {
+            // At de-registration, notify the framework that no IMS capabilities are currently
+            // available.
+            Log.i(TAG, "registrationDisconnected: resetting MMTEL capabilities.");
+            notifyCapabilitiesStatusChanged(new MmTelCapabilities());
             // Implemented in the Registration Adapter
         }
 
