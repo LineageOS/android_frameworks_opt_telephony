@@ -162,7 +162,12 @@ public class EuiccCard extends UiccCard {
 
             @Override
             public void onException(Throwable e) {
-                // Not notifying registrants if getting eid fails.
+                // Still notifying registrants even getting eid fails.
+                if (mEidReadyRegistrants != null) {
+                    mEidReadyRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+                }
+                mEid = "";
+                mCardId = "";
                 Rlog.e(LOG_TAG, "Failed loading eid", e);
             }
         };
