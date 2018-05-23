@@ -24,6 +24,7 @@ import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ComponentInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
@@ -984,6 +985,10 @@ public class EuiccController extends IEuiccController.Stub {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void sendOtaStatusChangedBroadcast() {
         Intent intent = new Intent(EuiccManager.ACTION_OTA_STATUS_CHANGED);
+        ComponentInfo bestComponent = mConnector.findBestComponent(mContext.getPackageManager());
+        if (bestComponent != null) {
+            intent.setPackage(bestComponent.packageName);
+        }
         mContext.sendBroadcast(intent, permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
     }
 
