@@ -57,6 +57,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REPORT_STK
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_DEVICE_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS_EXPECT_MORE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_INITIAL_ATTACH_APN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIM_CARD_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SMSC_ADDRESS;
@@ -110,6 +111,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.WorkSource;
 import android.support.test.filters.FlakyTest;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
@@ -204,6 +206,25 @@ public class RILTest extends TelephonyTest {
     private static final int TYPE_LTE = 3;
     private static final int TYPE_WCDMA = 4;
 
+    private static final int PROFILE_ID = 0;
+    private static final String APN = "apn";
+    private static final String PROTOCOL = "IPV6";
+    private static final int AUTH_TYPE = 0;
+    private static final String USER_NAME = "username";
+    private static final String PASSWORD = "password";
+    private static final int TYPE = 0;
+    private static final int MAX_CONNS_TIME = 1;
+    private static final int MAX_CONNS = 3;
+    private static final int WAIT_TIME = 10;
+    private static final boolean APN_ENABLED = true;
+    private static final int SUPPORTED_APNT_YPES_BITMAP = 123456;
+    private static final String ROAMING_PROTOCOL = "IPV6";
+    private static final int BEARER_BITMAP = 123123;
+    private static final int MTU = 1234;
+    private static final String MVNO_TYPE = "";
+    private static final String MVNO_MATCH_DATA = "";
+    private static final boolean MODEM_COGNITIVE = true;
+
     private class RILTestHandler extends HandlerThread {
 
         RILTestHandler(String name) {
@@ -247,7 +268,8 @@ public class RILTest extends TelephonyTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        super.setUp(RILTest.class.getSimpleName());
         MockitoAnnotations.initMocks(this);
         mTestHandler = new RILTestHandler(getClass().getSimpleName());
         mTestHandler.start();
@@ -257,6 +279,7 @@ public class RILTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mTestHandler.quit();
+        super.tearDown();
     }
 
     @FlakyTest
@@ -1643,4 +1666,37 @@ public class RILTest extends TelephonyTest {
         assertEquals(getTdScdmaSignalStrength_1_0(-1), getTdScdmaSignalStrength_1_2(255));
     }
 
+    @Test
+    public void testSetupDataCall() throws Exception {
+
+        DataProfile dp = new DataProfile(PROFILE_ID, APN, PROTOCOL, AUTH_TYPE, USER_NAME, PASSWORD,
+                TYPE, MAX_CONNS_TIME, MAX_CONNS, WAIT_TIME, APN_ENABLED, SUPPORTED_APNT_YPES_BITMAP,
+                ROAMING_PROTOCOL, BEARER_BITMAP, MTU, MVNO_TYPE, MVNO_MATCH_DATA, MODEM_COGNITIVE);
+        mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
+                false, 0, null, obtainMessage());
+        ArgumentCaptor<DataProfileInfo> dpiCaptor = ArgumentCaptor.forClass(DataProfileInfo.class);
+        verify(mRadioProxy).setupDataCall(
+                mSerialNumberCaptor.capture(), eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
+                dpiCaptor.capture(), eq(true), eq(false), eq(false));
+        verifyRILResponse(
+                mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SETUP_DATA_CALL);
+        DataProfileInfo dpi = dpiCaptor.getValue();
+        assertEquals(PROFILE_ID, dpi.profileId);
+        assertEquals(APN, dpi.apn);
+        assertEquals(PROTOCOL, dpi.protocol);
+        assertEquals(AUTH_TYPE, dpi.authType);
+        assertEquals(USER_NAME, dpi.user);
+        assertEquals(PASSWORD, dpi.password);
+        assertEquals(TYPE, dpi.type);
+        assertEquals(MAX_CONNS_TIME, dpi.maxConnsTime);
+        assertEquals(MAX_CONNS, dpi.maxConns);
+        assertEquals(WAIT_TIME, dpi.waitTime);
+        assertEquals(APN_ENABLED, dpi.enabled);
+        assertEquals(SUPPORTED_APNT_YPES_BITMAP, dpi.supportedApnTypesBitmap);
+        assertEquals(ROAMING_PROTOCOL, dpi.protocol);
+        assertEquals(BEARER_BITMAP, dpi.bearerBitmap);
+        assertEquals(MTU, dpi.mtu);
+        assertEquals(0, dpi.mvnoType);
+        assertEquals(MVNO_MATCH_DATA, dpi.mvnoMatchData);
+    }
 }
