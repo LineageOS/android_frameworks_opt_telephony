@@ -123,9 +123,9 @@ public class RatRatcheter {
             int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
                     newSS.getRilDataRadioTechnology());
             newSS.setRilDataRadioTechnology(newDataRat);
-        } else if (oldSS.getRilVoiceRadioTechnology() != newSS.getRilVoiceRadioTechnology()) {
+        } else if (oldSS.getRilDataRadioTechnology() != newSS.getRilDataRadioTechnology()) {
             // resume rat ratchet on following rat change within the same location
-            mVoiceRatchetEnabled = true;
+            mDataRatchetEnabled = true;
         }
 
         boolean newUsingCA = oldSS.isUsingCarrierAggregation()
