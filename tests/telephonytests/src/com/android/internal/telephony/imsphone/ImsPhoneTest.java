@@ -507,48 +507,6 @@ public class ImsPhoneTest extends TelephonyTest {
     }
 
     @Test
-    public void testInServiceWhenRegisteredAndVoLTE() {
-        mImsPhoneUT.setImsRegistered(true);
-        doReturn(true).when(mImsCT).isVolteEnabled();
-        mImsPhoneUT.onFeatureCapabilityChanged();
-        assertEquals(ServiceState.STATE_IN_SERVICE, mImsPhoneUT.getServiceState().getState());
-    }
-
-    @Test
-    public void testInServiceWhenRegisteredAndVoWiFi() {
-        mImsPhoneUT.setImsRegistered(true);
-        doReturn(true).when(mImsCT).isVowifiEnabled();
-        mImsPhoneUT.onFeatureCapabilityChanged();
-        assertEquals(ServiceState.STATE_IN_SERVICE, mImsPhoneUT.getServiceState().getState());
-    }
-
-    @Test
-    public void testOutOfServiceWhenRegisteredAndNoVoice() {
-        mImsPhoneUT.setImsRegistered(true);
-        doReturn(false).when(mImsCT).isVowifiEnabled();
-        doReturn(false).when(mImsCT).isVolteEnabled();
-        mImsPhoneUT.onFeatureCapabilityChanged();
-        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, mImsPhoneUT.getServiceState().getState());
-    }
-
-    @Test
-    public void testOutOfServiceWhenNotRegistered() {
-        mImsPhoneUT.setImsRegistered(false);
-        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, mImsPhoneUT.getServiceState().getState());
-    }
-
-    @Test
-    public void testOutOfServiceWhenRegisteredAndLoseVoice() {
-        doReturn(true).when(mImsCT).isVolteEnabled();
-        mImsPhoneUT.setImsRegistered(true);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mImsPhoneUT.getServiceState().getState());
-
-        doReturn(false).when(mImsCT).isVolteEnabled();
-        mImsPhoneUT.onFeatureCapabilityChanged();
-        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, mImsPhoneUT.getServiceState().getState());
-    }
-
-    @Test
     @SmallTest
     public void testCellBarring() throws Exception {
         Message msg = mTestHandler.obtainMessage();

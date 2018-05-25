@@ -246,21 +246,30 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testImsRegistered() {
+        // when IMS is registered
         mRegistrationCallback.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        // then service state should be IN_SERVICE and ImsPhone state set to registered
+        verify(mImsPhone).setServiceState(eq(ServiceState.STATE_IN_SERVICE));
         verify(mImsPhone).setImsRegistered(eq(true));
     }
 
     @Test
     @SmallTest
     public void testImsRegistering() {
+        // when IMS is registering
         mRegistrationCallback.onRegistering(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        // then service state should be OUT_OF_SERVICE and ImsPhone state set to not registered
+        verify(mImsPhone).setServiceState(eq(ServiceState.STATE_OUT_OF_SERVICE));
         verify(mImsPhone).setImsRegistered(eq(false));
     }
 
     @Test
     @SmallTest
     public void testImsDeregistered() {
+        // when IMS is deregistered
         mRegistrationCallback.onDeregistered(new ImsReasonInfo());
+        // then service state should be OUT_OF_SERVICE and ImsPhone state set to not registered
+        verify(mImsPhone).setServiceState(eq(ServiceState.STATE_OUT_OF_SERVICE));
         verify(mImsPhone).setImsRegistered(eq(false));
     }
 
