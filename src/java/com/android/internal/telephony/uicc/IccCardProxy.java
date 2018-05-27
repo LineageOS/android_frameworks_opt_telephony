@@ -169,17 +169,31 @@ public class IccCardProxy extends Handler implements IccCard {
      */
     private void updateQuietMode() {
         synchronized (mLock) {
+            boolean oldQuietMode = mQuietMode;
             boolean newQuietMode;
             int cdmaSource = Phone.CDMA_SUBSCRIPTION_UNKNOWN;
+            boolean isLteOnCdmaMode = TelephonyManager.getLteOnCdmaModeStatic()
+                    == PhoneConstants.LTE_ON_CDMA_TRUE;
             if (mCurrentAppType == UiccController.APP_FAM_3GPP) {
                 newQuietMode = false;
                 if (DBG) log("updateQuietMode: 3GPP subscription -> newQuietMode=" + newQuietMode);
             } else {
+                if (isLteOnCdmaMode) {
+                    log("updateQuietMode: is cdma/lte device, force IccCardProxy into 3gpp mode");
+                    mCurrentAppType = UiccController.APP_FAM_3GPP;
+                }
                 cdmaSource = mCdmaSSM != null ?
                         mCdmaSSM.getCdmaSubscriptionSource() : Phone.CDMA_SUBSCRIPTION_UNKNOWN;
 
                 newQuietMode = (cdmaSource == Phone.CDMA_SUBSCRIPTION_NV)
-                        && (mCurrentAppType == UiccController.APP_FAM_3GPP2);
+                        && (mCurrentAppType == UiccController.APP_FAM_3GPP2)
+                        && !isLteOnCdmaMode;
+                if (DBG) {
+                    log("updateQuietMode: cdmaSource=" + cdmaSource
+                            + " mCurrentAppType=" + mCurrentAppType
+                            + " isLteOnCdmaMode=" + isLteOnCdmaMode
+                            + " newQuietMode=" + newQuietMode);
+                }
             }
 
             if (mQuietMode == false && newQuietMode == true) {
@@ -200,7 +214,8 @@ public class IccCardProxy extends Handler implements IccCard {
             }
             if (DBG) {
                 log("updateQuietMode: QuietMode is " + mQuietMode + " (app_type="
-                    + mCurrentAppType + " cdmaSource=" + cdmaSource + ")");
+                    + mCurrentAppType + " isLteOnCdmaMode=" + isLteOnCdmaMode
+                    + " cdmaSource=" + cdmaSource + ")");
             }
             mInitialized = true;
             sendMessage(obtainMessage(EVENT_ICC_CHANGED));
