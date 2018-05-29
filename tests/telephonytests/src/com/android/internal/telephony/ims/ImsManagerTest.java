@@ -313,10 +313,11 @@ public class ImsManagerTest extends TelephonyTest {
         doReturn(true).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
         // Turn on WFC
         imsManager.setWfcSetting(true);
-        // Roaming mode (WIFI_PREFERRED) should be set. With 1000 ms timeout.
+        // User defined setting for Roaming mode (WIFI_ONLY) should be set independent of whether or
+        // not WFC mode is editable. With 1000 ms timeout.
         verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
-                eq(WFC_IMS_ROAMING_MODE_DEFAULT_VAL));
+                eq(ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
 
         // Not roaming
         doReturn(false).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
