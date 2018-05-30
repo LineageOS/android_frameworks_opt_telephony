@@ -49,13 +49,16 @@ import java.util.Hashtable;
 public class ImsManagerTest extends TelephonyTest {
     private static final String UNSET_PROVISIONED_STRING = "unset";
     private static final boolean ENHANCED_4G_MODE_DEFAULT_VAL = true;
-    private static final boolean ENHANCED_4G_ENABLE_DEFAULT_VAL = true;
     private static final boolean ENHANCED_4G_MODE_EDITABLE = true;
     private static final boolean WFC_IMS_ENABLE_DEFAULT_VAL = false;
     private static final boolean WFC_IMS_ROAMING_ENABLE_DEFAULT_VAL = true;
     private static final boolean VT_IMS_ENABLE_DEFAULT_VAL = true;
-    private static final int WFC_IMS_MODE_DEFAULT_VAL = 2;
-    private static final int WFC_IMS_ROAMING_MODE_DEFAULT_VAL = 3;
+    private static final boolean WFC_IMS_EDITABLE_VAL = true;
+    private static final boolean WFC_IMS_NOT_EDITABLE_VAL = false;
+    private static final int WFC_IMS_MODE_DEFAULT_VAL =
+            ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED;
+    private static final int WFC_IMS_ROAMING_MODE_DEFAULT_VAL =
+            ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED;
 
     PersistableBundle mBundle;
 
@@ -97,7 +100,9 @@ public class ImsManagerTest extends TelephonyTest {
 
     private void setDefaultValues() {
         mBundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL,
-                ENHANCED_4G_ENABLE_DEFAULT_VAL);
+                ENHANCED_4G_MODE_EDITABLE);
+        mBundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL,
+                WFC_IMS_EDITABLE_VAL);
         mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_ENABLED_BOOL,
                 WFC_IMS_ENABLE_DEFAULT_VAL);
         mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_ROAMING_ENABLED_BOOL,
@@ -124,7 +129,7 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(SubscriptionManager.WFC_IMS_ENABLED),
                 anyString());
 
-        assertEquals(ENHANCED_4G_ENABLE_DEFAULT_VAL,
+        assertEquals(ENHANCED_4G_MODE_DEFAULT_VAL,
                 imsManager.isEnhanced4gLteModeSettingEnabledByUser());
         verify(mSubscriptionController, times(1)).getSubscriptionProperty(
                 anyInt(),
@@ -244,14 +249,22 @@ public class ImsManagerTest extends TelephonyTest {
 
     }
 
+    /**
+     * Tests that when a WFC mode is set for home/roaming, that setting is sent to the ImsService
+     * correctly.
+     *
+     * Preconditions:
+     *  - CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL = true
+     */
     @Test @SmallTest
     public void testSetWfcSetting_true_shouldSetWfcModeWrtRoamingState() throws Exception {
-        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED))
+        // First, Set WFC home/roaming mode that is not the Carrier Config default.
+        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED))
                 .when(mSubscriptionController).getSubscriptionProperty(
                         anyInt(),
                         eq(SubscriptionManager.WFC_IMS_MODE),
                         anyString());
-        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED))
+        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED))
                 .when(mSubscriptionController).getSubscriptionProperty(
                         anyInt(),
                         eq(SubscriptionManager.WFC_IMS_ROAMING_MODE),
@@ -262,19 +275,97 @@ public class ImsManagerTest extends TelephonyTest {
         doReturn(true).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
         // Turn on WFC
         imsManager.setWfcSetting(true);
-        // Roaming mode (WIFI_PREFERRED) should be set. With 1000 ms timeout.
+        // Roaming mode (CELLULAR_PREFERRED) should be set. With 1000 ms timeout.
         verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
-                eq(ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED));
+                eq(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED));
 
         // Not roaming
         doReturn(false).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
         // Turn on WFC
         imsManager.setWfcSetting(true);
-        // Home mode (CELLULAR_PREFERRED) should be set. With 1000 ms timeout.
+        // Home mode (WIFI_PREFERRED) should be set. With 1000 ms timeout.
         verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
-                eq(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED));
+                eq(ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED));
+    }
+
+    /**
+     * Tests that the settings for WFC mode are ignored if the Carrier sets the settings to not
+     * editable.
+     *
+     * Preconditions:
+     *  - CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL = false
+     */
+    @Test @SmallTest
+    public void testSetWfcSetting_wfcNotEditable() throws Exception {
+        mBundle.putBoolean(CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL,
+                WFC_IMS_NOT_EDITABLE_VAL);
+        // Set some values that are different than the defaults for WFC mode.
+        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY))
+                .when(mSubscriptionController).getSubscriptionProperty(
+                anyInt(),
+                eq(SubscriptionManager.WFC_IMS_MODE),
+                anyString());
+        doReturn(String.valueOf(ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY))
+                .when(mSubscriptionController).getSubscriptionProperty(
+                anyInt(),
+                eq(SubscriptionManager.WFC_IMS_ROAMING_MODE),
+                anyString());
+        ImsManager imsManager = initializeProvisionedValues();
+
+        // Roaming
+        doReturn(true).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
+        // Turn on WFC
+        imsManager.setWfcSetting(true);
+        // User defined setting for Roaming mode (WIFI_ONLY) should be set independent of whether or
+        // not WFC mode is editable. With 1000 ms timeout.
+        verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
+                eq(ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
+
+        // Not roaming
+        doReturn(false).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
+        // Turn on WFC
+        imsManager.setWfcSetting(true);
+        // Default Home mode (CELLULAR_PREFERRED) should be set. With 1000 ms timeout.
+        verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
+                eq(WFC_IMS_MODE_DEFAULT_VAL));
+    }
+
+    /**
+     * Tests that the CarrierConfig defaults will be used if no setting is set in the Subscription
+     * Manager.
+     *
+     * Preconditions:
+     *  - CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL = true
+     *  - CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_MODE_INT = Carrier preferred
+     *  - CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_ROAMING_MODE_INT = WiFi preferred
+     */
+    @Test @SmallTest
+    public void testSetWfcSetting_noUserSettingSet() throws Exception {
+        ImsManager imsManager = initializeProvisionedValues();
+
+        // Roaming
+        doReturn(true).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
+        // Turn on WFC
+        imsManager.setWfcSetting(true);
+
+        // Default Roaming mode (WIFI_PREFERRED) for carrier should be set. With 1000 ms timeout.
+        verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
+                eq(WFC_IMS_ROAMING_MODE_DEFAULT_VAL));
+
+        // Not roaming
+        doReturn(false).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
+        // Turn on WFC
+        imsManager.setWfcSetting(true);
+
+        // Default Home mode (CELLULAR_PREFERRED) for carrier should be set. With 1000 ms timeout.
+        verify(mImsConfigImplBaseMock, timeout(1000)).setConfig(
+                eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
+                eq(WFC_IMS_MODE_DEFAULT_VAL));
     }
 
     private ImsManager initializeProvisionedValues() {
