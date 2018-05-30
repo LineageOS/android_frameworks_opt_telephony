@@ -1060,26 +1060,22 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     /**
-     * Updates the wifi state based on the {@link ImsCallProfile#EXTRA_CALL_RAT_TYPE}.
-     * The call is considered to be a WIFI call if the extra value is
-     * {@link ServiceState#RIL_RADIO_TECHNOLOGY_IWLAN}.
+     * Updates the IMS call rat based on the {@link ImsCallProfile#EXTRA_CALL_RAT_TYPE}.
      *
      * @param extras The ImsCallProfile extras.
      */
-    private void updateWifiStateFromExtras(Bundle extras) {
+    private void updateImsCallRatFromExtras(Bundle extras) {
         if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE) ||
                 extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT)) {
 
             ImsCall call = getImsCall();
-            boolean isWifi = false;
+            int callTech = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
             if (call != null) {
-                isWifi = call.isWifiCall();
+                callTech = call.getRadioTechnology();
             }
 
-            // Report any changes
-            if (isWifi() != isWifi) {
-                setWifi(isWifi);
-            }
+            // Report any changes for call tech change
+            setCallRadioTech(callTech);
         }
     }
 
@@ -1103,7 +1099,7 @@ public class ImsPhoneConnection extends Connection implements
 
         final boolean changed = !areBundlesEqual(extras, mExtras);
         if (changed) {
-            updateWifiStateFromExtras(extras);
+            updateImsCallRatFromExtras(extras);
 
             mExtras.clear();
             mExtras.putAll(extras);

@@ -46,6 +46,7 @@ import java.lang.reflect.Field;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
@@ -242,8 +243,8 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     public void testSetWifi() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertFalse(mConnectionUT.isWifi());
-        // ImsCall.isWifiCall is tested elsewhere
-        doReturn(true).when(mImsCall).isWifiCall();
+        // ImsCall.getRadioTechnology is tested elsewhere
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN).when(mImsCall).getRadioTechnology();
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
@@ -255,14 +256,42 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     public void testSetWifi2() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertFalse(mConnectionUT.isWifi());
-        // ImsCall.isWifiCall is tested elsewhere
-        doReturn(true).when(mImsCall).isWifiCall();
+        // ImsCall.getRadioTechnology is tested elsewhere
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN).when(mImsCall).getRadioTechnology();
         // Tests to make sure that the EXTRA_CALL_RAT_TYPE_ALT string is set correctly for newer
         // devices.
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT,
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertTrue(mConnectionUT.isWifi());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetLTE() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertNotEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        // ImsCall.getRadioTechnology is tested elsewhere
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mImsCall).getRadioTechnology();
+        mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE + "");
+        assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
+        assertEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetLTE2() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertNotEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        // ImsCall.getRadioTechnology is tested elsewhere
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mImsCall).getRadioTechnology();
+        // Tests to make sure that the EXTRA_CALL_RAT_TYPE_ALT string is set correctly for newer
+        // devices.
+        mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT,
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE + "");
+        assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
+        assertEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
     }
 
     /**

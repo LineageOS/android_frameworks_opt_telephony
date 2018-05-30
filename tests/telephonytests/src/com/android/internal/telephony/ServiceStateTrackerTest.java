@@ -126,6 +126,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private static final int EVENT_PS_RESTRICT_DISABLED = 9;
     private static final int EVENT_VOICE_ROAMING_ON = 10;
     private static final int EVENT_VOICE_ROAMING_OFF = 11;
+    private static final int EVENT_VOICE_RAT_CHANGED = 12;
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
 
@@ -1014,6 +1015,25 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // verify that no new message posted to handler
         verify(mTestHandler, times(1)).sendMessageAtTime(any(Message.class), anyLong());
+    }
+
+    @Test
+    @MediumTest
+    public void testRegisterForVoiceRegStateOrRatChange() {
+        int vrs = NetworkRegistrationState.REG_STATE_HOME;
+        int vrat = sst.mSS.RIL_RADIO_TECHNOLOGY_LTE;
+        sst.mSS.setRilVoiceRadioTechnology(vrat);
+        sst.mSS.setVoiceRegState(vrs);
+        sst.registerForVoiceRegStateOrRatChanged(mTestHandler, EVENT_VOICE_RAT_CHANGED, null);
+
+        waitForMs(100);
+
+        // Verify if message was posted to handler and value of result
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        assertEquals(EVENT_VOICE_RAT_CHANGED, messageArgumentCaptor.getValue().what);
+        assertEquals(new Pair<Integer, Integer>(vrs, vrat),
+                ((AsyncResult)messageArgumentCaptor.getValue().obj).result);
     }
 
     @Test
