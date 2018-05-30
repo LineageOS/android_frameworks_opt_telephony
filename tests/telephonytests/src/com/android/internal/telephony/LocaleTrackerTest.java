@@ -26,9 +26,11 @@ import static org.mockito.Mockito.verify;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;
+import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellInfoGsm;
+import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.After;
@@ -157,6 +159,25 @@ public class LocaleTrackerTest extends TelephonyTest {
 
         doReturn(Arrays.asList(mCellInfo)).when(mPhone).getAllCellInfo(isNull());
         waitForHandlerActionDelayed(mLocaleTracker, 100, 2500);
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        verify(mWifiManager).setCountryCode(US_COUNTRY_CODE);
+    }
+
+    @Test
+    @SmallTest
+    public void testOutOfAirplaneMode() throws Exception {
+        doReturn(null).when(mPhone).getAllCellInfo(isNull());
+        mLocaleTracker.updateOperatorNumericAsync("");
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+        verify(mWifiManager).setCountryCode(COUNTRY_CODE_UNAVAILABLE);
+
+        doReturn(Arrays.asList(mCellInfo)).when(mPhone).getAllCellInfo(isNull());
+        ServiceState ss = new ServiceState();
+        ss.setState(ServiceState.STATE_IN_SERVICE);
+        AsyncResult ar = new AsyncResult(null, ss, null);
+        mLocaleTracker.sendMessage(mLocaleTracker.obtainMessage(3, ar));
+        waitForHandlerAction(mLocaleTracker, 100);
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
         verify(mWifiManager).setCountryCode(US_COUNTRY_CODE);
     }
