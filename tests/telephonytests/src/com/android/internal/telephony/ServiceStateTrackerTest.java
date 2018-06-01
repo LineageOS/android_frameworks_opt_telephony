@@ -60,13 +60,16 @@ import android.support.test.filters.FlakyTest;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentityGsm;
+import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
+import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -88,6 +91,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -1626,5 +1630,98 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForMs(200);
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilVoiceRadioTechnology());
+    }
+
+    private void sendPhyChanConfigChange(int[] bandwidths) {
+        ArrayList<PhysicalChannelConfig> pc = new ArrayList<>();
+        int ssType = PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
+        for (int bw : bandwidths) {
+            pc.add(new PhysicalChannelConfig(ssType, bw));
+
+            // All cells after the first are secondary serving cells.
+            ssType = PhysicalChannelConfig.CONNECTION_SECONDARY_SERVING;
+        }
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_PHYSICAL_CHANNEL_CONFIG,
+                new AsyncResult(null, pc, null)));
+        waitForMs(100);
+    }
+
+    private void sendRegStateUpdateForLteCellId(CellIdentityLte cellId) {
+        NetworkRegistrationState dataResult = new NetworkRegistrationState(
+                1, 2, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1);
+        NetworkRegistrationState voiceResult = new NetworkRegistrationState(
+                1, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId,
+                false, 0, 0, 0);
+        sst.mPollingContext[0] = 2;
+        // update data reg state to be in service
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForMs(200);
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceResult, null)));
+        waitForMs(200);
+    }
+
+    @Test
+    public void testPhyChanBandwidthUpdatedOnDataRegState() throws Exception {
+        // Cell ID change should trigger hasLocationChanged.
+        CellIdentityLte cellIdentity5 =
+                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst");
+
+        sendPhyChanConfigChange(new int[] {10000});
+        sendRegStateUpdateForLteCellId(cellIdentity5);
+        assertTrue(Arrays.equals(new int[] {5000}, sst.mSS.getCellBandwidths()));
+    }
+
+    @Test
+    public void testPhyChanBandwidthNotUpdatedWhenInvalidInCellIdentity() throws Exception {
+        // Cell ID change should trigger hasLocationChanged.
+        CellIdentityLte cellIdentityInv =
+                new CellIdentityLte(1, 1, 5, 1, 12345, "001", "01", "test", "tst");
+
+        sendPhyChanConfigChange(new int[] {10000});
+        sendRegStateUpdateForLteCellId(cellIdentityInv);
+        assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
+    }
+
+    @Test
+    public void testPhyChanBandwidthPrefersCarrierAggregationReport() throws Exception {
+        // Cell ID change should trigger hasLocationChanged.
+        CellIdentityLte cellIdentity10 =
+                new CellIdentityLte(1, 1, 5, 1, 10000, "001", "01", "test", "tst");
+
+        sendPhyChanConfigChange(new int[] {10000, 5000});
+        sendRegStateUpdateForLteCellId(cellIdentity10);
+        assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
+    }
+
+    @Test
+    public void testPhyChanBandwidthRatchetedOnPhyChanBandwidth() throws Exception {
+        // LTE Cell with bandwidth = 10000
+        CellIdentityLte cellIdentity10 =
+                new CellIdentityLte(1, 1, 1, 1, 10000, "1", "1", "test", "tst");
+
+        sendRegStateUpdateForLteCellId(cellIdentity10);
+        assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
+        sendPhyChanConfigChange(new int[] {10000, 5000});
+        assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
+    }
+
+    @Test
+    public void testPhyChanBandwidthResetsOnOos() throws Exception {
+        testPhyChanBandwidthRatchetedOnPhyChanBandwidth();
+        NetworkRegistrationState dataResult = new NetworkRegistrationState(
+                1, 2, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, 1);
+        NetworkRegistrationState voiceResult = new NetworkRegistrationState(
+                1, 1, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null,
+                false, 0, 0, 0);
+        sst.mPollingContext[0] = 2;
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForMs(200);
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceResult, null)));
+        waitForMs(200);
+        assertTrue(Arrays.equals(new int[0], sst.mSS.getCellBandwidths()));
     }
 }
