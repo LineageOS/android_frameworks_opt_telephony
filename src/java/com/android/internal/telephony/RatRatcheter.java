@@ -102,7 +102,7 @@ public class RatRatcheter {
 
     /** Ratchets RATs and cell bandwidths if oldSS and newSS have the same RAT family. */
     public void ratchet(ServiceState oldSS, ServiceState newSS, boolean locationChange) {
-        if (isSameRatFamily(oldSS, newSS)) {
+        if (!locationChange && isSameRatFamily(oldSS, newSS)) {
             updateBandwidths(oldSS.getCellBandwidths(), newSS);
         }
         // temporarily disable rat ratchet on location change.
@@ -137,6 +137,10 @@ public class RatRatcheter {
 
     private boolean isSameRatFamily(ServiceState ss1, ServiceState ss2) {
         synchronized (mRatFamilyMap) {
+            // Either the two technologies are the same or their families must be non-null
+            // and the same.
+            if (ss1.getRilDataRadioTechnology() == ss2.getRilDataRadioTechnology()) return true;
+            if (mRatFamilyMap.get(ss1.getRilDataRadioTechnology()) == null) return false;
             return mRatFamilyMap.get(ss1.getRilDataRadioTechnology())
                     == mRatFamilyMap.get(ss2.getRilDataRadioTechnology());
         }
