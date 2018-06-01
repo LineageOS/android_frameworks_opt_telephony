@@ -16,13 +16,8 @@
 
 package com.android.internal.telephony.gsm;
 
-import android.app.Activity;
-import android.app.PendingIntent;
-import android.app.PendingIntent.CanceledException;
-import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Message;
-import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -188,6 +183,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 + " mRetryCount=" + tracker.mRetryCount
                 + " mImsRetry=" + tracker.mImsRetry
                 + " mMessageRef=" + tracker.mMessageRef
+                + " mUsesImsServiceForIms=" + tracker.mUsesImsServiceForIms
                 + " SS=" + mPhone.getServiceState().getState());
 
         int ss = mPhone.getServiceState().getState();
@@ -203,8 +199,11 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         // sms over gsm is used:
         //   if sms over IMS is not supported AND
         //   this is not a retry case after sms over IMS failed
-        //     indicated by mImsRetry > 0
-        if (0 == tracker.mImsRetry && !isIms()) {
+        //     indicated by mImsRetry > 0 OR
+        //   this tracker uses ImsSmsDispatcher to handle SMS over IMS. This dispatcher has received
+        //     this message because the ImsSmsDispatcher has indicated that the message needs to
+        //     fall back to sending over CS.
+        if (0 == tracker.mImsRetry && !isIms() || tracker.mUsesImsServiceForIms) {
             if (tracker.mRetryCount == 0 && tracker.mExpectMore) {
                 mCi.sendSMSExpectMore(IccUtils.bytesToHexString(smsc),
                         IccUtils.bytesToHexString(pdu), reply);
