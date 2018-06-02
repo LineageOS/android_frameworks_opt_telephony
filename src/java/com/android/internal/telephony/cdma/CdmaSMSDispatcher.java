@@ -16,12 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
-import android.app.Activity;
-import android.app.PendingIntent;
-import android.app.PendingIntent.CanceledException;
-import android.content.Intent;
 import android.os.Message;
-import android.provider.Telephony.Sms;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -124,6 +119,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 + " mRetryCount=" + tracker.mRetryCount
                 + " mImsRetry=" + tracker.mImsRetry
                 + " mMessageRef=" + tracker.mMessageRef
+                + " mUsesImsServiceForIms=" + tracker.mUsesImsServiceForIms
                 + " SS=" + mPhone.getServiceState().getState());
 
         int ss = mPhone.getServiceState().getState();
@@ -147,8 +143,11 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         // sms over cdma is used:
         //   if sms over IMS is not supported AND
         //   this is not a retry case after sms over IMS failed
-        //     indicated by mImsRetry > 0
-        if (0 == tracker.mImsRetry && !isIms() || imsSmsDisabled) {
+        //     indicated by mImsRetry > 0 OR
+        //   SMS over IMS is disabled because of the network type OR
+        //   SMS over IMS is being handled by the ImsSmsDispatcher implementation and has indicated
+        //   that the message should fall back to sending over CS.
+        if (0 == tracker.mImsRetry && !isIms() || imsSmsDisabled || tracker.mUsesImsServiceForIms) {
             mCi.sendCdmaSms(pdu, reply);
         } else {
             mCi.sendImsCdmaSms(pdu, tracker.mImsRetry, tracker.mMessageRef, reply);

@@ -280,6 +280,10 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 + " mMessageRef=" + tracker.mMessageRef
                 + " SS=" + mPhone.getServiceState().getState());
 
+        // Flag that this Tracker is using the ImsService implementation of SMS over IMS for sending
+        // this message. Any fallbacks will happen over CS only.
+        tracker.mUsesImsServiceForIms = true;
+
         HashMap<String, Object> map = tracker.getData();
 
         byte[] pdu = (byte[]) map.get(MAP_KEY_PDU);
