@@ -522,6 +522,7 @@ public class CarrierKeyDownloadManager {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(mURL));
             request.setAllowedOverMetered(false);
             request.setVisibleInDownloadsUi(false);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
             Long carrierKeyDownloadRequestId = mDownloadManager.enqueue(request);
             SharedPreferences.Editor editor = getDefaultSharedPreferences(mContext).edit();
 

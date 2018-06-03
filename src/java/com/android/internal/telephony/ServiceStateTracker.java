@@ -131,6 +131,7 @@ public class ServiceStateTracker extends Handler {
     private static final long LAST_CELL_INFO_LIST_MAX_AGE_MS = 2000;
     private long mLastCellInfoListTime;
     private List<CellInfo> mLastCellInfoList = null;
+    private List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = null;
 
     private SignalStrength mSignalStrength;
 
@@ -1459,6 +1460,7 @@ public class ServiceStateTracker extends Handler {
                                 + list);
                     }
                     mPhone.notifyPhysicalChannelConfiguration(list);
+                    mLastPhysicalChannelConfigList = list;
 
                     // only notify if bandwidths changed
                     if (RatRatcheter.updateBandwidths(getBandwidthsFromConfigs(list), mSS)) {
@@ -1798,7 +1800,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setRilVoiceRadioTechnology(newVoiceRat);
                 mNewSS.addNetworkRegistrationState(networkRegState);
-                setChannelNumberFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
+                setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 //Denial reason if registrationState = 3
                 int reasonForDenial = networkRegState.getReasonForDenial();
@@ -1874,7 +1876,14 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setDataRegState(serviceState);
                 mNewSS.setRilDataRadioTechnology(newDataRat);
                 mNewSS.addNetworkRegistrationState(networkRegState);
-                setChannelNumberFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
+
+                // When we receive OOS reset the PhyChanConfig list so that non-return-to-idle
+                // implementers of PhyChanConfig unsol will not carry forward a CA report
+                // (2 or more cells) to a new cell if they camp for emergency service only.
+                if (serviceState == ServiceState.STATE_OUT_OF_SERVICE) {
+                    mLastPhysicalChannelConfigList = null;
+                }
+                setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 if (mPhone.isPhoneTypeGsm()) {
 
@@ -2013,7 +2022,22 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    private void setChannelNumberFromCellIdentity(ServiceState ss, CellIdentity cellIdentity) {
+    private static boolean isValidLteBandwidthKhz(int bandwidth) {
+        // Valid bandwidths, see 3gpp 36.101 sec. 5.6
+        switch (bandwidth) {
+            case 1400:
+            case 3000:
+            case 5000:
+            case 10000:
+            case 15000:
+            case 20000:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void setPhyCellInfoFromCellIdentity(ServiceState ss, CellIdentity cellIdentity) {
         if (cellIdentity == null) {
             if (DBG) {
                 log("Could not set ServiceState channel number. CellIdentity null");
@@ -2024,6 +2048,49 @@ public class ServiceStateTracker extends Handler {
         ss.setChannelNumber(cellIdentity.getChannelNumber());
         if (VDBG) {
             log("Setting channel number: " + cellIdentity.getChannelNumber());
+        }
+
+        if (cellIdentity instanceof CellIdentityLte) {
+            CellIdentityLte cl = (CellIdentityLte) cellIdentity;
+            int[] bandwidths = null;
+            // Prioritize the PhysicalChannelConfig list because we might already be in carrier
+            // aggregation by the time poll state is performed.
+            if (!ArrayUtils.isEmpty(mLastPhysicalChannelConfigList)) {
+                bandwidths = getBandwidthsFromConfigs(mLastPhysicalChannelConfigList);
+                for (int bw : bandwidths) {
+                    if (!isValidLteBandwidthKhz(bw)) {
+                        loge("Invalid LTE Bandwidth in RegistrationState, " + bw);
+                        bandwidths = null;
+                        break;
+                    }
+                }
+            }
+            // If we don't have a PhysicalChannelConfig[] list, then pull from CellIdentityLte.
+            // This is normal if we're in idle mode and the PhysicalChannelConfig[] has already
+            // been updated. This is also a fallback in case the PhysicalChannelConfig info
+            // is invalid (ie, broken).
+            // Also, for vendor implementations that do not report return-to-idle, we should
+            // prioritize the bandwidth report in the CellIdentity, because the physical channel
+            // config report may be stale in the case where a single carrier was used previously
+            // and we transition to camped-for-emergency (since we never have a physical
+            // channel active). In the normal case of single-carrier non-return-to-idle, the
+            // values *must* be the same, so it doesn't matter which is chosen.
+            if (bandwidths == null || bandwidths.length == 1) {
+                final int cbw = cl.getBandwidth();
+                if (isValidLteBandwidthKhz(cbw)) {
+                    bandwidths = new int[] {cbw};
+                } else if (cbw == Integer.MAX_VALUE) {
+                    // Bandwidth is unreported; c'est la vie. This is not an error because
+                    // pre-1.2 HAL implementations do not support bandwidth reporting.
+                } else {
+                    loge("Invalid LTE Bandwidth in RegistrationState, " + cbw);
+                }
+            }
+            if (bandwidths != null) {
+                ss.setCellBandwidths(bandwidths);
+            }
+        } else {
+            if (VDBG) log("Skipping bandwidth update for Non-LTE cell.");
         }
     }
 
