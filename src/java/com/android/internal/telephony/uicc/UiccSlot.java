@@ -112,9 +112,9 @@ public class UiccSlot extends Handler {
                 }
 
                 if (!mIsEuicc) {
-                    mUiccCard = new UiccCard(mContext, mCi, ics, mPhoneId);
+                    mUiccCard = new UiccCard(mContext, mCi, ics, mPhoneId, mLock);
                 } else {
-                    mUiccCard = new EuiccCard(mContext, mCi, ics, phoneId);
+                    mUiccCard = new EuiccCard(mContext, mCi, ics, phoneId, mLock);
                 }
             } else {
                 if (mUiccCard != null) {
