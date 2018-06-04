@@ -46,7 +46,9 @@ public class UiccCard {
     public static final String EXTRA_ICC_CARD_ADDED =
             "com.android.internal.telephony.uicc.ICC_CARD_ADDED";
 
-    private final Object mLock = new Object();
+    // The lock object is created by UiccSlot that owns this UiccCard - this is to share the lock
+    // between UiccSlot, UiccCard and UiccProfile for now.
+    private final Object mLock;
     private CardState mCardState;
     private String mIccid;
     protected String mCardId;
@@ -55,10 +57,11 @@ public class UiccCard {
     private CommandsInterface mCi;
     private final int mPhoneId;
 
-    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId) {
+    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
         if (DBG) log("Creating");
         mCardState = ics.mCardState;
         mPhoneId = phoneId;
+        mLock = lock;
         update(c, ci, ics);
     }
 
@@ -83,7 +86,7 @@ public class UiccCard {
             if (mCardState != CardState.CARDSTATE_ABSENT) {
                 if (mUiccProfile == null) {
                     mUiccProfile = TelephonyComponentFactory.getInstance().makeUiccProfile(
-                            mContext, mCi, ics, mPhoneId, this);
+                            mContext, mCi, ics, mPhoneId, this, mLock);
                 } else {
                     mUiccProfile.update(mContext, mCi, ics);
                 }

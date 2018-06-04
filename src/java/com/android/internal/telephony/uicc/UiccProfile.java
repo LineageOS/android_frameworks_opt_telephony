@@ -89,7 +89,9 @@ public class UiccProfile extends IccCard {
 
     private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
 
-    private final Object mLock = new Object();
+    // The lock object is created by UiccSlot that owns the UiccCard that owns this UiccProfile.
+    // This is to share the lock between UiccSlot, UiccCard and UiccProfile for now.
+    private final Object mLock;
     private PinState mUniversalPinState;
     private int mGsmUmtsSubscriptionAppIndex;
     private int mCdmaSubscriptionAppIndex;
@@ -226,8 +228,9 @@ public class UiccProfile extends IccCard {
     };
 
     public UiccProfile(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId,
-            UiccCard uiccCard) {
+            UiccCard uiccCard, Object lock) {
         if (DBG) log("Creating profile");
+        mLock = lock;
         mUiccCard = uiccCard;
         mPhoneId = phoneId;
         // set current app type based on phone type - do this before calling update() as that
