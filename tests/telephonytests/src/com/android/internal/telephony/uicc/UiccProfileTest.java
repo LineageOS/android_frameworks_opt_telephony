@@ -84,7 +84,7 @@ public class UiccProfileTest extends TelephonyTest {
         public void onLooperPrepared() {
             mUiccProfile = new UiccProfile(mContextFixture.getTestDouble(),
                                            mSimulatedCommands, mIccCardStatus, 0 /* phoneId */,
-                                           mUiccCard);
+                                           mUiccCard, new Object());
             /* create a custom handler for the Handler Thread */
             mHandler = new Handler(mTestHandlerThread.getLooper()) {
                 @Override
