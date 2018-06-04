@@ -104,8 +104,8 @@ public class TelephonyComponentFactory {
      * Create a new UiccProfile object.
      */
     public UiccProfile makeUiccProfile(Context context, CommandsInterface ci, IccCardStatus ics,
-                                       int phoneId, UiccCard uiccCard) {
-        return new UiccProfile(context, ci, ics, phoneId, uiccCard);
+                                       int phoneId, UiccCard uiccCard, Object lock) {
+        return new UiccProfile(context, ci, ics, phoneId, uiccCard, lock);
     }
 
     public EriManager makeEriManager(Phone phone, Context context, int eriFileSource) {

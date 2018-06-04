@@ -116,8 +116,8 @@ public class EuiccCard extends UiccCard {
     private EuiccSpecVersion mSpecVersion;
     private volatile String mEid;
 
-    public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId) {
-        super(c, ci, ics, phoneId);
+    public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
+        super(c, ci, ics, phoneId, lock);
         // TODO: Set supportExtendedApdu based on ATR.
         mApduSender = new ApduSender(ci, ISD_R_AID, false /* supportExtendedApdu */);
 

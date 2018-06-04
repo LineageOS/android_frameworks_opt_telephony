@@ -103,7 +103,7 @@ public class EuiccCardTest extends TelephonyTest {
         public void onLooperPrepared() {
             mEuiccCard =
                     new EuiccCard(mContextFixture.getTestDouble(), mMockCi, mMockIccCardStatus,
-                            0 /* phoneId */) {
+                            0 /* phoneId */, new Object()) {
                         @Override
                         protected byte[] getDeviceId() {
                             return IccUtils.bcdToBytes("987654321012345");
@@ -173,7 +173,7 @@ public class EuiccCardTest extends TelephonyTest {
             final CountDownLatch latch = new CountDownLatch(1);
             mHandler.post(() -> {
                 mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
-                        mMockIccCardStatus, 0 /* phoneId */);
+                        mMockIccCardStatus, 0 /* phoneId */, new Object());
                 latch.countDown();
             });
             assertTrue(latch.await(WAIT_TIMEOUT_MLLIS, TimeUnit.MILLISECONDS));
