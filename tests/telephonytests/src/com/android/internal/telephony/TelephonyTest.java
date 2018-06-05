@@ -332,7 +332,8 @@ public abstract class TelephonyTest {
                         nullable(CommandsInterface.class));
         doReturn(mUiccProfile).when(mTelephonyComponentFactory)
                 .makeUiccProfile(nullable(Context.class), nullable(CommandsInterface.class),
-                        nullable(IccCardStatus.class), anyInt(), nullable(UiccCard.class));
+                        nullable(IccCardStatus.class), anyInt(), nullable(UiccCard.class),
+                        nullable(Object.class));
         doReturn(mCT).when(mTelephonyComponentFactory)
                 .makeGsmCdmaCallTracker(nullable(GsmCdmaPhone.class));
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
