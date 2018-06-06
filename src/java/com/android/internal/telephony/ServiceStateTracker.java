@@ -2236,8 +2236,8 @@ public class ServiceStateTracker extends Handler {
             //
             // 2) Show PLMN + Wi-Fi Calling if there is no valid SPN in case 1
 
-            String[] wfcSpnFormats = mPhone.getContext().getResources().getStringArray(
-                    com.android.internal.R.array.wfcSpnFormats);
+            String[] wfcSpnFormats = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),
+                    mPhone.getSubId()).getStringArray(com.android.internal.R.array.wfcSpnFormats);
             int voiceIdx = 0;
             int dataIdx = 0;
             CarrierConfigManager configLoader = (CarrierConfigManager)
