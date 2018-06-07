@@ -628,7 +628,7 @@ public abstract class SMSDispatcher extends Handler {
      * Send an SMS PDU. Usually just calls {@link sendRawPdu}.
      */
     private void sendSubmitPdu(SmsTracker tracker) {
-        if (shouldBlockSms()) {
+        if (shouldBlockSmsForEcbm()) {
             Rlog.d(TAG, "Block SMS in Emergency Callback mode");
             tracker.onFailed(mContext, SmsManager.RESULT_ERROR_NO_SERVICE, 0/*errorCode*/);
         } else {
@@ -637,9 +637,9 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     /**
-     * @return true if MO SMS should be blocked.
+     * @return true if MO SMS should be blocked for Emergency Callback Mode.
      */
-    protected abstract boolean shouldBlockSms();
+    protected abstract boolean shouldBlockSmsForEcbm();
 
     /**
      * Called when SMS send completes. Broadcasts a sentIntent on success.

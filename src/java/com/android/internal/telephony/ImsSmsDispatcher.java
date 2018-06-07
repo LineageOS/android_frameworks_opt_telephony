@@ -247,8 +247,10 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected boolean shouldBlockSms() {
-        return SMSDispatcherUtil.shouldBlockSms(isCdmaMo(), mPhone);
+    protected boolean shouldBlockSmsForEcbm() {
+        // We should not block outgoing SMS during ECM on IMS. It only applies to outgoing CDMA
+        // SMS.
+        return false;
     }
 
     @Override
