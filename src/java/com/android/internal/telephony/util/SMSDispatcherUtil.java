@@ -36,17 +36,6 @@ public final class SMSDispatcherUtil {
     private SMSDispatcherUtil() {}
 
     /**
-     * Whether to block SMS or not.
-     *
-     * @param isCdma true if cdma format should be used.
-     * @param phone the Phone to use
-     * @return true to block sms; false otherwise.
-     */
-    public static boolean shouldBlockSms(boolean isCdma, Phone phone) {
-        return isCdma && phone.isInEcm();
-    }
-
-    /**
      * Trigger the proper implementation for getting submit pdu for text sms based on format.
      *
      * @param isCdma true if cdma format should be used.
