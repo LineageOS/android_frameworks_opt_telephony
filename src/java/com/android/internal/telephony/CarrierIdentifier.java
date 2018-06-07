@@ -342,6 +342,7 @@ public class CarrierIdentifier extends Handler {
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.PLMN)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.SPN)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.APN)),
+                cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.PRIVILEGE_ACCESS_RULE)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(CarrierId.CARRIER_ID)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.CARRIER_NAME)));
     }
@@ -349,7 +350,7 @@ public class CarrierIdentifier extends Handler {
     /**
      * carrier matching attributes with corresponding cid
      */
-    private static class CarrierMatchingRule {
+    private class CarrierMatchingRule {
         /**
          * These scores provide the hierarchical relationship between the attributes, intended to
          * resolve conflicts in a deterministic way. The scores are constructed such that a match
@@ -359,26 +360,28 @@ public class CarrierIdentifier extends Handler {
          * rule 1 {mccmnc, imsi} rule 2 {mccmnc, imsi, gid1} and rule 3 {mccmnc, imsi, gid2} all
          * matches with subscription data. rule 2 wins with the highest matching score.
          */
-        private static final int SCORE_MCCMNC          = 1 << 7;
-        private static final int SCORE_IMSI_PREFIX     = 1 << 6;
-        private static final int SCORE_ICCID_PREFIX    = 1 << 5;
-        private static final int SCORE_GID1            = 1 << 4;
-        private static final int SCORE_GID2            = 1 << 3;
-        private static final int SCORE_PLMN            = 1 << 2;
-        private static final int SCORE_SPN             = 1 << 1;
-        private static final int SCORE_APN             = 1 << 0;
+        private static final int SCORE_MCCMNC                   = 1 << 8;
+        private static final int SCORE_IMSI_PREFIX              = 1 << 7;
+        private static final int SCORE_ICCID_PREFIX             = 1 << 6;
+        private static final int SCORE_GID1                     = 1 << 5;
+        private static final int SCORE_GID2                     = 1 << 4;
+        private static final int SCORE_PLMN                     = 1 << 3;
+        private static final int SCORE_PRIVILEGE_ACCESS_RULE    = 1 << 2;
+        private static final int SCORE_SPN                      = 1 << 1;
+        private static final int SCORE_APN                      = 1 << 0;
 
-        private static final int SCORE_INVALID         = -1;
+        private static final int SCORE_INVALID                  = -1;
 
         // carrier matching attributes
-        private String mMccMnc;
-        private String mImsiPrefixPattern;
-        private String mIccidPrefix;
-        private String mGid1;
-        private String mGid2;
-        private String mPlmn;
-        private String mSpn;
-        private String mApn;
+        private final String mMccMnc;
+        private final String mImsiPrefixPattern;
+        private final String mIccidPrefix;
+        private final String mGid1;
+        private final String mGid2;
+        private final String mPlmn;
+        private final String mSpn;
+        private final String mApn;
+        private final String mPrivilegeAccessRule;
 
         // user-facing carrier name
         private String mName;
@@ -388,8 +391,8 @@ public class CarrierIdentifier extends Handler {
         private int mScore = 0;
 
         CarrierMatchingRule(String mccmnc, String imsiPrefixPattern, String iccidPrefix,
-                String gid1, String gid2, String plmn, String spn, String apn, int cid,
-                String name) {
+                String gid1, String gid2, String plmn, String spn, String apn,
+                String privilegeAccessRule, int cid, String name) {
             mMccMnc = mccmnc;
             mImsiPrefixPattern = imsiPrefixPattern;
             mIccidPrefix = iccidPrefix;
@@ -398,6 +401,7 @@ public class CarrierIdentifier extends Handler {
             mPlmn = plmn;
             mSpn = spn;
             mApn = apn;
+            mPrivilegeAccessRule = privilegeAccessRule;
             mCid = cid;
             mName = name;
         }
@@ -462,6 +466,16 @@ public class CarrierIdentifier extends Handler {
                 }
                 mScore += SCORE_SPN;
             }
+
+            if (mPrivilegeAccessRule != null) {
+                if (mUiccProfile == null || !mUiccProfile.hasCarrierPrivilegeRulesLoadedForCertHex(
+                        mPrivilegeAccessRule)) {
+                    mScore = SCORE_INVALID;
+                    return;
+                }
+                mScore += SCORE_PRIVILEGE_ACCESS_RULE;
+            }
+
             if (mApn != null) {
                 if (!CarrierIdentifier.equals(subscriptionRule.mApn, mApn, true)) {
                     mScore = SCORE_INVALID;
@@ -502,6 +516,7 @@ public class CarrierIdentifier extends Handler {
                     + " imsi_prefix: " + mImsiPrefixPattern
                     + " iccid_prefix" + mIccidPrefix
                     + " spn: " + mSpn
+                    + " privilege_access_rule: " + mPrivilegeAccessRule
                     + " apn: " + mApn
                     + " name: " + mName
                     + " cid: " + mCid
@@ -540,7 +555,8 @@ public class CarrierIdentifier extends Handler {
         }
 
         CarrierMatchingRule subscriptionRule = new CarrierMatchingRule(
-                mccmnc, imsi, iccid, gid1, gid2, plmn,  spn, apn,
+                mccmnc, imsi, iccid, gid1, gid2, plmn, spn, apn, null
+                /** fetching privilege access rule is handled by CarrierMatchingRule#match **/,
                 TelephonyManager.UNKNOWN_CARRIER_ID, null);
 
         int maxScore = CarrierMatchingRule.SCORE_INVALID;
