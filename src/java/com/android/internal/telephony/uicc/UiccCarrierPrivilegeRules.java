@@ -310,8 +310,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
             // gained carrier privileges (as an indication that a matching SIM has been inserted).
             PackageInfo pInfo = packageManager.getPackageInfo(packageName,
                     PackageManager.GET_SIGNATURES
-                            | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
-                            | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS);
+                            | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS);
             return getCarrierPrivilegeStatus(pInfo);
         } catch (PackageManager.NameNotFoundException ex) {
             log("Package " + packageName + " not found for carrier privilege status check");
