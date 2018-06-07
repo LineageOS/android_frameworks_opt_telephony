@@ -212,6 +212,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                                 CarrierId.All.PLMN,
                                 CarrierId.All.IMSI_PREFIX_XPATTERN,
                                 CarrierId.All.ICCID_PREFIX,
+                                CarrierId.All.PRIVILEGE_ACCESS_RULE,
                                 CarrierId.All.SPN,
                                 CarrierId.All.APN,
                                 CarrierId.CARRIER_NAME,
@@ -225,6 +226,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // plmn
                         null,                   // imsi_prefix
                         null,                   // iccid_prefix
+                        null,                   // access rule
                         null,                   // spn
                         null,                   // apn
                         NAME,                   // carrier name
@@ -238,6 +240,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // plmn
                         null,                   // imsi_prefix
                         null,                   // iccid_prefix
+                        null,                   // access_rule
                         null,                   // spn
                         null,                   // apn
                         NAME_TMO,               // carrier name
@@ -251,6 +254,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // plmn
                         null,                   // imsi_prefix
                         null,                   // iccid_prefix
+                        null,                   // access_rule
                         SPN_FI,                 // spn
                         null,                   // apn
                         NAME_FI,                // carrier name
@@ -264,6 +268,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
                         null,                   // plmn
                         null,                   // imsi_prefix
                         null,                   // iccid_prefix
+                        null,                   // access_rule
                         null,                   // spn
                         APN_DOCOMO,             // apn
                         NAME_DOCOMO,            // carrier name
