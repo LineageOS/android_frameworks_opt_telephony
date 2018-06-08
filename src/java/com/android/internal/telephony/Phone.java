@@ -536,7 +536,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 // note this is not persisting
                 WifiManager wM = (WifiManager)
                         mContext.getSystemService(Context.WIFI_SERVICE);
-                wM.setCountryCode(country, false);
+                wM.setCountryCode(country);
             }
         }
 
@@ -1420,8 +1420,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void registerForServiceStateChanged(
             Handler h, int what, Object obj) {
-        checkCorrectThread(h);
-
         mServiceStateRegistrants.add(h, what, obj);
     }
 

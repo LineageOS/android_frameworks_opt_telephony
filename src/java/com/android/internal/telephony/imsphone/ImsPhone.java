@@ -312,6 +312,7 @@ public class ImsPhone extends ImsPhoneBase {
     @VisibleForTesting
     public void setServiceState(int state) {
         boolean isVoiceRegStateChanged = false;
+
         synchronized (this) {
             isVoiceRegStateChanged = mSS.getVoiceRegState() != state;
             mSS.setVoiceRegState(state);

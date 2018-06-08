@@ -61,15 +61,11 @@ public class ImsManagerTest extends TelephonyTest {
             ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED;
 
     PersistableBundle mBundle;
-
-    @Mock
-    IBinder mBinder;
-    @Mock
-    ImsConfigImplBase mImsConfigImplBaseMock;
+    @Mock IBinder mBinder;
+    @Mock ImsConfigImplBase mImsConfigImplBaseMock;
     Hashtable<Integer, Integer> mProvisionedIntVals = new Hashtable<>();
     Hashtable<Integer, String> mProvisionedStringVals = new Hashtable<>();
     ImsConfigImplBase.ImsConfigStub mImsConfigStub;
-    ImsConfig mImsConfig;
     @Mock MmTelFeatureConnection mMmTelFeatureConnection;
 
     private final int[] mSubId = {0};
@@ -192,7 +188,6 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(SubscriptionManager.WFC_IMS_ENABLED),
                 eq("1"));
     }
-
     @Test
     public void testGetProvisionedValues() throws Exception {
         ImsManager imsManager = initializeProvisionedValues();
@@ -368,7 +363,7 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(WFC_IMS_MODE_DEFAULT_VAL));
     }
 
-    private ImsManager initializeProvisionedValues() {
+    private ImsManager initializeProvisionedValues() throws Exception {
         when(mImsConfigImplBaseMock.getConfigInt(anyInt()))
                 .thenAnswer(invocation ->  {
                     return getProvisionedInt((Integer) (invocation.getArguments()[0]));
@@ -384,15 +379,11 @@ public class ImsManagerTest extends TelephonyTest {
 
         // Configure ImsConfigStub
         mImsConfigStub = new ImsConfigImplBase.ImsConfigStub(mImsConfigImplBaseMock);
-        doReturn(mImsConfigStub).when(mImsConfigImplBaseMock).getIImsConfig();
-
-        // Configure ImsConfig
-        mImsConfig = new ImsConfig(mImsConfigStub, mContext);
+        doReturn(mImsConfigStub).when(mMmTelFeatureConnection).getConfigInterface();
 
         // Configure ImsManager
         ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
         try {
-            replaceInstance(ImsManager.class, "mConfig", imsManager, mImsConfig);
             replaceInstance(ImsManager.class, "mMmTelFeatureConnection", imsManager,
                     mMmTelFeatureConnection);
         } catch (Exception ex) {

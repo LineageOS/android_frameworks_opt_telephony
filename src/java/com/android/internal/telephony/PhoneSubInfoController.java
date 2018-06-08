@@ -124,10 +124,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                                                 ImsiEncryptionInfo imsiEncryptionInfo) {
         Phone phone = getPhone(subId);
         if (phone != null) {
-            if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                    mContext, subId, callingPackage, "setCarrierInfoForImsiEncryption")) {
-                return;
-            }
             enforceModifyPermission();
             phone.setCarrierInfoForImsiEncryption(imsiEncryptionInfo);
         } else {

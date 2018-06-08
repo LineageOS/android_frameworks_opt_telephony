@@ -499,9 +499,6 @@ abstract class ImsPhoneBase extends Phone {
         return false;
     }
 
-    public void saveClirSetting(int commandInterfaceCLIRMode) {
-    }
-
     @Override
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager(){
         return null;

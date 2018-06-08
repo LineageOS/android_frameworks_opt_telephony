@@ -16,10 +16,18 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static android.telephony.AccessNetworkConstants.TransportType.WLAN;
+import static android.telephony.AccessNetworkConstants.TransportType.WWAN;
+
+import android.annotation.NonNull;
+import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.IPackageManager;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -28,7 +36,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
-import android.telephony.AccessNetworkConstants;
+import android.os.ServiceManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.data.DataCallResponse;
@@ -41,8 +49,10 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.Phone;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -58,6 +68,8 @@ public class DataServiceManager {
     private final Phone mPhone;
 
     private final CarrierConfigManager mCarrierConfigManager;
+    private final AppOpsManager mAppOps;
+    private final IPackageManager mPackageManager;
 
     private final int mTransportType;
 
@@ -73,14 +85,10 @@ public class DataServiceManager {
 
     private final RegistrantList mDataCallListChangedRegistrants = new RegistrantList();
 
+    // not final because it is set by the onServiceConnected method
+    private ComponentName mComponentName;
+
     private class DataServiceManagerDeathRecipient implements IBinder.DeathRecipient {
-
-        private final ComponentName mComponentName;
-
-        DataServiceManagerDeathRecipient(ComponentName name) {
-            mComponentName = name;
-        }
-
         @Override
         public void binderDied() {
             // TODO: try to rebind the service.
@@ -89,12 +97,53 @@ public class DataServiceManager {
         }
     }
 
+    private void grantPermissionsToService(String packageName) {
+        final String[] pkgToGrant = {packageName};
+        try {
+            mPackageManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
+                    pkgToGrant, mPhone.getContext().getUserId());
+            mAppOps.setMode(AppOpsManager.OP_MANAGE_IPSEC_TUNNELS, mPhone.getContext().getUserId(),
+                    pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
+        } catch (RemoteException e) {
+            loge("Binder to package manager died, permission grant for DataService failed.");
+            throw e.rethrowAsRuntimeException();
+        }
+    }
+
+    /**
+     * Loop through all DataServices installed on the system and revoke permissions from any that
+     * are not currently the WWAN or WLAN data service.
+     */
+    private void revokePermissionsFromUnusedDataServices() {
+        // Except the current data services from having their permissions removed.
+        Set<String> dataServices = getAllDataServicePackageNames();
+        for (int transportType : new int[] {WWAN, WLAN}) {
+            dataServices.remove(getDataServicePackageName(transportType));
+        }
+
+        try {
+            String[] dataServicesArray = new String[dataServices.size()];
+            dataServices.toArray(dataServicesArray);
+            mPackageManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
+                    dataServicesArray, mPhone.getContext().getUserId());
+            for (String pkg : dataServices) {
+                mAppOps.setMode(AppOpsManager.OP_MANAGE_IPSEC_TUNNELS,
+                        mPhone.getContext().getUserId(),
+                        pkg, AppOpsManager.MODE_ERRORED);
+            }
+        } catch (RemoteException e) {
+            loge("Binder to package manager died; failed to revoke DataService permissions.");
+            throw e.rethrowAsRuntimeException();
+        }
+    }
+
     private final class CellularDataServiceConnection implements ServiceConnection {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             if (DBG) log("onServiceConnected");
+            mComponentName = name;
             mIDataService = IDataService.Stub.asInterface(service);
-            mDeathRecipient = new DataServiceManagerDeathRecipient(name);
+            mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
 
             try {
@@ -186,16 +235,22 @@ public class DataServiceManager {
         mBound = false;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
-
+        mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+        mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
         bindDataService();
     }
 
     private void bindDataService() {
+        // Start by cleaning up all packages that *shouldn't* have permissions.
+        revokePermissionsFromUnusedDataServices();
+
         String packageName = getDataServicePackageName();
         if (TextUtils.isEmpty(packageName)) {
             loge("Can't find the binding package");
             return;
         }
+        // Then pre-emptively grant the permissions to the package we will bind.
+        grantPermissionsToService(packageName);
 
         try {
             if (!mPhone.getContext().bindService(
@@ -209,18 +264,55 @@ public class DataServiceManager {
         }
     }
 
+    @NonNull
+    private Set<String> getAllDataServicePackageNames() {
+        // Cowardly using the public PackageManager interface here.
+        // Note: This matches only packages that were installed on the system image. If we ever
+        // expand the permissions model to allow CarrierPrivileged packages, then this will need
+        // to be updated.
+        List<ResolveInfo> dataPackages =
+                mPhone.getContext().getPackageManager().queryIntentServices(
+                        new Intent(DataService.DATA_SERVICE_INTERFACE),
+                                PackageManager.MATCH_SYSTEM_ONLY);
+        HashSet<String> packageNames = new HashSet<>();
+        for (ResolveInfo info : dataPackages) {
+            if (info.serviceInfo == null) continue;
+            packageNames.add(info.serviceInfo.packageName);
+        }
+        return packageNames;
+    }
+
+    /**
+     * Get the data service package name for our current transport type.
+     *
+     * @return package name of the data service package for the the current transportType.
+     */
     private String getDataServicePackageName() {
+        return getDataServicePackageName(mTransportType);
+    }
+
+    /**
+     * Get the data service package by transport type.
+     *
+     * When we bind to a DataService package, we need to revoke permissions from stale
+     * packages; we need to exclude data packages for all transport types, so we need to
+     * to be able to query by transport type.
+     *
+     * @param transportType either WWAN or WLAN
+     * @return package name of the data service package for the specified transportType.
+     */
+    private String getDataServicePackageName(int transportType) {
         String packageName;
         int resourceId;
         String carrierConfig;
 
-        switch (mTransportType) {
-            case AccessNetworkConstants.TransportType.WWAN:
+        switch (transportType) {
+            case WWAN:
                 resourceId = com.android.internal.R.string.config_wwan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WWAN_PACKAGE_OVERRIDE_STRING;
                 break;
-            case AccessNetworkConstants.TransportType.WLAN:
+            case WLAN:
                 resourceId = com.android.internal.R.string.config_wlan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING;

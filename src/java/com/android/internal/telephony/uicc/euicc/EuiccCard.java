@@ -88,7 +88,7 @@ public class EuiccCard extends UiccCard {
     // Device capabilities.
     private static final String DEV_CAP_GSM = "gsm";
     private static final String DEV_CAP_UTRAN = "utran";
-    private static final String DEV_CAP_CDMA_1X = "cdma_1x";
+    private static final String DEV_CAP_CDMA_1X = "cdma1x";
     private static final String DEV_CAP_HRPD = "hrpd";
     private static final String DEV_CAP_EHRPD = "ehrpd";
     private static final String DEV_CAP_EUTRAN = "eutran";
@@ -162,7 +162,12 @@ public class EuiccCard extends UiccCard {
 
             @Override
             public void onException(Throwable e) {
-                // Not notifying registrants if getting eid fails.
+                // Still notifying registrants even getting eid fails.
+                if (mEidReadyRegistrants != null) {
+                    mEidReadyRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+                }
+                mEid = "";
+                mCardId = "";
                 Rlog.e(LOG_TAG, "Failed loading eid", e);
             }
         };
@@ -181,6 +186,15 @@ public class EuiccCard extends UiccCard {
 
         sendApdu(newRequestProvider((RequestBuilder requestBuilder) -> { /* Do nothing */ }),
                 (byte[] response) -> mSpecVersion, callback, handler);
+    }
+
+    @Override
+    protected void updateCardId() {
+        if (TextUtils.isEmpty(mEid)) {
+            super.updateCardId();
+        } else {
+            mCardId = mEid;
+        }
     }
 
     /**
@@ -234,7 +248,10 @@ public class EuiccCard extends UiccCard {
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
                         requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
-                                .addChildAsBytes(Tags.TAG_ICCID, IccUtils.bcdToBytes(iccid))
+                                .addChild(Asn1Node.newBuilder(Tags.TAG_CTX_COMP_0)
+                                    .addChildAsBytes(
+                                        Tags.TAG_ICCID, IccUtils.bcdToBytes(padTrailingFs(iccid)))
+                                    .build())
                                 .addChildAsBytes(Tags.TAG_TAG_LIST, Tags.EUICC_PROFILE_TAGS)
                                 .build().toHex())),
                 (byte[] response) -> {
