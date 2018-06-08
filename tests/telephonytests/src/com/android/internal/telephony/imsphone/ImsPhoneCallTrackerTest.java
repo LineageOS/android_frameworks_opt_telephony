@@ -42,11 +42,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.support.test.filters.FlakyTest;
 import android.telecom.VideoProfile;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
@@ -111,6 +114,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
             mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+            mCTUT.setDataEnabled(true);
             mCTHander = new Handler(mCTUT.getLooper());
             setReady(true);
         }
@@ -164,7 +168,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             }
         }).when(mImsCall).hold();
 
-        doReturn(mImsCallSession).when(mImsCall).getCallSession();
+        mImsCall.attachSession(mImsCallSession);
     }
 
     @Before
@@ -175,6 +179,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mImsManagerInstances.put(mImsPhone.getPhoneId(), mImsManager);
         mImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         mSecondImsCall = spy(new ImsCall(mContext, mImsCallProfile));
+        mImsPhoneConnectionListener = mock(ImsPhoneConnection.Listener.class);
         imsCallMocking(mImsCall);
         imsCallMocking(mSecondImsCall);
         doReturn(ImsFeature.STATE_READY).when(mImsManager).getImsServiceState();
@@ -191,6 +196,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             public ImsCall answer(InvocationOnMock invocation) throws Throwable {
                 mImsCallListener =
                         (ImsCall.Listener) invocation.getArguments()[2];
+                mImsCall.setListener(mImsCallListener);
                 return mImsCall;
             }
         }).when(mImsManager).takeCall(any(), any(), any());
@@ -198,9 +204,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doAnswer(new Answer<ImsCall>() {
             @Override
             public ImsCall answer(InvocationOnMock invocation) throws Throwable {
-                mImsCallListener = (ImsCall.Listener) invocation.getArguments()[2];
+                mImsCallListener =
+                        (ImsCall.Listener) invocation.getArguments()[2];
                 mSecondImsCall.setListener(mImsCallListener);
-
                 return mSecondImsCall;
             }
         }).when(mImsManager).makeCall(eq(mImsCallProfile), (String []) any(),
@@ -345,6 +351,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
         assertTrue(mCTUT.mRingingCall.isRinging());
         assertEquals(1, mCTUT.mRingingCall.getConnections().size());
+        ImsPhoneConnection connection =
+                (ImsPhoneConnection) mCTUT.mRingingCall.getConnections().get(0);
+        connection.addListener(mImsPhoneConnectionListener);
     }
 
     @Test
@@ -649,6 +658,55 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         // ImsService
         verify(mImsManager, times(2)).open(
                 nullable(MmTelFeature.Listener.class));
+    }
+
+    /**
+     * Test notification of handover from LTE to WIFI and WIFI to LTE and ensure that the expected
+     * connection events are sent.
+     */
+    @Test
+    @SmallTest
+    public void testNotifyHandovers() {
+        setupCarrierConfig();
+
+        //establish a MT call
+        testImsMTCallAccept();
+        ImsPhoneConnection connection =
+                (ImsPhoneConnection) mCTUT.mForegroundCall.getConnections().get(0);
+        ImsCall call = connection.getImsCall();
+        // Needs to be a video call to see this signalling.
+        mImsCallProfile.mCallType = ImsCallProfile.CALL_TYPE_VT;
+
+        // First handover from LTE to WIFI; this takes us into a mid-call state.
+        call.getImsCallSessionListenerProxy().callSessionHandover(call.getCallSession(),
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
+                new ImsReasonInfo());
+        // Handover back to LTE.
+        call.getImsCallSessionListenerProxy().callSessionHandover(call.getCallSession(),
+                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, ServiceState.RIL_RADIO_TECHNOLOGY_LTE,
+                new ImsReasonInfo());
+        verify(mImsPhoneConnectionListener).onConnectionEvent(eq(
+                TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE), isNull());
+
+        // Finally hand back to WIFI
+        call.getImsCallSessionListenerProxy().callSessionHandover(call.getCallSession(),
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
+                new ImsReasonInfo());
+        verify(mImsPhoneConnectionListener).onConnectionEvent(eq(
+                TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_LTE_TO_WIFI), isNull());
+    }
+
+    /**
+     * Configure carrier config options relevant to the unit test.
+     */
+    public void setupCarrierConfig() {
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putBoolean(CarrierConfigManager.KEY_NOTIFY_HANDOVER_VIDEO_FROM_LTE_TO_WIFI_BOOL,
+                true);
+        bundle.putBoolean(CarrierConfigManager.KEY_NOTIFY_HANDOVER_VIDEO_FROM_WIFI_TO_LTE_BOOL,
+                true);
+        bundle.putBoolean(CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL, true);
+        mCTUT.updateCarrierConfigCache(bundle);
     }
 
     @Test

@@ -220,6 +220,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getAllProfiles callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("getAllProfiles callback failure.", exception);
@@ -258,6 +259,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     @Override
                     public void onException(Throwable e) {
                         try {
+                            loge("getProfile callback onException: ", e);
                             callback.onComplete(getResultCode(e), null);
                         } catch (RemoteException exception) {
                             loge("getProfile callback failure.", exception);
@@ -296,6 +298,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("disableProfile callback onException: ", e);
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
                     loge("disableProfile callback failure.", exception);
@@ -338,6 +341,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     @Override
                     public void onException(Throwable e) {
                         try {
+                            loge("switchToProfile callback onException: ", e);
                             callback.onComplete(getResultCode(e), profile);
                         } catch (RemoteException exception) {
                             loge("switchToProfile callback failure.", exception);
@@ -351,6 +355,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getProfile in switchToProfile callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("switchToProfile callback failure.", exception);
@@ -389,6 +394,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("setNickname callback onException: ", e);
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
                     loge("setNickname callback failure.", exception);
@@ -417,19 +423,19 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         AsyncResultCallback<Void> cardCb = new AsyncResultCallback<Void>() {
             @Override
             public void onResult(Void result) {
-                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh(
-                        () -> {
-                            try {
-                                callback.onComplete(EuiccCardManager.RESULT_OK);
-                            } catch (RemoteException exception) {
-                                loge("deleteProfile callback failure.", exception);
-                            }
-                        });
+                Log.i(TAG, "Request subscription info list refresh after delete.");
+                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh();
+                try {
+                    callback.onComplete(EuiccCardManager.RESULT_OK);
+                } catch (RemoteException exception) {
+                    loge("deleteProfile callback failure.", exception);
+                }
             };
 
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("deleteProfile callback onException: ", e);
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
                     loge("deleteProfile callback failure.", exception);
@@ -458,19 +464,19 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         AsyncResultCallback<Void> cardCb = new AsyncResultCallback<Void>() {
             @Override
             public void onResult(Void result) {
-                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh(
-                        () -> {
-                            try {
-                                callback.onComplete(EuiccCardManager.RESULT_OK);
-                            } catch (RemoteException exception) {
-                                loge("resetMemory callback failure.", exception);
-                            }
-                        });
+                Log.i(TAG, "Request subscription info list refresh after reset memory.");
+                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh();
+                try {
+                    callback.onComplete(EuiccCardManager.RESULT_OK);
+                } catch (RemoteException exception) {
+                    loge("resetMemory callback failure.", exception);
+                }
             }
 
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("resetMemory callback onException: ", e);
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
                     loge("resetMemory callback failure.", exception);
@@ -509,6 +515,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getDefaultSmdpAddress callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("getDefaultSmdpAddress callback failure.", exception);
@@ -547,6 +554,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getSmdsAddress callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("getSmdsAddress callback failure.", exception);
@@ -585,6 +593,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("setDefaultSmdpAddress callback onException: ", e);
                     callback.onComplete(getResultCode(e));
                 } catch (RemoteException exception) {
                     loge("setDefaultSmdpAddress callback failure.", exception);
@@ -624,6 +633,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getRulesAuthTable callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("getRulesAuthTable callback failure.", exception);
@@ -662,6 +672,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getEuiccChallenge callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("getEuiccChallenge callback failure.", exception);
@@ -700,6 +711,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getEuiccInfo1 callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("getEuiccInfo1 callback failure.", exception);
@@ -738,6 +750,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("getEuiccInfo2 callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("getEuiccInfo2 callback failure.", exception);
@@ -777,6 +790,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("authenticateServer callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("authenticateServer callback failure.", exception);
@@ -817,6 +831,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("prepareDownload callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("prepareDownload callback failure.", exception);
@@ -846,19 +861,19 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         AsyncResultCallback<byte[]> cardCb = new AsyncResultCallback<byte[]>() {
             @Override
             public void onResult(byte[] result) {
-                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh(
-                        () -> {
-                            try {
-                                callback.onComplete(EuiccCardManager.RESULT_OK, result);
-                            } catch (RemoteException exception) {
-                                loge("loadBoundProfilePackage callback failure.", exception);
-                            }
-                        });
+                Log.i(TAG, "Request subscription info list refresh after install.");
+                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh();
+                try {
+                    callback.onComplete(EuiccCardManager.RESULT_OK, result);
+                } catch (RemoteException exception) {
+                    loge("loadBoundProfilePackage callback failure.", exception);
+                }
             }
 
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("loadBoundProfilePackage callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("loadBoundProfilePackage callback failure.", exception);
@@ -897,6 +912,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("cancelSession callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("cancelSession callback failure.", exception);
@@ -936,6 +952,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onException(Throwable e) {
                 try {
+                    loge("listNotifications callback onException: ", e);
                     callback.onComplete(getResultCode(e), null);
                 } catch (RemoteException exception) {
                     loge("listNotifications callback failure.", exception);
@@ -975,6 +992,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     @Override
                     public void onException(Throwable e) {
                         try {
+                            loge("retrieveNotificationList callback onException: ", e);
                             callback.onComplete(getResultCode(e), null);
                         } catch (RemoteException exception) {
                             loge("retrieveNotificationList callback failure.", exception);
@@ -1014,6 +1032,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     @Override
                     public void onException(Throwable e) {
                         try {
+                            loge("retrieveNotification callback onException: ", e);
                             callback.onComplete(getResultCode(e), null);
                         } catch (RemoteException exception) {
                             loge("retrieveNotification callback failure.", exception);
@@ -1053,6 +1072,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     @Override
                     public void onException(Throwable e) {
                         try {
+                            loge("removeNotificationFromList callback onException: ", e);
                             callback.onComplete(getResultCode(e));
                         } catch (RemoteException exception) {
                             loge("removeNotificationFromList callback failure.", exception);

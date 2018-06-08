@@ -50,7 +50,6 @@ public class RadioConfig extends Handler {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;   //STOPSHIP if true
 
-    private static final String RADIO_CONFIG_SERVICE_NAME = "radioconfig";
     private static final int EVENT_SERVICE_DEAD = 1;
 
     private final boolean mIsMobileNetworkSupported;
@@ -167,7 +166,7 @@ public class RadioConfig extends Handler {
         }
 
         try {
-            mRadioConfigProxy = IRadioConfig.getService(RADIO_CONFIG_SERVICE_NAME, true);
+            mRadioConfigProxy = IRadioConfig.getService(true);
             if (mRadioConfigProxy != null) {
                 mRadioConfigProxy.linkToDeath(mServiceDeathRecipient,
                         mRadioConfigProxyCookie.incrementAndGet());

@@ -79,6 +79,7 @@ import android.util.EventLog;
 import android.util.LocalLog;
 import android.util.Pair;
 import android.util.SparseArray;
+import android.util.StatsLog;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -582,6 +583,11 @@ public class ServiceStateTracker extends Handler {
         }
 
         // If we are previously in service, we need to notify that we are out of service now.
+        if (mSS != null && mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+            mNetworkDetachedRegistrants.notifyRegistrants();
+        }
+
+        // If we are previously in service, we need to notify that we are out of service now.
         if (mSS != null && mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE) {
             mDetachedRegistrants.notifyRegistrants();
         }
@@ -671,6 +677,10 @@ public class ServiceStateTracker extends Handler {
         mCi.unregisterForImsNetworkStateChanged(this);
         mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
                 CARRIER_ACTION_SET_RADIO_ENABLED);
+        if (mCSST != null) {
+            mCSST.dispose();
+            mCSST = null;
+        }
     }
 
     public boolean getDesiredPowerState() {
@@ -2879,6 +2889,9 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRilDataRadioTechnologyChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
+            StatsLog.write(StatsLog.MOBILE_RADIO_TECHNOLOGY_CHANGED,
+                    ServiceState.rilRadioTechnologyToNetworkType(mSS.getRilDataRadioTechnology()),
+                    mPhone.getPhoneId());
 
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                     == mSS.getRilDataRadioTechnology()) {

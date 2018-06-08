@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Messenger;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
@@ -79,6 +80,7 @@ public class ImsPhoneConnection extends Connection implements
 
     private UUSInfo mUusInfo;
     private Handler mHandler;
+    private Messenger mHandlerMessenger;
 
     private PowerManager.WakeLock mPartialWakeLock;
 
@@ -171,6 +173,7 @@ public class ImsPhoneConnection extends Connection implements
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
+        mHandlerMessenger = new Messenger(mHandler);
         mImsCall = imsCall;
 
         if ((imsCall != null) && (imsCall.getCallProfile() != null)) {
@@ -495,7 +498,9 @@ public class ImsPhoneConnection extends Connection implements
     private boolean
     processPostDialChar(char c) {
         if (PhoneNumberUtils.is12Key(c)) {
-            mOwner.sendDtmf(c, mHandler.obtainMessage(EVENT_DTMF_DONE));
+            Message dtmfComplete = mHandler.obtainMessage(EVENT_DTMF_DONE);
+            dtmfComplete.replyTo = mHandlerMessenger;
+            mOwner.sendDtmf(c, dtmfComplete);
         } else if (c == PhoneNumberUtils.PAUSE) {
             // From TS 22.101:
             // It continues...
@@ -991,11 +996,29 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     public void onRttMessageReceived(String message) {
-        getOrCreateRttTextHandler().sendToInCall(message);
+        synchronized (this) {
+            if (mRttTextHandler == null) {
+                Rlog.w(LOG_TAG, "onRttMessageReceived: RTT text handler not available."
+                        + " Attempting to create one.");
+                if (mRttTextStream == null) {
+                    Rlog.e(LOG_TAG, "onRttMessageReceived:"
+                            + " Unable to process incoming message. No textstream available");
+                    return;
+                }
+                createRttTextHandler();
+            }
+        }
+        mRttTextHandler.sendToInCall(message);
     }
 
     public void setCurrentRttTextStream(android.telecom.Connection.RttTextStream rttTextStream) {
-        mRttTextStream = rttTextStream;
+        synchronized (this) {
+            mRttTextStream = rttTextStream;
+            if (mRttTextHandler == null && mIsRttEnabledForCall) {
+                Rlog.i(LOG_TAG, "setCurrentRttTextStream: Creating a text handler");
+                createRttTextHandler();
+            }
+        }
     }
 
     public boolean hasRttTextStream() {
@@ -1007,20 +1030,24 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     public void startRttTextProcessing() {
-        if (mRttTextStream == null) {
-            Rlog.w(LOG_TAG, "startRttTextProcessing: no RTT text stream. Ignoring.");
-            return;
+        synchronized (this) {
+            if (mRttTextStream == null) {
+                Rlog.w(LOG_TAG, "startRttTextProcessing: no RTT text stream. Ignoring.");
+                return;
+            }
+            if (mRttTextHandler != null) {
+                Rlog.w(LOG_TAG, "startRttTextProcessing: RTT text handler already exists");
+                return;
+            }
+            createRttTextHandler();
         }
-        getOrCreateRttTextHandler().initialize(mRttTextStream);
     }
 
-    private ImsRttTextHandler getOrCreateRttTextHandler() {
-        if (mRttTextHandler != null) {
-            return mRttTextHandler;
-        }
+    // Make sure to synchronize on ImsPhoneConnection.this before calling.
+    private void createRttTextHandler() {
         mRttTextHandler = new ImsRttTextHandler(Looper.getMainLooper(),
                 (message) -> getImsCall().sendRttMessage(message));
-        return mRttTextHandler;
+        mRttTextHandler.initialize(mRttTextStream);
     }
 
     /**

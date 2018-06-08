@@ -331,7 +331,6 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
         doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
                 .getSubInfoUsingSlotIndexPrivileged(eq(FAKE_SUB_ID_1), anyBoolean());
-
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOCKED, "TESTING", FAKE_SUB_ID_1);
 

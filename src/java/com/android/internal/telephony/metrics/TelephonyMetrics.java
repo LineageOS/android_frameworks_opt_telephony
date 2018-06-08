@@ -44,14 +44,14 @@ import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
+import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
-import android.telephony.ims.ImsReasonInfo;
-import android.telephony.ims.ImsCallSession;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
@@ -62,6 +62,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
+import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
@@ -71,6 +72,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.E
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatchingResult;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall.DeactivateReason;
@@ -78,7 +80,6 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetu
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse.RilDataCallFailCause;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyLog;
-import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
@@ -534,7 +535,6 @@ public class TelephonyMetrics {
         log.endTime = new TelephonyProto.Time();
         log.endTime.systemTimestampMillis = System.currentTimeMillis();
         log.endTime.elapsedTimestampMillis = SystemClock.elapsedRealtime();
-
         return log;
     }
 
@@ -548,6 +548,23 @@ public class TelephonyMetrics {
         return (int) ((timestamp) / (MINUTE_IN_MILLIS * SESSION_START_PRECISION_MINUTES)
                 * (SESSION_START_PRECISION_MINUTES));
     }
+
+    /**
+     * Write the Carrier Key change event
+     *
+     * @param phoneId Phone id
+     * @param keyType type of key
+     * @param isDownloadSuccessful true if the key was successfully downloaded
+     */
+    public void writeCarrierKeyEvent(int phoneId, int keyType,  boolean isDownloadSuccessful) {
+        final CarrierKeyChange carrierKeyChange = new CarrierKeyChange();
+        carrierKeyChange.keyType = keyType;
+        carrierKeyChange.isDownloadSuccessful = isDownloadSuccessful;
+        TelephonyEvent event = new TelephonyEventBuilder(phoneId).setCarrierKeyChange(
+                carrierKeyChange).build();
+        addTelephonyEvent(event);
+    }
+
 
     /**
      * Get the time interval with reduced prevision
@@ -1705,7 +1722,7 @@ public class TelephonyMetrics {
      * @param tech SMS RAT
      * @param format SMS format. Either 3GPP or 3GPP2.
      */
-    public void writeRilSendSms(int phoneId, int rilSerial, int tech, int format) {
+    public synchronized void writeRilSendSms(int phoneId, int rilSerial, int tech, int format) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
 
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_SEND)
@@ -1724,12 +1741,48 @@ public class TelephonyMetrics {
      * @param tech SMS RAT
      * @param format SMS format. Either 3GPP or 3GPP2.
      */
-    public void writeRilNewSms(int phoneId, int tech, int format) {
+    public synchronized void writeRilNewSms(int phoneId, int tech, int format) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
 
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
                 .setTech(tech)
                 .setFormat(format)
+        );
+
+        finishSmsSessionIfNeeded(smsSession);
+    }
+
+    /**
+     * Write incoming Broadcast SMS event
+     *
+     * @param phoneId Phone id
+     * @param format CB msg format
+     * @param priority CB msg priority
+     * @param isCMAS true if msg is CMAS
+     * @param isETWS true if msg is ETWS
+     * @param serviceCategory Service category of CB msg
+     */
+    public synchronized void writeNewCBSms(int phoneId, int format, int priority, boolean isCMAS,
+                                           boolean isETWS, int serviceCategory) {
+        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
+
+        int type;
+        if (isCMAS) {
+            type = SmsSession.Event.CBMessageType.CMAS;
+        } else if (isETWS) {
+            type = SmsSession.Event.CBMessageType.ETWS;
+        } else {
+            type = SmsSession.Event.CBMessageType.OTHER;
+        }
+
+        SmsSession.Event.CBMessage cbm = new SmsSession.Event.CBMessage();
+        cbm.msgFormat = format;
+        cbm.msgPriority = priority + 1;
+        cbm.msgType = type;
+        cbm.serviceCategory = serviceCategory;
+
+        smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.CB_SMS_RECEIVED)
+                .setCellBroadcastMessage(cbm)
         );
 
         finishSmsSessionIfNeeded(smsSession);
