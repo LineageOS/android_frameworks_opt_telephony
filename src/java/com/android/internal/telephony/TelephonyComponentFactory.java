@@ -200,15 +200,11 @@ public class TelephonyComponentFactory {
             TelephonyComponentFactory telephonyComponentFactory) {
         Rlog.d(LOG_TAG, "makePhone");
         Phone phone = null;
-        if (precisePhoneType == PhoneConstants.PHONE_TYPE_GSM) {
+        if (precisePhoneType == PhoneConstants.PHONE_TYPE_GSM ||
+                    precisePhoneType == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
             phone = new GsmCdmaPhone(context,
                 ci, notifier, phoneId,
-                PhoneConstants.PHONE_TYPE_GSM,
-                telephonyComponentFactory);
-        } else if (precisePhoneType == PhoneConstants.PHONE_TYPE_CDMA) {
-                phone = new GsmCdmaPhone(context,
-                ci, notifier, phoneId,
-                PhoneConstants.PHONE_TYPE_CDMA_LTE,
+                precisePhoneType,
                 telephonyComponentFactory);
         }
         return phone;
