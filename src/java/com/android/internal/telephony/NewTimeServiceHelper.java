@@ -32,7 +32,7 @@ import android.provider.Settings;
  * new service.
  */
 // Non-final to allow mocking.
-public class TimeServiceHelper {
+public class NewTimeServiceHelper {
 
     /**
      * Callback interface for automatic detection enable/disable changes.
@@ -57,7 +57,7 @@ public class TimeServiceHelper {
     private Listener mListener;
 
     /** Creates a TimeServiceHelper */
-    public TimeServiceHelper(Context context) {
+    public NewTimeServiceHelper(Context context) {
         mContext = context;
         mCr = context.getContentResolver();
     }
