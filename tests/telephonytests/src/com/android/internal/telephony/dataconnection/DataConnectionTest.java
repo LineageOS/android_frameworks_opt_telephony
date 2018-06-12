@@ -501,6 +501,7 @@ public class DataConnectionTest extends TelephonyTest {
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
     }
 
+    @Test
     @SmallTest
     public void testIsIpAddress() throws Exception {
         // IPv4
