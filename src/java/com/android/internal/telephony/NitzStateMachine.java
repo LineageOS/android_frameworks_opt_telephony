@@ -21,8 +21,8 @@ import android.content.Context;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
+import android.util.TimestampedValue;
 
-import com.android.internal.telephony.util.TimeStampedValue;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -55,7 +55,7 @@ public interface NitzStateMachine {
     /**
      * Handle a new NITZ signal being received.
      */
-    void handleNitzReceived(TimeStampedValue<NitzData> nitzSignal);
+    void handleNitzReceived(TimestampedValue<NitzData> nitzSignal);
 
     /**
      * Dumps the current in-memory state to the supplied PrintWriter.

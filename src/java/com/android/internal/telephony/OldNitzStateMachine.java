@@ -21,12 +21,12 @@ import android.os.PowerManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.LocalLog;
+import android.util.TimestampedValue;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
 import com.android.internal.telephony.TimeZoneLookupHelper.OffsetResult;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
-import com.android.internal.telephony.util.TimeStampedValue;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -47,12 +47,12 @@ public final class OldNitzStateMachine implements NitzStateMachine {
      * not have been used to set the device time, but it can be used if auto time detection is
      * re-enabled.
      */
-    private TimeStampedValue<Long> mSavedNitzTime;
+    private TimestampedValue<Long> mSavedNitzTime;
 
     // Time Zone detection state.
 
     /** We always keep the last NITZ signal received in mLatestNitzSignal. */
-    private TimeStampedValue<NitzData> mLatestNitzSignal;
+    private TimestampedValue<NitzData> mLatestNitzSignal;
 
     /**
      * Records whether the device should have a country code available via
@@ -145,7 +145,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
 
     private void updateTimeZoneFromCountryAndNitz() {
         String isoCountryCode = mDeviceState.getNetworkCountryIsoForPhone();
-        TimeStampedValue<NitzData> nitzSignal = mLatestNitzSignal;
+        TimestampedValue<NitzData> nitzSignal = mLatestNitzSignal;
 
         // TimeZone.getDefault() returns a default zone (GMT) even when time zone have never
         // been set which makes it difficult to tell if it's what the user / time zone detection
@@ -162,7 +162,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
         }
 
         try {
-            NitzData nitzData = nitzSignal.mValue;
+            NitzData nitzData = nitzSignal.getValue();
 
             String zoneId;
             if (nitzData.getEmulatorHostTimeZone() != null) {
@@ -260,23 +260,23 @@ public final class OldNitzStateMachine implements NitzStateMachine {
      * Returns true if the NITZ signal is definitely bogus, assuming that the country is correct.
      */
     private boolean isNitzSignalOffsetInfoBogus(
-            TimeStampedValue<NitzData> nitzSignal, String isoCountryCode) {
+            TimestampedValue<NitzData> nitzSignal, String isoCountryCode) {
 
         if (TextUtils.isEmpty(isoCountryCode)) {
             // We cannot say for sure.
             return false;
         }
 
-        NitzData newNitzData = nitzSignal.mValue;
+        NitzData newNitzData = nitzSignal.getValue();
         boolean zeroOffsetNitz = newNitzData.getLocalOffsetMillis() == 0 && !newNitzData.isDst();
         return zeroOffsetNitz && !countryUsesUtc(isoCountryCode, nitzSignal);
     }
 
     private boolean countryUsesUtc(
-            String isoCountryCode, TimeStampedValue<NitzData> nitzSignal) {
+            String isoCountryCode, TimestampedValue<NitzData> nitzSignal) {
         return mTimeZoneLookupHelper.countryUsesUtc(
                 isoCountryCode,
-                nitzSignal.mValue.getCurrentTimeInMillis());
+                nitzSignal.getValue().getCurrentTimeInMillis());
     }
 
     @Override
@@ -300,7 +300,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
     }
 
     @Override
-    public void handleNitzReceived(TimeStampedValue<NitzData> nitzSignal) {
+    public void handleNitzReceived(TimestampedValue<NitzData> nitzSignal) {
         // Always store the latest NITZ signal received.
         mLatestNitzSignal = nitzSignal;
 
@@ -309,7 +309,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
     }
 
     private void updateTimeFromNitz() {
-        TimeStampedValue<NitzData> nitzSignal = mLatestNitzSignal;
+        TimestampedValue<NitzData> nitzSignal = mLatestNitzSignal;
         try {
             boolean ignoreNitz = mDeviceState.getIgnoreNitz();
             if (ignoreNitz) {
@@ -327,7 +327,8 @@ public final class OldNitzStateMachine implements NitzStateMachine {
 
                 // Validate the nitzTimeSignal to reject obviously bogus elapsedRealtime values.
                 long elapsedRealtime = mTimeServiceHelper.elapsedRealtime();
-                long millisSinceNitzReceived = elapsedRealtime - nitzSignal.mElapsedRealtime;
+                long millisSinceNitzReceived =
+                        elapsedRealtime - nitzSignal.getReferenceTimeMillis();
                 if (millisSinceNitzReceived < 0 || millisSinceNitzReceived > Integer.MAX_VALUE) {
                     if (DBG) {
                         Rlog.d(LOG_TAG, "updateTimeFromNitz: not setting time, unexpected"
@@ -339,7 +340,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
 
                 // Adjust the NITZ time by the delay since it was received to get the time now.
                 long adjustedCurrentTimeMillis =
-                        nitzSignal.mValue.getCurrentTimeInMillis() + millisSinceNitzReceived;
+                        nitzSignal.getValue().getCurrentTimeInMillis() + millisSinceNitzReceived;
                 long gained = adjustedCurrentTimeMillis - mTimeServiceHelper.currentTimeMillis();
 
                 if (mTimeServiceHelper.isTimeDetectionEnabled()) {
@@ -354,7 +355,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
                         setAndBroadcastNetworkSetTime(logMsg, adjustedCurrentTimeMillis);
                     } else {
                         long elapsedRealtimeSinceLastSaved = mTimeServiceHelper.elapsedRealtime()
-                                - mSavedNitzTime.mElapsedRealtime;
+                                - mSavedNitzTime.getReferenceTimeMillis();
                         int nitzUpdateSpacing = mDeviceState.getNitzUpdateSpacingMillis();
                         int nitzUpdateDiff = mDeviceState.getNitzUpdateDiffMillis();
                         if (elapsedRealtimeSinceLastSaved > nitzUpdateSpacing
@@ -381,8 +382,8 @@ public final class OldNitzStateMachine implements NitzStateMachine {
 
                 // Save the last NITZ time signal used so we can return to it later
                 // if auto-time detection is toggled.
-                mSavedNitzTime = new TimeStampedValue<>(
-                        adjustedCurrentTimeMillis, nitzSignal.mElapsedRealtime);
+                mSavedNitzTime = new TimestampedValue<>(
+                        adjustedCurrentTimeMillis, nitzSignal.getReferenceTimeMillis());
             } finally {
                 mWakeLock.release();
             }
@@ -434,8 +435,8 @@ public final class OldNitzStateMachine implements NitzStateMachine {
                 String msg = "mSavedNitzTime: Reverting to NITZ time"
                         + " elapsedRealtime=" + elapsedRealtime
                         + " mSavedNitzTime=" + mSavedNitzTime;
-                long adjustedCurrentTimeMillis =
-                        mSavedNitzTime.mValue + (elapsedRealtime - mSavedNitzTime.mElapsedRealtime);
+                long adjustedCurrentTimeMillis = mSavedNitzTime.getValue()
+                        + (elapsedRealtime - mSavedNitzTime.getReferenceTimeMillis());
                 setAndBroadcastNetworkSetTime(msg, adjustedCurrentTimeMillis);
             } finally {
                 mWakeLock.release();
@@ -521,7 +522,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
 
     @Override
     public NitzData getCachedNitzData() {
-        return mLatestNitzSignal != null ? mLatestNitzSignal.mValue : null;
+        return mLatestNitzSignal != null ? mLatestNitzSignal.getValue() : null;
     }
 
     @Override
