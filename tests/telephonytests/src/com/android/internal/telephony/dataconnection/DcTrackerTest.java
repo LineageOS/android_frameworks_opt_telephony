@@ -64,12 +64,14 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.text.TextUtils;
 import android.util.LocalLog;
 
 import com.android.internal.R;
@@ -125,7 +127,6 @@ public class DcTrackerTest extends TelephonyTest {
             1 << (TelephonyManager.NETWORK_TYPE_EHRPD - 1);
     private static final Uri PREFERAPN_URI = Uri.parse(
             Telephony.Carriers.CONTENT_URI + "/preferapn");
-
 
     @Mock
     ISub mIsub;
@@ -1006,7 +1007,8 @@ public class DcTrackerTest extends TelephonyTest {
     private void initApns(String targetApn, String[] canHandleTypes) {
         doReturn(targetApn).when(mApnContext).getApnType();
         doReturn(true).when(mApnContext).isConnectable();
-        ApnSetting apnSetting = createApnSetting(canHandleTypes);
+        ApnSetting apnSetting = createApnSetting(ApnSetting.getApnTypesBitmaskFromString(
+                TextUtils.join(",", canHandleTypes)));
         doReturn(apnSetting).when(mApnContext).getNextApnSetting();
         doReturn(apnSetting).when(mApnContext).getApnSetting();
         doReturn(mDcac).when(mApnContext).getDcAc();
@@ -1338,7 +1340,7 @@ public class DcTrackerTest extends TelephonyTest {
                 Settings.Global.TETHER_DUN_APN, null);
         // should return APN from db
         dunApn = mDct.fetchDunApns().get(0);
-        assertEquals(FAKE_APN5, dunApn.apn);
+        assertEquals(FAKE_APN5, dunApn.getApnName());
     }
 
     // Test for fetchDunApns() with apn set id
