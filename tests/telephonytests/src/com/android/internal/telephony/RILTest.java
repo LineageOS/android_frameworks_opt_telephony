@@ -127,10 +127,10 @@ import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.RIL.RilHandler;
-import com.android.internal.telephony.dataconnection.ApnSetting;
 import com.android.internal.telephony.dataconnection.DcTracker;
 
 import org.junit.After;
@@ -692,11 +692,12 @@ public class RILTest extends TelephonyTest {
     @FlakyTest
     @Test
     public void testSetInitialAttachApn() throws Exception {
-        ApnSetting apnSetting = new ApnSetting(
-                -1, "22210", "Vodafone IT", "web.omnitel.it", "", "",
-                "", "", "", "", "", 0, new String[]{"DUN"}, "IP", "IP", true, 0, 0,
-                0, false, 0, 0, 0, 0, "", "");
-        DataProfile dataProfile = DcTracker.createDataProfile(apnSetting, apnSetting.profileId);
+        ApnSetting apnSetting = ApnSetting.makeApnSetting(
+                -1, "22210", "Vodafone IT", "web.omnitel.it", null, -1,
+                null, null, -1, "", "", 0, ApnSetting.TYPE_DUN, ApnSetting.PROTOCOL_IP,
+                ApnSetting.PROTOCOL_IP, true, 0, 0, false, 0, 0, 0, 0, -1, "");
+        DataProfile dataProfile = DcTracker.createDataProfile(
+                apnSetting, apnSetting.getProfileId());
         boolean isRoaming = false;
 
         mRILUnderTest.setInitialAttachApn(dataProfile, isRoaming, obtainMessage());
