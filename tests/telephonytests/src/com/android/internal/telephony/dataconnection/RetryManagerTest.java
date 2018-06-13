@@ -16,8 +16,12 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
+import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.RetryManager;
@@ -31,97 +35,91 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 /**
  * APN retry manager tests
  */
 public class RetryManagerTest extends TelephonyTest {
 
     // This is the real APN data for the Japanese carrier NTT Docomo.
-    private ApnSetting mApn1 = new ApnSetting(
+    private ApnSetting mApn1 = ApnSetting.makeApnSetting(
             2163,                   // id
             "44010",                // numeric
             "sp-mode",              // name
             "spmode.ne.jp",         // apn
-            "",                     // proxy
-            "",                     // port
-            "",                     // mmsc
-            "",                     // mmsproxy
-            "",                     // mmsport
+            null,                     // proxy
+            -1,                     // port
+            null,                     // mmsc
+            null,                     // mmsproxy
+            -1,                     // mmsport
             "",                     // user
             "",                     // password
             -1,                     // authtype
-            new String[]{"default", "supl"},     // types
-            "IP",                   // protocol
-            "IP",                   // roaming_protocol
+            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL, // types
+            ApnSetting.PROTOCOL_IP, // protocol
+            ApnSetting.PROTOCOL_IP, // roaming_protocol
             true,                   // carrier_enabled
-            0,                      // bearer
-            0,                      // bearer_bitmask
+            0,                      // networktype_bitmask
             0,                      // profile_id
             false,                  // modem_cognitive
             0,                      // max_conns
             0,                      // wait_time
             0,                      // max_conns_time
             0,                      // mtu
-            "",                     // mvno_type
+            -1,                     // mvno_type
             "");                    // mnvo_match_data
 
-    private ApnSetting mApn2 = new ApnSetting(
+    private ApnSetting mApn2 = ApnSetting.makeApnSetting(
             2164,                   // id
             "44010",                // numeric
             "mopera U",             // name
             "mopera.net",           // apn
-            "",                     // proxy
-            "",                     // port
-            "",                     // mmsc
-            "",                     // mmsproxy
-            "",                     // mmsport
+            null,                     // proxy
+            -1,                     // port
+            null,                     // mmsc
+            null,                     // mmsproxy
+            -1,                     // mmsport
             "",                     // user
             "",                     // password
             -1,                     // authtype
-            new String[]{"default", "supl"},     // types
-            "IP",                   // protocol
-            "IP",                   // roaming_protocol
+            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
+            ApnSetting.PROTOCOL_IP,                   // protocol
+            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
             true,                   // carrier_enabled
-            0,                      // bearer
-            0,                      // bearer_bitmask
+            0,                      // networktype_bitmask
             0,                      // profile_id
             false,                  // modem_cognitive
             0,                      // max_conns
             0,                      // wait_time
             0,                      // max_conns_time
             0,                      // mtu
-            "",                     // mvno_type
+            -1,                     // mvno_type
             "");                    // mnvo_match_data
 
-    private ApnSetting mApn3 = new ApnSetting(
+    private ApnSetting mApn3 = ApnSetting.makeApnSetting(
             2165,                   // id
             "44010",                // numeric
             "b-mobile for Nexus",   // name
             "bmobile.ne.jp",        // apn
-            "",                     // proxy
-            "",                     // port
-            "",                     // mmsc
-            "",                     // mmsproxy
-            "",                     // mmsport
+            null,                     // proxy
+            -1,                     // port
+            null,                     // mmsc
+            null,                     // mmsproxy
+            -1,                     // mmsport
             "",                     // user
             "",                     // password
             3,                      // authtype
-            new String[]{"default", "supl"},     // types
-            "IP",                   // protocol
-            "IP",                   // roaming_protocol
+            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
+            ApnSetting.PROTOCOL_IP,                   // protocol
+            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
             true,                   // carrier_enabled
-            0,                      // bearer
-            0,                      // bearer_bitmask
+            0,                      // networktype_bitmask
             0,                      // profile_id
             false,                  // modem_cognitive
             0,                      // max_conns
             0,                      // wait_time
             0,                      // max_conns_time
             0,                      // mtu
-            "",                     // mvno_type
+            -1,                     // mvno_type
             "");                    // mnvo_match_data
 
     private PersistableBundle mBundle;
@@ -173,7 +171,7 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"default:"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
 
         RetryManager rm = new RetryManager(mPhone, "default");
         rm.setWaitingApns(waitingApns);
@@ -195,7 +193,7 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"supl:2000,3000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
 
         RetryManager rm = new RetryManager(mPhone, "supl");
         rm.setWaitingApns(waitingApns);
@@ -249,8 +247,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"others:2000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
-        waitingApns.add(new ApnSetting(mApn2));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
         RetryManager rm = new RetryManager(mPhone, "default");
         rm.setWaitingApns(waitingApns);
@@ -287,8 +285,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"dun:2000,5000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
-        waitingApns.add(new ApnSetting(mApn2));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
         RetryManager rm = new RetryManager(mPhone, "dun");
         rm.setWaitingApns(waitingApns);
@@ -335,8 +333,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"mms:      3000,6000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
-        waitingApns.add(new ApnSetting(mApn2));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
         RetryManager rm = new RetryManager(mPhone, "mms");
         rm.setWaitingApns(waitingApns);
@@ -383,7 +381,7 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"fota:1000,4000,7000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting apn = new ApnSetting(mApn1);
+        ApnSetting apn = ApnSetting.makeApnSetting(mApn1);
         waitingApns.add(apn);
 
         RetryManager rm = new RetryManager(mPhone, "fota");
@@ -416,8 +414,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"xyz  :   1000,4000,7000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = new ApnSetting(mApn1);
-        ApnSetting myApn2 = new ApnSetting(mApn2);
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
@@ -473,9 +471,9 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"default:2000:2000,3000:3000", "ims:1000,4000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = new ApnSetting(mApn1);
-        ApnSetting myApn2 = new ApnSetting(mApn2);
-        ApnSetting myApn3 = new ApnSetting(mApn3);
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
+        ApnSetting myApn3 = ApnSetting.makeApnSetting(mApn3);
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
         waitingApns.add(myApn3);
@@ -532,8 +530,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"default:1000,4000,7000,9000", "mms:1234,4123"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = new ApnSetting(mApn1);
-        ApnSetting myApn2 = new ApnSetting(mApn2);
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
@@ -587,7 +585,7 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"default:default_randomization=1000,3000:2000,6000:3000,10000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
 
         RetryManager rm = new RetryManager(mPhone, "default");
         rm.setWaitingApns(waitingApns);
@@ -624,8 +622,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"default:max_retries=infinite,1000,2000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
-        waitingApns.add(new ApnSetting(mApn2));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
         RetryManager rm = new RetryManager(mPhone, "default");
         rm.setWaitingApns(waitingApns);
@@ -682,8 +680,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"hipri:  max_retries=4,1000,2000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
-        waitingApns.add(new ApnSetting(mApn2));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
         RetryManager rm = new RetryManager(mPhone, "hipri");
         rm.setWaitingApns(waitingApns);
@@ -752,8 +750,8 @@ public class RetryManagerTest extends TelephonyTest {
         mBundle.putLong(CarrierConfigManager.KEY_CARRIER_DATA_CALL_APN_DELAY_FASTER_LONG, 2000);
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        waitingApns.add(new ApnSetting(mApn1));
-        waitingApns.add(new ApnSetting(mApn2));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn1));
+        waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
         RetryManager rm = new RetryManager(mPhone, "default");
         rm.setWaitingApns(waitingApns);
@@ -800,8 +798,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"dun:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = new ApnSetting(mApn1);
-        ApnSetting myApn2 = new ApnSetting(mApn2);
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
@@ -845,7 +843,7 @@ public class RetryManagerTest extends TelephonyTest {
 
         // reset the retry manager
 
-        ApnSetting myApn3 = new ApnSetting(mApn3);
+        ApnSetting myApn3 = ApnSetting.makeApnSetting(mApn3);
         waitingApns.clear();
         waitingApns.add(myApn3);
 
@@ -881,8 +879,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"others:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = new ApnSetting(mApn1);
-        ApnSetting myApn2 = new ApnSetting(mApn2);
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
@@ -937,8 +935,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"default:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = new ApnSetting(mApn1);
-        ApnSetting myApn2 = new ApnSetting(mApn2);
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
@@ -980,8 +978,8 @@ public class RetryManagerTest extends TelephonyTest {
                 new String[]{"mms:2000,3000", "default:1000,4000,7000,9000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = new ApnSetting(mApn1);
-        ApnSetting myApn2 = new ApnSetting(mApn2);
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
