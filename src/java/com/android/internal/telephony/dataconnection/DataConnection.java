@@ -1479,9 +1479,9 @@ public class DataConnection extends StateMachine {
             StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
                     StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__INACTIVE,
                     mPhone.getPhoneId(), mId,
-                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
-                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+                        ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
 
             if (mConnectionParams != null) {
                 if (DBG) {
@@ -1576,9 +1576,9 @@ public class DataConnection extends StateMachine {
             StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
                     StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVATING,
                     mPhone.getPhoneId(), mId,
-                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
-                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+                        ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -1691,9 +1691,9 @@ public class DataConnection extends StateMachine {
             StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
                     StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVE,
                     mPhone.getPhoneId(), mId,
-                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
-                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+                        ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
 
             updateNetworkInfo();
 
@@ -2005,9 +2005,9 @@ public class DataConnection extends StateMachine {
             StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
                     StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTING,
                     mPhone.getPhoneId(), mId,
-                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
-                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+                        ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2063,9 +2063,9 @@ public class DataConnection extends StateMachine {
             StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
                     StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTION_ERROR_CREATING_CONNECTION,
                     mPhone.getPhoneId(), mId,
-                    mApnSetting != null ? (long) mApnSetting.typesBitmap : 0L,
+                    mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
-                        ? mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT) : false);
+                        ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
         }
         @Override
         public boolean processMessage(Message msg) {
