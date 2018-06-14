@@ -638,7 +638,8 @@ public class UiccProfile extends IccCard {
             if (mExternalState == IccCardConstants.State.LOADED) {
                 // Update the MCC/MNC.
                 if (mIccRecords != null) {
-                    String operator = mIccRecords.getOperatorNumeric();
+                    Phone currentPhone = PhoneFactory.getPhone(mPhoneId);
+                    String operator = currentPhone.getOperatorNumeric();
                     log("setExternalState: operator=" + operator + " mPhoneId=" + mPhoneId);
 
                     if (!TextUtils.isEmpty(operator)) {
