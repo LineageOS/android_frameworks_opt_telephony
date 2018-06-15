@@ -74,13 +74,13 @@ import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
+import android.util.TimestampedValue;
 
 import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.util.TimeStampedValue;
 
 import org.junit.After;
 import org.junit.Before;
@@ -1496,15 +1496,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             mSimulatedCommands.triggerNITZupdate(nitzStr);
             waitForMs(200);
 
-            ArgumentCaptor<TimeStampedValue<NitzData>> argumentsCaptor =
-                    ArgumentCaptor.forClass(TimeStampedValue.class);
+            ArgumentCaptor<TimestampedValue<NitzData>> argumentsCaptor =
+                    ArgumentCaptor.forClass(TimestampedValue.class);
             verify(mNitzStateMachine, times(1))
                     .handleNitzReceived(argumentsCaptor.capture());
 
             // Confirm the argument was what we expected.
-            TimeStampedValue<NitzData> actualNitzSignal = argumentsCaptor.getValue();
-            assertEquals(expectedNitzData, actualNitzSignal.mValue);
-            assertTrue(actualNitzSignal.mElapsedRealtime <= SystemClock.elapsedRealtime());
+            TimestampedValue<NitzData> actualNitzSignal = argumentsCaptor.getValue();
+            assertEquals(expectedNitzData, actualNitzSignal.getValue());
+            assertTrue(actualNitzSignal.getReferenceTimeMillis() <= SystemClock.elapsedRealtime());
         }
     }
 

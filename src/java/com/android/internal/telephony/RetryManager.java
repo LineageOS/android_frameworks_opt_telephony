@@ -22,10 +22,9 @@ import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
+import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
 import android.util.Pair;
-
-import com.android.internal.telephony.dataconnection.ApnSetting;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -506,7 +505,9 @@ public class RetryManager {
             if (++index == mWaitingApns.size()) index = 0;
 
             // Stop if we find the non-failed APN.
-            if (mWaitingApns.get(index).permanentFailed == false) break;
+            if (!mWaitingApns.get(index).getPermanentFailed()) {
+                break;
+            }
 
             // If we've already cycled through all the APNs, that means there is no APN we can try
             if (index == mCurrentApnIndex) return null;
@@ -553,7 +554,9 @@ public class RetryManager {
             if (++index >= mWaitingApns.size()) index = 0;
 
             // Stop if we find the non-failed APN.
-            if (mWaitingApns.get(index).permanentFailed == false) break;
+            if (!mWaitingApns.get(index).getPermanentFailed()) {
+                break;
+            }
 
             // If we've already cycled through all the APNs, that means all APNs have
             // permanently failed
@@ -594,7 +597,7 @@ public class RetryManager {
      * */
     public void markApnPermanentFailed(ApnSetting apn) {
         if (apn != null) {
-            apn.permanentFailed = true;
+            apn.setPermanentFailed(true);
         }
     }
 
@@ -627,7 +630,7 @@ public class RetryManager {
         configureRetry();
 
         for (ApnSetting apn : mWaitingApns) {
-            apn.permanentFailed = false;
+            apn.setPermanentFailed(false);
         }
 
         log("Setting " + mWaitingApns.size() + " waiting APNs.");

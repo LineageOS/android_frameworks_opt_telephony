@@ -20,6 +20,7 @@ import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.ProxyInfo;
 import android.os.Message;
+import android.telephony.data.ApnSetting;
 
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;

@@ -554,9 +554,6 @@ public abstract class InboundSmsHandler extends StateMachine {
                     return HANDLED;
 
                 case EVENT_UPDATE_TRACKER:
-                    for (int i = 1; i < 10; i++) {
-                        deferMessage(obtainMessage(EVENT_UPDATE_TRACKER, i, i, msg.obj));
-                    }
                     mLastDeliveredSmsTracker = (InboundSmsTracker) msg.obj;
                     return HANDLED;
 
