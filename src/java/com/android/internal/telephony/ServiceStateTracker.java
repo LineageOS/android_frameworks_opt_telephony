@@ -81,6 +81,7 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.util.StatsLog;
 import android.util.TimeUtils;
+import android.util.TimestampedValue;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -95,7 +96,6 @@ import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.NotificationChannelController;
-import com.android.internal.telephony.util.TimeStampedValue;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -3534,8 +3534,8 @@ public class ServiceStateTracker extends Handler {
         NitzData newNitzData = NitzData.parse(nitzString);
         if (newNitzData != null) {
             try {
-                TimeStampedValue<NitzData> nitzSignal =
-                        new TimeStampedValue<>(newNitzData, nitzReceiveTime);
+                TimestampedValue<NitzData> nitzSignal =
+                        new TimestampedValue<>(nitzReceiveTime, newNitzData);
                 mNitzState.handleNitzReceived(nitzSignal);
             } finally {
                 if (DBG) {
