@@ -383,7 +383,8 @@ public final class OldNitzStateMachine implements NitzStateMachine {
                 // Save the last NITZ time signal used so we can return to it later
                 // if auto-time detection is toggled.
                 mSavedNitzTime = new TimestampedValue<>(
-                        adjustedCurrentTimeMillis, nitzSignal.getReferenceTimeMillis());
+                        nitzSignal.getReferenceTimeMillis(),
+                        nitzSignal.getValue().getCurrentTimeInMillis());
             } finally {
                 mWakeLock.release();
             }
