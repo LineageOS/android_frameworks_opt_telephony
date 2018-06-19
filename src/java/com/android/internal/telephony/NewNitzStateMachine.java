@@ -35,7 +35,7 @@ import java.io.PrintWriter;
 /**
  * {@hide}
  */
-public final class OldNitzStateMachine implements NitzStateMachine {
+public final class NewNitzStateMachine implements NitzStateMachine {
 
     private static final String LOG_TAG = ServiceStateTracker.LOG_TAG;
     private static final boolean DBG = ServiceStateTracker.DBG;
@@ -85,21 +85,21 @@ public final class OldNitzStateMachine implements NitzStateMachine {
     private final LocalLog mTimeZoneLog = new LocalLog(15);
     private final GsmCdmaPhone mPhone;
     private final DeviceState mDeviceState;
-    private final OldTimeServiceHelper mTimeServiceHelper;
+    private final NewTimeServiceHelper mTimeServiceHelper;
     private final TimeZoneLookupHelper mTimeZoneLookupHelper;
     /** Wake lock used while setting time of day. */
     private final PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "NitzStateMachine";
 
-    public OldNitzStateMachine(GsmCdmaPhone phone) {
+    public NewNitzStateMachine(GsmCdmaPhone phone) {
         this(phone,
-                new OldTimeServiceHelper(phone.getContext()),
+                new NewTimeServiceHelper(phone.getContext()),
                 new DeviceState(phone),
                 new TimeZoneLookupHelper());
     }
 
     @VisibleForTesting
-    public OldNitzStateMachine(GsmCdmaPhone phone, OldTimeServiceHelper timeServiceHelper,
+    public NewNitzStateMachine(GsmCdmaPhone phone, NewTimeServiceHelper timeServiceHelper,
             DeviceState deviceState, TimeZoneLookupHelper timeZoneLookupHelper) {
         mPhone = phone;
 
@@ -111,7 +111,7 @@ public final class OldNitzStateMachine implements NitzStateMachine {
         mDeviceState = deviceState;
         mTimeZoneLookupHelper = timeZoneLookupHelper;
         mTimeServiceHelper = timeServiceHelper;
-        mTimeServiceHelper.setListener(new OldTimeServiceHelper.Listener() {
+        mTimeServiceHelper.setListener(new NewTimeServiceHelper.Listener() {
             @Override
             public void onTimeDetectionChange(boolean enabled) {
                 if (enabled) {
