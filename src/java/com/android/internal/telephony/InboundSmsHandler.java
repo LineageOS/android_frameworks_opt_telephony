@@ -60,6 +60,7 @@ import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.LocalLog;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
@@ -69,6 +70,8 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -157,6 +160,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** New SMS received as an AsyncResult. */
     public static final int EVENT_INJECT_SMS = 8;
 
+    /** Update the sms tracker */
+    public static final int EVENT_UPDATE_TRACKER = 9;
+
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
 
@@ -204,6 +210,8 @@ public abstract class InboundSmsHandler extends StateMachine {
     protected CellBroadcastHandler mCellBroadcastHandler;
 
     private UserManager mUserManager;
+
+    private LocalLog mLocalLog = new LocalLog(64);
 
     IDeviceIdleController mDeviceIdleController;
 
@@ -449,6 +457,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                     // if any broadcasts were sent, transition to waiting state
                     InboundSmsTracker inboundSmsTracker = (InboundSmsTracker) msg.obj;
                     if (processMessagePart(inboundSmsTracker)) {
+                        sendMessage(obtainMessage(EVENT_UPDATE_TRACKER, msg.obj));
                         transitionTo(mWaitingState);
                     } else {
                         // if event is sent from SmsBroadcastUndelivered.broadcastSms(), and
@@ -474,10 +483,17 @@ public abstract class InboundSmsHandler extends StateMachine {
                     }
                     return HANDLED;
 
+                case EVENT_UPDATE_TRACKER:
+                    logd("process tracker message in DeliveringState " + msg.arg1);
+                    return HANDLED;
+
                 // we shouldn't get this message type in this state, log error and halt.
                 case EVENT_BROADCAST_COMPLETE:
                 case EVENT_START_ACCEPTING_SMS:
                 default:
+                    String errorMsg = "Unhandled msg in delivering state, msg.what = " + msg.what;
+                    loge(errorMsg);
+                    mLocalLog.log(errorMsg);
                     // let DefaultState handle these unexpected message types
                     return NOT_HANDLED;
             }
@@ -492,6 +508,8 @@ public abstract class InboundSmsHandler extends StateMachine {
      * {@link IdleState} after any deferred {@link #EVENT_BROADCAST_SMS} messages are handled.
      */
     private class WaitingState extends State {
+
+        private InboundSmsTracker mLastDeliveredSmsTracker;
 
         @Override
         public void enter() {
@@ -512,10 +530,20 @@ public abstract class InboundSmsHandler extends StateMachine {
             switch (msg.what) {
                 case EVENT_BROADCAST_SMS:
                     // defer until the current broadcast completes
+                    if (mLastDeliveredSmsTracker != null) {
+                        String str = "Defer sms broadcast due to undelivered sms, "
+                                + " messageCount = " + mLastDeliveredSmsTracker.getMessageCount()
+                                + " destPort = " + mLastDeliveredSmsTracker.getDestPort()
+                                + " timestamp = " + mLastDeliveredSmsTracker.getTimestamp()
+                                + " currentTimestamp = " + System.currentTimeMillis();
+                        logd(str);
+                        mLocalLog.log(str);
+                    }
                     deferMessage(msg);
                     return HANDLED;
 
                 case EVENT_BROADCAST_COMPLETE:
+                    mLastDeliveredSmsTracker = null;
                     // return to idle after handling all deferred messages
                     sendMessage(EVENT_RETURN_TO_IDLE);
                     transitionTo(mDeliveringState);
@@ -523,6 +551,13 @@ public abstract class InboundSmsHandler extends StateMachine {
 
                 case EVENT_RETURN_TO_IDLE:
                     // not ready to return to idle; ignore
+                    return HANDLED;
+
+                case EVENT_UPDATE_TRACKER:
+                    for (int i = 1; i < 10; i++) {
+                        deferMessage(obtainMessage(EVENT_UPDATE_TRACKER, i, i, msg.obj));
+                    }
+                    mLastDeliveredSmsTracker = (InboundSmsTracker) msg.obj;
                     return HANDLED;
 
                 default:
@@ -835,8 +870,10 @@ public abstract class InboundSmsHandler extends StateMachine {
         // Do not process null pdu(s). Check for that and return false in that case.
         List<byte[]> pduList = Arrays.asList(pdus);
         if (pduList.size() == 0 || pduList.contains(null)) {
-            loge("processMessagePart: returning false due to " +
-                    (pduList.size() == 0 ? "pduList.size() == 0" : "pduList.contains(null)"));
+            String errorMsg = "processMessagePart: returning false due to "
+                    + (pduList.size() == 0 ? "pduList.size() == 0" : "pduList.contains(null)");
+            loge(errorMsg);
+            mLocalLog.log(errorMsg);
             return false;
         }
 
@@ -1527,6 +1564,15 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
             return replaceFormFeeds(body.toString());
         }
+    }
+
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        super.dump(fd, pw, args);
+        if (mCellBroadcastHandler != null) {
+            mCellBroadcastHandler.dump(fd, pw, args);
+        }
+        mLocalLog.dump(fd, pw, args);
     }
 
     // Some providers send formfeeds in their messages. Convert those formfeeds to newlines.
