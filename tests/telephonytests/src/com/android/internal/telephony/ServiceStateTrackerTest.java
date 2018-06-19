@@ -141,7 +141,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mCellularNetworkService = new CellularNetworkService();
         ServiceInfo serviceInfo =  new ServiceInfo();
         serviceInfo.packageName = "com.android.phone";
-        serviceInfo.permission = "android.permission.BIND_NETWORK_SERVICE";
+        serviceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
         IntentFilter filter = new IntentFilter();
         mContextFixture.addService(
                 NetworkService.NETWORK_SERVICE_INTERFACE,
