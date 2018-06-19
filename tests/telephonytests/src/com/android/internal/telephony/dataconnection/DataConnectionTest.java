@@ -175,7 +175,7 @@ public class DataConnectionTest extends TelephonyTest {
         CellularDataService cellularDataService = new CellularDataService();
         ServiceInfo serviceInfo = new ServiceInfo();
         serviceInfo.packageName = "com.android.phone";
-        serviceInfo.permission = "android.permission.BIND_DATA_SERVICE";
+        serviceInfo.permission = "android.permission.BIND_TELEPHONY_DATA_SERVICE";
         IntentFilter filter = new IntentFilter();
         mContextFixture.addService(
                 DataService.DATA_SERVICE_INTERFACE,
