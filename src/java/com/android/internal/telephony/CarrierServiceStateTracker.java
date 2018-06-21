@@ -170,13 +170,6 @@ public class CarrierServiceStateTracker extends Handler {
                 || mSST.mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE);
     }
 
-    private boolean isPhoneVoiceRegistered() {
-        if (mSST.mSS == null) {
-            return true; //something has gone wrong, return true and not show the notification.
-        }
-        return (mSST.mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
-    }
-
     private boolean isPhoneRegisteredForWifiCalling() {
         Rlog.d(LOG_TAG, "isPhoneRegisteredForWifiCalling: " + mPhone.isWifiCallingEnabled());
         return mPhone.isWifiCallingEnabled();
@@ -456,8 +449,8 @@ public class CarrierServiceStateTracker extends Handler {
     }
 
     /**
-     * Class that defines the emergency notification, which is shown when the user is out of cell
-     * connectivity, but has wifi enabled.
+     * Class that defines the emergency notification, which is shown when Wi-Fi Calling is
+     * available.
      */
     public class EmergencyNetworkNotification implements NotificationType {
 
@@ -502,10 +495,9 @@ public class CarrierServiceStateTracker extends Handler {
          */
         public boolean sendMessage() {
             Rlog.i(LOG_TAG, "EmergencyNetworkNotification: sendMessage() w/values: "
-                    + "," + isPhoneVoiceRegistered() + "," + mDelay + ","
-                    + isPhoneRegisteredForWifiCalling() + "," + mSST.isRadioOn());
-            if (mDelay == UNINITIALIZED_DELAY_VALUE || isPhoneVoiceRegistered()
-                    || !isPhoneRegisteredForWifiCalling()) {
+                    + "," + mDelay + "," + isPhoneRegisteredForWifiCalling() + ","
+                    + mSST.isRadioOn());
+            if (mDelay == UNINITIALIZED_DELAY_VALUE || !isPhoneRegisteredForWifiCalling()) {
                 return false;
             }
             return true;
@@ -525,6 +517,7 @@ public class CarrierServiceStateTracker extends Handler {
                     .setContentTitle(title)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
                     .setContentText(details)
+                    .setFlag(Notification.FLAG_NO_CLEAR, true)
                     .setChannelId(NotificationChannelController.CHANNEL_ID_WFC);
         }
     }
