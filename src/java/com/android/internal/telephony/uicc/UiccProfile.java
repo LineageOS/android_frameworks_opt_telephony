@@ -1455,6 +1455,26 @@ public class UiccProfile extends IccCard {
     }
 
     /**
+     * Match the input certificate to any loaded carrier privileges access rules.
+     *
+     * @param cert certificate in hex string
+     * @return true if matching certificate is found. false otherwise.
+     */
+    public boolean hasCarrierPrivilegeRulesLoadedForCertHex(String cert) {
+        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
+        if (carrierPrivilegeRules != null) {
+            List<UiccAccessRule> accessRules = carrierPrivilegeRules.getAccessRules();
+            for (UiccAccessRule accessRule : accessRules) {
+                String certHexString = accessRule.getCertificateHexString();
+                if (!TextUtils.isEmpty(certHexString) && certHexString.equalsIgnoreCase(cert)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPackageNamesForIntent}.
      */
     public List<String> getCarrierPackageNamesForIntent(
