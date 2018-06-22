@@ -2298,24 +2298,6 @@ public class DcTracker extends Handler {
         mAutoAttachOnCreation.set(false);
     }
 
-    private void onSetDependencyMet(String apnType, boolean met) {
-        // don't allow users to tweak hipri to work around default dependency not met
-        if (PhoneConstants.APN_TYPE_HIPRI.equals(apnType)) return;
-
-        ApnContext apnContext = mApnContexts.get(apnType);
-        if (apnContext == null) {
-            loge("onSetDependencyMet: ApnContext not found in onSetDependencyMet(" +
-                    apnType + ", " + met + ")");
-            return;
-        }
-        applyNewState(apnContext, apnContext.isEnabled(), met);
-        if (PhoneConstants.APN_TYPE_DEFAULT.equals(apnType)) {
-            // tie actions on default to similar actions on HIPRI regarding dependencyMet
-            apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_HIPRI);
-            if (apnContext != null) applyNewState(apnContext, apnContext.isEnabled(), met);
-        }
-    }
-
     public void setPolicyDataEnabled(boolean enabled) {
         if (DBG) log("setPolicyDataEnabled: " + enabled);
         Message msg = obtainMessage(DctConstants.CMD_SET_POLICY_DATA_ENABLE);
@@ -3803,19 +3785,6 @@ public class DcTracker extends Handler {
                 final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
                 if (DBG) log("CMD_SET_USER_DATA_ENABLE enabled=" + enabled);
                 onSetUserDataEnabled(enabled);
-                break;
-            }
-            // TODO - remove
-            case DctConstants.CMD_SET_DEPENDENCY_MET: {
-                boolean met = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                if (DBG) log("CMD_SET_DEPENDENCY_MET met=" + met);
-                Bundle bundle = msg.getData();
-                if (bundle != null) {
-                    String apnType = (String)bundle.get(DctConstants.APN_TYPE_KEY);
-                    if (apnType != null) {
-                        onSetDependencyMet(apnType, met);
-                    }
-                }
                 break;
             }
             case DctConstants.CMD_SET_POLICY_DATA_ENABLE: {
