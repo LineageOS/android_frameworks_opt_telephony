@@ -160,6 +160,7 @@ public class SmsBroadcastUndelivered {
             }
 
             boolean isCurrentFormat3gpp2 = InboundSmsHandler.isCurrentFormat3gpp2();
+            long expirationTime = getUndeliveredSmsExpirationTime(context);
             while (cursor.moveToNext()) {
                 InboundSmsTracker tracker;
                 try {
@@ -178,7 +179,6 @@ public class SmsBroadcastUndelivered {
                     Integer receivedCount = multiPartReceivedCount.get(reference);
                     if (receivedCount == null) {
                         multiPartReceivedCount.put(reference, 1);    // first segment seen
-                        long expirationTime = getUndeliveredSmsExpirationTime(context);
                         if (tracker.getTimestamp() <
                                 (System.currentTimeMillis() - expirationTime)) {
                             // older than 30 days; delete if we don't find all the segments
