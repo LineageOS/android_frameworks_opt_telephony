@@ -1280,8 +1280,13 @@ public class UiccProfile extends IccCard {
      * Resets the application with the input AID. Returns true if any changes were made.
      *
      * A null aid implies a card level reset - all applications must be reset.
+     *
+     * @param aid aid of the application which should be reset; null imples all applications
+     * @param disposeCatService flag indicating if CatService should be disposed as part of
+     *                          this reset
+     * @return boolean indicating if there was any change made as part of the reset
      */
-    public boolean resetAppWithAid(String aid) {
+    public boolean resetAppWithAid(String aid, boolean disposeCatService) {
         synchronized (mLock) {
             boolean changed = false;
             for (int i = 0; i < mUiccApplications.length; i++) {
@@ -1298,7 +1303,7 @@ public class UiccProfile extends IccCard {
                     mCarrierPrivilegeRules = null;
                     changed = true;
                 }
-                if (mCatService != null) {
+                if (disposeCatService && mCatService != null) {
                     mCatService.dispose();
                     mCatService = null;
                     changed = true;
@@ -1447,6 +1452,26 @@ public class UiccProfile extends IccCard {
         return carrierPrivilegeRules == null
                 ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
                 carrierPrivilegeRules.getCarrierPrivilegeStatusForUid(packageManager, uid);
+    }
+
+    /**
+     * Match the input certificate to any loaded carrier privileges access rules.
+     *
+     * @param cert certificate in hex string
+     * @return true if matching certificate is found. false otherwise.
+     */
+    public boolean hasCarrierPrivilegeRulesLoadedForCertHex(String cert) {
+        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
+        if (carrierPrivilegeRules != null) {
+            List<UiccAccessRule> accessRules = carrierPrivilegeRules.getAccessRules();
+            for (UiccAccessRule accessRule : accessRules) {
+                String certHexString = accessRule.getCertificateHexString();
+                if (!TextUtils.isEmpty(certHexString) && certHexString.equalsIgnoreCase(cert)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
