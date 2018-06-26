@@ -973,8 +973,11 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     public void sendRttModifyRequest(android.telecom.Connection.RttTextStream textStream) {
-        getImsCall().sendRttModifyRequest();
-        setCurrentRttTextStream(textStream);
+        ImsCall imsCall = getImsCall();
+        if (imsCall != null) {
+            getImsCall().sendRttModifyRequest();
+            setCurrentRttTextStream(textStream);
+        }
     }
 
     /**
@@ -987,11 +990,13 @@ public class ImsPhoneConnection extends Connection implements
         boolean accept = textStream != null;
         ImsCall imsCall = getImsCall();
 
-        imsCall.sendRttModifyResponse(accept);
-        if (accept) {
-            setCurrentRttTextStream(textStream);
-        } else {
-            Rlog.e(LOG_TAG, "sendRttModifyResponse: foreground call has no connections");
+        if (imsCall != null) {
+            imsCall.sendRttModifyResponse(accept);
+            if (accept) {
+                setCurrentRttTextStream(textStream);
+            } else {
+                Rlog.e(LOG_TAG, "sendRttModifyResponse: foreground call has no connections");
+            }
         }
     }
 
@@ -1046,7 +1051,12 @@ public class ImsPhoneConnection extends Connection implements
     // Make sure to synchronize on ImsPhoneConnection.this before calling.
     private void createRttTextHandler() {
         mRttTextHandler = new ImsRttTextHandler(Looper.getMainLooper(),
-                (message) -> getImsCall().sendRttMessage(message));
+                (message) -> {
+                    ImsCall imsCall = getImsCall();
+                    if (imsCall != null) {
+                        imsCall.sendRttMessage(message);
+                    }
+                });
         mRttTextHandler.initialize(mRttTextStream);
     }
 
