@@ -2996,6 +2996,9 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRilDataRadioTechnologyChanged || hasRilVoiceRadioTechnologyChanged) {
             logRatChange();
+
+            updateRatTypeForSignalStrength();
+            notifySignalStrength();
         }
 
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
@@ -4091,18 +4094,6 @@ public class ServiceStateTracker extends Handler {
      * @return true if the signal strength changed and a notification was sent.
      */
     protected boolean onSignalStrengthResult(AsyncResult ar) {
-        boolean isGsm = false;
-        int dataRat = mSS.getRilDataRadioTechnology();
-        int voiceRat = mSS.getRilVoiceRadioTechnology();
-
-        // Override isGsm based on currently camped data and voice RATs
-        // Set isGsm to true if the RAT belongs to GSM family and not IWLAN
-        if ((dataRat != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                && ServiceState.isGsm(dataRat))
-                || (voiceRat != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                && ServiceState.isGsm(voiceRat))) {
-            isGsm = true;
-        }
 
         // This signal is used for both voice and data radio signal so parse
         // all fields
@@ -4110,12 +4101,6 @@ public class ServiceStateTracker extends Handler {
         if ((ar.exception == null) && (ar.result != null)) {
             mSignalStrength = (SignalStrength) ar.result;
             mSignalStrength.validateInput();
-            if (dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
-                    && voiceRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
-                mSignalStrength.fixType();
-            } else {
-                mSignalStrength.setGsm(isGsm);
-            }
             mSignalStrength.setLteRsrpBoost(mSS.getLteEarfcnRsrpBoost());
 
             PersistableBundle config = getCarrierConfig();
@@ -4129,12 +4114,37 @@ public class ServiceStateTracker extends Handler {
                     CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY));
         } else {
             log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
-            mSignalStrength = new SignalStrength(isGsm);
+            mSignalStrength = new SignalStrength(true);
         }
 
+        updateRatTypeForSignalStrength();
         boolean ssChanged = notifySignalStrength();
 
         return ssChanged;
+    }
+
+    private void updateRatTypeForSignalStrength() {
+        if (mSignalStrength != null) {
+            boolean isGsm = false;
+            int dataRat = mSS.getRilDataRadioTechnology();
+            int voiceRat = mSS.getRilVoiceRadioTechnology();
+
+            // Override isGsm based on currently camped data and voice RATs
+            // Set isGsm to true if the RAT belongs to GSM family and not IWLAN
+            if ((dataRat != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                    && ServiceState.isGsm(dataRat))
+                    || (voiceRat != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                    && ServiceState.isGsm(voiceRat))) {
+                isGsm = true;
+            }
+
+            if (dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
+                    && voiceRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
+                mSignalStrength.fixType();
+            } else {
+                mSignalStrength.setGsm(isGsm);
+            }
+        }
     }
 
     /**
