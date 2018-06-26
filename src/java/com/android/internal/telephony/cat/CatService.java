@@ -440,6 +440,12 @@ public class CatService extends Handler implements AppInterface {
             case GET_INPUT:
             case GET_INKEY:
                 break;
+            case RUN_AT:
+                if (STK_DEFAULT.equals(((DisplayTextParams)cmdParams).mTextMsg.text)) {
+                    // Remove the default text which was temporarily added and shall not be shown
+                    ((DisplayTextParams)cmdParams).mTextMsg.text = null;
+                }
+                break;
             case SEND_DTMF:
             case SEND_SMS:
             case SEND_SS:

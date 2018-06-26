@@ -78,6 +78,7 @@ public interface AppInterface {
         SEND_SS(0x11),
         SEND_USSD(0x12),
         SEND_SMS(0x13),
+        RUN_AT(0x34),
         SEND_DTMF(0x14),
         SET_UP_EVENT_LIST(0x05),
         SET_UP_IDLE_MODE_TEXT(0x28),
