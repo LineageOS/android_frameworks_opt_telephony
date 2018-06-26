@@ -2799,7 +2799,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 @Override
                 public void onDeregistered(ImsReasonInfo imsReasonInfo) {
                     if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
-                    resetImsCapabilities();
                     mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
                     mPhone.setImsRegistered(false);
                     mPhone.processDisconnectReason(imsReasonInfo);
