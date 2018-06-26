@@ -458,6 +458,9 @@ public class ImsPhoneConnection extends Connection implements
                 Rlog.d(LOG_TAG, "onDisconnect: no parent");
             }
             synchronized (this) {
+                if (mRttTextHandler != null) {
+                    mRttTextHandler.tearDown();
+                }
                 if (mImsCall != null) mImsCall.close();
                 mImsCall = null;
             }
