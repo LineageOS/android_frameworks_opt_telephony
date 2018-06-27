@@ -16,8 +16,10 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
 import android.content.Context;
 import android.os.Binder;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.provider.Telephony.Sms.Intents;
@@ -133,11 +135,19 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     mTrackers.remove(token);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
-                    tracker.mRetryCount += 1;
-                    sendSms(tracker);
-                    break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
-                    fallbackToPstn(token, tracker);
+                    if (tracker.mRetryCount < MAX_SEND_RETRIES) {
+                        tracker.mRetryCount += 1;
+                        if(status == ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK) {
+                            tracker.mIsFallBackRetry = true;
+                        }
+                        Message retryMsg = obtainMessage(EVENT_SEND_RETRY, tracker);
+                        sendMessageDelayed(retryMsg, SEND_RETRY_DELAY);
+                    } else {
+                        Rlog.e(TAG,"onSendSmsResult Max retrys reaached: " + tracker.mRetryCount);
+                        tracker.onFailed(mContext, RESULT_ERROR_GENERIC_FAILURE, 0);
+                        mTrackers.remove(token);
+                    }
                     break;
                 default:
             }
