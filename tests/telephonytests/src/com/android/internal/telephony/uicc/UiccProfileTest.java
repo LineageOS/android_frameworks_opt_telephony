@@ -40,6 +40,7 @@ import android.telephony.CarrierConfigManager;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cat.CatService;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import org.junit.After;
 import org.junit.Before;
@@ -377,6 +378,45 @@ public class UiccProfileTest extends TelephonyTest {
         /* wait for the carrier privilege rules to be loaded */
         waitForMs(50);
         assertEquals(3, mUiccProfile.getNumApplications());
+
+        mUiccProfile.mHandler.sendMessage(
+                mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(SCARY_SLEEP_MS);
+        // state is loaded as all records are loaded right away as SimulatedCommands returns
+        // response for them right away. Ideally applications and records should be mocked.
+        assertEquals(State.LOADED, mUiccProfile.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateUiccProfileApplicationWithDuplicateApps() {
+        /* update app status and index */
+        IccCardApplicationStatus umtsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_USIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA2");
+        IccCardApplicationStatus imsApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_ISIM,
+                IccCardApplicationStatus.AppState.APPSTATE_READY, "0xA1");
+        IccCardApplicationStatus unknownApp = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_UNKNOWN,
+                IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN, "0xA2");
+        IccCardApplicationStatus umtsAppDup = composeUiccApplicationStatus(
+                IccCardApplicationStatus.AppType.APPTYPE_USIM,
+                AppState.APPSTATE_DETECTED, "0xA2");
+        mIccCardStatus.mApplications = new IccCardApplicationStatus[]{imsApp, umtsApp, unknownApp,
+                umtsAppDup};
+        mIccCardStatus.mCdmaSubscriptionAppIndex = -1;
+        mIccCardStatus.mImsSubscriptionAppIndex = 0;
+        mIccCardStatus.mGsmUmtsSubscriptionAppIndex = 1;
+        Message mProfileUpdate = mHandler.obtainMessage(UICCPROFILE_UPDATE_APPLICATION_EVENT);
+        setReady(false);
+        mProfileUpdate.sendToTarget();
+
+        waitUntilReady();
+
+        /* wait for the carrier privilege rules to be loaded */
+        waitForMs(50);
+        assertEquals(4, mUiccProfile.getNumApplications());
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));

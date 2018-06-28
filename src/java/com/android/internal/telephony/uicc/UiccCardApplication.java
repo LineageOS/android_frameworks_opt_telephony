@@ -73,6 +73,9 @@ public class UiccCardApplication {
     private boolean       mDesiredFdnEnabled;
     private boolean       mIccLockEnabled;
     private boolean       mDesiredPinLocked;
+
+    // App state will be ignored while deciding whether the card is ready or not.
+    private boolean       mIgnoreApp;
     private boolean       mIccFdnAvailable = true; // Default is enabled.
 
     private CommandsInterface mCi;
@@ -101,6 +104,7 @@ public class UiccCardApplication {
         mPin1Replaced = (as.pin1_replaced != 0);
         mPin1State = as.pin1;
         mPin2State = as.pin2;
+        mIgnoreApp = false;
 
         mContext = c;
         mCi = ci;
@@ -872,6 +876,14 @@ public class UiccCardApplication {
 
     public int getPhoneId() {
         return mUiccProfile.getPhoneId();
+    }
+
+    public boolean isAppIgnored() {
+        return mIgnoreApp;
+    }
+
+    public void setAppIgnoreState(boolean ignore) {
+        mIgnoreApp = ignore;
     }
 
     protected UiccProfile getUiccProfile() {
