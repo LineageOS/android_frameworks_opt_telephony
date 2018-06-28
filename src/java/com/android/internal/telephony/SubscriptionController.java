@@ -652,6 +652,7 @@ public class SubscriptionController extends ISub.Stub {
             List<SubscriptionInfo> activeSubscriptionInfoList = getSubInfo(
                     SubscriptionManager.SIM_SLOT_INDEX + ">=0", null);
             if (activeSubscriptionInfoList != null) {
+                activeSubscriptionInfoList.sort(SUBSCRIPTION_INFO_COMPARATOR);
                 mCacheActiveSubInfoList.addAll(activeSubscriptionInfoList);
             }
             if (DBG_CACHE) {
