@@ -504,6 +504,7 @@ public class UiccProfile extends IccCard {
                 setExternalState(IccCardConstants.State.NOT_READY);
                 break;
             case APPSTATE_READY:
+                checkAndUpdateIfAnyAppToBeIgnored();
                 if (areAllApplicationsReady()) {
                     if (areAllRecordsLoaded() && areCarrierPriviligeRulesLoaded()) {
                         if (VDBG) log("updateExternalState: setting state to LOADED");
@@ -976,13 +977,34 @@ public class UiccProfile extends IccCard {
         return true;
     }
 
-    private boolean areAllApplicationsReady() {
+    private void checkAndUpdateIfAnyAppToBeIgnored() {
+        boolean[] appReadyStateTracker = new boolean[AppType.APPTYPE_ISIM.ordinal() + 1];
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null && isSupportedApplication(app) && app.isReady()) {
+                appReadyStateTracker[app.getType().ordinal()] = true;
+            }
+        }
+
         for (UiccCardApplication app : mUiccApplications) {
             if (app != null && isSupportedApplication(app) && !app.isReady()) {
+                /* Checks if the  appReadyStateTracker has already an entry in ready state
+                   with same type as app */
+                if (appReadyStateTracker[app.getType().ordinal()]) {
+                    app.setAppIgnoreState(true);
+                }
+            }
+        }
+    }
+
+    private boolean areAllApplicationsReady() {
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null && isSupportedApplication(app) && !app.isReady()
+                    && !app.isAppIgnored()) {
                 if (VDBG) log("areAllApplicationsReady: return false");
                 return false;
             }
         }
+
         if (VDBG) {
             log("areAllApplicationsReady: outside loop, return " + (mUiccApplication != null));
         }
@@ -991,7 +1013,7 @@ public class UiccProfile extends IccCard {
 
     private boolean areAllRecordsLoaded() {
         for (UiccCardApplication app : mUiccApplications) {
-            if (app != null && isSupportedApplication(app)) {
+            if (app != null && isSupportedApplication(app) && !app.isAppIgnored()) {
                 IccRecords ir = app.getIccRecords();
                 if (ir == null || !ir.isLoaded()) {
                     if (VDBG) log("areAllRecordsLoaded: return false");
