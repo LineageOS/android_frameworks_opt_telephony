@@ -1328,12 +1328,12 @@ public class RadioResponse extends IRadioResponse.Stub {
                 } else {
                     ret = new KeepaliveStatus(keepaliveStatus.sessionHandle, convertedStatus);
                 }
+                // If responseInfo.error is NONE, response function sends the response message
+                // even if result is actually an error.
+                sendMessageResponse(rr.mResult, ret);
                 break;
             case RadioError.REQUEST_NOT_SUPPORTED:
                 ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
-                // The request is unsupported, which is ok. We'll report it to the higher
-                // layer and treat it as acceptable in the RIL.
-                responseInfo.error = RadioError.NONE;
                 break;
             case RadioError.NO_RESOURCES:
                 ret = new KeepaliveStatus(KeepaliveStatus.ERROR_NO_RESOURCES);
@@ -1342,7 +1342,7 @@ public class RadioResponse extends IRadioResponse.Stub {
                 ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNKNOWN);
                 break;
         }
-        sendMessageResponse(rr.mResult, ret);
+        // If responseInfo.error != NONE, the processResponseDone sends the response message.
         mRil.processResponseDone(rr, responseInfo, ret);
     }
 
