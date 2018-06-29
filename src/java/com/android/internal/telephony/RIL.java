@@ -3951,6 +3951,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             appendPrimitiveArrayToArrayList(
                     packetData.dstAddress.getAddress(), req.destinationAddress);
             req.destinationPort = packetData.dstPort;
+            req.maxKeepaliveIntervalMillis = intervalMillis;
 
             radioProxy11.startKeepalive(rr.mSerial, req);
         } catch (RemoteException | RuntimeException e) {
