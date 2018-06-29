@@ -2231,8 +2231,32 @@ public class ServiceStateTracker extends Handler {
         mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
     }
 
+    private void updateOperatorNameFromCarrierConfig() {
+        // Brand override gets a priority over carrier config. If brand override is not available,
+        // override the operator name in home network. Also do this only for CDMA. This is temporary
+        // and should be fixed in a proper way in a later release.
+        if (!mPhone.isPhoneTypeGsm() && !mSS.getRoaming()) {
+            boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) != null
+                    && mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null;
+            if (!hasBrandOverride) {
+                PersistableBundle config = getCarrierConfig();
+                if (config.getBoolean(
+                        CarrierConfigManager.KEY_CDMA_HOME_REGISTERED_PLMN_NAME_OVERRIDE_BOOL)) {
+                    String operator = config.getString(
+                            CarrierConfigManager.KEY_CDMA_HOME_REGISTERED_PLMN_NAME_STRING);
+                    log("updateOperatorNameFromCarrierConfig: changing from "
+                            + mSS.getOperatorAlpha() + " to " + operator);
+                    // override long and short operator name, keeping numeric the same
+                    mSS.setOperatorName(operator, operator, mSS.getOperatorNumeric());
+                }
+            }
+        }
+    }
+
     protected void updateSpnDisplay() {
         updateOperatorNameFromEri();
+        // carrier config gets a priority over ERI
+        updateOperatorNameFromCarrierConfig();
 
         String wfcVoiceSpnFormat = null;
         String wfcDataSpnFormat = null;
