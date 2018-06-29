@@ -620,12 +620,10 @@ public class DeviceStateMonitor extends Handler {
          * These thresholds are taken from the LTE RSRP defaults in {@link CarrierConfigManager}.
          */
         public static final int[] EUTRAN = new int[] {
-            -140, /* SIGNAL_STRENGTH_NONE_OR_UNKNOWN */
             -128, /* SIGNAL_STRENGTH_POOR */
             -118, /* SIGNAL_STRENGTH_MODERATE */
             -108, /* SIGNAL_STRENGTH_GOOD */
             -98,  /* SIGNAL_STRENGTH_GREAT */
-            -44   /* SIGNAL_STRENGTH_NONE_OR_UNKNOWN */
         };
 
         /**
