@@ -137,7 +137,6 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     sendSms(tracker);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
-                    tracker.mRetryCount += 1;
                     fallbackToPstn(token, tracker);
                     break;
                 default:
