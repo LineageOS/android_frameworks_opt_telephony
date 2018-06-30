@@ -23,6 +23,7 @@ import android.net.NetworkConfig;
 import android.net.NetworkRequest;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
+import android.telephony.data.ApnSetting.ApnType;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.SparseIntArray;
@@ -30,7 +31,6 @@ import android.util.SparseIntArray;
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -427,7 +427,7 @@ public class ApnContext {
             } else {
                 mLocalLogs.add(log);
                 mNetworkRequests.add(networkRequest);
-                mDcTracker.setEnabled(apnIdForApnName(mApnType), true);
+                mDcTracker.setEnabled(ApnSetting.getApnTypesBitmaskFromString(mApnType), true);
             }
         }
     }
@@ -447,7 +447,7 @@ public class ApnContext {
                 log.log("ApnContext.releaseNetwork left with " + mNetworkRequests.size() +
                         " requests.");
                 if (mNetworkRequests.size() == 0) {
-                    mDcTracker.setEnabled(apnIdForApnName(mApnType), false);
+                    mDcTracker.setEnabled(ApnSetting.getApnTypesBitmaskFromString(mApnType), false);
                 }
             }
         }
@@ -549,88 +549,78 @@ public class ApnContext {
         return mRetryManager.getRetryAfterDisconnectDelay();
     }
 
-    public static int apnIdForType(int networkType) {
+    public static int getApnTypeFromNetworkType(int networkType) {
         switch (networkType) {
-        case ConnectivityManager.TYPE_MOBILE:
-            return DctConstants.APN_DEFAULT_ID;
-        case ConnectivityManager.TYPE_MOBILE_MMS:
-            return DctConstants.APN_MMS_ID;
-        case ConnectivityManager.TYPE_MOBILE_SUPL:
-            return DctConstants.APN_SUPL_ID;
-        case ConnectivityManager.TYPE_MOBILE_DUN:
-            return DctConstants.APN_DUN_ID;
-        case ConnectivityManager.TYPE_MOBILE_FOTA:
-            return DctConstants.APN_FOTA_ID;
-        case ConnectivityManager.TYPE_MOBILE_IMS:
-            return DctConstants.APN_IMS_ID;
-        case ConnectivityManager.TYPE_MOBILE_CBS:
-            return DctConstants.APN_CBS_ID;
-        case ConnectivityManager.TYPE_MOBILE_IA:
-            return DctConstants.APN_IA_ID;
-        case ConnectivityManager.TYPE_MOBILE_EMERGENCY:
-            return DctConstants.APN_EMERGENCY_ID;
-        default:
-            return DctConstants.APN_INVALID_ID;
+            case ConnectivityManager.TYPE_MOBILE:
+                return ApnSetting.TYPE_DEFAULT;
+            case ConnectivityManager.TYPE_MOBILE_MMS:
+                return ApnSetting.TYPE_MMS;
+            case ConnectivityManager.TYPE_MOBILE_SUPL:
+                return ApnSetting.TYPE_SUPL;
+            case ConnectivityManager.TYPE_MOBILE_DUN:
+                return ApnSetting.TYPE_DUN;
+            case ConnectivityManager.TYPE_MOBILE_FOTA:
+                return ApnSetting.TYPE_FOTA;
+            case ConnectivityManager.TYPE_MOBILE_IMS:
+                return ApnSetting.TYPE_IMS;
+            case ConnectivityManager.TYPE_MOBILE_CBS:
+                return ApnSetting.TYPE_CBS;
+            case ConnectivityManager.TYPE_MOBILE_IA:
+                return ApnSetting.TYPE_IA;
+            case ConnectivityManager.TYPE_MOBILE_EMERGENCY:
+                return ApnSetting.TYPE_EMERGENCY;
+            default:
+                return ApnSetting.TYPE_NONE;
         }
     }
 
-    public static int apnIdForNetworkRequest(NetworkRequest nr) {
+    static @ApnType int getApnTypeFromNetworkRequest(NetworkRequest nr) {
         NetworkCapabilities nc = nr.networkCapabilities;
         // For now, ignore the bandwidth stuff
         if (nc.getTransportTypes().length > 0 &&
                 nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == false) {
-            return DctConstants.APN_INVALID_ID;
+            return ApnSetting.TYPE_NONE;
         }
 
         // in the near term just do 1-1 matches.
         // TODO - actually try to match the set of capabilities
-        int apnId = DctConstants.APN_INVALID_ID;
+        int apnType = ApnSetting.TYPE_NONE;
         boolean error = false;
 
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-            apnId = DctConstants.APN_DEFAULT_ID;
+            apnType = ApnSetting.TYPE_DEFAULT;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_MMS_ID;
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_MMS;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_SUPL_ID;
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_SUPL;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_DUN_ID;
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_DUN;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_FOTA_ID;
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_FOTA;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_IMS_ID;
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_IMS;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_CBS_ID;
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_CBS;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IA)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_IA_ID;
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_RCS)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-
-            Rlog.d(SLOG_TAG, "RCS APN type not yet supported");
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-
-            Rlog.d(SLOG_TAG, "XCAP APN type not yet supported");
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_IA;
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
-            if (apnId != DctConstants.APN_INVALID_ID) error = true;
-            apnId = DctConstants.APN_EMERGENCY_ID;
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_EMERGENCY;
         }
         if (error) {
             // TODO: If this error condition is removed, the framework's handling of
@@ -639,66 +629,10 @@ public class ApnContext {
             // NetworkCapabilities.maybeMarkCapabilitiesRestricted currently works.
             Rlog.d(SLOG_TAG, "Multiple apn types specified in request - result is unspecified!");
         }
-        if (apnId == DctConstants.APN_INVALID_ID) {
+        if (apnType == ApnSetting.TYPE_NONE) {
             Rlog.d(SLOG_TAG, "Unsupported NetworkRequest in Telephony: nr=" + nr);
         }
-        return apnId;
-    }
-
-    // TODO - kill The use of these strings
-    public static int apnIdForApnName(String type) {
-        switch (type) {
-            case PhoneConstants.APN_TYPE_DEFAULT:
-                return DctConstants.APN_DEFAULT_ID;
-            case PhoneConstants.APN_TYPE_MMS:
-                return DctConstants.APN_MMS_ID;
-            case PhoneConstants.APN_TYPE_SUPL:
-                return DctConstants.APN_SUPL_ID;
-            case PhoneConstants.APN_TYPE_DUN:
-                return DctConstants.APN_DUN_ID;
-            case PhoneConstants.APN_TYPE_HIPRI:
-                return DctConstants.APN_HIPRI_ID;
-            case PhoneConstants.APN_TYPE_IMS:
-                return DctConstants.APN_IMS_ID;
-            case PhoneConstants.APN_TYPE_FOTA:
-                return DctConstants.APN_FOTA_ID;
-            case PhoneConstants.APN_TYPE_CBS:
-                return DctConstants.APN_CBS_ID;
-            case PhoneConstants.APN_TYPE_IA:
-                return DctConstants.APN_IA_ID;
-            case PhoneConstants.APN_TYPE_EMERGENCY:
-                return DctConstants.APN_EMERGENCY_ID;
-            default:
-                return DctConstants.APN_INVALID_ID;
-        }
-    }
-
-    private static String apnNameForApnId(int id) {
-        switch (id) {
-            case DctConstants.APN_DEFAULT_ID:
-                return PhoneConstants.APN_TYPE_DEFAULT;
-            case DctConstants.APN_MMS_ID:
-                return PhoneConstants.APN_TYPE_MMS;
-            case DctConstants.APN_SUPL_ID:
-                return PhoneConstants.APN_TYPE_SUPL;
-            case DctConstants.APN_DUN_ID:
-                return PhoneConstants.APN_TYPE_DUN;
-            case DctConstants.APN_HIPRI_ID:
-                return PhoneConstants.APN_TYPE_HIPRI;
-            case DctConstants.APN_IMS_ID:
-                return PhoneConstants.APN_TYPE_IMS;
-            case DctConstants.APN_FOTA_ID:
-                return PhoneConstants.APN_TYPE_FOTA;
-            case DctConstants.APN_CBS_ID:
-                return PhoneConstants.APN_TYPE_CBS;
-            case DctConstants.APN_IA_ID:
-                return PhoneConstants.APN_TYPE_IA;
-            case DctConstants.APN_EMERGENCY_ID:
-                return PhoneConstants.APN_TYPE_EMERGENCY;
-            default:
-                Rlog.d(SLOG_TAG, "Unknown id (" + id + ") in apnIdToType");
-                return PhoneConstants.APN_TYPE_DEFAULT;
-        }
+        return apnType;
     }
 
     @Override

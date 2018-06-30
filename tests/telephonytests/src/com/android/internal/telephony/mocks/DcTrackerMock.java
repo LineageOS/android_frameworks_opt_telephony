@@ -53,14 +53,6 @@ public class DcTrackerMock extends DcTracker {
         throw new RuntimeException("Not Implemented");
     }
     @Override
-    public boolean isApnSupported(String name) {
-        throw new RuntimeException("Not Implemented");
-    }
-    @Override
-    public int getApnPriority(String name) {
-        throw new RuntimeException("Not Implemented");
-    }
-    @Override
     public LinkProperties getLinkProperties(String apnType) {
         throw new RuntimeException("Not Implemented");
     }
