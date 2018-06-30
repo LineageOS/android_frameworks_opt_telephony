@@ -22,6 +22,30 @@
       "revId": "981aea5eef05157d104aae12154298654ce9601e",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "43b91c2e_7da79f02",
+        "filename": "src/java/com/android/internal/telephony/RadioIndication.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 11801
+      },
+      "writtenOn": "2018-06-30T12:35:46Z",
+      "side": 1,
+      "message": "Yes. I made it public to make it align with RadioResponse, though, which has a public constructor already.",
+      "parentUuid": "b19dbec2_ccf26069",
+      "range": {
+        "startLine": 107,
+        "startChar": 4,
+        "endLine": 107,
+        "endChar": 10
+      },
+      "revId": "981aea5eef05157d104aae12154298654ce9601e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
