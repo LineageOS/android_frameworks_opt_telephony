@@ -505,7 +505,7 @@ public class DcTracker extends Handler {
     private final ConcurrentHashMap<String, ApnContext> mApnContexts =
             new ConcurrentHashMap<String, ApnContext>();
 
-    private final SparseArray<ApnContext> mApnContextsById = new SparseArray<ApnContext>();
+    private final SparseArray<ApnContext> mApnContextsByType = new SparseArray<ApnContext>();
 
     private int mDisconnectPendingCount = 0;
 
@@ -733,7 +733,7 @@ public class DcTracker extends Handler {
 
         mPhone.getContext().getContentResolver().unregisterContentObserver(mApnObserver);
         mApnContexts.clear();
-        mApnContextsById.clear();
+        mApnContextsByType.clear();
         mPrioritySortedApnContexts.clear();
         unregisterForAllEvents();
 
@@ -870,38 +870,17 @@ public class DcTracker extends Handler {
     }
 
     public void requestNetwork(NetworkRequest networkRequest, LocalLog log) {
-        final int apnId = ApnContext.apnIdForNetworkRequest(networkRequest);
-        final ApnContext apnContext = mApnContextsById.get(apnId);
+        final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
+        final ApnContext apnContext = mApnContextsByType.get(apnType);
         log.log("DcTracker.requestNetwork for " + networkRequest + " found " + apnContext);
         if (apnContext != null) apnContext.requestNetwork(networkRequest, log);
     }
 
     public void releaseNetwork(NetworkRequest networkRequest, LocalLog log) {
-        final int apnId = ApnContext.apnIdForNetworkRequest(networkRequest);
-        final ApnContext apnContext = mApnContextsById.get(apnId);
+        final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
+        final ApnContext apnContext = mApnContextsByType.get(apnType);
         log.log("DcTracker.releaseNetwork for " + networkRequest + " found " + apnContext);
         if (apnContext != null) apnContext.releaseNetwork(networkRequest, log);
-    }
-
-    public boolean isApnSupported(String name) {
-        if (name == null) {
-            loge("isApnSupported: name=null");
-            return false;
-        }
-        ApnContext apnContext = mApnContexts.get(name);
-        if (apnContext == null) {
-            loge("Request for unsupported mobile name: " + name);
-            return false;
-        }
-        return true;
-    }
-
-    public int getApnPriority(String name) {
-        ApnContext apnContext = mApnContexts.get(name);
-        if (apnContext == null) {
-            loge("Request for unsupported mobile name: " + name);
-        }
-        return apnContext.priority;
     }
 
     // Turn telephony radio on or off.
@@ -974,7 +953,7 @@ public class DcTracker extends Handler {
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
         ApnContext apnContext = new ApnContext(mPhone, type, LOG_TAG, networkConfig, this);
         mApnContexts.put(type, apnContext);
-        mApnContextsById.put(ApnContext.apnIdForApnName(type), apnContext);
+        mApnContextsByType.put(ApnSetting.getApnTypesBitmaskFromString(type), apnContext);
         mPrioritySortedApnContexts.add(apnContext);
         return apnContext;
     }
@@ -2478,17 +2457,17 @@ public class DcTracker extends Handler {
         return null;
     }
 
-    public void setEnabled(int id, boolean enable) {
+    public void setEnabled(int apnType, boolean enable) {
         Message msg = obtainMessage(DctConstants.EVENT_ENABLE_NEW_APN);
-        msg.arg1 = id;
+        msg.arg1 = apnType;
         msg.arg2 = (enable ? DctConstants.ENABLED : DctConstants.DISABLED);
         sendMessage(msg);
     }
 
-    private void onEnableApn(int apnId, int enabled) {
-        ApnContext apnContext = mApnContextsById.get(apnId);
+    private void onEnableApn(int apnType, int enabled) {
+        ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext == null) {
-            loge("onEnableApn(" + apnId + ", " + enabled + "): NO ApnContext");
+            loge("onEnableApn(" + apnType + ", " + enabled + "): NO ApnContext");
             return;
         }
         // TODO change our retry manager to use the appropriate numbers for the new APN
@@ -3183,9 +3162,9 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_VOICE_CALL_ENDED);
     }
 
-    private void onCleanUpConnection(boolean tearDown, int apnId, String reason) {
+    private void onCleanUpConnection(boolean tearDown, int apnType, String reason) {
         if (DBG) log("onCleanUpConnection");
-        ApnContext apnContext = mApnContextsById.get(apnId);
+        ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext != null) {
             apnContext.setReason(reason);
             cleanUpConnection(tearDown, apnContext);
@@ -3649,7 +3628,7 @@ public class DcTracker extends Handler {
                         cleanUpAllConnections(false, Phone.REASON_PS_RESTRICT_ENABLED);
                         mReregisterOnReconnectFailure = false;
                     }
-                    ApnContext apnContext = mApnContextsById.get(DctConstants.APN_DEFAULT_ID);
+                    ApnContext apnContext = mApnContextsByType.get(ApnSetting.TYPE_DEFAULT);
                     if (apnContext != null) {
                         apnContext.setReason(Phone.REASON_PS_RESTRICT_ENABLED);
                         trySetupData(apnContext);
@@ -3852,7 +3831,7 @@ public class DcTracker extends Handler {
             }
             case DctConstants.EVENT_PROVISIONING_APN_ALARM: {
                 if (DBG) log("EVENT_PROVISIONING_APN_ALARM");
-                ApnContext apnCtx = mApnContextsById.get(DctConstants.APN_DEFAULT_ID);
+                ApnContext apnCtx = mApnContextsByType.get(ApnSetting.TYPE_DEFAULT);
                 if (apnCtx.isProvisioningApn() && apnCtx.isConnectedOrConnecting()) {
                     if (mProvisioningApnAlarmTag == msg.arg1) {
                         if (DBG) log("EVENT_PROVISIONING_APN_ALARM: Disconnecting");
@@ -4207,9 +4186,9 @@ public class DcTracker extends Handler {
         }
 
         if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_EMERGENCY)) {
-            apnContext = mApnContextsById.get(DctConstants.APN_EMERGENCY_ID);
+            apnContext = mApnContextsByType.get(ApnSetting.TYPE_EMERGENCY);
         } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_IMS)) {
-            apnContext = mApnContextsById.get(DctConstants.APN_IMS_ID);
+            apnContext = mApnContextsByType.get(ApnSetting.TYPE_IMS);
         } else {
             log("apnType is invalid, return null");
             return null;
