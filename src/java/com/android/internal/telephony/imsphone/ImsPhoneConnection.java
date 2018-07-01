@@ -1040,6 +1040,14 @@ public class ImsPhoneConnection extends Connection implements
         mRttTextHandler.sendToInCall(message);
     }
 
+    public void onRttAudioIndicatorChanged(ImsStreamMediaProfile profile) {
+        Bundle extras = new Bundle();
+        extras.putBoolean(android.telecom.Connection.EXTRA_IS_RTT_AUDIO_PRESENT,
+                profile.getRttAudioSpeech());
+        onConnectionEvent(android.telecom.Connection.EVENT_RTT_AUDIO_INDICATION_CHANGED,
+                extras);
+    }
+
     public void setCurrentRttTextStream(android.telecom.Connection.RttTextStream rttTextStream) {
         synchronized (this) {
             mRttTextStream = rttTextStream;
