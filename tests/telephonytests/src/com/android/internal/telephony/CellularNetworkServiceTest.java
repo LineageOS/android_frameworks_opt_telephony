@@ -132,7 +132,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         waitForMs(1000);
 
         NetworkRegistrationState expectedState = new NetworkRegistrationState(
-                AccessNetworkConstants.TransportType.WWAN, domain, voiceRegState,
+                domain, AccessNetworkConstants.TransportType.WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
                 false, availableServices, null, cssSupported,
                 roamingIndicator, systemIsInPrl, defaultRoamingIndicator);
@@ -155,7 +155,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         waitForMs(1000);
 
         expectedState = new NetworkRegistrationState(
-                AccessNetworkConstants.TransportType.WWAN, domain, voiceRegState,
+                domain, AccessNetworkConstants.TransportType.WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
                 false, availableServices, null, maxDataCalls);
 
