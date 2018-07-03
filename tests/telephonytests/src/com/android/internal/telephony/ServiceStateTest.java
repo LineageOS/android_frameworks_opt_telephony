@@ -282,18 +282,18 @@ public class ServiceStateTest extends TestCase {
     @SmallTest
     public void testNetworkRegistrationState() {
         NetworkRegistrationState wwanVoiceRegState = new NetworkRegistrationState(
-                AccessNetworkConstants.TransportType.WWAN, NetworkRegistrationState.DOMAIN_CS,
+                NetworkRegistrationState.DOMAIN_CS, AccessNetworkConstants.TransportType.WWAN,
                 0, 0, 0, false,
                 null, null, true, 0, 0, 0);
 
 
         NetworkRegistrationState wwanDataRegState = new NetworkRegistrationState(
-                AccessNetworkConstants.TransportType.WWAN, NetworkRegistrationState.DOMAIN_PS,
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
                 0, 0, 0, false,
                 null, null, 0);
 
         NetworkRegistrationState wlanRegState = new NetworkRegistrationState(
-                AccessNetworkConstants.TransportType.WLAN, NetworkRegistrationState.DOMAIN_PS,
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WLAN,
                 0, 0, 0, false,
                 null, null);
 
@@ -303,20 +303,20 @@ public class ServiceStateTest extends TestCase {
         ss.addNetworkRegistrationState(wwanDataRegState);
         ss.addNetworkRegistrationState(wlanRegState);
 
-        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WWAN,
-                NetworkRegistrationState.DOMAIN_CS), wwanVoiceRegState);
-        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WWAN,
-                NetworkRegistrationState.DOMAIN_PS), wwanDataRegState);
-        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WLAN,
-                NetworkRegistrationState.DOMAIN_PS), wlanRegState);
+        assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_CS,
+                AccessNetworkConstants.TransportType.WWAN), wwanVoiceRegState);
+        assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
+                AccessNetworkConstants.TransportType.WWAN), wwanDataRegState);
+        assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
+                AccessNetworkConstants.TransportType.WLAN), wlanRegState);
 
         wwanDataRegState = new NetworkRegistrationState(
-                AccessNetworkConstants.TransportType.WWAN, NetworkRegistrationState.DOMAIN_PS,
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
                 0, 0, 0, true,
                 null, null, 0);
         ss.addNetworkRegistrationState(wwanDataRegState);
-        assertEquals(ss.getNetworkRegistrationStates(AccessNetworkConstants.TransportType.WWAN,
-                NetworkRegistrationState.DOMAIN_PS), wwanDataRegState);
+        assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
+                AccessNetworkConstants.TransportType.WWAN), wwanDataRegState);
     }
 
     @SmallTest
