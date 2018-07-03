@@ -59,14 +59,12 @@ public class CarrierIdentifier extends Handler {
     // events to trigger carrier identification
     private static final int SIM_LOAD_EVENT             = 1;
     private static final int SIM_ABSENT_EVENT           = 2;
-    private static final int SPN_OVERRIDE_EVENT         = 3;
-    private static final int ICC_CHANGED_EVENT          = 4;
-    private static final int PREFER_APN_UPDATE_EVENT    = 5;
-    private static final int CARRIER_ID_DB_UPDATE_EVENT = 6;
+    private static final int ICC_CHANGED_EVENT          = 3;
+    private static final int PREFER_APN_UPDATE_EVENT    = 4;
+    private static final int CARRIER_ID_DB_UPDATE_EVENT = 5;
 
     private static final Uri CONTENT_URL_PREFER_APN = Uri.withAppendedPath(
             Telephony.Carriers.CONTENT_URI, "preferapn");
-    private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
 
     // cached matching rules based mccmnc to speed up resolution
     private List<CarrierMatchingRule> mCarrierMatchingRulesOnMccMnc = new ArrayList<>();
@@ -150,7 +148,7 @@ public class CarrierIdentifier extends Handler {
      *    1. SIM_LOAD_EVENT
      *        This indicates that all SIM records has been loaded and its first entry point for the
      *        carrier identification. Note, there are other attributes could be changed on the fly
-     *        like APN and SPN. We cached all carrier matching rules based on MCCMNC to speed
+     *        like APN. We cached all carrier matching rules based on MCCMNC to speed
      *        up carrier resolution on following trigger events.
      *
      *    2. PREFER_APN_UPDATE_EVENT
@@ -159,15 +157,7 @@ public class CarrierIdentifier extends Handler {
      *        We follow up on this by querying prefer apn sqlite and re-issue carrier identification
      *        with the updated prefer apn name.
      *
-     *    3. SPN_OVERRIDE_EVENT
-     *        This indicates that SPN value as been changed. It could be triggered from EF_SPN
-     *        record loading, carrier config override
-     *        {@link android.telephony.CarrierConfigManager#KEY_CARRIER_NAME_STRING}
-     *        or carrier app override {@link TelephonyManager#setOperatorBrandOverride(String)}.
-     *        we follow up this by checking the cached mSPN against the latest value and issue
-     *        carrier identification only if spn changes.
-     *
-     *    4. CARRIER_ID_DB_UPDATE_EVENT
+     *    3. CARRIER_ID_DB_UPDATE_EVENT
      *        This indicates that carrierIdentification database which stores all matching rules
      *        has been updated. It could be triggered from OTA or assets update.
      */
@@ -177,7 +167,7 @@ public class CarrierIdentifier extends Handler {
         switch (msg.what) {
             case SIM_LOAD_EVENT:
             case CARRIER_ID_DB_UPDATE_EVENT:
-                mSpn = mTelephonyMgr.getSimOperatorNameForPhone(mPhone.getPhoneId());
+                mSpn = mIccRecords.getServiceProviderName();
                 mPreferApn = getPreferApn();
                 loadCarrierMatchingRulesOnMccMnc();
                 break;
@@ -192,14 +182,6 @@ public class CarrierIdentifier extends Handler {
                 if (!equals(mPreferApn, preferApn, true)) {
                     logd("[updatePreferApn] from:" + mPreferApn + " to:" + preferApn);
                     mPreferApn = preferApn;
-                    matchCarrier();
-                }
-                break;
-            case SPN_OVERRIDE_EVENT:
-                String spn = mTelephonyMgr.getSimOperatorNameForPhone(mPhone.getPhoneId());
-                if (!equals(mSpn, spn, true)) {
-                    logd("[updateSpn] from:" + mSpn + " to:" + spn);
-                    mSpn = spn;
                     matchCarrier();
                 }
                 break;
@@ -222,20 +204,8 @@ public class CarrierIdentifier extends Handler {
                     }
                 }
                 // check UICC profile
-                final UiccProfile uiccProfile = UiccController.getInstance()
+                mUiccProfile = UiccController.getInstance()
                         .getUiccProfileForPhone(mPhone.getPhoneId());
-                if (mUiccProfile != uiccProfile) {
-                    if (mUiccProfile != null) {
-                        logd("unregister operatorBrandOverride");
-                        mUiccProfile.unregisterForOperatorBrandOverride(this);
-                        mUiccProfile = null;
-                    }
-                    if (uiccProfile != null) {
-                        logd("register operatorBrandOverride");
-                        uiccProfile.registerForOpertorBrandOverride(this, SPN_OVERRIDE_EVENT, null);
-                        mUiccProfile = uiccProfile;
-                    }
-                }
                 break;
             default:
                 loge("invalid msg: " + msg.what);
