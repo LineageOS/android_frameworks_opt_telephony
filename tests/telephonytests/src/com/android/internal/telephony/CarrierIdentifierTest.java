@@ -60,7 +60,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
     // events to trigger carrier identification
     private static final int SIM_LOAD_EVENT       = 1;
     private static final int SIM_ABSENT_EVENT     = 2;
-    private static final int SPN_OVERRIDE_EVENT   = 3;
+    private static final int ICC_CHANGED_EVENT    = 3;
     private static final int PREFER_APN_SET_EVENT = 5;
 
     private CarrierIdentifier mCarrierIdentifier;
@@ -88,6 +88,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
         mCarrierIdentifierHandler = new CarrierIdentifierHandler(getClass().getSimpleName());
         mCarrierIdentifierHandler.start();
         waitUntilReady();
+        mCarrierIdentifier.sendEmptyMessage(ICC_CHANGED_EVENT);
         logd("CarrierIdentifierTest -Setup!");
     }
 
@@ -111,7 +112,7 @@ public class CarrierIdentifierTest extends TelephonyTest {
         assertEquals(CID_VZW, mCarrierIdentifier.getCarrierId());
         assertEquals(NAME, mCarrierIdentifier.getCarrierName());
 
-        doReturn(SPN_FI).when(mTelephonyManager).getSimOperatorNameForPhone(eq(phoneId));
+        doReturn(SPN_FI).when(mSimRecords).getServiceProviderName();
         mCarrierIdentifier.sendEmptyMessage(SIM_LOAD_EVENT);
         waitForMs(200);
         assertEquals(CID_FI, mCarrierIdentifier.getCarrierId());
@@ -122,24 +123,6 @@ public class CarrierIdentifierTest extends TelephonyTest {
         waitForMs(200);
         assertEquals(CID_TMO, mCarrierIdentifier.getCarrierId());
         assertEquals(NAME_TMO, mCarrierIdentifier.getCarrierName());
-    }
-
-    @Test
-    @SmallTest
-    public void testCarrierMatchSpnOverride() {
-        int phoneId = mPhone.getPhoneId();
-        doReturn(MCCMNC).when(mTelephonyManager).getSimOperatorNumericForPhone(eq(phoneId));
-        // trigger sim loading event
-        mCarrierIdentifier.sendEmptyMessage(SIM_LOAD_EVENT);
-        waitForMs(200);
-        assertEquals(CID_VZW, mCarrierIdentifier.getCarrierId());
-        assertEquals(NAME, mCarrierIdentifier.getCarrierName());
-        // spn override
-        doReturn(SPN_FI).when(mTelephonyManager).getSimOperatorNameForPhone(eq(phoneId));
-        mCarrierIdentifier.sendEmptyMessage(SPN_OVERRIDE_EVENT);
-        waitForMs(200);
-        assertEquals(CID_FI, mCarrierIdentifier.getCarrierId());
-        assertEquals(NAME_FI, mCarrierIdentifier.getCarrierName());
     }
 
     @Test
