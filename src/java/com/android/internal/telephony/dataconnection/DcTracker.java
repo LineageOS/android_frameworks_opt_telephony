@@ -218,6 +218,7 @@ public class DcTracker extends Handler {
     private AsyncChannel mReplyAc = new AsyncChannel();
 
     private final LocalLog mDataRoamingLeakageLog = new LocalLog(50);
+    private final LocalLog mApnSettingsInitializationLog = new LocalLog(50);
 
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver () {
         @Override
@@ -3259,8 +3260,14 @@ public class DcTracker extends Handler {
             if (cursor != null) {
                 if (cursor.getCount() > 0) {
                     mAllApnSettings = createApnList(cursor);
+                } else {
+                    if (DBG) log("createAllApnList: cursor count is 0");
+                    mApnSettingsInitializationLog.log("no APN in db for carrier: " + operator);
                 }
                 cursor.close();
+            } else {
+                if (DBG) log("createAllApnList: cursor is null");
+                mApnSettingsInitializationLog.log("cursor is null for carrier: " + operator);
             }
         }
 
@@ -3270,6 +3277,7 @@ public class DcTracker extends Handler {
 
         if (mAllApnSettings.isEmpty()) {
             if (DBG) log("createAllApnList: No APN found for carrier: " + operator);
+            mApnSettingsInitializationLog.log("no APN found for carrier: " + operator);
             mPreferredApn = null;
             // TODO: What is the right behavior?
             //notifyNoData(DataConnection.FailCause.MISSING_UNKNOWN_APN);
@@ -4117,6 +4125,8 @@ public class DcTracker extends Handler {
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
         pw.println(" mDataRoamingLeakageLog= ");
         mDataRoamingLeakageLog.dump(fd, pw, args);
+        pw.println(" mApnSettingsInitializationLog= ");
+        mApnSettingsInitializationLog.dump(fd, pw, args);
         pw.flush();
         pw.println(" ***************************************");
         DcController dcc = mDcc;
