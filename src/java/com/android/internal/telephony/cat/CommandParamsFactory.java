@@ -61,12 +61,6 @@ class CommandParamsFactory extends Handler {
     static final int LOAD_SINGLE_ICON       = 1;
     static final int LOAD_MULTI_ICONS       = 2;
 
-    // Command Qualifier values for refresh command
-    static final int REFRESH_NAA_INIT_AND_FULL_FILE_CHANGE  = 0x00;
-    static final int REFRESH_NAA_INIT_AND_FILE_CHANGE       = 0x02;
-    static final int REFRESH_NAA_INIT                       = 0x03;
-    static final int REFRESH_UICC_RESET                     = 0x04;
-
     // Command Qualifier values for PLI command
     static final int DTTZ_SETTING                           = 0x03;
     static final int LANGUAGE_SETTING                       = 0x04;
@@ -188,6 +182,7 @@ class CommandParamsFactory extends Handler {
                  break;
              case SEND_DTMF:
              case SEND_SMS:
+             case REFRESH:
              case RUN_AT:
              case SEND_SS:
              case SEND_USSD:
@@ -197,10 +192,6 @@ class CommandParamsFactory extends Handler {
              case SET_UP_CALL:
                  cmdPending = processSetupCall(cmdDet, ctlvs);
                  break;
-             case REFRESH:
-                processRefresh(cmdDet, ctlvs);
-                cmdPending = false;
-                break;
              case LAUNCH_BROWSER:
                  cmdPending = processLaunchBrowser(cmdDet, ctlvs);
                  break;
@@ -581,32 +572,6 @@ class CommandParamsFactory extends Handler {
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
             return true;
-        }
-        return false;
-    }
-
-    /**
-     * Processes REFRESH proactive command from the SIM card.
-     *
-     * @param cmdDet Command Details container object.
-     * @param ctlvs List of ComprehensionTlv objects following Command Details
-     *        object and Device Identities object within the proactive command
-     */
-    private boolean processRefresh(CommandDetails cmdDet,
-            List<ComprehensionTlv> ctlvs) {
-
-        CatLog.d(this, "process Refresh");
-
-        // REFRESH proactive command is rerouted by the baseband and handled by
-        // the telephony layer. IDLE TEXT should be removed for a REFRESH command
-        // with "initialization" or "reset"
-        switch (cmdDet.commandQualifier) {
-        case REFRESH_NAA_INIT_AND_FULL_FILE_CHANGE:
-        case REFRESH_NAA_INIT_AND_FILE_CHANGE:
-        case REFRESH_NAA_INIT:
-        case REFRESH_UICC_RESET:
-            mCmdParams = new DisplayTextParams(cmdDet, null);
-            break;
         }
         return false;
     }

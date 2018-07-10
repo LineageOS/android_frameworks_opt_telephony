@@ -395,11 +395,6 @@ public class CatService extends Handler implements AppInterface {
                 break;
             case DISPLAY_TEXT:
                 break;
-            case REFRESH:
-                // ME side only handles refresh commands which meant to remove IDLE
-                // MODE TEXT.
-                cmdParams.mCmdDet.typeOfCommand = CommandType.SET_UP_IDLE_MODE_TEXT.value();
-                break;
             case SET_UP_IDLE_MODE_TEXT:
                 resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
                                                                             : ResultCode.OK;
@@ -440,6 +435,7 @@ public class CatService extends Handler implements AppInterface {
             case GET_INPUT:
             case GET_INKEY:
                 break;
+            case REFRESH:
             case RUN_AT:
                 if (STK_DEFAULT.equals(((DisplayTextParams)cmdParams).mTextMsg.text)) {
                     // Remove the default text which was temporarily added and shall not be shown
