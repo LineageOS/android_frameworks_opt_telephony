@@ -233,10 +233,10 @@ public class UiccCard {
      * @deprecated Please use {@link UiccProfile#resetAppWithAid(String, boolean)} instead.
      */
     @Deprecated
-    public boolean resetAppWithAid(String aid, boolean disposeCatService) {
+    public boolean resetAppWithAid(String aid, boolean reset) {
         synchronized (mLock) {
             if (mUiccProfile != null) {
-                return mUiccProfile.resetAppWithAid(aid, disposeCatService);
+                return mUiccProfile.resetAppWithAid(aid, reset);
             } else {
                 return false;
             }

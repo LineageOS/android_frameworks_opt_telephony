@@ -645,11 +645,11 @@ public class UiccController extends Handler {
             // Reset the required apps when we know about the refresh so that
             // anyone interested does not get stale state.
             case IccRefreshResponse.REFRESH_RESULT_RESET:
-                changed = uiccCard.resetAppWithAid(resp.aid, true /* disposeCatService */);
+                changed = uiccCard.resetAppWithAid(resp.aid, true /* reset */);
                 break;
             case IccRefreshResponse.REFRESH_RESULT_INIT:
                 // don't dispose CatService on SIM REFRESH of type INIT
-                changed = uiccCard.resetAppWithAid(resp.aid, false /* disposeCatService */);
+                changed = uiccCard.resetAppWithAid(resp.aid, false /* initialize */);
                 break;
             default:
                 return;
