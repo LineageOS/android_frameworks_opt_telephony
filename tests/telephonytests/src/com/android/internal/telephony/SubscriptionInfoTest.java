@@ -15,14 +15,14 @@
  */
 package com.android.internal.telephony;
 
-import android.telephony.SubscriptionManager;
+import static org.junit.Assert.assertEquals;
+
+import android.telephony.SubscriptionInfo;
 import android.test.suitebuilder.annotation.SmallTest;
-import static org.junit.Assert.*;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import android.telephony.SubscriptionInfo;
 
 public class SubscriptionInfoTest {
     private SubscriptionInfo mSubscriptionInfoUT;
@@ -35,7 +35,7 @@ public class SubscriptionInfoTest {
     @Before
     public void setUp() throws Exception {
         mSubscriptionInfoUT = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0, "T-mobile",
-                "T-mobile", 0, 255, "12345", 0, null, 310, 260, "156");
+                "T-mobile", 0, 255, "12345", 0, null, "310", "260", "156");
     }
 
     @Test
