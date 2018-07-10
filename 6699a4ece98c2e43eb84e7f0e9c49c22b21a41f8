@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd09d969_b3c0583d",
+        "filename": "src/java/com/android/internal/telephony/uicc/IccRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2018-07-10T16:45:07Z",
+      "side": 1,
+      "message": "This is useless ... it duplicates line 202",
+      "revId": "6699a4ece98c2e43eb84e7f0e9c49c22b21a41f8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
