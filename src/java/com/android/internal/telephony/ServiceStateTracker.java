@@ -593,6 +593,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         mSS = new ServiceState();
+        mSS.setStateOutOfService();
         mNewSS = new ServiceState();
         mLastCellInfoListTime = 0;
         mLastCellInfoList = null;
