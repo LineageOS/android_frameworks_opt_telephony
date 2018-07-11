@@ -26,6 +26,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Telephony;
+import android.service.carrier.CarrierIdentifier;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -46,13 +47,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * CarrierIdentifier identifies the subscription carrier and returns a canonical carrier Id
- * and a user friendly carrier name. CarrierIdentifier reads subscription info and check against
+ * CarrierResolver identifies the subscription carrier and returns a canonical carrier Id
+ * and a user friendly carrier name. CarrierResolver reads subscription info and check against
  * all carrier matching rules stored in CarrierIdProvider. It is msim aware, each phone has a
- * dedicated CarrierIdentifier.
+ * dedicated CarrierResolver.
  */
-public class CarrierIdentifier extends Handler {
-    private static final String LOG_TAG = CarrierIdentifier.class.getSimpleName();
+public class CarrierResolver extends Handler {
+    private static final String LOG_TAG = CarrierResolver.class.getSimpleName();
     private static final boolean DBG = true;
     private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
 
@@ -126,8 +127,8 @@ public class CarrierIdentifier extends Handler {
         }
     }
 
-    public CarrierIdentifier(Phone phone) {
-        logd("Creating CarrierIdentifier[" + phone.getPhoneId() + "]");
+    public CarrierResolver(Phone phone) {
+        logd("Creating CarrierResolver[" + phone.getPhoneId() + "]");
         mContext = phone.getContext();
         mPhone = phone;
         mTelephonyMgr = TelephonyManager.from(mContext);
@@ -182,7 +183,7 @@ public class CarrierIdentifier extends Handler {
                 if (!equals(mPreferApn, preferApn, true)) {
                     logd("[updatePreferApn] from:" + mPreferApn + " to:" + preferApn);
                     mPreferApn = preferApn;
-                    matchCarrier();
+                    matchCarrier(getSubscriptionMatchingRule(), true);
                 }
                 break;
             case ICC_CHANGED_EVENT:
@@ -229,7 +230,7 @@ public class CarrierIdentifier extends Handler {
                     while (cursor.moveToNext()) {
                         mCarrierMatchingRulesOnMccMnc.add(makeCarrierMatchingRule(cursor));
                     }
-                    matchCarrier();
+                    matchCarrier(getSubscriptionMatchingRule(), true);
                 }
             } finally {
                 if (cursor != null) {
@@ -384,7 +385,7 @@ public class CarrierIdentifier extends Handler {
         public void match(CarrierMatchingRule subscriptionRule) {
             mScore = 0;
             if (mMccMnc != null) {
-                if (!CarrierIdentifier.equals(subscriptionRule.mMccMnc, mMccMnc, false)) {
+                if (!CarrierResolver.equals(subscriptionRule.mMccMnc, mMccMnc, false)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
@@ -407,7 +408,7 @@ public class CarrierIdentifier extends Handler {
             if (mGid1 != null) {
                 // full string match. carrier matching should cover the corner case that gid1
                 // with garbage tail due to SIM manufacture issues.
-                if (!CarrierIdentifier.equals(subscriptionRule.mGid1, mGid1, true)) {
+                if (!CarrierResolver.equals(subscriptionRule.mGid1, mGid1, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
@@ -416,21 +417,21 @@ public class CarrierIdentifier extends Handler {
             if (mGid2 != null) {
                 // full string match. carrier matching should cover the corner case that gid2
                 // with garbage tail due to SIM manufacture issues.
-                if (!CarrierIdentifier.equals(subscriptionRule.mGid2, mGid2, true)) {
+                if (!CarrierResolver.equals(subscriptionRule.mGid2, mGid2, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_GID2;
             }
             if (mPlmn != null) {
-                if (!CarrierIdentifier.equals(subscriptionRule.mPlmn, mPlmn, true)) {
+                if (!CarrierResolver.equals(subscriptionRule.mPlmn, mPlmn, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_PLMN;
             }
             if (mSpn != null) {
-                if (!CarrierIdentifier.equals(subscriptionRule.mSpn, mSpn, true)) {
+                if (!CarrierResolver.equals(subscriptionRule.mSpn, mSpn, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
@@ -447,7 +448,7 @@ public class CarrierIdentifier extends Handler {
             }
 
             if (mApn != null) {
-                if (!CarrierIdentifier.equals(subscriptionRule.mApn, mApn, true)) {
+                if (!CarrierResolver.equals(subscriptionRule.mApn, mApn, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
@@ -494,15 +495,7 @@ public class CarrierIdentifier extends Handler {
         }
     }
 
-    /**
-     * find the best matching carrier from candidates with matched MCCMNC and notify
-     * all interested parties on carrier id change.
-     */
-    private void matchCarrier() {
-        if (!SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
-            logd("[matchCarrier]" + "skip before sim records loaded");
-            return;
-        }
+    private CarrierMatchingRule getSubscriptionMatchingRule() {
         final String mccmnc = mTelephonyMgr.getSimOperatorNumericForPhone(mPhone.getPhoneId());
         final String iccid = mPhone.getIccSerialNumber();
         final String gid1 = mPhone.getGroupIdLevel1();
@@ -523,12 +516,23 @@ public class CarrierIdentifier extends Handler {
                     + " spn: " + spn
                     + " apn: " + apn);
         }
-
-        CarrierMatchingRule subscriptionRule = new CarrierMatchingRule(
+        return new CarrierMatchingRule(
                 mccmnc, imsi, iccid, gid1, gid2, plmn, spn, apn, null
                 /** fetching privilege access rule is handled by CarrierMatchingRule#match **/,
                 TelephonyManager.UNKNOWN_CARRIER_ID, null);
+    }
 
+    /**
+     * find the best matching carrier from candidates with matched MCCMNC.
+     * @param update if true, update cached mCarrierId and notify registrants on carrier id change.
+     * @return the best matching carrier id.
+     */
+    private int matchCarrier(CarrierMatchingRule subscriptionRule, boolean update) {
+        int carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
+        if (update && !SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
+            logd("[matchCarrier]" + "skip before sim records loaded");
+            return carrierId;
+        }
         int maxScore = CarrierMatchingRule.SCORE_INVALID;
         CarrierMatchingRule maxRule = null;
 
@@ -537,9 +541,13 @@ public class CarrierIdentifier extends Handler {
             if (rule.mScore > maxScore) {
                 maxScore = rule.mScore;
                 maxRule = rule;
+                carrierId = rule.mCid;
             }
         }
-
+        // skip updating the cached carrierId
+        if (!update) {
+            return carrierId;
+        }
         if (maxScore == CarrierMatchingRule.SCORE_INVALID) {
             logd("[matchCarrier - no match] cid: " + TelephonyManager.UNKNOWN_CARRIER_ID
                     + " name: " + null);
@@ -567,6 +575,7 @@ public class CarrierIdentifier extends Handler {
         TelephonyMetrics.getInstance().writeCarrierIdMatchingEvent(
                 mPhone.getPhoneId(), getCarrierListVersion(), mCarrierId,
                 unknownMccmncToLog, unknownGid1ToLog);
+        return carrierId;
     }
 
     public int getCarrierListVersion() {
@@ -585,6 +594,31 @@ public class CarrierIdentifier extends Handler {
         return mCarrierName;
     }
 
+    /**
+     * a util function to convert carrierIdentifier to the best matching carrier id.
+     * If there is no exact match for MVNO, will fallback to match its MNO.
+     */
+    public int getCarrierIdFromIdentifier(CarrierIdentifier carrierIdentifier) {
+        final String mccmnc = carrierIdentifier.getMcc() + carrierIdentifier.getMnc();
+        final String gid1 = carrierIdentifier.getGid1();
+        final String gid2 = carrierIdentifier.getGid2();
+        final String imsi = carrierIdentifier.getImsi();
+        final String spn = carrierIdentifier.getSpn();
+
+        if (VDBG) {
+            logd("[matchCarrier]"
+                    + " mnnmnc:" + mccmnc
+                    + " gid1: " + gid1
+                    + " gid2: " + gid2
+                    + " imsi: " + Rlog.pii(LOG_TAG, imsi)
+                    + " spn: " + spn);
+        }
+        CarrierMatchingRule rule = new CarrierMatchingRule(mccmnc, imsi, null, gid1, gid2, null,
+                spn, null, null, -1, null);
+        // not trigger the updating logic for internal conversion.
+        return matchCarrier(rule, false);
+    }
+
     private static boolean equals(String a, String b, boolean ignoreCase) {
         if (a == null && b == null) return true;
         if (a != null && b != null) {
@@ -601,7 +635,7 @@ public class CarrierIdentifier extends Handler {
     }
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
-        ipw.println("mCarrierIdLocalLogs:");
+        ipw.println("mCarrierResolverLocalLogs:");
         ipw.increaseIndent();
         mCarrierIdLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
