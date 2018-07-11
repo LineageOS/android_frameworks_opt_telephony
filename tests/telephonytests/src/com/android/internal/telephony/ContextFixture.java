@@ -40,6 +40,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
@@ -275,6 +276,11 @@ public class ContextFixture implements TestFixture<Context> {
         @Override
         public Resources getResources() {
             return mResources;
+        }
+
+        @Override
+        public ApplicationInfo getApplicationInfo() {
+            return mApplicationInfo;
         }
 
         @Override
@@ -526,6 +532,7 @@ public class ContextFixture implements TestFixture<Context> {
     // when(...) logic to be used to add specific little responses where needed.
 
     private final Resources mResources = mock(Resources.class);
+    private final ApplicationInfo mApplicationInfo = mock(ApplicationInfo.class);
     private final PackageManager mPackageManager = mock(PackageManager.class);
     private final TelephonyManager mTelephonyManager = mock(TelephonyManager.class);
     private final DownloadManager mDownloadManager = mock(DownloadManager.class);
