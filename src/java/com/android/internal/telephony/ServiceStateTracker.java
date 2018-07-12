@@ -593,6 +593,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         mSS = new ServiceState();
+        mSS.setStateOutOfService();
         mNewSS = new ServiceState();
         mLastCellInfoListTime = 0;
         mLastCellInfoList = null;
@@ -3692,8 +3693,8 @@ public class ServiceStateTracker extends Handler {
                     return;
                 } else {
                     icon = com.android.internal.R.drawable.stat_notify_mmcc_indication_icn;
-                    // if using the single SIM resource, mSubId will be ignored
-                    title = context.getString(resId, mSubId);
+                    // if using the single SIM resource, simNumber will be ignored
+                    title = context.getString(resId, simNumber);
                     details = null;
                 }
                 break;
