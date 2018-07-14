@@ -496,10 +496,6 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
-    public void getNeighboringCids(Message response) {
-    }
-
-    @Override
     public void setLocationUpdates(boolean enable, Message response) {
     }
 

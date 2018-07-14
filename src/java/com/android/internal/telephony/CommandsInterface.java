@@ -1410,14 +1410,6 @@ public interface CommandsInterface {
     void getPreferredNetworkType(Message response);
 
     /**
-     * Query neighboring cell ids
-     *
-     * @param response s callback message to cell ids
-     * @param workSource calling WorkSource
-     */
-    default void getNeighboringCids(Message response, WorkSource workSource){}
-
-    /**
      * Request to enable/disable network state change notifications when
      * location information (lac and/or cid) has changed.
      *
