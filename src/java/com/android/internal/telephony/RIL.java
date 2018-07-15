@@ -499,7 +499,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // it here. Current hack is to call getService() on death notification after a delay.
     }
 
-    private IRadio getRadioProxy(Message result) {
+    protected IRadio getRadioProxy(Message result) {
         if (!mIsMobileNetworkSupported) {
             if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
             if (result != null) {
