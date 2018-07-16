@@ -1804,7 +1804,7 @@ public class ServiceStateTracker extends Handler {
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 //Denial reason if registrationState = 3
-                int reasonForDenial = networkRegState.getReasonForDenial();
+                int reasonForDenial = networkRegState.getRejectCause();
                 mEmergencyOnly = networkRegState.isEmergencyEnabled();
                 if (mPhone.isPhoneTypeGsm()) {
 
@@ -1888,7 +1888,7 @@ public class ServiceStateTracker extends Handler {
 
                 if (mPhone.isPhoneTypeGsm()) {
 
-                    mNewReasonDataDenied = networkRegState.getReasonForDenial();
+                    mNewReasonDataDenied = networkRegState.getRejectCause();
                     mNewMaxDataCalls = dataSpecificStates.maxDataCalls;
                     mDataRoaming = regCodeIsRoaming(registrationState);
                     // Save the data roaming state reported by modem registration before resource
