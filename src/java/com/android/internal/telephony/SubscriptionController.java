@@ -290,10 +290,10 @@ public class SubscriptionController extends ISub.Stub {
         // Get the blank bitmap for this SubInfoRecord
         Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
                 com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
-        int mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.MCC));
-        int mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.MNC));
+        String mcc = cursor.getString(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.MCC_STRING));
+        String mnc = cursor.getString(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.MNC_STRING));
         String cardId = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.CARD_ID));
         // FIXME: consider stick this into database too
@@ -1373,18 +1373,22 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     public int setMccMnc(String mccMnc, int subId) {
+        String mccString = mccMnc.substring(0, 3);
+        String mncString = mccMnc.substring(3);
         int mcc = 0;
         int mnc = 0;
         try {
-            mcc = Integer.parseInt(mccMnc.substring(0,3));
-            mnc = Integer.parseInt(mccMnc.substring(3));
+            mcc = Integer.parseInt(mccString);
+            mnc = Integer.parseInt(mncString);
         } catch (NumberFormatException e) {
             loge("[setMccMnc] - couldn't parse mcc/mnc: " + mccMnc);
         }
         if (DBG) logd("[setMccMnc]+ mcc/mnc:" + mcc + "/" + mnc + " subId:" + subId);
-        ContentValues value = new ContentValues(2);
+        ContentValues value = new ContentValues(4);
         value.put(SubscriptionManager.MCC, mcc);
         value.put(SubscriptionManager.MNC, mnc);
+        value.put(SubscriptionManager.MCC_STRING, mccString);
+        value.put(SubscriptionManager.MNC_STRING, mncString);
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);

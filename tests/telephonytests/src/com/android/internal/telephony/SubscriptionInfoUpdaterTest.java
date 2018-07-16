@@ -453,11 +453,11 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         List<SubscriptionInfo> subInfoList = new ArrayList<>();
         // 1: not embedded, but has matching iccid with an embedded subscription.
         subInfoList.add(new SubscriptionInfo(
-                        0, "1", 0, "", "", 0, 0, "", 0, null, 0, 0, "", false /* isEmbedded */,
+                        0, "1", 0, "", "", 0, 0, "", 0, null, "0", "0", "", false /* isEmbedded */,
                         null /* accessRules */));
         // 2: embedded but no longer present.
         subInfoList.add(new SubscriptionInfo(
-                0, "2", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
+                0, "2", 0, "", "", 0, 0, "", 0, null, "0", "0", "", true /* isEmbedded */,
                 null /* accessRules */));
 
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
@@ -504,11 +504,11 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         List<SubscriptionInfo> subInfoList = new ArrayList<>();
         // 1: not embedded, but has matching iccid with an embedded subscription.
         subInfoList.add(new SubscriptionInfo(
-                0, "1", 0, "", "", 0, 0, "", 0, null, 0, 0, "", false /* isEmbedded */,
+                0, "1", 0, "", "", 0, 0, "", 0, null, "0", "0", "", false /* isEmbedded */,
                 null /* accessRules */));
         // 2: embedded.
         subInfoList.add(new SubscriptionInfo(
-                0, "2", 0, "", "", 0, 0, "", 0, null, 0, 0, "", true /* isEmbedded */,
+                0, "2", 0, "", "", 0, 0, "", 0, null, "0", "0", "", true /* isEmbedded */,
                 null /* accessRules */));
 
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
@@ -546,7 +546,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         List<SubscriptionInfo> subInfoList = new ArrayList<>();
         // 1: not embedded.
         subInfoList.add(new SubscriptionInfo(
-                0, "1", 0, "", "", 0, 0, "", 0, null, 0, 0, "", false /* isEmbedded */,
+                0, "1", 0, "", "", 0, 0, "", 0, null, "0", "0", "", false /* isEmbedded */,
                 null /* accessRules */));
 
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
