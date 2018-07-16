@@ -31,7 +31,6 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.HandlerThread;
@@ -102,8 +101,6 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         mFakeContentResolver = new CarrierServiceStateTrackerTest.FakeContentResolver();
 
         when(mPhone.getContext().getContentResolver()).thenReturn(mFakeContentResolver);
-
-        doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
 
         mNotificationManager = (NotificationManager) mContext.getSystemService(
                 Context.NOTIFICATION_SERVICE);
