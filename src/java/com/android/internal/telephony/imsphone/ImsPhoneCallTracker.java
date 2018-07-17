@@ -2322,7 +2322,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (mRingingCall.getState().isRinging()) {
                     // Drop pending MO. We should address incoming call first
                     mPendingMO = null;
-                } else if (mPendingMO != null) {
+                } else if (mPendingMO != null
+                        && mPendingMO.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                     sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                 }
             }
