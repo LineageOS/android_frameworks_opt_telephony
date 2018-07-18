@@ -2322,7 +2322,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (mRingingCall.getState().isRinging()) {
                     // Drop pending MO. We should address incoming call first
                     mPendingMO = null;
-                } else if (mPendingMO != null) {
+                } else if (mPendingMO != null
+                        && mPendingMO.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                     sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                 }
             }
@@ -3685,7 +3686,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (imsCall != null) {
             if (conn.hasCapabilities(
                     Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL |
-                            Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE)) {
+                            Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE)
+                            && !mSupportPauseVideo) {
 
                 // If the carrier supports downgrading to voice, then we can simply issue a
                 // downgrade to voice instead of terminating the call.
