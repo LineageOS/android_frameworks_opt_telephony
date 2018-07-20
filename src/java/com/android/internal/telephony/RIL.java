@@ -223,7 +223,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private WorkSource mActiveWakelockWorkSource;
 
     /** Telephony metrics instance for logging metrics event */
-    private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
+    protected TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
     /** Radio bug detector instance */
     private RadioBugDetector mRadioBugDetector = null;
 
@@ -2987,7 +2987,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    private void constructCdmaSendSmsRilRequest(CdmaSmsMessage msg, byte[] pdu) {
+    protected void constructCdmaSendSmsRilRequest(CdmaSmsMessage msg, byte[] pdu) {
         int addrNbrOfDigits;
         int subaddrNbrOfDigits;
         int bearerDataLength;
@@ -3023,6 +3023,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         + ex);
             }
         }
+    }
+
+    @Override
+    public void sendCdmaSms(byte[] pdu, Message result, boolean expectMore) {
+        sendCdmaSms(pdu, result);
     }
 
     @Override
