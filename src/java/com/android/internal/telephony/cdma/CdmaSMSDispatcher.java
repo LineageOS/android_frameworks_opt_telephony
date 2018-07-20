@@ -148,7 +148,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         //   SMS over IMS is being handled by the ImsSmsDispatcher implementation and has indicated
         //   that the message should fall back to sending over CS.
         if (0 == tracker.mImsRetry && !isIms() || imsSmsDisabled || tracker.mUsesImsServiceForIms) {
-            mCi.sendCdmaSms(pdu, reply);
+            mCi.sendCdmaSms(pdu, reply, tracker.mRetryCount == 0 && tracker.mExpectMore);
         } else {
             mCi.sendImsCdmaSms(pdu, tracker.mImsRetry, tracker.mMessageRef, reply);
             // increment it here, so in case of SMS_FAIL_RETRY over IMS
