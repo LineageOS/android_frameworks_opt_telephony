@@ -20,7 +20,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
-import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.util.Log;
 
@@ -66,8 +65,13 @@ public class ImsServiceControllerStaticCompat extends ImsServiceControllerCompat
     }
 
     @Override
-    protected MmTelInterfaceAdapter getInterface(int slotId, IImsFeatureStatusCallback c)
-            throws RemoteException {
+    // used for add/remove features and cleanup in ImsServiceController.
+    protected boolean isServiceControllerAvailable() {
+        return mImsServiceCompat != null;
+    }
+
+    @Override
+    protected MmTelInterfaceAdapter getInterface(int slotId, IImsFeatureStatusCallback c) {
         if (mImsServiceCompat == null) {
             Log.w(TAG, "getInterface: IImsService returned null.");
             return null;
