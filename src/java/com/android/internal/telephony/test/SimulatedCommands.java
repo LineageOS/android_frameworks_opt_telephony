@@ -1788,6 +1788,13 @@ public class SimulatedCommands extends BaseCommands
         resultSuccess(response, null);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendCdmaSms(byte[] pdu, Message response, boolean  expectMore){
+    }
+
     @Override
     public void setCdmaBroadcastActivation(boolean activate, Message response) {
         unimplemented(response);

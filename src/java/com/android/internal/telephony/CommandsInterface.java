@@ -1151,6 +1151,8 @@ public interface CommandsInterface {
      */
     void sendCdmaSms(byte[] pdu, Message response);
 
+    void sendCdmaSms(byte[] pdu, Message response, boolean expectMore);
+
     /**
      * send SMS over IMS with 3GPP/GSM SMS format
      * @param smscPDU is smsc address in PDU form GSM BCD format prefixed
