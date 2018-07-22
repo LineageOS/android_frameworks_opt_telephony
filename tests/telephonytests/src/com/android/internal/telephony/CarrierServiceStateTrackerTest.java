@@ -197,4 +197,41 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         verify(mNotificationManager, atLeast(1)).cancel(
                 CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK);
     }
+
+    @Test
+    @SmallTest
+    public void testSendEmergencyNetworkNotification() {
+        logd(LOG_TAG + ":testSendEmergencyNetworkNotification()");
+        Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        mContext.sendBroadcast(intent);
+        waitForMs(300);
+
+        Map<Integer, CarrierServiceStateTracker.NotificationType> notificationTypeMap =
+                mCarrierSST.getNotificationTypeMap();
+        CarrierServiceStateTracker.NotificationType emergencyNetworkNotification =
+                notificationTypeMap.get(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
+        CarrierServiceStateTracker.NotificationType spyEmergencyNetworkNotification = spy(
+                emergencyNetworkNotification);
+        notificationTypeMap.put(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK,
+                spyEmergencyNetworkNotification);
+        Notification.Builder mNotificationBuilder = new Notification.Builder(mContext);
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS).getVoiceRegState();
+        doReturn(mNotificationBuilder).when(spyEmergencyNetworkNotification)
+                .getNotificationBuilder();
+
+        doReturn(true).when(mPhone).isWifiCallingEnabled();
+        Message notificationMsg = mSpyCarrierSST.obtainMessage(
+                CarrierServiceStateTracker.CARRIER_EVENT_IMS_CAPABILITIES_CHANGED, null);
+        mSpyCarrierSST.handleMessage(notificationMsg);
+        waitForHandlerAction(mSpyCarrierSST, TEST_TIMEOUT);
+        verify(mNotificationManager).notify(
+                eq(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK),
+                isA(Notification.class));
+
+        doReturn(false).when(mPhone).isWifiCallingEnabled();
+        mSpyCarrierSST.handleMessage(notificationMsg);
+        waitForHandlerAction(mSpyCarrierSST, TEST_TIMEOUT);
+        verify(mNotificationManager, atLeast(2)).cancel(
+                CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
+    }
 }
