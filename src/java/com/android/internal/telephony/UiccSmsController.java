@@ -39,10 +39,9 @@ import java.io.PrintWriter;
 import java.util.List;
 
 /**
- * UiccSmsController to provide an inter-process communication to
- * access Sms in Icc.
+ * Implements the ISmsImplBase interface used in the SmsManager API.
  */
-public class UiccSmsController extends ISmsBaseImpl {
+public class UiccSmsController extends ISmsImplBase {
     static final String LOG_TAG = "RIL_UiccSmsController";
 
     protected UiccSmsController() {
@@ -60,9 +59,8 @@ public class UiccSmsController extends ISmsBaseImpl {
     }
 
     @Override
-    public boolean
-    updateMessageOnIccEfForSubscriber(int subId, String callingPackage, int index, int status,
-            byte[] pdu) {
+    public boolean updateMessageOnIccEfForSubscriber(int subId, String callingPackage, int index,
+            int status, byte[] pdu) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             return iccSmsIntMgr.updateMessageOnIccEf(callingPackage, index, status, pdu);
@@ -114,6 +112,7 @@ public class UiccSmsController extends ISmsBaseImpl {
         }
     }
 
+    @Override
     public void sendDataForSubscriberWithSelfPermissions(int subId, String callingPackage,
             String destAddr, String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
@@ -125,12 +124,6 @@ public class UiccSmsController extends ISmsBaseImpl {
             Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
         }
-    }
-
-    public void sendText(String callingPackage, String destAddr, String scAddr,
-            String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        sendTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr, scAddr,
-            text, sentIntent, deliveryIntent, true /* persistMessageForNonDefaultSmsApp*/);
     }
 
     @Override
@@ -148,6 +141,7 @@ public class UiccSmsController extends ISmsBaseImpl {
         }
     }
 
+    @Override
     public void sendTextForSubscriberWithSelfPermissions(int subId, String callingPackage,
             String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, boolean persistMessage) {
@@ -174,14 +168,6 @@ public class UiccSmsController extends ISmsBaseImpl {
             Rlog.e(LOG_TAG,"sendTextWithOptions iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
         }
-    }
-
-    public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
-            List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents) {
-         sendMultipartTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr,
-                 scAddr, parts, sentIntents, deliveryIntents,
-                 true /* persistMessageForNonDefaultSmsApp */);
     }
 
     @Override
@@ -355,14 +341,6 @@ public class UiccSmsController extends ISmsBaseImpl {
     }
 
     /**
-     * Get sms interface manager object based on subscription.
-     * @return ICC SMS manager
-     */
-    private @Nullable IccSmsInterfaceManager getIccSmsInterfaceManager(int subId) {
-        return getPhone(subId).getIccSmsInterfaceManager();
-    }
-
-    /**
      * Get User preferred SMS subscription
      * @return User preferred SMS subscription
      */
@@ -429,6 +407,19 @@ public class UiccSmsController extends ISmsBaseImpl {
         indentingPW.flush();
     }
 
+    public void sendText(String callingPackage, String destAddr, String scAddr,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        sendTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr, scAddr,
+                text, sentIntent, deliveryIntent, true /* persistMessageForNonDefaultSmsApp*/);
+    }
+
+    public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
+            List<String> parts, List<PendingIntent> sentIntents,
+            List<PendingIntent> deliveryIntents) {
+        sendMultipartTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr,
+                scAddr, parts, sentIntents, deliveryIntents,
+                true /* persistMessageForNonDefaultSmsApp */);
+    }
 
     private void sendErrorInPendingIntent(@Nullable PendingIntent intent, int errorCode) {
         if (intent != null) {
@@ -443,5 +434,13 @@ public class UiccSmsController extends ISmsBaseImpl {
         for (PendingIntent intent : intents) {
             sendErrorInPendingIntent(intent, errorCode);
         }
+    }
+
+    /**
+     * Get sms interface manager object based on subscription.
+     * @return ICC SMS manager
+     */
+    private @Nullable IccSmsInterfaceManager getIccSmsInterfaceManager(int subId) {
+        return getPhone(subId).getIccSmsInterfaceManager();
     }
 }
