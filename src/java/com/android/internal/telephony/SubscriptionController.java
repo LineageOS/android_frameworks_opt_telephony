@@ -997,6 +997,12 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int addSubInfo(String uniqueId, String displayName, int slotIndex,
             int subscriptionType) {
+        String fullIccId = uniqueId;
+        Phone phone = PhoneFactory.getPhone(slotIndex);
+        if (phone != null) {
+            fullIccId = phone.getFullIccSerialNumber();
+        }
+
         if (DBG) {
             String iccIdStr = uniqueId;
             if (!isSubscriptionForRemoteSim(subscriptionType)) {
@@ -1024,8 +1030,9 @@ public class SubscriptionController extends ISub.Stub {
                 selection += " AND " + SubscriptionManager.SUBSCRIPTION_TYPE + "=?";
                 args = new String[]{uniqueId, Integer.toString(subscriptionType)};
             } else {
-                selection += " OR " + SubscriptionManager.ICC_ID + "=?";
-                args = new String[]{uniqueId, IccUtils.getDecimalSubstring(uniqueId)};
+                selection += " OR " + SubscriptionManager.ICC_ID + "=?"
+                    + " OR " + SubscriptionManager.ICC_ID + "=?" + " collate nocase";
+                args = new String[]{uniqueId, IccUtils.getDecimalSubstring(uniqueId), fullIccId};
             }
             Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
                     new String[]{SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
@@ -1063,8 +1070,9 @@ public class SubscriptionController extends ISub.Stub {
                             value.put(SubscriptionManager.SIM_SLOT_INDEX, slotIndex);
                         }
 
-                        if (oldIccId != null && oldIccId.length() < uniqueId.length()
-                                && (oldIccId.equals(IccUtils.getDecimalSubstring(uniqueId)))) {
+                        if (oldIccId != null && oldIccId.length() != uniqueId.length()
+                                && (oldIccId.equals(IccUtils.getDecimalSubstring(uniqueId))
+                                        || uniqueId.equals(IccUtils.stripTrailingFs(oldIccId)))) {
                             value.put(SubscriptionManager.ICC_ID, uniqueId);
                         }
 
