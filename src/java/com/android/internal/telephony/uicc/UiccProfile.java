@@ -971,15 +971,18 @@ public class UiccProfile extends IccCard {
      * this only checks for SIM/USIM and CSIM/RUIM apps. ISIM is considered not supported for this
      * purpose as there are cards that have ISIM app that is never read (there are SIMs for which
      * the state of ISIM goes to DETECTED but never to READY).
+     * CSIM/RUIM apps are considered not supported if CDMA is not supported.
      */
     private boolean isSupportedApplication(UiccCardApplication app) {
         // TODO: 2/15/18 Add check to see if ISIM app will go to READY state, and if yes, check for
         // ISIM also (currently ISIM is considered as not supported in this function)
-        if (app.getType() != AppType.APPTYPE_USIM && app.getType() != AppType.APPTYPE_CSIM
-                && app.getType() != AppType.APPTYPE_SIM && app.getType() != AppType.APPTYPE_RUIM) {
-            return false;
+        if (app.getType() == AppType.APPTYPE_USIM || app.getType() == AppType.APPTYPE_SIM
+                || (UiccController.getInstance().isCdmaSupported()
+                && (app.getType() == AppType.APPTYPE_CSIM
+                || app.getType() == AppType.APPTYPE_RUIM))) {
+            return true;
         }
-        return true;
+        return false;
     }
 
     private void checkAndUpdateIfAnyAppToBeIgnored() {
