@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -29,6 +30,7 @@ import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
@@ -114,6 +116,7 @@ public class UiccController extends Handler {
     private UiccSlot[] mUiccSlots;
     private int[] mPhoneIdToSlotId;
     private boolean mIsSlotStatusSupported = true;
+    private boolean mIsCdmaSupported = true;
 
     private static final Object mLock = new Object();
     private static UiccController mInstance;
@@ -181,6 +184,11 @@ public class UiccController extends Handler {
         }
 
         mLauncher = new UiccStateChangedLauncher(c, this);
+
+        // set mIsCdmaSupported based on PackageManager.FEATURE_TELEPHONY_CDMA
+        PackageManager packageManager = c.getPackageManager();
+        mIsCdmaSupported =
+                packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
     }
 
     private int getSlotIdFromPhoneId(int phoneId) {
@@ -673,6 +681,10 @@ public class UiccController extends Handler {
         mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, index));
     }
 
+    public boolean isCdmaSupported() {
+        return mIsCdmaSupported;
+    }
+
     private boolean isValidPhoneIndex(int index) {
         return (index >= 0 && index < TelephonyManager.getDefault().getPhoneCount());
     }
@@ -700,6 +712,7 @@ public class UiccController extends Handler {
         }
         pw.println();
         pw.flush();
+        pw.println(" mIsCdmaSupported=" + mIsCdmaSupported);
         pw.println(" mUiccSlots: size=" + mUiccSlots.length);
         for (int i = 0; i < mUiccSlots.length; i++) {
             if (mUiccSlots[i] == null) {
