@@ -2163,17 +2163,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             if (mPendingMO != null) {
                 // To initiate dialing circuit-switched call
-                if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
-                        && mAutoRetryFailedWifiEmergencyCall) {
-                    Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
-                    mPhone.getDefaultPhone().getServiceStateTracker().registerForNetworkAttached(
-                            ImsPhoneCallTracker.this, EVENT_REDIAL_WIFI_E911_CALL, callInfo);
-                    sendMessageDelayed(obtainMessage(EVENT_REDIAL_WIFI_E911_TIMEOUT, callInfo),
-                            TIMEOUT_REDIAL_WIFI_E911_MS);
-                    final ConnectivityManager mgr = (ConnectivityManager) mPhone.getContext()
-                            .getSystemService(Context.CONNECTIVITY_SERVICE);
-                    mgr.setAirplaneMode(false);
-                } else if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
+                if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
                         && mBackgroundCall.getState() == ImsPhoneCall.State.IDLE
                         && mRingingCall.getState() == ImsPhoneCall.State.IDLE) {
                     mForegroundCall.detach(mPendingMO);
@@ -2266,7 +2256,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 conn.setPreciseDisconnectCause(getPreciseDisconnectCauseFromReasonInfo(reasonInfo));
             }
 
-            processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
+            if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
+                    && mAutoRetryFailedWifiEmergencyCall) {
+                Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
+                mPhone.getDefaultPhone().getServiceStateTracker().registerForNetworkAttached(
+                        ImsPhoneCallTracker.this, EVENT_REDIAL_WIFI_E911_CALL, callInfo);
+                sendMessageDelayed(obtainMessage(EVENT_REDIAL_WIFI_E911_TIMEOUT, callInfo),
+                        TIMEOUT_REDIAL_WIFI_E911_MS);
+                final ConnectivityManager mgr = (ConnectivityManager) mPhone.getContext()
+                        .getSystemService(Context.CONNECTIVITY_SERVICE);
+                mgr.setAirplaneMode(false);
+                return;
+            } else {
+                processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
+            }
+
             if (mForegroundCall.getState() != ImsPhoneCall.State.ACTIVE) {
                 if (mRingingCall.getState().isRinging()) {
                     // Drop pending MO. We should address incoming call first
@@ -3063,11 +3067,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 removeMessages(EVENT_REDIAL_WIFI_E911_TIMEOUT);
                 mPhone.getDefaultPhone().getServiceStateTracker()
                         .unregisterForNetworkAttached(this);
-                Connection oldConnection = mPendingMO;
-                mForegroundCall.detach(mPendingMO);
-                removeConnection(mPendingMO);
-                mPendingMO.finalize();
-                mPendingMO = null;
+                ImsPhoneConnection oldConnection = findConnection(callInfo.first);
+                if (oldConnection == null) {
+                    sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
+                }
+                mForegroundCall.detach(oldConnection);
+                removeConnection(oldConnection);
                 try {
                     Connection newConnection =
                             mPhone.getDefaultPhone().dial(mLastDialString, mLastDialArgs);
