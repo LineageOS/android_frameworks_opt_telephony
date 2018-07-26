@@ -3712,7 +3712,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private void resetImsCapabilities() {
         log("Resetting Capabilities...");
+        boolean tmpIsVideoCallEnabled = isVideoCallEnabled();
         mMmTelCapabilities = new MmTelFeature.MmTelCapabilities();
+
+        boolean isVideoEnabled = isVideoCallEnabled();
+        if (tmpIsVideoCallEnabled != isVideoEnabled) {
+            mPhone.notifyForVideoCapabilityChanged(isVideoEnabled);
+        }
     }
 
     /**
