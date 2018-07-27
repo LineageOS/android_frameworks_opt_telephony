@@ -115,9 +115,8 @@ public class RILRequest {
      */
     // @VisibleForTesting
     public static RILRequest obtain(int request, Message result, WorkSource workSource) {
-        RILRequest rr = null;
+        RILRequest rr = obtain(request, result);
 
-        rr = obtain(request, result);
         if (workSource != null) {
             rr.mWorkSource = workSource;
             rr.mClientId = rr.getWorkSourceClientId();
