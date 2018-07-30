@@ -17,8 +17,8 @@
 package com.android.internal.telephony;
 
 import android.os.Parcel;
-import android.telephony.CellIdentity;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -193,7 +193,7 @@ public class CellIdentityLteTest extends AndroidTestCase {
                 CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellIdentity.TYPE_LTE);
+        p.writeInt(CellInfo.TYPE_LTE);
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(ALPHA_LONG);
@@ -217,7 +217,7 @@ public class CellIdentityLteTest extends AndroidTestCase {
                 CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellIdentity.TYPE_LTE);
+        p.writeInt(CellInfo.TYPE_LTE);
         p.writeString(invalidMcc);
         p.writeString(invalidMnc);
         p.writeString(ALPHA_LONG);
