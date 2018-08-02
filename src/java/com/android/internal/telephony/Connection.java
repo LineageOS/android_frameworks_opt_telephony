@@ -1107,6 +1107,18 @@ public abstract class Connection {
     }
 
     /**
+     * Reset the Connection time and Duration
+     */
+    public void resetConnectionTime() {
+        if (mPhoneType == PhoneConstants.PHONE_TYPE_CDMA_LTE ||
+                mPhoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+            mConnectTime = System.currentTimeMillis();
+            mConnectTimeReal = SystemClock.elapsedRealtime();
+            mDuration = 0;
+        }
+    }
+
+    /**
      * Build a human representation of a connection instance, suitable for debugging.
      * Don't log personal stuff unless in debug mode.
      * @return a string representing the internal state of this connection.
