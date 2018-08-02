@@ -2645,6 +2645,7 @@ public class GsmCdmaPhone extends Phone {
                                 simOperatorNumeric);
                     }
                 }
+                updateDataConnectionTracker();
             }
         }
     }
