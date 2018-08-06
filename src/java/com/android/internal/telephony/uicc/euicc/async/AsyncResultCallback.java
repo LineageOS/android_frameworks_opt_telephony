@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.uicc.euicc.async;
 
+import android.telephony.Rlog;
+
 /**
  * Class to deliver the returned value from an asynchronous call. Either {@link #onResult(Result)}
  * or {@link #onException(Throwable)} will be called. You can create an anonymous subclass and
@@ -38,9 +40,13 @@ package com.android.internal.telephony.uicc.euicc.async;
  */
 public abstract class AsyncResultCallback<Result> {
 
+    private static final String LOG_TAG = "AsyncResultCallback";
+
     /** This will be called when the result is returned. */
     public abstract void onResult(Result result);
 
     /** This will be called when any exception is thrown. */
-    public void onException(Throwable e) {}
+    public void onException(Throwable e) {
+        Rlog.e(LOG_TAG, "Error in onException", e);
+    }
 }

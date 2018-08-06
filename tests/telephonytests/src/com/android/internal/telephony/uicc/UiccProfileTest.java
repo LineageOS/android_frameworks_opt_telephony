@@ -48,6 +48,8 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.util.Map;
+
 public class UiccProfileTest extends TelephonyTest {
     private UiccProfile mUiccProfile;
 
@@ -173,6 +175,28 @@ public class UiccProfileTest extends TelephonyTest {
             }
 
         }
+    }
+
+    @Test
+    @SmallTest
+    public void testParseWhitelistMapFromString() {
+        String whitelist = "";
+        Map<String, String> parsedMap = UiccProfile.parseToCertificateToPackageMap(whitelist);
+        assertTrue(parsedMap.isEmpty());
+
+        whitelist = "nokey;value;separation";
+        parsedMap = UiccProfile.parseToCertificateToPackageMap(whitelist);
+        assertTrue(parsedMap.isEmpty());
+
+        whitelist = "KEY1:value1";
+        parsedMap = UiccProfile.parseToCertificateToPackageMap(whitelist);
+        assertEquals("value1", parsedMap.get("KEY1"));
+
+        whitelist = "KEY1:value1;   KEY2:value2  ;KEY3:value3";
+        parsedMap = UiccProfile.parseToCertificateToPackageMap(whitelist);
+        assertEquals("value1", parsedMap.get("KEY1"));
+        assertEquals("value2", parsedMap.get("KEY2"));
+        assertEquals("value3", parsedMap.get("KEY3"));
     }
 
     @Test

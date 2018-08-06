@@ -61,11 +61,8 @@ public class ImsManagerTest extends TelephonyTest {
             ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED;
 
     PersistableBundle mBundle;
-
-    @Mock
-    IBinder mBinder;
-    @Mock
-    ImsConfigImplBase mImsConfigImplBaseMock;
+    @Mock IBinder mBinder;
+    @Mock ImsConfigImplBase mImsConfigImplBaseMock;
     Hashtable<Integer, Integer> mProvisionedIntVals = new Hashtable<>();
     Hashtable<Integer, String> mProvisionedStringVals = new Hashtable<>();
     ImsConfigImplBase.ImsConfigStub mImsConfigStub;
@@ -191,7 +188,6 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(SubscriptionManager.WFC_IMS_ENABLED),
                 eq("1"));
     }
-
     @Test
     public void testGetProvisionedValues() throws Exception {
         ImsManager imsManager = initializeProvisionedValues();

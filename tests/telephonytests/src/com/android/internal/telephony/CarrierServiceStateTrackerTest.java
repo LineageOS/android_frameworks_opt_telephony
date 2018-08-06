@@ -52,7 +52,6 @@ import java.util.Map;
 /**
  * Unit tests for {@link com.android.internal.telephony.CarrierServiceStateTracker}.
  */
-@SmallTest
 public class CarrierServiceStateTrackerTest extends TelephonyTest {
     public static final String LOG_TAG = "CSST";
     public static final int TEST_TIMEOUT = 5000;

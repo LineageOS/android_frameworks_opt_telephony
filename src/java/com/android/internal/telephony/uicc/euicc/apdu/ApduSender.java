@@ -198,10 +198,12 @@ public class ApduSender {
             Handler handler) {
         ByteArrayOutputStream resultBuilder =
                 responseBuilder == null ? new ByteArrayOutputStream() : responseBuilder;
-        try {
-            resultBuilder.write(lastResponse.payload);
-        } catch (IOException e) {
-            // Should never reach here.
+        if (lastResponse.payload != null) {
+            try {
+                resultBuilder.write(lastResponse.payload);
+            } catch (IOException e) {
+                // Should never reach here.
+            }
         }
         if (lastResponse.sw1 != SW1_MORE_RESPONSE) {
             lastResponse.payload = resultBuilder.toByteArray();

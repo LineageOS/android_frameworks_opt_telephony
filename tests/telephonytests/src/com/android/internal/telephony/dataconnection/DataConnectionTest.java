@@ -71,6 +71,7 @@ import com.android.internal.telephony.dataconnection.DataConnection.DisconnectPa
 import com.android.internal.telephony.dataconnection.DataConnection.SetupResult;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
+import com.android.server.pm.PackageManagerService;
 
 import org.junit.After;
 import org.junit.Before;
@@ -94,6 +95,8 @@ public class DataConnectionTest extends TelephonyTest {
     ApnContext mApnContext;
     @Mock
     DcFailBringUp mDcFailBringUp;
+    @Mock
+    PackageManagerService mMockPackageManagerInternal;
 
     private DataConnection mDc;
     private DataConnectionTestHandler mDataConnectionTestHandler;
@@ -191,7 +194,7 @@ public class DataConnectionTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("+Setup!");
         super.setUp(getClass().getSimpleName());
-
+        mServiceManagerMockedServices.put("package", mMockPackageManagerInternal);
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         replaceInstance(ConnectionParams.class, "mApnContext", mCp, mApnContext);
         replaceInstance(ConnectionParams.class, "mRilRat", mCp,

@@ -606,6 +606,50 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
     @Test
     @MediumTest
+    public void testMultiPartSmsWithInvalidSeqNumber() {
+        transitionFromStartupToIdle();
+
+        // prepare SMS part 1 and part 2
+        prepareMultiPartSms(false);
+
+        mSmsHeader.concatRef = new SmsHeader.ConcatRef();
+        doReturn(mSmsHeader).when(mGsmSmsMessage).getUserDataHeader();
+
+        doReturn(mInboundSmsTrackerPart1).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(nullable(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        nullable(String.class), nullable(String.class), anyInt(), anyInt(),
+                        anyInt(), anyBoolean(), nullable(String.class));
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
+                mSmsMessage, null));
+        waitForMs(100);
+
+        // verify the message is stored in the raw table
+        assertEquals(1, mContentProvider.getNumRows());
+
+        // State machine should go back to idle and wait for second part
+        assertEquals("IdleState", getCurrentState().getName());
+
+        // change seqNumber in part 2 to an invalid value
+        int invalidSeqNumber = -1;
+        mInboundSmsTrackerCVPart2.put("sequence", invalidSeqNumber);
+        doReturn(invalidSeqNumber).when(mInboundSmsTrackerPart2).getSequenceNumber();
+
+        doReturn(mInboundSmsTrackerPart2).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(nullable(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        nullable(String.class), nullable(String.class), anyInt(), anyInt(),
+                        anyInt(), anyBoolean(), nullable(String.class));
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
+                mSmsMessage, null));
+        waitForMs(100);
+
+        // verify no broadcasts sent
+        verify(mContext, never()).sendBroadcast(any(Intent.class));
+        // State machine should go back to idle
+        assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    @MediumTest
     public void testMultipartSmsFromBlockedNumber_noBroadcastsSent() {
         mFakeBlockedNumberContentProvider.mBlockedNumbers.add("1234567890");
 
