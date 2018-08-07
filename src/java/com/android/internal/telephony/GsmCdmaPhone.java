@@ -29,6 +29,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -1387,7 +1388,11 @@ public class GsmCdmaPhone extends Phone {
             if (b != null) {
                 String defaultVmNumber =
                         b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING);
-                if (!TextUtils.isEmpty(defaultVmNumber)) {
+                String defaultVmNumberRoaming =
+                        b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING);
+                if (!TextUtils.isEmpty(defaultVmNumberRoaming) && mSST.mSS.getRoaming()) {
+                    number = defaultVmNumberRoaming;
+                } else {
                     number = defaultVmNumber;
                 }
             }
@@ -1504,15 +1509,20 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    @Nullable
     public String getSubscriberId() {
-        if (isPhoneTypeGsm()) {
-            IccRecords r = mIccRecords.get();
-            return (r != null) ? r.getIMSI() : null;
-        } else if (isPhoneTypeCdma()) {
-            return mSST.getImsi();
-        } else { //isPhoneTypeCdmaLte()
-            return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
+        String subscriberId = null;
+        if (isPhoneTypeCdma()) {
+            subscriberId = mSST.getImsi();
+        } else {
+            // Both Gsm and CdmaLte get the IMSI from Usim.
+            IccRecords iccRecords = mUiccController.getIccRecords(
+                    mPhoneId, UiccController.APP_FAM_3GPP);
+            if (iccRecords != null) {
+                subscriberId = iccRecords.getIMSI();
+            }
         }
+        return subscriberId;
     }
 
     @Override
@@ -1522,7 +1532,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo) {
-        CarrierInfoManager.setCarrierInfoForImsiEncryption(imsiEncryptionInfo, mContext);
+        CarrierInfoManager.setCarrierInfoForImsiEncryption(imsiEncryptionInfo, mContext, mPhoneId);
     }
 
     @Override
@@ -1536,13 +1546,13 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void resetCarrierKeysForImsiEncryption() {
-        mCIM.resetCarrierKeysForImsiEncryption(mContext, mPhoneId);
+    public int getCarrierIdListVersion() {
+        return mCarrerIdentifier.getCarrierListVersion();
     }
 
     @Override
-    public int getCarrierIdListVersion() {
-        return mCarrerIdentifier.getCarrierListVersion();
+    public void resetCarrierKeysForImsiEncryption() {
+        mCIM.resetCarrierKeysForImsiEncryption(mContext, mPhoneId);
     }
 
     @Override
@@ -2339,14 +2349,14 @@ public class GsmCdmaPhone extends Phone {
                     int current_cdma_roaming_mode =
                             Settings.Global.getInt(getContext().getContentResolver(),
                             Settings.Global.CDMA_ROAMING_MODE,
-                            CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT);
+                            TelephonyManager.CDMA_ROAMING_MODE_RADIO_DEFAULT);
                     switch (config_cdma_roaming_mode) {
                         // Carrier's cdma_roaming_mode will overwrite the user's previous settings
                         // Keep the user's previous setting in global variable which will be used
                         // when carrier's setting is turn off.
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_HOME:
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_AFFILIATED:
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_ANY:
+                        case TelephonyManager.CDMA_ROAMING_MODE_HOME:
+                        case TelephonyManager.CDMA_ROAMING_MODE_AFFILIATED:
+                        case TelephonyManager.CDMA_ROAMING_MODE_ANY:
                             logd("cdma_roaming_mode is going to changed to "
                                     + config_cdma_roaming_mode);
                             setCdmaRoamingPreference(config_cdma_roaming_mode,
@@ -2355,7 +2365,7 @@ public class GsmCdmaPhone extends Phone {
 
                         // When carrier's setting is turn off, change the cdma_roaming_mode to the
                         // previous user's setting
-                        case CarrierConfigManager.CDMA_ROAMING_MODE_RADIO_DEFAULT:
+                        case TelephonyManager.CDMA_ROAMING_MODE_RADIO_DEFAULT:
                             if (current_cdma_roaming_mode != config_cdma_roaming_mode) {
                                 logd("cdma_roaming_mode is going to changed to "
                                         + current_cdma_roaming_mode);

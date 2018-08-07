@@ -29,6 +29,8 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.internal.telephony.metrics.TelephonyMetrics;
+
 import java.util.Date;
 
 /**
@@ -50,30 +52,30 @@ public class CarrierInfoManager {
     /**
      * Returns Carrier specific information that will be used to encrypt the IMSI and IMPI.
      * @param keyType whether the key is being used for WLAN or ePDG.
-     * @param mContext
+     * @param context
      * @return ImsiEncryptionInfo which contains the information, including the public key, to be
      *         used for encryption.
      */
     public static ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType,
-                                                                     Context mContext) {
+                                                                     Context context) {
         String mcc = "";
         String mnc = "";
         final TelephonyManager telephonyManager =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        String networkOperator = telephonyManager.getNetworkOperator();
-        if (!TextUtils.isEmpty(networkOperator)) {
-            mcc = networkOperator.substring(0, 3);
-            mnc = networkOperator.substring(3);
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        String simOperator = telephonyManager.getSimOperator();
+        if (!TextUtils.isEmpty(simOperator)) {
+            mcc = simOperator.substring(0, 3);
+            mnc = simOperator.substring(3);
             Log.i(LOG_TAG, "using values for mnc, mcc: " + mnc + "," + mcc);
         } else {
-            Log.e(LOG_TAG, "Invalid networkOperator: " + networkOperator);
+            Log.e(LOG_TAG, "Invalid networkOperator: " + simOperator);
             return null;
         }
         Cursor findCursor = null;
         try {
             // In the current design, MVNOs are not supported. If we decide to support them,
             // we'll need to add to this CL.
-            ContentResolver mContentResolver = mContext.getContentResolver();
+            ContentResolver mContentResolver = context.getContentResolver();
             String[] columns = {Telephony.CarrierColumns.PUBLIC_KEY,
                     Telephony.CarrierColumns.EXPIRATION_TIME,
                     Telephony.CarrierColumns.KEY_IDENTIFIER};
@@ -107,12 +109,13 @@ public class CarrierInfoManager {
     /**
      * Inserts or update the Carrier Key in the database
      * @param imsiEncryptionInfo ImsiEncryptionInfo object.
-     * @param mContext Context.
+     * @param context Context.
      */
     public static void updateOrInsertCarrierKey(ImsiEncryptionInfo imsiEncryptionInfo,
-                                                Context mContext) {
+                                                Context context, int phoneId) {
         byte[] keyBytes = imsiEncryptionInfo.getPublicKey().getEncoded();
-        ContentResolver mContentResolver = mContext.getContentResolver();
+        ContentResolver mContentResolver = context.getContentResolver();
+        TelephonyMetrics tm = TelephonyMetrics.getInstance();
         // In the current design, MVNOs are not supported. If we decide to support them,
         // we'll need to add to this CL.
         ContentValues contentValues = new ContentValues();
@@ -125,6 +128,7 @@ public class CarrierInfoManager {
         contentValues.put(Telephony.CarrierColumns.PUBLIC_KEY, keyBytes);
         contentValues.put(Telephony.CarrierColumns.EXPIRATION_TIME,
                 imsiEncryptionInfo.getExpirationTime().getTime());
+        boolean downloadSuccessfull = true;
         try {
             Log.i(LOG_TAG, "Inserting imsiEncryptionInfo into db");
             mContentResolver.insert(Telephony.CarrierColumns.CONTENT_URI, contentValues);
@@ -145,12 +149,17 @@ public class CarrierInfoManager {
                                 String.valueOf(imsiEncryptionInfo.getKeyType())});
                 if (nRows == 0) {
                     Log.d(LOG_TAG, "Error updating values:" + imsiEncryptionInfo);
+                    downloadSuccessfull = false;
                 }
             } catch (Exception ex) {
                 Log.d(LOG_TAG, "Error updating values:" + imsiEncryptionInfo + ex);
+                downloadSuccessfull = false;
             }
         }  catch (Exception e) {
             Log.d(LOG_TAG, "Error inserting/updating values:" + imsiEncryptionInfo + e);
+            downloadSuccessfull = false;
+        } finally {
+            tm.writeCarrierKeyEvent(phoneId, imsiEncryptionInfo.getKeyType(), downloadSuccessfull);
         }
     }
 
@@ -162,12 +171,12 @@ public class CarrierInfoManager {
      *        {@link java.security.PublicKey} and the Key Identifier.
      *        The keyIdentifier Attribute value pair that helps a server locate
      *        the private key to decrypt the permanent identity.
-     * @param mContext Context.
+     * @param context Context.
      */
     public static void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
-                                                       Context mContext) {
+                                                       Context context, int phoneId) {
         Log.i(LOG_TAG, "inserting carrier key: " + imsiEncryptionInfo);
-        updateOrInsertCarrierKey(imsiEncryptionInfo, mContext);
+        updateOrInsertCarrierKey(imsiEncryptionInfo, context, phoneId);
         //todo send key to modem. Will be done in a subsequent CL.
     }
 

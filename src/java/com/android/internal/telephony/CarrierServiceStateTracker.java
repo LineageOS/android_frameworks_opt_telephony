@@ -281,6 +281,7 @@ public class CarrierServiceStateTracker extends Handler {
             CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
                     context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
             PersistableBundle b = carrierConfigManager.getConfigForSubId(mPhone.getSubId());
+
             for (Map.Entry<Integer, NotificationType> entry : mNotificationTypeMap.entrySet()) {
                 NotificationType notificationType = entry.getValue();
                 notificationType.setDelay(b);

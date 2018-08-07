@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static android.Manifest.permission.READ_PHONE_STATE;
+
 import android.annotation.NonNull;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -4538,11 +4540,20 @@ public class DcTracker extends Handler {
         if (VDBG_STALL) log("putRecoveryAction: " + action);
     }
 
+    private void broadcastDataStallDetected(int recoveryAction) {
+        Intent intent = new Intent(TelephonyManager.ACTION_DATA_STALL_DETECTED);
+        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
+        intent.putExtra(TelephonyManager.EXTRA_RECOVERY_ACTION, recoveryAction);
+        mPhone.getContext().sendBroadcast(intent, READ_PHONE_STATE);
+    }
+
     private void doRecovery() {
         if (getOverallState() == DctConstants.State.CONNECTED) {
             // Go through a series of recovery steps, each action transitions to the next action
             final int recoveryAction = getRecoveryAction();
             TelephonyMetrics.getInstance().writeDataStallEvent(mPhone.getPhoneId(), recoveryAction);
+            broadcastDataStallDetected(recoveryAction);
+
             switch (recoveryAction) {
                 case RecoveryAction.GET_DATA_CALL_LIST:
                     EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,

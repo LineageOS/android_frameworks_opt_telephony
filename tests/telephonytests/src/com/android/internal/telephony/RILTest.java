@@ -804,6 +804,7 @@ public class RILTest extends TelephonyTest {
         }
     }
 
+    @FlakyTest
     @Test
     public void testIccOpenLogicalChannel() throws Exception {
         String aid = "aid";
@@ -1515,6 +1516,30 @@ public class RILTest extends TelephonyTest {
         expected.setCellSignalStrength(cs);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
         assertEquals(expected, cellInfoCdma);
+    }
+
+    @Test
+    public void testGetWorksourceClientId() {
+        RILRequest request = RILRequest.obtain(0, null, null);
+        assertEquals(null, request.getWorkSourceClientId());
+
+        request = RILRequest.obtain(0, null, new WorkSource());
+        assertEquals(null, request.getWorkSourceClientId());
+
+        WorkSource ws = new WorkSource();
+        ws.add(100);
+        request = RILRequest.obtain(0, null, ws);
+        assertEquals("100:null", request.getWorkSourceClientId());
+
+        ws = new WorkSource();
+        ws.add(100, "foo");
+        request = RILRequest.obtain(0, null, ws);
+        assertEquals("100:foo", request.getWorkSourceClientId());
+
+        ws = new WorkSource();
+        ws.createWorkChain().addNode(100, "foo").addNode(200, "bar");
+        request = RILRequest.obtain(0, null, ws);
+        assertEquals("100:foo", request.getWorkSourceClientId());
     }
 
     private ArrayList<CellInfo> getCellInfoListForLTE(

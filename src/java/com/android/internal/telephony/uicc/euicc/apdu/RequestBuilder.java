@@ -81,13 +81,11 @@ public class RequestBuilder {
         int totalSubCmds = totalLen == 0 ? 1 : (totalLen + mMaxApduDataLen - 1) / mMaxApduDataLen;
         for (int i = 1; i < totalSubCmds; ++i) {
             String data = cmdHex.substring(startPos, startPos + cmdLen);
-            addApdu(CLA_STORE_DATA, INS_STORE_DATA, P1_STORE_DATA_INTERM, i - 1, mMaxApduDataLen,
-                    data);
+            addApdu(CLA_STORE_DATA, INS_STORE_DATA, P1_STORE_DATA_INTERM, i - 1, data);
             startPos += cmdLen;
         }
         String data = cmdHex.substring(startPos);
-        addApdu(CLA_STORE_DATA, INS_STORE_DATA, P1_STORE_DATA_END, totalSubCmds - 1,
-                totalLen % mMaxApduDataLen, data);
+        addApdu(CLA_STORE_DATA, INS_STORE_DATA, P1_STORE_DATA_END, totalSubCmds - 1, data);
     }
 
     List<ApduCommand> getCommands() {

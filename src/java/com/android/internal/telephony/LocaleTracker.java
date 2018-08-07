@@ -344,6 +344,7 @@ public class LocaleTracker extends Handler {
         msg = "getCellInfo: cell info=" + mCellInfo;
         if (DBG) log(msg);
         mLocalLog.log(msg);
+
         if (mCellInfo == null || mCellInfo.size() == 0) {
             // If we can't get a valid cell info. Try it again later.
             long delay = getCellInfoDelayTime(++mFailCellInfoCount);
@@ -401,7 +402,7 @@ public class LocaleTracker extends Handler {
             // country of the carrier we see. If we can't see any, reset to 0 so we don't
             // broadcast on forbidden channels.
             ((WifiManager) mPhone.getContext().getSystemService(Context.WIFI_SERVICE))
-                    .setCountryCode(countryIso, false);
+                    .setCountryCode(countryIso);
         }
     }
 
