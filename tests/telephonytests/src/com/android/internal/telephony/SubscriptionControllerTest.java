@@ -79,7 +79,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 SubscriptionManager.VT_IMS_ENABLED, SubscriptionManager.WFC_IMS_ENABLED,
                 SubscriptionManager.WFC_IMS_MODE, SubscriptionManager.WFC_IMS_ROAMING_MODE,
                 SubscriptionManager.WFC_IMS_ROAMING_ENABLED,
-                SubscriptionManager.CARD_ID};
+                SubscriptionManager.CARD_ID, SubscriptionManager.IS_OPPORTUNISTIC,
+                SubscriptionManager.PARENT_SUB_ID
+        };
 
         /* internal util function */
         private MatrixCursor convertFromContentToCursor(ContentValues initialValues,
@@ -222,6 +224,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         int iconTint = 1;
         String disName = "TESTING";
         String disNum = "12345";
+        boolean isOpportunistic = true;
 
         testInsertSim();
         /* Get SUB ID */
@@ -234,6 +237,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.setDataRoaming(dataRoaming, subID);
         mSubscriptionControllerUT.setDisplayNumber(disNum, subID);
         mSubscriptionControllerUT.setIconTint(iconTint, subID);
+        mSubscriptionControllerUT.setOpportunistic(isOpportunistic, subID);
 
         /* Getting, there is no direct getter function for each fields of property */
         SubscriptionInfo subInfo = mSubscriptionControllerUT
@@ -243,6 +247,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertEquals(disName, subInfo.getDisplayName());
         assertEquals(iconTint, subInfo.getIconTint());
         assertEquals(disNum, subInfo.getNumber());
+        assertEquals(isOpportunistic, subInfo.isOpportunistic());
 
         /* verify broadcast intent */
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
