@@ -1194,17 +1194,6 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void getNeighboringCids(Message result, WorkSource workSource) {
-        int ret[] = new int[7];
-
-        ret[0] = 6;
-        for (int i = 1; i<7; i++) {
-            ret[i] = i;
-        }
-        resultSuccess(result, ret);
-    }
-
-    @Override
     public void setLocationUpdates(boolean enable, Message response) {
         SimulatedCommandsVerifier.getInstance().setLocationUpdates(enable, response);
         resultSuccess(response, null);
