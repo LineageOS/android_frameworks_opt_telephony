@@ -2296,24 +2296,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void getNeighboringCids(Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_NEIGHBORING_CELL_IDS, result,
-                    workSource);
-
-            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-            try {
-                radioProxy.getNeighboringCids(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getNeighboringCids", e);
-            }
-        }
-    }
-
-    @Override
     public void setLocationUpdates(boolean enable, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {

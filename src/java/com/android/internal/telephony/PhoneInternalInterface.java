@@ -726,20 +726,6 @@ public interface PhoneInternalInterface {
     void stopNetworkScan(Message response);
 
     /**
-     * Query neighboring cell IDs.  <code>response</code> is dispatched when
-     * this is complete.  <code>response.obj</code> will be an AsyncResult,
-     * and <code>response.obj.exception</code> will be non-null on failure.
-     * On success, <code>AsyncResult.result</code> will be a <code>String[]</code>
-     * containing the neighboring cell IDs.  Index 0 will contain the count
-     * of available cell IDs.  Cell IDs are in hexadecimal format.
-     *
-     * @param response callback message that is dispatched when the query
-     * completes.
-     * @param workSource calling WorkSource
-     */
-    default void getNeighboringCids(Message response, WorkSource workSource){}
-
-    /**
      * Mutes or unmutes the microphone for the active call. The microphone
      * is automatically unmuted if a call is answered, dialed, or resumed
      * from a holding state.

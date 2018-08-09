@@ -1248,10 +1248,6 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public void getNeighboringCids(Message response) {
-        throw new RuntimeException("not implemented");
-    }
-
     public void setOnPostDialCharacter(Handler h, int what, Object obj) {
         throw new RuntimeException("not implemented");
     }
