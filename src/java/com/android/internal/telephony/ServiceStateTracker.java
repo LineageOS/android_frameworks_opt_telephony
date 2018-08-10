@@ -3920,16 +3920,16 @@ public class ServiceStateTracker extends Handler {
                         mPhone.mCT.mBackgroundCall.hangupIfAlive();
                         mPhone.mCT.mForegroundCall.hangupIfAlive();
                     }
-                    dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
-                    if (dds != mPhone.getSubId()
-                            && !ProxyController.getInstance().isDataDisconnected(dds)) {
-                        if (DBG) log("Data is active on DDS.  Wait for all data disconnect");
-                        // Data is not disconnected on DDS. Wait for the data disconnect complete
+                    if (!ProxyController.getInstance().isDataDisconnected(mPhone.getSubId())) {
+                        if (DBG) log("Wait for all data disconnect");
+                        // Data is not disconnected. Wait for the data disconnect complete
                         // before sending the RADIO_POWER off.
-                        ProxyController.getInstance().registerForAllDataDisconnected(dds, this,
-                                EVENT_ALL_DATA_DISCONNECTED, null);
+                        ProxyController.getInstance().registerForAllDataDisconnected(
+                                mPhone.getSubId(), this, EVENT_ALL_DATA_DISCONNECTED, null);
                         mPendingRadioPowerOffAfterDataOff = true;
                     }
+                    dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
+
                     Message msg = Message.obtain(this);
                     msg.what = EVENT_SET_RADIO_POWER_OFF;
                     msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
