@@ -17,8 +17,8 @@
 package com.android.internal.telephony;
 
 import android.os.Parcel;
-import android.telephony.CellIdentity;
 import android.telephony.CellIdentityWcdma;
+import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -183,7 +183,7 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
                 new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellIdentity.TYPE_WCDMA);
+        p.writeInt(CellInfo.TYPE_WCDMA);
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(ALPHA_LONG);
@@ -206,7 +206,7 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
                 new CellIdentityWcdma(LAC, CID, PSC, UARFCN, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellIdentity.TYPE_WCDMA);
+        p.writeInt(CellInfo.TYPE_WCDMA);
         p.writeString(invalidMcc);
         p.writeString(invalidMnc);
         p.writeString(ALPHA_LONG);
