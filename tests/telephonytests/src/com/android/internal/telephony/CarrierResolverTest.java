@@ -62,7 +62,7 @@ public class CarrierResolverTest extends TelephonyTest {
     private static final int SIM_LOAD_EVENT       = 1;
     private static final int SIM_ABSENT_EVENT     = 2;
     private static final int ICC_CHANGED_EVENT    = 3;
-    private static final int PREFER_APN_SET_EVENT = 5;
+    private static final int PREFER_APN_SET_EVENT = 4;
 
     private CarrierResolver mCarrierResolver;
     private CarrierResolverHandler mCarrierCarrierResolverHandler;
