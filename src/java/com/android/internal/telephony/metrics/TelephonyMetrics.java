@@ -38,6 +38,7 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNK
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.os.Build;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyHistogram;
@@ -431,6 +432,7 @@ public class TelephonyMetrics {
         pw.println("Amount of time modem is in rx (ms): " + s.rxTimeMs);
         pw.println("Amount of time modem is in tx (ms): " + Arrays.toString(s.txTimeMs));
         pw.decreaseIndent();
+        pw.println("Hardware Version: " + SystemProperties.get("ro.boot.revision", ""));
     }
 
     /**
@@ -526,6 +528,9 @@ public class TelephonyMetrics {
 
         // Build modem power metrics
         log.modemPowerStats = new ModemPowerMetrics().buildProto();
+
+        // Log the hardware revision
+        log.hardwareRevision = SystemProperties.get("ro.boot.revision", "");
 
         // Log the starting system time
         log.startTime = new TelephonyProto.Time();
