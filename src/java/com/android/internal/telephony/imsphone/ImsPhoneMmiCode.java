@@ -1480,7 +1480,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 if (ssInfo != null) {
                     Rlog.d(LOG_TAG,
                             "onSuppSvcQueryComplete: ImsSsInfo mStatus = " + ssInfo.getStatus());
-                    if (ssInfo.getStatus() == ImsSsInfo.DISABLED) {
+                    if (ssInfo.getProvisionStatus() == ImsSsInfo.SERVICE_NOT_PROVISIONED) {
+                        sb.append(mContext.getText(
+                                com.android.internal.R.string.serviceNotProvisioned));
+                        mState = State.COMPLETE;
+                    } else if (ssInfo.getStatus() == ImsSsInfo.DISABLED) {
                         sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
                         mState = State.COMPLETE;
                     } else if (ssInfo.getStatus() == ImsSsInfo.ENABLED) {

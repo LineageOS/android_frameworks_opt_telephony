@@ -72,7 +72,6 @@ import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
-import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthCdma;
@@ -2291,24 +2290,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 radioProxy.getPreferredNetworkType(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getPreferredNetworkType", e);
-            }
-        }
-    }
-
-    @Override
-    public void getNeighboringCids(Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_NEIGHBORING_CELL_IDS, result,
-                    workSource);
-
-            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-            try {
-                radioProxy.getNeighboringCids(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getNeighboringCids", e);
             }
         }
     }
@@ -5230,7 +5211,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForGsm(
             Parcel p, int lac, int cid, int arfcn, int bsic, String mcc, String mnc,
             String al, String as, int ss, int ber, int ta) {
-        p.writeInt(CellIdentity.TYPE_GSM);
+        p.writeInt(CellInfo.TYPE_GSM);
         p.writeString(mcc);
         p.writeString(mnc);
         p.writeString(al);
@@ -5254,7 +5235,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForLte(
             Parcel p, int ci, int pci, int tac, int earfcn, int bandwidth, String mcc, String mnc,
             String al, String as, int ss, int rsrp, int rsrq, int rssnr, int cqi, int ta) {
-        p.writeInt(CellIdentity.TYPE_LTE);
+        p.writeInt(CellInfo.TYPE_LTE);
         p.writeString(mcc);
         p.writeString(mnc);
         p.writeString(al);
@@ -5275,7 +5256,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForWcdma(
             Parcel p, int lac, int cid, int psc, int uarfcn, String mcc, String mnc,
             String al, String as, int ss, int ber, int rscp, int ecno) {
-        p.writeInt(CellIdentity.TYPE_WCDMA);
+        p.writeInt(CellInfo.TYPE_WCDMA);
         p.writeString(mcc);
         p.writeString(mnc);
         p.writeString(al);
@@ -5293,7 +5274,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static void writeToParcelForTdscdma(
             Parcel p, int lac, int cid, int cpid, int uarfcn, String mcc, String mnc,
             String al, String as, int ss, int ber, int rscp) {
-        p.writeInt(CellIdentity.TYPE_TDSCDMA);
+        p.writeInt(CellInfo.TYPE_TDSCDMA);
         p.writeString(mcc);
         p.writeString(mnc);
         p.writeString(al);

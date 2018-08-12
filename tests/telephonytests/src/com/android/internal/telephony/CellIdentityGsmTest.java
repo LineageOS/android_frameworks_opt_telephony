@@ -17,8 +17,8 @@
 package com.android.internal.telephony;
 
 import android.os.Parcel;
-import android.telephony.CellIdentity;
 import android.telephony.CellIdentityGsm;
+import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -185,7 +185,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellIdentityGsm.TYPE_GSM);
+        p.writeInt(CellInfo.TYPE_GSM);
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(String.valueOf(Integer.MAX_VALUE));
         p.writeString(ALPHA_LONG);
@@ -208,7 +208,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellIdentity.TYPE_GSM);
+        p.writeInt(CellInfo.TYPE_GSM);
         p.writeString(invalidMcc);
         p.writeString(invalidMnc);
         p.writeString(ALPHA_LONG);
