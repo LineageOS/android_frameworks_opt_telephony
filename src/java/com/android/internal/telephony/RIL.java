@@ -168,7 +168,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static SparseArray<TelephonyHistogram> mRilTimeHistograms = new
             SparseArray<TelephonyHistogram>();
 
-    Object[]     mLastNITZTimeInfo;
+    Object[] mLastNITZTimeInfo;
 
     // When we are testing emergency calls
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
@@ -479,6 +479,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mWakeLockCount = 0;
         mRILDefaultWorkSource = new WorkSource(context.getApplicationInfo().uid,
                 context.getPackageName());
+        mActiveWakelockWorkSource = new WorkSource();
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
         tdc.registerRIL(this);
@@ -4266,11 +4267,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                         String clientId = rr.getWorkSourceClientId();
                         if (!mClientWakelockTracker.isClientActive(clientId)) {
-                            if (mActiveWakelockWorkSource != null) {
-                                mActiveWakelockWorkSource.add(rr.mWorkSource);
-                            } else {
-                                mActiveWakelockWorkSource = rr.mWorkSource;
-                            }
+                            mActiveWakelockWorkSource.add(rr.mWorkSource);
                             mWakeLock.setWorkSource(mActiveWakelockWorkSource);
                         }
 
@@ -4327,12 +4324,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 rr.mRequest, rr.mSerial,
                                 (mWakeLockCount > 1) ? mWakeLockCount - 1 : 0);
                         String clientId = rr.getWorkSourceClientId();
-                        if (!mClientWakelockTracker.isClientActive(clientId)
-                                && (mActiveWakelockWorkSource != null)) {
+                        if (!mClientWakelockTracker.isClientActive(clientId)) {
                             mActiveWakelockWorkSource.remove(rr.mWorkSource);
-                            if (mActiveWakelockWorkSource.size() == 0) {
-                                mActiveWakelockWorkSource = null;
-                            }
                             mWakeLock.setWorkSource(mActiveWakelockWorkSource);
                         }
 
@@ -4365,7 +4358,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 mWakeLockCount = 0;
                 mWakeLock.release();
                 mClientWakelockTracker.stopTrackingAll();
-                mActiveWakelockWorkSource = null;
+                mActiveWakelockWorkSource = new WorkSource();
                 return true;
             }
         } else {
