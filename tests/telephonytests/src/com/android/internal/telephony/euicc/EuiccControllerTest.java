@@ -838,7 +838,7 @@ public class EuiccControllerTest extends TelephonyTest {
             throws Exception {
         SubscriptionInfo subInfo = new SubscriptionInfo(
                 0, "", 0, "", "", 0, 0, "", 0, null, "0", "0", "", true /* isEmbedded */,
-                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null);
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, null);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
@@ -848,7 +848,8 @@ public class EuiccControllerTest extends TelephonyTest {
     private void prepareOperationSubscription(boolean hasPrivileges) throws Exception {
         SubscriptionInfo subInfo = new SubscriptionInfo(
                 SUBSCRIPTION_ID, ICC_ID, 0, "", "", 0, 0, "", 0, null, "0", "0", "",
-                true /* isEmbedded */, hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null);
+                true /* isEmbedded */, hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null,
+                null);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(
