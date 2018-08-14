@@ -21,9 +21,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ResultReceiver;
-import android.os.WorkSource;
 import android.telecom.VideoProfile;
-import android.telephony.CellLocation;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.ServiceState;
@@ -254,12 +252,6 @@ public interface PhoneInternalInterface {
      * updates.
      */
     ServiceState getServiceState();
-
-    /**
-     * Get the current CellLocation.
-     * @param workSource calling WorkSource
-     */
-    CellLocation getCellLocation(WorkSource workSource);
 
     /**
      * Get the current DataState. No change notification exists at this

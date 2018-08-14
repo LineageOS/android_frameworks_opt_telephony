@@ -239,17 +239,17 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         CellLocation cellLocation = new GsmCellLocation();
         WorkSource workSource = new WorkSource(Process.myUid(),
             mContext.getPackageName());
-        doReturn(cellLocation).when(mSST).getCellLocation(workSource);
-        assertEquals(cellLocation, mPhoneUT.getCellLocation(workSource));
+        doReturn(cellLocation).when(mSST).getCellLocation();
+        assertEquals(cellLocation, mPhoneUT.getCellLocation());
 
         // Switch to CDMA
         switchToCdma();
 
         CdmaCellLocation cdmaCellLocation = new CdmaCellLocation();
-        doReturn(cdmaCellLocation).when(mSST).getCellLocation(workSource);
+        doReturn(cdmaCellLocation).when(mSST).getCellLocation();
 
         CdmaCellLocation actualCellLocation =
-                (CdmaCellLocation) mPhoneUT.getCellLocation(workSource);
+                (CdmaCellLocation) mPhoneUT.getCellLocation();
 
         assertEquals(actualCellLocation, cdmaCellLocation);
     }
