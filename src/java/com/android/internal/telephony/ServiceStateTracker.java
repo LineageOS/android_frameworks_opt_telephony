@@ -2895,7 +2895,7 @@ public class ServiceStateTracker extends Handler {
             mRejectCode = mNewRejectCode;
         }
 
-        ServiceState oldMergedSS = mPhone.getServiceState();
+        ServiceState oldMergedSS = new ServiceState(mPhone.getServiceState());
 
         // swap mSS and mNewSS to put new state in mSS
         ServiceState tss = mSS;
