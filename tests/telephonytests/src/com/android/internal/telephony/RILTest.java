@@ -831,7 +831,7 @@ public class RILTest extends TelephonyTest {
     public void testNvWriteItem() throws Exception {
         int itemId = 1;
         String itemValue = "value";
-        mRILUnderTest.nvWriteItem(itemId, itemValue, obtainMessage());
+        mRILUnderTest.nvWriteItem(itemId, itemValue, obtainMessage(), new WorkSource());
         NvWriteItem item = new NvWriteItem();
         item.itemId = itemId;
         item.value = itemValue;
@@ -844,7 +844,7 @@ public class RILTest extends TelephonyTest {
     @Test
     public void testNvReadItem() throws Exception {
         int itemId = 1;
-        mRILUnderTest.nvReadItem(itemId, obtainMessage());
+        mRILUnderTest.nvReadItem(itemId, obtainMessage(), new WorkSource());
         verify(mRadioProxy).nvReadItem(mSerialNumberCaptor.capture(), eq(itemId));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_NV_READ_ITEM);
@@ -944,7 +944,7 @@ public class RILTest extends TelephonyTest {
     @FlakyTest
     @Test
     public void testGetModemActivityInfo() throws Exception {
-        mRILUnderTest.getModemActivityInfo(obtainMessage());
+        mRILUnderTest.getModemActivityInfo(obtainMessage(), new WorkSource());
         verify(mRadioProxy).getModemActivityInfo(mSerialNumberCaptor.capture());
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_ACTIVITY_INFO);
@@ -953,7 +953,7 @@ public class RILTest extends TelephonyTest {
     @FlakyTest
     @Test
     public void testGetModemActivityInfoTimeout() {
-        mRILUnderTest.getModemActivityInfo(obtainMessage());
+        mRILUnderTest.getModemActivityInfo(obtainMessage(), new WorkSource());
         assertEquals(1, mRILUnderTest.getRilRequestList().size());
         waitForHandlerActionDelayed(mRilHandler, 10, DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS);
         assertEquals(0, mRILUnderTest.getRilRequestList().size());
@@ -986,7 +986,8 @@ public class RILTest extends TelephonyTest {
     @FlakyTest
     @Test
     public void testSetSimCardPowerForPowerDownState() throws Exception {
-        mRILUnderTest.setSimCardPower(TelephonyManager.CARD_POWER_DOWN, obtainMessage());
+        mRILUnderTest.setSimCardPower(TelephonyManager.CARD_POWER_DOWN, obtainMessage(),
+                new WorkSource());
         verify(mRadioProxy).setSimCardPower(mSerialNumberCaptor.capture(), eq(false));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_SIM_CARD_POWER);
@@ -995,7 +996,8 @@ public class RILTest extends TelephonyTest {
     @FlakyTest
     @Test
     public void testSetSimCardPowerForPowerUpState() throws Exception {
-        mRILUnderTest.setSimCardPower(TelephonyManager.CARD_POWER_UP, obtainMessage());
+        mRILUnderTest.setSimCardPower(TelephonyManager.CARD_POWER_UP, obtainMessage(),
+                new WorkSource());
         verify(mRadioProxy).setSimCardPower(mSerialNumberCaptor.capture(), eq(true));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_SIM_CARD_POWER);
