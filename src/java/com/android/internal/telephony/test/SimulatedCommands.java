@@ -1978,12 +1978,12 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void nvReadItem(int itemID, Message response) {
+    public void nvReadItem(int itemID, Message response, WorkSource workSource) {
         unimplemented(response);
     }
 
     @Override
-    public void nvWriteItem(int itemID, String itemValue, Message response) {
+    public void nvWriteItem(int itemID, String itemValue, Message response, WorkSource workSource) {
         unimplemented(response);
     }
 
@@ -2034,17 +2034,18 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void getModemActivityInfo(Message result) {
+    public void getModemActivityInfo(Message result, WorkSource workSource) {
         unimplemented(result);
     }
 
     @Override
-    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result) {
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result,
+            WorkSource workSource) {
         unimplemented(result);
     }
 
     @Override
-    public void getAllowedCarriers(Message result) {
+    public void getAllowedCarriers(Message result, WorkSource workSource) {
         unimplemented(result);
     }
 
@@ -2219,7 +2220,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setSimCardPower(int state, Message result) {
+    public void setSimCardPower(int state, Message result, WorkSource workSource) {
     }
 
     @VisibleForTesting
