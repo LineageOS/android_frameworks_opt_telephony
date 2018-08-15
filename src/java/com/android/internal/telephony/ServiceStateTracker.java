@@ -90,9 +90,11 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.NotificationChannelController;
@@ -3799,6 +3801,13 @@ public class ServiceStateTracker extends Handler {
         if (mDontPollSignalStrength) {
             // The radio is telling us about signal strength changes
             // we don't have to ask it
+            return;
+        }
+
+        // if there is no SIM present, do not poll signal strength
+        UiccCard uiccCard = UiccController.getInstance().getUiccCard(getPhoneId());
+        if (uiccCard == null || uiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
+            log("Not polling signal strength due to absence of SIM");
             return;
         }
 
