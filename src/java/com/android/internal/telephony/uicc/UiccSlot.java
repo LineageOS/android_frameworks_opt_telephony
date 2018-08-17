@@ -206,9 +206,6 @@ public class UiccSlot extends Handler {
 
     private void parseAtr(String atr) {
         mAtr = AnswerToReset.parseAtr(atr);
-        if (mAtr == null) {
-            return;
-        }
         checkIsEuiccSupported();
     }
 
