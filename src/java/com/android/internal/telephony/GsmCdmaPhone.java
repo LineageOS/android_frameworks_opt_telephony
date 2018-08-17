@@ -2630,10 +2630,21 @@ public class GsmCdmaPhone extends Phone {
                 if (DBG) {
                     logd("New Uicc application found. type = " + newUiccApplication.getType());
                 }
+                final IccRecords iccRecords = newUiccApplication.getIccRecords();
                 mUiccApplication.set(newUiccApplication);
-                mIccRecords.set(newUiccApplication.getIccRecords());
+                mIccRecords.set(iccRecords);
                 registerForIccRecordEvents();
-                mIccPhoneBookIntManager.updateIccRecords(mIccRecords.get());
+                mIccPhoneBookIntManager.updateIccRecords(iccRecords);
+                if (iccRecords != null) {
+                    final String simOperatorNumeric = iccRecords.getOperatorNumeric();
+                    if (DBG) {
+                        logd("New simOperatorNumeric = " + simOperatorNumeric);
+                    }
+                    if (!TextUtils.isEmpty(simOperatorNumeric)) {
+                        TelephonyManager.from(mContext).setSimOperatorNumericForPhone(mPhoneId,
+                                simOperatorNumeric);
+                    }
+                }
             }
         }
     }
