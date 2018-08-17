@@ -307,6 +307,10 @@ public class SubscriptionController extends ISub.Stub {
         } else {
             accessRules = null;
         }
+        boolean isOpportunistic = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.IS_OPPORTUNISTIC)) == 1;
+        int parentSubId = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.PARENT_SUB_ID));
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -316,7 +320,8 @@ public class SubscriptionController extends ISub.Stub {
                     + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
                     + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso + " isEmbedded:"
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
-                    + " cardId:" + cardIdToPrint);
+                    + " cardId:" + cardIdToPrint + " isOpportunistic:" + isOpportunistic
+                    + " parentSubId:" + parentSubId);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -326,7 +331,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                isEmbedded, accessRules, cardId);
+                isEmbedded, accessRules, cardId, isOpportunistic, parentSubId);
     }
 
     /**
@@ -2007,23 +2012,30 @@ public class SubscriptionController extends ISub.Stub {
      * @param subId Subscription Id of Subscription
      * @param propKey Column name in database associated with SubscriptionInfo
      * @param propValue Value to store in DB for particular subId & column name
+     *
+     * @return number of rows updated.
      * @hide
      */
     @Override
-    public void setSubscriptionProperty(int subId, String propKey, String propValue) {
+    public int setSubscriptionProperty(int subId, String propKey, String propValue) {
         enforceModifyPhoneState("setSubscriptionProperty");
         final long token = Binder.clearCallingIdentity();
-        ContentResolver resolver = mContext.getContentResolver();
 
-        setSubscriptionPropertyIntoContentResolver(subId, propKey, propValue, resolver);
+        try {
+            validateSubId(subId);
+            ContentResolver resolver = mContext.getContentResolver();
+            int result = setSubscriptionPropertyIntoContentResolver(
+                    subId, propKey, propValue, resolver);
+            // Refresh the Cache of Active Subscription Info List
+            refreshCachedActiveSubscriptionInfoList();
 
-        // Refresh the Cache of Active Subscription Info List
-        refreshCachedActiveSubscriptionInfoList();
-
-        Binder.restoreCallingIdentity(token);
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
-    private static void setSubscriptionPropertyIntoContentResolver(
+    private static int setSubscriptionPropertyIntoContentResolver(
             int subId, String propKey, String propValue, ContentResolver resolver) {
         ContentValues value = new ContentValues();
         switch (propKey) {
@@ -2040,6 +2052,8 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.CB_CMAS_TEST_ALERT:
             case SubscriptionManager.CB_OPT_OUT_DIALOG:
             case SubscriptionManager.ENHANCED_4G_MODE_ENABLED:
+            case SubscriptionManager.IS_OPPORTUNISTIC:
+            case SubscriptionManager.PARENT_SUB_ID:
             case SubscriptionManager.VT_IMS_ENABLED:
             case SubscriptionManager.WFC_IMS_ENABLED:
             case SubscriptionManager.WFC_IMS_MODE:
@@ -2052,7 +2066,7 @@ public class SubscriptionController extends ISub.Stub {
                 break;
         }
 
-        resolver.update(SubscriptionManager.CONTENT_URI, value,
+        return resolver.update(SubscriptionManager.CONTENT_URI, value,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
                         "=" + Integer.toString(subId), null);
     }
@@ -2099,6 +2113,8 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.WFC_IMS_MODE:
                         case SubscriptionManager.WFC_IMS_ROAMING_MODE:
                         case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
+                        case SubscriptionManager.IS_OPPORTUNISTIC:
+                        case SubscriptionManager.PARENT_SUB_ID:
                             resultValue = cursor.getInt(0) + "";
                             break;
                         default:
@@ -2234,6 +2250,87 @@ public class SubscriptionController extends ISub.Stub {
                 Settings.Global.putInt(resolver, settingGlobal, DEPRECATED_SETTING);
             }
         } catch (Settings.SettingNotFoundException e) {
+        }
+    }
+
+    /**
+     * Switch to a certain subscription
+     *
+     * @param opportunistic whether it’s opportunistic subscription.
+     * @param subId the unique SubscriptionInfo index in database
+     * @return the number of records updated
+     */
+    @Override
+    public int setOpportunistic(boolean opportunistic, int subId) {
+        return setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
+                String.valueOf(opportunistic ? 1 : 0));
+    }
+
+    /**
+     * Set parent subId (parentSubId) of another subscription (subId).
+     * It's used in scenarios where a child ubscription is bundled with a
+     * primary parent subscription. The child subscription will typically be opportunistic
+     * and will be used to provide data services where available, with the parent being
+     * the primary fallback subscription.
+     *
+     * @param parentSubId subId of its parent subscription.
+     * @param subId the unique SubscriptionInfo index in database
+     * @return the number of records updated
+     */
+    @Override
+    public int setParentSubId(int parentSubId, int subId) {
+        enforceModifyPhoneState("setParentSubId");
+        final long token = Binder.clearCallingIdentity();
+
+        try {
+            if (!SubscriptionManager.isUsableSubIdValue(parentSubId)
+                    || parentSubId > getAllSubInfoCount(mContext.getOpPackageName())
+                    || parentSubId == subId) {
+                if (DBG) {
+                    logd("[setParentSubId]- fail with parentSubId " + parentSubId
+                            + " subId " + subId);
+                }
+                return -1;
+            }
+
+            return setSubscriptionProperty(subId, SubscriptionManager.PARENT_SUB_ID,
+                    String.valueOf(parentSubId));
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    @Override
+    public int setPreferredData(int slotId) {
+        // TODO: send to phone switcher.
+        return 0;
+    }
+
+    @Override
+    public List<SubscriptionInfo> getOpportunisticSubscriptions(int slotId, String callingPackage) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID, callingPackage,
+                "getOpportunisticSubscriptions")) {
+            return null;
+        }
+
+        final long token = Binder.clearCallingIdentity();
+
+        try {
+            List<SubscriptionInfo> activeSubList = getActiveSubscriptionInfoList(callingPackage);
+            List<SubscriptionInfo> opportunisticSubList = new ArrayList<>();
+
+            if (activeSubList != null) {
+                for (SubscriptionInfo subInfo : activeSubList) {
+                    if (subInfo.isOpportunistic() && subInfo.getSimSlotIndex() == slotId) {
+                        opportunisticSubList.add(subInfo);
+                    }
+                }
+            }
+
+            return opportunisticSubList;
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
     }
 }
