@@ -1,0 +1,26 @@
+android_test {
+    name: "FrameworksTelephonyTests",
+
+    srcs: ["**/*.java"],
+
+    libs: [
+        "android.test.runner",
+        "ims-common",
+        "bouncycastle",
+        "android.test.base",
+        "android.test.mock",
+    ],
+
+    static_libs: [
+        "guava",
+        "frameworks-base-testutils",
+        "services.core",
+        "telephony-common",
+        "mockito-target-minus-junit4",
+        "android-support-test",
+        "platform-test-annotations",
+    ],
+
+    platform_apis: true,
+    test_suites: ["device-tests"],
+}
