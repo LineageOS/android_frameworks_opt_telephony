@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
@@ -499,6 +500,8 @@ public abstract class TelephonyTest {
         replaceInstance(PhoneFactory.class, "sSubInfoRecordUpdater", null, mSubInfoRecordUpdater);
         replaceInstance(RadioConfig.class, "sRadioConfig", null, mMockRadioConfig);
 
+        assertNotNull("Failed to set up SubscriptionController singleton",
+                SubscriptionController.getInstance());
         setReady(false);
     }
 
