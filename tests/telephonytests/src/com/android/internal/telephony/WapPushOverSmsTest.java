@@ -84,7 +84,7 @@ public class WapPushOverSmsTest extends TelephonyTest {
                 (byte) 0xFF
         };
 
-        mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler);
+        mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, "123456");
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mInboundSmsHandler).dispatchIntent(intentArgumentCaptor.capture(),
@@ -97,6 +97,7 @@ public class WapPushOverSmsTest extends TelephonyTest {
         assertEquals(Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION, intent.getAction());
         assertEquals(0xFF, intent.getIntExtra("transactionId", 0));
         assertEquals(0x06, intent.getIntExtra("pduType", 0));
+        assertEquals("123456", intent.getStringExtra("address"));
 
         byte[] header = intent.getByteArrayExtra("header");
         assertEquals(2, header.length);
