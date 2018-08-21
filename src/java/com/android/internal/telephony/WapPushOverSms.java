@@ -46,6 +46,7 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.telephony.uicc.IccUtils;
@@ -325,6 +326,21 @@ public class WapPushOverSms implements ServiceConnection {
      *         to applications
      */
     public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler) {
+        return dispatchWapPdu(pdu, receiver, handler, null);
+    }
+
+    /**
+     * Dispatches inbound messages that are in the WAP PDU format. See
+     * wap-230-wsp-20010705-a section 8 for details on the WAP PDU format.
+     *
+     * @param pdu The WAP PDU, made up of one or more SMS PDUs
+     * @param address The originating address
+     * @return a result code from {@link android.provider.Telephony.Sms.Intents}, or
+     *         {@link Activity#RESULT_OK} if the message has been broadcast
+     *         to applications
+     */
+    public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler,
+            String address) {
         DecodedResult result = decodeWapPdu(pdu, handler);
         if (result.statusCode != Activity.RESULT_OK) {
             return result.statusCode;
@@ -360,6 +376,9 @@ public class WapPushOverSms implements ServiceConnection {
                     intent.putExtra("data", result.intentData);
                     intent.putExtra("contentTypeParameters", result.contentTypeParameters);
                     SubscriptionManager.putPhoneIdAndSubIdExtra(intent, result.phoneId);
+                    if (!TextUtils.isEmpty(address)) {
+                        intent.putExtra("address", address);
+                    }
 
                     int procRet = wapPushMan.processMessage(
                         result.wapAppId, result.contentType, intent);
@@ -391,6 +410,9 @@ public class WapPushOverSms implements ServiceConnection {
         intent.putExtra("data", result.intentData);
         intent.putExtra("contentTypeParameters", result.contentTypeParameters);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, result.phoneId);
+        if (!TextUtils.isEmpty(address)) {
+            intent.putExtra("address", address);
+        }
 
         // Direct the intent to only the default MMS app. If we can't find a default MMS app
         // then sent it to all broadcast receivers.
