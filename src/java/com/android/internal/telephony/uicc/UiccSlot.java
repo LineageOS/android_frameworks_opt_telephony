@@ -174,7 +174,7 @@ public class UiccSlot extends Handler {
         }
 
         UiccController.updateInternalIccState(
-                IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, mPhoneId);
+                mContext, IccCardConstants.State.ABSENT, null, mPhoneId);
 
         // no card present in the slot now; dispose card and make mUiccCard null
         if (mUiccCard != null) {
@@ -362,7 +362,7 @@ public class UiccSlot extends Handler {
 
         if (mPhoneId != INVALID_PHONE_ID) {
             UiccController.updateInternalIccState(
-                    IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null, mPhoneId);
+                    mContext, IccCardConstants.State.UNKNOWN, null, mPhoneId);
         }
 
         mCardState = CardState.CARDSTATE_ABSENT;
