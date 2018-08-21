@@ -53,19 +53,17 @@ public class NitzDataTest {
             assertNull(nitz.getEmulatorHostTimeZone());
         }
         {
-            NitzData nitz = NitzData.parse("15/06/20,01:02:03+8,4");
+            NitzData nitz = NitzData.parse("15/06/20,01:02:03+8,1");
             assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
             assertEquals(TimeUnit.MINUTES.toMillis(8 * 15), nitz.getLocalOffsetMillis());
-            assertEquals(TimeUnit.MINUTES.toMillis(4 * 15),
-                    nitz.getDstAdjustmentMillis().longValue());
+            assertEquals(TimeUnit.HOURS.toMillis(1), nitz.getDstAdjustmentMillis().longValue());
             assertNull(nitz.getEmulatorHostTimeZone());
         }
         {
-            NitzData nitz = NitzData.parse("15/06/20,01:02:03-8,4");
+            NitzData nitz = NitzData.parse("15/06/20,01:02:03-8,1");
             assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
             assertEquals(TimeUnit.MINUTES.toMillis(-8 * 15), nitz.getLocalOffsetMillis());
-            assertEquals(TimeUnit.MINUTES.toMillis(4 * 15),
-                    nitz.getDstAdjustmentMillis().longValue());
+            assertEquals(TimeUnit.HOURS.toMillis(1), nitz.getDstAdjustmentMillis().longValue());
             assertNull(nitz.getEmulatorHostTimeZone());
         }
     }
@@ -90,11 +88,10 @@ public class NitzDataTest {
 
     @Test
     public void testParse_androidEmulatorTimeZoneExtension() {
-        NitzData nitz = NitzData.parse("15/06/20,01:02:03-32,4,America!Los_Angeles");
+        NitzData nitz = NitzData.parse("15/06/20,01:02:03-32,1,America!Los_Angeles");
         assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
         assertEquals(TimeUnit.MINUTES.toMillis(-32 * 15), nitz.getLocalOffsetMillis());
-        assertEquals(TimeUnit.MINUTES.toMillis(4 * 15),
-                nitz.getDstAdjustmentMillis().longValue());
+        assertEquals(TimeUnit.HOURS.toMillis(1), nitz.getDstAdjustmentMillis().longValue());
         assertEquals("America/Los_Angeles", nitz.getEmulatorHostTimeZone().getID());
     }
 
