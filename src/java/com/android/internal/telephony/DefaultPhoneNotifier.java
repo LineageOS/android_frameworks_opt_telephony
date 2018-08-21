@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.CellInfo;
+import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseCallState;
 import android.telephony.Rlog;
@@ -337,6 +338,15 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData) {
         try {
             mRegistry.notifyOemHookRawEventForSubscriber(subId, rawData);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
+    @Override
+    public void notifyPhoneCapabilityChanged(PhoneCapability capability) {
+        try {
+            mRegistry.notifyPhoneCapabilityChanged(capability);
         } catch (RemoteException ex) {
             // system process is dead
         }
