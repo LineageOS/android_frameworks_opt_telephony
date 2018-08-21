@@ -72,6 +72,7 @@ import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
@@ -5596,35 +5597,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
             radioTech = tm.getVoiceNetworkType(phoneId);
         }
 
-        int[] threshRsrp = Resources.getSystem().getIntArray(
-                com.android.internal.R.array.config_lteDbmThresholds);
+        int[] threshRsrp = CarrierConfigManager.getDefaultConfig().getIntArray(
+                CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY);
 
-         if (sSignalCust != null && threshRsrp.length == 6) {
+         if (sSignalCust != null && threshRsrp.length == 4) {
             switch (radioTech) {
                 case NETWORK_TYPE_LTE_CA:
                 case NETWORK_TYPE_LTE:
                     if (lteRsrp > -44) { // None or Unknown
-                        lteRsrp = threshRsrp[5] + 1;
+                        lteRsrp = -43;
                         lteRssnr = 301;
                         lteSignalStrength = 99;
                     } else if (lteRsrp >= sSignalCust[1][3]) { // Great
-                        lteRsrp = threshRsrp[4];
+                        lteRsrp = threshRsrp[3];
                         lteRssnr = 130;
                         lteSignalStrength = 12;
                     } else if (lteRsrp >= sSignalCust[1][2]) { // Good
-                        lteRsrp = threshRsrp[3];
+                        lteRsrp = threshRsrp[2];
                         lteRssnr = 45;
                         lteSignalStrength = 8;
                     } else if (lteRsrp >= sSignalCust[1][1]) { // Moderate
-                        lteRsrp = threshRsrp[2];
+                        lteRsrp = threshRsrp[1];
                         lteRssnr = 10;
                         lteSignalStrength = 5;
                     } else if (lteRsrp >= sSignalCust[1][0]) { // Poor
-                        lteRsrp = threshRsrp[1];
+                        lteRsrp = threshRsrp[0];
                         lteRssnr = -30;
                         lteSignalStrength = 0;
                     } else { // None or Unknown
-                        lteRsrp = threshRsrp[0];
+                        lteRsrp = -140;
                         lteRssnr = -200;
                         lteSignalStrength = 99;
                     }
@@ -5636,27 +5637,27 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 case NETWORK_TYPE_UMTS:
                     lteRsrp = (gsmSignalStrength & 0xFF) - 256;
                     if (lteRsrp > -20) { // None or Unknown
-                        lteRsrp = threshRsrp[5] + 1;
+                        lteRsrp = -43;
                         lteRssnr = 301;
                         lteSignalStrength = 99;
                     } else if (lteRsrp >= sSignalCust[2][3]) { // Great
-                        lteRsrp = threshRsrp[4];
+                        lteRsrp = threshRsrp[3];
                         lteRssnr = 130;
                         lteSignalStrength = 12;
                     } else if (lteRsrp >= sSignalCust[2][2]) { // Good
-                        lteRsrp = threshRsrp[3];
+                        lteRsrp = threshRsrp[2];
                         lteRssnr = 45;
                         lteSignalStrength = 8;
                     } else if (lteRsrp >= sSignalCust[2][1]) { // Moderate
-                        lteRsrp = threshRsrp[2];
+                        lteRsrp = threshRsrp[1];
                         lteRssnr = 10;
                         lteSignalStrength = 5;
                     } else if (lteRsrp >= sSignalCust[2][0]) { // Poor
-                        lteRsrp = threshRsrp[1];
+                        lteRsrp = threshRsrp[0];
                         lteRssnr = -30;
                         lteSignalStrength = 0;
                     } else { // None or Unknown
-                        lteRsrp = threshRsrp[0];
+                        lteRsrp = -140;
                         lteRssnr = -200;
                         lteSignalStrength = 99;
                     }
@@ -5664,27 +5665,27 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 default:
                     lteRsrp = (gsmSignalStrength & 0xFF) - 256;
                     if (lteRsrp > -20) { // None or Unknown
-                        lteRsrp = threshRsrp[5] + 1;
+                        lteRsrp = -43;
                         lteRssnr = 301;
                         lteSignalStrength = 99;
                     } else if (lteRsrp >= sSignalCust[0][3]) { // Great
-                        lteRsrp = threshRsrp[4];
+                        lteRsrp = threshRsrp[3];
                         lteRssnr = 130;
                         lteSignalStrength = 12;
                     } else if (lteRsrp >= sSignalCust[0][2]) { // Good
-                        lteRsrp = threshRsrp[3];
+                        lteRsrp = threshRsrp[2];
                         lteRssnr = 45;
                         lteSignalStrength = 8;
                     } else if (lteRsrp >= sSignalCust[0][1]) { // Moderate
-                        lteRsrp = threshRsrp[2];
+                        lteRsrp = threshRsrp[1];
                         lteRssnr = 10;
                         lteSignalStrength = 5;
                     } else if (lteRsrp >= sSignalCust[0][0]) { // Poor
-                        lteRsrp = threshRsrp[1];
+                        lteRsrp = threshRsrp[0];
                         lteRssnr = -30;
                         lteSignalStrength = 0;
                     } else { // None or Unknown
-                        lteRsrp = threshRsrp[0];
+                        lteRsrp = -140;
                         lteRssnr = -200;
                         lteSignalStrength = 99;
                     }
