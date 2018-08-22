@@ -790,6 +790,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         byte[][] pdus;
         int destPort = tracker.getDestPort();
         boolean block = false;
+        String address = tracker.getAddress();
 
         // Do not process when the message count is invalid.
         if (messageCount <= 0) {
@@ -807,7 +808,6 @@ public abstract class InboundSmsHandler extends StateMachine {
             Cursor cursor = null;
             try {
                 // used by several query selection arguments
-                String address = tracker.getAddress();
                 String refNumber = Integer.toString(tracker.getReferenceNumber());
                 String count = Integer.toString(tracker.getMessageCount());
 
@@ -914,7 +914,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                 }
                 output.write(pdu, 0, pdu.length);
             }
-            int result = mWapPush.dispatchWapPdu(output.toByteArray(), resultReceiver, this);
+            int result = mWapPush.dispatchWapPdu(output.toByteArray(), resultReceiver,
+                    this, address);
             if (DBG) log("dispatchWapPdu() returned " + result);
             // result is Activity.RESULT_OK if an ordered broadcast was sent
             if (result == Activity.RESULT_OK) {
