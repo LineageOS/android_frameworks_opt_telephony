@@ -877,6 +877,16 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
+    private void triggerSentIntentForFailure(List<PendingIntent> sentIntents) {
+        if (sentIntents == null) {
+            return;
+        }
+
+        for (PendingIntent sentIntent : sentIntents) {
+            triggerSentIntentForFailure(sentIntent);
+        }
+    }
+
     private boolean sendSmsByCarrierApp(boolean isDataSms, SmsTracker tracker ) {
         String carrierPackage = getCarrierAppPackageName();
         if (carrierPackage != null) {
@@ -1025,6 +1035,7 @@ public abstract class SMSDispatcher extends Handler {
         if (parts == null || trackers == null || trackers.length == 0
                 || trackers[0] == null) {
             Rlog.e(TAG, "Cannot send multipart text. parts=" + parts + " trackers=" + trackers);
+            triggerSentIntentForFailure(sentIntents);
             return;
         }
 
