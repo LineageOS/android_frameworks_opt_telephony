@@ -59,6 +59,8 @@ import android.os.WorkSource;
 import android.support.test.filters.FlakyTest;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellIdentity;
+import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
@@ -70,6 +72,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -625,6 +628,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
+    // TODO(nharold): we probably should remove support for this procedure (GET_LOC)
     public void testGsmCellLocation() {
         CellIdentityGsm cellIdentityGsm = new CellIdentityGsm(0, 0, 2, 3);
         NetworkRegistrationState result = new NetworkRegistrationState(
@@ -641,6 +645,24 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @FlakyTest /* flakes 0.86% of the time */
+    @Test
+    @MediumTest
+    // TODO(nharold): we probably should remove support for this procedure (GET_LOC)
+    public void testCdmaCellLocation() {
+        CellIdentityCdma cellIdentityCdma = new CellIdentityCdma(1, 2, 3, 4, 5);
+        NetworkRegistrationState result = new NetworkRegistrationState(
+                0, 0, 0, 0, 0, false, null, cellIdentityCdma);
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_GET_LOC_DONE,
+                new AsyncResult(null, result, null)));
+
+        waitForMs(200);
+        WorkSource workSource = new WorkSource(Process.myUid(), mContext.getPackageName());
+        CdmaCellLocation cl = (CdmaCellLocation) sst.getCellLocation(workSource);
+        assertEquals(5, cl.getBaseStationLatitude());
+        assertEquals(4, cl.getBaseStationLongitude());
+    }
+
     @Test
     @MediumTest
     public void testUpdatePhoneType() {
@@ -1508,41 +1530,40 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         }
     }
 
-    // Edge and GPRS are grouped under the same family and Edge has higher rate than GPRS.
-    // Expect no rat update when move from E to G.
-    @Test
-    public void testRatRatchet() throws Exception {
-        CellIdentityGsm cellIdentity = new CellIdentityGsm(-1, -1, -1, -1, -1, -1);
+    private void changeRegState(int state, CellIdentity cid, int rat) {
+        changeRegState(state, cid, rat, rat);
+    }
+
+    private void changeRegState(int state, CellIdentity cid, int voiceRat, int dataRat) {
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                0, 0, 1, 2, 0, false, null, cellIdentity, 1);
+                0, 0, state, dataRat, 0, false, null, cid, 1);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
                 new AsyncResult(sst.mPollingContext, dataResult, null)));
         waitForMs(200);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mSST.getCurrentDataConnectionState());
-
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
-                0, 0, 1, 2, 0, false, null, cellIdentity, false, 0, 0, 0);
+                0, 0, state, voiceRat, 0, false, null, cid, false, 0, 0, 0);
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForMs(200);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilVoiceRadioTechnology());
+    }
 
-        // EDGE -> GPRS
-        voiceResult = new NetworkRegistrationState(
-                0, 0, 1, 1, 0, false, null,
-                cellIdentity, false, 0, 0, 0);
-        sst.mPollingContext[0] = 2;
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
-                new AsyncResult(sst.mPollingContext, dataResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mSST.getCurrentDataConnectionState());
-
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
-                new AsyncResult(sst.mPollingContext, voiceResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilVoiceRadioTechnology());
+    // Edge and GPRS are grouped under the same family and Edge has higher rate than GPRS.
+    // Expect no rat update when move from E to G.
+    @Test
+    public void testRatRatchet() throws Exception {
+        CellIdentityGsm cellIdentity = new CellIdentityGsm(-1, -1, -1, -1, -1, -1);
+        // start on GPRS
+        changeRegState(1, cellIdentity, 16, 1);
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilDataRadioTechnology());
+        // upgrade to EDGE
+        changeRegState(1, cellIdentity, 16, 2);
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
+        // drop back to GPRS and expect a ratchet
+        changeRegState(1, cellIdentity, 16, 1);
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
     }
 
     // Edge and GPRS are grouped under the same family and Edge has higher rate than GPRS.
@@ -1550,88 +1571,38 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     public void testRatRatchetWithCellChange() throws Exception {
         CellIdentityGsm cellIdentity = new CellIdentityGsm(-1, -1, -1, -1, -1, -1);
-        NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                0, 0, 1, 2, 0, false, null, cellIdentity, 1);
-        sst.mPollingContext[0] = 2;
         // update data reg state to be in service
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
-                new AsyncResult(sst.mPollingContext, dataResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mSST.getCurrentDataConnectionState());
-
-        NetworkRegistrationState voiceResult = new NetworkRegistrationState(
-                0, 0, 1, 2, 0, false, null, cellIdentity, false, 0, 0, 0);
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
-                new AsyncResult(sst.mPollingContext, voiceResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilVoiceRadioTechnology());
-
+        changeRegState(1, cellIdentity, 16, 2);
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GSM, sst.mSS.getRilVoiceRadioTechnology());
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
         // RAT: EDGE -> GPRS cell ID: -1 -> 5
         cellIdentity = new CellIdentityGsm(-1, -1, -1, 5, -1, -1);
-        voiceResult = new NetworkRegistrationState(
-                0, 0, 1, 1, 0, false, null, cellIdentity, false, 0, 0, 0);
-        sst.mPollingContext[0] = 2;
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
-                new AsyncResult(sst.mPollingContext, dataResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mSST.getCurrentDataConnectionState());
+        changeRegState(1, cellIdentity, 16, 1);
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilDataRadioTechnology());
 
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
-                new AsyncResult(sst.mPollingContext, voiceResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilVoiceRadioTechnology());
     }
 
-    // Edge, GPRS and UMTS are grouped under the same family where Edge > GPRS > UMTS  .
+    // TODO(nharold): This actually seems like broken behavior; rather than preserve it, we should
+    // probably remove it.
+    // GSM, Edge, GPRS are grouped under the same family where Edge > GPRS > GSM.
     // Expect no rat update from E to G immediately following cell id change.
-    // Expect ratratchet (from G to UMTS) for the following rat update within the cell location.
+    // Expect ratratchet (from G to E) for the following rat update within the cell location.
     @Test
     public void testRatRatchetWithCellChangeBeforeRatChange() throws Exception {
         // cell ID update
         CellIdentityGsm cellIdentity = new CellIdentityGsm(-1, -1, -1, 5, -1, -1);
-        NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                0, 0, 1, 2, 0, false, null, cellIdentity, 1);
-        sst.mPollingContext[0] = 2;
-        // update data reg state to be in service
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
-                new AsyncResult(sst.mPollingContext, dataResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mSST.getCurrentDataConnectionState());
-
-        NetworkRegistrationState voiceResult = new NetworkRegistrationState(
-                0, 0, 1, 2, 0, false, null, cellIdentity, false, 0, 0, 0);
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
-                new AsyncResult(sst.mPollingContext, voiceResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilVoiceRadioTechnology());
+        changeRegState(1, cellIdentity, 16, 2);
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
 
         // RAT: EDGE -> GPRS, cell ID unchanged. Expect no rat ratchet following cell Id change.
-        voiceResult = new NetworkRegistrationState(
-                0, 0, 1, 1, 0, false, null, cellIdentity, false, 0, 0, 0);
-        sst.mPollingContext[0] = 2;
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
-                new AsyncResult(sst.mPollingContext, dataResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mSST.getCurrentDataConnectionState());
+        changeRegState(1, cellIdentity, 16, 1);
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilDataRadioTechnology());
 
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
-                new AsyncResult(sst.mPollingContext, voiceResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilVoiceRadioTechnology());
-
-        // RAT: GPRS -> UMTS
-        voiceResult = new NetworkRegistrationState(
-                0, 0, 1, 3, 0, false, null, cellIdentity, false, 0, 0, 0);
-        sst.mPollingContext[0] = 2;
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
-                new AsyncResult(sst.mPollingContext, dataResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.STATE_IN_SERVICE, mSST.getCurrentDataConnectionState());
-
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
-                new AsyncResult(sst.mPollingContext, voiceResult, null)));
-        waitForMs(200);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilVoiceRadioTechnology());
+        // RAT: GPRS -> EDGE should ratchet.
+        changeRegState(1, cellIdentity, 16, 2);
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
     }
 
     private void sendPhyChanConfigChange(int[] bandwidths) {
