@@ -271,6 +271,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(0, mCTUT.mRingingCall.getConnections().size());
     }
 
+    @FlakyTest /* flakes 2.57% of the time */
     @Test
     @SmallTest
     public void testMTCallReject() {
