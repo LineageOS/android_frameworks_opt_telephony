@@ -21,7 +21,6 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.isNull;
@@ -32,11 +31,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.ActivityManager;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
@@ -126,7 +120,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
                 anyInt(), anyInt(), any(Message.class));
     }
 
-    @Test @SmallTest
+    @Test @SmallTest @FlakyTest /* flakes 0.73% of the time on gce, 0.57% on marlin */
     public void testSendImsCdmaTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
         mSmsDispatchersController.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
@@ -135,7 +129,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
                 any(Message.class));
     }
 
-    @Test @SmallTest
+    @Test @SmallTest @FlakyTest /* flakes 0.71% of the time on marlin, 0.61% on gce */
     public void testSendRetrySmsCdmaTest() throws Exception {
         // newFormat will be based on voice technology
         ArgumentCaptor<byte[]> captor = ArgumentCaptor.forClass(byte[].class);
@@ -150,7 +144,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         assertNull(captor.getAllValues().get(0));
     }
 
-    @Test @SmallTest
+    @Test @SmallTest @FlakyTest /* flakes 0.85% of the time on gce, 0.43% on marlin */
     public void testSendRetrySmsGsmTest() throws Exception {
         // newFormat will be based on voice technology will be GSM if phone type is not CDMA
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
