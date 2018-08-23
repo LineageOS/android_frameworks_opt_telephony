@@ -245,33 +245,12 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         switchToCdma();
 
         CdmaCellLocation cdmaCellLocation = new CdmaCellLocation();
-        cdmaCellLocation.setCellLocationData(0, 0, 0, 0, 0);
-        mSST.mCellLoc = cdmaCellLocation;
-
-        /*
-        LOCATION_MODE is a special case in SettingsProvider. Adding the special handling in mock
-        content provider is probably not worth the effort; it will also tightly couple tests with
-        SettingsProvider implementation.
-        // LOCATION_MODE_ON
-        Settings.Secure.putInt(mContext.getContentResolver(),
-                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_HIGH_ACCURACY);
-        waitForMs(50);
-        CdmaCellLocation actualCellLocation = (CdmaCellLocation) mPhoneUT.getCellLocation();
-        assertEquals(0, actualCellLocation.getBaseStationLatitude());
-        assertEquals(0, actualCellLocation.getBaseStationLongitude());
-
-        // LOCATION_MODE_OFF
-        Settings.Secure.putInt(TestApplication.getAppContext().getContentResolver(),
-                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
-        waitForMs(50);
-        */
+        doReturn(cdmaCellLocation).when(mSST).getCellLocation(workSource);
 
         CdmaCellLocation actualCellLocation =
                 (CdmaCellLocation) mPhoneUT.getCellLocation(workSource);
-        assertEquals(CdmaCellLocation.INVALID_LAT_LONG,
-                actualCellLocation.getBaseStationLatitude());
-        assertEquals(CdmaCellLocation.INVALID_LAT_LONG,
-                actualCellLocation.getBaseStationLongitude());
+
+        assertEquals(actualCellLocation, cdmaCellLocation);
     }
 
     @Test
