@@ -222,7 +222,7 @@ public class IccSmsInterfaceManager {
             mSuccess = false;
             Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
 
-            if (status == STATUS_ON_ICC_FREE) {
+            if ((status & 0x01) == STATUS_ON_ICC_FREE) {
                 // RIL_REQUEST_DELETE_SMS_ON_SIM vs RIL_REQUEST_CDMA_DELETE_SMS_ON_RUIM
                 // Special case FREE: call deleteSmsOnSim/Ruim instead of
                 // manipulating the record
@@ -741,7 +741,7 @@ public class IccSmsInterfaceManager {
 
         for (int i = 0; i < count; i++) {
             byte[] ba = messages.get(i);
-            if (ba[0] == STATUS_ON_ICC_FREE) {
+            if ((ba[0] & 0x01) == STATUS_ON_ICC_FREE) {
                 ret.add(null);
             } else {
                 ret.add(new SmsRawData(messages.get(i)));
