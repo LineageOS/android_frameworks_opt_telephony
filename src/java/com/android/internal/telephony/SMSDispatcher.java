@@ -17,8 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.Manifest.permission.SEND_SMS_NO_CONFIRMATION;
-import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PERIOD_NOT_SPECIFIED;
-import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PRIORITY_NOT_SPECIFIED;
 import static android.telephony.SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE;
 import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
 import static android.telephony.SmsManager.RESULT_ERROR_LIMIT_EXCEEDED;
@@ -27,6 +25,9 @@ import static android.telephony.SmsManager.RESULT_ERROR_NULL_PDU;
 import static android.telephony.SmsManager.RESULT_ERROR_RADIO_OFF;
 import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED;
 import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED;
+
+import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PERIOD_NOT_SPECIFIED;
+import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PRIORITY_NOT_SPECIFIED;
 
 import android.annotation.Nullable;
 import android.annotation.UserIdInt;
@@ -80,8 +81,8 @@ import android.widget.TextView;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 
@@ -1196,20 +1197,24 @@ public abstract class SMSDispatcher extends Handler {
             int rule = mPremiumSmsRule.get();
             int smsCategory = SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE;
             if (rule == PREMIUM_RULE_USE_SIM || rule == PREMIUM_RULE_USE_BOTH) {
-                String simCountryIso = mTelephonyManager.getSimCountryIso();
+                String simCountryIso =
+                        mTelephonyManager.getSimCountryIsoForPhone(mPhone.getPhoneId());
                 if (simCountryIso == null || simCountryIso.length() != 2) {
                     Rlog.e(TAG, "Can't get SIM country Iso: trying network country Iso");
-                    simCountryIso = mTelephonyManager.getNetworkCountryIso();
+                    simCountryIso =
+                            mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
                 }
 
                 smsCategory = mSmsDispatchersController.getUsageMonitor().checkDestination(
                         tracker.mDestAddress, simCountryIso);
             }
             if (rule == PREMIUM_RULE_USE_NETWORK || rule == PREMIUM_RULE_USE_BOTH) {
-                String networkCountryIso = mTelephonyManager.getNetworkCountryIso();
+                String networkCountryIso =
+                        mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
                 if (networkCountryIso == null || networkCountryIso.length() != 2) {
                     Rlog.e(TAG, "Can't get Network country Iso: trying SIM country Iso");
-                    networkCountryIso = mTelephonyManager.getSimCountryIso();
+                    networkCountryIso =
+                            mTelephonyManager.getSimCountryIsoForPhone(mPhone.getPhoneId());
                 }
 
                 smsCategory = SmsUsageMonitor.mergeShortCodeCategories(smsCategory,
