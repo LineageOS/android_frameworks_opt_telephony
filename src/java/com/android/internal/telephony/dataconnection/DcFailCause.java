@@ -163,6 +163,11 @@ public enum DcFailCause {
                 if (causeCodes != null) {
                     return Arrays.stream(causeCodes).anyMatch(i -> i == getErrorCode());
                 }
+
+                // This is for backward compatibility support. We need to continue support this old
+                // configuration until it gets removed in the future.
+                return b.getBoolean(CarrierConfigManager
+                        .KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL);
             }
         }
 
