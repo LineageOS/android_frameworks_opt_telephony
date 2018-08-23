@@ -58,9 +58,6 @@ import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
-import android.telephony.CellInfoGsm;
-import android.telephony.CellInfoLte;
-import android.telephony.CellInfoWcdma;
 import android.telephony.CellLocation;
 import android.telephony.DataSpecificRegistrationStates;
 import android.telephony.NetworkRegistrationState;
@@ -72,8 +69,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.VoiceSpecificRegistrationStates;
-import android.telephony.cdma.CdmaCellLocation;
-import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.LocalLog;
@@ -106,6 +101,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.PatternSyntaxException;
@@ -349,8 +345,8 @@ public class ServiceStateTracker extends Handler {
     //Common
     private final GsmCdmaPhone mPhone;
 
-    public CellLocation mCellLoc;
-    private CellLocation mNewCellLoc;
+    private CellIdentity mCellIdentity;
+    private CellIdentity mNewCellIdentity;
     private static final int MS_PER_HOUR = 60 * 60 * 1000;
     private final NitzStateMachine mNitzState;
     private final ContentResolver mCr;
@@ -601,6 +597,8 @@ public class ServiceStateTracker extends Handler {
         mPrlVersion = null;
         mIsMinInfoReady = false;
         mNitzState.handleNetworkUnavailable();
+        mCellIdentity = null;
+        mNewCellIdentity = null;
 
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
@@ -616,12 +614,8 @@ public class ServiceStateTracker extends Handler {
             mCi.unregisterForCdmaOtaProvision(this);
             mPhone.unregisterForSimRecordsLoaded(this);
 
-            mCellLoc = new GsmCellLocation();
-            mNewCellLoc = new GsmCellLocation();
         } else {
             mPhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
-            mCellLoc = new CdmaCellLocation();
-            mNewCellLoc = new CdmaCellLocation();
             mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(mPhone.getContext(), mCi, this,
                     EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
             mIsSubscriptionFromRuim = (mCdmaSSM.getCdmaSubscriptionSource() ==
@@ -900,77 +894,6 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    private void processCellLocationInfo(CellLocation cellLocation, CellIdentity cellIdentity) {
-        if (mPhone.isPhoneTypeGsm()) {
-            int psc = -1;
-            int cid = -1;
-            int lac = -1;
-            if (cellIdentity != null) {
-                switch (cellIdentity.getType()) {
-                    case CellInfoType.GSM: {
-                        cid = ((CellIdentityGsm) cellIdentity).getCid();
-                        lac = ((CellIdentityGsm) cellIdentity).getLac();
-                        break;
-                    }
-                    case CellInfoType.WCDMA: {
-                        cid = ((CellIdentityWcdma) cellIdentity).getCid();
-                        lac = ((CellIdentityWcdma) cellIdentity).getLac();
-                        psc = ((CellIdentityWcdma) cellIdentity).getPsc();
-                        break;
-                    }
-                    case CellInfoType.TD_SCDMA: {
-                        cid = ((CellIdentityTdscdma) cellIdentity).getCid();
-                        lac = ((CellIdentityTdscdma) cellIdentity).getLac();
-                        break;
-                    }
-                    case CellInfoType.LTE: {
-                        cid = ((CellIdentityLte) cellIdentity).getCi();
-                        lac = ((CellIdentityLte) cellIdentity).getTac();
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-            }
-            // LAC and CID are -1 if not avail
-            ((GsmCellLocation) cellLocation).setLacAndCid(lac, cid);
-            ((GsmCellLocation) cellLocation).setPsc(psc);
-        } else {
-            int baseStationId = -1;
-            int baseStationLatitude = CdmaCellLocation.INVALID_LAT_LONG;
-            int baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-            int systemId = 0;
-            int networkId = 0;
-
-            if (cellIdentity != null) {
-                switch (cellIdentity.getType()) {
-                    case CellInfoType.CDMA: {
-                        baseStationId = ((CellIdentityCdma) cellIdentity).getBasestationId();
-                        baseStationLatitude = ((CellIdentityCdma) cellIdentity).getLatitude();
-                        baseStationLongitude = ((CellIdentityCdma) cellIdentity).getLongitude();
-                        systemId = ((CellIdentityCdma) cellIdentity).getSystemId();
-                        networkId = ((CellIdentityCdma) cellIdentity).getNetworkId();
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-            }
-
-            // Some carriers only return lat-lngs of 0,0
-            if (baseStationLatitude == 0 && baseStationLongitude == 0) {
-                baseStationLatitude  = CdmaCellLocation.INVALID_LAT_LONG;
-                baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;
-            }
-
-            // Values are -1 if not available.
-            ((CdmaCellLocation) cellLocation).setCellLocationData(baseStationId,
-                    baseStationLatitude, baseStationLongitude, systemId, networkId);
-        }
-    }
-
     private int getLteEarfcn(CellIdentity cellIdentity) {
         int lteEarfcn = INVALID_LTE_EARFCN;
         if (cellIdentity != null) {
@@ -1140,7 +1063,7 @@ public class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     CellIdentity cellIdentity = ((NetworkRegistrationState) ar.result)
                             .getCellIdentity();
-                    processCellLocationInfo(mCellLoc, cellIdentity);
+                    mCellIdentity = cellIdentity;
                     mPhone.notifyLocationChanged();
                 }
 
@@ -1257,9 +1180,8 @@ public class ServiceStateTracker extends Handler {
                     // Can't register data service while voice service is ok
                     // i.e. CREG is ok while CGREG is not
                     // possible a network or baseband side error
-                    GsmCellLocation loc = ((GsmCellLocation)mPhone.getCellLocation());
                     EventLog.writeEvent(EventLogTags.DATA_NETWORK_REGISTRATION_FAIL,
-                            mSS.getOperatorNumeric(), loc != null ? loc.getCid() : -1);
+                            mSS.getOperatorNumeric(), getCidFromCellIdentity(mCellIdentity));
                     mReportedGprsNoReg = true;
                 }
                 mStartedGprsRegCheck = false;
@@ -1870,7 +1792,7 @@ public class ServiceStateTracker extends Handler {
                     }
                 }
 
-                processCellLocationInfo(mNewCellLoc, networkRegState.getCellIdentity());
+                mNewCellIdentity = networkRegState.getCellIdentity();
 
                 if (DBG) {
                     log("handlPollVoiceRegResultMessage: regState=" + registrationState
@@ -2049,6 +1971,27 @@ public class ServiceStateTracker extends Handler {
             default:
                 return false;
         }
+    }
+
+    /**
+     * Extract the CID/CI for GSM/UTRA/EUTRA
+     *
+     * @returns the cell ID (unique within a PLMN for a given tech) or -1 if invalid
+     */
+    private static int getCidFromCellIdentity(CellIdentity id) {
+        if (id == null) return -1;
+        int cid = -1;
+        switch(id.getType()) {
+            case CellInfo.TYPE_GSM: cid = ((CellIdentityGsm) id).getCid(); break;
+            case CellInfo.TYPE_WCDMA: cid = ((CellIdentityWcdma) id).getCid(); break;
+            case CellInfo.TYPE_TDSCDMA: cid = ((CellIdentityTdscdma) id).getCid(); break;
+            case CellInfo.TYPE_LTE: cid = ((CellIdentityLte) id).getCi(); break;
+            default: break;
+        }
+        // If the CID is unreported
+        if (cid == Integer.MAX_VALUE) cid = -1;
+
+        return cid;
     }
 
     private void setPhyCellInfoFromCellIdentity(ServiceState ss, CellIdentity cellIdentity) {
@@ -2691,7 +2634,7 @@ public class ServiceStateTracker extends Handler {
         switch (mCi.getRadioState()) {
             case RADIO_UNAVAILABLE:
                 mNewSS.setStateOutOfService();
-                mNewCellLoc.setStateInvalid();
+                mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
                 mNitzState.handleNetworkUnavailable();
                 pollStateDone();
@@ -2699,7 +2642,7 @@ public class ServiceStateTracker extends Handler {
 
             case RADIO_OFF:
                 mNewSS.setStateOff();
-                mNewCellLoc.setStateInvalid();
+                mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
                 mNitzState.handleNetworkUnavailable();
                 // don't poll when device is shutting down or the poll was not modemTrigged
@@ -2784,7 +2727,11 @@ public class ServiceStateTracker extends Handler {
         boolean hasVoiceRegStateChanged =
                 mSS.getVoiceRegState() != mNewSS.getVoiceRegState();
 
-        boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
+        // TODO: loosen this restriction to exempt fields that are provided through system
+        // information; otherwise, we will get false positives when things like the operator
+        // alphas are provided later - that's better than missing location changes, but
+        // still not ideal.
+        boolean hasLocationChanged = !Objects.equals(mNewCellIdentity, mCellIdentity);
 
         // ratchet the new tech up through its rat family but don't drop back down
         // until cell change or device is OOS
@@ -2875,9 +2822,7 @@ public class ServiceStateTracker extends Handler {
             // TODO: we may add filtering to reduce the event logged,
             // i.e. check preferred network setting, only switch to 2G, etc
             if (hasRilVoiceRadioTechnologyChanged) {
-                int cid = -1;
-                GsmCellLocation loc = (GsmCellLocation) mNewCellLoc;
-                if (loc != null) cid = loc.getCid();
+                int cid = getCidFromCellIdentity(mNewCellIdentity);
                 // NOTE: this code was previously located after mSS and mNewSS are swapped, so
                 // existing logs were incorrectly using the new state for "network_from"
                 // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
@@ -2913,10 +2858,10 @@ public class ServiceStateTracker extends Handler {
         // clean slate for next time
         mNewSS.setStateOutOfService();
 
-        // swap mCellLoc and mNewCellLoc to put new state in mCellLoc
-        CellLocation tcl = mCellLoc;
-        mCellLoc = mNewCellLoc;
-        mNewCellLoc = tcl;
+        // swap mCellIdentity and mNewCellIdentity to put new state in mCellIdentity
+        CellIdentity tempCellId = mCellIdentity;
+        mCellIdentity = mNewCellIdentity;
+        mNewCellIdentity = tempCellId;
 
         if (hasRilVoiceRadioTechnologyChanged) {
             updatePhoneObject();
@@ -3492,75 +3437,39 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
+     * Get CellLocation from the ServiceState if available or guess from CellInfo
+     *
+     * Get the CellLocation by first checking if ServiceState has a current CID. If so
+     * then return that info. Otherwise, query AllCellInfo and return the first GSM or
+     * WCDMA result that appears. If no GSM or WCDMA results, then return an LTE result.
+     * The behavior is kept consistent for backwards compatibility; (do not apply logic
+     * to determine why the behavior is this way).
+     *
      * @param workSource calling WorkSource
      * @return the current cell location information. Prefer Gsm location
      * information if available otherwise return LTE location information
      */
     public CellLocation getCellLocation(WorkSource workSource) {
-        if (((GsmCellLocation)mCellLoc).getLac() >= 0 &&
-                ((GsmCellLocation)mCellLoc).getCid() >= 0) {
-            if (VDBG) log("getCellLocation(): X good mCellLoc=" + mCellLoc);
-            return mCellLoc;
-        } else {
-            List<CellInfo> result = getAllCellInfo(workSource);
-            if (result != null) {
-                // A hack to allow tunneling of LTE information via GsmCellLocation
-                // so that older Network Location Providers can return some information
-                // on LTE only networks, see bug 9228974.
-                //
-                // We'll search the return CellInfo array preferring GSM/WCDMA
-                // data, but if there is none we'll tunnel the first LTE information
-                // in the list.
-                //
-                // The tunnel'd LTE information is returned as follows:
-                //   LAC = TAC field
-                //   CID = CI field
-                //   PSC = 0.
-                GsmCellLocation cellLocOther = new GsmCellLocation();
-                for (CellInfo ci : result) {
-                    if (ci instanceof CellInfoGsm) {
-                        CellInfoGsm cellInfoGsm = (CellInfoGsm)ci;
-                        CellIdentityGsm cellIdentityGsm = cellInfoGsm.getCellIdentity();
-                        cellLocOther.setLacAndCid(cellIdentityGsm.getLac(),
-                                cellIdentityGsm.getCid());
-                        cellLocOther.setPsc(cellIdentityGsm.getPsc());
-                        if (VDBG) log("getCellLocation(): X ret GSM info=" + cellLocOther);
-                        return cellLocOther;
-                    } else if (ci instanceof CellInfoWcdma) {
-                        CellInfoWcdma cellInfoWcdma = (CellInfoWcdma)ci;
-                        CellIdentityWcdma cellIdentityWcdma = cellInfoWcdma.getCellIdentity();
-                        cellLocOther.setLacAndCid(cellIdentityWcdma.getLac(),
-                                cellIdentityWcdma.getCid());
-                        cellLocOther.setPsc(cellIdentityWcdma.getPsc());
-                        if (VDBG) log("getCellLocation(): X ret WCDMA info=" + cellLocOther);
-                        return cellLocOther;
-                    } else if ((ci instanceof CellInfoLte) &&
-                            ((cellLocOther.getLac() < 0) || (cellLocOther.getCid() < 0))) {
-                        // We'll return the first good LTE info we get if there is no better answer
-                        CellInfoLte cellInfoLte = (CellInfoLte)ci;
-                        CellIdentityLte cellIdentityLte = cellInfoLte.getCellIdentity();
-                        if ((cellIdentityLte.getTac() != Integer.MAX_VALUE)
-                                && (cellIdentityLte.getCi() != Integer.MAX_VALUE)) {
-                            cellLocOther.setLacAndCid(cellIdentityLte.getTac(),
-                                    cellIdentityLte.getCi());
-                            cellLocOther.setPsc(0);
-                            if (VDBG) {
-                                log("getCellLocation(): possible LTE cellLocOther=" + cellLocOther);
-                            }
-                        }
-                    }
-                }
-                if (VDBG) {
-                    log("getCellLocation(): X ret best answer cellLocOther=" + cellLocOther);
-                }
-                return cellLocOther;
-            } else {
-                if (VDBG) {
-                    log("getCellLocation(): X empty mCellLoc and CellInfo mCellLoc=" + mCellLoc);
-                }
-                return mCellLoc;
-            }
+        if (mCellIdentity != null) {
+            return mCellIdentity.asCellLocation();
         }
+
+        List<CellInfo> result = getAllCellInfo(workSource);
+
+        if (result == null || result.isEmpty()) return null;
+
+        CellIdentity fallbackLteCid = null; // We prefer not to use LTE
+        for (CellInfo ci : result) {
+            CellIdentity c = ci.getCellIdentity();
+            if (c instanceof CellIdentityLte && fallbackLteCid == null) {
+                if (getCidFromCellIdentity(c) != -1) fallbackLteCid = c;
+                continue;
+            }
+            if (getCidFromCellIdentity(c) != -1) return c.asCellLocation();
+        }
+        if (fallbackLteCid != null) return fallbackLteCid.asCellLocation();
+
+        return null;
     }
 
     /**
@@ -4434,8 +4343,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
-        pw.println(" mCellLoc=" + Rlog.pii(VDBG, mCellLoc));
-        pw.println(" mNewCellLoc=" + Rlog.pii(VDBG, mNewCellLoc));
+        pw.println(" mCellIdentity=" + Rlog.pii(VDBG, mCellIdentity));
+        pw.println(" mNewCellIdentity=" + Rlog.pii(VDBG, mNewCellIdentity));
         pw.println(" mLastCellInfoListTime=" + mLastCellInfoListTime);
         dumpCellInfoList(pw);
         pw.flush();
