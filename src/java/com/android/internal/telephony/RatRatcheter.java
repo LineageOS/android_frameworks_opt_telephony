@@ -111,6 +111,10 @@ public class RatRatcheter {
             mDataRatchetEnabled = false;
             return;
         }
+
+        boolean newUsingCA = oldSS.isUsingCarrierAggregation()
+                || newSS.isUsingCarrierAggregation()
+                || newSS.getCellBandwidths().length > 1;
         if (mVoiceRatchetEnabled) {
             int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
                     newSS.getRilVoiceRadioTechnology());
@@ -129,9 +133,6 @@ public class RatRatcheter {
             mDataRatchetEnabled = true;
         }
 
-        boolean newUsingCA = oldSS.isUsingCarrierAggregation()
-                || newSS.isUsingCarrierAggregation()
-                || newSS.getCellBandwidths().length > 1;
         newSS.setIsUsingCarrierAggregation(newUsingCA);
     }
 
