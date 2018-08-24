@@ -23,6 +23,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
+import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -333,6 +334,10 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
 
     @Override
     public void notifyUserMobileDataStateChangedForPhoneId(int phoneId, int subId, boolean state) {
+    }
+
+    @Override
+    public void notifyPhoneCapabilityChanged(PhoneCapability capability) {
         throw new RuntimeException("Not implemented");
     }
 }

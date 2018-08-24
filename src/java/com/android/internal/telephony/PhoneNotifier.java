@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.telephony.CellInfo;
+import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.VoLteServiceState;
 
@@ -70,4 +71,6 @@ public interface PhoneNotifier {
     public void notifyUserMobileDataStateChanged(Phone sender, boolean state);
 
     public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData);
+
+    public void notifyPhoneCapabilityChanged(PhoneCapability capability);
 }
