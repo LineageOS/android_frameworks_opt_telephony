@@ -16,10 +16,10 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -146,25 +146,31 @@ public enum DcFailCause {
     }
 
     /**
-     * Returns whether or not the radio has failed and also needs to be restarted.
-     * By default, we do not restart radio on REGULAR_DEACTIVATION.
+     * Returns whether or not the fail cause is a failure that requires a modem restart
      *
      * @param context device context
-     * @param subId subscription id
-     * @return true if the radio has failed and the carrier requres restart, otherwise false
+     * @param subId subscription index
+     * @return true if the fail cause code needs platform to trigger a modem restart.
      */
-    public boolean isRestartRadioFail(Context context, int subId) {
-        if (this == REGULAR_DEACTIVATION) {
-            CarrierConfigManager configManager = (CarrierConfigManager)
-                    context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            if (configManager != null) {
-                PersistableBundle b = configManager.getConfigForSubId(subId);
-                if (b != null) {
-                    return b.getBoolean(CarrierConfigManager.
-                            KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL);
+    public boolean isRadioRestartFailure(Context context, int subId) {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            PersistableBundle b = configManager.getConfigForSubId(subId);
+            if (b != null) {
+                int[] causeCodes = b.getIntArray(CarrierConfigManager
+                        .KEY_RADIO_RESTART_FAILURE_CAUSES_INT_ARRAY);
+                if (causeCodes != null) {
+                    return Arrays.stream(causeCodes).anyMatch(i -> i == getErrorCode());
                 }
+
+                // This is for backward compatibility support. We need to continue support this old
+                // configuration until it gets removed in the future.
+                return b.getBoolean(CarrierConfigManager
+                        .KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL);
             }
         }
+
         return false;
     }
 

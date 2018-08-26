@@ -18,6 +18,8 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.util.DumpUtils.checkDumpPermission;
+
 import android.annotation.Nullable;
 import android.app.ActivityThread;
 import android.app.PendingIntent;
@@ -42,9 +44,12 @@ import java.util.List;
  * Implements the ISmsImplBase interface used in the SmsManager API.
  */
 public class UiccSmsController extends ISmsImplBase {
-    static final String LOG_TAG = "RIL_UiccSmsController";
+    static final String LOG_TAG = "UiccSmsController";
 
-    protected UiccSmsController() {
+    private final Context mContext;
+
+    protected UiccSmsController(Context context) {
+        mContext = context;
         if (ServiceManager.getService("isms") == null) {
             ServiceManager.addService("isms", this);
         }
@@ -393,6 +398,10 @@ public class UiccSmsController extends ISmsImplBase {
 
     @Override
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        if (!checkDumpPermission(mContext, LOG_TAG, pw)) {
+            return;
+        }
+
         IndentingPrintWriter indentingPW =
                 new IndentingPrintWriter(pw, "    " /* singleIndent */);
         for (Phone phone : PhoneFactory.getPhones()) {
