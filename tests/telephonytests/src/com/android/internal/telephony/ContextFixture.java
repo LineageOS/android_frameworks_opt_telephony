@@ -259,6 +259,8 @@ public class ContextFixture implements TestFixture<Context> {
         public String getSystemServiceName(Class<?> serviceClass) {
             if (serviceClass == SubscriptionManager.class) {
                 return Context.TELEPHONY_SUBSCRIPTION_SERVICE;
+            } else if (serviceClass == AppOpsManager.class) {
+                return Context.APP_OPS_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
