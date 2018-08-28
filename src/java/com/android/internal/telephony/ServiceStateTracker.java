@@ -3805,11 +3805,14 @@ public class ServiceStateTracker extends Handler {
         }
 
         // if there is no SIM present, do not poll signal strength
-        UiccCard uiccCard = UiccController.getInstance().getUiccCard(getPhoneId());
-        if (uiccCard == null || uiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
-            log("Not polling signal strength due to absence of SIM");
-            return;
+        if (UiccController.getInstance() != null) {
+            UiccCard uiccCard = UiccController.getInstance().getUiccCard(getPhoneId());
+            if (uiccCard == null || uiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
+                log("Not polling signal strength due to absence of SIM");
+                return;
+            }
         }
+
 
         Message msg;
 
