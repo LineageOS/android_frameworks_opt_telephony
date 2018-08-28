@@ -26,6 +26,7 @@ import android.telephony.AccessNetworkConstants.TransportType;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
+import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -169,6 +170,10 @@ public class TelephonyComponentFactory {
 
     public DeviceStateMonitor makeDeviceStateMonitor(Phone phone) {
         return new DeviceStateMonitor(phone);
+    }
+
+    public AccessNetworksManager makeAccessNetworksManager(Phone phone) {
+        return new AccessNetworksManager(phone);
     }
 
     public CdmaSubscriptionSourceManager
