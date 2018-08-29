@@ -197,6 +197,8 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
 
         if (mPendingMO != null) {
+            // Send the notification that the pending call was disconnected to the higher layers.
+            mPendingMO.onDisconnect(DisconnectCause.ERROR_UNSPECIFIED);
             mPendingMO.dispose();
         }
 
