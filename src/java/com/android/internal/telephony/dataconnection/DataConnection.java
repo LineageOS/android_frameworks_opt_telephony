@@ -113,7 +113,7 @@ public class DataConnection extends StateMachine {
     // The DCT that's talking to us, we only support one!
     private DcTracker mDct = null;
 
-    protected String[] mPcscfAddr;
+    private String[] mPcscfAddr;
 
     /**
      * Used internally for saving connecting parameters.
@@ -221,9 +221,9 @@ public class DataConnection extends StateMachine {
     static final int EVENT_KEEPALIVE_START_REQUEST = BASE + 21;
     static final int EVENT_KEEPALIVE_STOP_REQUEST = BASE + 22;
     static final int EVENT_LINK_CAPACITY_CHANGED = BASE + 23;
+    static final int EVENT_RESET = BASE + 24;
 
-    private static final int CMD_TO_STRING_COUNT =
-            EVENT_LINK_CAPACITY_CHANGED - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT = EVENT_RESET - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -254,15 +254,14 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_KEEPALIVE_START_REQUEST - BASE] = "EVENT_KEEPALIVE_START_REQUEST";
         sCmdToString[EVENT_KEEPALIVE_STOP_REQUEST - BASE] = "EVENT_KEEPALIVE_STOP_REQUEST";
         sCmdToString[EVENT_LINK_CAPACITY_CHANGED - BASE] = "EVENT_LINK_CAPACITY_CHANGED";
+        sCmdToString[EVENT_RESET - BASE] = "EVENT_RESET";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
-        String value;
+        String value = null;
         cmd -= BASE;
         if ((cmd >= 0) && (cmd < sCmdToString.length)) {
             value = sCmdToString[cmd];
-        } else {
-            value = DcAsyncChannel.cmdToString(cmd + BASE);
         }
         if (value == null) {
             value = "0x" + Integer.toHexString(cmd + BASE);
@@ -296,7 +295,7 @@ public class DataConnection extends StateMachine {
 
     /* Getter functions */
 
-    LinkProperties getCopyLinkProperties() {
+    LinkProperties getLinkProperties() {
         return new LinkProperties(mLinkProperties);
     }
 
@@ -1260,70 +1259,7 @@ public class DataConnection extends StateMachine {
                         + " RefCount=" + mApnContexts.size());
             }
             switch (msg.what) {
-                case AsyncChannel.CMD_CHANNEL_FULL_CONNECTION: {
-                    if (mAc != null) {
-                        if (VDBG) log("Disconnecting to previous connection mAc=" + mAc);
-                        mAc.replyToMessage(msg, AsyncChannel.CMD_CHANNEL_FULLY_CONNECTED,
-                                AsyncChannel.STATUS_FULL_CONNECTION_REFUSED_ALREADY_CONNECTED);
-                    } else {
-                        mAc = new AsyncChannel();
-                        mAc.connected(null, getHandler(), msg.replyTo);
-                        if (VDBG) log("DcDefaultState: FULL_CONNECTION reply connected");
-                        mAc.replyToMessage(msg, AsyncChannel.CMD_CHANNEL_FULLY_CONNECTED,
-                                AsyncChannel.STATUS_SUCCESSFUL, mId, "hi");
-                    }
-                    break;
-                }
-                case AsyncChannel.CMD_CHANNEL_DISCONNECTED: {
-                    if (DBG) {
-                        log("DcDefault: CMD_CHANNEL_DISCONNECTED before quiting call dump");
-                        dumpToLog();
-                    }
-
-                    quit();
-                    break;
-                }
-                case DcAsyncChannel.REQ_IS_INACTIVE: {
-                    boolean val = isInactive();
-                    if (VDBG) log("REQ_IS_INACTIVE  isInactive=" + val);
-                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_IS_INACTIVE, val ? 1 : 0);
-                    break;
-                }
-                case DcAsyncChannel.REQ_GET_CID: {
-                    int cid = getCid();
-                    if (VDBG) log("REQ_GET_CID  cid=" + cid);
-                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_CID, cid);
-                    break;
-                }
-                case DcAsyncChannel.REQ_GET_APNSETTING: {
-                    ApnSetting apnSetting = getApnSetting();
-                    if (VDBG) log("REQ_GET_APNSETTING  mApnSetting=" + apnSetting);
-                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_APNSETTING, apnSetting);
-                    break;
-                }
-                case DcAsyncChannel.REQ_GET_LINK_PROPERTIES: {
-                    LinkProperties lp = getCopyLinkProperties();
-                    if (VDBG) log("REQ_GET_LINK_PROPERTIES linkProperties" + lp);
-                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_LINK_PROPERTIES, lp);
-                    break;
-                }
-                case DcAsyncChannel.REQ_SET_LINK_PROPERTIES_HTTP_PROXY: {
-                    ProxyInfo proxy = (ProxyInfo) msg.obj;
-                    if (VDBG) log("REQ_SET_LINK_PROPERTIES_HTTP_PROXY proxy=" + proxy);
-                    setLinkPropertiesHttpProxy(proxy);
-                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_SET_LINK_PROPERTIES_HTTP_PROXY);
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendLinkProperties(mLinkProperties);
-                    }
-                    break;
-                }
-                case DcAsyncChannel.REQ_GET_NETWORK_CAPABILITIES: {
-                    NetworkCapabilities nc = getNetworkCapabilities();
-                    if (VDBG) log("REQ_GET_NETWORK_CAPABILITIES networkCapabilities" + nc);
-                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_NETWORK_CAPABILITIES, nc);
-                    break;
-                }
-                case DcAsyncChannel.REQ_RESET:
+                case EVENT_RESET:
                     if (VDBG) log("DcDefaultState: msg.what=REQ_RESET");
                     transitionTo(mInactiveState);
                     break;
@@ -1520,9 +1456,9 @@ public class DataConnection extends StateMachine {
             boolean retVal;
 
             switch (msg.what) {
-                case DcAsyncChannel.REQ_RESET:
+                case EVENT_RESET:
                     if (DBG) {
-                        log("DcInactiveState: msg.what=RSP_RESET, ignore we're already reset");
+                        log("DcInactiveState: msg.what=EVENT_RESET, ignore we're already reset");
                     }
                     retVal = HANDLED;
                     break;
@@ -2309,14 +2245,91 @@ public class DataConnection extends StateMachine {
         };
     }
 
+    /**
+     * Bring up a connection to the apn and return an AsyncResult in onCompletedMsg.
+     * Used for cellular networks that use Access Point Names (APN) such
+     * as GSM networks.
+     *
+     * @param apnContext is the Access Point Name to bring up a connection to
+     * @param profileId for the connection
+     * @param rilRadioTechnology Radio technology for the data connection
+     * @param unmeteredUseOnly Indicates the data connection can only used for unmetered purposes
+     * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
+     *                       With AsyncResult.userObj set to the original msg.obj,
+     *                       AsyncResult.result = FailCause and AsyncResult.exception = Exception().
+     * @param connectionGeneration used to track a single connection request so disconnects can get
+     *                             ignored if obsolete.
+     */
+    public void bringUp(ApnContext apnContext, int profileId, int rilRadioTechnology,
+                        boolean unmeteredUseOnly, Message onCompletedMsg,
+                        int connectionGeneration) {
+        if (DBG) {
+            log("bringUp: apnContext=" + apnContext + "unmeteredUseOnly=" + unmeteredUseOnly
+                    + " onCompletedMsg=" + onCompletedMsg);
+        }
+        sendMessage(DataConnection.EVENT_CONNECT,
+                new ConnectionParams(apnContext, profileId, rilRadioTechnology, unmeteredUseOnly,
+                        onCompletedMsg, connectionGeneration));
+    }
+
+    /**
+     * Tear down the connection through the apn on the network.
+     *
+     * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
+     *        With AsyncResult.userObj set to the original msg.obj.
+     */
+    public void tearDown(ApnContext apnContext, String reason, Message onCompletedMsg) {
+        if (DBG) {
+            log("tearDown: apnContext=" + apnContext
+                    + " reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+        }
+        sendMessage(DataConnection.EVENT_DISCONNECT,
+                new DisconnectParams(apnContext, reason, onCompletedMsg));
+    }
+
     // ******* "public" interface
 
     /**
      * Used for testing purposes.
      */
-    /* package */ void tearDownNow() {
+    void tearDownNow() {
         if (DBG) log("tearDownNow()");
         sendMessage(obtainMessage(EVENT_TEAR_DOWN_NOW));
+    }
+
+    /**
+     * Tear down the connection through the apn on the network.  Ignores reference count and
+     * and always tears down.
+     *
+     * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
+     *        With AsyncResult.userObj set to the original msg.obj.
+     */
+    public void tearDownAll(String reason, Message onCompletedMsg) {
+        if (DBG) log("tearDownAll: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+        sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
+                new DisconnectParams(null, reason, onCompletedMsg));
+    }
+
+    /**
+     * Reset the data connection to inactive state.
+     */
+    public void reset() {
+        sendMessage(EVENT_RESET);
+        if (DBG) log("reset");
+    }
+
+    /**
+     * @return The parameters used for initiating a data connection.
+     */
+    public ConnectionParams getConnectionParams() {
+        return mConnectionParams;
+    }
+
+    /**
+     * @return The list of PCSCF addresses
+     */
+    public String[] getPcscfAddresses() {
+        return mPcscfAddr;
     }
 
     /**
