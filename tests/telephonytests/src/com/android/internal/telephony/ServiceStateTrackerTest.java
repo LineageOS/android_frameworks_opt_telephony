@@ -199,6 +199,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         sst = null;
         mSSTTestHandler.quit();
+        mSSTTestHandler.join();
         super.tearDown();
     }
 
