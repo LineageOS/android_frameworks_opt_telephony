@@ -30,7 +30,6 @@ import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
-import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
@@ -198,8 +197,7 @@ public class UiccController extends Handler {
     public static UiccController getInstance() {
         synchronized (mLock) {
             if (mInstance == null) {
-                throw new RuntimeException(
-                        "UiccController.getInstance can't be called before make()");
+                Rlog.e(LOG_TAG, "UiccController.getInstance can't be called before make()");
             }
             return mInstance;
         }
