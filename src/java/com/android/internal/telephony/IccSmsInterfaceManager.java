@@ -338,6 +338,7 @@ public class IccSmsInterfaceManager {
     public void sendDataWithSelfPermissions(String callingPackage, String destAddr, String scAddr,
             int destPort, byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (!checkCallingOrSelfSendSmsPermission(callingPackage, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntent);
             return;
         }
         sendDataInternal(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
@@ -350,6 +351,7 @@ public class IccSmsInterfaceManager {
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (!checkCallingSendSmsPermission(callingPackage, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntent);
             return;
         }
         sendDataInternal(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
@@ -402,6 +404,7 @@ public class IccSmsInterfaceManager {
             boolean persistMessageForNonDefaultSmsApp) {
         if (!checkCallingSendTextPermissions(
                 persistMessageForNonDefaultSmsApp, callingPackage, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntent);
             return;
         }
         sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
@@ -417,6 +420,7 @@ public class IccSmsInterfaceManager {
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
             boolean persistMessage) {
         if (!checkCallingOrSelfSendSmsPermission(callingPackage, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntent);
             return;
         }
         sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
@@ -538,6 +542,7 @@ public class IccSmsInterfaceManager {
             boolean persistMessageForNonDefaultSmsApp, int priority, boolean expectMore,
             int validityPeriod) {
         if (!checkCallingOrSelfSendSmsPermission(callingPackage, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntent);
             return;
         }
         sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
@@ -666,6 +671,7 @@ public class IccSmsInterfaceManager {
             int priority, boolean expectMore, int validityPeriod) {
         if (!checkCallingSendTextPermissions(
                 persistMessageForNonDefaultSmsApp, callingPackage, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntents);
             return;
         }
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
@@ -1100,6 +1106,7 @@ public class IccSmsInterfaceManager {
     public void sendStoredText(String callingPkg, Uri messageUri, String scAddress,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (!checkCallingSendSmsPermission(callingPkg, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntent);
             return;
         }
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
@@ -1128,6 +1135,7 @@ public class IccSmsInterfaceManager {
     public void sendStoredMultipartText(String callingPkg, Uri messageUri, String scAddress,
             List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
         if (!checkCallingSendSmsPermission(callingPkg, "Sending SMS message")) {
+            returnUnspecifiedFailure(sentIntents);
             return;
         }
         final ContentResolver resolver = mContext.getContentResolver();
