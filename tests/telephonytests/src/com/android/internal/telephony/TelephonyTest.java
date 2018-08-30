@@ -202,6 +202,8 @@ public abstract class TelephonyTest {
     protected SubscriptionInfoUpdater mSubInfoRecordUpdater;
     @Mock
     protected LocaleTracker mLocaleTracker;
+    @Mock
+    protected RestrictedState mRestrictedState;
 
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
@@ -466,6 +468,7 @@ public abstract class TelephonyTest {
                 nullable(Intent[].class), nullable(String[].class), anyInt(),
                 nullable(Bundle.class), anyInt());
         mSST.mSS = mServiceState;
+        mSST.mRestrictedState = mRestrictedState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
 
         //SIM
