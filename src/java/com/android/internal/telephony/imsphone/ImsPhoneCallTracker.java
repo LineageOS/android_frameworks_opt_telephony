@@ -2103,6 +2103,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case ImsReasonInfo.CODE_UNOBTAINABLE_NUMBER:
                 return DisconnectCause.UNOBTAINABLE_NUMBER;
 
+            case ImsReasonInfo.CODE_UNSPECIFIED:
+                if (mPhone.getDefaultPhone().getServiceStateTracker().mRestrictedState
+                        .isCsRestricted()) {
+                    return DisconnectCause.CS_RESTRICTED;
+                } else if (mPhone.getDefaultPhone().getServiceStateTracker().mRestrictedState
+                        .isCsEmergencyRestricted()) {
+                    return DisconnectCause.CS_RESTRICTED_EMERGENCY;
+                } else if (mPhone.getDefaultPhone().getServiceStateTracker().mRestrictedState
+                        .isCsNormalRestricted()) {
+                    return DisconnectCause.CS_RESTRICTED_NORMAL;
+                }
+                break;
+
             default:
         }
 
