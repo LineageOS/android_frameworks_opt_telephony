@@ -18,11 +18,9 @@ package com.android.internal.telephony.dataconnection;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -85,19 +83,6 @@ public class ApnContextTest extends TelephonyTest {
             mApnContext.incAndGetConnectionGeneration();
             assertEquals(i + 1, mApnContext.getConnectionGeneration());
         }
-    }
-
-    @Test
-    @SmallTest
-    public void testDataCallAsyncChannel() throws Exception {
-
-        DcAsyncChannel dcAc = mock(DcAsyncChannel.class);
-
-        mApnContext.setDataConnectionAc(dcAc);
-        assertEquals(dcAc, mApnContext.getDcAc());
-        mApnContext.releaseDataConnection("");
-        assertNull(mApnContext.getDcAc());
-        assertEquals(DctConstants.State.IDLE, mApnContext.getState());
     }
 
     @Test

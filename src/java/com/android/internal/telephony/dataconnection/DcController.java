@@ -487,9 +487,6 @@ public class DcController extends StateMachine {
     protected String getWhatToString(int what) {
         String info = null;
         info = DataConnection.cmdToString(what);
-        if (info == null) {
-            info = DcAsyncChannel.cmdToString(what);
-        }
         return info;
     }
 
