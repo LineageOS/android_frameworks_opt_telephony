@@ -285,6 +285,7 @@ public class RILTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mTestHandler.quit();
+        mTestHandler.join();
         super.tearDown();
     }
 
