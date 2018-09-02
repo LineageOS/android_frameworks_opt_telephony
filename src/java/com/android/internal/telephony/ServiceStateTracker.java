@@ -2849,7 +2849,7 @@ public class ServiceStateTracker extends Handler {
             mRejectCode = mNewRejectCode;
         }
 
-        ServiceState oldMergedSS = mPhone.getServiceState();
+        ServiceState oldMergedSS = new ServiceState(mPhone.getServiceState());
 
         // swap mSS and mNewSS to put new state in mSS
         ServiceState tss = mSS;
@@ -3721,14 +3721,11 @@ public class ServiceStateTracker extends Handler {
         }
 
         // if there is no SIM present, do not poll signal strength
-        if (UiccController.getInstance() != null) {
-            UiccCard uiccCard = UiccController.getInstance().getUiccCard(getPhoneId());
-            if (uiccCard == null || uiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
-                log("Not polling signal strength due to absence of SIM");
-                return;
-            }
+        UiccCard uiccCard = UiccController.getInstance().getUiccCard(getPhoneId());
+        if (uiccCard == null || uiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
+            log("Not polling signal strength due to absence of SIM");
+            return;
         }
-
 
         Message msg;
 

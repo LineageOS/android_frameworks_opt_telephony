@@ -143,6 +143,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.removeCallbacksAndMessages(null);
         mPhoneUT = null;
         mGsmCdmaPhoneTestHandler.quit();
+        mGsmCdmaPhoneTestHandler.join();
         super.tearDown();
     }
 

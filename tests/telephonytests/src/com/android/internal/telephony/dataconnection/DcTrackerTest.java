@@ -142,7 +142,7 @@ public class DcTrackerTest extends TelephonyTest {
     @Mock
     ApnSetting mApnSetting;
     @Mock
-    DcAsyncChannel mDcac;
+    DataConnection mDataConnection;
     @Mock
     PackageManagerService mMockPackageManagerInternal;
 
@@ -1016,7 +1016,7 @@ public class DcTrackerTest extends TelephonyTest {
                 TextUtils.join(",", canHandleTypes)));
         doReturn(apnSetting).when(mApnContext).getNextApnSetting();
         doReturn(apnSetting).when(mApnContext).getApnSetting();
-        doReturn(mDcac).when(mApnContext).getDcAc();
+        doReturn(mDataConnection).when(mApnContext).getDataConnection();
         doReturn(true).when(mApnContext).isEnabled();
         doReturn(true).when(mApnContext).getDependencyMet();
         doReturn(true).when(mApnContext).isReady();
