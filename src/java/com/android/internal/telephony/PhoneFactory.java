@@ -32,6 +32,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
+import com.android.internal.os.BackgroundThread;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
 import com.android.internal.telephony.euicc.EuiccController;
@@ -218,7 +219,7 @@ public class PhoneFactory {
 
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 sSubInfoRecordUpdater = telephonyComponentFactory.makeSubscriptionInfoUpdater(
-                        context, sPhones, sCommandsInterfaces);
+                        BackgroundThread.get().getLooper(), context, sPhones, sCommandsInterfaces);
                 SubscriptionController.getInstance().updatePhonesAvailability(sPhones);
 
                 // Start monitoring after defaults have been made.
