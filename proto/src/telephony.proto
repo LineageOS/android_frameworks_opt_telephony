@@ -1358,6 +1358,12 @@ message SmsSession {
 
       // Service category of CB message
       optional int32 service_category = 4;
+
+      // Message's serial number
+      optional int32 serial_number = 5;
+
+      // The delivered time (UTC) of the message
+      optional int64 delivered_timestamp_millis = 6;
     }
 
     enum CBMessageType {
