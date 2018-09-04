@@ -222,7 +222,7 @@ public class TelephonyComponentFactory {
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context, Phone[] phones,
             CommandsInterface[] ci) {
         Rlog.d(LOG_TAG, "makeSubscriptionInfoUpdater");
-        return new SubscriptionInfoUpdater(BackgroundThread.get().getLooper(), context, phones, ci);
+        return makeSubscriptionInfoUpdater(BackgroundThread.get().getLooper(), context, phones, ci);
     }
 
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Looper looper, Context context,
