@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Matchers.eq;
@@ -99,6 +100,7 @@ public class CarrierResolverTest extends TelephonyTest {
         mCarrierResolver.removeCallbacksAndMessages(null);
         mCarrierResolver = null;
         mCarrierCarrierResolverHandler.quit();
+        mCarrierCarrierResolverHandler.join();
         super.tearDown();
     }
 
