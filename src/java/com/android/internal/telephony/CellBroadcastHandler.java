@@ -94,7 +94,8 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
         TelephonyMetrics metrics = TelephonyMetrics.getInstance();
         metrics.writeNewCBSms(mPhone.getPhoneId(), message.getMessageFormat(),
                 message.getMessagePriority(), message.isCmasMessage(), message.isEtwsMessage(),
-                message.getServiceCategory());
+                message.getServiceCategory(), message.getSerialNumber(),
+                System.currentTimeMillis());
 
         String msg;
         Intent intent;
