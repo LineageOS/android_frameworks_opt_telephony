@@ -968,14 +968,19 @@ public abstract class SMSDispatcher extends Handler {
      *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
      *  Any Other values included Negative considered as Invalid Validity Period of the message.
      */
-    protected void sendMultipartText(String destAddr, String scAddr,
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
+    public void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             boolean persistMessage, int priority, boolean expectMore, int validityPeriod) {
         final String fullMessageText = getMultipartMessageText(parts);
         int refNumber = getNextConcatenatedRef() & 0x00FF;
-        int msgCount = parts.size();
         int encoding = SmsConstants.ENCODING_UNKNOWN;
+        int msgCount = parts.size();
+        if (msgCount < 1) {
+            triggerSentIntentForFailure(sentIntents);
+            return;
+        }
 
         TextEncodingDetails[] encodingForParts = new TextEncodingDetails[msgCount];
         for (int i = 0; i < msgCount; i++) {
@@ -1030,14 +1035,11 @@ public abstract class SMSDispatcher extends Handler {
                         sentIntent, deliveryIntent, (i == (msgCount - 1)),
                         unsentPartCount, anyPartFailed, messageUri,
                         fullMessageText, priority, expectMore, validityPeriod);
+            if (trackers[i] == null) {
+                triggerSentIntentForFailure(sentIntents);
+                return;
+            }
             trackers[i].mPersistMessage = persistMessage;
-        }
-
-        if (parts == null || trackers == null || trackers.length == 0
-                || trackers[0] == null) {
-            Rlog.e(TAG, "Cannot send multipart text. parts=" + parts + " trackers=" + trackers);
-            triggerSentIntentForFailure(sentIntents);
-            return;
         }
 
         String carrierPackage = getCarrierAppPackageName();
@@ -1049,11 +1051,7 @@ public abstract class SMSDispatcher extends Handler {
         } else {
             Rlog.v(TAG, "No carrier package.");
             for (SmsTracker tracker : trackers) {
-                if (tracker != null) {
-                    sendSubmitPdu(tracker);
-                } else {
-                    Rlog.e(TAG, "Null tracker.");
-                }
+                sendSubmitPdu(tracker);
             }
         }
     }
@@ -1086,13 +1084,18 @@ public abstract class SMSDispatcher extends Handler {
                     com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(destinationAddress,
                             uData, (deliveryIntent != null) && lastPart, priority);
 
-            HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
-                    message, submitPdu);
-            return getSmsTracker(map, sentIntent, deliveryIntent,
-                    getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
-                    (!lastPart || expectMore), fullMessageText, true /*isText*/,
-                    true /*persistMessage*/, priority, validityPeriod);
-
+            if (submitPdu != null) {
+                HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
+                        message, submitPdu);
+                return getSmsTracker(map, sentIntent, deliveryIntent,
+                        getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
+                        (!lastPart || expectMore), fullMessageText, true /*isText*/,
+                        true /*persistMessage*/, priority, validityPeriod);
+            } else {
+                Rlog.e(TAG, "CdmaSMSDispatcher.getNewSubmitPduTracker(): getSubmitPdu() returned "
+                        + "null");
+                return null;
+            }
         } else {
             SmsMessageBase.SubmitPduBase pdu =
                     com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(scAddress,
@@ -1107,7 +1110,8 @@ public abstract class SMSDispatcher extends Handler {
                         smsHeader, (!lastPart || expectMore), fullMessageText, true /*isText*/,
                         false /*persistMessage*/, priority, validityPeriod);
             } else {
-                Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
+                Rlog.e(TAG, "GsmSMSDispatcher.getNewSubmitPduTracker(): getSubmitPdu() returned "
+                        + "null");
                 return null;
             }
         }
