@@ -65,6 +65,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class GsmSmsDispatcherTest extends TelephonyTest {
@@ -86,7 +87,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     @Mock
     private ISub.Stub mISubStub;
     private Object mLock = new Object();
-    private boolean mReceivedTestIntent = false;
+    private boolean mReceivedTestIntent;
     private static final String TEST_INTENT = "com.android.internal.telephony.TEST_INTENT";
     private BroadcastReceiver mTestReceiver = new BroadcastReceiver() {
         @Override
@@ -215,6 +216,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         PendingIntent pendingIntent = PendingIntent.getBroadcast(realContext, 0,
                 new Intent(TEST_INTENT), 0);
         // send invalid dest address: +
+        mReceivedTestIntent = false;
         mGsmSmsDispatcher.sendText("+", "222" /*scAddr*/, TAG,
                 pendingIntent, null, null, null, false, -1, false, -1);
         waitForMs(500);
@@ -256,5 +258,40 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 .forClass(Integer.class);
         verify(mSmsTracker, times(1)).onFailed(any(), argumentCaptor.capture(), anyInt());
         assertEquals(RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED, (int) argumentCaptor.getValue());
+    }
+
+    @Test @SmallTest
+    public void testSendMultipartTextWithInvalidText() throws Exception {
+        // unmock ActivityManager to be able to register receiver, create real PendingIntent and
+        // receive TEST_INTENT
+        restoreInstance(Singleton.class, "mInstance", mIActivityManagerSingleton);
+        restoreInstance(ActivityManager.class, "IActivityManagerSingleton", null);
+
+        Context realContext = TestApplication.getAppContext();
+        realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT));
+
+        // initiate parameters for an invalid text MO SMS (the 2nd segmeant has 161 characters)
+        ArrayList<String> parts = new ArrayList<>();
+        parts.add("valid segment1");
+        parts.add("too long segment2 12345678912345678912345678912345678912345678912345678912345678"
+                + "91234567891234567891234567891234567891234567891234567891234567891234567891234567"
+                + "8");
+
+        ArrayList<PendingIntent> sentIntents = new ArrayList<>();
+        PendingIntent sentIntent = PendingIntent.getBroadcast(realContext, 0,
+                new Intent(TEST_INTENT), 0);
+        sentIntents.add(sentIntent);
+        sentIntents.add(sentIntent);
+
+        // send SMS and check sentIntent
+        mReceivedTestIntent = false;
+        mGsmSmsDispatcher.sendMultipartText("+123" /*destAddr*/, "222" /*scAddr*/, parts,
+                sentIntents, null, null, null, false, -1, false, -1);
+
+        waitForMs(500);
+        synchronized (mLock) {
+            assertEquals(true, mReceivedTestIntent);
+            assertEquals(SmsManager.RESULT_ERROR_GENERIC_FAILURE, mTestReceiver.getResultCode());
+        }
     }
 }
