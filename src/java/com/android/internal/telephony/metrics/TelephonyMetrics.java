@@ -1766,9 +1766,12 @@ public class TelephonyMetrics {
      * @param isCMAS true if msg is CMAS
      * @param isETWS true if msg is ETWS
      * @param serviceCategory Service category of CB msg
+     * @param serialNumber Serial number of the message
+     * @param deliveredTimestamp Message's delivered timestamp
      */
     public synchronized void writeNewCBSms(int phoneId, int format, int priority, boolean isCMAS,
-                                           boolean isETWS, int serviceCategory) {
+                                           boolean isETWS, int serviceCategory, int serialNumber,
+                                           long deliveredTimestamp) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
 
         int type;
@@ -1785,6 +1788,8 @@ public class TelephonyMetrics {
         cbm.msgPriority = priority + 1;
         cbm.msgType = type;
         cbm.serviceCategory = serviceCategory;
+        cbm.serialNumber = serialNumber;
+        cbm.deliveredTimestampMillis = deliveredTimestamp;
 
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.CB_SMS_RECEIVED)
                 .setCellBroadcastMessage(cbm)
