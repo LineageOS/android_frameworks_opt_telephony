@@ -1720,6 +1720,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
+    @FlakyTest
     public void testSetupDataCall() throws Exception {
 
         DataProfile dp = new DataProfile(PROFILE_ID, APN, PROTOCOL, AUTH_TYPE, USER_NAME, PASSWORD,
