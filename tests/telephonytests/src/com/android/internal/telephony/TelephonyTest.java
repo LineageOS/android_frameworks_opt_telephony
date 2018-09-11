@@ -467,6 +467,7 @@ public abstract class TelephonyTest {
                 nullable(String.class), nullable(IBinder.class), nullable(String.class), anyInt(),
                 nullable(Intent[].class), nullable(String[].class), anyInt(),
                 nullable(Bundle.class), anyInt());
+        doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
         mSST.mSS = mServiceState;
         mSST.mRestrictedState = mRestrictedState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
