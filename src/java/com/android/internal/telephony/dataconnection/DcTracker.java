@@ -113,13 +113,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@hide}
  */
 public class DcTracker extends Handler {
-    private static final String LOG_TAG = "DCT";
     private static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true
     private static final boolean VDBG_STALL = false; // STOPSHIP if true
     private static final boolean RADIO_TESTS = false;
 
+    private final String mLogTag;
+
     public AtomicBoolean isCleanupRequired = new AtomicBoolean(false);
+
+    private final TelephonyManager mTelephonyManager;
 
     private final AlarmManager mAlarmManager;
 
@@ -239,7 +242,6 @@ public class DcTracker extends Handler {
                 startNetStatPoll();
                 restartDataStallAlarm();
             } else if (action.startsWith(INTENT_RECONNECT_ALARM)) {
-                if (DBG) log("Reconnect alarm. Previous state was " + mState);
                 onActionIntentReconnectAlarm(intent);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
                 if (DBG) log("Data stall alarm");
@@ -584,6 +586,16 @@ public class DcTracker extends Handler {
         super();
         mPhone = phone;
         if (DBG) log("DCT.constructor");
+        mTelephonyManager = TelephonyManager.from(phone.getContext())
+                .createForSubscriptionId(phone.getSubId());
+        // The 'C' in tag indicates cellular, and 'I' indicates IWLAN. This is to distinguish
+        // between two DcTrackers, one for each.
+        String tag = "DCT-" + ((transportType == TransportType.WWAN) ? "C" : "I");
+        if (mTelephonyManager.getPhoneCount() > 1) {
+            tag += "-" + mPhone.getPhoneId();
+        }
+        mLogTag = tag;
+
         mTransportType = transportType;
         mDataServiceManager = new DataServiceManager(phone, transportType);
 
@@ -647,6 +659,8 @@ public class DcTracker extends Handler {
 
     @VisibleForTesting
     public DcTracker() {
+        mLogTag = "DCT";
+        mTelephonyManager = null;
         mAlarmManager = null;
         mCm = null;
         mPhone = null;
@@ -956,7 +970,7 @@ public class DcTracker extends Handler {
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
-        ApnContext apnContext = new ApnContext(mPhone, type, LOG_TAG, networkConfig, this);
+        ApnContext apnContext = new ApnContext(mPhone, type, mLogTag, networkConfig, this);
         mApnContexts.put(type, apnContext);
         mApnContextsByType.put(ApnSetting.getApnTypesBitmaskFromString(type), apnContext);
         mPrioritySortedApnContexts.add(apnContext);
@@ -2222,7 +2236,7 @@ public class DcTracker extends Handler {
      */
     private void onSetCarrierDataEnabled(AsyncResult ar) {
         if (ar.exception != null) {
-            Rlog.e(LOG_TAG, "CarrierDataEnable exception: " + ar.exception);
+            loge("CarrierDataEnable exception: " + ar.exception);
             return;
         }
         boolean enabled = (boolean) ar.result;
@@ -2504,7 +2518,7 @@ public class DcTracker extends Handler {
             int roaming = enabled ? 1 : 0;
 
             // For single SIM phones, this is a per phone property.
-            if (TelephonyManager.getDefault().getSimCount() == 1) {
+            if (mTelephonyManager.getSimCount() == 1) {
                 Settings.Global.putInt(mResolver, Settings.Global.DATA_ROAMING, roaming);
                 setDataRoamingFromUserAction(true);
             } else {
@@ -2534,7 +2548,7 @@ public class DcTracker extends Handler {
         final int phoneSubId = mPhone.getSubId();
 
         // For single SIM phones, this is a per phone property.
-        if (TelephonyManager.getDefault().getSimCount() == 1) {
+        if (mTelephonyManager.getSimCount() == 1) {
             isDataRoamingEnabled = Settings.Global.getInt(mResolver,
                     Settings.Global.DATA_ROAMING,
                     getDefaultDataRoamingEnabled() ? 1 : 0) != 0;
@@ -2576,7 +2590,7 @@ public class DcTracker extends Handler {
         // For single SIM phones, this is a per phone property.
         String setting = Settings.Global.DATA_ROAMING;
         boolean useCarrierSpecificDefault = false;
-        if (TelephonyManager.getDefault().getSimCount() != 1) {
+        if (mTelephonyManager.getSimCount() != 1) {
             setting = setting + mPhone.getSubId();
             try {
                 Settings.Global.getInt(mResolver, setting);
@@ -2871,7 +2885,7 @@ public class DcTracker extends Handler {
                     // disappears when radio is off.
                     mProvisionBroadcastReceiver = new ProvisionNotificationBroadcastReceiver(
                             cm.getMobileProvisioningUrl(),
-                            TelephonyManager.getDefault().getNetworkOperatorName());
+                            mTelephonyManager.getNetworkOperatorName());
                     mPhone.getContext().registerReceiver(mProvisionBroadcastReceiver,
                             new IntentFilter(mProvisionActionName));
                     // Put up user notification that sign-in is required.
@@ -2914,7 +2928,7 @@ public class DcTracker extends Handler {
                 // Log this failure to the Event Logs.
                 int cid = getCellLocationId();
                 EventLog.writeEvent(EventLogTags.PDP_SETUP_FAIL,
-                        cause.ordinal(), cid, TelephonyManager.getDefault().getNetworkType());
+                        cause.ordinal(), cid, mTelephonyManager.getNetworkType());
             }
             ApnSetting apn = apnContext.getApnSetting();
             mPhone.notifyPreciseDataConnectionFailed(apnContext.getReason(),
@@ -4049,11 +4063,11 @@ public class DcTracker extends Handler {
     }
 
     private void log(String s) {
-        Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "]" + s);
+        Rlog.d(mLogTag, s);
     }
 
     private void loge(String s) {
-        Rlog.e(LOG_TAG, "[" + mPhone.getPhoneId() + "]" + s);
+        Rlog.e(mLogTag, s);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -4414,7 +4428,7 @@ public class DcTracker extends Handler {
 
     private void handlePcoData(AsyncResult ar) {
         if (ar.exception != null) {
-            Rlog.e(LOG_TAG, "PCO_DATA exception: " + ar.exception);
+            loge("PCO_DATA exception: " + ar.exception);
             return;
         }
         PcoData pcoData = (PcoData)(ar.result);
@@ -4424,11 +4438,11 @@ public class DcTracker extends Handler {
             dcList.add(temp);
         }
         if (dcList.size() == 0) {
-            Rlog.e(LOG_TAG, "PCO_DATA for unknown cid: " + pcoData.cid + ", inferring");
+            loge("PCO_DATA for unknown cid: " + pcoData.cid + ", inferring");
             for (DataConnection dc : mDataConnections.values()) {
                 final int cid = dc.getCid();
                 if (cid == pcoData.cid) {
-                    if (VDBG) Rlog.d(LOG_TAG, "  found " + dc);
+                    if (VDBG) log("  found " + dc);
                     dcList.clear();
                     dcList.add(dc);
                     break;
@@ -4437,7 +4451,7 @@ public class DcTracker extends Handler {
                 if (cid == -1) {
                     for (ApnContext apnContext : dc.mApnContexts.keySet()) {
                         if (apnContext.getState() == DctConstants.State.CONNECTING) {
-                            if (VDBG) Rlog.d(LOG_TAG, "  found potential " + dc);
+                            if (VDBG) log("  found potential " + dc);
                             dcList.add(dc);
                             break;
                         }
@@ -4446,7 +4460,7 @@ public class DcTracker extends Handler {
             }
         }
         if (dcList.size() == 0) {
-            Rlog.e(LOG_TAG, "PCO_DATA - couldn't infer cid");
+            loge("PCO_DATA - couldn't infer cid");
             return;
         }
         for (DataConnection dc : dcList) {
@@ -4591,7 +4605,7 @@ public class DcTracker extends Handler {
     }
 
     private boolean isPhoneStateIdle() {
-        for (int i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
+        for (int i = 0; i < mTelephonyManager.getPhoneCount(); i++) {
             Phone phone = PhoneFactory.getPhone(i);
             if (phone != null && phone.getState() != PhoneConstants.State.IDLE) {
                 log("isPhoneStateIdle false: Voice call active on phone " + i);
