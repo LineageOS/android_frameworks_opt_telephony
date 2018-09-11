@@ -46,6 +46,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
 
         IPhoneStateListener callback;
         IOnSubscriptionsChangedListener onSubscriptionsChangedListenerCallback;
+        IOnSubscriptionsChangedListener onOpportunisticSubscriptionsChangedListenerCallback;
 
         int callerUserId;
 
@@ -65,12 +66,19 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
             return (onSubscriptionsChangedListenerCallback != null);
         }
 
+        boolean matchOnOpportunisticSubscriptionsChangedListener() {
+            return (onOpportunisticSubscriptionsChangedListenerCallback != null);
+        }
+
+
         @Override
         public String toString() {
             return "{callingPackage=" + callingPackage + " binder=" + binder
                     + " callback=" + callback
-                    + " onSubscriptionsChangedListenererCallback="
-                                            + onSubscriptionsChangedListenerCallback
+                    + " onSubscriptionsChangedListenerCallback="
+                    + onSubscriptionsChangedListenerCallback
+                    + " onOpportunisticSubscriptionsChangedListenerCallback="
+                    + onOpportunisticSubscriptionsChangedListenerCallback
                     + " callerUserId=" + callerUserId + " subId=" + subId + " phoneId=" + phoneId
                     + " events=" + Integer.toHexString(events)
                     + " canReadPhoneState=" + canReadPhoneState + "}";
@@ -79,7 +87,8 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
 
     private final ArrayList<IBinder> mRemoveList = new ArrayList<IBinder>();
     private final ArrayList<Record> mRecords = new ArrayList<Record>();
-    private boolean hasNotifySubscriptionInfoChangedOccurred = false;
+    private boolean mHasNotifySubscriptionInfoChangedOccurred = false;
+    private boolean mHasNotifyOpportunisticSubscriptionInfoChangedOccurred = false;
 
     public TelephonyRegistryMock() {
     }
@@ -134,14 +143,54 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
             r.events = 0;
             r.canReadPhoneState = true; // permission has been enforced above
             // Always notify when registration occurs if there has been a notification.
-            if (hasNotifySubscriptionInfoChangedOccurred) {
+            if (mHasNotifySubscriptionInfoChangedOccurred) {
                 try {
                     r.onSubscriptionsChangedListenerCallback.onSubscriptionsChanged();
                 } catch (RemoteException e) {
                     remove(r.binder);
                 }
             } else {
-                //log("listen oscl: hasNotifySubscriptionInfoChangedOccurred==false no callback");
+                //log("listen oscl: mHasNotifySubscriptionInfoChangedOccurred==false no callback");
+            }
+        }
+
+    }
+
+    @Override
+    public void addOnOpportunisticSubscriptionsChangedListener(String callingPackage,
+            IOnSubscriptionsChangedListener callback) {
+        Record r;
+
+        synchronized (mRecords) {
+            // register
+            find_and_add: {
+                IBinder b = callback.asBinder();
+                final int n = mRecords.size();
+                for (int i = 0; i < n; i++) {
+                    r = mRecords.get(i);
+                    if (b == r.binder) {
+                        break find_and_add;
+                    }
+                }
+                r = new Record();
+                r.binder = b;
+                mRecords.add(r);
+            }
+
+            r.onOpportunisticSubscriptionsChangedListenerCallback = callback;
+            r.callingPackage = callingPackage;
+            r.callerUserId = UserHandle.getCallingUserId();
+            r.events = 0;
+            r.canReadPhoneState = true; // permission has been enforced above
+            // Always notify when registration occurs if there has been a notification.
+            if (mHasNotifyOpportunisticSubscriptionInfoChangedOccurred) {
+                try {
+                    r.onOpportunisticSubscriptionsChangedListenerCallback.onSubscriptionsChanged();
+                } catch (RemoteException e) {
+                    remove(r.binder);
+                }
+            } else {
+                //log("listen oscl: mHasNotifySubscriptionInfoChangedOccurred==false no callback");
             }
         }
 
@@ -156,16 +205,39 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     @Override
     public void notifySubscriptionInfoChanged() {
         synchronized (mRecords) {
-            if (!hasNotifySubscriptionInfoChangedOccurred) {
+            if (!mHasNotifySubscriptionInfoChangedOccurred) {
                 //log("notifySubscriptionInfoChanged: first invocation mRecords.size="
                 //        + mRecords.size());
             }
-            hasNotifySubscriptionInfoChangedOccurred = true;
+            mHasNotifySubscriptionInfoChangedOccurred = true;
             mRemoveList.clear();
             for (Record r : mRecords) {
                 if (r.matchOnSubscriptionsChangedListener()) {
                     try {
                         r.onSubscriptionsChangedListenerCallback.onSubscriptionsChanged();
+                    } catch (RemoteException ex) {
+                        mRemoveList.add(r.binder);
+                    }
+                }
+            }
+            handleRemoveListLocked();
+        }
+    }
+
+    @Override
+    public void notifyOpportunisticSubscriptionInfoChanged() {
+        synchronized (mRecords) {
+            if (!mHasNotifyOpportunisticSubscriptionInfoChangedOccurred) {
+                //log("notifySubscriptionInfoChanged: first invocation mRecords.size="
+                //        + mRecords.size());
+            }
+            mHasNotifyOpportunisticSubscriptionInfoChangedOccurred = true;
+            mRemoveList.clear();
+            for (Record r : mRecords) {
+                if (r.matchOnOpportunisticSubscriptionsChangedListener()) {
+                    try {
+                        r.onOpportunisticSubscriptionsChangedListenerCallback
+                                .onSubscriptionsChanged();
                     } catch (RemoteException ex) {
                         mRemoveList.add(r.binder);
                     }
