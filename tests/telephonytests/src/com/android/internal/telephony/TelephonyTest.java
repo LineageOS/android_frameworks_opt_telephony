@@ -254,13 +254,15 @@ public abstract class TelephonyTest {
 
     protected void waitUntilReady() {
         synchronized (mLock) {
-            try {
-                mLock.wait(MAX_INIT_WAIT_MS);
-            } catch (InterruptedException ie) {
-            }
-
             if (!mReady) {
-                fail("Telephony tests failed to initialize");
+                try {
+                    mLock.wait(MAX_INIT_WAIT_MS);
+                } catch (InterruptedException ie) {
+                }
+
+                if (!mReady) {
+                    fail("Telephony tests failed to initialize");
+                }
             }
         }
     }
