@@ -148,8 +148,6 @@ public class DcTracker extends Handler {
     private static final int DATA_STALL_ALARM_NON_AGGRESSIVE_DELAY_IN_MS_DEFAULT = 1000 * 60 * 6;
     // Default for the data stall alarm for aggressive stall detection
     private static final int DATA_STALL_ALARM_AGGRESSIVE_DELAY_IN_MS_DEFAULT = 1000 * 60;
-    // Tag for tracking stale alarms
-    private static final String DATA_STALL_ALARM_TAG_EXTRA = "data.stall.alram.tag";
 
     private static final boolean DATA_STALL_SUSPECTED = true;
     private static final boolean DATA_STALL_NOT_SUSPECTED = false;
@@ -164,6 +162,10 @@ public class DcTracker extends Handler {
 
     private static final String INTENT_DATA_STALL_ALARM =
             "com.android.internal.telephony.data-stall";
+    // Tag for tracking stale alarms
+    private static final String INTENT_DATA_STALL_ALARM_EXTRA_TAG = "data_stall_alarm_extra_tag";
+    private static final String INTENT_DATA_STALL_ALARM_EXTRA_TRANSPORT_TYPE =
+            "data_stall_alarm_extra_transport_type";
 
     private DcTesterFailBringUpAll mDcTesterFailBringUpAll;
     private DcController mDcc;
@@ -246,7 +248,6 @@ public class DcTracker extends Handler {
             } else if (action.startsWith(INTENT_RECONNECT_ALARM)) {
                 onActionIntentReconnectAlarm(intent);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
-                if (DBG) log("Data stall alarm");
                 onActionIntentDataStallAlarm(intent);
             } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
                 if (DBG) log("Provisioning apn alarm");
@@ -443,13 +444,23 @@ public class DcTracker extends Handler {
 
     private void onActionIntentDataStallAlarm(Intent intent) {
         if (VDBG_STALL) log("onActionIntentDataStallAlarm: action=" + intent.getAction());
+
+        int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        if (!SubscriptionManager.isValidSubscriptionId(subId) || (subId != mPhone.getSubId())) {
+            return;
+        }
+
+        int transportType = intent.getIntExtra(INTENT_DATA_STALL_ALARM_EXTRA_TRANSPORT_TYPE, 0);
+        if (transportType != mTransportType) {
+            return;
+        }
+
         Message msg = obtainMessage(DctConstants.EVENT_DATA_STALL_ALARM,
                 intent.getAction());
-        msg.arg1 = intent.getIntExtra(DATA_STALL_ALARM_TAG_EXTRA, 0);
+        msg.arg1 = intent.getIntExtra(INTENT_DATA_STALL_ALARM_EXTRA_TAG, 0);
         sendMessage(msg);
     }
-
-    private final ConnectivityManager mCm;
 
     /**
      * List of messages that are waiting to be posted, when data call disconnect
@@ -609,9 +620,6 @@ public class DcTracker extends Handler {
         mUiccController.registerForIccChanged(this, DctConstants.EVENT_ICC_CHANGED, null);
         mAlarmManager =
                 (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
-        mCm = (ConnectivityManager) mPhone.getContext().getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_ON);
@@ -667,7 +675,6 @@ public class DcTracker extends Handler {
         mLogTag = "DCT";
         mTelephonyManager = null;
         mAlarmManager = null;
-        mCm = null;
         mPhone = null;
         mUiccController = null;
         mDataConnectionTracker = null;
@@ -2187,11 +2194,8 @@ public class DcTracker extends Handler {
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON, apnContext.getReason());
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, apnType);
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TRANSPORT_TYPE, mTransportType);
+        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-
-        // Get current sub id.
-        int subId = mPhone.getSubId();
-        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
 
         if (DBG) {
             log("startAlarmForReconnect: delay=" + delay + " action=" + intent.getAction()
@@ -4628,6 +4632,8 @@ public class DcTracker extends Handler {
             }
             return;
         }
+
+        if (DBG) log("Data stall alarm");
         updateDataStallInfo();
 
         int hangWatchdogTrigger = Settings.Global.getInt(mResolver,
@@ -4673,7 +4679,9 @@ public class DcTracker extends Handler {
                         " delay=" + (delayInMs / 1000) + "s");
             }
             Intent intent = new Intent(INTENT_DATA_STALL_ALARM);
-            intent.putExtra(DATA_STALL_ALARM_TAG_EXTRA, mDataStallAlarmTag);
+            intent.putExtra(INTENT_DATA_STALL_ALARM_EXTRA_TAG, mDataStallAlarmTag);
+            intent.putExtra(INTENT_DATA_STALL_ALARM_EXTRA_TRANSPORT_TYPE, mTransportType);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mDataStallAlarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
                     PendingIntent.FLAG_UPDATE_CURRENT);
             mAlarmManager.set(AlarmManager.ELAPSED_REALTIME,
