@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.fail;
+
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
@@ -28,7 +30,6 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.Rlog;
-import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.mocks.ConnectivityServiceMock;
@@ -36,11 +37,22 @@ import com.android.internal.telephony.mocks.SubscriptionControllerMock;
 import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 import com.android.internal.telephony.test.SimulatedCommands;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PhoneSwitcherTest extends AndroidTestCase {
-    private final static String LOG_TAG = "PhoneSwitcherTest";
+public class PhoneSwitcherTest extends TelephonyTest {
+    private static final String LOG_TAG = "PhoneSwitcherTest";
+
+    private static final String[] sNetworkAttributes = new String[] {
+            "mobile,0,0,0,-1,true", "mobile_mms,2,0,2,60000,true",
+            "mobile_supl,3,0,2,60000,true", "mobile_dun,4,0,2,60000,true",
+            "mobile_hipri,5,0,3,60000,true", "mobile_fota,10,0,2,60000,true",
+            "mobile_ims,11,0,2,60000,true", "mobile_cbs,12,0,2,60000,true",
+            "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true"};
 
     static void failAndStack(String str) {
         fail(str + "\n" + SubscriptionMonitorTest.stack());
@@ -169,18 +181,20 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         return cs.requestNetwork(netCap, null, 0, new Binder(), -1);
     }
 
-    private Context makeContext() {
-        final ContextFixture contextFixture = new ContextFixture();
-        String[] networkConfigString = getContext().getResources().getStringArray(
-                com.android.internal.R.array.networkAttributes);
-        contextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
-                networkConfigString);
-        return contextFixture.getTestDouble();
+    @Before
+    public void setUp() throws Exception {
+        super.setUp(getClass().getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
     }
 
     /**
      * Test that a single phone case results in our phone being active and the RIL called
      */
+    @Test
     @SmallTest
     public void testRegister() throws Exception {
         mTestName = "testRegister";
@@ -188,17 +202,14 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         final int maxActivePhones = 1;
         final HandlerThread handlerThread = new HandlerThread("PhoneSwitcherTestThread");
         handlerThread.start();
-        final ContextFixture contextFixture = new ContextFixture();
-        String[] networkConfigString = getContext().getResources().getStringArray(
-                com.android.internal.R.array.networkAttributes);
-        contextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
-                networkConfigString);
-        final Context contextMock = contextFixture.getTestDouble();
+        mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
+                sNetworkAttributes);
+        final Context contextMock = mContextFixture.getTestDouble();
         final ConnectivityServiceMock connectivityServiceMock =
                 new ConnectivityServiceMock(contextMock);
         final ConnectivityManager cm =
                 new ConnectivityManager(contextMock, connectivityServiceMock);
-        contextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
+        mContextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
         final ITelephonyRegistry.Stub telRegistryMock = new TelephonyRegistryMock();
         final SubscriptionControllerMock subControllerMock =
                 new SubscriptionControllerMock(contextMock, telRegistryMock, numPhones);
@@ -414,6 +425,7 @@ public class PhoneSwitcherTest extends AndroidTestCase {
      * - bring up low priority phone when sub change causes join
      * - don't switch phones when in emergency mode
      */
+    @Test
     @SmallTest
     public void testPrioritization() throws Exception {
         mTestName = "testPrioritization";
@@ -421,17 +433,14 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         final int maxActivePhones = 1;
         final HandlerThread handlerThread = new HandlerThread("PhoneSwitcherTestThread");
         handlerThread.start();
-        final ContextFixture contextFixture = new ContextFixture();
-        String[] networkConfigString = getContext().getResources().getStringArray(
-                com.android.internal.R.array.networkAttributes);
-        contextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
-                networkConfigString);
-        final Context contextMock = contextFixture.getTestDouble();
+        mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
+                sNetworkAttributes);
+        final Context contextMock = mContextFixture.getTestDouble();
         final ConnectivityServiceMock connectivityServiceMock =
             new ConnectivityServiceMock(contextMock);
         final ConnectivityManager cm =
                 new ConnectivityManager(contextMock, connectivityServiceMock);
-        contextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
+        mContextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
         final ITelephonyRegistry.Stub telRegistryMock = new TelephonyRegistryMock();
         final SubscriptionControllerMock subControllerMock =
                 new SubscriptionControllerMock(contextMock, telRegistryMock, numPhones);
@@ -487,6 +496,7 @@ public class PhoneSwitcherTest extends AndroidTestCase {
      * Verify we don't send spurious DATA_ALLOWED calls when another NetworkFactory
      * wins (ie, switch to wifi).
      */
+    @Test
     @SmallTest
     public void testHigherPriorityDefault() throws Exception {
         mTestName = "testPrioritization";
@@ -494,17 +504,14 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         final int maxActivePhones = 1;
         final HandlerThread handlerThread = new HandlerThread("PhoneSwitcherTestThread");
         handlerThread.start();
-        final ContextFixture contextFixture = new ContextFixture();
-        String[] networkConfigString = getContext().getResources().getStringArray(
-                com.android.internal.R.array.networkAttributes);
-        contextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
-                networkConfigString);
-        final Context contextMock = contextFixture.getTestDouble();
+        mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
+                sNetworkAttributes);
+        final Context contextMock = mContextFixture.getTestDouble();
         final ConnectivityServiceMock connectivityServiceMock =
                 new ConnectivityServiceMock(contextMock);
         final ConnectivityManager cm =
                 new ConnectivityManager(contextMock, connectivityServiceMock);
-        contextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
+        mContextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
         final ITelephonyRegistry.Stub telRegistryMock = new TelephonyRegistryMock();
         final SubscriptionControllerMock subControllerMock =
                 new SubscriptionControllerMock(contextMock, telRegistryMock, numPhones);
