@@ -29,6 +29,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.MccTable;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -45,6 +46,30 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class IccRecords extends Handler implements IccConstants {
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false; // STOPSHIP if true
+
+    // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
+    private static final String[] MCCMNC_CODES_HAVING_3DIGITS_MNC = {
+        "302370", "302720", "310260",
+        "405025", "405026", "405027", "405028", "405029", "405030", "405031", "405032",
+        "405033", "405034", "405035", "405036", "405037", "405038", "405039", "405040",
+        "405041", "405042", "405043", "405044", "405045", "405046", "405047", "405750",
+        "405751", "405752", "405753", "405754", "405755", "405756", "405799", "405800",
+        "405801", "405802", "405803", "405804", "405805", "405806", "405807", "405808",
+        "405809", "405810", "405811", "405812", "405813", "405814", "405815", "405816",
+        "405817", "405818", "405819", "405820", "405821", "405822", "405823", "405824",
+        "405825", "405826", "405827", "405828", "405829", "405830", "405831", "405832",
+        "405833", "405834", "405835", "405836", "405837", "405838", "405839", "405840",
+        "405841", "405842", "405843", "405844", "405845", "405846", "405847", "405848",
+        "405849", "405850", "405851", "405852", "405853", "405854", "405855", "405856",
+        "405857", "405858", "405859", "405860", "405861", "405862", "405863", "405864",
+        "405865", "405866", "405867", "405868", "405869", "405870", "405871", "405872",
+        "405873", "405874", "405875", "405876", "405877", "405878", "405879", "405880",
+        "405881", "405882", "405883", "405884", "405885", "405886", "405908", "405909",
+        "405910", "405911", "405912", "405913", "405914", "405915", "405916", "405917",
+        "405918", "405919", "405920", "405921", "405922", "405923", "405924", "405925",
+        "405926", "405927", "405928", "405929", "405930", "405931", "405932", "502142",
+        "502143", "502145", "502146", "502147", "502148"
+    };
 
     // ***** Instance Variables
     protected AtomicBoolean mDestroyed = new AtomicBoolean(false);
@@ -93,7 +118,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mNewVoiceMailNum = null;
     protected String mNewVoiceMailTag = null;
     protected boolean mIsVoiceMailFixed = false;
-    protected String mImsi;
+    protected String mImsi; // IMSI must be only valid numeric characters 0-9 without padding 'f's
     private IccIoResult auth_rsp;
 
     protected int mMncLength = UNINITIALIZED;
@@ -456,15 +481,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     /**
-     * Imsi could be set by ServiceStateTrackers in case of cdma
-     * @param imsi
+     * Update IMSI record and try to extract the PLMN information and notify registrants.
+     * @param inImsi the IMSI value
      */
-    public void setImsi(String imsi) {
+    public void setImsi(String inImsi) {
         // Remove trailing F's if present in IMSI.
-        mImsi = IccUtils.stripTrailingFs(imsi);
-        if (!Objects.equals(mImsi, imsi)) {
+        mImsi = IccUtils.stripTrailingFs(inImsi);
+        if (!Objects.equals(mImsi, inImsi)) {
             loge("Invalid IMSI padding digits received.");
         }
+
         if (TextUtils.isEmpty(mImsi)) mImsi = null;
 
         if (mImsi != null && !mImsi.matches("[0-9]+")) {
@@ -472,7 +498,62 @@ public abstract class IccRecords extends Handler implements IccConstants {
             mImsi = null;
         }
 
+        // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
+        // than 15 (and usually 15).
+        // This will also handle un-set IMSI records (all Fs)
+        if (mImsi != null && (mImsi.length() < 6 || mImsi.length() > 15)) {
+            loge("invalid IMSI " + mImsi);
+            mImsi = null;
+        }
+
+        log("IMSI: mMncLength=" + mMncLength);
+
+        if (mImsi != null && mImsi.length() >= 6) {
+            log("IMSI: " + mImsi.substring(0, 6) + Rlog.pii(VDBG, mImsi.substring(6)));
+        }
+
+        // IMSI has changed so the PLMN might have changed as well
+        updateOperatorPlmn();
+
         mImsiReadyRegistrants.notifyRegistrants();
+    }
+
+    protected void updateOperatorPlmn() {
+        // In case of a test override, use the test IMSI
+        String imsi = getIMSI();
+
+        if (imsi != null) {
+            // First try to guess the length based on a table of known 3-digit MNCs.
+            if (((mMncLength == UNKNOWN) || (mMncLength == 2)) && imsi.length() >= 6) {
+                String mccmncCode = imsi.substring(0, 6);
+                for (String mccmnc : MCCMNC_CODES_HAVING_3DIGITS_MNC) {
+                    if (mccmnc.equals(mccmncCode)) {
+                        mMncLength = 3;
+                        log("IMSI: setting1 mMncLength=" + mMncLength);
+                        break;
+                    }
+                }
+            }
+
+            // If still unknown, guess using the MCC.
+            if (mMncLength == UNKNOWN) {
+                try {
+                    int mcc = Integer.parseInt(imsi.substring(0, 3));
+                    mMncLength = MccTable.smallestDigitsMccForMnc(mcc);
+                    log("setting2 mMncLength=" + mMncLength);
+                } catch (NumberFormatException e) {
+                    loge("Corrupt IMSI! setting3 mMncLength=" + mMncLength);
+                }
+            }
+
+            if (mMncLength != UNKNOWN && mMncLength != UNINITIALIZED
+                    && imsi.length() >= 3 + mMncLength) {
+                log("update mccmnc=" + imsi.substring(0, 3 + mMncLength));
+                // finally have both the imsi and the mncLength and
+                // can parse the imsi properly
+                MccTable.updateMccMncConfiguration(mContext, imsi.substring(0, 3 + mMncLength));
+            }
+        }
     }
 
     /**
