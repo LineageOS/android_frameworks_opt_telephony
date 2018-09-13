@@ -1433,11 +1433,36 @@ public class GsmCdmaCallTracker extends CallTracker {
                 operationComplete();
 
                 if (ar.exception != null) {
-                    // An exception occurred...just treat the disconnect
-                    // cause as "normal"
-                    causeCode = CallFailCause.NORMAL_CLEARING;
-                    Rlog.i(LOG_TAG,
-                            "Exception during getLastCallFailCause, assuming normal disconnect");
+                    if (ar.exception instanceof CommandException) {
+                        // If we get a CommandException, there are some modem-reported command
+                        // errors which are truly exceptional.  We shouldn't treat these as
+                        // NORMAL_CLEARING, so we'll re-map to ERROR_UNSPECIFIED.
+                        CommandException commandException = (CommandException) ar.exception;
+                        switch (commandException.getCommandError()) {
+                            case RADIO_NOT_AVAILABLE:
+                                // Intentional fall-through.
+                            case NO_MEMORY:
+                                // Intentional fall-through.
+                            case INTERNAL_ERR:
+                                // Intentional fall-through.
+                            case NO_RESOURCES:
+                                causeCode = CallFailCause.ERROR_UNSPECIFIED;
+
+                                // Report the actual internal command error as the vendor cause;
+                                // this will ensure it gets bubbled up into the Telecom logs.
+                                vendorCause = commandException.getCommandError().toString();
+                                break;
+                            default:
+                                causeCode = CallFailCause.NORMAL_CLEARING;
+                        }
+                    } else {
+                        // An exception occurred...just treat the disconnect
+                        // cause as "normal"
+                        causeCode = CallFailCause.NORMAL_CLEARING;
+                        Rlog.i(LOG_TAG,
+                                "Exception during getLastCallFailCause, assuming normal "
+                                        + "disconnect");
+                    }
                 } else {
                     LastCallFailCause failCause = (LastCallFailCause)ar.result;
                     causeCode = failCause.causeCode;
