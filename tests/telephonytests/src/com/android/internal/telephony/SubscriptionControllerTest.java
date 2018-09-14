@@ -15,32 +15,31 @@
  */
 package com.android.internal.telephony;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
-import android.app.AppOpsManager;
-import android.content.ContentValues;
 import android.content.Intent;
-import android.database.Cursor;
-import android.database.MatrixCursor;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
-import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Log;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class SubscriptionControllerTest extends TelephonyTest {
@@ -49,108 +48,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private String mCallingPackage;
     private SubscriptionController mSubscriptionControllerUT;
     private MockContentResolver mMockContentResolver;
-
-    @Mock private List<SubscriptionInfo> mSubList;
-    @Mock private AppOpsManager mAppOps;
-
-    public class FakeSubscriptionContentProvider extends MockContentProvider {
-
-        private ArrayList<ContentValues> mSubscriptionArray =
-                new ArrayList<ContentValues>();
-
-        private String[] mKeyMappingSet = new String[]{
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
-                SubscriptionManager.ICC_ID, SubscriptionManager.SIM_SLOT_INDEX,
-                SubscriptionManager.DISPLAY_NAME, SubscriptionManager.CARRIER_NAME,
-                SubscriptionManager.NAME_SOURCE, SubscriptionManager.COLOR,
-                SubscriptionManager.NUMBER, SubscriptionManager.DISPLAY_NUMBER_FORMAT,
-                SubscriptionManager.DATA_ROAMING, SubscriptionManager.MCC,
-                SubscriptionManager.MNC, SubscriptionManager.MCC_STRING,
-                SubscriptionManager.MNC_STRING,
-                SubscriptionManager.CB_EXTREME_THREAT_ALERT,
-                SubscriptionManager.CB_SEVERE_THREAT_ALERT, SubscriptionManager.CB_AMBER_ALERT,
-                SubscriptionManager.CB_ALERT_SOUND_DURATION,
-                SubscriptionManager.CB_ALERT_REMINDER_INTERVAL,
-                SubscriptionManager.CB_ALERT_VIBRATE, SubscriptionManager.CB_ALERT_SPEECH,
-                SubscriptionManager.CB_ETWS_TEST_ALERT, SubscriptionManager.CB_CHANNEL_50_ALERT,
-                SubscriptionManager.CB_CMAS_TEST_ALERT, SubscriptionManager.CB_OPT_OUT_DIALOG,
-                SubscriptionManager.SIM_PROVISIONING_STATUS, SubscriptionManager.IS_EMBEDDED,
-                SubscriptionManager.ACCESS_RULES, SubscriptionManager.ENHANCED_4G_MODE_ENABLED,
-                SubscriptionManager.VT_IMS_ENABLED, SubscriptionManager.WFC_IMS_ENABLED,
-                SubscriptionManager.WFC_IMS_MODE, SubscriptionManager.WFC_IMS_ROAMING_MODE,
-                SubscriptionManager.WFC_IMS_ROAMING_ENABLED,
-                SubscriptionManager.CARD_ID, SubscriptionManager.IS_OPPORTUNISTIC,
-                SubscriptionManager.PARENT_SUB_ID
-        };
-
-        /* internal util function */
-        private MatrixCursor convertFromContentToCursor(ContentValues initialValues,
-                String[] projection) {
-            MatrixCursor cursor = null;
-            ArrayList<Object> values = new ArrayList<Object>();
-            if (projection == null) {
-                projection = mKeyMappingSet;
-            }
-            if (initialValues != null && projection.length != 0) {
-                cursor = new MatrixCursor(projection);
-                /* push value from contentValues to matrixCursors */
-                for (String key : projection) {
-                    if (initialValues.containsKey(key)) {
-                        values.add(initialValues.get(key));
-                    } else {
-                        values.add(null);
-                    }
-                }
-            }
-            cursor.addRow(values.toArray());
-            return cursor;
-        }
-
-        @Override
-        public int delete(Uri uri, String selection, String[] selectionArgs) {
-            if (mSubscriptionArray.size() > 0) {
-                mSubscriptionArray.remove(0);
-                return 1;
-            }
-            return -1;
-        }
-
-        @Override
-        public Uri insert(Uri uri, ContentValues values) {
-            values.put(SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID, 0);
-            mSubscriptionArray.add(values);
-            return uri;
-        }
-
-        @Override
-        public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
-                            String sortOrder) {
-            if (mSubscriptionArray.size() > 0) {
-                return convertFromContentToCursor(mSubscriptionArray.get(0), projection);
-            }
-            return null;
-        }
-
-        @Override
-        public Bundle call(String method, String request, Bundle args) {
-            return null;
-        }
-
-        @Override
-        public int update(android.net.Uri uri, android.content.ContentValues values,
-                          java.lang.String selection, java.lang.String[] selectionArgs) {
-            if (mSubscriptionArray.size() > 0) {
-                ContentValues val = mSubscriptionArray.get(0);
-                for (String key : values.keySet()) {
-                    val.put(key, values.getAsString(key));
-                    Log.d(TAG, "update the values..." + key + "..." + values.getAsString(key));
-                }
-                mSubscriptionArray.set(0, val);
-                return 1;
-            }
-            return -1;
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -171,13 +68,18 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.getInstance().updatePhonesAvailability(new Phone[]{mPhone});
         mMockContentResolver = (MockContentResolver) mContext.getContentResolver();
         mMockContentResolver.addProvider(SubscriptionManager.CONTENT_URI.getAuthority(),
-                new FakeSubscriptionContentProvider());
+                new FakeTelephonyProvider());
+
     }
 
     @After
     public void tearDown() throws Exception {
         /* should clear fake content provider and resolver here */
         mContext.getContentResolver().delete(SubscriptionManager.CONTENT_URI, null, null);
+
+        /* Clear sSlotIndexToSubId since they will otherwise be persistent
+         * between each test case. */
+        mSubscriptionControllerUT.clearSubInfo();
 
         /* clear settings for default voice/data/sms sub ID */
         Settings.Global.putInt(mContext.getContentResolver(),
@@ -286,11 +188,11 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test @SmallTest
     public void testCleanUpSIM() {
         testInsertSim();
-        assertFalse(mSubscriptionControllerUT.isActiveSubId(1));
+        assertFalse(mSubscriptionControllerUT.isActiveSubId(2));
         mSubscriptionControllerUT.clearSubInfo();
-        assertFalse(mSubscriptionControllerUT.isActiveSubId(0));
+        assertFalse(mSubscriptionControllerUT.isActiveSubId(1));
         assertEquals(SubscriptionManager.SIM_NOT_INSERTED,
-                mSubscriptionControllerUT.getSlotIndex(0));
+                mSubscriptionControllerUT.getSlotIndex(1));
     }
 
     @Test @SmallTest
@@ -316,10 +218,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testSetGetMCCMNC() {
         testInsertSim();
         String mCcMncVERIZON = "310004";
-        mSubscriptionControllerUT.setMccMnc(mCcMncVERIZON, 0);
+        mSubscriptionControllerUT.setMccMnc(mCcMncVERIZON, 1);
 
         SubscriptionInfo subInfo = mSubscriptionControllerUT
-                .getActiveSubscriptionInfo(0, mCallingPackage);
+                .getActiveSubscriptionInfo(1, mCallingPackage);
         assertNotNull(subInfo);
         assertEquals(Integer.parseInt(mCcMncVERIZON.substring(0, 3)), subInfo.getMcc());
         assertEquals(Integer.parseInt(mCcMncVERIZON.substring(3)), subInfo.getMnc());
