@@ -35,6 +35,7 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -459,7 +460,18 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @param imsi
      */
     public void setImsi(String imsi) {
-        mImsi = imsi;
+        // Remove trailing F's if present in IMSI.
+        mImsi = IccUtils.stripTrailingFs(imsi);
+        if (!Objects.equals(mImsi, imsi)) {
+            loge("Invalid IMSI padding digits received.");
+        }
+        if (TextUtils.isEmpty(mImsi)) mImsi = null;
+
+        if (mImsi != null && !mImsi.matches("[0-9]+")) {
+            loge("Invalid non-numeric IMSI digits received.");
+            mImsi = null;
+        }
+
         mImsiReadyRegistrants.notifyRegistrants();
     }
 
