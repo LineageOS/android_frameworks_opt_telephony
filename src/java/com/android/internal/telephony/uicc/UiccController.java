@@ -30,7 +30,6 @@ import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
-import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
@@ -471,10 +470,32 @@ public class UiccController extends Handler {
         }
     }
 
-    static void updateInternalIccState(String value, String reason, int phoneId) {
+    static String getIccStateIntentString(IccCardConstants.State state) {
+        switch (state) {
+            case ABSENT: return IccCardConstants.INTENT_VALUE_ICC_ABSENT;
+            case PIN_REQUIRED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
+            case PUK_REQUIRED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
+            case NETWORK_LOCKED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
+            case READY: return IccCardConstants.INTENT_VALUE_ICC_READY;
+            case NOT_READY: return IccCardConstants.INTENT_VALUE_ICC_NOT_READY;
+            case PERM_DISABLED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
+            case CARD_IO_ERROR: return IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR;
+            case CARD_RESTRICTED: return IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED;
+            case LOADED: return IccCardConstants.INTENT_VALUE_ICC_LOADED;
+            default: return IccCardConstants.INTENT_VALUE_ICC_UNKNOWN;
+        }
+    }
+
+    static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
+            int phoneId) {
+        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
+                Context.TELEPHONY_SERVICE);
+        telephonyManager.setSimStateForPhone(phoneId, state.toString());
+
         SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
         if (subInfoUpdator != null) {
-            subInfoUpdator.updateInternalIccState(value, reason, phoneId);
+            subInfoUpdator.updateInternalIccState(getIccStateIntentString(state),
+                    reason, phoneId);
         } else {
             Rlog.e(LOG_TAG, "subInfoUpdate is null.");
         }
