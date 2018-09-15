@@ -90,8 +90,14 @@ public class SubscriptionController extends ISub.Stub {
     private static final int DEPRECATED_SETTING = -1;
     private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
 
+    // Lock that both mCacheActiveSubInfoList and mCacheOpportunisticSubInfoList use.
+    private Object mSubInfoListLock = new Object();
+
     /* The Cache of Active SubInfoRecord(s) list of currently in use SubInfoRecord(s) */
     private final List<SubscriptionInfo> mCacheActiveSubInfoList = new ArrayList<>();
+
+    /* Similar to mCacheActiveSubInfoList but only caching opportunistic subscriptions. */
+    private List<SubscriptionInfo> mCacheOpportunisticSubInfoList = new ArrayList<>();
 
     /**
      * Copied from android.util.LocalLog with flush() adding flush and line number
@@ -601,39 +607,7 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
-        if (!isSubInfoReady()) {
-            if (DBG) logdl("[getActiveSubInfoList] Sub Controller not ready");
-            return null;
-        }
-
-        boolean canReadAllPhoneState;
-        try {
-            canReadAllPhoneState = TelephonyPermissions.checkReadPhoneState(mContext,
-                    SubscriptionManager.INVALID_SUBSCRIPTION_ID, Binder.getCallingPid(),
-                    Binder.getCallingUid(), callingPackage, "getActiveSubscriptionInfoList");
-        } catch (SecurityException e) {
-            canReadAllPhoneState = false;
-        }
-
-        synchronized (mCacheActiveSubInfoList) {
-            // If the caller can read all phone state, just return the full list.
-            if (canReadAllPhoneState) {
-                return new ArrayList<>(mCacheActiveSubInfoList);
-            }
-
-            // Filter the list to only include subscriptions which the caller can manage.
-            return mCacheActiveSubInfoList.stream()
-                    .filter(subscriptionInfo -> {
-                        try {
-                            return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext,
-                                    subscriptionInfo.getSubscriptionId(), callingPackage,
-                                    "getActiveSubscriptionInfoList");
-                        } catch (SecurityException e) {
-                            return false;
-                        }
-                    })
-                    .collect(Collectors.toList());
-        }
+        return getSubscriptionInfoListFromCacheHelper(callingPackage, mCacheActiveSubInfoList);
     }
 
     /**
@@ -649,7 +623,9 @@ public class SubscriptionController extends ISub.Stub {
             return;
         }
 
-        synchronized (mCacheActiveSubInfoList) {
+        boolean opptSubListChanged = false;
+
+        synchronized (mSubInfoListLock) {
             mCacheActiveSubInfoList.clear();
             List<SubscriptionInfo> activeSubscriptionInfoList = getSubInfo(
                     SubscriptionManager.SIM_SLOT_INDEX + ">=0", null);
@@ -657,6 +633,10 @@ public class SubscriptionController extends ISub.Stub {
                 activeSubscriptionInfoList.sort(SUBSCRIPTION_INFO_COMPARATOR);
                 mCacheActiveSubInfoList.addAll(activeSubscriptionInfoList);
             }
+
+            // Refresh cached opportunistic sub list and detect whether it's changed.
+            opptSubListChanged = refreshCachedOpportunisticSubscriptionInfoList();
+
             if (DBG_CACHE) {
                 if (!mCacheActiveSubInfoList.isEmpty()) {
                     for (SubscriptionInfo si : mCacheActiveSubInfoList) {
@@ -667,6 +647,11 @@ public class SubscriptionController extends ISub.Stub {
                     logdl("[refreshCachedActiveSubscriptionInfoList]- no info return");
                 }
             }
+        }
+
+        // Send notification outside synchronization.
+        if (opptSubListChanged) {
+            notifyOpportunisticSubscriptionInfoChanged();
         }
     }
 
@@ -2297,29 +2282,46 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public List<SubscriptionInfo> getOpportunisticSubscriptions(int slotId, String callingPackage) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext,
-                SubscriptionManager.INVALID_SUBSCRIPTION_ID, callingPackage,
-                "getOpportunisticSubscriptions")) {
+        return getSubscriptionInfoListFromCacheHelper(
+                callingPackage, mCacheOpportunisticSubInfoList);
+    }
+
+    // Helper function of getOpportunisticSubscriptions and getActiveSubscriptionInfoList.
+    // They are doing similar things except operating on different cache.
+    private List<SubscriptionInfo> getSubscriptionInfoListFromCacheHelper(
+            String callingPackage, List<SubscriptionInfo> cacheSubList) {
+        if (!isSubInfoReady()) {
+            if (DBG) logdl("[getSubscriptionInfoList] Sub Controller not ready");
             return null;
         }
 
-        final long token = Binder.clearCallingIdentity();
-
+        boolean canReadAllPhoneState;
         try {
-            List<SubscriptionInfo> activeSubList = getActiveSubscriptionInfoList(callingPackage);
-            List<SubscriptionInfo> opportunisticSubList = new ArrayList<>();
+            canReadAllPhoneState = TelephonyPermissions.checkReadPhoneState(mContext,
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID, Binder.getCallingPid(),
+                    Binder.getCallingUid(), callingPackage, "getSubscriptionInfoList");
+        } catch (SecurityException e) {
+            canReadAllPhoneState = false;
+        }
 
-            if (activeSubList != null) {
-                for (SubscriptionInfo subInfo : activeSubList) {
-                    if (subInfo.isOpportunistic() && subInfo.getSimSlotIndex() == slotId) {
-                        opportunisticSubList.add(subInfo);
-                    }
-                }
+        synchronized (mSubInfoListLock) {
+            // If the caller can read all phone state, just return the full list.
+            if (canReadAllPhoneState) {
+                return new ArrayList<>(cacheSubList);
             }
 
-            return opportunisticSubList;
-        } finally {
-            Binder.restoreCallingIdentity(token);
+            // Filter the list to only include subscriptions which the caller can manage.
+            return cacheSubList.stream()
+                    .filter(subscriptionInfo -> {
+                        try {
+                            return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext,
+                                    subscriptionInfo.getSubscriptionId(), callingPackage,
+                                    "getOpportunisticSubscriptions");
+                        } catch (SecurityException e) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
         }
     }
 
@@ -2336,5 +2338,40 @@ public class SubscriptionController extends ISub.Stub {
             return true;
         }
         return false;
+    }
+
+    private void notifyOpportunisticSubscriptionInfoChanged() {
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
+                "telephony.registry"));
+        try {
+            if (DBG) logd("notifyOpptSubscriptionInfoChanged:");
+            tr.notifyOpportunisticSubscriptionInfoChanged();
+        } catch (RemoteException ex) {
+            // Should never happen because its always available.
+        }
+    }
+
+
+    private boolean refreshCachedOpportunisticSubscriptionInfoList() {
+        synchronized (mSubInfoListLock) {
+            List<SubscriptionInfo> oldOpptCachedList = mCacheOpportunisticSubInfoList;
+
+            mCacheOpportunisticSubInfoList = mCacheActiveSubInfoList.stream()
+                    .filter(subscriptionInfo -> subscriptionInfo.isOpportunistic())
+                    .collect(Collectors.toList());
+
+            if (DBG_CACHE) {
+                if (!mCacheOpportunisticSubInfoList.isEmpty()) {
+                    for (SubscriptionInfo si : mCacheOpportunisticSubInfoList) {
+                        logd("[refreshCachedOpptSubscriptionInfoList] Setting Cached info="
+                                + si);
+                    }
+                } else {
+                    logdl("[refreshCachedOpptSubscriptionInfoList]- no info return");
+                }
+            }
+
+            return oldOpptCachedList.equals(mCacheOpportunisticSubInfoList);
+        }
     }
 }
