@@ -40,6 +40,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * {@hide}
@@ -58,7 +59,6 @@ public class SIMRecords extends IccRecords {
     // ***** Cached SIM State; cleared on channel close
 
     private int mCallForwardingStatus;
-
 
     /**
      * States only used by getSpnFsm FSM
@@ -664,7 +664,18 @@ public class SIMRecords extends IccRecords {
                         break;
                     }
 
-                    mImsi = (String) ar.result;
+                    String imsi = (String) ar.result;
+                    // Remove trailing F's if present in IMSI.
+                    mImsi = IccUtils.stripTrailingFs(imsi);
+
+                    if (!Objects.equals(mImsi, imsi)) {
+                        loge("Invalid IMSI padding digits received.");
+                    }
+
+                    if (mImsi != null && !mImsi.matches("[0-9]+")) {
+                        loge("Invalid non-numeric IMSI digits received.");
+                        mImsi = null;
+                    }
 
                     // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
                     // than 15 (and usually 15).
@@ -680,7 +691,7 @@ public class SIMRecords extends IccRecords {
                                 + Rlog.pii(LOG_TAG, mImsi.substring(6)));
                     }
 
-                    String imsi = getIMSI();
+                    imsi = getIMSI();
 
                     if (((mMncLength == UNKNOWN) || (mMncLength == 2))
                             && ((imsi != null) && (imsi.length() >= 6))) {

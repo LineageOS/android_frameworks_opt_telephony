@@ -29,16 +29,16 @@
 
 package com.android.internal.telephony.uicc;
 
-import org.mockito.Mock;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
-import org.mockito.MockitoAnnotations;
+
+import android.os.HandlerThread;
+
+import com.android.internal.telephony.TelephonyTest;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import com.android.internal.telephony.TelephonyTest;
-
-import android.content.Context;
-import android.os.HandlerThread;
 
 public class IccRecordsTest extends TelephonyTest {
 
@@ -79,5 +79,17 @@ public class IccRecordsTest extends TelephonyTest {
 
     }
 
-
+    @Test
+    public void testSetImsiInvalid() {
+        mIccRecords.setImsi("0123456789FFFFFF");
+        assertEquals(mIccRecords.getIMSI(), "0123456789");
+        mIccRecords.setImsi("0123456789ffffff");
+        assertEquals(mIccRecords.getIMSI(), "0123456789");
+        mIccRecords.setImsi("ffffff");
+        assertEquals(mIccRecords.getIMSI(), null);
+        mIccRecords.setImsi("12F34F567890");
+        assertEquals(mIccRecords.getIMSI(), null);
+        mIccRecords.setImsi("123456ABCDEF");
+        assertEquals(mIccRecords.getIMSI(), null);
+    }
 }
