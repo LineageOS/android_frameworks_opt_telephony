@@ -2246,6 +2246,15 @@ public class ServiceStateTracker extends Handler {
                 }
             }
 
+            if (voiceIdx < 0 || voiceIdx >= wfcSpnFormats.length) {
+                loge("updateSpnDisplay: KEY_WFC_SPN_FORMAT_IDX_INT out of bounds: " + voiceIdx);
+                voiceIdx = 0;
+            }
+            if (dataIdx < 0 || dataIdx >= wfcSpnFormats.length) {
+                loge("updateSpnDisplay: KEY_WFC_DATA_SPN_FORMAT_IDX_INT out of bounds: " + dataIdx);
+                dataIdx = 0;
+            }
+
             wfcVoiceSpnFormat = wfcSpnFormats[voiceIdx];
             wfcDataSpnFormat = wfcSpnFormats[dataIdx];
         }
