@@ -2227,10 +2227,9 @@ public class ServiceStateTracker extends Handler {
             //
             // 2) Show PLMN + Wi-Fi Calling if there is no valid SPN in case 1
 
-            String[] wfcSpnFormats = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),
-                    mPhone.getSubId()).getStringArray(com.android.internal.R.array.wfcSpnFormats);
             int voiceIdx = 0;
             int dataIdx = 0;
+            boolean useRootLocale = false;
             CarrierConfigManager configLoader = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configLoader != null) {
@@ -2240,11 +2239,17 @@ public class ServiceStateTracker extends Handler {
                         voiceIdx = b.getInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT);
                         dataIdx = b.getInt(
                                 CarrierConfigManager.KEY_WFC_DATA_SPN_FORMAT_IDX_INT);
+                        useRootLocale =
+                                b.getBoolean(CarrierConfigManager.KEY_WFC_SPN_USE_ROOT_LOCALE);
                     }
                 } catch (Exception e) {
                     loge("updateSpnDisplay: carrier config error: " + e);
                 }
             }
+
+            String[] wfcSpnFormats = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),
+                    mPhone.getSubId(), useRootLocale)
+                    .getStringArray(com.android.internal.R.array.wfcSpnFormats);
 
             if (voiceIdx < 0 || voiceIdx >= wfcSpnFormats.length) {
                 loge("updateSpnDisplay: KEY_WFC_SPN_FORMAT_IDX_INT out of bounds: " + voiceIdx);
