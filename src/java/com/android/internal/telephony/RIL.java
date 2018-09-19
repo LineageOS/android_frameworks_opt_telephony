@@ -216,6 +216,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     final Integer mPhoneId;
 
+    private boolean mUseOldMncMccFormat;
+
     private static final String PROPERTY_IS_VONR_ENABLED = "persist.radio.is_vonr_enabled_";
 
     public static final int MIN_SERVICE_IDX = HAL_SERVICE_RADIO;
@@ -1138,6 +1140,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
              * SecurityException and return correct value based on what HAL we're testing. */
             if (proxies == null) throw ex;
         }
+
+        mUseOldMncMccFormat = SystemProperties.getBoolean(
+                "ro.telephony.use_old_mnc_mcc_format", false);
 
         TelephonyManager tm = (TelephonyManager) context.getSystemService(
                 Context.TELEPHONY_SERVICE);
@@ -2557,14 +2562,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
         RILRequest rr = obtainRequest(RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL, result,
                 mRILDefaultWorkSource);
 
+        if (mUseOldMncMccFormat && !TextUtils.isEmpty(operatorNumeric)) {
+            operatorNumeric += "+";
+        }
+
         if (RILJ_LOGD) {
             riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
                     + " operatorNumeric = " + operatorNumeric + ", ran = " + ran);
         }
 
+        final String operatorNumericCopy = operatorNumeric;
+
         radioServiceInvokeHelper(HAL_SERVICE_NETWORK, rr, "setNetworkSelectionModeManual", () -> {
             networkProxy.setNetworkSelectionModeManual(rr.mSerial,
-                    RILUtils.convertNullToEmptyString(operatorNumeric), ran);
+                    RILUtils.convertNullToEmptyString(operatorNumericCopy), ran);
         });
     }
 
