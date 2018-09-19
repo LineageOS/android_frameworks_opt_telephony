@@ -2450,8 +2450,12 @@ public class RadioResponse extends IRadioResponse.Stub {
         if (rr != null) {
             ArrayList<OperatorInfo> ret = new ArrayList<OperatorInfo>();
             for (int i = 0; i < networkInfos.size(); i++) {
+                String operatorNumeric = networkInfos.get(i).operatorNumeric;
+                if (operatorNumeric != null) {
+                    operatorNumeric = operatorNumeric.split("\\+")[0];
+                }
                 ret.add(new OperatorInfo(networkInfos.get(i).alphaLong,
-                        networkInfos.get(i).alphaShort, networkInfos.get(i).operatorNumeric,
+                        networkInfos.get(i).alphaShort, operatorNumeric,
                         RILUtils.convertHalOperatorStatus(networkInfos.get(i).status)));
             }
             if (responseInfo.error == RadioError.NONE) {
