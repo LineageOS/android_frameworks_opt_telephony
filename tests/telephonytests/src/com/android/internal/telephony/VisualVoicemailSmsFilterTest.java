@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.res.Resources;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.TelephonyManager;
 import android.telephony.VisualVoicemailSmsFilterSettings;
@@ -60,6 +61,22 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
             (byte) 0x64, (byte) 0xB0, (byte) 0xD8, (byte) 0x0D, (byte) 0x14, (byte) 0xC3,
             (byte) 0xE9, (byte) 0x62, (byte) 0x37, (byte) 0x50, (byte) 0x0B, (byte) 0x86,
             (byte) 0x83, (byte) 0xC1, (byte) 0x76, (byte) 0xEC, (byte) 0x1E, (byte) 0x0D}};
+
+    /**
+     * PDU for the following message:
+     * <p>originating number: 129
+     * <p>message: //VZWVVM
+     */
+    private static final byte[][] VZWVVM_PDU = {{
+            (byte) 0x07, (byte) 0x91, (byte) 0x41, (byte) 0x50, (byte) 0x74, (byte) 0x02,
+            (byte) 0x50, (byte) 0xF5, (byte) 0x04, (byte) 0x03, (byte) 0xC9, (byte) 0x21,
+            (byte) 0xF9, (byte) 0x00, (byte) 0x00, (byte) 0x71, (byte) 0x30, (byte) 0x70,
+            (byte) 0x81, (byte) 0x71, (byte) 0x81, (byte) 0x2B, (byte) 0x08, (byte) 0xAF,
+            (byte) 0x97, (byte) 0x55, (byte) 0x7B, (byte) 0xB5, (byte) 0x5A, (byte) 0x9B}};
+
+    private static final String SIM_MCC_MNC = "001002";
+
+    private static final String[] VVM_PATTERN_REGEXP = {SIM_MCC_MNC + ";^//VZWVVM.*"};
 
     private Context mContext;
     private TelephonyManager mTelephonyManager;
@@ -107,6 +124,21 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
                         + "port=143;name=1234567890@example.com;pw=CphQJKnYS4jEiDO").getBytes()};
         assertFalse(
                 VisualVoicemailSmsFilter.filter(mContext, pdus, SmsConstants.FORMAT_3GPP, 0, 0));
+    }
+
+    public void testFilterNotSet_matchesVvmPattern_filtered() {
+        setSettings(null);
+        Resources resources = Mockito.mock(Resources.class);
+        when(mTelephonyManager.getSimOperator(anyInt()))
+                .thenReturn(SIM_MCC_MNC);
+        when(mContext.getResources())
+                .thenReturn(resources);
+        when(resources.getStringArray(com.android.internal.R.array.config_vvmSmsFilterRegexes))
+                .thenReturn(VVM_PATTERN_REGEXP);
+
+        assertTrue(
+                VisualVoicemailSmsFilter.filter(mContext, VZWVVM_PDU, SmsConstants.FORMAT_3GPP, 0,
+                        0));
     }
 
     public void testOriginatingNumber_unspecified_filtered() {
