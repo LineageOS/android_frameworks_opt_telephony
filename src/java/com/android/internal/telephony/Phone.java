@@ -2102,9 +2102,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @param itemID the ID of the item to read
      * @param response callback message with the String response in the obj field
+     * @param workSource calling WorkSource
      */
-    public void nvReadItem(int itemID, Message response) {
-        mCi.nvReadItem(itemID, response);
+    public void nvReadItem(int itemID, Message response, WorkSource workSource) {
+        mCi.nvReadItem(itemID, response, workSource);
     }
 
     /**
@@ -2114,9 +2115,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param itemID the ID of the item to read
      * @param itemValue the value to write, as a String
      * @param response Callback message.
+     * @param workSource calling WorkSource
      */
-    public void nvWriteItem(int itemID, String itemValue, Message response) {
-        mCi.nvWriteItem(itemID, itemValue, response);
+    public void nvWriteItem(int itemID, String itemValue, Message response,
+            WorkSource workSource) {
+        mCi.nvWriteItem(itemID, itemValue, response, workSource);
     }
 
     /**
@@ -3481,8 +3484,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Returns the modem activity information
      */
-    public void getModemActivityInfo(Message response)  {
-        mCi.getModemActivityInfo(response);
+    public void getModemActivityInfo(Message response, WorkSource workSource)  {
+        mCi.getModemActivityInfo(response, workSource);
     }
 
     /**
@@ -3497,8 +3500,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Set allowed carriers
      */
-    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response) {
-        mCi.setAllowedCarriers(carriers, response);
+    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response,
+            WorkSource workSource) {
+        mCi.setAllowedCarriers(carriers, response, workSource);
     }
 
     /** Sets the SignalStrength reporting criteria. */
@@ -3514,8 +3518,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Get allowed carriers
      */
-    public void getAllowedCarriers(Message response) {
-        mCi.getAllowedCarriers(response);
+    public void getAllowedCarriers(Message response, WorkSource workSource) {
+        mCi.getAllowedCarriers(response, workSource);
     }
 
     /**
@@ -3657,8 +3661,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * - {@link android.telephony.TelephonyManager#CARD_POWER_UP}
      * - {@link android.telephony.TelephonyManager#CARD_POWER_UP_PASS_THROUGH}
      **/
-    public void setSimPowerState(int state) {
-        mCi.setSimCardPower(state, null);
+    public void setSimPowerState(int state, WorkSource workSource) {
+        mCi.setSimCardPower(state, null, workSource);
     }
 
     public void setRadioIndicationUpdateMode(int filters, int mode) {
