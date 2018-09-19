@@ -2382,6 +2382,8 @@ public class GsmCdmaPhone extends Phone {
                     setVmSimImsi(null);
                 }
 
+                updateVoiceMail();
+
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
                 break;
 
