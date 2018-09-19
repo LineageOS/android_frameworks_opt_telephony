@@ -16,20 +16,19 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.sip.SipPhone;
-
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.os.RegistrantList;
 import android.os.Registrant;
-import android.telecom.VideoProfile;
+import android.os.RegistrantList;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.TelephonyManager;
 import android.telephony.PhoneStateListener;
-import android.telephony.ServiceState;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
+
+import com.android.internal.telephony.sip.SipPhone;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -666,54 +665,6 @@ public class CallManager {
     }
 
     /**
-     * Answers a ringing or waiting call.
-     *
-     * Active call, if any, go on hold.
-     * If active call can't be held, i.e., a background call of the same channel exists,
-     * the active call will be hang up.
-     *
-     * Answering occurs asynchronously, and final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @exception CallStateException when call is not ringing or waiting
-     */
-    public void acceptCall(Call ringingCall) throws CallStateException {
-        Phone ringingPhone = ringingCall.getPhone();
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, "acceptCall(" +ringingCall + " from " + ringingCall.getPhone() + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-
-        if ( hasActiveFgCall() ) {
-            Phone activePhone = getActiveFgCall().getPhone();
-            boolean hasBgCall = ! (activePhone.getBackgroundCall().isIdle());
-            boolean sameChannel = (activePhone == ringingPhone);
-
-            if (VDBG) {
-                Rlog.d(LOG_TAG, "hasBgCall: "+ hasBgCall + "sameChannel:" + sameChannel);
-            }
-
-            if (sameChannel && hasBgCall) {
-                getActiveFgCall().hangup();
-            } else if (!sameChannel && !hasBgCall) {
-                activePhone.switchHoldingAndActive();
-            } else if (!sameChannel && hasBgCall) {
-                getActiveFgCall().hangup();
-            }
-        }
-
-        // We only support the AUDIO_ONLY video state in this scenario.
-        ringingPhone.acceptCall(VideoProfile.STATE_AUDIO_ONLY);
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-    }
-
-    /**
      * Reject (ignore) a ringing call. In GSM, this means UDUB
      * (User Determined User Busy). Reject occurs asynchronously,
      * and final notification occurs via
@@ -724,7 +675,6 @@ public class CallManager {
      */
     public void rejectCall(Call ringingCall) throws CallStateException {
         if (VDBG) {
-            Rlog.d(LOG_TAG, "rejectCall(" +ringingCall + ")");
             Rlog.d(LOG_TAG, toString());
         }
 
@@ -734,92 +684,6 @@ public class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End rejectCall(" +ringingCall + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-    }
-
-    /**
-     * Places active call on hold, and makes held call active.
-     * Switch occurs asynchronously and may fail.
-     *
-     * There are 4 scenarios
-     * 1. only active call but no held call, aka, hold
-     * 2. no active call but only held call, aka, unhold
-     * 3. both active and held calls from same phone, aka, swap
-     * 4. active and held calls from different phones, aka, phone swap
-     *
-     * Final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @exception CallStateException if active call is ringing, waiting, or
-     * dialing/alerting, or heldCall can't be active.
-     * In these cases, this operation may not be performed.
-     */
-    public void switchHoldingAndActive(Call heldCall) throws CallStateException {
-        Phone activePhone = null;
-        Phone heldPhone = null;
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, "switchHoldingAndActive(" +heldCall + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-
-        if (hasActiveFgCall()) {
-            activePhone = getActiveFgCall().getPhone();
-        }
-
-        if (heldCall != null) {
-            heldPhone = heldCall.getPhone();
-        }
-
-        if (activePhone != null) {
-            activePhone.switchHoldingAndActive();
-        }
-
-        if (heldPhone != null && heldPhone != activePhone) {
-            heldPhone.switchHoldingAndActive();
-        }
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, "End switchHoldingAndActive(" +heldCall + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-    }
-
-    /**
-     * Hangup foreground call and resume the specific background call
-     *
-     * Note: this is noop if there is no foreground call or the heldCall is null
-     *
-     * @param heldCall to become foreground
-     * @throws CallStateException
-     */
-    public void hangupForegroundResumeBackground(Call heldCall) throws CallStateException {
-        Phone foregroundPhone = null;
-        Phone backgroundPhone = null;
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, "hangupForegroundResumeBackground(" +heldCall + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-
-        if (hasActiveFgCall()) {
-            foregroundPhone = getFgPhone();
-            if (heldCall != null) {
-                backgroundPhone = heldCall.getPhone();
-                if (foregroundPhone == backgroundPhone) {
-                    getActiveFgCall().hangup();
-                } else {
-                // the call to be hangup and resumed belongs to different phones
-                    getActiveFgCall().hangup();
-                    switchHoldingAndActive(heldCall);
-                }
-            }
-        }
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, "End hangupForegroundResumeBackground(" +heldCall + ")");
             Rlog.d(LOG_TAG, toString());
         }
     }
