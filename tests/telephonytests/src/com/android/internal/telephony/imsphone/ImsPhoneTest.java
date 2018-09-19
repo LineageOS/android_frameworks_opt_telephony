@@ -50,12 +50,12 @@ import android.os.SystemProperties;
 import android.support.test.filters.FlakyTest;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsReasonInfo;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import android.telephony.ims.ImsCallProfile;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsManager;
-import android.telephony.ims.ImsReasonInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandsInterface;
@@ -192,7 +192,7 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(Call.State.IDLE).when(mForegroundCall).getState();
         doReturn(Call.State.INCOMING).when(mRingingCall).getState();
         assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("1"));
-        verify(mImsCT).switchWaitingOrHoldingAndActive();
+        verify(mImsCT).holdActiveCallForWaitingCall();
     }
 
     @Test
@@ -213,7 +213,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // ringing call is idle
         assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("2"));
-        verify(mImsCT).switchWaitingOrHoldingAndActive();
+        verify(mImsCT).holdActiveCall();
 
         // ringing call is not idle
         doReturn(Call.State.INCOMING).when(mRingingCall).getState();
@@ -297,9 +297,6 @@ public class ImsPhoneTest extends TelephonyTest {
 
         mImsPhoneUT.rejectCall();
         verify(mImsCT).rejectCall();
-
-        mImsPhoneUT.switchHoldingAndActive();
-        verify(mImsCT).switchWaitingOrHoldingAndActive();
 
         assertEquals(false, mImsPhoneUT.canConference());
         doReturn(true).when(mImsCT).canConference();
