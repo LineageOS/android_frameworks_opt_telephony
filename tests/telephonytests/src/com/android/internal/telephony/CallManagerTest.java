@@ -15,6 +15,22 @@
  */
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.isA;
+import static org.mockito.Matchers.isNull;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyChar;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -27,25 +43,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.isA;
-import static org.mockito.Matchers.isNull;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyChar;
-import static org.mockito.Mockito.anyString;
 
 public class CallManagerTest extends TelephonyTest {
 
@@ -153,12 +152,6 @@ public class CallManagerTest extends TelephonyTest {
     }
 
     @SmallTest @Test
-    public void testBasicAcceptCall() throws Exception {
-        CallManager.getInstance().acceptCall(mRingingCall);
-        verify(mPhone, times(1)).acceptCall(anyInt());
-    }
-
-    @SmallTest @Test
     public void testBasicRejectCall() throws Exception {
         //verify can dial and dial function of the phone is being triggered
         CallManager.getInstance().rejectCall(mRingingCall);
@@ -227,51 +220,6 @@ public class CallManagerTest extends TelephonyTest {
 
         CallManager.getInstance().setMute(true);
         verify(mPhone, times(1)).setMute(true);
-    }
-
-    @SmallTest @Test
-    public void testSwitchHoldingAndActive() throws Exception {
-        /* case 1: only active call */
-        doReturn(false).when(mFgCall).isIdle();
-        CallManager.getInstance().switchHoldingAndActive(null);
-        verify(mPhone, times(1)).switchHoldingAndActive();
-        /* case 2: no active call but only held call, aka, unhold */
-        doReturn(true).when(mFgCall).isIdle();
-        CallManager.getInstance().switchHoldingAndActive(mBgCall);
-        verify(mPhone, times(2)).switchHoldingAndActive();
-        /* case 3: both active and held calls from same phone, aka, swap */
-        doReturn(false).when(mFgCall).isIdle();
-        CallManager.getInstance().switchHoldingAndActive(mBgCall);
-        verify(mPhone, times(3)).switchHoldingAndActive();
-        GsmCdmaPhone mPhoneHold = Mockito.mock(GsmCdmaPhone.class);
-        /* case 4: active and held calls from different phones, aka, phone swap */
-        doReturn(mPhoneHold).when(mBgCall).getPhone();
-        CallManager.getInstance().switchHoldingAndActive(mBgCall);
-        verify(mPhone, times(4)).switchHoldingAndActive();
-        verify(mPhoneHold, times(1)).switchHoldingAndActive();
-    }
-
-    @SmallTest @Test
-    public void testHangupForegroundResumeBackground() throws Exception {
-        CallManager.getInstance().hangupForegroundResumeBackground(mBgCall);
-        /* no active fgCall */
-        verify(mPhone, times(0)).switchHoldingAndActive();
-        verify(mFgCall, times(0)).hangup();
-
-        /* have active foreground call, get hanged up */
-        doReturn(false).when(mFgCall).isIdle();
-        CallManager.getInstance().hangupForegroundResumeBackground(mBgCall);
-        verify(mFgCall, times(1)).hangup();
-        verify(mPhone, times(0)).switchHoldingAndActive();
-
-        /* mock bgcall and fgcall from different phone */
-        GsmCdmaPhone mPhoneHold = Mockito.mock(GsmCdmaPhone.class);
-        doReturn(mPhoneHold).when(mBgCall).getPhone();
-        CallManager.getInstance().hangupForegroundResumeBackground(mBgCall);
-        verify(mFgCall, times(2)).hangup();
-        /* always hangup fgcall and both phone trigger swap */
-        verify(mPhoneHold, times(1)).switchHoldingAndActive();
-        verify(mPhone, times(1)).switchHoldingAndActive();
     }
 
     @SmallTest @Test
