@@ -175,6 +175,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     final Integer mPhoneId;
     private List<String> mOldRilFeatures;
+    private boolean mUseOldMncMccFormat;
 
     /* default work source which will blame phone process */
     protected WorkSource mRILDefaultWorkSource;
@@ -459,6 +460,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         final String oldRilFeatures = SystemProperties.get("ro.telephony.ril.config", "");
         mOldRilFeatures = Arrays.asList(oldRilFeatures.split(","));
+
+        mUseOldMncMccFormat = SystemProperties.getBoolean(
+                "ro.telephony.use_old_mnc_mcc_format", false);
 
         ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
                 Context.CONNECTIVITY_SERVICE);
@@ -1682,6 +1686,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL, result,
                     mRILDefaultWorkSource);
+
+            if (mUseOldMncMccFormat && !TextUtils.isEmpty(operatorNumeric)) {
+                operatorNumeric += "+";
+            }
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
