@@ -5711,7 +5711,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @VisibleForTesting
     public static SignalStrength convertHalSignalStrength(
             android.hardware.radio.V1_0.SignalStrength signalStrength, int phoneId) {
-	Boolean prop = android.os.SystemProperties.getBoolean("ro.telephony.ril.huawei_signalstrength", false);
+	Boolean prop = android.os.SystemProperties.getBoolean("ro.telephony.isHisiRIL", false);
 
         if (prop && phoneId >= 0) {
             return convertHalSignalStrengthHuawei(signalStrength, phoneId);
