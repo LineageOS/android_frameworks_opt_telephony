@@ -2057,7 +2057,7 @@ public class GsmCdmaPhone extends Phone {
             // Complete pending USSD
 
             if (isUssdRelease) {
-                found.onUssdRelease();
+                found.onUssdFinished(ussdMessage, isUssdRequest);
             } else if (isUssdError) {
                 found.onUssdFinishedError();
             } else {
