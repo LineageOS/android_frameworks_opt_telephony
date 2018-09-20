@@ -812,4 +812,12 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
         verify(mImsPhone, times(1)).startOnHoldTone(nullable(Connection.class));
     }
+
+    @Test
+    @SmallTest
+    public void testSipNotFoundRemap() {
+        assertEquals(DisconnectCause.INVALID_NUMBER,
+                mCTUT.getDisconnectCauseFromReasonInfo(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_NOT_FOUND, 0), Call.State.ACTIVE));
+    }
 }
