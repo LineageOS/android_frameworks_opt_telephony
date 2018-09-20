@@ -131,7 +131,8 @@ public class SimulatedCommands extends BaseCommands
     public int mMaxDataCalls;
 
     private SignalStrength mSignalStrength;
-    private List<CellInfo> mCellInfoList;
+    private List<CellInfo> mCellInfoList = null;
+    private boolean mShouldReturnCellInfo = true;
     private int[] mImsRegState;
     private IccCardStatus mIccCardStatus;
     private IccSlotStatus mIccSlotStatus;
@@ -1875,26 +1876,45 @@ public class SimulatedCommands extends BaseCommands
         mCellInfoList = list;
     }
 
+    private CellInfoGsm getCellInfoGsm() {
+        Parcel p = Parcel.obtain();
+        // CellInfo
+        p.writeInt(1);
+        p.writeInt(1);
+        p.writeInt(2);
+        p.writeLong(1453510289108L);
+        p.writeInt(0);
+        // CellIdentity
+        p.writeInt(1);
+        p.writeString("310");
+        p.writeString("260");
+        p.writeString("long");
+        p.writeString("short");
+        // CellIdentityGsm
+        p.writeInt(123);
+        p.writeInt(456);
+        p.writeInt(950);
+        p.writeInt(27);
+        // CellSignalStrength
+        p.writeInt(99);
+        p.writeInt(0);
+        p.writeInt(3);
+        p.setDataPosition(0);
+
+        return CellInfoGsm.CREATOR.createFromParcel(p);
+    }
+
+    public synchronized void setCellInfoListBehavior(boolean shouldReturn) {
+        mShouldReturnCellInfo = shouldReturn;
+    }
+
     @Override
-    public void getCellInfoList(Message response, WorkSource WorkSource) {
+    public synchronized void getCellInfoList(Message response, WorkSource workSource) {
+        if (!mShouldReturnCellInfo) return;
+
         if (mCellInfoList == null) {
-            Parcel p = Parcel.obtain();
-            p.writeInt(1);
-            p.writeInt(1);
-            p.writeInt(2);
-            p.writeLong(1453510289108L);
-            p.writeInt(310);
-            p.writeInt(260);
-            p.writeInt(123);
-            p.writeInt(456);
-            p.writeInt(99);
-            p.writeInt(3);
-            p.setDataPosition(0);
-
-            CellInfoGsm cellInfo = CellInfoGsm.CREATOR.createFromParcel(p);
-
             ArrayList<CellInfo> mCellInfoList = new ArrayList();
-            mCellInfoList.add(cellInfo);
+            mCellInfoList.add(getCellInfoGsm());
         }
 
         resultSuccess(response, mCellInfoList);

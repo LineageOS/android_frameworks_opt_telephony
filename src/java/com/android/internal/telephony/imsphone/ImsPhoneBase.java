@@ -23,9 +23,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
-import android.os.WorkSource;
-import android.telephony.CellInfo;
-import android.telephony.CellLocation;
 import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -143,19 +140,6 @@ abstract class ImsPhoneBase extends Phone {
         ServiceState s = new ServiceState();
         s.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
         return s;
-    }
-
-    /**
-     * @return all available cell information or null if none.
-     */
-    @Override
-    public List<CellInfo> getAllCellInfo(WorkSource workSource) {
-        return getServiceStateTracker().getAllCellInfo(workSource);
-    }
-
-    @Override
-    public CellLocation getCellLocation(WorkSource workSource) {
-        return null;
     }
 
     @Override
