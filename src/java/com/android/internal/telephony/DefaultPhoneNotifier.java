@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.CellInfo;
+import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseCallState;
@@ -208,10 +209,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyCellLocation(Phone sender) {
+    public void notifyCellLocation(Phone sender, CellLocation cl) {
         int subId = sender.getSubId();
         Bundle data = new Bundle();
-        sender.getCellLocation().fillInNotifierBundle(data);
+        cl.fillInNotifierBundle(data);
         try {
             if (mRegistry != null) {
                 mRegistry.notifyCellLocationForSubscriber(subId, data);

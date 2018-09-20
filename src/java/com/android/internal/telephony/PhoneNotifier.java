@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.telephony.CellInfo;
+import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.VoLteServiceState;
@@ -32,7 +33,8 @@ public interface PhoneNotifier {
 
     public void notifyServiceState(Phone sender);
 
-    public void notifyCellLocation(Phone sender);
+    /** Notify registrants of the current CellLocation */
+    void notifyCellLocation(Phone sender, CellLocation cl);
 
     public void notifySignalStrength(Phone sender);
 

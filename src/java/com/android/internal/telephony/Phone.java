@@ -41,9 +41,7 @@ import android.provider.Settings;
 import android.service.carrier.CarrierIdentifier;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
-import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
-import android.telephony.CellInfoCdma;
 import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
@@ -1691,49 +1689,33 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * @param workSource calling WorkSource
-     * @return all available cell information or null if none.
+     * @return the last known CellInfo
      */
-    public List<CellInfo> getAllCellInfo(WorkSource workSource) {
-        List<CellInfo> cellInfoList = getServiceStateTracker().getAllCellInfo(workSource);
-        return privatizeCellInfoList(cellInfoList);
-    }
-
-    public CellLocation getCellLocation() {
-        return getCellLocation(null);
+    public List<CellInfo> getAllCellInfo() {
+        return getServiceStateTracker().getAllCellInfo();
     }
 
     /**
-     * Clear CDMA base station lat/long values if location setting is disabled.
-     * @param cellInfoList the original cell info list from the RIL
-     * @return the original list with CDMA lat/long cleared if necessary
+     * @param workSource calling WorkSource
+     * @param rspMsg the response message containing the cell info
      */
-    private List<CellInfo> privatizeCellInfoList(List<CellInfo> cellInfoList) {
-        if (cellInfoList == null) return null;
-        int mode = Settings.Secure.getInt(getContext().getContentResolver(),
-                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
-        if (mode == Settings.Secure.LOCATION_MODE_OFF) {
-            ArrayList<CellInfo> privateCellInfoList = new ArrayList<CellInfo>(cellInfoList.size());
-            // clear lat/lon values for location privacy
-            for (CellInfo c : cellInfoList) {
-                if (c instanceof CellInfoCdma) {
-                    CellInfoCdma cellInfoCdma = (CellInfoCdma) c;
-                    CellIdentityCdma cellIdentity = cellInfoCdma.getCellIdentity();
-                    CellIdentityCdma maskedCellIdentity = new CellIdentityCdma(
-                            cellIdentity.getNetworkId(),
-                            cellIdentity.getSystemId(),
-                            cellIdentity.getBasestationId(),
-                            Integer.MAX_VALUE, Integer.MAX_VALUE);
-                    CellInfoCdma privateCellInfoCdma = new CellInfoCdma(cellInfoCdma);
-                    privateCellInfoCdma.setCellIdentity(maskedCellIdentity);
-                    privateCellInfoList.add(privateCellInfoCdma);
-                } else {
-                    privateCellInfoList.add(c);
-                }
-            }
-            cellInfoList = privateCellInfoList;
-        }
-        return cellInfoList;
+    public void getAllCellInfo(WorkSource workSource, Message rspMsg) {
+        getServiceStateTracker().requestAllCellInfo(workSource, rspMsg);
+    }
+
+    /**
+     * @return the current cell location if known
+     */
+    public CellLocation getCellLocation() {
+        return getServiceStateTracker().getCellLocation();
+    }
+
+    /**
+     * @param workSource calling WorkSource
+     * @param rspMsg the response message containing the cell location
+     */
+    public void getCellLocation(WorkSource workSource, Message rspMsg) {
+        getServiceStateTracker().requestCellLocation(workSource, rspMsg);
     }
 
     /**
@@ -2195,7 +2177,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void notifyCellInfo(List<CellInfo> cellInfo) {
-        mNotifier.notifyCellInfo(this, privatizeCellInfoList(cellInfo));
+        mNotifier.notifyCellInfo(this, cellInfo);
     }
 
     /** Notify {@link PhysicalChannelConfig} changes. */
