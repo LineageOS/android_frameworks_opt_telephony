@@ -15,22 +15,15 @@
  */
 package com.android.internal.telephony;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-
-import java.util.List;
-import java.util.ArrayList;
-
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
-import org.mockito.ArgumentCaptor;
+import static org.mockito.Mockito.verify;
+
+import android.os.Bundle;
 import android.telephony.CellInfo;
 import android.telephony.DisconnectCause;
 import android.telephony.PreciseCallState;
@@ -39,10 +32,16 @@ import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 import android.telephony.gsm.GsmCellLocation;
-import android.os.Bundle;
-import android.os.Process;
-import android.os.WorkSource;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DefaultPhoneNotifierTest extends TelephonyTest {
 
@@ -247,7 +246,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         ArgumentCaptor<Bundle> cellLocationCapture =
                 ArgumentCaptor.forClass(Bundle.class);
 
-        mDefaultPhoneNotifierUT.notifyCellLocation(mPhone);
+        mDefaultPhoneNotifierUT.notifyCellLocation(mPhone, mGsmCellLocation);
         verify(mTelephonyRegisteryMock).notifyCellLocationForSubscriber(eq(0),
                 cellLocationCapture.capture());
         assertEquals(2, cellLocationCapture.getValue().getInt("lac"));
@@ -256,7 +255,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
 
         doReturn(1).when(mPhone).getSubId();
         mGsmCellLocation.setPsc(5);
-        mDefaultPhoneNotifierUT.notifyCellLocation(mPhone);
+        mDefaultPhoneNotifierUT.notifyCellLocation(mPhone, mGsmCellLocation);
         verify(mTelephonyRegisteryMock).notifyCellLocationForSubscriber(eq(1),
                 cellLocationCapture.capture());
         assertEquals(2, cellLocationCapture.getValue().getInt("lac"));
