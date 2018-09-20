@@ -338,9 +338,8 @@ public class LocaleTracker extends Handler {
             return;
         }
 
-        // Get all cell info. Passing null to use default worksource, which indicates the original
-        // request is from telephony internally.
-        mCellInfo = mPhone.getAllCellInfo(null);
+        // FIXME: This needs to use the async version of getAllCellInfo()
+        mCellInfo = mPhone.getAllCellInfo();
         msg = "getCellInfo: cell info=" + mCellInfo;
         if (DBG) log(msg);
         mLocalLog.log(msg);
