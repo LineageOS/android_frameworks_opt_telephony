@@ -22,6 +22,7 @@ import android.os.SystemClock;
 import android.telecom.ConferenceParticipant;
 import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.util.Log;
 
 import java.lang.Override;
@@ -89,7 +90,7 @@ public abstract class Connection {
     public interface Listener {
         public void onVideoStateChanged(int videoState);
         public void onConnectionCapabilitiesChanged(int capability);
-        public void onWifiChanged(boolean isWifi);
+        public void onCallRadioTechChanged(@ServiceState.RilRadioTechnology int vrat);
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
@@ -119,7 +120,7 @@ public abstract class Connection {
         @Override
         public void onConnectionCapabilitiesChanged(int capability) {}
         @Override
-        public void onWifiChanged(boolean isWifi) {}
+        public void onCallRadioTechChanged(@ServiceState.RilRadioTechnology int vrat) {}
         @Override
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider) {}
@@ -206,7 +207,13 @@ public abstract class Connection {
     Object mUserData;
     private int mVideoState;
     private int mConnectionCapabilities;
-    private boolean mIsWifi;
+    /**
+     * Determines the call radio technology for current connection.
+     *
+     * This is used to propagate the call radio technology to upper layer.
+     */
+    private @ServiceState.RilRadioTechnology int mCallRadioTech =
+            ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
     private boolean mAudioModeIsVoip;
     private int mAudioQuality;
     private int mCallSubstate;
@@ -742,7 +749,17 @@ public abstract class Connection {
      * @return {@code True} if the connection is using a wifi network.
      */
     public boolean isWifi() {
-        return mIsWifi;
+        return getCallRadioTech() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+    }
+
+    /**
+     * Returns radio technology is used for the connection.
+     *
+     * @return the RIL Voice Radio Technology used for current connection,
+     *         see {@code RIL_RADIO_TECHNOLOGY_*} in {@link android.telephony.ServiceState}.
+     */
+    public @ServiceState.RilRadioTechnology int getCallRadioTech() {
+        return mCallRadioTech;
     }
 
     /**
@@ -813,14 +830,18 @@ public abstract class Connection {
     }
 
     /**
-     * Sets whether a wifi network is used for the connection.
+     * Sets RIL voice radio technology used for current connection.
      *
-     * @param isWifi {@code True} if wifi is being used.
+     * @param vrat the RIL voice radio technology for current connection,
+     *             see {@code RIL_RADIO_TECHNOLOGY_*} in {@link android.telephony.ServiceState}.
      */
-    public void setWifi(boolean isWifi) {
-        mIsWifi = isWifi;
+    public void setCallRadioTech(@ServiceState.RilRadioTechnology int vrat) {
+        if (mCallRadioTech == vrat) {
+            return;
+        }
+        mCallRadioTech = vrat;
         for (Listener l : mListeners) {
-            l.onWifiChanged(mIsWifi);
+            l.onCallRadioTechChanged(vrat);
         }
     }
 

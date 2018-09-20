@@ -143,6 +143,8 @@ public class GsmCdmaConnection extends Connection {
         fetchDtmfToneDelay(phone);
 
         setAudioQuality(getAudioQualityFromDC(dc.audioQuality));
+
+        setCallRadioTech(mOwner.getPhone().getCsCallRadioTech());
     }
 
     /** This is an MO call, created when dialing */
@@ -193,6 +195,8 @@ public class GsmCdmaConnection extends Connection {
         }
 
         fetchDtmfToneDelay(phone);
+
+        setCallRadioTech(mOwner.getPhone().getCsCallRadioTech());
     }
 
     //CDMA
@@ -215,6 +219,8 @@ public class GsmCdmaConnection extends Connection {
         mConnectTime = 0;
         mParent = parent;
         parent.attachFake(this, GsmCdmaCall.State.WAITING);
+
+        setCallRadioTech(mOwner.getPhone().getCsCallRadioTech());
     }
 
 
