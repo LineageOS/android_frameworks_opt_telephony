@@ -66,8 +66,6 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UssdResponse;
-import android.telephony.cdma.CdmaCellLocation;
-import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -434,11 +432,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public CellLocation getCellLocation(WorkSource workSource) {
-        CellLocation l = mSST.getCellLocation(workSource);
-        if (l != null) return l;
-        if (getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) return new CdmaCellLocation();
-        return new GsmCellLocation();
+    public void getCellLocation(WorkSource workSource, Message rspMsg) {
+        mSST.requestCellLocation(workSource, rspMsg);
     }
 
     @Override
@@ -653,8 +648,13 @@ public class GsmCdmaPhone extends Phone {
         super.notifyServiceStateChangedP(ss);
     }
 
-    public void notifyLocationChanged() {
-        mNotifier.notifyCellLocation(this);
+    /**
+     * Notify that the CellLocation has changed.
+     *
+     * @param cl the new CellLocation
+     */
+    public void notifyLocationChanged(CellLocation cl) {
+        mNotifier.notifyCellLocation(this, cl);
     }
 
     @Override
@@ -2381,6 +2381,8 @@ public class GsmCdmaPhone extends Phone {
                     storeVoiceMailNumber(null);
                     setVmSimImsi(null);
                 }
+
+                updateVoiceMail();
 
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
                 break;

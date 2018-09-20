@@ -19,21 +19,17 @@ package com.android.internal.telephony.sip;
 import android.content.Context;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.ResultReceiver;
 import android.os.SystemProperties;
-import android.os.WorkSource;
-import android.telephony.CellLocation;
 import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
 import com.android.internal.telephony.Call;
-import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
@@ -43,7 +39,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.uicc.IccFileHandler;
 
 import java.util.ArrayList;
@@ -102,11 +97,6 @@ abstract class SipPhoneBase extends Phone {
         ServiceState s = new ServiceState();
         s.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
         return s;
-    }
-
-    @Override
-    public CellLocation getCellLocation(WorkSource workSource) {
-        return null;
     }
 
     @Override

@@ -49,6 +49,7 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.PersistableBundle;
@@ -333,31 +334,106 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 intArgumentCaptor.getValue().intValue());
     }
 
-    @Test
-    @MediumTest
-    public void testCellInfoList() {
+    private CellInfoGsm getCellInfoGsm() {
         Parcel p = Parcel.obtain();
+        // CellInfo
         p.writeInt(1);
         p.writeInt(1);
         p.writeInt(2);
         p.writeLong(1453510289108L);
-        p.writeInt(310);
-        p.writeInt(260);
+        p.writeInt(0);
+        // CellIdentity
+        p.writeInt(1);
+        p.writeString("310");
+        p.writeString("260");
+        p.writeString("long");
+        p.writeString("short");
+        // CellIdentityGsm
         p.writeInt(123);
         p.writeInt(456);
+        p.writeInt(950);
+        p.writeInt(27);
+        // CellSignalStrength
         p.writeInt(99);
+        p.writeInt(0);
         p.writeInt(3);
         p.setDataPosition(0);
 
-        CellInfoGsm cellInfo = CellInfoGsm.CREATOR.createFromParcel(p);
+        return CellInfoGsm.CREATOR.createFromParcel(p);
+    }
 
+    @Test
+    @MediumTest
+    public void testCachedCellInfoList() {
         ArrayList<CellInfo> list = new ArrayList();
-        list.add(cellInfo);
+        list.add(getCellInfoGsm());
         mSimulatedCommands.setCellInfoList(list);
 
         WorkSource workSource = new WorkSource(Process.myUid(),
                 mContext.getPackageName());
-        assertEquals(sst.getAllCellInfo(workSource), list);
+
+        // null worksource and no response message will update the writethrough cache
+        sst.requestAllCellInfo(null, null);
+        waitForMs(200);
+        assertEquals(sst.getAllCellInfo(), list);
+    }
+
+    private static class CellInfoHandler extends Handler {
+        // Need to define this here so that it's accessible
+        public List<CellInfo> cellInfoResult;
+
+        CellInfoHandler(Looper l) {
+            super(l);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            synchronized (msg) {
+                assertTrue("handler received null message", msg.obj != null);
+                AsyncResult ar = (AsyncResult) msg.obj;
+                cellInfoResult = (List<CellInfo>) ar.result;
+                msg.notifyAll();
+            }
+        }
+    }
+
+    @Test
+    @MediumTest
+    public void testGetCellInfoResponse() throws InterruptedException {
+        mSimulatedCommands.setCellInfoListBehavior(true);
+        ArrayList<CellInfo> list = new ArrayList();
+        list.add(getCellInfoGsm());
+        mSimulatedCommands.setCellInfoList(list);
+        CellInfoHandler cih = new CellInfoHandler(mSSTTestHandler.getLooper());
+
+        Message rsp = cih.obtainMessage(0x7357);
+
+        sst.requestAllCellInfo(null, rsp);
+
+        synchronized (rsp) {
+            if (cih.cellInfoResult == null) rsp.wait(5000);
+        }
+
+        AsyncResult ar = (AsyncResult) rsp.obj;
+        assertTrue("CellInfo Response Not Received", cih.cellInfoResult != null);
+        assertEquals(getCellInfoGsm(), cih.cellInfoResult.get(0));
+    }
+
+    @Test
+    @MediumTest
+    public void testGetCellInfoResponseTimeout() throws InterruptedException {
+        mSimulatedCommands.setCellInfoListBehavior(false);
+        CellInfoHandler cih = new CellInfoHandler(mSSTTestHandler.getLooper());
+
+        Message rsp = cih.obtainMessage(0x7357);
+
+        sst.requestAllCellInfo(null, rsp);
+
+        synchronized (rsp) {
+            if (cih.cellInfoResult == null) rsp.wait(5000);
+        }
+
+        assertTrue("Spurious CellInfo Response Received", cih.cellInfoResult == null);
     }
 
     @Test
@@ -640,7 +716,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(200);
         WorkSource workSource = new WorkSource(Process.myUid(), mContext.getPackageName());
-        GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation(workSource);
+        GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation();
         assertEquals(2, cl.getLac());
         assertEquals(3, cl.getCid());
     }
@@ -659,7 +735,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(200);
         WorkSource workSource = new WorkSource(Process.myUid(), mContext.getPackageName());
-        CdmaCellLocation cl = (CdmaCellLocation) sst.getCellLocation(workSource);
+        CdmaCellLocation cl = (CdmaCellLocation) sst.getCellLocation();
         assertEquals(5, cl.getBaseStationLatitude());
         assertEquals(4, cl.getBaseStationLongitude());
     }

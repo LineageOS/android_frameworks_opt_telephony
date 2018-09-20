@@ -120,18 +120,18 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
     }
 
-    private void imsCallMocking(final ImsCall mImsCall) throws Exception {
+    private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 // trigger the listener on accept call
                 if (mImsCallListener != null) {
-                    mImsCallListener.onCallStarted(mImsCall);
+                    mImsCallListener.onCallStarted(imsCall);
                 }
                 return null;
             }
-        }).when(mImsCall).accept(anyInt());
+        }).when(imsCall).accept(anyInt());
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -139,12 +139,12 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 // trigger the listener on reject call
                 int reasonCode = (int) invocation.getArguments()[0];
                 if (mImsCallListener != null) {
-                    mImsCallListener.onCallStartFailed(mImsCall, new ImsReasonInfo(reasonCode, -1));
-                    mImsCallListener.onCallTerminated(mImsCall, new ImsReasonInfo(reasonCode, -1));
+                    mImsCallListener.onCallStartFailed(imsCall, new ImsReasonInfo(reasonCode, -1));
+                    mImsCallListener.onCallTerminated(imsCall, new ImsReasonInfo(reasonCode, -1));
                 }
                 return null;
             }
-        }).when(mImsCall).reject(anyInt());
+        }).when(imsCall).reject(anyInt());
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -152,23 +152,23 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 // trigger the listener on reject call
                 int reasonCode = (int) invocation.getArguments()[0];
                 if (mImsCallListener != null) {
-                    mImsCallListener.onCallTerminated(mImsCall, new ImsReasonInfo(reasonCode, -1));
+                    mImsCallListener.onCallTerminated(imsCall, new ImsReasonInfo(reasonCode, -1));
                 }
                 return null;
             }
-        }).when(mImsCall).terminate(anyInt());
+        }).when(imsCall).terminate(anyInt());
 
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 if (mImsCallListener != null) {
-                    mImsCallListener.onCallHeld(mImsCall);
+                    mImsCallListener.onCallHeld(imsCall);
                 }
                 return null;
             }
-        }).when(mImsCall).hold();
+        }).when(imsCall).hold();
 
-        mImsCall.attachSession(mImsCallSession);
+        imsCall.attachSession(mImsCallSession);
     }
 
     @Before
@@ -837,6 +837,14 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(DisconnectCause.CS_RESTRICTED_NORMAL,
                 mCTUT.getDisconnectCauseFromReasonInfo(
                         new ImsReasonInfo(ImsReasonInfo.CODE_UNSPECIFIED, 0), Call.State.ACTIVE));
+    }
+
+    @Test
+    @SmallTest
+    public void testSipNotFoundRemap() {
+        assertEquals(DisconnectCause.INVALID_NUMBER,
+                mCTUT.getDisconnectCauseFromReasonInfo(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_NOT_FOUND, 0), Call.State.ACTIVE));
     }
 }
 
