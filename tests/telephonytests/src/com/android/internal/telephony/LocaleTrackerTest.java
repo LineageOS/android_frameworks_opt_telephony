@@ -181,4 +181,23 @@ public class LocaleTrackerTest extends TelephonyTest {
         waitForHandlerAction(mLocaleTracker, 100);
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
     }
+
+    @Test
+    @SmallTest
+    public void testGetCellInfoDelayTime() throws Exception {
+        assertEquals(2000, LocaleTracker.getCellInfoDelayTime(0));
+        assertEquals(2000, LocaleTracker.getCellInfoDelayTime(1));
+        assertEquals(4000, LocaleTracker.getCellInfoDelayTime(2));
+        assertEquals(8000, LocaleTracker.getCellInfoDelayTime(3));
+        assertEquals(16000, LocaleTracker.getCellInfoDelayTime(4));
+        assertEquals(32000, LocaleTracker.getCellInfoDelayTime(5));
+        assertEquals(64000, LocaleTracker.getCellInfoDelayTime(6));
+        assertEquals(128000, LocaleTracker.getCellInfoDelayTime(7));
+        assertEquals(256000, LocaleTracker.getCellInfoDelayTime(8));
+        assertEquals(512000, LocaleTracker.getCellInfoDelayTime(9));
+
+        for (int i = 10; i <= 2000; i++) {
+            assertEquals(600000, LocaleTracker.getCellInfoDelayTime(i));
+        }
+    }
 }
