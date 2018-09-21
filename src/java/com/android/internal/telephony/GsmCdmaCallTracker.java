@@ -1562,6 +1562,24 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
     }
 
+    /**
+     * Dispatches the CS call radio technology to all exist connections.
+     *
+     * @param vrat the RIL voice radio technology for CS calls,
+     *             see {@code RIL_RADIO_TECHNOLOGY_*} in {@link android.telephony.ServiceState}.
+     */
+    public void dispatchCsCallRadioTech(@ServiceState.RilRadioTechnology int vrat) {
+        if (mConnections == null) {
+            log("dispatchCsCallRadioTech: mConnections is null");
+            return;
+        }
+        for (GsmCdmaConnection gsmCdmaConnection : mConnections) {
+            if (gsmCdmaConnection != null) {
+                gsmCdmaConnection.setCallRadioTech(vrat);
+            }
+        }
+    }
+
     //CDMA
     /**
      * Check and enable data call after an emergency call is dropped if it's
