@@ -23,6 +23,7 @@ import android.annotation.Nullable;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectionInfo;
 import android.net.ConnectivityManager;
 import android.net.IConnectivityManager;
 import android.net.LinkProperties;
@@ -983,6 +984,11 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
         if (defaultRequest == null) return;
         releaseNetworkRequest(defaultRequest);
         defaultRequest = null;
+    }
+
+    @Override
+    public int getConnectionOwnerUid(ConnectionInfo connectionInfo) {
+        throw new RuntimeException("not implemented");
     }
 
 
