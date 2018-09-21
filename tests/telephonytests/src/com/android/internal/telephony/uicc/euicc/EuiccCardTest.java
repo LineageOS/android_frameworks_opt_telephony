@@ -564,7 +564,7 @@ public class EuiccCardTest extends TelephonyTest {
                 com.android.internal.R.array.config_telephonyEuiccDeviceCapabilities))
                 .thenReturn(new String[] {});
 
-        int channel = mockLogicalChannelResponses("BF38038101039000");
+        int channel = mockLogicalChannelResponses("BF3805A1030201039000");
 
         ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.authenticateServer("A1B2C3-X4Y5Z6", // Matching id
