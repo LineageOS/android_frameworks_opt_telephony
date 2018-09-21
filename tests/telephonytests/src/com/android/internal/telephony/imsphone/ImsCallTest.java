@@ -29,7 +29,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
@@ -55,9 +57,11 @@ public class ImsCallTest extends TelephonyTest {
     public void testSetWifi() {
         ImsCall mTestImsCall = new ImsCall(mContext, mTestCallProfile);
         assertFalse(mTestImsCall.isWifiCall());
+        assertNotEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mTestImsCall.isWifiCall());
+        assertNotEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
     }
 
     @Test
@@ -65,9 +69,11 @@ public class ImsCallTest extends TelephonyTest {
     public void testSetWifiAlt() {
         ImsCall mTestImsCall = new ImsCall(mContext, mTestCallProfile);
         assertFalse(mTestImsCall.isWifiCall());
+        assertNotEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT,
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mTestImsCall.isWifiCall());
+        assertNotEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
     }
 
     @Test
@@ -75,9 +81,11 @@ public class ImsCallTest extends TelephonyTest {
     public void testSetLteNoWifi() {
         ImsCall mTestImsCall = new ImsCall(mContext, mTestCallProfile);
         assertFalse(mTestImsCall.isWifiCall());
+        assertNotEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
                 ServiceState.RIL_RADIO_TECHNOLOGY_LTE + "");
         assertFalse(mTestImsCall.isWifiCall());
+        assertEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
     }
 
     @Test
@@ -85,8 +93,10 @@ public class ImsCallTest extends TelephonyTest {
     public void testSetLteNoWifiAlt() {
         ImsCall mTestImsCall = new ImsCall(mContext, mTestCallProfile);
         assertFalse(mTestImsCall.isWifiCall());
+        assertNotEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT,
                 ServiceState.RIL_RADIO_TECHNOLOGY_LTE + "");
         assertFalse(mTestImsCall.isWifiCall());
+        assertEquals(mTestImsCall.getRadioTechnology(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
     }
 }

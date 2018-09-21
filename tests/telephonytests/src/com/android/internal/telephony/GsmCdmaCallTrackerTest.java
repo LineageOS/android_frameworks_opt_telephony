@@ -458,5 +458,22 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         // verify that the active call is disconnected
         verify(mConnection).onDisconnect(DisconnectCause.ERROR_UNSPECIFIED);
     }
+
+    @Test
+    @SmallTest
+    public void testDispatchCsCallRadioTech() {
+        // fake connection
+        mCTUT.mConnections[0] = mConnection;
+
+        // dispatch umts
+        mCTUT.dispatchCsCallRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
+        // verify that call radio tech is set
+        verify(mConnection).setCallRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
+
+        // dispatch unknown
+        mCTUT.dispatchCsCallRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+        // verify that call radio tech is set
+        verify(mConnection).setCallRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+    }
 }
 
