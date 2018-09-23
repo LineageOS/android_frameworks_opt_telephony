@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "903fd36a_c1b86afb",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "nit: space after //\n\n// Constants\n\nsame for the line below",
+      "range": {
+        "startLine": 86,
+        "startChar": 4,
+        "endLine": 86,
+        "endChar": 15
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "45d5f196_c58ccabf",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "It didn\u0027t seem like this needed to be rewritten as part of this change.",
+      "range": {
+        "startLine": 198,
+        "startChar": 16,
+        "endLine": 198,
+        "endChar": 32
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2f4eed43_e91b99d0",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "nit: extra space",
+      "range": {
+        "startLine": 201,
+        "startChar": 39,
+        "endLine": 201,
+        "endChar": 40
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ecbfd2b_f06801c9",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "Generic",
+      "range": {
+        "startLine": 249,
+        "startChar": 17,
+        "endLine": 249,
+        "endChar": 24
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9673d843_41fde208",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 427,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "this used to be VDBG ?",
+      "range": {
+        "startLine": 427,
+        "startChar": 16,
+        "endLine": 427,
+        "endChar": 19
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f0d29aae_c876bc67",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "if (DBG) log  ?",
+      "range": {
+        "startLine": 438,
+        "startChar": 16,
+        "endLine": 438,
+        "endChar": 19
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "18dde2ee_a82f7114",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 444,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "nit: space after //\n\n// Update ...",
+      "range": {
+        "startLine": 444,
+        "startChar": 12,
+        "endLine": 444,
+        "endChar": 20
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ec4bfc1_11f38754",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-09-23T17:56:42Z",
+      "side": 1,
+      "message": "nit: spaces between parens/braces\n\nif (...) {\n\nalso, these two if statements can be combined using \u0026\u0026",
+      "range": {
+        "startLine": 447,
+        "startChar": 16,
+        "endLine": 447,
+        "endChar": 19
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
