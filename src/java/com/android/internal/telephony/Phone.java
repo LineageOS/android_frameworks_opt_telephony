@@ -198,8 +198,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // Carrier's CDMA prefer mode setting
     protected static final int EVENT_SET_ROAMING_PREFERENCE_DONE    = 44;
     protected static final int EVENT_MODEM_RESET                    = 45;
+    protected static final int EVENT_VRS_OR_RAT_CHANGED             = 46;
 
-    protected static final int EVENT_LAST                       = EVENT_MODEM_RESET;
+    protected static final int EVENT_LAST                       = EVENT_VRS_OR_RAT_CHANGED;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";

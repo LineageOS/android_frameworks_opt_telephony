@@ -175,6 +175,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mDataRoamingOffRegistrants = new RegistrantList();
     protected RegistrantList mAttachedRegistrants = new RegistrantList();
     protected RegistrantList mDetachedRegistrants = new RegistrantList();
+    private RegistrantList mVoiceRegStateOrRatChangedRegistrants = new RegistrantList();
     private RegistrantList mDataRegStateOrRatChangedRegistrants = new RegistrantList();
     private RegistrantList mNetworkAttachedRegistrants = new RegistrantList();
     private RegistrantList mNetworkDetachedRegistrants = new RegistrantList();
@@ -663,6 +664,7 @@ public class ServiceStateTracker extends Handler {
         logPhoneTypeChange();
 
         // Tell everybody that the registration state and RAT have changed.
+        notifyVoiceRegStateRilRadioTechnologyChanged();
         notifyDataRegStateRilRadioTechnologyChanged();
     }
 
@@ -710,6 +712,19 @@ public class ServiceStateTracker extends Handler {
             }
         }
         return notified;
+    }
+
+    /**
+     * Notify all mVoiceRegStateOrRatChangedRegistrants using an
+     * AsyncResult in msg.obj where AsyncResult#result contains the
+     * new RAT as an Integer Object.
+     */
+    protected void notifyVoiceRegStateRilRadioTechnologyChanged() {
+        int rat = mSS.getRilVoiceRadioTechnology();
+        int vrs = mSS.getVoiceRegState();
+        if (DBG) log("notifyVoiceRegStateRilRadioTechnologyChanged: vrs=" + vrs + " rat=" + rat);
+
+        mVoiceRegStateOrRatChangedRegistrants.notifyResult(new Pair<Integer, Integer>(vrs, rat));
     }
 
     /**
@@ -3056,6 +3071,10 @@ public class ServiceStateTracker extends Handler {
             notifySignalStrength();
         }
 
+        if (hasVoiceRegStateChanged || hasRilVoiceRadioTechnologyChanged) {
+            notifyVoiceRegStateRilRadioTechnologyChanged();
+        }
+
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
 
@@ -3876,6 +3895,25 @@ public class ServiceStateTracker extends Handler {
     }
     public void unregisterForDataConnectionDetached(Handler h) {
         mDetachedRegistrants.remove(h);
+    }
+
+    /**
+     * Registration for RIL Voice Radio Technology changing. The
+     * new radio technology will be returned AsyncResult#result as an Integer Object.
+     * The AsyncResult will be in the notification Message#obj.
+     *
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForVoiceRegStateOrRatChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mVoiceRegStateOrRatChangedRegistrants.add(r);
+        notifyVoiceRegStateRilRadioTechnologyChanged();
+    }
+
+    public void unregisterForVoiceRegStateOrRatChanged(Handler h) {
+        mVoiceRegStateOrRatChangedRegistrants.remove(h);
     }
 
     /**
