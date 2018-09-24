@@ -23,6 +23,7 @@ import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.BadParcelableException;
 import android.os.Build;
+import android.os.Bundle;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ims.ImsCallProfile;
@@ -104,6 +105,12 @@ public class TelephonyTester {
     private static final String EXTRA_CODE = "code";
     private static final String EXTRA_TYPE = "type";
 
+    /**
+     * Test-only intent used to trigger signalling that an IMS call is an emergency call.
+     */
+    private static final String ACTION_TEST_IMS_E_CALL =
+            "com.android.internal.telephony.TestImsECall";
+
     private static final String ACTION_TEST_SERVICE_STATE =
             "com.android.internal.telephony.TestServiceState";
 
@@ -161,6 +168,9 @@ public class TelephonyTester {
                     mServiceStateTestIntent = intent;
                     mPhone.getServiceStateTracker().sendEmptyMessage(
                             ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED);
+                } else if (action.equals(ACTION_TEST_IMS_E_CALL)) {
+                    log("handle test IMS ecall intent");
+                    testImsECall();
                 } else {
                     if (DBG) log("onReceive: unknown action=" + action);
                 }
@@ -189,6 +199,7 @@ public class TelephonyTester {
                 filter.addAction(ACTION_TEST_SUPP_SRVC_FAIL);
                 filter.addAction(ACTION_TEST_HANDOVER_FAIL);
                 filter.addAction(ACTION_TEST_SUPP_SRVC_NOTIFICATION);
+                filter.addAction(ACTION_TEST_IMS_E_CALL);
                 mImsExternalCallStates = new ArrayList<ImsExternalCallState>();
             } else {
                 filter.addAction(ACTION_TEST_SERVICE_STATE);
@@ -374,5 +385,33 @@ public class TelephonyTester {
             ss.setOperatorName(operator, operator, "");
             log("Override operator with " + operator);
         }
+    }
+
+    void testImsECall() {
+        // Attempt to get the active IMS call before parsing the test XML file.
+        ImsPhone imsPhone = (ImsPhone) mPhone;
+        if (imsPhone == null) {
+            return;
+        }
+
+        ImsPhoneCall imsPhoneCall = imsPhone.getForegroundCall();
+        if (imsPhoneCall == null) {
+            return;
+        }
+
+        ImsCall imsCall = imsPhoneCall.getImsCall();
+        if (imsCall == null) {
+            return;
+        }
+
+        ImsCallProfile callProfile = imsCall.getCallProfile();
+        Bundle extras = callProfile.getCallExtras();
+        if (extras == null) {
+            extras = new Bundle();
+        }
+        extras.putBoolean(ImsCallProfile.EXTRA_E_CALL, true);
+        callProfile.mCallExtras = extras;
+        imsCall.getImsCallSessionListenerProxy().callSessionUpdated(imsCall.getSession(),
+                callProfile);
     }
 }
