@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "042c8c47_85dcceaf",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 10258
+      },
+      "writtenOn": "2018-09-24T03:54:51Z",
+      "side": 1,
+      "message": "The commit message indicates this is squashed from 3 commits, and the rewrite belongs to \"Change to return proper MNC in case of CSIM\"",
+      "parentUuid": "45d5f196_c58ccabf",
+      "range": {
+        "startLine": 198,
+        "startChar": 16,
+        "endLine": 198,
+        "endChar": 32
+      },
+      "revId": "6f0ae3416f7ea71425bb668f44072c24770991c1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "2f4eed43_e91b99d0",
         "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
         "patchSetId": 2
