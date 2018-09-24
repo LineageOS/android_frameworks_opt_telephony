@@ -37,7 +37,6 @@ import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
@@ -278,7 +277,6 @@ public class ServiceStateTracker extends Handler {
 
     private final RatRatcheter mRatRatcheter;
 
-    private final HandlerThread mHandlerThread;
     private final LocaleTracker mLocaleTracker;
 
     private final LocalLog mRoamingLog = new LocalLog(10);
@@ -522,12 +520,8 @@ public class ServiceStateTracker extends Handler {
                     this, EVENT_NETWORK_STATE_CHANGED, null);
         }
 
-        // Create a new handler thread dedicated for locale tracker because the blocking
-        // getAllCellInfo call requires clients calling from a different thread.
-        mHandlerThread = new HandlerThread(LocaleTracker.class.getSimpleName());
-        mHandlerThread.start();
         mLocaleTracker = TelephonyComponentFactory.getInstance().makeLocaleTracker(
-                mPhone, mHandlerThread.getLooper());
+                mPhone, getLooper());
 
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
@@ -683,7 +677,6 @@ public class ServiceStateTracker extends Handler {
         mCi.unregisterForPhysicalChannelConfiguration(this);
         mSubscriptionManager
             .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
-        mHandlerThread.quit();
         mCi.unregisterForImsNetworkStateChanged(this);
         mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
                 CARRIER_ACTION_SET_RADIO_ENABLED);
@@ -2994,7 +2987,7 @@ public class ServiceStateTracker extends Handler {
                 // Passing empty string is important for the first update. The initial value of
                 // operator numeric in locale tracker is null. The async update will allow getting
                 // cell info from the modem instead of using the cached one.
-                mLocaleTracker.updateOperatorNumericAsync("");
+                mLocaleTracker.updateOperatorNumeric("");
                 mNitzState.handleNetworkUnavailable();
             } else if (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
                 // If the device is on IWLAN, modems manufacture a ServiceState with the MCC/MNC of
@@ -3006,7 +2999,7 @@ public class ServiceStateTracker extends Handler {
                     setOperatorIdd(operatorNumeric);
                 }
 
-                mLocaleTracker.updateOperatorNumericSync(operatorNumeric);
+                mLocaleTracker.updateOperatorNumeric(operatorNumeric);
                 String countryIsoCode = mLocaleTracker.getCurrentCountry();
 
                 // Update Time Zone.
