@@ -1079,6 +1079,12 @@ public class ImsPhoneConnection extends Connection implements
         }
     }
 
+    private void updateEmergencyCallFromExtras(Bundle extras) {
+        if (extras.getBoolean(ImsCallProfile.EXTRA_E_CALL)) {
+            setIsNetworkIdentifiedEmergencyCall(true);
+        }
+    }
+
     /**
      * Check for a change in call extras of {@link ImsCall}, and
      * update the {@link ImsPhoneConnection} accordingly.
@@ -1100,7 +1106,7 @@ public class ImsPhoneConnection extends Connection implements
         final boolean changed = !areBundlesEqual(extras, mExtras);
         if (changed) {
             updateImsCallRatFromExtras(extras);
-
+            updateEmergencyCallFromExtras(extras);
             mExtras.clear();
             mExtras.putAll(extras);
             setConnectionExtras(mExtras);
