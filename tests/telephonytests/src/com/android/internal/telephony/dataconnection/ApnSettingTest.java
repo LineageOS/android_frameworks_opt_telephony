@@ -283,7 +283,7 @@ public class ApnSettingTest extends TelephonyTest {
                 ApnSetting.TYPE_DEFAULT, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
                 4096, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "");
         String expected = "[ApnSettingV5] Name, 99, 12345, apn, null, "
-                + "null, null, null, 10, 0, default, "
+                + "null, null, null, 10, 0, hipri | default, "
                 + "IPV6, IP, true, 0, false, 0, 0, 0, 0, spn, , false, 4096, 0";
         assertEquals(expected, apn.toString());
 
@@ -294,7 +294,7 @@ public class ApnSettingTest extends TelephonyTest {
                 ApnSetting.TYPE_DEFAULT, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
                 networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "", 3);
         expected = "[ApnSettingV5] Name, 99, 12345, apn, null, "
-                + "null, null, null, 10, 0, default, "
+                + "null, null, null, 10, 0, hipri | default, "
                 + "IPV6, IP, true, 0, false, 0, 0, 0, 0, spn, , false, 8192, 3";
         assertEquals(expected, apn.toString());
     }
