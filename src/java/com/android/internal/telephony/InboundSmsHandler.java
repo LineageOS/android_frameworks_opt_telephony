@@ -1516,14 +1516,10 @@ public abstract class InboundSmsHandler extends StateMachine {
             loge("Failed to parse SMS pdu");
             return null;
         }
-        // Sometimes, SmsMessage.mWrappedSmsMessage is null causing NPE when we access
-        // the methods on it although the SmsMessage itself is not null. So do this check
-        // before we do anything on the parsed SmsMessages.
+        // Sometimes, SmsMessage is null if it can’t be parsed correctly.
         for (final SmsMessage sms : messages) {
-            try {
-                sms.getDisplayMessageBody();
-            } catch (NullPointerException e) {
-                loge("NPE inside SmsMessage");
+            if (sms == null) {
+                loge("Can’t write null SmsMessage");
                 return null;
             }
         }
