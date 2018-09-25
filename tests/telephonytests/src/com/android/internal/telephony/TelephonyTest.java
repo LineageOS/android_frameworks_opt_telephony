@@ -217,7 +217,7 @@ public abstract class TelephonyTest {
     private Object mLock = new Object();
     private boolean mReady;
     protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
-    private Phone[] mPhones;
+    protected Phone[] mPhones;
 
 
     protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
