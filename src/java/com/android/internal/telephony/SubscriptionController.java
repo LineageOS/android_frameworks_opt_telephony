@@ -2304,12 +2304,23 @@ public class SubscriptionController extends ISub.Stub {
             if (mPreferredDataSubId != subId) {
                 mPreferredDataSubId = subId;
                 PhoneSwitcher.getInstance().setPreferredData(subId);
-                //TODO: notifyPreferredDataSubIdChanged();
+                notifyPreferredDataSubIdChanged();
             }
 
             return 0;
         } finally {
             Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    private void notifyPreferredDataSubIdChanged() {
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
+                "telephony.registry"));
+        try {
+            if (DBG) logd("notifyPreferredDataSubIdChanged:");
+            tr.notifyPreferredDataSubIdChanged(mPreferredDataSubId);
+        } catch (RemoteException ex) {
+            // Should never happen because its always available.
         }
     }
 
