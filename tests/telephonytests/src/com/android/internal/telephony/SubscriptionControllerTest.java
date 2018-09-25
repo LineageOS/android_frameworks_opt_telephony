@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -39,15 +40,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 
 import java.util.List;
 
 public class SubscriptionControllerTest extends TelephonyTest {
-
     private static final int SINGLE_SIM = 1;
     private String mCallingPackage;
     private SubscriptionController mSubscriptionControllerUT;
     private MockContentResolver mMockContentResolver;
+    @Mock
+    private ITelephonyRegistry.Stub mTelephonyRegisteryMock;
 
     @Before
     public void setUp() throws Exception {
@@ -77,7 +80,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         /* should clear fake content provider and resolver here */
         mContext.getContentResolver().delete(SubscriptionManager.CONTENT_URI, null, null);
 
-        /* Clear sSlotIndexToSubId since they will otherwise be persistent
+        /*clear sub info in mSubscriptionControllerUT since they will otherwise be persistent
          * between each test case. */
         mSubscriptionControllerUT.clearSubInfo();
 
@@ -98,11 +101,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testInsertSim() {
-        int slotID = mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage);
-
         //verify there is no sim inserted in the SubscriptionManager
-        assertEquals(0, slotID);
+        assertEquals(0, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
 
+        int slotID = 0;
         //insert one Subscription Info
         mSubscriptionControllerUT.addSubInfoRecord("test", slotID);
 
@@ -330,5 +332,63 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 subID,
                 SubscriptionManager.WFC_IMS_ROAMING_MODE,
                 mCallingPackage));
+    }
+
+
+    @Test
+    @SmallTest
+    public void testOpptSubInfoListChanged() throws Exception {
+        registerMockTelephonyRegistry();
+        verify(mTelephonyRegisteryMock, times(0))
+                .notifyOpportunisticSubscriptionInfoChanged();
+
+        testInsertSim();
+        testInsertSim2();
+
+        // Neither sub1 or sub2 are opportunistic. So getOpportunisticSubscriptions
+        // should return empty list and no callback triggered.
+        List<SubscriptionInfo> opptSubList = mSubscriptionControllerUT
+                .getOpportunisticSubscriptions(0, mCallingPackage);
+
+        assertTrue(opptSubList.isEmpty());
+        verify(mTelephonyRegisteryMock, times(0))
+                .notifyOpportunisticSubscriptionInfoChanged();
+
+        // Setting sub2 as opportunistic should trigger callback.
+        mSubscriptionControllerUT.setOpportunistic(true, 2);
+
+        verify(mTelephonyRegisteryMock, times(1))
+                .notifyOpportunisticSubscriptionInfoChanged();
+        opptSubList = mSubscriptionControllerUT
+                .getOpportunisticSubscriptions(0, mCallingPackage);
+        assertEquals(1, opptSubList.size());
+        assertEquals("test2", opptSubList.get(0).getIccId());
+
+        // Changing non-opportunistic sub1 shouldn't trigger callback.
+        mSubscriptionControllerUT.setDisplayName("DisplayName", 1);
+        verify(mTelephonyRegisteryMock, times(1))
+                .notifyOpportunisticSubscriptionInfoChanged();
+
+        mSubscriptionControllerUT.setDisplayName("DisplayName", 2);
+        verify(mTelephonyRegisteryMock, times(2))
+                .notifyOpportunisticSubscriptionInfoChanged();
+    }
+
+    private void testInsertSim2() {
+        // verify there's already a SIM profile added.
+        assertEquals(1, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
+
+        int slotID = 0;
+        //insert one Subscription Info
+        mSubscriptionControllerUT.addSubInfoRecord("test2", slotID);
+
+        //verify there is one sim
+        assertEquals(2, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
+    }
+
+    private void registerMockTelephonyRegistry() {
+        mServiceManagerMockedServices.put("telephony.registry", mTelephonyRegisteryMock);
+        doReturn(mTelephonyRegisteryMock).when(mTelephonyRegisteryMock)
+                .queryLocalInterface(anyString());
     }
 }
