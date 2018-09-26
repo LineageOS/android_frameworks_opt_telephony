@@ -202,14 +202,6 @@ public class CallManager {
     }
 
     /**
-     * Returns all the registered phone objects.
-     * @return all the registered phone objects.
-     */
-    public List<Phone> getAllPhones() {
-        return Collections.unmodifiableList(mPhones);
-    }
-
-    /**
      * get Phone object corresponds to subId
      * @return Phone
      */
@@ -346,19 +338,6 @@ public class CallManager {
         return phone;
     }
 
-    public Phone getPhoneInCall(int subId) {
-        Phone phone = null;
-        if (!getFirstActiveRingingCall(subId).isIdle()) {
-            phone = getFirstActiveRingingCall(subId).getPhone();
-        } else if (!getActiveFgCall(subId).isIdle()) {
-            phone = getActiveFgCall(subId).getPhone();
-        } else {
-            // If BG call is idle, we return default phone
-            phone = getFirstActiveBgCall(subId).getPhone();
-        }
-        return phone;
-    }
-
     /**
      * Register phone to CallManager
      * @param phone to be registered
@@ -444,14 +423,6 @@ public class CallManager {
      */
     public Phone getBgPhone() {
         return getFirstActiveBgCall().getPhone();
-    }
-
-    /**
-     * @return the phone associated with the background call
-     * of a particular subId
-     */
-    public Phone getBgPhone(int subId) {
-        return getFirstActiveBgCall(subId).getPhone();
     }
 
     /**
@@ -1926,42 +1897,6 @@ public class CallManager {
     }
 
     /**
-     * @return the connections of active background call
-     * return empty list if there is no active background call
-     */
-    public List<Connection> getBgCallConnections(int subId) {
-        Call bgCall = getFirstActiveBgCall(subId);
-        if ( bgCall != null) {
-            return bgCall.getConnections();
-        }
-        return mEmptyConnections;
-    }
-
-    /**
-     * @return the latest connection of active foreground call
-     * return null if there is no active foreground call
-     */
-    public Connection getFgCallLatestConnection() {
-        Call fgCall = getActiveFgCall();
-        if ( fgCall != null) {
-            return fgCall.getLatestConnection();
-        }
-        return null;
-    }
-
-    /**
-     * @return the latest connection of active foreground call
-     * return null if there is no active foreground call
-     */
-    public Connection getFgCallLatestConnection(int subId) {
-        Call fgCall = getActiveFgCall(subId);
-        if ( fgCall != null) {
-            return fgCall.getLatestConnection();
-        }
-        return null;
-    }
-
-    /**
      * @return true if there is at least one Foreground call in disconnected state
      */
     public boolean hasDisconnectedFgCall() {
@@ -2092,22 +2027,6 @@ public class CallManager {
         return false;
     }
 
-    /* FIXME Taken from klp-sprout-dev but setAudioMode was removed in L.
-    private boolean isServiceStateInService() {
-        boolean bInService = false;
-
-        for (Phone phone : mPhones) {
-            bInService = (phone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
-            if (bInService) {
-                break;
-            }
-        }
-
-        if (VDBG) Rlog.d(LOG_TAG, "[isServiceStateInService] bInService = " + bInService);
-        return bInService;
-    }
-    */
-
     private class CallManagerHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
@@ -2236,52 +2155,4 @@ public class CallManager {
             }
         }
     };
-
-    @Override
-    public String toString() {
-        Call call;
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
-            b.append("CallManager {");
-            b.append("\nstate = " + getState(i));
-            call = getActiveFgCall(i);
-            if (call != null) {
-                b.append("\n- Foreground: " + getActiveFgCallState(i));
-                b.append(" from " + call.getPhone());
-                b.append("\n  Conn: ").append(getFgCallConnections(i));
-            }
-            call = getFirstActiveBgCall(i);
-            if (call != null) {
-                b.append("\n- Background: " + call.getState());
-                b.append(" from " + call.getPhone());
-                b.append("\n  Conn: ").append(getBgCallConnections(i));
-            }
-            call = getFirstActiveRingingCall(i);
-            if (call != null) {
-                b.append("\n- Ringing: " +call.getState());
-                b.append(" from " + call.getPhone());
-            }
-        }
-
-        for (Phone phone : getAllPhones()) {
-            if (phone != null) {
-                b.append("\nPhone: " + phone + ", name = " + phone.getPhoneName()
-                        + ", state = " + phone.getState());
-                call = phone.getForegroundCall();
-                if (call != null) {
-                    b.append("\n- Foreground: ").append(call);
-                }
-                call = phone.getBackgroundCall();
-                if (call != null) {
-                    b.append(" Background: ").append(call);
-                }
-                call = phone.getRingingCall();
-                if (call != null) {
-                    b.append(" Ringing: ").append(call);
-                }
-            }
-        }
-        b.append("\n}");
-        return b.toString();
-    }
 }

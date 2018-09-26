@@ -155,7 +155,6 @@ public class SubscriptionController extends ISub.Stub {
     protected static Phone[] sPhones;
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
-    protected CallManager mCM;
 
     private AppOpsManager mAppOps;
 
@@ -205,7 +204,6 @@ public class SubscriptionController extends ISub.Stub {
 
     protected void init(Context c) {
         mContext = c;
-        mCM = CallManager.getInstance();
         mTelephonyManager = TelephonyManager.from(mContext);
 
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
@@ -224,7 +222,6 @@ public class SubscriptionController extends ISub.Stub {
 
     private SubscriptionController(Phone phone) {
         mContext = phone.getContext();
-        mCM = CallManager.getInstance();
         mAppOps = mContext.getSystemService(AppOpsManager.class);
 
         if(ServiceManager.getService("isub") == null) {
