@@ -52,6 +52,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.feature.ImsFeature;
@@ -84,8 +85,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;
     private ImsCTHandlerThread mImsCTHandlerThread;
     private MmTelFeature.Listener mMmTelListener;
-    private ImsRegistrationImplBase.Callback mRegistrationCallback;
-    private ImsFeature.CapabilityCallback mCapabilityCallback;
+    private ImsMmTelManager.RegistrationCallback mRegistrationCallback;
+    private ImsMmTelManager.CapabilityCallback mCapabilityCallback;
     private ImsCall.Listener mImsCallListener;
     private ImsCall mImsCall;
     private ImsCall mSecondImsCall;
@@ -215,13 +216,14 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doAnswer(invocation -> {
             mRegistrationCallback = invocation.getArgument(0);
             return mRegistrationCallback;
-        }).when(mImsManager).addRegistrationCallback(any(ImsRegistrationImplBase.Callback.class));
+        }).when(mImsManager).addRegistrationCallback(
+                any(android.telephony.ims.ImsMmTelManager.RegistrationCallback.class));
 
         doAnswer(invocation -> {
-            mCapabilityCallback = (ImsFeature.CapabilityCallback) invocation.getArguments()[0];
+            mCapabilityCallback = (ImsMmTelManager.CapabilityCallback) invocation.getArguments()[0];
             return mCapabilityCallback;
 
-        }).when(mImsManager).addCapabilitiesCallback(any(ImsFeature.CapabilityCallback.class));
+        }).when(mImsManager).addCapabilitiesCallback(any(ImsMmTelManager.CapabilityCallback.class));
 
         doReturn(mImsConfig).when(mImsManager).getConfigInterface();
 
@@ -282,7 +284,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertFalse(mCTUT.isVowifiEnabled());
 
         // enable Voice over LTE
-        ImsFeature.Capabilities caps = new ImsFeature.Capabilities();
+        MmTelFeature.MmTelCapabilities caps = new MmTelFeature.MmTelCapabilities();
         caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         mCapabilityCallback.onCapabilitiesStatusChanged(caps);
         waitForHandlerAction(mCTHander, 1000);
@@ -300,7 +302,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertFalse(mCTUT.isVowifiEnabled());
 
         // enable Voice over IWLAN
-        ImsFeature.Capabilities caps = new ImsFeature.Capabilities();
+        MmTelFeature.MmTelCapabilities caps = new MmTelFeature.MmTelCapabilities();
         caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         mCapabilityCallback.onCapabilitiesStatusChanged(caps);
         waitForHandlerAction(mCTHander, 1000);
@@ -318,7 +320,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertFalse(mCTUT.isVideoCallEnabled());
 
         // enable only Voice
-        ImsFeature.Capabilities caps = new ImsFeature.Capabilities();
+        MmTelFeature.MmTelCapabilities caps = new MmTelFeature.MmTelCapabilities();
         caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         mCapabilityCallback.onCapabilitiesStatusChanged(caps);
         waitForHandlerAction(mCTHander, 1000);
@@ -330,7 +332,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         verify(mImsPhone, times(1)).onFeatureCapabilityChanged();
 
         // enable video call
-        ImsFeature.Capabilities capsVideo = new ImsFeature.Capabilities();
+        MmTelFeature.MmTelCapabilities capsVideo = new MmTelFeature.MmTelCapabilities();
         capsVideo.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         capsVideo.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
         mCapabilityCallback.onCapabilitiesStatusChanged(capsVideo);

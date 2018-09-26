@@ -3276,6 +3276,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * @return true if the IMS capability for the registration technology specified is available,
+     * false otherwise.
+     */
+    public boolean isImsCapabilityAvailable(int capability, int regTech) {
+        Phone imsPhone = mImsPhone;
+        boolean isAvailable = false;
+        if (imsPhone != null) {
+            isAvailable = imsPhone.isImsCapabilityAvailable(capability, regTech);
+        }
+        Rlog.d(LOG_TAG, "isImsRegistered =" + isAvailable);
+        return isAvailable;
+    }
+
+    /**
      * Get Volte Feature Availability
      */
     public boolean isVolteEnabled() {
