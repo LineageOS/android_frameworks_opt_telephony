@@ -30,8 +30,8 @@ import android.os.Message;
 import android.os.Messenger;
 import android.support.test.runner.AndroidJUnit4;
 import android.telecom.TelecomManager;
+import android.telephony.ims.aidl.IImsCapabilityCallback;
 import android.telephony.ims.aidl.IImsMmTelFeature;
-import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsCallSessionImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -49,6 +49,26 @@ import org.mockito.Mockito;
 @RunWith(AndroidJUnit4.class)
 public class MmTelFeatureTests extends ImsTestBase {
 
+    // Public for Mockito testing
+    public class CapabilityCallback extends IImsCapabilityCallback.Stub {
+
+        @Override
+        public void onQueryCapabilityConfiguration(int capability, int radioTech, boolean enabled) {
+
+        }
+
+        @Override
+        public void onChangeCapabilityConfigurationError(int capability, int radioTech,
+                int reason) {
+
+        }
+
+        @Override
+        public void onCapabilitiesStatusChanged(int config) {
+
+        }
+    }
+
     private static final int TEST_CAPABILITY = 1;
     private static final int TEST_RADIO_TECH = 0;
 
@@ -60,7 +80,7 @@ public class MmTelFeatureTests extends ImsTestBase {
 
     private android.telephony.ims.TestMmTelFeature mFeature;
     private IImsMmTelFeature mFeatureBinder;
-    private ImsFeature.CapabilityCallback mCapabilityCallback;
+    private CapabilityCallback mCapabilityCallback;
     private MmTelFeature.Listener mListener;
 
     // set to true when the handler receives a message back from the Feature.
@@ -92,7 +112,7 @@ public class MmTelFeatureTests extends ImsTestBase {
         super.setUp();
         mFeature = new TestMmTelFeature();
         mFeatureBinder = mFeature.getBinder();
-        mCapabilityCallback = spy(new ImsFeature.CapabilityCallback());
+        mCapabilityCallback = spy(new CapabilityCallback());
         mListener = spy(new MmTelFeature.Listener());
         mFeatureBinder.setListener(mListener);
         mHandlerResults = new boolean[TEST_RESULT_MAX];
