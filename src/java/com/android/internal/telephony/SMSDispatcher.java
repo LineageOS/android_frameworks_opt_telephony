@@ -221,11 +221,6 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    protected void updatePhoneObject(Phone phone) {
-        mPhone = phone;
-        Rlog.d(TAG, "Active phone changed to " + mPhone.getPhoneName() );
-    }
-
     /** Unregister for incoming SMS events. */
     public void dispose() {
         mContext.getContentResolver().unregisterContentObserver(mSettingsObserver);
