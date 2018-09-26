@@ -21,6 +21,8 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -29,9 +31,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.RemoteException;
@@ -44,10 +46,10 @@ import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
+import com.android.internal.telephony.InboundSmsTracker;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
-import com.android.internal.util.HexDump;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
@@ -72,8 +74,9 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
     private CdmaInboundSmsHandlerTestHandler mCdmaInboundSmsHandlerTestHandler;
     private SmsEnvelope mSmsEnvelope = new SmsEnvelope();
-    private ContentValues mInboundSmsTrackerCV = new ContentValues();
     private FakeSmsContentProvider mContentProvider;
+    private InboundSmsTracker mInboundSmsTracker;
+    private byte[] mSmsPdu = new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
 
     private class CdmaInboundSmsHandlerTestHandler extends HandlerThread {
 
@@ -118,28 +121,32 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
             fail("Unexpected RemoteException: " + re.getStackTrace());
         }
 
-        byte[] smsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
         mSmsMessage.mWrappedSmsMessage = mCdmaSmsMessage;
-        doReturn(smsPdu).when(mCdmaSmsMessage).getPdu();
-
-        mInboundSmsTrackerCV.put("destination_port", 1 << 16);
-        mInboundSmsTrackerCV.put("pdu", HexDump.toHexString(smsPdu));
-        mInboundSmsTrackerCV.put("address", "1234567890");
-        mInboundSmsTrackerCV.put("reference_number", 1);
-        mInboundSmsTrackerCV.put("sequence", 1);
-        mInboundSmsTrackerCV.put("count", 1);
-        mInboundSmsTrackerCV.put("date", System.currentTimeMillis());
-        mInboundSmsTrackerCV.put("message_body", "This is the message body of a single-part " +
-                "message");
+        doReturn(mSmsPdu).when(mCdmaSmsMessage).getPdu();
 
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
-        doReturn(1).when(mInboundSmsTracker).getMessageCount();
-        doReturn(-1).when(mInboundSmsTracker).getDestPort();
-        doReturn(mInboundSmsTrackerCV).when(mInboundSmsTracker).getContentValues();
-        doReturn(smsPdu).when(mInboundSmsTracker).getPdu();
-        doReturn("This is the message body").when(mInboundSmsTracker).getMessageBody();
-        doReturn("1234567890").when(mInboundSmsTracker).getAddress();
+
+        mInboundSmsTracker = new InboundSmsTracker(
+            mSmsPdu, /* pdu */
+            System.currentTimeMillis(), /* timestamp */
+            -1, /* destPort */
+            true, /* is3gpp2 */
+            false, /* is3gpp2WapPdu */
+            "1234567890", /* address */
+            "1234567890", /* displayAddress */
+            "This is the message body of a single-part message" /* messageBody */);
+
+        doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(nullable(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                anyBoolean(), nullable(String.class), nullable(String.class),
+                nullable(String.class));
+        doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(nullable(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                nullable(String.class), nullable(String.class), anyInt(), anyInt(),
+                anyInt(), anyBoolean(), nullable(String.class));
+        doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(nullable(Cursor.class), anyBoolean());
 
         mContentProvider = new FakeSmsContentProvider();
         ((MockContentResolver)mContext.getContentResolver()).addProvider(
@@ -214,7 +221,19 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     @MediumTest
     public void testNewSmsFromBlockedNumber_noBroadcastsSent() {
         String blockedNumber = "123456789";
-        doReturn(blockedNumber).when(mInboundSmsTracker).getDisplayAddress();
+        mInboundSmsTracker = new InboundSmsTracker(
+            mSmsPdu, /* pdu */
+            System.currentTimeMillis(), /* timestamp */
+            -1, /* destPort */
+            true, /* is3gpp2 */
+            false, /* is3gpp2WapPdu */
+            "1234567890", /* address */
+            blockedNumber, /* displayAddress */
+            "This is the message body of a single-part message" /* messageBody */);
+        doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(nullable(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                anyBoolean(), nullable(String.class), nullable(String.class),
+                nullable(String.class));
         mFakeBlockedNumberContentProvider.mBlockedNumbers.add(blockedNumber);
 
         transitionFromStartupToIdle();
