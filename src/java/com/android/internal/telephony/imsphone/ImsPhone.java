@@ -365,7 +365,12 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public boolean canDial() {
-        return mCT.canDial();
+        try {
+            mCT.checkForDialIssues();
+        } catch (CallStateException cse) {
+            return false;
+        }
+        return true;
     }
 
     @Override

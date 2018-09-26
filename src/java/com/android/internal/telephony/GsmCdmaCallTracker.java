@@ -274,9 +274,8 @@ public class GsmCdmaCallTracker extends CallTracker {
         // note that this triggers call state changed notif
         clearDisconnected();
 
-        if (!canDial()) {
-            throw new CallStateException("cannot dial in current state");
-        }
+        // Check for issues which would preclude dialing and throw a CallStateException.
+        checkForDialIssues();
 
         String origNumber = dialString;
         dialString = convertNumberIfNecessary(mPhone, dialString);
@@ -385,9 +384,8 @@ public class GsmCdmaCallTracker extends CallTracker {
         // note that this triggers call state changed notif
         clearDisconnected();
 
-        if (!canDial()) {
-            throw new CallStateException("cannot dial in current state");
-        }
+        // Check for issues which would preclude dialing and throw a CallStateException.
+        checkForDialIssues();
 
         TelephonyManager tm =
                 (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
@@ -613,41 +611,47 @@ public class GsmCdmaCallTracker extends CallTracker {
                 && !mForegroundCall.isFull();
     }
 
-    private boolean canDial() {
-        boolean ret;
+    /**
+     * Determines if there are issues which would preclude dialing an outgoing call.  Throws a
+     * {@link CallStateException} if there is an issue.
+     * @throws CallStateException
+     */
+    public void checkForDialIssues() throws CallStateException {
         int serviceState = mPhone.getServiceState().getState();
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 
-        ret = (serviceState != ServiceState.STATE_POWER_OFF)
-                && mPendingMO == null
-                && !mRingingCall.isRinging()
-                && !disableCall.equals("true")
-                && (!mForegroundCall.getState().isAlive()
-                    || !mBackgroundCall.getState().isAlive()
-                    || (!isPhoneTypeGsm()
-                        && mForegroundCall.getState() == GsmCdmaCall.State.ACTIVE));
-
-        if (!ret) {
-            log(String.format("canDial is false\n" +
-                            "((serviceState=%d) != ServiceState.STATE_POWER_OFF)::=%s\n" +
-                            "&& pendingMO == null::=%s\n" +
-                            "&& !ringingCall.isRinging()::=%s\n" +
-                            "&& !disableCall.equals(\"true\")::=%s\n" +
-                            "&& (!foregroundCall.getState().isAlive()::=%s\n" +
-                            "   || foregroundCall.getState() == GsmCdmaCall.State.ACTIVE::=%s\n" +
-                            "   ||!backgroundCall.getState().isAlive())::=%s)",
-                    serviceState,
-                    serviceState != ServiceState.STATE_POWER_OFF,
-                    mPendingMO == null,
-                    !mRingingCall.isRinging(),
-                    !disableCall.equals("true"),
-                    !mForegroundCall.getState().isAlive(),
-                    mForegroundCall.getState() == GsmCdmaCall.State.ACTIVE,
-                    !mBackgroundCall.getState().isAlive()));
+        if (serviceState == ServiceState.STATE_POWER_OFF) {
+            throw new CallStateException(CallStateException.ERROR_POWER_OFF,
+                    "Modem not powered");
         }
+        if (disableCall.equals("true")) {
+            throw new CallStateException(CallStateException.ERROR_CALLING_DISABLED,
+                    "Calling disabled via ro.telephony.disable-call property");
+        }
+        if (mPendingMO != null) {
+            throw new CallStateException(CallStateException.ERROR_ALREADY_DIALING,
+                    "A call is already dialing.");
+        }
+        if (mRingingCall.isRinging()) {
+            throw new CallStateException(CallStateException.ERROR_CALL_RINGING,
+                    "Can't call while a call is ringing.");
+        }
+        if (isPhoneTypeGsm()
+                && mForegroundCall.getState().isAlive() && mBackgroundCall.getState().isAlive()) {
+            throw new CallStateException(CallStateException.ERROR_TOO_MANY_CALLS,
+                    "There is already a foreground and background call.");
+        }
+        if (!isPhoneTypeGsm()
+                // Essentially foreground call state is one of:
+                // HOLDING, DIALING, ALERTING, INCOMING, WAITING
+                && mForegroundCall.getState().isAlive()
+                && mForegroundCall.getState() != GsmCdmaCall.State.ACTIVE
 
-        return ret;
+                && mBackgroundCall.getState().isAlive()) {
+            throw new CallStateException(CallStateException.ERROR_TOO_MANY_CALLS,
+                    "There is already a foreground and background call.");
+        }
     }
 
     public boolean canTransfer() {
