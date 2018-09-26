@@ -16,6 +16,13 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
+
+import static org.mockito.Mockito.doReturn;
+
+import android.content.Context;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -27,13 +34,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
-
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertTrue;
-import static org.mockito.Mockito.doReturn;
+import java.util.Random;
 
 public class DcFailCauseTest extends TelephonyTest {
+
+    private PersistableBundle mPersistableBundle;
 
     private class DcFailCauseData {
         public final int mCause;
@@ -135,10 +140,20 @@ public class DcFailCauseTest extends TelephonyTest {
         mFailCauseDataList.add(new DcFailCauseData(0x10003, false, false));
         mFailCauseDataList.add(new DcFailCauseData(0x10004, false, false));
         mFailCauseDataList.add(new DcFailCauseData(0x10005, false, false));
+
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        mPersistableBundle = configManager.getConfigForSubId(mPhone.getSubId());
+        mPersistableBundle.putBoolean(CarrierConfigManager
+                .KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL, false);
+        mPersistableBundle.putIntArray(CarrierConfigManager
+                .KEY_RADIO_RESTART_FAILURE_CAUSES_INT_ARRAY, new int[0]);
+        logd(getClass().getSimpleName() + " -Setup!");
     }
 
     @After
     public void tearDown() throws Exception {
+        mPersistableBundle = null;
         super.tearDown();
     }
 
@@ -196,5 +211,30 @@ public class DcFailCauseTest extends TelephonyTest {
         }
         assertEquals(DcFailCause.UNKNOWN.getErrorCode(),
                 DcFailCause.fromInt(123456).getErrorCode());
+    }
+
+    @Test
+    public void testIsRadioRestartFailureRegularDeactivation() {
+        assertFalse(DcFailCause.fromInt(DcFailCause.REGULAR_DEACTIVATION.getErrorCode())
+                .isRadioRestartFailure(mContext, mPhone.getSubId()));
+        mPersistableBundle.putBoolean(CarrierConfigManager
+                .KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL, true);
+        assertTrue(DcFailCause.fromInt(DcFailCause.REGULAR_DEACTIVATION.getErrorCode())
+                .isRadioRestartFailure(mContext, mPhone.getSubId()));
+    }
+
+    @Test
+    public void testIsRadioRestartFailureNotRegularDeactivation() {
+        DcFailCause randomCause = DcFailCause.fromInt(mFailCauseDataList
+                .get(new Random().nextInt(mFailCauseDataList.size())).mCause);
+        while (randomCause == DcFailCause.REGULAR_DEACTIVATION) {
+            randomCause = DcFailCause.fromInt(mFailCauseDataList
+                    .get(new Random().nextInt(mFailCauseDataList.size())).mCause);
+        }
+        assertFalse(randomCause.isRadioRestartFailure(mContext, mPhone.getSubId()));
+        int [] matchingErrorCodes = {randomCause.getErrorCode()};
+        mPersistableBundle.putIntArray(CarrierConfigManager
+                .KEY_RADIO_RESTART_FAILURE_CAUSES_INT_ARRAY, matchingErrorCodes);
+        assertTrue(randomCause.isRadioRestartFailure(mContext, mPhone.getSubId()));
     }
 }
