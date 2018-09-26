@@ -94,6 +94,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private static final String RAW_TABLE_NAME = "raw";
     private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI,
             RAW_TABLE_NAME);
+    private static final int TEST_TIMEOUT = 5000;
 
     private ContentValues mInboundSmsTrackerCV = new ContentValues();
     // For multi-part SMS
@@ -198,7 +199,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         // trigger transition to IdleState
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
-        waitForMs(50);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         assertEquals("IdleState", getCurrentState().getName());
     }
@@ -221,13 +222,16 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("WaitingState", getCurrentState().getName());
 
         mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-        waitForMs(50);
-
+        // handle broadcast complete msg
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        // transition from waiting state to delivering state
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        // transition from delivering state to idle state
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
         assertEquals("IdleState", getCurrentState().getName());
     }
 
     @FlakyTest
-    @Ignore
     @Test
     @MediumTest
     public void testNewSms() {
@@ -236,14 +240,14 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // send new SMS to state machine and verify that triggers SMS_DELIVER_ACTION
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verifySmsIntentBroadcasts(0);
 
         // send same SMS again, verify no broadcasts are sent
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verify(mContext, times(2)).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
@@ -260,7 +264,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
@@ -275,7 +280,12 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("WaitingState", getCurrentState().getName());
 
         mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-        waitForMs(50);
+        // handle broadcast complete msg
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        // transition from waiting state to delivering state
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        // transition from delivering state to idle state
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         assertEquals("IdleState", getCurrentState().getName());
     }
@@ -288,20 +298,21 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(0).when(mInboundSmsTracker).getDestPort();
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_SMS,
                 mInboundSmsTracker);
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verifyDataSmsIntentBroadcasts(0);
 
         // send same data sms again, and since it's not text sms it should be broadcast again
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_SMS,
                 mInboundSmsTracker);
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verifyDataSmsIntentBroadcasts(1);
     }
 
     @FlakyTest
-    @Ignore
     @Test
     @MediumTest
     public void testInjectSms() {
@@ -309,14 +320,16 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(200);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verifySmsIntentBroadcasts(0);
 
         // inject same SMS again, verify no broadcasts are sent
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verify(mContext, times(2)).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
@@ -449,7 +462,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(200);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // State machine should go back to idle and wait for second part
         assertEquals("IdleState", getCurrentState().getName());
@@ -462,7 +476,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(200);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+
         // State machine should go back to idle and wait for second part
         assertEquals("IdleState", getCurrentState().getName());
 
@@ -477,7 +493,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(200);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // verify broadcast intents
         verifySmsIntentBroadcasts(0);
@@ -488,7 +505,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Ignore
     @Test
     @MediumTest
     public void testMultiPartSms() {
@@ -506,7 +522,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // State machine should go back to idle and wait for second part
         assertEquals("IdleState", getCurrentState().getName());
@@ -517,7 +534,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // verify broadcast intents
         verifySmsIntentBroadcasts(0);
@@ -533,7 +551,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // verify no additional broadcasts sent
         verify(mContext, times(2)).sendBroadcast(any(Intent.class));
@@ -551,7 +570,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // verify no additional broadcasts sent
         verify(mContext, times(2)).sendBroadcast(any(Intent.class));
@@ -583,7 +603,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // State machine should go back to idle and wait for second part
         assertEquals("IdleState", getCurrentState().getName());
@@ -594,7 +615,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // verify no broadcasts sent
         verify(mContext, never()).sendBroadcast(any(Intent.class));
@@ -621,7 +643,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // verify the message is stored in the raw table
         assertEquals(1, mContentProvider.getNumRows());
@@ -640,7 +663,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // verify no broadcasts sent
         verify(mContext, never()).sendBroadcast(any(Intent.class));
@@ -667,7 +691,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // State machine should go back to idle and wait for second part
         assertEquals("IdleState", getCurrentState().getName());
@@ -678,7 +703,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
@@ -705,7 +731,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         // State machine should go back to idle and wait for second part
         assertEquals("IdleState", getCurrentState().getName());
@@ -716,7 +743,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                         anyInt(), anyBoolean(), nullable(String.class));
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, new AsyncResult(null,
                 mSmsMessage, null));
-        waitForMs(100);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
+        waitForHandlerAction(mGsmInboundSmsHandler.getHandler(), TEST_TIMEOUT);
 
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
@@ -745,6 +773,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verify(mContext).registerReceiverAsUser(any(BroadcastReceiver.class), eq((UserHandle)null),
                 any(IntentFilter.class), eq((String)null), eq((Handler)null));
 
+        // wait for ScanRawTableThread
         waitForMs(100);
 
         // verify no broadcasts sent because due to !isUserUnlocked
@@ -753,6 +782,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // when user unlocks the device, the message in db should be broadcast
         doReturn(true).when(userManager).isUserUnlocked();
         mContext.sendBroadcast(new Intent(Intent.ACTION_USER_UNLOCKED));
+        // wait for ScanRawTableThread
         waitForMs(100);
 
         verifyDataSmsIntentBroadcasts(1);
@@ -771,6 +801,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(1).when(mInboundSmsTracker).getMessageCount();
 
         SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
+
+        // wait for ScanRawTableThread
         waitForMs(100);
 
         // user is unlocked; intent should be broadcast right away
@@ -794,6 +826,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         //when user unlocks the device, broadcast should not be sent for new message
         mContext.sendBroadcast(new Intent(Intent.ACTION_USER_UNLOCKED));
+        // wait for ScanRawTableThread
         waitForMs(100);
 
         verify(mContext, times(1)).sendBroadcast(any(Intent.class));
@@ -802,7 +835,6 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     }
 
     @FlakyTest
-    @Ignore
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiPart() throws Exception {
@@ -821,7 +853,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 anyBoolean());
 
         SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
-        waitForMs(100);
+        // wait for ScanRawTableThread
+        waitForMs(200);
 
         verifySmsIntentBroadcasts(0);
     }
