@@ -177,22 +177,6 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     }
 
     /**
-     * Called when the phone changes the default method updates mPhone
-     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
-     * Override if different or other behavior is desired.
-     *
-     * @param phone
-     */
-    @Override
-    protected void onUpdatePhoneObject(Phone phone) {
-        super.onUpdatePhoneObject(phone);
-        log("onUpdatePhoneObject: dispose of old CellBroadcastHandler and make a new one");
-        mCellBroadcastHandler.dispose();
-        mCellBroadcastHandler = GsmCellBroadcastHandler
-                .makeGsmCellBroadcastHandler(mContext, phone);
-    }
-
-    /**
      * Convert Android result code to 3GPP SMS failure cause.
      * @param rc the Android SMS intent result value
      * @return 0 for success, or a 3GPP SMS failure cause value

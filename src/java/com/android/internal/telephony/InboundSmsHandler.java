@@ -154,14 +154,11 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Sent by {@link SmsBroadcastUndelivered} after cleaning the raw table. */
     public static final int EVENT_START_ACCEPTING_SMS = 6;
 
-    /** Update phone object */
-    private static final int EVENT_UPDATE_PHONE_OBJECT = 7;
-
     /** New SMS received as an AsyncResult. */
-    public static final int EVENT_INJECT_SMS = 8;
+    public static final int EVENT_INJECT_SMS = 7;
 
     /** Update the sms tracker */
-    public static final int EVENT_UPDATE_TRACKER = 9;
+    public static final int EVENT_UPDATE_TRACKER = 8;
 
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
@@ -272,13 +269,6 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
-     * Update the phone object when it changes.
-     */
-    public void updatePhoneObject(Phone phone) {
-        sendMessage(EVENT_UPDATE_PHONE_OBJECT, phone);
-    }
-
-    /**
      * Dispose of the WAP push object and release the wakelock.
      */
     @Override
@@ -303,10 +293,6 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public boolean processMessage(Message msg) {
             switch (msg.what) {
-                case EVENT_UPDATE_PHONE_OBJECT: {
-                    onUpdatePhoneObject((Phone) msg.obj);
-                    break;
-                }
                 default: {
                     String errorText = "processMessage: unhandled message type " + msg.what +
                         " currState=" + getCurrentState().getName();
@@ -672,19 +658,6 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     protected abstract void acknowledgeLastIncomingSms(boolean success,
             int result, Message response);
-
-    /**
-     * Called when the phone changes the default method updates mPhone
-     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
-     * Override if different or other behavior is desired.
-     *
-     * @param phone
-     */
-    protected void onUpdatePhoneObject(Phone phone) {
-        mPhone = phone;
-        mStorageMonitor = mPhone.mSmsStorageMonitor;
-        log("onUpdatePhoneObject: phone=" + mPhone.getClass().getSimpleName());
-    }
 
     /**
      * Notify interested apps if the framework has rejected an incoming SMS,
