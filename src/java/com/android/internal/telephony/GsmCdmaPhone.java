@@ -2845,8 +2845,8 @@ public class GsmCdmaPhone extends Phone {
          *  selection is disallowed. So we should force auto select mode.
          */
         if (isManualSelProhibitedInGlobalMode()
-                && ((nwMode == TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA)
-                        || (nwMode == TelephonyManager.NETWORK_MODE_GLOBAL)) ){
+                && ((nwMode == Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA)
+                        || (nwMode == Phone.NT_MODE_GLOBAL)) ){
             logd("Should force auto network select mode = " + nwMode);
             return true;
         } else {
