@@ -29,7 +29,7 @@
 
 package com.android.internal.telephony.uicc;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 import android.os.HandlerThread;
