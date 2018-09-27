@@ -353,7 +353,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // increment the cookie so that death notification can be ignored
         mRadioProxyCookie.incrementAndGet();
 
-        setRadioState(RadioState.RADIO_UNAVAILABLE);
+        setRadioState(RadioState.RADIO_UNAVAILABLE, true /* forceNotifyRegistrants */);
 
         RILRequest.resetSerial();
         // Clear request list on close
@@ -4188,7 +4188,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 }
                 break;
             case RIL_REQUEST_SHUTDOWN:
-                setRadioState(RadioState.RADIO_UNAVAILABLE);
+                setRadioState(RadioState.RADIO_UNAVAILABLE, false /* forceNotifyRegistrants */);
                 break;
         }
 
