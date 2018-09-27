@@ -104,15 +104,6 @@ public class SmsDispatchersController extends Handler {
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
     }
 
-    /* Updates the phone object when there is a change */
-    protected void updatePhoneObject(Phone phone) {
-        Rlog.d(TAG, "In IMS updatePhoneObject ");
-        mCdmaDispatcher.updatePhoneObject(phone);
-        mGsmDispatcher.updatePhoneObject(phone);
-        mGsmInboundSmsHandler.updatePhoneObject(phone);
-        mCdmaInboundSmsHandler.updatePhoneObject(phone);
-    }
-
     public void dispose() {
         mCi.unregisterForOn(this);
         mCi.unregisterForImsNetworkStateChanged(this);
