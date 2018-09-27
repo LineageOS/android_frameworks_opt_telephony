@@ -158,7 +158,7 @@ public class SimulatedCommands extends BaseCommands
 
         simulatedCallState = new SimulatedGsmCallState(looper);
 
-        setRadioState(RadioState.RADIO_ON);
+        setRadioState(RadioState.RADIO_ON, false /* forceNotifyRegistrants */);
         mSimLockedState = INITIAL_LOCK_STATE;
         mSimLockEnabled = (mSimLockedState != SimLockState.NONE);
         mPinCode = DEFAULT_SIM_PIN_CODE;
@@ -1241,9 +1241,9 @@ public class SimulatedCommands extends BaseCommands
         }
 
         if(on) {
-            setRadioState(RadioState.RADIO_ON);
+            setRadioState(RadioState.RADIO_ON, false /* forceNotifyRegistrants */);
         } else {
-            setRadioState(RadioState.RADIO_OFF);
+            setRadioState(RadioState.RADIO_OFF, false /* forceNotifyRegistrants */);
         }
         resultSuccess(result, null);
     }
@@ -1599,7 +1599,7 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void
     shutdown() {
-        setRadioState(RadioState.RADIO_UNAVAILABLE);
+        setRadioState(RadioState.RADIO_UNAVAILABLE, false /* forceNotifyRegistrants */);
         Looper looper = mHandlerThread.getLooper();
         if (looper != null) {
             looper.quit();
@@ -2024,7 +2024,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void requestShutdown(Message result) {
-        setRadioState(RadioState.RADIO_UNAVAILABLE);
+        setRadioState(RadioState.RADIO_UNAVAILABLE, false /* forceNotifyRegistrants */);
     }
 
     @Override
