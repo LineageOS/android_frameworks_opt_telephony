@@ -155,7 +155,6 @@ public class SubscriptionController extends ISub.Stub {
     protected static Phone[] sPhones;
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
-    protected CallManager mCM;
 
     private AppOpsManager mAppOps;
 
@@ -205,7 +204,6 @@ public class SubscriptionController extends ISub.Stub {
 
     protected void init(Context c) {
         mContext = c;
-        mCM = CallManager.getInstance();
         mTelephonyManager = TelephonyManager.from(mContext);
 
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
@@ -224,7 +222,6 @@ public class SubscriptionController extends ISub.Stub {
 
     private SubscriptionController(Phone phone) {
         mContext = phone.getContext();
-        mCM = CallManager.getInstance();
         mAppOps = mContext.getSystemService(AppOpsManager.class);
 
         if(ServiceManager.getService("isub") == null) {
@@ -1939,6 +1936,20 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
+    public boolean isActiveSubId(int subId, String callingPackage) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId, callingPackage,
+              "isActiveSubId")) {
+            throw new SecurityException("Requires READ_PHONE_STATE permission.");
+        }
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            return isActiveSubId(subId);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    @Deprecated // This should be moved into isActiveSubId(int, String)
     public boolean isActiveSubId(int subId) {
         boolean retVal = SubscriptionManager.isValidSubscriptionId(subId)
                 && getActiveSubIdArrayList().contains(subId);

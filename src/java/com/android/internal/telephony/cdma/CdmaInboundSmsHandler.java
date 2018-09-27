@@ -193,19 +193,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     }
 
     /**
-     * Called when the phone changes the default method updates mPhone
-     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
-     * Override if different or other behavior is desired.
-     *
-     * @param phone
-     */
-    @Override
-    protected void onUpdatePhoneObject(Phone phone) {
-        super.onUpdatePhoneObject(phone);
-        mCellBroadcastHandler.updatePhoneObject(phone);
-    }
-
-    /**
      * Convert Android result code to CDMA SMS failure cause.
      * @param rc the Android SMS intent result value
      * @return 0 for success, or a CDMA SMS failure cause value

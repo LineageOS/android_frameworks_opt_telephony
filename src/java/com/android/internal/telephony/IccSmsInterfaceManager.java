@@ -184,11 +184,6 @@ public class IccSmsInterfaceManager {
         }
     }
 
-    protected void updatePhoneObject(Phone phone) {
-        mPhone = phone;
-        mDispatchersController.updatePhoneObject(phone);
-    }
-
     protected void enforceReceiveAndSend(String message) {
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.RECEIVE_SMS, message);

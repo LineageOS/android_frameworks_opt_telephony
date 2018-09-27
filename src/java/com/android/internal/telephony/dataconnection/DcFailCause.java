@@ -157,17 +157,21 @@ public enum DcFailCause {
                 context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         if (configManager != null) {
             PersistableBundle b = configManager.getConfigForSubId(subId);
+
             if (b != null) {
+                if (this == REGULAR_DEACTIVATION
+                        && b.getBoolean(CarrierConfigManager
+                        .KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL)) {
+                    // This is for backward compatibility support. We need to continue support this
+                    // old configuration until it gets removed in the future.
+                    return true;
+                }
+                // Check the current configurations.
                 int[] causeCodes = b.getIntArray(CarrierConfigManager
                         .KEY_RADIO_RESTART_FAILURE_CAUSES_INT_ARRAY);
                 if (causeCodes != null) {
                     return Arrays.stream(causeCodes).anyMatch(i -> i == getErrorCode());
                 }
-
-                // This is for backward compatibility support. We need to continue support this old
-                // configuration until it gets removed in the future.
-                return b.getBoolean(CarrierConfigManager
-                        .KEY_RESTART_RADIO_ON_PDP_FAIL_REGULAR_DEACTIVATION_BOOL);
             }
         }
 
