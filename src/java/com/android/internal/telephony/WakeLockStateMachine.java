@@ -48,8 +48,6 @@ public abstract class WakeLockStateMachine extends StateMachine {
     /** Release wakelock after a short timeout when returning to idle state. */
     static final int EVENT_RELEASE_WAKE_LOCK = 3;
 
-    static final int EVENT_UPDATE_PHONE_OBJECT = 4;
-
     protected Phone mPhone;
 
     protected Context mContext;
@@ -75,10 +73,6 @@ public abstract class WakeLockStateMachine extends StateMachine {
         addState(mIdleState, mDefaultState);
         addState(mWaitingState, mDefaultState);
         setInitialState(mIdleState);
-    }
-
-    public void updatePhoneObject(Phone phone) {
-        sendMessage(EVENT_UPDATE_PHONE_OBJECT, phone);
     }
 
     /**
@@ -112,11 +106,6 @@ public abstract class WakeLockStateMachine extends StateMachine {
         @Override
         public boolean processMessage(Message msg) {
             switch (msg.what) {
-                case EVENT_UPDATE_PHONE_OBJECT: {
-                    mPhone = (Phone) msg.obj;
-                    log("updatePhoneObject: phone=" + mPhone.getClass().getSimpleName());
-                    break;
-                }
                 default: {
                     String errorText = "processMessage: unhandled message type " + msg.what;
                     if (Build.IS_DEBUGGABLE) {
