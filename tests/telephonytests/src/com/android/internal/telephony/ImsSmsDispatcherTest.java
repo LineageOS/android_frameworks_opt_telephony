@@ -26,7 +26,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import android.os.HandlerThread;
+import android.os.Looper;
 import android.telephony.SmsMessage;
 import android.telephony.ims.stub.ImsSmsImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -44,33 +44,19 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @Mock private SMSDispatcher.SmsTracker mSmsTracker;
     private HashMap<String, Object> mTrackerData;
     private ImsSmsDispatcher mImsSmsDispatcher;
-    private ImsSmsDispatcherTestHandler mImsSmsDispatcherTestHandler;
-
-
-    private class ImsSmsDispatcherTestHandler extends HandlerThread {
-
-        private ImsSmsDispatcherTestHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mImsSmsDispatcher = spy(new ImsSmsDispatcher(mPhone, mSmsDispatchersController));
-            when(mSmsDispatchersController.isIms()).thenReturn(true);
-            setReady(true);
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        if (Looper.myLooper() == null) {
+            Looper.prepare();
+        }
 
-        mImsSmsDispatcherTestHandler = new ImsSmsDispatcherTestHandler(TAG);
-        mImsSmsDispatcherTestHandler.start();
+        mImsSmsDispatcher = spy(new ImsSmsDispatcher(mPhone, mSmsDispatchersController));
+        when(mSmsDispatchersController.isIms()).thenReturn(true);
 
-        mTrackerData = new HashMap(1);
+        mTrackerData = new HashMap<>(1);
         when(mSmsTracker.getData()).thenReturn(mTrackerData);
-        waitUntilReady();
     }
 
     /**
@@ -93,7 +79,6 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
 
         assertEquals(token + 1, mImsSmsDispatcher.mNextToken.get());
         assertEquals(trackersSize + 1, mImsSmsDispatcher.mTrackers.size());
-        ArgumentCaptor<byte[]> byteCaptor = ArgumentCaptor.forClass(byte[].class);
         verify(mImsManager).sendSms(eq(token + 1), anyInt(), eq(SmsMessage.FORMAT_3GPP),
                 nullable(String.class), eq(false), eq(pdu));
     }
@@ -155,8 +140,6 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mImsSmsDispatcher = null;
-        mImsSmsDispatcherTestHandler.quit();
-        mImsSmsDispatcherTestHandler.join();
         super.tearDown();
     }
 }
