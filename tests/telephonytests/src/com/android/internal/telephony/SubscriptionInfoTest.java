@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import android.telephony.SubscriptionInfo;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -77,5 +78,23 @@ public class SubscriptionInfoTest {
         assertEquals(255, mSubscriptionInfoUT.getIconTint());
         mSubscriptionInfoUT.setIconTint(0);
         assertEquals(0, mSubscriptionInfoUT.getIconTint());
+    }
+
+    @Test
+    @SmallTest
+    public void testEquals() {
+        SubscriptionInfo copiedInfo = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0,
+                "T-mobile", "T-mobile", 0, 255, "12345", 0, null,
+                "310", "260", "156", false, null, null);
+        SubscriptionInfo differentDisplayName = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0,
+                "AT&T", "T-mobile", 0, 255, "12345", 0, null,
+                "310", "260", "156", false, null, null);
+        SubscriptionInfo differentSubId = new SubscriptionInfo(2, "890126042XXXXXXXXXXX", 0,
+                "AT&T", "T-mobile", 0, 255, "12345", 0, null,
+                "310", "260", "156", false, null, null);
+
+        assertEquals(mSubscriptionInfoUT, copiedInfo);
+        assertNotEquals(mSubscriptionInfoUT, differentDisplayName);
+        assertNotEquals(mSubscriptionInfoUT, differentSubId);
     }
 }
