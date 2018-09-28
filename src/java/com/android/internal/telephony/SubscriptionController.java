@@ -168,6 +168,7 @@ public class SubscriptionController extends ISub.Stub {
 
     private int[] colorArr;
     private long mLastISubServiceRegTime;
+    private int mPreferredDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
@@ -2299,8 +2300,23 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public int setPreferredData(int slotId) {
-        // TODO: send to phone switcher.
-        return 0;
+        enforceModifyPhoneState("setPreferredData");
+        final long token = Binder.clearCallingIdentity();
+
+        try {
+            // TODO: make this API takes in subId directly.
+            int subId = getSubIdUsingPhoneId(slotId);
+
+            if (mPreferredDataSubId != subId) {
+                mPreferredDataSubId = subId;
+                PhoneSwitcher.getInstance().setPreferredData(subId);
+                //TODO: notifyPreferredDataSubIdChanged();
+            }
+
+            return 0;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     @Override

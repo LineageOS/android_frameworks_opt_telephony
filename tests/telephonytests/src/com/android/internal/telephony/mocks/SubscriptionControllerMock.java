@@ -202,10 +202,6 @@ public class SubscriptionControllerMock extends SubscriptionController {
     }
     @Override
     public int getPhoneId(int subId) {
-        if (subId == DEFAULT_SUBSCRIPTION_ID) {
-            subId = getDefaultSubId();
-        }
-
         if (subId <= INVALID_SUBSCRIPTION_ID) return INVALID_PHONE_INDEX;
 
         for (int i = 0; i < mSlotIndexToSubId.length; i++) {
@@ -259,7 +255,7 @@ public class SubscriptionControllerMock extends SubscriptionController {
     }
     @Override
     public boolean isActiveSubId(int subId) {
-        throw new RuntimeException("not implemented");
+        return getPhoneId(subId) != INVALID_PHONE_INDEX;
     }
     @Override
     public int getSimStateForSlotIndex(int slotIndex) {

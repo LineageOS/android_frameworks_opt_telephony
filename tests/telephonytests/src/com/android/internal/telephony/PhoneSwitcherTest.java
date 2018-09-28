@@ -17,9 +17,17 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.ConnectivityManager;
+import android.net.IConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.StringNetworkSpecifier;
@@ -30,6 +38,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.mocks.ConnectivityServiceMock;
@@ -40,6 +49,7 @@ import com.android.internal.telephony.test.SimulatedCommands;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -158,26 +168,40 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     private String mTestName = "";
+    @Mock
+    private ITelephonyRegistry.Stub mTelRegistryMock;
+    @Mock
+    private CommandsInterface mCommandsInterface0;
+    @Mock
+    private CommandsInterface mCommandsInterface1;
+    @Mock
+    private IConnectivityManager.Stub mConnectivityService;
+
 
     private void log(String str) {
         Rlog.d(LOG_TAG + " " + mTestName, str);
     }
 
-    private NetworkRequest makeSubSpecificDefaultRequest(ConnectivityServiceMock cs, int subId) {
+    private NetworkRequest makeDefaultRequest(ConnectivityServiceMock cs, Integer subId) {
         NetworkCapabilities netCap = (new NetworkCapabilities()).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).
                 addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-        netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
+        if (subId != null) {
+            netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
+        }
         return cs.requestNetwork(netCap, null, 0, new Binder(), -1);
     }
 
-    private NetworkRequest makeSubSpecificMmsRequest(ConnectivityServiceMock cs, int subId) {
+    private NetworkRequest makeMmsRequest(ConnectivityServiceMock cs, Integer subId) {
         NetworkCapabilities netCap = (new NetworkCapabilities()).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_MMS).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).
                 addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
         netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
+        if (subId != null) {
+            netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
+        }
         return cs.requestNetwork(netCap, null, 0, new Binder(), -1);
     }
 
@@ -345,7 +369,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
 
         // 6 gain subscription-specific request
-        NetworkRequest request = makeSubSpecificDefaultRequest(connectivityServiceMock, 0);
+        NetworkRequest request = makeDefaultRequest(connectivityServiceMock, 0);
         waitABit();
         if (testHandler.getActivePhoneSwitchCount() != 8) {
             fail("after gain of network request, ActivePhoneSwitchCount not 8!");
@@ -475,7 +499,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
 
         // now start a higher priority conneciton on the other sub
-        NetworkRequest request = makeSubSpecificMmsRequest(connectivityServiceMock, 1);
+        NetworkRequest request = makeMmsRequest(connectivityServiceMock, 1);
         waitABit();
         if (testHandler.getActivePhoneSwitchCount() != 2) {
             fail("after gain of network request, ActivePhoneSwitchCount not 2!");
@@ -565,12 +589,78 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     /**
-     * Test MSMA testing prioritiziation
-     * - leave multiple on (up to the limit)
-     * - tear down lowest priority phone when new request comes in
-     * - tear down low priority phone when sub change causes split
-     * - bring up low priority phone when sub change causes join
-     * - don't switch phones when in emergency mode
+     * Verify testSetPreferredData.
+     * When preferredData is set, it overwrites defaultData sub to be active sub in single
+     * active phone mode. If it's unset (to DEFAULT_SUBSCRIPTION_ID), defaultData sub becomes
+     * active one.
      */
+    @Test
+    @SmallTest
+    public void testSetPreferredData() throws Exception {
+        mTestName = "testSetPreferredData";
+        final int numPhones = 2;
+        final int maxActivePhones = 1;
+        mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
+                sNetworkAttributes);
+        final CommandsInterface[] commandsInterfaces = new CommandsInterface[numPhones];
+        commandsInterfaces[0] = mCommandsInterface0;
+        commandsInterfaces[1] = mCommandsInterface1;
 
+        final ConnectivityServiceMock connectivityServiceMock =
+                new ConnectivityServiceMock(mContext);
+        final ConnectivityManager cm =
+                new ConnectivityManager(mContext, connectivityServiceMock);
+        mContextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
+        final HandlerThread handlerThread = new HandlerThread("PhoneSwitcherTestThread");
+        final PhoneMock[] phones = new PhoneMock[numPhones];
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        doReturn(1).when(mSubscriptionController)
+                .getDefaultDataSubId();
+        doReturn(1).when(mSubscriptionController)
+                .getSubIdUsingPhoneId(0);
+        doReturn(2).when(mSubscriptionController)
+                .getSubIdUsingPhoneId(1);
+        doReturn(true).when(mSubscriptionController)
+                .isActiveSubId(1);
+        doReturn(true).when(mSubscriptionController)
+                .isActiveSubId(2);
+
+        handlerThread.start();
+
+        PhoneSwitcher phoneSwitcher = new PhoneSwitcher(maxActivePhones, numPhones,
+                mContext, mSubscriptionController, handlerThread.getLooper(), mTelRegistryMock,
+                commandsInterfaces, phones);
+
+        // Notify phoneSwitcher about default data sub and default network request.
+        sendDefaultDataSubChanged();
+        NetworkRequest request = makeDefaultRequest(connectivityServiceMock, null);
+        waitABit();
+        // Phone 0 (sub 1) should be activated as it has default data sub.
+        verify(mCommandsInterface0).setDataAllowed(eq(true), any());
+        reset(mCommandsInterface0);
+
+        // Set sub 2 as preferred sub should make phone 1 activated and phone 0 deactivated.
+        phoneSwitcher.setPreferredData(2);
+        waitABit();
+        verify(mCommandsInterface0).setDataAllowed(eq(false), any());
+        verify(mCommandsInterface1).setDataAllowed(eq(true), any());
+        reset(mCommandsInterface0);
+        reset(mCommandsInterface1);
+
+        // Unset preferred sub should make default data sub (phone 0 / sub 1) activated again.
+        phoneSwitcher.setPreferredData(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+        waitABit();
+        verify(mCommandsInterface0, times(1)).setDataAllowed(eq(true), any());
+        verify(mCommandsInterface1, times(1)).setDataAllowed(eq(false), any());
+
+        handlerThread.quit();
+    }
+
+    private void sendDefaultDataSubChanged() {
+        final Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
+        mContext.sendBroadcast(intent);
+    }
 }
