@@ -2379,7 +2379,7 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
-            return oldOpptCachedList.equals(mCacheOpportunisticSubInfoList);
+            return !oldOpptCachedList.equals(mCacheOpportunisticSubInfoList);
         }
     }
 }
