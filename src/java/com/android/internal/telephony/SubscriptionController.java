@@ -55,12 +55,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -158,8 +160,9 @@ public class SubscriptionController extends ISub.Stub {
 
     private AppOpsManager mAppOps;
 
-    // Each slot can have multiple subs.
-    private static Map<Integer, ArrayList<Integer>> sSlotIndexToSubIds = new ConcurrentHashMap<>();
+    // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
+    private static Map<Integer, Integer> sSlotIndexToSubId =
+            new ConcurrentHashMap<Integer, Integer>();
     private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
@@ -217,7 +220,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean isSubInfoReady() {
-        return sSlotIndexToSubIds.size() > 0;
+        return sSlotIndexToSubId.size() > 0;
     }
 
     private SubscriptionController(Phone phone) {
@@ -961,20 +964,24 @@ public class SubscriptionController extends ISub.Stub {
                     do {
                         int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
                                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
-                        // If sSlotIndexToSubIds already has the same subId for a slotIndex/phoneId,
+                        // If sSlotIndexToSubId already has the same subId for a slotIndex/phoneId,
                         // do not add it.
-                        if (addToSubIdList(slotIndex, subId)) {
+                        Integer currentSubId = sSlotIndexToSubId.get(slotIndex);
+                        if (currentSubId == null
+                                || currentSubId != subId
+                                || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
                             // TODO While two subs active, if user deactivats first
                             // one, need to update the default subId with second one.
 
                             // FIXME: Currently we assume phoneId == slotIndex which in the future
                             // may not be true, for instance with multiple subs per slot.
                             // But is true at the moment.
+                            sSlotIndexToSubId.put(slotIndex, subId);
                             int subIdCountMax = getActiveSubInfoCountMax();
                             int defaultSubId = getDefaultSubId();
                             if (DBG) {
                                 logdl("[addSubInfoRecord]"
-                                        + " sSlotIndexToSubIds.size=" + sSlotIndexToSubIds.size()
+                                        + " sSlotIndexToSubId.size=" + sSlotIndexToSubId.size()
                                         + " slotIndex=" + slotIndex + " subId=" + subId
                                         + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
                             }
@@ -1041,7 +1048,7 @@ public class SubscriptionController extends ISub.Stub {
             // Once the records are loaded, notify DcTracker
             sPhones[slotIndex].updateDataConnectionTracker();
 
-            if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIndexToSubIds.size());
+            if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIndexToSubId.size());
 
         } finally {
             Binder.restoreCallingIdentity(identity);
@@ -1394,18 +1401,20 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
 
-        int size = sSlotIndexToSubIds.size();
+        int size = sSlotIndexToSubId.size();
 
-        if (size == 0) {
+        if (size == 0)
+        {
             if (DBG) logd("[getSlotIndex]- size == 0, return SIM_NOT_INSERTED instead");
             return SubscriptionManager.SIM_NOT_INSERTED;
         }
 
-        for (Entry<Integer, ArrayList<Integer>> entry : sSlotIndexToSubIds.entrySet()) {
+        for (Entry<Integer, Integer> entry: sSlotIndexToSubId.entrySet()) {
             int sim = entry.getKey();
-            ArrayList<Integer> subs = entry.getValue();
+            int sub = entry.getValue();
 
-            if (subs.contains(subId)) {
+            if (subId == sub)
+            {
                 if (VDBG) logv("[getSlotIndex]- return = " + sim);
                 return sim;
             }
@@ -1441,17 +1450,26 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // Check if we've got any SubscriptionInfo records using slotIndexToSubId as a surrogate.
-        int size = sSlotIndexToSubIds.size();
+        int size = sSlotIndexToSubId.size();
         if (size == 0) {
             if (VDBG) {
-                logd("[getSubId]- sSlotIndexToSubIds.size == 0, return DummySubIds slotIndex="
+                logd("[getSubId]- sSlotIndexToSubId.size == 0, return DummySubIds slotIndex="
                         + slotIndex);
             }
             return getDummySubIds(slotIndex);
         }
 
+        // Create an array of subIds that are in this slot?
+        ArrayList<Integer> subIds = new ArrayList<Integer>();
+        for (Entry<Integer, Integer> entry: sSlotIndexToSubId.entrySet()) {
+            int slot = entry.getKey();
+            int sub = entry.getValue();
+            if (slotIndex == slot) {
+                subIds.add(sub);
+            }
+        }
+
         // Convert ArrayList to array
-        ArrayList<Integer> subIds = sSlotIndexToSubIds.get(slotIndex);
         int numSubIds = subIds.size();
         if (numSubIds > 0) {
             int[] subIdArr = new int[numSubIds];
@@ -1484,7 +1502,7 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_PHONE_INDEX;
         }
 
-        int size = sSlotIndexToSubIds.size();
+        int size = sSlotIndexToSubId.size();
         if (size == 0) {
             phoneId = mDefaultPhoneId;
             if (DBG) logdl("[getPhoneId]- no sims, returning default phoneId=" + phoneId);
@@ -1492,11 +1510,11 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // FIXME: Assumes phoneId == slotIndex
-        for (Entry<Integer, ArrayList<Integer>> entry: sSlotIndexToSubIds.entrySet()) {
+        for (Entry<Integer, Integer> entry: sSlotIndexToSubId.entrySet()) {
             int sim = entry.getKey();
-            ArrayList<Integer> subs = entry.getValue();
+            int sub = entry.getValue();
 
-            if (subs.contains(subId)) {
+            if (subId == sub) {
                 if (VDBG) logdl("[getPhoneId]- found subId=" + subId + " phoneId=" + sim);
                 return sim;
             }
@@ -1541,14 +1559,14 @@ public class SubscriptionController extends ISub.Stub {
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
         try {
-            int size = sSlotIndexToSubIds.size();
+            int size = sSlotIndexToSubId.size();
 
             if (size == 0) {
                 if (DBG) logdl("[clearSubInfo]- no simInfo size=" + size);
                 return 0;
             }
 
-            sSlotIndexToSubIds.clear();
+            sSlotIndexToSubId.clear();
             if (DBG) logdl("[clearSubInfo]- clear size=" + size);
             return size;
         } finally {
@@ -1907,29 +1925,23 @@ public class SubscriptionController extends ISub.Stub {
         sPhones = phones;
     }
 
-    private synchronized ArrayList<Integer> getActiveSubIdArrayList() {
-        ArrayList<Integer> allSubs = new ArrayList<>();
-        for (int i : sSlotIndexToSubIds.keySet()) {
-            allSubs.addAll(sSlotIndexToSubIds.get(i));
-        }
-        return allSubs;
-    }
-
     /**
      * @return the list of subId's that are active, is never null but the length maybe 0.
      */
     @Override
     public int[] getActiveSubIdList() {
-        ArrayList<Integer> allSubs = getActiveSubIdArrayList();
-        int[] subIdArr = new int[allSubs.size()];
+        Set<Entry<Integer, Integer>> simInfoSet = new HashSet<>(sSlotIndexToSubId.entrySet());
+
+        int[] subIdArr = new int[simInfoSet.size()];
         int i = 0;
-        for (int sub : allSubs) {
+        for (Entry<Integer, Integer> entry: simInfoSet) {
+            int sub = entry.getValue();
             subIdArr[i] = sub;
             i++;
         }
 
         if (VDBG) {
-            logdl("[getActiveSubIdList] allSubs=" + allSubs + " subIdArr.length="
+            logdl("[getActiveSubIdList] simInfoSet=" + simInfoSet + " subIdArr.length="
                     + subIdArr.length);
         }
         return subIdArr;
@@ -1952,7 +1964,7 @@ public class SubscriptionController extends ISub.Stub {
     @Deprecated // This should be moved into isActiveSubId(int, String)
     public boolean isActiveSubId(int subId) {
         boolean retVal = SubscriptionManager.isValidSubscriptionId(subId)
-                && getActiveSubIdArrayList().contains(subId);
+                && sSlotIndexToSubId.containsValue(subId);
 
         if (VDBG) logdl("[isActiveSubId]- " + retVal);
         return retVal;
@@ -2155,8 +2167,8 @@ public class SubscriptionController extends ISub.Stub {
                     .from(mContext).getDefaultSmsPhoneId());
             pw.flush();
 
-            for (Entry<Integer, ArrayList<Integer>> entry : sSlotIndexToSubIds.entrySet()) {
-                pw.println(" sSlotIndexToSubId[" + entry.getKey() + "]: subIds=" + entry);
+            for (Entry<Integer, Integer> entry : sSlotIndexToSubId.entrySet()) {
+                pw.println(" sSlotIndexToSubId[" + entry.getKey() + "]: subId=" + entry.getValue());
             }
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
@@ -2334,21 +2346,6 @@ public class SubscriptionController extends ISub.Stub {
                     })
                     .collect(Collectors.toList());
         }
-    }
-
-    private synchronized boolean addToSubIdList(int slotIndex, int subId) {
-        ArrayList<Integer> subIdsList = sSlotIndexToSubIds.get(slotIndex);
-        if (subIdsList == null) {
-            subIdsList = new ArrayList<>();
-            sSlotIndexToSubIds.put(slotIndex, subIdsList);
-        }
-
-        // add the given subId unless it already exists
-        if (!subIdsList.contains(subId)) {
-            subIdsList.add(subId);
-            return true;
-        }
-        return false;
     }
 
     private void notifyOpportunisticSubscriptionInfoChanged() {
