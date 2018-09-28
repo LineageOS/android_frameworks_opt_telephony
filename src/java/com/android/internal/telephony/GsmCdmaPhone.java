@@ -3256,6 +3256,14 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
+    //return true if either CSIM or RUIM app is present
+    private boolean isCdmaSubscriptionAppPresent(){
+        UiccCardApplication cdmaApplication =
+                mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP2);
+        return cdmaApplication != null && (cdmaApplication.getType() == AppType.APPTYPE_CSIM ||
+                cdmaApplication.getType() == AppType.APPTYPE_RUIM);
+    }
+
     private void phoneObjectUpdater(int newVoiceRadioTech) {
         logd("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech);
 
@@ -3269,7 +3277,10 @@ public class GsmCdmaPhone extends Phone {
                 int volteReplacementRat =
                         b.getInt(CarrierConfigManager.KEY_VOLTE_REPLACEMENT_RAT_INT);
                 logd("phoneObjectUpdater: volteReplacementRat=" + volteReplacementRat);
-                if (volteReplacementRat != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
+                if (volteReplacementRat != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN &&
+                           //In cdma case, replace rat only if csim or ruim app present
+                           (ServiceState.isGsm(volteReplacementRat) ||
+                           isCdmaSubscriptionAppPresent())) {
                     newVoiceRadioTech = volteReplacementRat;
                 }
             } else {
