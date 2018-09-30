@@ -126,7 +126,7 @@ public class RadioIndication extends IRadioIndication.Stub {
                     newState);
         }
 
-        mRil.setRadioState(newState);
+        mRil.setRadioState(newState, false /* forceNotifyRegistrants */);
     }
 
     public void callStateChanged(int indicationType) {

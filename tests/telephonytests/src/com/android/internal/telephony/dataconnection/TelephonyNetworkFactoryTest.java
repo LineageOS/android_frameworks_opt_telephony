@@ -24,7 +24,6 @@ import android.net.StringNetworkSpecifier;
 import android.os.Binder;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.Message;
 import android.support.test.filters.FlakyTest;
 import android.telephony.Rlog;
 import android.test.AndroidTestCase;
@@ -37,8 +36,6 @@ import com.android.internal.telephony.mocks.PhoneSwitcherMock;
 import com.android.internal.telephony.mocks.SubscriptionControllerMock;
 import com.android.internal.telephony.mocks.SubscriptionMonitorMock;
 import com.android.internal.telephony.mocks.TelephonyRegistryMock;
-
-import org.junit.Ignore;
 
 public class TelephonyNetworkFactoryTest extends AndroidTestCase {
     private final static String LOG_TAG = "TelephonyNetworkFactoryTest";
@@ -153,10 +150,10 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
 
         makeTnf(phoneId, ts);
 
+        ts.phoneSwitcherMock.setPreferredDataPhoneId(phoneId);
         ts.subscriptionControllerMock.setDefaultDataSubId(subId);
         ts.subscriptionControllerMock.setSlotSubId(phoneId, subId);
         ts.subscriptionMonitorMock.notifySubscriptionChanged(phoneId);
-        ts.subscriptionMonitorMock.notifyDefaultSubscriptionChanged(phoneId);
 
         log("addDefaultRequest");
         ts.connectivityServiceMock.addDefaultRequest();
@@ -248,10 +245,10 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
 
         makeTnf(phoneId, ts);
 
+        ts.phoneSwitcherMock.setPreferredDataPhoneId(phoneId);
         ts.subscriptionControllerMock.setDefaultDataSubId(subId);
         ts.subscriptionControllerMock.setSlotSubId(phoneId, subId);
         ts.subscriptionMonitorMock.notifySubscriptionChanged(phoneId);
-        ts.subscriptionMonitorMock.notifyDefaultSubscriptionChanged(phoneId);
         waitABit();
 
         if (ts.dcTrackerMock.getNumberOfLiveRequests() != 0) {
@@ -276,9 +273,10 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
             fail("test 4, LiveRequests != 1");
         }
 
+        ts.phoneSwitcherMock.setPreferredDataPhoneId(altPhoneId);
         ts.subscriptionControllerMock.setDefaultDataSubId(altSubId);
-        ts.subscriptionMonitorMock.notifyDefaultSubscriptionChanged(phoneId);
-        ts.subscriptionMonitorMock.notifyDefaultSubscriptionChanged(altPhoneId);
+        ts.phoneSwitcherMock.notifyActivePhoneChange(phoneId);
+
         waitABit();
         if (ts.dcTrackerMock.getNumberOfLiveRequests() != 0) {
             fail("test 5, LiveRequests != 0");
@@ -311,9 +309,8 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
         }
 
         ts.subscriptionControllerMock.setDefaultDataSubId(subId);
-        ts.subscriptionMonitorMock.notifyDefaultSubscriptionChanged(phoneId);
-        ts.subscriptionMonitorMock.notifyDefaultSubscriptionChanged(altPhoneId);
-        ts.subscriptionMonitorMock.notifyDefaultSubscriptionChanged(phoneId);
+        ts.phoneSwitcherMock.setPreferredDataPhoneId(phoneId);
+        ts.phoneSwitcherMock.notifyActivePhoneChange(phoneId);
         waitABit();
         if (ts.dcTrackerMock.getNumberOfLiveRequests() != 3) {
             fail("test 10, LiveRequests != 3");

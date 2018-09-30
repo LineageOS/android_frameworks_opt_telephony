@@ -792,15 +792,17 @@ public abstract class BaseCommands implements CommandsInterface {
      * RadioState has 3 values : RADIO_OFF, RADIO_UNAVAILABLE, RADIO_ON.
      *
      * @param newState new RadioState decoded from RIL_UNSOL_RADIO_STATE_CHANGED
+     * @param forceNotifyRegistrants boolean indicating if registrants should be notified even if
+     * there is no change in state
      */
-    protected void setRadioState(RadioState newState) {
+    protected void setRadioState(RadioState newState, boolean forceNotifyRegistrants) {
         RadioState oldState;
 
         synchronized (mStateMonitor) {
             oldState = mState;
             mState = newState;
 
-            if (oldState == mState) {
+            if (oldState == mState && !forceNotifyRegistrants) {
                 // no state transition
                 return;
             }
