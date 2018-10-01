@@ -412,4 +412,9 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     public void notifyPhoneCapabilityChanged(PhoneCapability capability) {
         throw new RuntimeException("Not implemented");
     }
+
+    @Override
+    public void notifyPreferredDataSubIdChanged(int subId) {
+        throw new RuntimeException("Not implemented");
+    }
 }
