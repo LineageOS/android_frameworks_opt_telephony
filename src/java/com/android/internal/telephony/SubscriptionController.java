@@ -1684,6 +1684,7 @@ public class SubscriptionController extends ISub.Stub {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
@@ -1768,6 +1769,7 @@ public class SubscriptionController extends ISub.Stub {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
