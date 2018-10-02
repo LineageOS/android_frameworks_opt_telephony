@@ -409,7 +409,7 @@ public class TelephonyTester {
         if (extras == null) {
             extras = new Bundle();
         }
-        extras.putBoolean(ImsCallProfile.EXTRA_E_CALL, true);
+        extras.putBoolean(ImsCallProfile.EXTRA_EMERGENCY_CALL, true);
         callProfile.mCallExtras = extras;
         imsCall.getImsCallSessionListenerProxy().callSessionUpdated(imsCall.getSession(),
                 callProfile);
