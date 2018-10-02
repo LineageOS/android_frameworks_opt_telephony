@@ -660,9 +660,15 @@ public class EuiccCard extends UiccCard {
                             .addChild(ctxParams1Builder)
                             .build().toHex());
                 }),
-                (byte[] response) ->
-                        parseResponseAndCheckSimpleError(response,
-                                EuiccCardErrorException.OPERATION_AUTHENTICATE_SERVER).toBytes(),
+                (byte[] response) -> {
+                    Asn1Node root = parseResponse(response);
+                    if (root.hasChild(Tags.TAG_CTX_COMP_1, Tags.TAG_UNI_2)) {
+                        throw new EuiccCardErrorException(
+                                EuiccCardErrorException.OPERATION_AUTHENTICATE_SERVER,
+                                root.getChild(Tags.TAG_CTX_COMP_1, Tags.TAG_UNI_2).asInteger());
+                    }
+                    return root.toBytes();
+                },
                 callback, handler);
     }
 
