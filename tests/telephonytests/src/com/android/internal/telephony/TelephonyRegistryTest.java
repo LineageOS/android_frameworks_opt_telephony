@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANGE;
+import static android.telephony.PhoneStateListener.LISTEN_PREFERRED_DATA_SUBID_CHANGE;
 
 import static org.junit.Assert.assertEquals;
 
@@ -38,11 +39,17 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private PhoneStateListener mPhoneStateListener;
     private TelephonyRegistry mTelephonyRegistry;
     private PhoneCapability mPhoneCapability;
+    private int mPreferredSubId;
 
     public class PhoneStateListenerWrapper extends PhoneStateListener {
         @Override
         public void onPhoneCapabilityChanged(PhoneCapability capability) {
             mPhoneCapability = capability;
+            setReady(true);
+        }
+        @Override
+        public void onPreferredDataSubIdChanged(int preferredSubId) {
+            mPreferredSubId = preferredSubId;
             setReady(true);
         }
     }
@@ -96,5 +103,26 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         waitUntilReady();
         assertEquals(phoneCapability, mPhoneCapability);
+    }
+
+
+    @Test @SmallTest
+    public void testPreferredDataSubChanged() {
+        // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
+        setReady(false);
+        int preferredSubId = 0;
+        mTelephonyRegistry.notifyPreferredDataSubIdChanged(preferredSubId);
+        mTelephonyRegistry.listen(mContext.getOpPackageName(),
+                mPhoneStateListener.callback,
+                LISTEN_PREFERRED_DATA_SUBID_CHANGE, true);
+        waitUntilReady();
+        assertEquals(preferredSubId, mPreferredSubId);
+
+        // notifyPhoneCapabilityChanged with a new capability. Callback should be triggered.
+        setReady(false);
+        mPreferredSubId = 1;
+        mTelephonyRegistry.notifyPreferredDataSubIdChanged(preferredSubId);
+        waitUntilReady();
+        assertEquals(preferredSubId, mPreferredSubId);
     }
 }

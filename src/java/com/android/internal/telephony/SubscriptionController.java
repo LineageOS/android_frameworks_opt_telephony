@@ -1684,6 +1684,7 @@ public class SubscriptionController extends ISub.Stub {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
@@ -1768,6 +1769,7 @@ public class SubscriptionController extends ISub.Stub {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
@@ -2310,12 +2312,23 @@ public class SubscriptionController extends ISub.Stub {
             if (mPreferredDataSubId != subId) {
                 mPreferredDataSubId = subId;
                 PhoneSwitcher.getInstance().setPreferredData(subId);
-                //TODO: notifyPreferredDataSubIdChanged();
+                notifyPreferredDataSubIdChanged();
             }
 
             return 0;
         } finally {
             Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    private void notifyPreferredDataSubIdChanged() {
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
+                "telephony.registry"));
+        try {
+            if (DBG) logd("notifyPreferredDataSubIdChanged:");
+            tr.notifyPreferredDataSubIdChanged(mPreferredDataSubId);
+        } catch (RemoteException ex) {
+            // Should never happen because its always available.
         }
     }
 
