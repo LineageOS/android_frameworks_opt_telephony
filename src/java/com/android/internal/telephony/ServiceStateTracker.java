@@ -1879,9 +1879,6 @@ public class ServiceStateTracker extends Handler {
                     mNewReasonDataDenied = networkRegState.getRejectCause();
                     mNewMaxDataCalls = dataSpecificStates.maxDataCalls;
                     mDataRoaming = regCodeIsRoaming(registrationState);
-                    // Save the data roaming state reported by modem registration before resource
-                    // overlay or carrier config possibly overrides it.
-                    mNewSS.setDataRoamingFromRegistration(mDataRoaming);
 
                     if (DBG) {
                         log("handlPollStateResultMessage: GsmSST dataServiceState=" + serviceState
@@ -1892,9 +1889,6 @@ public class ServiceStateTracker extends Handler {
 
                     boolean isDataRoaming = regCodeIsRoaming(registrationState);
                     mNewSS.setDataRoaming(isDataRoaming);
-                    // Save the data roaming state reported by modem registration before resource
-                    // overlay or carrier config possibly overrides it.
-                    mNewSS.setDataRoamingFromRegistration(isDataRoaming);
 
                     if (DBG) {
                         log("handlPollStateResultMessage: cdma dataServiceState=" + serviceState
@@ -1921,9 +1915,6 @@ public class ServiceStateTracker extends Handler {
                     // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
                     boolean isDataRoaming = regCodeIsRoaming(registrationState);
                     mNewSS.setDataRoaming(isDataRoaming);
-                    // Save the data roaming state reported by modem registration before resource
-                    // overlay or carrier config possibly overrides it.
-                    mNewSS.setDataRoamingFromRegistration(isDataRoaming);
                     if (DBG) {
                         log("handlPollStateResultMessage: CdmaLteSST dataServiceState="
                                 + serviceState + " registrationState=" + registrationState
