@@ -168,7 +168,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         mSpyCarrierSST.getContentObserver().dispatchChange(false,
                 Settings.Global.getUriFor(prefNetworkMode));
         waitForMs(500);
-        verify(mNotificationManager).notify(
+        verify(mNotificationManager, atLeast(1)).notify(
                 eq(CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK), isA(Notification.class));
 
         Settings.Global.putInt(mContext.getContentResolver(), prefNetworkMode,
