@@ -1093,7 +1093,7 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     private void updateEmergencyCallFromExtras(Bundle extras) {
-        if (extras.getBoolean(ImsCallProfile.EXTRA_E_CALL)) {
+        if (extras.getBoolean(ImsCallProfile.EXTRA_EMERGENCY_CALL)) {
             setIsNetworkIdentifiedEmergencyCall(true);
         }
     }
