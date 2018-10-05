@@ -25,6 +25,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyObject;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
@@ -212,6 +213,18 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.setRadioPower(!oldState);
         waitForMs(100);
         assertTrue(oldState != mSimulatedCommands.getRadioState().isOn());
+    }
+
+    @Test
+    @MediumTest
+    public void testSetRadioPowerOffUnderDataConnected() {
+        sst.setRadioPower(true);
+        waitForMs(100);
+        doReturn(false).when(mDct).isDisconnected();
+        sst.setRadioPower(false);
+        waitForMs(200);
+        verify(this.mProxyController, times(1)).registerForAllDataDisconnected(anyInt(),
+                 eq(sst), anyInt(), anyObject());
     }
 
     @Test
