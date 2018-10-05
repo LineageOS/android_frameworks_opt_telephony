@@ -187,9 +187,14 @@ IccIoResult {
 
     @Override
     public String toString() {
-        return "IccIoResult sw1:0x" + Integer.toHexString(sw1) + " sw2:0x"
-                + Integer.toHexString(sw2) + " Payload: "
-                + ((Build.IS_DEBUGGABLE && Build.IS_ENG) ? payload : "*******")
+        return "IccIoResult sw1:0x"
+                + Integer.toHexString(sw1)
+                + " sw2:0x"
+                + Integer.toHexString(sw2)
+                + " Payload: "
+                + ((Build.IS_DEBUGGABLE && Build.IS_ENG)
+                        ? IccUtils.bytesToHexString(payload)
+                        : "*******")
                 + ((!success()) ? " Error: " + getErrorString() : "");
     }
 
