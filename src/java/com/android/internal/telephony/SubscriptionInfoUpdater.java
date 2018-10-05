@@ -564,9 +564,8 @@ public class SubscriptionInfoUpdater extends Handler {
                     ContentValues value = new ContentValues(1);
                     value.put(SubscriptionManager.SIM_SLOT_INDEX,
                             SubscriptionManager.INVALID_SIM_SLOT_INDEX);
-                    contentResolver.update(SubscriptionManager.CONTENT_URI, value,
-                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
-                            + Integer.toString(oldSubInfo.get(0).getSubscriptionId()), null);
+                    contentResolver.update(SubscriptionManager.getUriForSubscriptionId(
+                            oldSubInfo.get(0).getSubscriptionId()), value, null, null);
 
                     // refresh Cached Active Subscription Info List
                     SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
@@ -628,9 +627,8 @@ public class SubscriptionInfoUpdater extends Handler {
             if (msisdn != null) {
                 ContentValues value = new ContentValues(1);
                 value.put(SubscriptionManager.NUMBER, msisdn);
-                contentResolver.update(SubscriptionManager.CONTENT_URI, value,
-                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
-                        + Integer.toString(temp.getSubscriptionId()), null);
+                contentResolver.update(SubscriptionManager.getUriForSubscriptionId(
+                        temp.getSubscriptionId()), value, null, null);
 
                 // refresh Cached Active Subscription Info List
                 SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
