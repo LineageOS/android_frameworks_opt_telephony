@@ -28,6 +28,10 @@ public class CallStateException extends Exception
 
     public static final int ERROR_OUT_OF_SERVICE = 1;
     public static final int ERROR_POWER_OFF = 2;
+    public static final int ERROR_ALREADY_DIALING = 3;
+    public static final int ERROR_CALL_RINGING = 4;
+    public static final int ERROR_CALLING_DISABLED = 5;
+    public static final int ERROR_TOO_MANY_CALLS = 6;
 
     public
     CallStateException()

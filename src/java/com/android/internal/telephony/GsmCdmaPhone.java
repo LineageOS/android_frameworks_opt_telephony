@@ -1118,7 +1118,7 @@ public class GsmCdmaPhone extends Phone {
                     logi("IMS call failed with Exception: " + e.getMessage() + ". Falling back "
                             + "to CS.");
                 } else {
-                    CallStateException ce = new CallStateException(e.getMessage());
+                    CallStateException ce = new CallStateException(e.getError(), e.getMessage());
                     ce.setStackTrace(e.getStackTrace());
                     throw ce;
                 }
