@@ -1822,6 +1822,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     ImsCallProfile.DIALSTRING_USSD);
 
             mUssdSession = mImsManager.makeCall(profile, callees, mImsUssdListener);
+            mPendingUssd = response;
         } catch (ImsException e) {
             loge("sendUSSD : " + e);
             mPhone.sendErrorResponse(response, e);
