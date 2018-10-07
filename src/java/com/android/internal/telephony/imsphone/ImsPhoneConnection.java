@@ -984,12 +984,24 @@ public class ImsPhoneConnection extends Connection implements
         setVideoState(newVideoState);
     }
 
-    public void sendRttModifyRequest(android.telecom.Connection.RttTextStream textStream) {
+
+    /**
+     * Send a RTT upgrade request to the remote party.
+     * @param textStream RTT text stream to use
+     */
+    public void startRtt(android.telecom.Connection.RttTextStream textStream) {
         ImsCall imsCall = getImsCall();
         if (imsCall != null) {
-            getImsCall().sendRttModifyRequest();
+            getImsCall().sendRttModifyRequest(true);
             setCurrentRttTextStream(textStream);
         }
+    }
+
+    /**
+     * Terminate the current RTT session.
+     */
+    public void stopRtt() {
+        getImsCall().sendRttModifyRequest(false);
     }
 
     /**
@@ -1093,7 +1105,7 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     private void updateEmergencyCallFromExtras(Bundle extras) {
-        if (extras.getBoolean(ImsCallProfile.EXTRA_E_CALL)) {
+        if (extras.getBoolean(ImsCallProfile.EXTRA_EMERGENCY_CALL)) {
             setIsNetworkIdentifiedEmergencyCall(true);
         }
     }

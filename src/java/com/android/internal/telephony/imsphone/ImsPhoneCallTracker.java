@@ -936,9 +936,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             throw new CallStateException("service not available");
         }
 
-        if (!canDial()) {
-            throw new CallStateException("cannot dial in current state");
-        }
+        // See if there are any issues which preclude placing a call; throw a CallStateException
+        // if there is.
+        checkForDialIssues();
 
         if (isPhoneInEcmMode && isEmergencyNumber) {
             handleEcmTimer(ImsPhone.CANCEL_ECM_TIMER);
@@ -959,8 +959,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // there on hold
         if (mForegroundCall.getState() == ImsPhoneCall.State.ACTIVE) {
             if (mBackgroundCall.getState() != ImsPhoneCall.State.IDLE) {
-                //we should have failed in !canDial() above before we get here
-                throw new CallStateException("cannot dial in current state");
+                //we should have failed in checkForDialIssues above before we get here
+                throw new CallStateException(CallStateException.ERROR_TOO_MANY_CALLS,
+                        "Already too many ongoing calls.");
             }
             // foreground call is empty for the newly dialed connection
             holdBeforeDial = true;
@@ -1519,18 +1520,30 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             && !mForegroundCall.isFull();
     }
 
-    public boolean canDial() {
-        boolean ret;
+    /**
+     * Determines if there are issues which would preclude dialing an outgoing call.  Throws a
+     * {@link CallStateException} if there is an issue.
+     * @throws CallStateException
+     */
+    public void checkForDialIssues() throws CallStateException {
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
-
-        ret = mPendingMO == null
-                && !mRingingCall.isRinging()
-                && !disableCall.equals("true")
-                && (!mForegroundCall.getState().isAlive()
-                        || !mBackgroundCall.getState().isAlive());
-
-        return ret;
+        if (disableCall.equals("true")) {
+            throw new CallStateException(CallStateException.ERROR_CALLING_DISABLED,
+                    "ro.telephony.disable-call has been used to disable calling.");
+        }
+        if (mPendingMO != null) {
+            throw new CallStateException(CallStateException.ERROR_ALREADY_DIALING,
+                    "Another outgoing call is already being dialed.");
+        }
+        if (mRingingCall.isRinging()) {
+            throw new CallStateException(CallStateException.ERROR_CALL_RINGING,
+                    "Can't place a call while another is ringing.");
+        }
+        if (mForegroundCall.getState().isAlive() & mBackgroundCall.getState().isAlive()) {
+            throw new CallStateException(CallStateException.ERROR_TOO_MANY_CALLS,
+                    "Already an active foreground and background call.");
+        }
     }
 
     public boolean

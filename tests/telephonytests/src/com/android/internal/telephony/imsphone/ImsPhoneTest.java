@@ -28,7 +28,9 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -58,6 +60,7 @@ import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -303,10 +306,11 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(true, mImsPhoneUT.canConference());
         verify(mImsCT, times(2)).canConference();
 
-        assertEquals(false, mImsPhoneUT.canDial());
-        doReturn(true).when(mImsCT).canDial();
+        doNothing().when(mImsCT).checkForDialIssues();
         assertEquals(true, mImsPhoneUT.canDial());
-        verify(mImsCT, times(2)).canDial();
+        doThrow(CallStateException.class).when(mImsCT).checkForDialIssues();
+        assertEquals(false, mImsPhoneUT.canDial());
+        verify(mImsCT, times(2)).checkForDialIssues();
 
         mImsPhoneUT.conference();
         verify(mImsCT).conference();
