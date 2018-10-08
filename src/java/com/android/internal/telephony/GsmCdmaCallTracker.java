@@ -897,6 +897,10 @@ public class GsmCdmaCallTracker extends CallTracker {
                                 dc.state == DriverCall.State.ACTIVE) {
                             mConnections[i].onConnectedInOrOut();
                         } else {
+                            if (dc.state == DriverCall.State.ACTIVE
+                             || dc.state == DriverCall.State.HOLDING) {
+                                mConnections[i].releaseWakeLock();
+                            }
                             mConnections[i].onConnectedConnectionMigrated();
                         }
 
