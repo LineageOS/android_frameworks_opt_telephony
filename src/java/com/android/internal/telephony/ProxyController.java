@@ -454,7 +454,7 @@ public class ProxyController {
                 logd("onNotificationRadioCapabilityChanged: phoneId=" + id + " status=SUCCESS");
                 mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_SUCCESS;
                 // The modems may have been restarted and forgotten this
-                mPhoneSwitcher.resendDataAllowed(id);
+                mPhoneSwitcher.onRadioCapChanged(id);
                 mPhones[id].radioCapabilityUpdated(rc);
             }
 

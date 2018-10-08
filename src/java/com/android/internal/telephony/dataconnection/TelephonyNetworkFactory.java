@@ -183,8 +183,9 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     // apply or revoke requests if our active-ness changes
     private void onActivePhoneSwitch() {
-        final boolean newIsActive = mPhoneSwitcher.isPhoneActive(mPhoneId);
-        final boolean newIsActiveForDefault = mPhoneSwitcher.isActiveForDefaultRequests(mPhoneId);
+        final boolean newIsActive = mPhoneSwitcher.shouldApplySpecifiedRequests(mPhoneId);
+        final boolean newIsActiveForDefault =
+                mPhoneSwitcher.shouldApplyUnspecifiedRequests(mPhoneId);
 
         String logString = "onActivePhoneSwitch(newIsActive " + newIsActive + ", "
                 + "newIsActive " + newIsActiveForDefault + ")";
