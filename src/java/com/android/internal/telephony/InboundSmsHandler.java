@@ -508,6 +508,8 @@ public abstract class InboundSmsHandler extends StateMachine {
             // Before moving to idle state, set wakelock timeout to WAKE_LOCK_TIMEOUT milliseconds
             // to give any receivers time to take their own wake locks
             setWakeLockTimeout(WAKELOCK_TIMEOUT);
+            mPhone.getIccSmsInterfaceManager().mDispatchersController.sendEmptyMessage(
+                    SmsDispatchersController.EVENT_SMS_HANDLER_EXITING_WAITING_STATE);
         }
 
         @Override
