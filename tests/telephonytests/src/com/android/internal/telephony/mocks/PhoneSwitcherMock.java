@@ -77,7 +77,15 @@ public class PhoneSwitcherMock extends PhoneSwitcher {
     public void setPhoneActive(int phoneId, boolean active) {
         validatePhoneId(phoneId);
         if (mIsActive[phoneId].getAndSet(active) != active) {
-            mActivePhoneRegistrants[phoneId].notifyRegistrants();
+            notifyActivePhoneChange(phoneId);
         }
+    }
+
+    public void setPreferredDataPhoneId(int preferredDataPhoneId) {
+        mPreferredDataPhoneId = preferredDataPhoneId;
+    }
+
+    public void notifyActivePhoneChange(int phoneId) {
+        mActivePhoneRegistrants[phoneId].notifyRegistrants();
     }
 }
