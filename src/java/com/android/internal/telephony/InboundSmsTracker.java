@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.content.ContentValues;
 import android.database.Cursor;
+import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
@@ -87,19 +88,6 @@ public class InboundSmsTracker {
     public static final String SELECT_BY_REFERENCE_3GPP2WAP = "address=? AND reference_number=? "
             + "AND count=? AND (destination_port & "
             + DEST_PORT_FLAG_3GPP2_WAP_PDU + "=" + DEST_PORT_FLAG_3GPP2_WAP_PDU + ") AND deleted=0";
-
-    @VisibleForTesting
-    public static final String SELECT_BY_DUPLICATE_REFERENCE = "address=? AND "
-            + "reference_number=? AND count=? AND sequence=? AND "
-            + "((date=? AND message_body=?) OR deleted=0) AND (destination_port & "
-            + DEST_PORT_FLAG_3GPP2_WAP_PDU + "=0)";
-
-    @VisibleForTesting
-    public static final String SELECT_BY_DUPLICATE_REFERENCE_3GPP2WAP = "address=? AND "
-            + "reference_number=? " + "AND count=? AND sequence=? AND "
-            + "((date=? AND message_body=?) OR deleted=0) AND "
-            + "(destination_port & " + DEST_PORT_FLAG_3GPP2_WAP_PDU + "="
-            + DEST_PORT_FLAG_3GPP2_WAP_PDU + ")";
 
     /**
      * Create a tracker for a single-part SMS.
@@ -284,13 +272,15 @@ public class InboundSmsTracker {
         builder.append(new Date(mTimestamp));
         builder.append(" destPort=").append(mDestPort);
         builder.append(" is3gpp2=").append(mIs3gpp2);
-        if (mAddress != null) {
+        if (InboundSmsHandler.VDBG) {
             builder.append(" address=").append(mAddress);
-            builder.append(" display_originating_addr=").append(mDisplayAddress);
-            builder.append(" refNumber=").append(mReferenceNumber);
-            builder.append(" seqNumber=").append(mSequenceNumber);
-            builder.append(" msgCount=").append(mMessageCount);
+            builder.append(" timestamp=").append(mTimestamp);
+            builder.append(" messageBody=").append(mMessageBody);
         }
+        builder.append(" display_originating_addr=").append(mDisplayAddress);
+        builder.append(" refNumber=").append(mReferenceNumber);
+        builder.append(" seqNumber=").append(mSequenceNumber);
+        builder.append(" msgCount=").append(mMessageCount);
         if (mDeleteWhere != null) {
             builder.append(" deleteWhere(").append(mDeleteWhere);
             builder.append(") deleteArgs=(").append(Arrays.toString(mDeleteWhereArgs));
@@ -324,9 +314,62 @@ public class InboundSmsTracker {
         return mIs3gpp2WapPdu ? SELECT_BY_REFERENCE_3GPP2WAP : SELECT_BY_REFERENCE;
     }
 
-    public String getQueryForMultiPartDuplicates() {
-        return mIs3gpp2WapPdu ? SELECT_BY_DUPLICATE_REFERENCE_3GPP2WAP :
-                SELECT_BY_DUPLICATE_REFERENCE;
+    /**
+     * Get the query to find the exact same message/message segment in the db.
+     * @return Pair with where as Pair.first and whereArgs as Pair.second
+     */
+    public Pair<String, String[]> getExactMatchDupDetectQuery() {
+        // convert to strings for query
+        String address = getAddress();
+        String refNumber = Integer.toString(getReferenceNumber());
+        String count = Integer.toString(getMessageCount());
+        String seqNumber = Integer.toString(getSequenceNumber());
+        String date = Long.toString(getTimestamp());
+        String messageBody = getMessageBody();
+
+        String where = "address=? AND reference_number=? AND count=? AND sequence=? AND "
+                + "date=? AND message_body=?";
+        where = addDestPortQuery(where);
+        String[] whereArgs = new String[]{address, refNumber, count, seqNumber, date, messageBody};
+
+        return new Pair<>(where, whereArgs);
+    }
+
+    /**
+     * The key differences here compared to exact match are:
+     * - this is applicable only for multi-part message segments
+     * - this does not match date or message_body
+     * - this matches deleted=0 (undeleted segments)
+     * The only difference as compared to getQueryForSegments() is that this checks for sequence as
+     * well.
+     * @return Pair with where as Pair.first and whereArgs as Pair.second
+     */
+    public Pair<String, String[]> getInexactMatchDupDetectQuery() {
+        if (getMessageCount() == 1) return null;
+
+        // convert to strings for query
+        String address = getAddress();
+        String refNumber = Integer.toString(getReferenceNumber());
+        String count = Integer.toString(getMessageCount());
+        String seqNumber = Integer.toString(getSequenceNumber());
+
+        String where = "address=? AND reference_number=? AND count=? AND sequence=? AND "
+                + "deleted=0";
+        where = addDestPortQuery(where);
+        String[] whereArgs = new String[]{address, refNumber, count, seqNumber};
+
+        return new Pair<>(where, whereArgs);
+    }
+
+    private String addDestPortQuery(String where) {
+        String whereDestPort;
+        if (mIs3gpp2WapPdu) {
+            whereDestPort = "destination_port & " + DEST_PORT_FLAG_3GPP2_WAP_PDU + "="
+                + DEST_PORT_FLAG_3GPP2_WAP_PDU;
+        } else {
+            whereDestPort = "destination_port & " + DEST_PORT_FLAG_3GPP2_WAP_PDU + "=0";
+        }
+        return where + " AND (" + whereDestPort + ")";
     }
 
     /**
