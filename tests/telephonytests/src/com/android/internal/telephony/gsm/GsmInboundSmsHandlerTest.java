@@ -570,6 +570,10 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         // verify there's only 1 of the segments in the db (other should be discarded as dup)
         assertEquals(1, mContentProvider.getNumRows());
+        // verify the first one is discarded, and second message is present in the db
+        Cursor c = mContentProvider.query(sRawUri, null, null, null, null);
+        c.moveToFirst();
+        assertEquals(mMessageBodyPart2, c.getString(c.getColumnIndex("message_body")));
         // State machine should go back to idle
         assertEquals("IdleState", getCurrentState().getName());
     }
