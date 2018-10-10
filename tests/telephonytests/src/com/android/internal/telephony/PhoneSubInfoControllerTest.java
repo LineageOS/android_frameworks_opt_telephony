@@ -82,6 +82,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetDeviceIdWithOutPermission() {
+        // The READ_PRIVILEGED_PHONE_STATE permission or passing a device / profile owner access
+        // check is required to access device identifiers. Since neither of those are true for this
+        // test each case will result in a SecurityException being thrown.
         doReturn("353626073736741").when(mPhone).getDeviceId();
         doReturn("353626073736742").when(mSecondPhone).getDeviceId();
 
@@ -107,16 +110,42 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
+        try {
+            mPhoneSubInfoControllerUT.getDeviceIdForPhone(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getDeviceId"));
+        }
 
-        assertNull(mPhoneSubInfoControllerUT.getDeviceIdForPhone(0, TAG));
-        assertNull(mPhoneSubInfoControllerUT.getDeviceIdForPhone(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getDeviceIdForPhone(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getDeviceId"));
+        }
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
+        // The READ_PRIVILEGED_PHONE_STATE permission is now required to get device identifiers.
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
-        assertEquals("353626073736741", mPhoneSubInfoControllerUT.getDeviceIdForPhone(0, TAG));
-        assertEquals("353626073736742", mPhoneSubInfoControllerUT.getDeviceIdForPhone(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getDeviceIdForPhone(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getDeviceId"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getDeviceIdForPhone(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getDeviceId"));
+        }
     }
 
     @Test
@@ -285,6 +314,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetSubscriberIdWithOutPermission() {
+        // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
+        // profile owner access check is required to access subscriber identifiers. Since none of
+        // those are true for this test each case will result in a SecurityException being thrown.
         doReturn("310260426283121").when(mPhone).getSubscriberId();
         doReturn("310260426283122").when(mSecondPhone).getSubscriberId();
 
@@ -310,18 +342,42 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
+        try {
+            mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSubscriberId"));
+        }
 
-        assertNull(mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(0, TAG));
-        assertNull(mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSubscriberId"));
+        }
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
+        // The READ_PRIVILEGED_PHONE_STATE permission is now required to get device identifiers.
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
-        assertEquals("310260426283121",
-                mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(0, TAG));
-        assertEquals("310260426283122",
-                mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSubscriberId"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSubscriberId"));
+        }
     }
 
     @Test
@@ -340,6 +396,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetIccSerialNumberWithOutPermission() {
+        // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
+        // profile owner access check is required to access subscriber identifiers. Since none of
+        // those are true for this test each case will result in a SecurityException being thrown.
         doReturn("8991101200003204510").when(mPhone).getIccSerialNumber();
         doReturn("8991101200003204511").when(mSecondPhone).getIccSerialNumber();
 
@@ -365,18 +424,41 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
+        try {
+            mPhoneSubInfoControllerUT.getIccSerialNumberForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getIccSerialNumber"));
+        }
 
-        assertNull(mPhoneSubInfoControllerUT.getIccSerialNumberForSubscriber(0, TAG));
-        assertNull(mPhoneSubInfoControllerUT.getIccSerialNumberForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getIccSerialNumberForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getIccSerialNumber"));
+        }
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
-        assertEquals("8991101200003204510", mPhoneSubInfoControllerUT
-                .getIccSerialNumberForSubscriber(0, TAG));
-        assertEquals("8991101200003204511", mPhoneSubInfoControllerUT
-                .getIccSerialNumberForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getIccSerialNumberForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getIccSerialNumber"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getIccSerialNumberForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getIccSerialNumber"));
+        }
     }
 
     @Test
