@@ -30,7 +30,6 @@ import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.MccTable;
@@ -85,11 +84,8 @@ public class RuimRecords extends IccRecords {
                 + " mHomeNetworkId=" + mHomeNetworkId;
     }
 
-    //Constants
-    //MNC length in case of CSIM/RUIM IMSI is 2 as per spec C.S0065 section 5.2.2
-    private static final int CSIM_IMSI_MNC_LENGTH = 2;
-
     // ***** Event Constants
+    private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
     private static final int EVENT_GET_ICCID_DONE = 5;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_DONE = 10;
@@ -207,60 +203,13 @@ public class RuimRecords extends IccRecords {
         }
     }
 
-    private int decodeImsiDigits(int digits, int length) {
+    private int adjstMinDigits (int digits) {
         // Per C.S0005 section 2.3.1.
-        for (int i = 0, denominator = 1; i < length; i++) {
-            digits += denominator;
-            if ((digits / denominator) % 10 == 0) {
-                digits = digits - (10 * denominator);
-            }
-            denominator *= 10;
-        }
+        digits += 111;
+        digits = (digits % 10 == 0)?(digits - 10):digits;
+        digits = ((digits / 10) % 10 == 0)?(digits - 100):digits;
+        digits = ((digits / 100) % 10 == 0)?(digits - 1000):digits;
         return digits;
-    }
-
-    /**
-     * Decode utility to decode IMSI from data read from EF_IMSIM
-     * Please refer to
-     *       // C.S0065 section 5.2.2 for IMSI_M encoding
-     *       // C.S0005 section 2.3.1 for MIN encoding in IMSI_M.
-     */
-    private String decodeImsi(byte[] data) {
-        // Retrieve the MCC and digits 11 and 12
-        int mcc_data = ((0x03 & data[9]) << 8) | (0xFF & data[8]);
-        int mcc = decodeImsiDigits(mcc_data, 3);
-        int digits_11_12_data = data[6] & 0x7f;
-        int digits_11_12 = decodeImsiDigits(digits_11_12_data, 2);
-
-        // Retrieve 10 MIN digits
-        int first3digits = ((0x03 & data[2]) << 8) + (0xFF & data[1]);
-        int second3digits = (((0xFF & data[5]) << 8) | (0xFF & data[4])) >> 6;
-        int digit7 = 0x0F & (data[4] >> 2);
-        if (digit7 > 0x09) digit7 = 0;
-        int last3digits = ((0x03 & data[4]) << 8) | (0xFF & data[3]);
-
-        first3digits = decodeImsiDigits(first3digits, 3);
-        second3digits = decodeImsiDigits(second3digits, 3);
-        last3digits = decodeImsiDigits(last3digits, 3);
-
-        return new StringBuilder()
-                .append(String.format(Locale.US, "%03d", mcc))
-                .append(String.format(Locale.US, "%02d", digits_11_12))
-                .append(String.format(Locale.US, "%03d", first3digits))
-                .append(String.format(Locale.US, "%03d", second3digits))
-                .append(String.format(Locale.US, "%d", digit7))
-                .append(String.format(Locale.US, "%03d", last3digits))
-                .toString();
-    }
-
-     /**
-     * Introduce Generic API returns the 5 or 6 digit MCC/MNC
-     * of the operator that provided the RUIM card.
-     * Returns null of RUIM is not yet ready
-     */
-    @Override
-    public String getOperatorNumeric() {
-        return getRUIMOperatorNumeric();
     }
 
     /**
@@ -274,16 +223,17 @@ public class RuimRecords extends IccRecords {
             return null;
         }
 
-        int mncLen = 0;
         if (mMncLength != UNINITIALIZED && mMncLength != UNKNOWN) {
             // Length = length of MCC + length of MNC
             // length of mcc = 3 (3GPP2 C.S0005 - Section 2.3)
-            mncLen = mMncLength;
-        } else {
-            mncLen = CSIM_IMSI_MNC_LENGTH;
+            return imsi.substring(0, 3 + mMncLength);
         }
 
-        return imsi.substring(0, 3 + mncLen);
+        // Guess the MNC length based on the MCC if we don't
+        // have a valid value in ef[ad]
+
+        int mcc = Integer.parseInt(imsi.substring(0, 3));
+        return imsi.substring(0, 3 + MccTable.smallestDigitsMccForMnc(mcc));
     }
 
     // Refer to ETSI TS 102.221
@@ -419,8 +369,7 @@ public class RuimRecords extends IccRecords {
         }
     }
 
-    @VisibleForTesting
-    public class EfCsimImsimLoaded implements IccRecordLoaded {
+    private class EfCsimImsimLoaded implements IccRecordLoaded {
         @Override
         public String getEfName() {
             return "EF_CSIM_IMSIM";
@@ -429,43 +378,33 @@ public class RuimRecords extends IccRecords {
         @Override
         public void onRecordLoaded(AsyncResult ar) {
             byte[] data = (byte[]) ar.result;
-
-            if (data == null || data.length < 10) {
-                log("Invalid IMSI from EF_CSIM_IMSIM " + IccUtils.bytesToHexString(data));
-                mImsi = null;
-                mMin = null;
-                return;
-            }
-            if (DBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data) +
-                    Rlog.pii(LOG_TAG, IccUtils.bytesToHexString(data)));
-
+            if (VDBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data));
             // C.S0065 section 5.2.2 for IMSI_M encoding
             // C.S0005 section 2.3.1 for MIN encoding in IMSI_M.
             boolean provisioned = ((data[7] & 0x80) == 0x80);
 
             if (provisioned) {
-                mImsi = decodeImsi(data);
-                if (null != mImsi) {
-                    mMin = mImsi.substring(5, 15);
-                }
-                log("IMSI: " + mImsi.substring(0, 5) + "xxxxxxxxx" +
-                         Rlog.pii(LOG_TAG, mImsi.substring(0, 5)));
+                int first3digits = ((0x03 & data[2]) << 8) + (0xFF & data[1]);
+                int second3digits = (((0xFF & data[5]) << 8) | (0xFF & data[4])) >> 6;
+                int digit7 = 0x0F & (data[4] >> 2);
+                if (digit7 > 0x09) digit7 = 0;
+                int last3digits = ((0x03 & data[4]) << 8) | (0xFF & data[3]);
+                first3digits = adjstMinDigits(first3digits);
+                second3digits = adjstMinDigits(second3digits);
+                last3digits = adjstMinDigits(last3digits);
 
+                StringBuilder builder = new StringBuilder();
+                builder.append(String.format(Locale.US, "%03d", first3digits));
+                builder.append(String.format(Locale.US, "%03d", second3digits));
+                builder.append(String.format(Locale.US, "%d", digit7));
+                builder.append(String.format(Locale.US, "%03d", last3digits));
+                mMin = builder.toString();
+                if (DBG) log("min present=" + mMin);
             } else {
-                if (DBG) log("IMSI not provisioned in card");
+                if (DBG) log("min not present");
             }
-
-            //Update MccTable with the retrieved IMSI
-            String operatorNumeric = getOperatorNumeric();
-            if (operatorNumeric != null) {
-                if(operatorNumeric.length() <= 6){
-                    MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
-                }
-            }
-
-            mImsiReadyRegistrants.notifyRegistrants();
         }
-   }
+    }
 
     private class EfCsimCdmaHomeLoaded implements IccRecordLoaded {
         @Override
@@ -679,6 +618,43 @@ public class RuimRecords extends IccRecords {
                 log("Event EVENT_GET_DEVICE_IDENTITY_DONE Received");
             break;
 
+            /* IO events */
+            case EVENT_GET_IMSI_DONE:
+                isRecordLoadResponse = true;
+
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception != null) {
+                    loge("Exception querying IMSI, Exception:" + ar.exception);
+                    break;
+                }
+
+                mImsi = (String) ar.result;
+
+                // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
+                // than 15 (and usually 15).
+                if (mImsi != null && (mImsi.length() < 6 || mImsi.length() > 15)) {
+                    loge("invalid IMSI " + mImsi);
+                    mImsi = null;
+                }
+
+                // FIXME: CSIM IMSI may not contain the MNC.
+                if (false) {
+                    log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
+
+                    String operatorNumeric = getRUIMOperatorNumeric();
+                    if (operatorNumeric != null) {
+                        if (operatorNumeric.length() <= 6) {
+                            log("update mccmnc=" + operatorNumeric);
+                            MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
+                        }
+                    }
+                } else {
+                    String operatorNumeric = getRUIMOperatorNumeric();
+                    log("NO update mccmnc=" + operatorNumeric);
+                }
+
+            break;
+
             case EVENT_GET_CDMA_SUBSCRIPTION_DONE:
                 ar = (AsyncResult)msg.obj;
                 String localTemp[] = (String[])ar.result;
@@ -865,6 +841,9 @@ public class RuimRecords extends IccRecords {
         mRecordsRequested = true;
 
         if (DBG) log("fetchRuimRecords " + mRecordsToLoad);
+
+        mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
+        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_ICCID,
                 obtainMessage(EVENT_GET_ICCID_DONE));
