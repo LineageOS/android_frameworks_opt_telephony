@@ -121,7 +121,7 @@ public class ImsPhoneConnection extends Connection implements
      * currently available, but mobile data is off and the carrier is metering data for video
      * calls.
      */
-    private boolean mIsVideoEnabled = true;
+    private boolean mIsLocalVideoCapable = true;
 
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
@@ -264,7 +264,7 @@ public class ImsPhoneConnection extends Connection implements
         capabilities = removeCapability(capabilities,
                 Connection.Capability.SUPPORTS_VT_LOCAL_BIDIRECTIONAL);
 
-        if (!mIsVideoEnabled) {
+        if (!mIsLocalVideoCapable) {
             Rlog.i(LOG_TAG, "applyLocalCallCapabilities - disabling video (overidden)");
             return capabilities;
         }
@@ -1352,9 +1352,9 @@ public class ImsPhoneConnection extends Connection implements
         mShouldIgnoreVideoStateChanges = false;
     }
 
-    public void handleDataEnabledChange(boolean isDataEnabled) {
-        mIsVideoEnabled = isDataEnabled;
-        Rlog.i(LOG_TAG, "handleDataEnabledChange: isDataEnabled=" + isDataEnabled
+    public void setLocalVideoCapable(boolean isVideoEnabled) {
+        mIsLocalVideoCapable = isVideoEnabled;
+        Rlog.i(LOG_TAG, "setLocalVideoCapable: mIsLocalVideoCapable = " + mIsLocalVideoCapable
                 + "; updating local video availability.");
         updateMediaCapabilities(getImsCall());
     }
