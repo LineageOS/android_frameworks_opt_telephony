@@ -31,7 +31,7 @@ import android.telephony.TelephonyManager;
 public abstract class BaseCommands implements CommandsInterface {
     //***** Instance Variables
     protected Context mContext;
-    protected RadioState mState = RadioState.RADIO_UNAVAILABLE;
+    protected int mState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
     protected Object mStateMonitor = new Object();
 
     protected RegistrantList mRadioStateChangedRegistrants = new RegistrantList();
@@ -117,7 +117,7 @@ public abstract class BaseCommands implements CommandsInterface {
     //***** CommandsInterface implementation
 
     @Override
-    public RadioState getRadioState() {
+    public @TelephonyManager.RadioPowerState int getRadioState() {
         return mState;
     }
 
@@ -154,7 +154,7 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mStateMonitor) {
             mOnRegistrants.add(r);
 
-            if (mState.isOn()) {
+            if (mState == TelephonyManager.RADIO_POWER_ON) {
                 r.notifyRegistrant(new AsyncResult(null, null, null));
             }
         }
@@ -174,7 +174,7 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mStateMonitor) {
             mAvailRegistrants.add(r);
 
-            if (mState.isAvailable()) {
+            if (mState != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                 r.notifyRegistrant(new AsyncResult(null, null, null));
             }
         }
@@ -194,7 +194,7 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mStateMonitor) {
             mNotAvailRegistrants.add(r);
 
-            if (!mState.isAvailable()) {
+            if (mState == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                 r.notifyRegistrant(new AsyncResult(null, null, null));
             }
         }
@@ -214,7 +214,8 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mStateMonitor) {
             mOffOrNotAvailRegistrants.add(r);
 
-            if (mState == RadioState.RADIO_OFF || !mState.isAvailable()) {
+            if (mState == TelephonyManager.RADIO_POWER_OFF
+                    || mState == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                 r.notifyRegistrant(new AsyncResult(null, null, null));
             }
         }
@@ -795,8 +796,8 @@ public abstract class BaseCommands implements CommandsInterface {
      * @param forceNotifyRegistrants boolean indicating if registrants should be notified even if
      * there is no change in state
      */
-    protected void setRadioState(RadioState newState, boolean forceNotifyRegistrants) {
-        RadioState oldState;
+    protected void setRadioState(int newState, boolean forceNotifyRegistrants) {
+        int oldState;
 
         synchronized (mStateMonitor) {
             oldState = mState;
@@ -809,21 +810,24 @@ public abstract class BaseCommands implements CommandsInterface {
 
             mRadioStateChangedRegistrants.notifyRegistrants();
 
-            if (mState.isAvailable() && !oldState.isAvailable()) {
+            if (mState != TelephonyManager.RADIO_POWER_UNAVAILABLE
+                    && oldState == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                 mAvailRegistrants.notifyRegistrants();
             }
 
-            if (!mState.isAvailable() && oldState.isAvailable()) {
+            if (mState == TelephonyManager.RADIO_POWER_UNAVAILABLE
+                    && oldState != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                 mNotAvailRegistrants.notifyRegistrants();
             }
 
-            if (mState.isOn() && !oldState.isOn()) {
+            if (mState == TelephonyManager.RADIO_POWER_ON
+                    && oldState != TelephonyManager.RADIO_POWER_ON) {
                 mOnRegistrants.notifyRegistrants();
             }
 
-            if ((!mState.isOn() || !mState.isAvailable())
-                && !((!oldState.isOn() || !oldState.isAvailable()))
-            ) {
+            if ((mState == TelephonyManager.RADIO_POWER_OFF
+                    || mState == TelephonyManager.RADIO_POWER_UNAVAILABLE)
+                    && (oldState == TelephonyManager.RADIO_POWER_ON)) {
                 mOffOrNotAvailRegistrants.notifyRegistrants();
             }
         }

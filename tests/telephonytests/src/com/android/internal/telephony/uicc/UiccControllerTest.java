@@ -30,6 +30,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.support.test.filters.SmallTest;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyTest;
@@ -143,8 +144,7 @@ public class UiccControllerTest extends TelephonyTest {
         mSimulatedCommands.requestShutdown(null);
         waitForMs(50);
         assertNull(mUiccControllerUT.getUiccCard(0));
-        assertEquals(CommandsInterface.RadioState.RADIO_UNAVAILABLE,
-                mSimulatedCommands.getRadioState());
+        assertEquals(TelephonyManager.RADIO_POWER_UNAVAILABLE, mSimulatedCommands.getRadioState());
     }
 
     @Test@SmallTest
@@ -152,7 +152,7 @@ public class UiccControllerTest extends TelephonyTest {
         mSimulatedCommands.setRadioPower(true, null);
         waitForMs(500);
         assertNotNull(mUiccControllerUT.getUiccCard(0));
-        assertEquals(CommandsInterface.RadioState.RADIO_ON, mSimulatedCommands.getRadioState());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
     }
 
     @Test @SmallTest
