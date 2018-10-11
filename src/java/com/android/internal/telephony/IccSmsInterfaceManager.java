@@ -86,8 +86,8 @@ public class IccSmsInterfaceManager {
     protected Phone mPhone;
     final protected Context mContext;
     final protected AppOpsManager mAppOps;
-    final private UserManager mUserManager;
-    protected SmsDispatchersController mDispatchersController;
+    @VisibleForTesting
+    public SmsDispatchersController mDispatchersController;
 
     private final LocalLog mCellBroadcastLocalLog = new LocalLog(100);
 
@@ -147,7 +147,6 @@ public class IccSmsInterfaceManager {
         mPhone = phone;
         mContext = context;
         mAppOps = appOps;
-        mUserManager = userManager;
         mDispatchersController = dispatchersController;
     }
 
