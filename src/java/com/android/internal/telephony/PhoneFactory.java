@@ -43,7 +43,6 @@ import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -457,17 +456,6 @@ public class PhoneFactory {
 
             sTelephonyNetworkFactories[i].dump(fd, pw, args);
 
-            pw.flush();
-            pw.println("++++++++++++++++++++++++++++++++");
-
-            try {
-                UiccProfile uiccProfile = (UiccProfile) phone.getIccCard();
-                if (uiccProfile != null) {
-                    uiccProfile.dump(fd, pw, args);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
             pw.flush();
             pw.decreaseIndent();
             pw.println("++++++++++++++++++++++++++++++++");
