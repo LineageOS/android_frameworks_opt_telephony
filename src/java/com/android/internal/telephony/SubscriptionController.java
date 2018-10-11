@@ -941,9 +941,8 @@ public class SubscriptionController extends ISub.Stub {
                     }
 
                     if (value.size() > 0) {
-                        resolver.update(SubscriptionManager.CONTENT_URI, value,
-                                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
-                                        "=" + Long.toString(subId), null);
+                        resolver.update(SubscriptionManager.getUriForSubscriptionId(subId),
+                                value, null, null);
 
                         // Refresh the Cache of Active Subscription Info List
                         refreshCachedActiveSubscriptionInfoList();
@@ -1036,9 +1035,8 @@ public class SubscriptionController extends ISub.Stub {
 
                 ContentValues value = new ContentValues();
                 value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                resolver.update(SubscriptionManager.CONTENT_URI, value,
-                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
-                                "=" + Long.toString(subId), null);
+                resolver.update(SubscriptionManager.getUriForSubscriptionId(subId), value,
+                        null, null);
 
                 // Refresh the Cache of Active Subscription Info List
                 refreshCachedActiveSubscriptionInfoList();
@@ -1155,9 +1153,8 @@ public class SubscriptionController extends ISub.Stub {
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.CARRIER_NAME, text);
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
-                    Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
@@ -1190,9 +1187,8 @@ public class SubscriptionController extends ISub.Stub {
             value.put(SubscriptionManager.COLOR, tint);
             if (DBG) logd("[setIconTint]- tint:" + tint + " set");
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
-                            Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
@@ -1254,9 +1250,8 @@ public class SubscriptionController extends ISub.Stub {
             // to the eSIM itself. Currently it will be blown away the next time the subscription
             // list is updated.
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
-                    Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
@@ -1300,9 +1295,8 @@ public class SubscriptionController extends ISub.Stub {
             // that was removed as there doesn't seem to be a reason for that. If it is added
             // back, watch out for deadlocks.
 
-            result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                            + "=" + Long.toString(subId), null);
+            result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
@@ -1340,9 +1334,8 @@ public class SubscriptionController extends ISub.Stub {
             value.put(SubscriptionManager.DATA_ROAMING, roaming);
             if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
-                    Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
@@ -1379,8 +1372,8 @@ public class SubscriptionController extends ISub.Stub {
         value.put(SubscriptionManager.MCC_STRING, mccString);
         value.put(SubscriptionManager.MNC_STRING, mncString);
 
-        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+        int result = mContext.getContentResolver().update(
+                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
         // Refresh the Cache of Active Subscription Info List
         refreshCachedActiveSubscriptionInfoList();
@@ -2066,9 +2059,8 @@ public class SubscriptionController extends ISub.Stub {
                 break;
         }
 
-        return resolver.update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
-                        "=" + Integer.toString(subId), null);
+        return resolver.update(SubscriptionManager.getUriForSubscriptionId(subId),
+                value, null, null);
     }
 
     /**
