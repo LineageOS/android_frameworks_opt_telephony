@@ -18,11 +18,13 @@ package com.android.internal.telephony;
 
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.BaseColumns;
 import android.support.test.InstrumentationRegistry;
 import android.telephony.SubscriptionManager;
 import android.test.mock.MockContentProvider;
@@ -139,8 +141,17 @@ public class FakeTelephonyProvider extends MockContentProvider {
     }
 
     @Override
-    public final int update(Uri uri, ContentValues values, String where,
-            String[] selectionArgs) {
-        return mDbHelper.getWritableDatabase().update("siminfo", values, where, selectionArgs);
+    public final int update(Uri uri, ContentValues values, String where, String[] selectionArgs) {
+        // handle URI with appended subId
+        final int urlSimInfoSubId = 0;
+        UriMatcher matcher = new UriMatcher(UriMatcher.NO_MATCH);
+        matcher.addURI("telephony", "siminfo/#", urlSimInfoSubId);
+        if (matcher.match(uri) == urlSimInfoSubId) {
+            where = BaseColumns._ID + "=" + uri.getLastPathSegment();
+        }
+
+        int count = mDbHelper.getWritableDatabase().update("siminfo", values, where,
+                selectionArgs);
+        return count;
     }
 }
