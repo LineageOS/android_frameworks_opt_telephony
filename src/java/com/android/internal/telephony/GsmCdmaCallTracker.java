@@ -617,11 +617,10 @@ public class GsmCdmaCallTracker extends CallTracker {
      * @throws CallStateException
      */
     public void checkForDialIssues() throws CallStateException {
-        int serviceState = mPhone.getServiceState().getState();
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 
-        if (serviceState == ServiceState.STATE_POWER_OFF) {
+        if (!mCi.getRadioState().isOn()) {
             throw new CallStateException(CallStateException.ERROR_POWER_OFF,
                     "Modem not powered");
         }
