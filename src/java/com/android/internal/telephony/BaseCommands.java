@@ -78,6 +78,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mNattKeepaliveStatusRegistrants = new RegistrantList();
     protected RegistrantList mPhysicalChannelConfigurationRegistrants = new RegistrantList();
     protected RegistrantList mLceInfoRegistrants = new RegistrantList();
+    protected RegistrantList mEmergencyNumberListRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -781,6 +782,17 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void unregisterForSubscriptionStatusChanged(Handler h) {
         mSubscriptionStatusRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForEmergencyNumberList(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEmergencyNumberListRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForEmergencyNumberList(Handler h) {
+        mEmergencyNumberListRegistrants.remove(h);
     }
 
     //***** Protected Methods
