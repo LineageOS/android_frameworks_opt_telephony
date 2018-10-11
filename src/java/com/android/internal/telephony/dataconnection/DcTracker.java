@@ -536,7 +536,19 @@ public class DcTracker extends Handler {
 
     private int mDisconnectPendingCount = 0;
 
-    private ArrayList<DataProfile> mLastDataProfileList = null;
+    /** Indicate if metered APNs are disabled.
+     *  set to block all the metered APNs from continuously sending requests, which causes
+     *  undesired network load */
+    private boolean mMeteredApnDisabled = false;
+
+    /**
+     * int to remember whether has setDataProfiles and with roaming or not.
+     * 0: default, has never set data profile
+     * 1: has set data profile with home protocol
+     * 2: has set data profile with roaming protocol
+     * This is not needed once RIL command is updated to support both home and roaming protocol.
+     */
+    private int mSetDataProfileStatus = 0;
 
     /**
      * Handles changes to the APN db.
@@ -3208,25 +3220,18 @@ public class DcTracker extends Handler {
     private void setDataProfilesAsNeeded() {
         if (DBG) log("setDataProfilesAsNeeded");
 
-        ArrayList<DataProfile> dataProfileList = new ArrayList<>();
-
+        ArrayList<DataProfile> dps = new ArrayList<DataProfile>();
         for (ApnSetting apn : mAllApnSettings) {
-            DataProfile dp = createDataProfile(apn);
-            if (!dataProfileList.contains(dp)) {
-                dataProfileList.add(dp);
+            if (apn.getModemCognitive()) {
+                DataProfile dp = createDataProfile(apn);
+                if (!dps.contains(dp)) {
+                    dps.add(dp);
+                }
             }
         }
-
-        // Check if the data profiles we are sending are same as we did last time. We don't want to
-        // send the redundant profiles to the modem. Also note that when no data profiles are
-        // available, for example when SIM is not present, we send the empty list to the modem.
-        // Also we always send the data profiles once after boot up.
-        if (mLastDataProfileList == null
-                || dataProfileList.size() != mLastDataProfileList.size()
-                || !mLastDataProfileList.containsAll(dataProfileList)) {
-            mDataServiceManager.setDataProfile(dataProfileList,
+        if (dps.size() > 0) {
+            mDataServiceManager.setDataProfile(dps,
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
-            mLastDataProfileList = dataProfileList;
         }
     }
 
