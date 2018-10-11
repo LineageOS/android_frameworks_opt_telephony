@@ -1313,37 +1313,36 @@ public class RadioResponse extends IRadioResponse.Stub {
             android.hardware.radio.V1_1.KeepaliveStatus keepaliveStatus) {
 
         RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr == null) {
-            return;
-        }
+        if (rr == null) return;
 
         KeepaliveStatus ret = null;
-
-        switch(responseInfo.error) {
-            case RadioError.NONE:
-                int convertedStatus = convertHalKeepaliveStatusCode(keepaliveStatus.code);
-                if (convertedStatus < 0) {
+        try {
+            switch(responseInfo.error) {
+                case RadioError.NONE:
+                    int convertedStatus = convertHalKeepaliveStatusCode(keepaliveStatus.code);
+                    if (convertedStatus < 0) {
+                        ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
+                    } else {
+                        ret = new KeepaliveStatus(keepaliveStatus.sessionHandle, convertedStatus);
+                    }
+                    // If responseInfo.error is NONE, response function sends the response message
+                    // even if result is actually an error.
+                    sendMessageResponse(rr.mResult, ret);
+                    break;
+                case RadioError.REQUEST_NOT_SUPPORTED:
                     ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
-                } else {
-                    ret = new KeepaliveStatus(keepaliveStatus.sessionHandle, convertedStatus);
-                }
-                // If responseInfo.error is NONE, response function sends the response message
-                // even if result is actually an error.
-                sendMessageResponse(rr.mResult, ret);
-                break;
-            case RadioError.REQUEST_NOT_SUPPORTED:
-                ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
-                break;
-            case RadioError.NO_RESOURCES:
-                ret = new KeepaliveStatus(KeepaliveStatus.ERROR_NO_RESOURCES);
-                break;
-            default:
-                ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNKNOWN);
-                break;
+                    break;
+                case RadioError.NO_RESOURCES:
+                    ret = new KeepaliveStatus(KeepaliveStatus.ERROR_NO_RESOURCES);
+                    break;
+                default:
+                    ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNKNOWN);
+                    break;
+            }
+        } finally {
+            // If responseInfo.error != NONE, the processResponseDone sends the response message.
+            mRil.processResponseDone(rr, responseInfo, ret);
         }
-        // If responseInfo.error != NONE, the processResponseDone sends the response message.
-        mRil.processResponseDone(rr, responseInfo, ret);
     }
 
     /**
@@ -1351,16 +1350,16 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void stopKeepaliveResponse(RadioResponseInfo responseInfo) {
         RILRequest rr = mRil.processResponse(responseInfo);
+        if (rr == null) return;
 
-        if (rr == null) {
-            return;
-        }
-
-        if (responseInfo.error == RadioError.NONE) {
-            sendMessageResponse(rr.mResult, null);
+        try {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, null);
+            } else {
+                //TODO: Error code translation
+            }
+        } finally {
             mRil.processResponseDone(rr, responseInfo, null);
-        } else {
-            //TODO: Error code translation
         }
     }
 
