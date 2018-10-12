@@ -39,7 +39,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
-import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -461,8 +461,7 @@ public class DataConnection extends StateMachine {
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
     private DataConnection(Phone phone, String name, int id,
                            DcTracker dct, DataServiceManager dataServiceManager,
-                           DcTesterFailBringUpAll failBringUpAll,
-                DcController dcc) {
+                           DcTesterFailBringUpAll failBringUpAll, DcController dcc) {
         super(name, dcc.getHandler());
         setLogRecSize(300);
         setLogOnlyTransitions(true);
@@ -1664,10 +1663,12 @@ public class DataConnection extends StateMachine {
             mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
                     "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
                     50, misc);
-            mPhone.mCi.registerForNattKeepaliveStatus(
-                    getHandler(), DataConnection.EVENT_KEEPALIVE_STATUS, null);
-            mPhone.mCi.registerForLceInfo(
-                    getHandler(), DataConnection.EVENT_LINK_CAPACITY_CHANGED, null);
+            if (mDataServiceManager.getTransportType() == TransportType.WWAN) {
+                mPhone.mCi.registerForNattKeepaliveStatus(
+                        getHandler(), DataConnection.EVENT_KEEPALIVE_STATUS, null);
+                mPhone.mCi.registerForLceInfo(
+                        getHandler(), DataConnection.EVENT_LINK_CAPACITY_CHANGED, null);
+            }
         }
 
         @Override
@@ -1686,8 +1687,11 @@ public class DataConnection extends StateMachine {
 
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
                     reason, mNetworkInfo.getExtraInfo());
-            mPhone.mCi.unregisterForNattKeepaliveStatus(getHandler());
-            mPhone.mCi.unregisterForLceInfo(getHandler());
+
+            if (mDataServiceManager.getTransportType() == TransportType.WWAN) {
+                mPhone.mCi.unregisterForNattKeepaliveStatus(getHandler());
+                mPhone.mCi.unregisterForLceInfo(getHandler());
+            }
             if (mNetworkAgent != null) {
                 mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                 mNetworkAgent = null;
@@ -1809,8 +1813,7 @@ public class DataConnection extends StateMachine {
                     KeepalivePacketData pkt = (KeepalivePacketData) msg.obj;
                     int slotId = msg.arg1;
                     int intervalMillis = msg.arg2 * 1000;
-                    if (mDataServiceManager.getTransportType()
-                            == AccessNetworkConstants.TransportType.WWAN) {
+                    if (mDataServiceManager.getTransportType() == TransportType.WWAN) {
                         mPhone.mCi.startNattKeepalive(
                                 DataConnection.this.mCid, pkt, intervalMillis,
                                 DataConnection.this.obtainMessage(
@@ -2081,8 +2084,10 @@ public class DataConnection extends StateMachine {
 
         @Override
         protected void pollLceData() {
-            if(mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {  // active LCE service
-                mPhone.mCi.pullLceData(DataConnection.this.obtainMessage(EVENT_BW_REFRESH_RESPONSE));
+            if (mPhone.getLceStatus() == RILConstants.LCE_ACTIVE     // active LCE service
+                    && mDataServiceManager.getTransportType() == TransportType.WWAN) {
+                mPhone.mCi.pullLceData(
+                        DataConnection.this.obtainMessage(EVENT_BW_REFRESH_RESPONSE));
             }
         }
 
