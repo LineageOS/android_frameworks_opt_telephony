@@ -728,7 +728,6 @@ public class DcTracker extends Handler {
         mPhone.getCallTracker().registerForVoiceCallStarted(this,
                 DctConstants.EVENT_VOICE_CALL_STARTED, null);
         registerServiceStateTrackerEvents();
-        mPhone.mCi.registerForPcoData(this, DctConstants.EVENT_PCO_DATA_RECEIVED, null);
         mPhone.getCarrierActionAgent().registerForCarrierAction(
                 CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED, this,
                 DctConstants.EVENT_SET_CARRIER_DATA_ENABLED, null, false);
@@ -785,7 +784,6 @@ public class DcTracker extends Handler {
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         unregisterServiceStateTrackerEvents();
-        mPhone.mCi.unregisterForPcoData(this);
         mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
                 CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED);
         mDataServiceManager.unregisterForServiceBindingChanged(this);
