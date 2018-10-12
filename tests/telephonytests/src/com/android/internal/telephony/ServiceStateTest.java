@@ -35,6 +35,13 @@ public class ServiceStateTest extends TestCase {
     @SmallTest
     public void testRoaming() {
         ServiceState ss = new ServiceState();
+        // add data registration state
+        ss.addNetworkRegistrationState(new NetworkRegistrationState(
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_ROAMING,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, 0,
+                false, null, null));
+        assertTrue(ss.getDataRoamingFromRegistration());
 
         ss.setCdmaDefaultRoamingIndicator(1);
         assertEquals(1, ss.getCdmaDefaultRoamingIndicator());
@@ -51,9 +58,6 @@ public class ServiceStateTest extends TestCase {
         ss.setDataRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);
         assertTrue(ss.getDataRoaming());
         assertEquals(ServiceState.ROAMING_TYPE_DOMESTIC, ss.getDataRoamingType());
-
-        ss.setDataRoamingFromRegistration(true);
-        assertTrue(ss.getDataRoamingFromRegistration());
 
         ss.setVoiceRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);
         assertTrue(ss.getVoiceRoaming());
@@ -238,7 +242,6 @@ public class ServiceStateTest extends TestCase {
         ss.setCdmaEriIconIndex(6);
         ss.setCdmaEriIconMode(7);
         ss.setEmergencyOnly(true);
-        ss.setDataRoamingFromRegistration(true);
         ss.setChannelNumber(2100);
         ss.setCellBandwidths(new int[]{1400, 5000, 10000});
 
@@ -268,7 +271,6 @@ public class ServiceStateTest extends TestCase {
         ss.setCdmaEriIconIndex(6);
         ss.setCdmaEriIconMode(7);
         ss.setEmergencyOnly(true);
-        ss.setDataRoamingFromRegistration(true);
         ss.setChannelNumber(2100);
         ss.setCellBandwidths(new int[]{3, 4, 10});
 
