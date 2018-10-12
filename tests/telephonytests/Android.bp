@@ -6,7 +6,6 @@ android_test {
     libs: [
         "android.test.runner",
         "ims-common",
-        "bouncycastle",
         "android.test.base",
         "android.test.mock",
     ],
