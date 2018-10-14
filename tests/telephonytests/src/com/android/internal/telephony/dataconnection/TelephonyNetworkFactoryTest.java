@@ -30,6 +30,7 @@ import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.ContextFixture;
+import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.mocks.ConnectivityServiceMock;
 import com.android.internal.telephony.mocks.DcTrackerMock;
 import com.android.internal.telephony.mocks.PhoneSwitcherMock;
@@ -37,8 +38,16 @@ import com.android.internal.telephony.mocks.SubscriptionControllerMock;
 import com.android.internal.telephony.mocks.SubscriptionMonitorMock;
 import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.lang.reflect.Field;
+
 public class TelephonyNetworkFactoryTest extends AndroidTestCase {
     private final static String LOG_TAG = "TelephonyNetworkFactoryTest";
+
+    @Mock
+    RadioConfig mMockRadioConfig;
 
     private void waitABit() {
         try {
@@ -65,7 +74,9 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
         private Object mLock = new Object();
         private static final int MAX_INIT_WAIT_MS = 30000; // 30 seconds
 
-        TestSetup(int numPhones) {
+        TestSetup(int numPhones) throws Exception {
+            MockitoAnnotations.initMocks(TelephonyNetworkFactoryTest.this);
+            mockRadioConfig();
             handlerThread = new HandlerThread("TelephonyNetworkFactoryTest") {
                 @Override
                 public void onLooperPrepared() {
@@ -316,5 +327,12 @@ public class TelephonyNetworkFactoryTest extends AndroidTestCase {
             fail("test 10, LiveRequests != 3");
         }
         ts.die();
+    }
+
+    private void mockRadioConfig() throws Exception {
+        Field field = RadioConfig.class.getDeclaredField("sRadioConfig");
+        field.setAccessible(true);
+
+        field.set(null, mMockRadioConfig);
     }
 }

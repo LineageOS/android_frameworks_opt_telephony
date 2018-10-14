@@ -44,13 +44,18 @@ public class PhoneSwitcherMock extends PhoneSwitcher {
     }
 
     @Override
-    public void resendDataAllowed(int phoneId) {
+    public void onRadioCapChanged(int phoneId) {
         throw new RuntimeException("resendPhone not implemented");
     }
 
     @Override
-    public boolean isPhoneActive(int phoneId) {
+    public boolean shouldApplySpecifiedRequests(int phoneId) {
         return mIsActive[phoneId].get();
+    }
+
+    @Override
+    public boolean shouldApplyUnspecifiedRequests(int phoneId) {
+        return mIsActive[phoneId].get() && phoneId == mPreferredDataPhoneId;
     }
 
     @Override

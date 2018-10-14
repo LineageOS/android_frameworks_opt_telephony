@@ -2784,7 +2784,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 }
 
+                if (isHandoverToWifi && mIsViLteDataMetered) {
+                    conn.setLocalVideoCapable(true);
+                }
+
                 if (isHandoverFromWifi && imsCall.isVideoCall()) {
+                    if (mIsViLteDataMetered) {
+                        conn.setLocalVideoCapable(mIsDataEnabled);
+                    }
+
                     if (mNotifyHandoverVideoFromWifiToLTE &&    mIsDataEnabled) {
                         if (conn.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                             log("onCallHandover :: notifying of WIFI to LTE handover.");
@@ -3770,7 +3778,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Inform connections that data has been disabled to ensure we turn off video capability
         // if this is an LTE call.
         for (ImsPhoneConnection conn : mConnections) {
-            conn.handleDataEnabledChange(enabled);
+            ImsCall imsCall = conn.getImsCall();
+            boolean isLocalVideoCapable = enabled || (imsCall != null && imsCall.isWifiCall());
+            conn.setLocalVideoCapable(isLocalVideoCapable);
         }
 
         int reasonCode;

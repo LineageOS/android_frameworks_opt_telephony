@@ -185,6 +185,10 @@ public abstract class TelephonyTest {
     @Mock
     protected AppSmsManager mAppSmsManager;
     @Mock
+    protected IccSmsInterfaceManager mIccSmsInterfaceManager;
+    @Mock
+    protected SmsDispatchersController mSmsDispatchersController;
+    @Mock
     protected DeviceStateMonitor mDeviceStateMonitor;
     @Mock
     protected AccessNetworksManager mAccessNetworksManager;
@@ -386,6 +390,8 @@ public abstract class TelephonyTest {
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
         doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();
         doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
+        doReturn(mIccSmsInterfaceManager).when(mPhone).getIccSmsInterfaceManager();
+        mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
         mPhone.mEriManager = mEriManager;
 
         //mUiccController

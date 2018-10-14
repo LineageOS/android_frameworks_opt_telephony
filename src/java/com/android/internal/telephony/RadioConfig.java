@@ -17,8 +17,10 @@
 package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.RADIO_NOT_AVAILABLE;
+import static com.android.internal.telephony.RILConstants.REQUEST_NOT_SUPPORTED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_STATUS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
+import static com.android.internal.telephony.RILConstants
+        .RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
 
 import android.content.Context;
 import android.hardware.radio.V1_0.RadioResponseInfo;
@@ -258,7 +260,32 @@ public class RadioConfig extends Handler {
     }
 
     /**
-     * Wrapper function for IRadioConfig.getSimSlotsStatus().
+     * Wrapper function for IRadioConfig.setPreferredDataModem(int modemId).
+     */
+    public void setPreferredDataModem(int modemId, Message result) {
+        if (!isSetPreferredDataCommandSupported()) {
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+        // TODO: call radioConfigProxy.setPreferredDataModem when it's ready.
+    }
+
+    /**
+     * @return whether current radio config version supports SET_PREFERRED_DATA_MODEM command.
+     * If yes, we'll use RIL_REQUEST_SET_PREFERRED_DATA_MODEM to indicate which modem is preferred.
+     * If not, we shall use RIL_REQUEST_ALLOW_DATA for on-demand PS attach / detach.
+     * See PhoneSwitcher for more details.
+     */
+    public boolean isSetPreferredDataCommandSupported() {
+        // TODO: call radioConfigProxy.isSetPreferredDataCommandSupported when it's ready.
+        return false;
+    }
+
+    /**
+     * Wrapper function for IRadioConfig.setSimSlotsMapping(int32_t serial, vec<uint32_t> slotMap).
      */
     public void setSimSlotsMapping(int[] physicalSlots, Message result) {
         IRadioConfig radioConfigProxy = getRadioConfigProxy(result);
