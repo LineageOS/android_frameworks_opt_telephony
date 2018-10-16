@@ -1109,6 +1109,7 @@ public class UiccProfile extends IccCard {
 
     private void promptInstallCarrierApp(String pkgName) {
         Intent showDialogIntent = InstallCarrierAppTrampolineActivity.get(mContext, pkgName);
+        showDialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         mContext.startActivity(showDialogIntent);
     }
 

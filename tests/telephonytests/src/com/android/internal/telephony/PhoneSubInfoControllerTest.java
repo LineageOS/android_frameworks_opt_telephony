@@ -34,6 +34,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 
@@ -81,6 +82,8 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @Ignore("Temporarily ignoring until original device identifier access behavior is restored "
+            + "under b/117781266")
     public void testGetDeviceIdWithOutPermission() {
         // The READ_PRIVILEGED_PHONE_STATE permission or passing a device / profile owner access
         // check is required to access device identifiers. Since neither of those are true for this
@@ -313,6 +316,8 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @Ignore("Temporarily ignoring until original device identifier access behavior is restored "
+            + "under b/117781266")
     public void testGetSubscriberIdWithOutPermission() {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
@@ -395,6 +400,8 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @Ignore("Temporarily ignoring until original device identifier access behavior is restored "
+            + "under b/117781266")
     public void testGetIccSerialNumberWithOutPermission() {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
