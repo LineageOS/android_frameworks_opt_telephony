@@ -30,6 +30,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -551,7 +552,8 @@ public class UiccProfileTest extends TelephonyTest {
     @SmallTest
     public void testUpdateUiccProfileApplicationCdmaSupported() {
         // CDMA supported
-        doReturn(true).when(mUiccController).isCdmaSupported();
+        doReturn(true)
+            .when(mPackageManager).hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
 
         testWithCsimApp();
 
@@ -562,8 +564,9 @@ public class UiccProfileTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testUpdateUiccProfileApplicationCdmaNotSupported() {
-        // CDMA supported
-        doReturn(false).when(mUiccController).isCdmaSupported();
+        // CDMA not supported
+        doReturn(false)
+            .when(mPackageManager).hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
 
         testWithCsimApp();
 
