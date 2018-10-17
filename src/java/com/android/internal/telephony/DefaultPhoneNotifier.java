@@ -353,6 +353,15 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
+    public void notifyRadioPowerStateChanged(@TelephonyManager.RadioPowerState int state) {
+        try {
+            mRegistry.notifyRadioPowerStateChanged(state);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
     /**
      * Convert the {@link Phone.DataActivityState} enum into the TelephonyManager.DATA_* constants
      * for the public API.
