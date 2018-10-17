@@ -22,7 +22,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
-import android.telephony.TelephonyManager;
 import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -46,8 +45,8 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public int getRadioState() {
-        return TelephonyManager.RADIO_POWER_UNAVAILABLE;
+    public RadioState getRadioState() {
+        return null;
     }
 
     @Override

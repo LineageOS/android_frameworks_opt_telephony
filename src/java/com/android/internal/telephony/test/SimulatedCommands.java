@@ -39,7 +39,6 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
-import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 
@@ -159,7 +158,7 @@ public class SimulatedCommands extends BaseCommands
 
         simulatedCallState = new SimulatedGsmCallState(looper);
 
-        setRadioState(TelephonyManager.RADIO_POWER_ON, false /* forceNotifyRegistrants */);
+        setRadioState(RadioState.RADIO_ON, false /* forceNotifyRegistrants */);
         mSimLockedState = INITIAL_LOCK_STATE;
         mSimLockEnabled = (mSimLockedState != SimLockState.NONE);
         mPinCode = DEFAULT_SIM_PIN_CODE;
@@ -506,7 +505,7 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void getCurrentCalls (Message result) {
         SimulatedCommandsVerifier.getInstance().getCurrentCalls(result);
-        if ((mState == TelephonyManager.RADIO_POWER_ON) && !isSimLocked()) {
+        if ((mState == RadioState.RADIO_ON) && !isSimLocked()) {
             //Rlog.i("GSM", "[SimCmds] getCurrentCalls");
             resultSuccess(result, simulatedCallState.getDriverCalls());
         } else {
@@ -1242,9 +1241,9 @@ public class SimulatedCommands extends BaseCommands
         }
 
         if(on) {
-            setRadioState(TelephonyManager.RADIO_POWER_ON, false /* forceNotifyRegistrants */);
+            setRadioState(RadioState.RADIO_ON, false /* forceNotifyRegistrants */);
         } else {
-            setRadioState(TelephonyManager.RADIO_POWER_OFF, false /* forceNotifyRegistrants */);
+            setRadioState(RadioState.RADIO_OFF, false /* forceNotifyRegistrants */);
         }
         resultSuccess(result, null);
     }
@@ -1600,7 +1599,7 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void
     shutdown() {
-        setRadioState(TelephonyManager.RADIO_POWER_UNAVAILABLE, false /* forceNotifyRegistrants */);
+        setRadioState(RadioState.RADIO_UNAVAILABLE, false /* forceNotifyRegistrants */);
         Looper looper = mHandlerThread.getLooper();
         if (looper != null) {
             looper.quit();
@@ -2025,7 +2024,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void requestShutdown(Message result) {
-        setRadioState(TelephonyManager.RADIO_POWER_UNAVAILABLE, false /* forceNotifyRegistrants */);
+        setRadioState(RadioState.RADIO_UNAVAILABLE, false /* forceNotifyRegistrants */);
     }
 
     @Override
