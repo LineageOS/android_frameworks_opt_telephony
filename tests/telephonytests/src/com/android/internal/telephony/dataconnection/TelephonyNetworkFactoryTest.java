@@ -20,6 +20,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 
 import android.content.Context;
@@ -116,7 +117,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         doAnswer(invocation -> {
             mNetworkRequestList.remove((NetworkRequest) invocation.getArguments()[0]);
             return null;
-        }).when(mDcTracker).releaseNetwork(any(), any());
+        }).when(mDcTracker).releaseNetwork(any(), any(), anyBoolean());
     }
 
     @After
