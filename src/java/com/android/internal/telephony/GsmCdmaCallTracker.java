@@ -620,7 +620,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 
-        if (!mCi.getRadioState().isOn()) {
+        if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_ON) {
             throw new CallStateException(CallStateException.ERROR_POWER_OFF,
                     "Modem not powered");
         }
