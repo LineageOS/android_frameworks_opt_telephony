@@ -1042,8 +1042,7 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_RADIO_POWER_OFF_DONE:
                 if (DBG) log("EVENT_RADIO_POWER_OFF_DONE");
-                if (mDeviceShuttingDown && mCi.getRadioState()
-                        != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
                     // during shutdown the modem may not send radio state changed event
                     // as a result of radio power request
                     // Hence, issuing shut down regardless of radio power response
@@ -1067,7 +1066,7 @@ public class ServiceStateTracker extends Handler {
             case EVENT_RADIO_STATE_CHANGED:
             case EVENT_PHONE_TYPE_SWITCHED:
                 if(!mPhone.isPhoneTypeGsm() &&
-                        mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
+                        mCi.getRadioState() == CommandsInterface.RadioState.RADIO_ON) {
                     handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
 
                     // Signal strength polling stops when radio is off.
@@ -1087,7 +1086,7 @@ public class ServiceStateTracker extends Handler {
                 // This callback is called when signal strength is polled
                 // all by itself
 
-                if (!(mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)) {
+                if (!(mCi.getRadioState().isOn())) {
                     // Polling will continue when radio turns back on
                     return;
                 }
@@ -2449,7 +2448,7 @@ public class ServiceStateTracker extends Handler {
 
                 String originalPlmn = plmn.trim();
                 plmn = String.format(wfcVoiceSpnFormat, originalPlmn);
-            } else if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
+            } else if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
                 // todo: temporary hack; should have a better fix. This is to avoid using operator
                 // name from ServiceState (populated in resetServiceStateInIwlanMode()) until
                 // wifi calling is actually enabled
@@ -2519,10 +2518,9 @@ public class ServiceStateTracker extends Handler {
 
         // If we want it on and it's off, turn it on
         if (mDesiredPowerState && !mRadioDisabledByCarrier
-                && mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
+                && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             mCi.setRadioPower(true, null);
-        } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState()
-                == TelephonyManager.RADIO_POWER_ON) {
+        } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState().isOn()) {
             // If it's on and available and we want it off gracefully
             if (mPhone.isPhoneTypeGsm() && mPowerOffDelayNeed) {
                 if (mImsRegistrationOnOff && !mAlarmSwitch) {
@@ -2545,8 +2543,7 @@ public class ServiceStateTracker extends Handler {
                 DcTracker dcTracker = mPhone.mDcTracker;
                 powerOffRadioSafely(dcTracker);
             }
-        } else if (mDeviceShuttingDown
-                && (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE)) {
+        } else if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
             mCi.requestShutdown(null);
         }
     }
@@ -2663,7 +2660,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     public boolean isRadioOn() {
-        return mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON;
+        return mCi.getRadioState() == CommandsInterface.RadioState.RADIO_ON;
     }
 
     /**
@@ -2693,7 +2690,7 @@ public class ServiceStateTracker extends Handler {
         log("pollState: modemTriggered=" + modemTriggered);
 
         switch (mCi.getRadioState()) {
-            case TelephonyManager.RADIO_POWER_UNAVAILABLE:
+            case RADIO_UNAVAILABLE:
                 mNewSS.setStateOutOfService();
                 mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
@@ -2701,7 +2698,7 @@ public class ServiceStateTracker extends Handler {
                 pollStateDone();
                 break;
 
-            case TelephonyManager.RADIO_POWER_OFF:
+            case RADIO_OFF:
                 mNewSS.setStateOff();
                 mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
@@ -3117,8 +3114,7 @@ public class ServiceStateTracker extends Handler {
 
     private void updateOperatorNameFromEri() {
         if (mPhone.isPhoneTypeCdma()) {
-            if ((mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
-                    && (!mIsSubscriptionFromRuim)) {
+            if ((mCi.getRadioState().isOn()) && (!mIsSubscriptionFromRuim)) {
                 String eriText;
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
@@ -3134,11 +3130,10 @@ public class ServiceStateTracker extends Handler {
         } else if (mPhone.isPhoneTypeCdmaLte()) {
             boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) != null &&
                     mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null;
-            if (!hasBrandOverride && (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
-                    && (mPhone.isEriFileLoaded())
-                    && (!ServiceState.isLte(mSS.getRilVoiceRadioTechnology())
-                    || mPhone.getContext().getResources().getBoolean(com.android.internal.R
-                    .bool.config_LTE_eri_for_network_name))) {
+            if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
+                    (!ServiceState.isLte(mSS.getRilVoiceRadioTechnology()) ||
+                            mPhone.getContext().getResources().getBoolean(com.android.internal.R.
+                                    bool.config_LTE_eri_for_network_name))) {
                 // Only when CDMA is in service, ERI will take effect
                 String eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
@@ -4735,7 +4730,7 @@ public class ServiceStateTracker extends Handler {
      * causes state to go to OUT_OF_SERVICE state instead of STATE_OFF
      */
     protected void resetServiceStateInIwlanMode() {
-        if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
+        if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             boolean resetIwlanRatVal = false;
             log("set service state as POWER_OFF");
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN

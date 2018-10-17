@@ -261,7 +261,6 @@ public class GsmCdmaPhone extends Phone {
         mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
-        mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
 
         //GSM
@@ -397,14 +396,14 @@ public class GsmCdmaPhone extends Phone {
         onUpdateIccAvailability();
         mCT.updatePhoneType();
 
-        int radioState = mCi.getRadioState();
-        if (radioState != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+        CommandsInterface.RadioState radioState = mCi.getRadioState();
+        if (radioState.isAvailable()) {
             handleRadioAvailable();
-            if (radioState == TelephonyManager.RADIO_POWER_ON) {
+            if (radioState.isOn()) {
                 handleRadioOn();
             }
         }
-        if (radioState != TelephonyManager.RADIO_POWER_ON) {
+        if (!radioState.isAvailable() || !radioState.isOn()) {
             handleRadioOffOrNotAvailable();
         }
     }
@@ -2222,11 +2221,6 @@ public class GsmCdmaPhone extends Phone {
         mRadioOffOrNotAvailableRegistrants.notifyRegistrants();
     }
 
-    private void handleRadioPowerStateChange() {
-        Rlog.d(LOG_TAG, "handleRadioPowerStateChange, state= " + mCi.getRadioState());
-        mNotifier.notifyRadioPowerStateChanged(mCi.getRadioState());
-    }
-
     @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
@@ -2477,12 +2471,6 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_RADIO_OFF_OR_NOT_AVAILABLE: {
                 logd("Event EVENT_RADIO_OFF_OR_NOT_AVAILABLE Received");
                 handleRadioOffOrNotAvailable();
-                break;
-            }
-
-            case EVENT_RADIO_STATE_CHANGED: {
-                logd("EVENT EVENT_RADIO_STATE_CHANGED");
-                handleRadioPowerStateChange();
                 break;
             }
 
@@ -3373,7 +3361,7 @@ public class GsmCdmaPhone extends Phone {
 
         boolean oldPowerState = false; // old power state to off
         if (mResetModemOnRadioTechnologyChange) {
-            if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
+            if (mCi.getRadioState().isOn()) {
                 oldPowerState = true;
                 logd("phoneObjectUpdater: Setting Radio Power to Off");
                 mCi.setRadioPower(false, null);

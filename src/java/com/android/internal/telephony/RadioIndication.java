@@ -91,7 +91,6 @@ import android.telephony.PcoData;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
-import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
@@ -121,13 +120,13 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void radioStateChanged(int indicationType, int radioState) {
         mRil.processIndication(indicationType);
 
-        int state = getRadioStateFromInt(radioState);
+        CommandsInterface.RadioState newState = getRadioStateFromInt(radioState);
         if (RIL.RILJ_LOGD) {
             mRil.unsljLogMore(RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: " +
-                    state);
+                    newState);
         }
 
-        mRil.setRadioState(state, false /* forceNotifyRegistrants */);
+        mRil.setRadioState(newState, false /* forceNotifyRegistrants */);
     }
 
     public void callStateChanged(int indicationType) {
@@ -905,22 +904,18 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.mNattKeepaliveStatusRegistrants.notifyRegistrants(new AsyncResult(null, ks, null));
     }
 
-    /**
-     * @param stateInt
-     * @return {@link TelephonyManager.RadioPowerState RadioPowerState}
-     */
-    private @TelephonyManager.RadioPowerState int getRadioStateFromInt(int stateInt) {
-        int state;
+    private CommandsInterface.RadioState getRadioStateFromInt(int stateInt) {
+        CommandsInterface.RadioState state;
 
         switch(stateInt) {
             case android.hardware.radio.V1_0.RadioState.OFF:
-                state = TelephonyManager.RADIO_POWER_OFF;
+                state = CommandsInterface.RadioState.RADIO_OFF;
                 break;
             case android.hardware.radio.V1_0.RadioState.UNAVAILABLE:
-                state = TelephonyManager.RADIO_POWER_UNAVAILABLE;
+                state = CommandsInterface.RadioState.RADIO_UNAVAILABLE;
                 break;
             case android.hardware.radio.V1_0.RadioState.ON:
-                state = TelephonyManager.RADIO_POWER_ON;
+                state = CommandsInterface.RadioState.RADIO_ON;
                 break;
             default:
                 throw new RuntimeException("Unrecognized RadioState: " + stateInt);

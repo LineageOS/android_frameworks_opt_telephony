@@ -199,10 +199,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_SET_ROAMING_PREFERENCE_DONE    = 44;
     protected static final int EVENT_MODEM_RESET                    = 45;
     protected static final int EVENT_VRS_OR_RAT_CHANGED             = 46;
-    // Radio state change
-    protected static final int EVENT_RADIO_STATE_CHANGED            = 47;
 
-    protected static final int EVENT_LAST                       = EVENT_RADIO_STATE_CHANGED;
+    protected static final int EVENT_LAST                       = EVENT_VRS_OR_RAT_CHANGED;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -3319,24 +3317,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * @return returns the latest radio state from the modem
-     */
-    public int getRadioPowerState() {
-        return mCi.getRadioState();
-    }
-
-    /**
      * Is Radio Present on the device and is it accessible
      */
     public boolean isRadioAvailable() {
-        return mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE;
+        return mCi.getRadioState().isAvailable();
     }
 
     /**
      * Is Radio turned on
      */
     public boolean isRadioOn() {
-        return mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON;
+        return mCi.getRadioState().isOn();
     }
 
     /**
