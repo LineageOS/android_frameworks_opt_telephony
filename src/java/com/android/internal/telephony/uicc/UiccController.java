@@ -115,7 +115,6 @@ public class UiccController extends Handler {
     private UiccSlot[] mUiccSlots;
     private int[] mPhoneIdToSlotId;
     private boolean mIsSlotStatusSupported = true;
-    private boolean mIsCdmaSupported = true;
 
     private static final Object mLock = new Object();
     private static UiccController mInstance;
@@ -183,11 +182,6 @@ public class UiccController extends Handler {
         }
 
         mLauncher = new UiccStateChangedLauncher(c, this);
-
-        // set mIsCdmaSupported based on PackageManager.FEATURE_TELEPHONY_CDMA
-        PackageManager packageManager = c.getPackageManager();
-        mIsCdmaSupported =
-                packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
     }
 
     private int getSlotIdFromPhoneId(int phoneId) {
@@ -702,8 +696,16 @@ public class UiccController extends Handler {
         mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, index));
     }
 
-    public boolean isCdmaSupported() {
-        return mIsCdmaSupported;
+    /**
+     * static method to return whether CDMA is supported on the device
+     * @param context object representative of the application that is calling this method
+     * @return true if CDMA is supported by the device
+     */
+    public static boolean isCdmaSupported(Context context) {
+        PackageManager packageManager = context.getPackageManager();
+        boolean isCdmaSupported =
+                packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
+        return isCdmaSupported;
     }
 
     private boolean isValidPhoneIndex(int index) {
@@ -733,7 +735,7 @@ public class UiccController extends Handler {
         }
         pw.println();
         pw.flush();
-        pw.println(" mIsCdmaSupported=" + mIsCdmaSupported);
+        pw.println(" mIsCdmaSupported=" + isCdmaSupported(mContext));
         pw.println(" mUiccSlots: size=" + mUiccSlots.length);
         for (int i = 0; i < mUiccSlots.length; i++) {
             if (mUiccSlots[i] == null) {
