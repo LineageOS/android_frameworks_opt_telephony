@@ -383,6 +383,8 @@ public abstract class TelephonyTest {
         doReturn(mServiceState).when(mPhone).getServiceState();
         doReturn(mServiceState).when(mImsPhone).getServiceState();
         doReturn(mPhone).when(mImsPhone).getDefaultPhone();
+        mPhone.mDcTracker = mDcTracker;
+        doReturn(true).when(mDcTracker).isDataEnabled();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
