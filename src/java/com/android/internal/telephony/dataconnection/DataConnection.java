@@ -189,6 +189,7 @@ public class DataConnection extends StateMachine {
     private NetworkInfo mNetworkInfo;
     private DcNetworkAgent mNetworkAgent;
     private LocalLog mNetCapsLocalLog = new LocalLog(50);
+    private int mDisabledApnTypeBitMask = 0;
 
     int mTag;
     public int mCid;
@@ -738,6 +739,7 @@ public class DataConnection extends StateMachine {
         mUnmeteredUseOnly = false;
         mRestrictedNetworkOverride = false;
         mDcFailCause = null;
+        mDisabledApnTypeBitMask = 0;
     }
 
     /**
@@ -990,7 +992,7 @@ public class DataConnection extends StateMachine {
 
         if (mApnSetting != null) {
             final String[] types = ApnSetting.getApnTypesStringFromBitmask(
-                mApnSetting.getApnTypeBitmask()).split(",");
+                mApnSetting.getApnTypeBitmask() & ~mDisabledApnTypeBitMask).split(",");
             for (String type : types) {
                 if (!mRestrictedNetworkOverride && mUnmeteredUseOnly
                         && ApnSettingUtils.isMeteredApnType(type, mPhone)) {
@@ -1759,6 +1761,10 @@ public class DataConnection extends StateMachine {
                     // either add this new apn context to our set or
                     // update the existing cp with the latest connection generation number
                     mApnContexts.put(cp.mApnContext, cp);
+                    // TODO (b/118347948): evaluate if it's still needed after assigning
+                    // different scores to different Cellular network.
+                    mDisabledApnTypeBitMask &= ~cp.mApnContext.getApnTypeBitmask();
+                    mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                     if (DBG) {
                         log("DcActiveState: EVENT_CONNECT cp=" + cp + " dc=" + DataConnection.this);
                     }
@@ -1787,6 +1793,10 @@ public class DataConnection extends StateMachine {
                             transitionTo(mDisconnectingState);
                         } else {
                             mApnContexts.remove(dp.mApnContext);
+                            // TODO (b/118347948): evaluate if it's still needed after assigning
+                            // different scores to different Cellular network.
+                            mDisabledApnTypeBitMask |= dp.mApnContext.getApnTypeBitmask();
+                            mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                             notifyDisconnectCompleted(dp, false);
                         }
                     } else {
