@@ -28,17 +28,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PhoneSwitcherMock extends PhoneSwitcher {
     private final int mNumPhones;
-    private final RegistrantList mActivePhoneRegistrants[];
+    private final RegistrantList mActivePhoneRegistrants;
     private final AtomicBoolean mIsActive[];
 
     public PhoneSwitcherMock(int numPhones, Looper looper) {
         super(looper);
 
         mNumPhones = numPhones;
-        mActivePhoneRegistrants = new RegistrantList[numPhones];
+        mActivePhoneRegistrants = new RegistrantList();
         mIsActive = new AtomicBoolean[numPhones];
         for(int i = 0; i < numPhones; i++) {
-            mActivePhoneRegistrants[i] = new RegistrantList();
             mIsActive[i] = new AtomicBoolean(false);
         }
     }
@@ -59,17 +58,15 @@ public class PhoneSwitcherMock extends PhoneSwitcher {
     }
 
     @Override
-    public void registerForActivePhoneSwitch(int phoneId, Handler h, int what, Object o) {
-        validatePhoneId(phoneId);
+    public void registerForActivePhoneSwitch(Handler h, int what, Object o) {
         Registrant r = new Registrant(h, what, o);
-        mActivePhoneRegistrants[phoneId].add(r);
+        mActivePhoneRegistrants.add(r);
         r.notifyRegistrant();
     }
 
     @Override
-    public void unregisterForActivePhoneSwitch(int phoneId, Handler h) {
-        validatePhoneId(phoneId);
-        mActivePhoneRegistrants[phoneId].remove(h);
+    public void unregisterForActivePhoneSwitch(Handler h) {
+        mActivePhoneRegistrants.remove(h);
     }
 
     private void validatePhoneId(int phoneId) {
@@ -91,6 +88,6 @@ public class PhoneSwitcherMock extends PhoneSwitcher {
     }
 
     public void notifyActivePhoneChange(int phoneId) {
-        mActivePhoneRegistrants[phoneId].notifyRegistrants();
+        mActivePhoneRegistrants.notifyRegistrants();
     }
 }
