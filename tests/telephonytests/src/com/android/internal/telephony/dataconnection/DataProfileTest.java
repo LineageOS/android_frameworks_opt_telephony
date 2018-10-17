@@ -110,7 +110,7 @@ public class DataProfileTest extends TestCase {
 
     @SmallTest
     public void testCreateFromApnSetting() throws Exception {
-        DataProfile dp = DcTracker.createDataProfile(mApn1, mApn1.getProfileId());
+        DataProfile dp = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
         assertEquals(mApn1.getProfileId(), dp.getProfileId());
         assertEquals(mApn1.getApnName(), dp.getApn());
         assertEquals(ApnSetting.getProtocolStringFromInt(mApn1.getProtocol()), dp.getProtocol());
@@ -118,15 +118,15 @@ public class DataProfileTest extends TestCase {
         assertEquals(mApn1.getUser(), dp.getUserName());
         assertEquals(mApn1.getPassword(), dp.getPassword());
         assertEquals(0, dp.getType());  // TYPE_COMMON
-        assertEquals(mApn1.getMaxConnsTime(), dp.getMaxConnsTime());
-        assertEquals(mApn1.getMaxConns(), dp.getMaxConns());
         assertEquals(mApn1.getWaitTime(), dp.getWaitTime());
         assertEquals(mApn1.isEnabled(), dp.isEnabled());
+        assertFalse(dp.isPersistent());
+        assertFalse(dp.isPreferred());
     }
 
     @SmallTest
     public void testCreateFromApnSettingWithNetworkTypeBitmask() throws Exception {
-        DataProfile dp = DcTracker.createDataProfile(mApn3, mApn3.getProfileId());
+        DataProfile dp = DcTracker.createDataProfile(mApn3, mApn3.getProfileId(), false);
         assertEquals(mApn3.getProfileId(), dp.getProfileId());
         assertEquals(mApn3.getApnName(), dp.getApn());
         assertEquals(ApnSetting.getProtocolStringFromInt(mApn3.getProtocol()), dp.getProtocol());
@@ -134,8 +134,6 @@ public class DataProfileTest extends TestCase {
         assertEquals(mApn3.getUser(), dp.getUserName());
         assertEquals(mApn3.getPassword(), dp.getPassword());
         assertEquals(2, dp.getType());  // TYPE_3GPP2
-        assertEquals(mApn3.getMaxConnsTime(), dp.getMaxConnsTime());
-        assertEquals(mApn3.getMaxConns(), dp.getMaxConns());
         assertEquals(mApn3.getWaitTime(), dp.getWaitTime());
         assertEquals(mApn3.isEnabled(), dp.isEnabled());
         int expectedBearerBitmap =
@@ -146,11 +144,11 @@ public class DataProfileTest extends TestCase {
 
     @SmallTest
     public void testEquals() throws Exception {
-        DataProfile dp1 = DcTracker.createDataProfile(mApn1, mApn1.getProfileId());
-        DataProfile dp2 = DcTracker.createDataProfile(mApn1, mApn1.getProfileId());
+        DataProfile dp1 = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
+        DataProfile dp2 = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
         assertEquals(dp1, dp2);
 
-        dp2 = DcTracker.createDataProfile(mApn2, mApn2.getProfileId());
+        dp2 = DcTracker.createDataProfile(mApn2, mApn2.getProfileId(), false);
         assertFalse(dp1.equals(dp2));
     }
 }

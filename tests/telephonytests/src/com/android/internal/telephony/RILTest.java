@@ -229,7 +229,7 @@ public class RILTest extends TelephonyTest {
     private static final int MTU = 1234;
     private static final String MVNO_TYPE = "";
     private static final String MVNO_MATCH_DATA = "";
-    private static final boolean MODEM_COGNITIVE = true;
+    private static final boolean PERSISTENT = true;
 
     private class RILTestHandler extends HandlerThread {
 
@@ -704,7 +704,7 @@ public class RILTest extends TelephonyTest {
                 null, null, -1, "", "", 0, ApnSetting.TYPE_DUN, ApnSetting.PROTOCOL_IP,
                 ApnSetting.PROTOCOL_IP, true, 0, 0, false, 0, 0, 0, 0, -1, "");
         DataProfile dataProfile = DcTracker.createDataProfile(
-                apnSetting, apnSetting.getProfileId());
+                apnSetting, apnSetting.getProfileId(), false);
         boolean isRoaming = false;
 
         mRILUnderTest.setInitialAttachApn(dataProfile, isRoaming, obtainMessage());
@@ -715,7 +715,7 @@ public class RILTest extends TelephonyTest {
                         "convertToHalDataProfile",
                         new Class<?>[] {DataProfile.class},
                         new Object[] {dataProfile})),
-                eq(dataProfile.isModemCognitive()),
+                eq(dataProfile.isPersistent()),
                 eq(isRoaming));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_INITIAL_ATTACH_APN);
@@ -1727,7 +1727,7 @@ public class RILTest extends TelephonyTest {
 
         DataProfile dp = new DataProfile(PROFILE_ID, APN, PROTOCOL, AUTH_TYPE, USER_NAME, PASSWORD,
                 TYPE, MAX_CONNS_TIME, MAX_CONNS, WAIT_TIME, APN_ENABLED, SUPPORTED_APNT_YPES_BITMAP,
-                ROAMING_PROTOCOL, BEARER_BITMAP, MTU, MVNO_TYPE, MVNO_MATCH_DATA, MODEM_COGNITIVE);
+                ROAMING_PROTOCOL, BEARER_BITMAP, MTU, PERSISTENT, false);
         mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
                 false, 0, null, obtainMessage());
         ArgumentCaptor<DataProfileInfo> dpiCaptor = ArgumentCaptor.forClass(DataProfileInfo.class);
@@ -1752,7 +1752,5 @@ public class RILTest extends TelephonyTest {
         assertEquals(ROAMING_PROTOCOL, dpi.protocol);
         assertEquals(BEARER_BITMAP, dpi.bearerBitmap);
         assertEquals(MTU, dpi.mtu);
-        assertEquals(0, dpi.mvnoType);
-        assertEquals(MVNO_MATCH_DATA, dpi.mvnoMatchData);
     }
 }
