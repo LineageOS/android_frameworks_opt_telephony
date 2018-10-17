@@ -960,7 +960,7 @@ public class UiccProfile extends IccCard {
         // TODO: 2/15/18 Add check to see if ISIM app will go to READY state, and if yes, check for
         // ISIM also (currently ISIM is considered as not supported in this function)
         if (app.getType() == AppType.APPTYPE_USIM || app.getType() == AppType.APPTYPE_SIM
-                || (UiccController.getInstance().isCdmaSupported()
+                || (UiccController.isCdmaSupported(mContext)
                 && (app.getType() == AppType.APPTYPE_CSIM
                 || app.getType() == AppType.APPTYPE_RUIM))) {
             return true;
