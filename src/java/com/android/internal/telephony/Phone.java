@@ -1723,7 +1723,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param workSource calling WorkSource
      * @param rspMsg the response message containing the cell info
      */
-    public void getAllCellInfo(WorkSource workSource, Message rspMsg) {
+    public void requestCellInfoUpdate(WorkSource workSource, Message rspMsg) {
         getServiceStateTracker().requestAllCellInfo(workSource, rspMsg);
     }
 
