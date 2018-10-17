@@ -2232,7 +2232,7 @@ public class DcTracker extends Handler {
         createAllApnList();
         setDataProfilesAsNeeded();
         setInitialAttachApn();
-        if (mPhone.mCi.getRadioState().isOn()) {
+        if (mPhone.mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
             if (DBG) log("onRecordsLoadedOrSubIdChanged: notifying data availability");
             notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
         }

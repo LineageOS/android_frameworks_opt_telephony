@@ -20,6 +20,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 
 import java.util.List;
@@ -75,4 +76,6 @@ public interface PhoneNotifier {
     public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData);
 
     public void notifyPhoneCapabilityChanged(PhoneCapability capability);
+
+    void notifyRadioPowerStateChanged(@TelephonyManager.RadioPowerState int state);
 }

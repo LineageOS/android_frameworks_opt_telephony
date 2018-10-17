@@ -25,6 +25,7 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
+import android.telephony.TelephonyManager;
 import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -37,19 +38,6 @@ import java.util.List;
  * {@hide}
  */
 public interface CommandsInterface {
-    enum RadioState {
-        RADIO_OFF,         /* Radio explicitly powered off (eg CFUN=0) */
-        RADIO_UNAVAILABLE, /* Radio unavailable (eg, resetting or not booted) */
-        RADIO_ON;          /* Radio is on */
-
-        public boolean isOn() /* and available...*/ {
-            return this == RADIO_ON;
-        }
-
-        public boolean isAvailable() {
-            return this != RADIO_UNAVAILABLE;
-        }
-    }
 
     //***** Constants
 
@@ -121,7 +109,12 @@ public interface CommandsInterface {
     static final int CDMA_SMS_FAIL_CAUSE_ENCODING_PROBLEM           = 96;
 
     //***** Methods
-    RadioState getRadioState();
+
+    /**
+     * get latest radio power state from modem
+     * @return
+     */
+    @TelephonyManager.RadioPowerState int getRadioState();
 
     /**
      * response.obj.result is an int[2]
