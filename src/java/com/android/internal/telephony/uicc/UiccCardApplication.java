@@ -304,10 +304,6 @@ public class UiccCardApplication {
 
                 mIccLockEnabled = (ints[0] != 0);
 
-                if (mIccLockEnabled) {
-                    mPinLockedRegistrants.notifyRegistrants();
-                }
-
                 // Sanity check: we expect mPin1State to match mIccLockEnabled.
                 // When mPin1State is DISABLED mIccLockEanbled should be false.
                 // When mPin1State is ENABLED mIccLockEnabled should be true.
