@@ -45,6 +45,11 @@ public class CarrierResolverTest extends TelephonyTest {
     private static final String NAME = "VZW";
     private static final int CID_VZW = 1;
 
+    private static final String MCCMNC_VODAFONE = "20205";
+    private static final String NAME_VODAFONE = "VODAFONE";
+    private static final String SPN_VODAFONE = "vodafone GR";
+    private static final int CID_VODAFONE = 5;
+
     private static final String SPN_FI = "PROJECT FI";
     private static final String NAME_FI = "FI";
     private static final int CID_FI = 2;
@@ -126,6 +131,30 @@ public class CarrierResolverTest extends TelephonyTest {
         waitForMs(200);
         assertEquals(CID_TMO, mCarrierResolver.getCarrierId());
         assertEquals(NAME_TMO, mCarrierResolver.getCarrierName());
+    }
+
+    @Test
+    @SmallTest
+    public void testMnoCarrierId() {
+        int phoneId = mPhone.getPhoneId();
+        doReturn(MCCMNC).when(mTelephonyManager).getSimOperatorNumericForPhone(eq(phoneId));
+        doReturn(SPN_FI).when(mSimRecords).getServiceProviderName();
+
+        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
+        waitForMs(200);
+
+        assertEquals(CID_FI, mCarrierResolver.getCarrierId());
+        assertEquals(NAME_FI, mCarrierResolver.getCarrierName());
+        assertEquals(CID_VZW, mCarrierResolver.getMnoCarrierId());
+
+        doReturn(MCCMNC_VODAFONE).when(mTelephonyManager)
+                .getSimOperatorNumericForPhone(eq(phoneId));
+        doReturn(SPN_VODAFONE).when(mSimRecords).getServiceProviderName();
+        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
+        waitForMs(200);
+        assertEquals(CID_VODAFONE, mCarrierResolver.getCarrierId());
+        assertEquals(NAME_VODAFONE, mCarrierResolver.getCarrierName());
+        assertEquals(CID_VODAFONE, mCarrierResolver.getMnoCarrierId());
     }
 
     @Test
@@ -281,6 +310,20 @@ public class CarrierResolverTest extends TelephonyTest {
                         APN_DOCOMO,             // apn
                         NAME_DOCOMO,            // carrier name
                         CID_DOCOMO,             // cid
+                });
+                mc.addRow(new Object[] {
+                        4,                      // id
+                        MCCMNC_VODAFONE,        // mccmnc
+                        null,                   // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        SPN_VODAFONE,           // spn
+                        null,                   // apn
+                        NAME_VODAFONE,          // carrier name
+                        CID_VODAFONE,           // cid
                 });
                 return mc;
             } else if (Carriers.CONTENT_URI.getAuthority().equals(uri.getAuthority())) {
