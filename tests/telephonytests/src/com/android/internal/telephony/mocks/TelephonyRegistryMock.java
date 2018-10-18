@@ -417,4 +417,9 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     public void notifyPreferredDataSubIdChanged(int subId) {
         throw new RuntimeException("Not implemented");
     }
+
+    @Override
+    public void notifyRadioPowerStateChanged(int subId) {
+        throw new RuntimeException("Not implemented");
+    }
 }
