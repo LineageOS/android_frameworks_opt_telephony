@@ -52,6 +52,10 @@ public class DataEnabledSettings {
 
     public static final int REASON_DATA_ENABLED_BY_CARRIER = 4;
 
+    public static final int REASON_PROVISIONED_CHANGED = 5;
+
+    public static final int REASON_PROVISIONING_DATA_ENABLED_CHANGED = 6;
+
     /**
      * responds to the setInternalDataEnabled call - used internally to turn off data.
      * For example during emergency calls
@@ -68,6 +72,8 @@ public class DataEnabledSettings {
      * from continuously sending requests, which causes undesired network load.
      */
     private boolean mCarrierDataEnabled = true;
+
+    private boolean mIsDataEnabled = false;
 
     private Phone mPhone = null;
     private ContentResolver mResolver = null;
@@ -88,15 +94,14 @@ public class DataEnabledSettings {
     public DataEnabledSettings(Phone phone) {
         mPhone = phone;
         mResolver = mPhone.getContext().getContentResolver();
+        updateDataEnabled();
     }
 
     public synchronized void setInternalDataEnabled(boolean enabled) {
         localLog("InternalDataEnabled", enabled);
-        boolean prevDataEnabled = isDataEnabled();
         mInternalDataEnabled = enabled;
-        if (prevDataEnabled != isDataEnabled()) {
-            notifyDataEnabledChanged(!prevDataEnabled, REASON_INTERNAL_DATA_ENABLED);
-        }
+
+        updateDataEnabledAndNotify(REASON_INTERNAL_DATA_ENABLED);
     }
     public synchronized boolean isInternalDataEnabled() {
         return mInternalDataEnabled;
@@ -104,14 +109,11 @@ public class DataEnabledSettings {
 
     public synchronized void setUserDataEnabled(boolean enabled) {
         localLog("UserDataEnabled", enabled);
-        boolean prevDataEnabled = isDataEnabled();
-
         Settings.Global.putInt(mResolver, getMobileDataSettingName(), enabled ? 1 : 0);
 
-        if (prevDataEnabled != isDataEnabled()) {
-            notifyDataEnabledChanged(!prevDataEnabled, REASON_USER_DATA_ENABLED);
-        }
+        updateDataEnabledAndNotify(REASON_USER_DATA_ENABLED);
     }
+
     public synchronized boolean isUserDataEnabled() {
         boolean defaultVal = "true".equalsIgnoreCase(SystemProperties.get(
                 "ro.com.android.mobiledata", "true"));
@@ -134,33 +136,53 @@ public class DataEnabledSettings {
 
     public synchronized void setPolicyDataEnabled(boolean enabled) {
         localLog("PolicyDataEnabled", enabled);
-        boolean prevDataEnabled = isDataEnabled();
         mPolicyDataEnabled = enabled;
-        if (prevDataEnabled != isDataEnabled()) {
-            notifyDataEnabledChanged(!prevDataEnabled, REASON_POLICY_DATA_ENABLED);
-        }
+
+        updateDataEnabledAndNotify(REASON_POLICY_DATA_ENABLED);
     }
+
     public synchronized boolean isPolicyDataEnabled() {
         return mPolicyDataEnabled;
     }
 
     public synchronized void setCarrierDataEnabled(boolean enabled) {
         localLog("CarrierDataEnabled", enabled);
-        boolean prevDataEnabled = isDataEnabled();
         mCarrierDataEnabled = enabled;
-        if (prevDataEnabled != isDataEnabled()) {
-            notifyDataEnabledChanged(!prevDataEnabled, REASON_DATA_ENABLED_BY_CARRIER);
-        }
+
+        updateDataEnabledAndNotify(REASON_DATA_ENABLED_BY_CARRIER);
     }
+
     public synchronized boolean isCarrierDataEnabled() {
         return mCarrierDataEnabled;
     }
 
+    public synchronized void updateProvisionedChanged() {
+        updateDataEnabledAndNotify(REASON_PROVISIONED_CHANGED);
+    }
+
+    public synchronized void updateProvisioningDataEnabled() {
+        updateDataEnabledAndNotify(REASON_PROVISIONING_DATA_ENABLED_CHANGED);
+    }
+
     public synchronized boolean isDataEnabled() {
+        return mIsDataEnabled;
+    }
+
+    private synchronized void updateDataEnabledAndNotify(int reason) {
+        boolean prevDataEnabled = mIsDataEnabled;
+
+        updateDataEnabled();
+
+        if (prevDataEnabled != mIsDataEnabled) {
+            notifyDataEnabledChanged(!prevDataEnabled, reason);
+        }
+    }
+
+    private synchronized void updateDataEnabled() {
         if (isProvisioning()) {
-            return isProvisioningDataEnabled();
+            mIsDataEnabled = isProvisioningDataEnabled();
         } else {
-            return mInternalDataEnabled && isUserDataEnabled()
+            mIsDataEnabled = mInternalDataEnabled && isUserDataEnabled()
                     && mPolicyDataEnabled && mCarrierDataEnabled;
         }
     }
