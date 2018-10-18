@@ -3646,7 +3646,7 @@ public class ServiceStateTracker extends Handler {
         CarrierConfigManager configManager = (CarrierConfigManager)
                 context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         if (configManager != null) {
-            PersistableBundle bundle = configManager.getConfig();
+            PersistableBundle bundle = configManager.getConfigForSubId(mPhone.getSubId());
             if (bundle != null) {
                 boolean disableVoiceBarringNotification = bundle.getBoolean(
                         CarrierConfigManager.KEY_DISABLE_VOICE_BARRING_NOTIFICATION_BOOL, false);
