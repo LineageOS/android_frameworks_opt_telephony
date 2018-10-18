@@ -255,7 +255,7 @@ public class DcTrackerTest extends TelephonyTest {
                             ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -286,7 +286,7 @@ public class DcTrackerTest extends TelephonyTest {
                             ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer,
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -317,7 +317,7 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -348,7 +348,7 @@ public class DcTrackerTest extends TelephonyTest {
                             ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD, // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -379,7 +379,7 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -518,17 +518,14 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals("", dp.getUserName());
         assertEquals("", dp.getPassword());
         assertEquals(type, dp.getType());
-        assertEquals(0, dp.getMaxConnsTime());
-        assertEquals(0, dp.getMaxConns());
         assertEquals(0, dp.getWaitTime());
         assertTrue(dp.isEnabled());
         assertEquals(supportedApnTypesBitmap, dp.getSupportedApnTypesBitmap());
         assertEquals("IP", dp.getRoamingProtocol());
         assertEquals(bearerBitmask, dp.getBearerBitmap());
         assertEquals(0, dp.getMtu());
-        assertEquals("", dp.getMvnoType());
-        assertEquals("", dp.getMvnoMatchData());
-        assertFalse(dp.isModemCognitive());
+        assertTrue(dp.isPersistent());
+        assertFalse(dp.isPreferred());
     }
 
     private void verifyDataConnected(final String apnSetting) {

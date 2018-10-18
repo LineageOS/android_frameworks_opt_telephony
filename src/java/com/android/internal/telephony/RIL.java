@@ -32,7 +32,7 @@ import android.hardware.radio.V1_0.CellInfoLte;
 import android.hardware.radio.V1_0.CellInfoTdscdma;
 import android.hardware.radio.V1_0.CellInfoType;
 import android.hardware.radio.V1_0.CellInfoWcdma;
-import android.hardware.radio.V1_0.DataProfileInfo;
+import android.hardware.radio.V1_0.DataProfileId;
 import android.hardware.radio.V1_0.Dial;
 import android.hardware.radio.V1_0.GsmBroadcastSmsConfigInfo;
 import android.hardware.radio.V1_0.GsmSmsMessage;
@@ -1156,12 +1156,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
-     * Convert to DataProfileInfo defined in types.hal
+     * Convert to DataProfileInfo defined in radio/1.0/types.hal
      * @param dp Data profile
      * @return A converted data profile
      */
-    private static DataProfileInfo convertToHalDataProfile(DataProfile dp) {
-        DataProfileInfo dpi = new DataProfileInfo();
+    private static android.hardware.radio.V1_0.DataProfileInfo convertToHalDataProfile10(
+            DataProfile dp) {
+        android.hardware.radio.V1_0.DataProfileInfo dpi =
+                new android.hardware.radio.V1_0.DataProfileInfo();
 
         dpi.profileId = dp.getProfileId();
         dpi.apn = dp.getApn();
@@ -1178,8 +1180,41 @@ public class RIL extends BaseCommands implements CommandsInterface {
         dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
         dpi.bearerBitmap = dp.getBearerBitmap();
         dpi.mtu = dp.getMtu();
-        dpi.mvnoType = convertToHalMvnoType(dp.getMvnoType());
-        dpi.mvnoMatchData = dp.getMvnoMatchData();
+        dpi.mvnoType = MvnoType.NONE;
+        dpi.mvnoMatchData = "";
+
+        return dpi;
+    }
+
+    /**
+     * Convert to DataProfileInfo defined in radio/1.3/types.hal
+     * @param dp Data profile
+     * @return A converted data profile
+     */
+    private static android.hardware.radio.V1_3.DataProfileInfo convertToHalDataProfile13(
+            DataProfile dp) {
+        android.hardware.radio.V1_3.DataProfileInfo dpi =
+                new android.hardware.radio.V1_3.DataProfileInfo();
+
+        dpi.apn = dp.getApn();
+        dpi.protocol = dp.getProtocol();
+        dpi.roamingProtocol = dp.getRoamingProtocol();
+        dpi.authType = dp.getAuthType();
+        dpi.user = dp.getUserName();
+        dpi.password = dp.getPassword();
+        dpi.type = dp.getType();
+        dpi.maxConnsTime = dp.getMaxConnsTime();
+        dpi.maxConns = dp.getMaxConns();
+        dpi.waitTime = dp.getWaitTime();
+        dpi.enabled = dp.isEnabled();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
+        dpi.bearerBitmap = dp.getBearerBitmap();
+        dpi.mtu = dp.getMtu();
+        dpi.persistent = dp.isPersistent();
+        dpi.preferred = dp.isPreferred();
+
+        // profile id is only meaningful when it's persistent on the modem.
+        dpi.profileId = (dpi.persistent) ? dp.getProfileId() : DataProfileId.INVALID;
 
         return dpi;
     }
@@ -1209,54 +1244,36 @@ public class RIL extends BaseCommands implements CommandsInterface {
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
                               Message result) {
 
-        IRadio radioProxy = getRadioProxy(result);
+        IRadio radioProxy10 = getRadioProxy(result);
 
-        if (radioProxy != null) {
+        if (radioProxy10 != null) {
 
             RILRequest rr = obtainRequest(RIL_REQUEST_SETUP_DATA_CALL, result,
                     mRILDefaultWorkSource);
 
-            // Convert to HAL data profile
-            DataProfileInfo dpi = convertToHalDataProfile(dataProfile);
+            android.hardware.radio.V1_3.IRadio radioProxy13 =
+                    android.hardware.radio.V1_3.IRadio.castFrom(radioProxy10);
 
-            android.hardware.radio.V1_2.IRadio radioProxy12 =
-                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy);
+            ArrayList<String> addresses = new ArrayList<>();
+            ArrayList<String> dnses = new ArrayList<>();
+            if (linkProperties != null) {
+                for (InetAddress address : linkProperties.getAddresses()) {
+                    addresses.add(address.getHostAddress());
+                }
+                for (InetAddress dns : linkProperties.getDnsServers()) {
+                    dnses.add(dns.getHostAddress());
+                }
+            }
+
             try {
-                if (radioProxy12 == null) {
-                    // IRadio V1.0
+                // Note that we should always try the highest version first. If the vendor IRadio
+                // is v1.3, both radioProxy13 and radioProxy12 will be non-null.
+                if (radioProxy13 != null) {
+                    // IRadio V1.3
 
-                    // Getting data RAT here is just a workaround to support the older 1.0 vendor
-                    // RIL. The new data service interface passes access network type instead of
-                    // RAT for setup data request. It is impossible to convert access network
-                    // type back to RAT here, so we directly get the data RAT from phone.
-                    int dataRat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-                    Phone phone = PhoneFactory.getPhone(mPhoneId);
-                    if (phone != null) {
-                        ServiceState ss = phone.getServiceState();
-                        if (ss != null) {
-                            dataRat = ss.getRilDataRadioTechnology();
-                        }
-                    }
-                    if (RILJ_LOGD) {
-                        riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                                + ",dataRat=" + dataRat + ",isRoaming=" + isRoaming
-                                + ",allowRoaming=" + allowRoaming + "," + dataProfile);
-                    }
-
-                    radioProxy.setupDataCall(rr.mSerial, dataRat, dpi,
-                            dataProfile.isModemCognitive(), allowRoaming, isRoaming);
-                } else {
-                    // IRadio V1.2
-                    ArrayList<String> addresses = new ArrayList<>();
-                    ArrayList<String> dnses = new ArrayList<>();
-                    if (linkProperties != null) {
-                        for (InetAddress address : linkProperties.getAddresses()) {
-                            addresses.add(address.getHostAddress());
-                        }
-                        for (InetAddress dns : linkProperties.getDnsServers()) {
-                            dnses.add(dns.getHostAddress());
-                        }
-                    }
+                    // Convert to HAL data profile
+                    android.hardware.radio.V1_3.DataProfileInfo dpi =
+                            convertToHalDataProfile13(dataProfile);
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
@@ -1265,9 +1282,57 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 + ",addresses=" + addresses + ",dnses=" + dnses);
                     }
 
-                    radioProxy12.setupDataCall_1_2(rr.mSerial, accessNetworkType, dpi,
-                            dataProfile.isModemCognitive(), allowRoaming, isRoaming, reason,
-                            addresses, dnses);
+                    radioProxy13.setupDataCall_1_3(rr.mSerial, accessNetworkType, dpi, allowRoaming,
+                            reason, addresses, dnses);
+                } else {
+                    android.hardware.radio.V1_2.IRadio radioProxy12 =
+                            android.hardware.radio.V1_2.IRadio.castFrom(radioProxy10);
+                    if (radioProxy12 != null) {
+                        // IRadio V1.2
+
+                        // Convert to HAL data profile
+                        android.hardware.radio.V1_0.DataProfileInfo dpi =
+                                convertToHalDataProfile10(dataProfile);
+
+                        if (RILJ_LOGD) {
+                            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                    + ",accessNetworkType=" + accessNetworkType + ",isRoaming="
+                                    + isRoaming + ",allowRoaming=" + allowRoaming + ","
+                                    + dataProfile + ",addresses=" + addresses + ",dnses=" + dnses);
+                        }
+
+                        radioProxy12.setupDataCall_1_2(rr.mSerial, accessNetworkType, dpi,
+                                dataProfile.isPersistent(), allowRoaming, isRoaming, reason,
+                                addresses, dnses);
+                    } else {
+                        // IRadio V1.0 and IRadio V1.1
+
+                        // Convert to HAL data profile
+                        android.hardware.radio.V1_0.DataProfileInfo dpi =
+                                convertToHalDataProfile10(dataProfile);
+
+                        // Getting data RAT here is just a workaround to support the older 1.0
+                        // vendor RIL. The new data service interface passes access network type
+                        // instead of RAT for setup data request. It is impossible to convert access
+                        // network type back to RAT here, so we directly get the data RAT from
+                        // phone.
+                        int dataRat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
+                        Phone phone = PhoneFactory.getPhone(mPhoneId);
+                        if (phone != null) {
+                            ServiceState ss = phone.getServiceState();
+                            if (ss != null) {
+                                dataRat = ss.getRilDataRadioTechnology();
+                            }
+                        }
+                        if (RILJ_LOGD) {
+                            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                    + ",dataRat=" + dataRat + ",isRoaming=" + isRoaming
+                                    + ",allowRoaming=" + allowRoaming + "," + dataProfile);
+                        }
+
+                        radioProxy10.setupDataCall(rr.mSerial, dataRat, dpi,
+                                dataProfile.isPersistent(), allowRoaming, isRoaming);
+                    }
                 }
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setupDataCall", e);
@@ -3029,8 +3094,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result) {
 
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        IRadio radioProxy10 = getRadioProxy(result);
+        if (radioProxy10 != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_INITIAL_ATTACH_APN, result,
                     mRILDefaultWorkSource);
 
@@ -3038,9 +3103,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + dataProfile);
             }
 
+            android.hardware.radio.V1_3.IRadio radioProxy13 =
+                    android.hardware.radio.V1_3.IRadio.castFrom(radioProxy10);
+
             try {
-                radioProxy.setInitialAttachApn(rr.mSerial, convertToHalDataProfile(dataProfile),
-                        dataProfile.isModemCognitive(), isRoaming);
+                // Note that we should always try the highest version first. If the vendor IRadio
+                // is v1.3, both radioProxy13 and radioProxy10 will be non-null.
+                if (radioProxy13 != null) {
+                    // v1.3
+                    radioProxy13.setInitialAttachApn_1_3(rr.mSerial,
+                            convertToHalDataProfile13(dataProfile));
+                } else {
+                    // v1.2, v1.1, and v1.0
+                    radioProxy10.setInitialAttachApn(rr.mSerial,
+                            convertToHalDataProfile10(dataProfile), dataProfile.isPersistent(),
+                            isRoaming);
+                }
+
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setInitialAttachApn", e);
             }
@@ -3424,26 +3503,61 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result) {
 
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
-                    mRILDefaultWorkSource);
+        IRadio radioProxy10 = getRadioProxy(result);
+        if (radioProxy10 != null) {
+            android.hardware.radio.V1_3.IRadio radioProxy13 =
+                    android.hardware.radio.V1_3.IRadio.castFrom(radioProxy10);
 
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + " with data profiles : ");
-                for (DataProfile profile : dps) {
-                    riljLog(profile.toString());
-                }
-            }
-
-            ArrayList<DataProfileInfo> dpis = new ArrayList<>();
-            for (DataProfile dp : dps) {
-                dpis.add(convertToHalDataProfile(dp));
-            }
-
+            RILRequest rr = null;
             try {
-                radioProxy.setDataProfile(rr.mSerial, dpis, isRoaming);
+                // Note that we should always try the highest version first. If the vendor IRadio
+                // is v1.3, both radioProxy13 and radioProxy10 will be non-null.
+                if (radioProxy13 != null) {
+                    // V1.3
+                    rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
+                            mRILDefaultWorkSource);
+
+                    ArrayList<android.hardware.radio.V1_3.DataProfileInfo> dpis = new ArrayList<>();
+                    for (DataProfile dp : dps) {
+                        dpis.add(convertToHalDataProfile13(dp));
+                    }
+
+                    if (RILJ_LOGD) {
+                        riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                + " with data profiles : ");
+                        for (DataProfile profile : dps) {
+                            riljLog(profile.toString());
+                        }
+                    }
+
+                    radioProxy13.setDataProfile_1_3(rr.mSerial, dpis);
+                } else {
+                    // V1.0, 1.1, and 1.2
+                    ArrayList<android.hardware.radio.V1_0.DataProfileInfo> dpis = new ArrayList<>();
+                    for (DataProfile dp : dps) {
+                        // For v1.0 to v1.2, we only send data profiles that has the persistent
+                        // (a.k.a modem cognitive) bit set to true.
+                        if (dp.isPersistent()) {
+                            dpis.add(convertToHalDataProfile10(dp));
+                        }
+                    }
+
+                    if (!dpis.isEmpty()) {
+                        rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
+                                mRILDefaultWorkSource);
+
+                        if (RILJ_LOGD) {
+                            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                    + " with data profiles : ");
+                            for (DataProfile profile : dps) {
+                                riljLog(profile.toString());
+                            }
+                        }
+
+                        radioProxy10.setDataProfile(rr.mSerial, dpis, isRoaming);
+                    }
+
+                }
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setDataProfile", e);
             }

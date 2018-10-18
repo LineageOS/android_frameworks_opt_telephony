@@ -18,6 +18,9 @@ package com.android.internal.telephony.dataconnection;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
 
+import static com.android.internal.telephony.RILConstants.DATA_PROFILE_DEFAULT;
+import static com.android.internal.telephony.RILConstants.DATA_PROFILE_INVALID;
+
 import android.annotation.NonNull;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -536,19 +539,7 @@ public class DcTracker extends Handler {
 
     private int mDisconnectPendingCount = 0;
 
-    /** Indicate if metered APNs are disabled.
-     *  set to block all the metered APNs from continuously sending requests, which causes
-     *  undesired network load */
-    private boolean mMeteredApnDisabled = false;
-
-    /**
-     * int to remember whether has setDataProfiles and with roaming or not.
-     * 0: default, has never set data profile
-     * 1: has set data profile with home protocol
-     * 2: has set data profile with roaming protocol
-     * This is not needed once RIL command is updated to support both home and roaming protocol.
-     */
-    private int mSetDataProfileStatus = 0;
+    private ArrayList<DataProfile> mLastDataProfileList = new ArrayList<>();
 
     /**
      * Handles changes to the APN db.
@@ -1919,9 +1910,13 @@ public class DcTracker extends Handler {
             return false;
         }
 
-        int profileId = apnSetting.getProfileId();
-        if (profileId == 0) {
-            profileId = getApnProfileID(apnContext.getApnType());
+        // profile id is only meaningful when the profile is persistent on the modem.
+        int profileId = DATA_PROFILE_INVALID;
+        if (apnSetting.isPersistent()) {
+            profileId = apnSetting.getProfileId();
+            if (profileId == DATA_PROFILE_DEFAULT) {
+                profileId = getApnProfileID(apnContext.getApnType());
+            }
         }
 
         // On CDMA, if we're explicitly asking for DUN, we need have
@@ -2053,7 +2048,8 @@ public class DcTracker extends Handler {
         } else {
             if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
 
-            mDataServiceManager.setInitialAttachApn(createDataProfile(initialAttachApnSetting),
+            mDataServiceManager.setInitialAttachApn(createDataProfile(initialAttachApnSetting,
+                            initialAttachApnSetting.equals(getPreferredApn())),
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
     }
@@ -3218,17 +3214,22 @@ public class DcTracker extends Handler {
     private void setDataProfilesAsNeeded() {
         if (DBG) log("setDataProfilesAsNeeded");
 
-        ArrayList<DataProfile> dps = new ArrayList<DataProfile>();
+        ArrayList<DataProfile> dataProfileList = new ArrayList<>();
+
         for (ApnSetting apn : mAllApnSettings) {
-            if (apn.getModemCognitive()) {
-                DataProfile dp = createDataProfile(apn);
-                if (!dps.contains(dp)) {
-                    dps.add(dp);
-                }
+            DataProfile dp = createDataProfile(apn, apn.equals(getPreferredApn()));
+            if (!dataProfileList.contains(dp)) {
+                dataProfileList.add(dp);
             }
         }
-        if (dps.size() > 0) {
-            mDataServiceManager.setDataProfile(dps,
+
+        // Check if the data profiles we are sending are same as we did last time. We don't want to
+        // send the redundant profiles to the modem. Also if there the list is empty, we don't
+        // send it to the modem.
+        if (!dataProfileList.isEmpty()
+                && (dataProfileList.size() != mLastDataProfileList.size()
+                || !mLastDataProfileList.containsAll(dataProfileList))) {
+            mDataServiceManager.setDataProfile(dataProfileList,
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
     }
@@ -3339,7 +3340,7 @@ public class DcTracker extends Handler {
             dest.getApnName(), proxy, port, mmsc, mmsProxy, mmsPort, dest.getUser(),
             dest.getPassword(), dest.getAuthType(), resultApnType, protocol, roamingProtocol,
             dest.isEnabled(), networkTypeBitmask, dest.getProfileId(),
-            (dest.getModemCognitive() || src.getModemCognitive()), dest.getMaxConns(),
+            (dest.isPersistent() || src.isPersistent()), dest.getMaxConns(),
             dest.getWaitTime(), dest.getMaxConnsTime(), dest.getMtu(), dest.getMvnoType(),
             dest.getMvnoMatchData(), dest.getApnSetId());
     }
@@ -3527,7 +3528,7 @@ public class DcTracker extends Handler {
         }
     }
 
-    private ApnSetting getPreferredApn() {
+    ApnSetting getPreferredApn() {
         if (mAllApnSettings == null || mAllApnSettings.isEmpty()) {
             log("getPreferredApn: mAllApnSettings is empty");
             return null;
@@ -4755,16 +4756,16 @@ public class DcTracker extends Handler {
         }
     }
 
-    private static DataProfile createDataProfile(ApnSetting apn) {
-        return createDataProfile(apn, apn.getProfileId());
+    private static DataProfile createDataProfile(ApnSetting apn, boolean isPreferred) {
+        return createDataProfile(apn, apn.getProfileId(), isPreferred);
     }
 
     @VisibleForTesting
-    public static DataProfile createDataProfile(ApnSetting apn, int profileId) {
+    public static DataProfile createDataProfile(ApnSetting apn, int profileId,
+                                                boolean isPreferred) {
         int profileType;
 
-        int bearerBitmap = 0;
-        bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
+        int bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
                 apn.getNetworkTypeBitmask());
 
         if (bearerBitmap == 0) {
@@ -4776,12 +4777,11 @@ public class DcTracker extends Handler {
         }
 
         return new DataProfile(profileId, apn.getApnName(),
-            ApnSetting.getProtocolStringFromInt(apn.getProtocol()), apn.getAuthType(),
-            apn.getUser(), apn.getPassword(), profileType, apn.getMaxConnsTime(),
-            apn.getMaxConns(), apn.getWaitTime(), apn.isEnabled(), apn.getApnTypeBitmask(),
-            ApnSetting.getProtocolStringFromInt(apn.getRoamingProtocol()), bearerBitmap,
-            apn.getMtu(), ApnSetting.getMvnoTypeStringFromInt(apn.getMvnoType()),
-            apn.getMvnoMatchData(), apn.getModemCognitive());
+                ApnSetting.getProtocolStringFromInt(apn.getProtocol()), apn.getAuthType(),
+                apn.getUser(), apn.getPassword(), profileType, apn.getMaxConnsTime(),
+                apn.getMaxConns(),  apn.getWaitTime(), apn.isEnabled(), apn.getApnTypeBitmask(),
+                ApnSetting.getProtocolStringFromInt(apn.getRoamingProtocol()), bearerBitmap,
+                apn.getMtu(), apn.isPersistent(), isPreferred);
     }
 
     private void onDataServiceBindingChanged(boolean bound) {

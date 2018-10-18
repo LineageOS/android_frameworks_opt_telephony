@@ -120,7 +120,7 @@ public class ApnSettingTest extends TelephonyTest {
         assertEquals(a1.getApnTypeBitmask(), a2.getApnTypeBitmask());
         assertEquals(a1.isEnabled(), a2.isEnabled());
         assertEquals(a1.getProfileId(), a2.getProfileId());
-        assertEquals(a1.getModemCognitive(), a2.getModemCognitive());
+        assertEquals(a1.isPersistent(), a2.isPersistent());
         assertEquals(a1.getMaxConns(), a2.getMaxConns());
         assertEquals(a1.getWaitTime(), a2.getWaitTime());
         assertEquals(a1.getMaxConnsTime(), a2.getMaxConnsTime());
