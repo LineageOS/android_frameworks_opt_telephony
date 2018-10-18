@@ -138,7 +138,7 @@ public class LocaleTracker extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_REQUEST_CELL_INFO:
-                mPhone.getAllCellInfo(null, obtainMessage(EVENT_RESPONSE_CELL_INFO));
+                mPhone.requestCellInfoUpdate(null, obtainMessage(EVENT_RESPONSE_CELL_INFO));
                 break;
 
             case EVENT_UNSOL_CELL_INFO:
