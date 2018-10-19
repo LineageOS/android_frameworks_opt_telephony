@@ -1028,16 +1028,20 @@ public class SIMRecords extends IccRecords {
                                         onCphsCompleted));
                     } else {
                         if (ar.userObj != null) {
-                            CarrierConfigManager configLoader = (CarrierConfigManager)
+                            CarrierConfigManager configManager = (CarrierConfigManager)
                                     mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-                            if (ar.exception != null && configLoader != null
-                                    && configLoader.getConfig().getBoolean(
-                                    CarrierConfigManager.KEY_EDITABLE_VOICEMAIL_NUMBER_BOOL)) {
-                                // GsmCdmaPhone will store vm number on device
-                                // when IccVmNotSupportedException occurred
-                                AsyncResult.forMessage(((Message) ar.userObj)).exception =
-                                        new IccVmNotSupportedException(
-                                            "Update SIM voice mailbox error");
+                            if (ar.exception != null && configManager != null) {
+                                PersistableBundle b = configManager.getConfigForSubId(
+                                        SubscriptionController.getInstance().getSubIdUsingPhoneId(
+                                                mParentApp.getPhoneId()));
+                                if (b != null && b.getBoolean(
+                                        CarrierConfigManager.KEY_EDITABLE_VOICEMAIL_NUMBER_BOOL)) {
+                                    // GsmCdmaPhone will store vm number on device
+                                    // when IccVmNotSupportedException occurred
+                                    AsyncResult.forMessage(((Message) ar.userObj)).exception =
+                                            new IccVmNotSupportedException(
+                                                    "Update SIM voice mailbox error");
+                                }
                             } else {
                                 AsyncResult.forMessage(((Message) ar.userObj))
                                     .exception = ar.exception;
