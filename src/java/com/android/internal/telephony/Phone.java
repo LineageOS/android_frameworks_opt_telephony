@@ -605,7 +605,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public boolean supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming() {
         CarrierConfigManager configManager = (CarrierConfigManager)
                 getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle b = configManager.getConfig();
+        PersistableBundle b = configManager.getConfigForSubId(getSubId());
         if (b != null) {
             return b.getBoolean(
                     CarrierConfigManager
