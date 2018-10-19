@@ -47,6 +47,9 @@ message TelephonyLog {
 
   // Modem power stats
   optional ModemPowerStats modem_power_stats = 8;
+
+  // Hardware revision (EVT, DVT, PVT etc.)
+  optional string hardware_revision = 9;
 }
 
 // The time information
