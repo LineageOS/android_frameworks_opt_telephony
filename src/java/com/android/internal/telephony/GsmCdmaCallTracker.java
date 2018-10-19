@@ -476,7 +476,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             // Some networks need an empty flash before sending the normal one
             CarrierConfigManager configManager = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            PersistableBundle bundle = configManager.getConfig();
+            PersistableBundle bundle = configManager.getConfigForSubId(mPhone.getSubId());
             if (bundle != null) {
                 m3WayCallFlashDelay =
                         bundle.getInt(CarrierConfigManager.KEY_CDMA_3WAYCALL_FLASH_DELAY_INT);
