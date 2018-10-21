@@ -605,7 +605,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public boolean supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming() {
         CarrierConfigManager configManager = (CarrierConfigManager)
                 getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle b = configManager.getConfig();
+        PersistableBundle b = configManager.getConfigForSubId(getSubId());
         if (b != null) {
             return b.getBoolean(
                     CarrierConfigManager
@@ -1723,7 +1723,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param workSource calling WorkSource
      * @param rspMsg the response message containing the cell info
      */
-    public void getAllCellInfo(WorkSource workSource, Message rspMsg) {
+    public void requestCellInfoUpdate(WorkSource workSource, Message rspMsg) {
         getServiceStateTracker().requestAllCellInfo(workSource, rspMsg);
     }
 
@@ -3275,6 +3275,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
         Rlog.d(LOG_TAG, "isWifiCallingEnabled =" + isWifiCallingEnabled);
         return isWifiCallingEnabled;
+    }
+
+    /**
+     * @return true if the IMS capability for the registration technology specified is available,
+     * false otherwise.
+     */
+    public boolean isImsCapabilityAvailable(int capability, int regTech) {
+        Phone imsPhone = mImsPhone;
+        boolean isAvailable = false;
+        if (imsPhone != null) {
+            isAvailable = imsPhone.isImsCapabilityAvailable(capability, regTech);
+        }
+        Rlog.d(LOG_TAG, "isImsRegistered =" + isAvailable);
+        return isAvailable;
     }
 
     /**

@@ -29,6 +29,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -51,6 +52,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
@@ -73,6 +75,7 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.TextUtils;
 import android.util.LocalLog;
+import android.util.Pair;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
@@ -128,6 +131,7 @@ public class DcTrackerTest extends TelephonyTest {
             1 << (TelephonyManager.NETWORK_TYPE_EHRPD - 1);
     private static final Uri PREFERAPN_URI = Uri.parse(
             Telephony.Carriers.CONTENT_URI + "/preferapn");
+    private static final int DATA_ENABLED_CHANGED = 0;
 
     @Mock
     ISub mIsub;
@@ -145,6 +149,8 @@ public class DcTrackerTest extends TelephonyTest {
     DataConnection mDataConnection;
     @Mock
     PackageManagerService mMockPackageManagerInternal;
+    @Mock
+    Handler mHandler;
 
     private DcTracker mDct;
     private DcTrackerTestHandler mDcTrackerTestHandler;
@@ -157,6 +163,8 @@ public class DcTrackerTest extends TelephonyTest {
 
     private final ApnSettingContentProvider mApnSettingContentProvider =
             new ApnSettingContentProvider();
+
+    private Message mMessage;
 
     private void addDataService() {
         CellularDataService cellularDataService = new CellularDataService();
@@ -255,7 +263,7 @@ public class DcTrackerTest extends TelephonyTest {
                             ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -286,7 +294,7 @@ public class DcTrackerTest extends TelephonyTest {
                             ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer,
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -317,7 +325,7 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -348,7 +356,7 @@ public class DcTrackerTest extends TelephonyTest {
                             ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD, // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -379,7 +387,7 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // bearer
                             0,                      // bearer_bitmask
                             0,                      // profile_id
-                            0,                      // modem_cognitive
+                            1,                      // modem_cognitive
                             0,                      // max_conns
                             0,                      // wait_time
                             0,                      // max_conns_time
@@ -518,17 +526,14 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals("", dp.getUserName());
         assertEquals("", dp.getPassword());
         assertEquals(type, dp.getType());
-        assertEquals(0, dp.getMaxConnsTime());
-        assertEquals(0, dp.getMaxConns());
         assertEquals(0, dp.getWaitTime());
         assertTrue(dp.isEnabled());
         assertEquals(supportedApnTypesBitmap, dp.getSupportedApnTypesBitmap());
         assertEquals("IP", dp.getRoamingProtocol());
         assertEquals(bearerBitmask, dp.getBearerBitmap());
         assertEquals(0, dp.getMtu());
-        assertEquals("", dp.getMvnoType());
-        assertEquals("", dp.getMvnoMatchData());
-        assertFalse(dp.isModemCognitive());
+        assertTrue(dp.isPersistent());
+        assertFalse(dp.isPreferred());
     }
 
     private void verifyDataConnected(final String apnSetting) {
@@ -1446,7 +1451,6 @@ public class DcTrackerTest extends TelephonyTest {
         assertTrue(mDct.isDataEnabled());
         assertTrue(mDct.isUserDataEnabled());
 
-
         mDct.setUserDataEnabled(false);
         waitForMs(200);
 
@@ -1456,6 +1460,8 @@ public class DcTrackerTest extends TelephonyTest {
 
         // Changing provisioned to 0.
         Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 0);
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE, null));
+        waitForMs(200);
 
         assertTrue(mDct.isDataEnabled());
         assertTrue(mDct.isUserDataEnabled());
@@ -1464,10 +1470,57 @@ public class DcTrackerTest extends TelephonyTest {
         // Settings.Global.MOBILE_DATA and keep data enabled when provisioned.
         mDct.setUserDataEnabled(true);
         Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1);
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE, null));
         waitForMs(200);
 
         assertTrue(mDct.isDataEnabled());
         assertTrue(mDct.isUserDataEnabled());
         assertEquals(1, Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA));
+    }
+
+    @Test
+    @SmallTest
+    public void testNotifyDataEnabledChanged() throws Exception {
+        doAnswer(invocation -> {
+            mMessage = (Message) invocation.getArguments()[0];
+            return true;
+        }).when(mHandler).sendMessageDelayed(any(), anyLong());
+
+        // Test registration.
+        mDct.registerForDataEnabledChanged(mHandler, DATA_ENABLED_CHANGED, null);
+        verifyDataEnabledChangedMessage(true, DataEnabledSettings.REASON_REGISTERED);
+
+        // Disable user data. Should receive data enabled change to false.
+        mDct.setUserDataEnabled(false);
+        waitForMs(200);
+        verifyDataEnabledChangedMessage(false, DataEnabledSettings.REASON_USER_DATA_ENABLED);
+
+        // Changing provisioned to 0. Shouldn't receive any message, as data enabled remains false.
+        ContentResolver resolver = mContext.getContentResolver();
+        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 0);
+        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED,
+                0);
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE, null));
+        waitForMs(200);
+        assertFalse(mDct.isDataEnabled());
+        verify(mHandler, never()).sendMessageDelayed(any(), anyLong());
+
+        // Changing provisioningDataEnabled to 1. It should trigger data enabled change to true.
+        Settings.Global.putInt(resolver,
+                Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED, 1);
+        mDct.sendMessage(mDct.obtainMessage(
+                DctConstants.EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE, null));
+        waitForMs(200);
+        verifyDataEnabledChangedMessage(
+                true, DataEnabledSettings.REASON_PROVISIONING_DATA_ENABLED_CHANGED);
+    }
+
+    private void verifyDataEnabledChangedMessage(boolean enabled, int reason) {
+        verify(mHandler, times(1)).sendMessageDelayed(any(), anyLong());
+        Pair<Boolean, Integer> result = (Pair) ((AsyncResult) mMessage.obj).result;
+        assertEquals(DATA_ENABLED_CHANGED, mMessage.what);
+        assertEquals(enabled, result.first);
+        assertEquals(reason, (int) result.second);
+        clearInvocations(mHandler);
     }
 }

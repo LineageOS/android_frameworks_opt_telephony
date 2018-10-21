@@ -26,7 +26,6 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.aidl.IImsSmsListener;
-import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase;
@@ -66,8 +65,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
      * Listen to the IMS service state change
      *
      */
-    private ImsRegistrationImplBase.Callback mRegistrationCallback =
-            new ImsRegistrationImplBase.Callback() {
+    private android.telephony.ims.ImsMmTelManager.RegistrationCallback mRegistrationCallback =
+            new android.telephony.ims.ImsMmTelManager.RegistrationCallback() {
                 @Override
                 public void onRegistered(
                         @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
@@ -95,12 +94,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 }
             };
 
-    private ImsFeature.CapabilityCallback mCapabilityCallback =
-            new ImsFeature.CapabilityCallback() {
+    private android.telephony.ims.ImsMmTelManager.CapabilityCallback mCapabilityCallback =
+            new android.telephony.ims.ImsMmTelManager.CapabilityCallback() {
                 @Override
-                public void onCapabilitiesStatusChanged(ImsFeature.Capabilities config) {
+                public void onCapabilitiesStatusChanged(
+                        MmTelFeature.MmTelCapabilities capabilities) {
                     synchronized (mLock) {
-                        mIsSmsCapable = config.isCapable(
+                        mIsSmsCapable = capabilities.isCapable(
                                 MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_SMS);
                     }
                 }

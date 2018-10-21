@@ -55,6 +55,7 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.ImsSuppServiceNotification;
@@ -302,6 +303,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         HOLDING_TO_ANSWER_INCOMING,
         // Pending resuming the foreground call after some kind of failure
         PENDING_RESUME_FOREGROUND_AFTER_FAILURE,
+        // Pending holding a call to dial another outgoing call
+        HOLDING_TO_DIAL_OUTGOING,
     }
 
     //***** Instance Variables
@@ -968,7 +971,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             // Cache the video state for pending MO call.
             mPendingCallVideoState = videoState;
             mPendingIntentExtras = dialArgs.intentExtras;
-            holdActiveCall();
+            holdActiveCallForPendingMo();
         }
 
         ImsPhoneCall.State fgState = ImsPhoneCall.State.IDLE;
@@ -1333,6 +1336,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING) {
             log("switchAfterConferenceSuccess");
             mForegroundCall.switchWith(mBackgroundCall);
+        }
+    }
+
+    private void holdActiveCallForPendingMo() throws CallStateException {
+        if (mHoldSwitchingState == HoldSwapState.PENDING_SINGLE_CALL_HOLD
+                || mHoldSwitchingState == HoldSwapState.SWAPPING_ACTIVE_AND_HELD) {
+            logi("Ignoring hold request while already holding or swapping");
+            return;
+        }
+        ImsCall callToHold = mForegroundCall.getImsCall();
+
+        mHoldSwitchingState = HoldSwapState.HOLDING_TO_DIAL_OUTGOING;
+        logHoldSwapState("holdActiveCallForPendingMo");
+
+        mForegroundCall.switchWith(mBackgroundCall);
+        try {
+            callToHold.hold();
+            mMetrics.writeOnImsCommand(mPhone.getPhoneId(), callToHold.getSession(),
+                    ImsCommand.IMS_CMD_HOLD);
+        } catch (ImsException e) {
+            mForegroundCall.switchWith(mBackgroundCall);
+            throw new CallStateException(e.getMessage());
         }
     }
 
@@ -2392,9 +2417,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (mRingingCall.getState().isRinging()) {
                     // Drop pending MO. We should address incoming call first
                     mPendingMO = null;
-                } else if (mPendingMO != null
-                        && mPendingMO.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
-                    sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                 }
             }
 
@@ -2439,6 +2461,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     logHoldSwapState("onCallTerminated hold to answer case");
                     sendEmptyMessage(EVENT_RESUME_NOW_FOREGROUND_CALL);
                 }
+            } else if (mHoldSwitchingState == HoldSwapState.HOLDING_TO_DIAL_OUTGOING) {
+                // The call that we were gonna hold might've gotten terminated. If that's the case,
+                // dial mPendingMo if present.
+                if (mPendingMO == null
+                        || mPendingMO.getDisconnectCause() != DisconnectCause.NOT_DISCONNECTED) {
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                    logHoldSwapState("onCallTerminated hold to dial but no pendingMo");
+                }
+                if (imsCall != mPendingMO.getImsCall()) {
+                    sendEmptyMessage(EVENT_DIAL_PENDINGMO);
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                    logHoldSwapState("onCallTerminated hold to dial, dial pendingMo");
+                }
             }
 
             if (mShouldUpdateImsConfigOnDisconnect) {
@@ -2479,14 +2514,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     } else if (mRingingCall.getState() == ImsPhoneCall.State.WAITING
                             && mHoldSwitchingState == HoldSwapState.HOLDING_TO_ANSWER_INCOMING) {
                         sendEmptyMessage(EVENT_ANSWER_WAITING_CALL);
+                    } else if (mPendingMO != null
+                            && mHoldSwitchingState == HoldSwapState.HOLDING_TO_DIAL_OUTGOING) {
+                        dialPendingMO();
+                        mHoldSwitchingState = HoldSwapState.INACTIVE;
+                        logHoldSwapState("onCallHeld hold to dial");
                     } else {
-                        //when multiple connections belong to background call,
-                        //only the first callback reaches here
-                        //otherwise the oldState is already HOLDING
-                        if (mPendingMO != null) {
-                            dialPendingMO();
-                        }
-
                         // In this case there will be no call resumed, so we can assume that we
                         // are done switching fg and bg calls now.
                         // This may happen if there is no BG call and we are holding a call so that
@@ -2533,6 +2566,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         mCallExpectedToResume = null;
                     }
                 }
+                mHoldSwitchingState = HoldSwapState.INACTIVE;
                 mPhone.notifySuppServiceFailed(Phone.SuppService.HOLD);
             }
             mMetrics.writeOnImsCallHoldFailed(mPhone.getPhoneId(), imsCall.getCallSession(),
@@ -2746,9 +2780,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallHandover(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
             ImsReasonInfo reasonInfo) {
+            // Check with the DCTracker to see if data is enabled; there may be a case when
+            // ImsPhoneCallTracker isn't being informed of the right data enabled state via its
+            // registration, so we'll refresh now.
+            boolean isDataEnabled = mPhone.getDefaultPhone().mDcTracker.isDataEnabled();
             if (DBG) {
-                log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech=" +
-                        targetAccessTech + ", reasonInfo=" + reasonInfo);
+                log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech="
+                        + targetAccessTech + ", reasonInfo=" + reasonInfo + ", dataEnabled="
+                        + mIsDataEnabled + "/" + isDataEnabled + ", dataMetered="
+                        + mIsViLteDataMetered);
+            }
+            if (mIsDataEnabled != isDataEnabled) {
+                loge("onCallHandover: data enabled state doesn't match! (was=" + mIsDataEnabled
+                        + ", actually=" + isDataEnabled);
+                mIsDataEnabled = isDataEnabled;
             }
 
             // Only consider it a valid handover to WIFI if the source radio tech is known.
@@ -2793,7 +2838,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         conn.setLocalVideoCapable(mIsDataEnabled);
                     }
 
-                    if (mNotifyHandoverVideoFromWifiToLTE &&    mIsDataEnabled) {
+                    if (mNotifyHandoverVideoFromWifiToLTE && mIsDataEnabled) {
                         if (conn.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                             log("onCallHandover :: notifying of WIFI to LTE handover.");
                             conn.onConnectionEvent(
@@ -2810,6 +2855,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (!mIsDataEnabled && mIsViLteDataMetered) {
                         // Call was downgraded from WIFI to LTE and data is metered; downgrade the
                         // call now.
+                        log("onCallHandover :: data is not enabled; attempt to downgrade.");
                         downgradeVideoCall(ImsReasonInfo.CODE_WIFI_LOST, conn);
                     }
                 }
@@ -2969,8 +3015,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     };
 
-    private final ImsRegistrationImplBase.Callback mImsRegistrationCallback =
-            new ImsRegistrationImplBase.Callback() {
+    private final ImsMmTelManager.RegistrationCallback mImsRegistrationCallback =
+            new ImsMmTelManager.RegistrationCallback() {
 
                 @Override
                 public void onRegistered(
@@ -3009,13 +3055,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
             };
 
-    private final ImsFeature.CapabilityCallback mImsCapabilityCallback =
-            new ImsFeature.CapabilityCallback() {
+    private final ImsMmTelManager.CapabilityCallback mImsCapabilityCallback =
+            new ImsMmTelManager.CapabilityCallback() {
                 @Override
-                public void onCapabilitiesStatusChanged(ImsFeature.Capabilities config) {
-                    if (DBG) log("onCapabilitiesStatusChanged: " + config);
+                public void onCapabilitiesStatusChanged(
+                        MmTelFeature.MmTelCapabilities capabilities) {
+                    if (DBG) log("onCapabilitiesStatusChanged: " + capabilities);
                     SomeArgs args = SomeArgs.obtain();
-                    args.arg1 = config;
+                    args.arg1 = capabilities;
                     // Remove any pending updates; they're already stale, so no need to process
                     // them.
                     removeMessages(EVENT_ON_FEATURE_CAPABILITY_CHANGED);
@@ -3389,6 +3436,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case PENDING_RESUME_FOREGROUND_AFTER_FAILURE:
                 holdSwapState = "PENDING_RESUME_FOREGROUND_AFTER_FAILURE";
                 break;
+            case HOLDING_TO_DIAL_OUTGOING:
+                holdSwapState = "HOLDING_TO_DIAL_OUTGOING";
+                break;
         }
         logi("holdSwapState set to " + holdSwapState + " at " + loc);
     }
@@ -3493,6 +3543,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     public boolean isInEmergencyCall() {
         return mIsInEmergencyCall;
+    }
+
+    /**
+     * @return true if the IMS capability for the specified registration technology is currently
+     * available.
+     */
+    public boolean isImsCapabilityAvailable(int capability, int regTech) {
+        return (getImsRegistrationTech() == regTech) && mMmTelCapabilities.isCapable(capability);
     }
 
     public boolean isVolteEnabled() {
@@ -3891,16 +3949,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL |
                             Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE)
                             && !mSupportPauseVideo) {
-
+                log("downgradeVideoCall :: callId=" + conn.getTelecomCallId()
+                        + " Downgrade to audio");
                 // If the carrier supports downgrading to voice, then we can simply issue a
                 // downgrade to voice instead of terminating the call.
                 modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
             } else if (mSupportPauseVideo && reasonCode != ImsReasonInfo.CODE_WIFI_LOST) {
                 // The carrier supports video pause signalling, so pause the video if we didn't just
                 // lose wifi; in that case just disconnect.
+                log("downgradeVideoCall :: callId=" + conn.getTelecomCallId()
+                        + " Pause audio");
                 mShouldUpdateImsConfigOnDisconnect = true;
                 conn.pauseVideo(VideoPauseTracker.SOURCE_DATA_ENABLED);
             } else {
+                log("downgradeVideoCall :: callId=" + conn.getTelecomCallId()
+                        + " Disconnect call.");
                 // At this point the only choice we have is to terminate the call.
                 try {
                     imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);

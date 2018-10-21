@@ -535,7 +535,8 @@ public class DataConnection extends StateMachine {
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
 
-        DataProfile dp = DcTracker.createDataProfile(mApnSetting, cp.mProfileId);
+        DataProfile dp = DcTracker.createDataProfile(mApnSetting, cp.mProfileId,
+                mApnSetting.equals(mDct.getPreferredApn()));
 
         // We need to use the actual modem roaming state instead of the framework roaming state
         // here. This flag is only passed down to ril_service for picking the correct protocol (for

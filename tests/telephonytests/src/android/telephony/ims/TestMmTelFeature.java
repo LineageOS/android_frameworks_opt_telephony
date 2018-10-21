@@ -16,6 +16,7 @@
 
 package android.telephony.ims;
 
+import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
 import android.telephony.ims.feature.CapabilityChangeRequest;
@@ -50,8 +51,8 @@ public class TestMmTelFeature extends MmTelFeature {
         }
     }
 
-    public void incomingCall(ImsCallSessionImplBase c) throws RemoteException {
-        notifyIncomingCall(c, null);
+    public void incomingCall(ImsCallSessionImplBase c) {
+        notifyIncomingCall(c, new Bundle());
     }
 
     @Override

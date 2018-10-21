@@ -89,7 +89,7 @@ public class LocaleTrackerTest extends TelephonyTest {
             Message m = invocation.getArgument(1);
             AsyncResult.forMessage(m, Arrays.asList(mCellInfo), null);
             m.sendToTarget();
-            return null; }).when(mPhone).getAllCellInfo(any(), any());
+            return null; }).when(mPhone).requestCellInfoUpdate(any(), any());
 
         logd("LocaleTrackerTest -Setup!");
     }
