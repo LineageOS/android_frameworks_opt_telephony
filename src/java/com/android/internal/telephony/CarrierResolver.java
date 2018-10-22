@@ -167,7 +167,11 @@ public class CarrierResolver extends Handler {
         if (DBG) logd("handleMessage: " + msg.what);
         switch (msg.what) {
             case SIM_LOAD_EVENT:
-                mSpn = mIccRecords.getServiceProviderName();
+                if (mIccRecords != null) {
+                    mSpn = mIccRecords.getServiceProviderName();
+                } else {
+                    loge("mIccRecords is null on SIM_LOAD_EVENT, could not get SPN");
+                }
                 mPreferApn = getPreferApn();
             case CARRIER_ID_DB_UPDATE_EVENT:
                 loadCarrierMatchingRulesOnMccMnc();
