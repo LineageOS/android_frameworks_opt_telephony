@@ -111,6 +111,13 @@ public class TelephonyTester {
     private static final String ACTION_TEST_IMS_E_CALL =
             "com.android.internal.telephony.TestImsECall";
 
+    /**
+     * Test-only intent used to trigger a change to the current call's phone number.
+     * Use the {@link #EXTRA_NUMBER} extra to specify the new phone number.
+     */
+    private static final String ACTION_TEST_CHANGE_NUMBER =
+            "com.android.internal.telephony.TestChangeNumber";
+
     private static final String ACTION_TEST_SERVICE_STATE =
             "com.android.internal.telephony.TestServiceState";
 
@@ -171,6 +178,9 @@ public class TelephonyTester {
                 } else if (action.equals(ACTION_TEST_IMS_E_CALL)) {
                     log("handle test IMS ecall intent");
                     testImsECall();
+                } else if (action.equals(ACTION_TEST_CHANGE_NUMBER)) {
+                    log("handle test change number intent");
+                    testChangeNumber(intent);
                 } else {
                     if (DBG) log("onReceive: unknown action=" + action);
                 }
@@ -205,7 +215,7 @@ public class TelephonyTester {
                 filter.addAction(ACTION_TEST_SERVICE_STATE);
                 log("register for intent action=" + ACTION_TEST_SERVICE_STATE);
             }
-
+            filter.addAction(ACTION_TEST_CHANGE_NUMBER);
             phone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone.getHandler());
         }
     }
@@ -413,5 +423,30 @@ public class TelephonyTester {
         callProfile.mCallExtras = extras;
         imsCall.getImsCallSessionListenerProxy().callSessionUpdated(imsCall.getSession(),
                 callProfile);
+    }
+
+    void testChangeNumber(Intent intent) {
+        if (!intent.hasExtra(EXTRA_NUMBER)) {
+            return;
+        }
+
+        String newNumber = intent.getStringExtra(EXTRA_NUMBER);
+
+        // Update all the calls.
+        mPhone.getForegroundCall().getConnections()
+                .stream()
+                .forEach(c -> {
+                    c.setAddress(newNumber, PhoneConstants.PRESENTATION_ALLOWED);
+                    c.setDialString(newNumber);
+                });
+
+        // <sigh>
+        if (mPhone instanceof GsmCdmaPhone) {
+            ((GsmCdmaPhone) mPhone).notifyPhoneStateChanged();
+            ((GsmCdmaPhone) mPhone).notifyPreciseCallStateChanged();
+        } else if (mPhone instanceof ImsPhone) {
+            ((ImsPhone) mPhone).notifyPhoneStateChanged();
+            ((ImsPhone) mPhone).notifyPreciseCallStateChanged();
+        }
     }
 }

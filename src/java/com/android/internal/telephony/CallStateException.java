@@ -32,6 +32,7 @@ public class CallStateException extends Exception
     public static final int ERROR_CALL_RINGING = 4;
     public static final int ERROR_CALLING_DISABLED = 5;
     public static final int ERROR_TOO_MANY_CALLS = 6;
+    public static final int ERROR_OTASP_PROVISIONING_IN_PROCESS = 7;
 
     public
     CallStateException()

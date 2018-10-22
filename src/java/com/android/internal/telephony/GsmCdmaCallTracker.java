@@ -275,7 +275,9 @@ public class GsmCdmaCallTracker extends CallTracker {
         clearDisconnected();
 
         // Check for issues which would preclude dialing and throw a CallStateException.
-        checkForDialIssues();
+        boolean isEmergencyCall = PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(),
+                dialString);
+        checkForDialIssues(isEmergencyCall);
 
         String origNumber = dialString;
         dialString = convertNumberIfNecessary(mPhone, dialString);
@@ -309,8 +311,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             //we should have failed in !canDial() above before we get here
             throw new CallStateException("cannot dial in current state");
         }
-        boolean isEmergencyCall = PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(),
-                dialString);
+
         mPendingMO = new GsmCdmaConnection(mPhone, checkForTestEmergencyNumber(dialString),
                 this, mForegroundCall, isEmergencyCall);
         mHangupPendingMO = false;
@@ -384,8 +385,11 @@ public class GsmCdmaCallTracker extends CallTracker {
         // note that this triggers call state changed notif
         clearDisconnected();
 
+        boolean isEmergencyCall =
+                PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(), dialString);
+
         // Check for issues which would preclude dialing and throw a CallStateException.
-        checkForDialIssues();
+        checkForDialIssues(isEmergencyCall);
 
         TelephonyManager tm =
                 (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
@@ -407,8 +411,6 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
 
         boolean isPhoneInEcmMode = mPhone.isInEcm();
-        boolean isEmergencyCall =
-                PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(), dialString);
 
         // Cancel Ecm timer if a second emergency call is originating in Ecm mode
         if (isPhoneInEcmMode && isEmergencyCall) {
@@ -616,7 +618,7 @@ public class GsmCdmaCallTracker extends CallTracker {
      * {@link CallStateException} if there is an issue.
      * @throws CallStateException
      */
-    public void checkForDialIssues() throws CallStateException {
+    public void checkForDialIssues(boolean isEmergencyCall) throws CallStateException {
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 
@@ -650,6 +652,10 @@ public class GsmCdmaCallTracker extends CallTracker {
                 && mBackgroundCall.getState().isAlive()) {
             throw new CallStateException(CallStateException.ERROR_TOO_MANY_CALLS,
                     "There is already a foreground and background call.");
+        }
+        if (!isEmergencyCall && isInOtaspCall()) {
+            throw new CallStateException(CallStateException.ERROR_OTASP_PROVISIONING_IN_PROCESS,
+                    "OTASP provisioning is in process.");
         }
     }
 
@@ -1670,6 +1676,18 @@ public class GsmCdmaCallTracker extends CallTracker {
      */
     public boolean isInEmergencyCall() {
         return mIsInEmergencyCall;
+    }
+
+    /**
+     * @return {@code true} if the pending outgoing call or active call is an OTASP call,
+     * {@code false} otherwise.
+     */
+    public boolean isInOtaspCall() {
+        return mPendingMO != null && mPendingMO.isOtaspCall()
+                || (mForegroundCall.getConnections().stream()
+                .filter(connection -> ((connection instanceof GsmCdmaConnection)
+                        && (((GsmCdmaConnection) connection).isOtaspCall())))
+                .count() > 0);
     }
 
     private boolean isPhoneTypeGsm() {
