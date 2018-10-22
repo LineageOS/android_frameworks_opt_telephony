@@ -228,8 +228,11 @@ public class TelephonyComponentFactory {
     public static TelephonyComponentFactory getInstance() {
         if (sInstance == null) {
             String fullClsName = "com.qualcomm.qti.internal.telephony.QtiTelephonyComponentFactory";
+            String libPath = "/system/framework/qti-telephony-common.jar"
+                    + ":/system/framework/android.hidl.manager-V1.0-java.jar";
 
-            ClassLoader classLoader = TelephonyComponentFactory.class.getClassLoader();
+            PathClassLoader classLoader = new PathClassLoader(libPath,
+                    ClassLoader.getSystemClassLoader());
             Rlog.d(LOG_TAG, "classLoader = " + classLoader);
 
             if (fullClsName == null || fullClsName.length() == 0) {
