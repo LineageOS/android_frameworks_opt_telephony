@@ -61,7 +61,7 @@ public class LocaleTrackerTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mLocaleTracker = new LocaleTracker(mPhone, this.getLooper());
+            mLocaleTracker = new LocaleTracker(mPhone, mNitzStateMachine, this.getLooper());
             setReady(true);
         }
     }
