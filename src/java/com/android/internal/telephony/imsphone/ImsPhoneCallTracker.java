@@ -55,6 +55,7 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.ImsSuppServiceNotification;
@@ -3012,8 +3013,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     };
 
-    private final ImsRegistrationImplBase.Callback mImsRegistrationCallback =
-            new ImsRegistrationImplBase.Callback() {
+    private final ImsMmTelManager.RegistrationCallback mImsRegistrationCallback =
+            new ImsMmTelManager.RegistrationCallback() {
 
                 @Override
                 public void onRegistered(
@@ -3052,13 +3053,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
             };
 
-    private final ImsFeature.CapabilityCallback mImsCapabilityCallback =
-            new ImsFeature.CapabilityCallback() {
+    private final ImsMmTelManager.CapabilityCallback mImsCapabilityCallback =
+            new ImsMmTelManager.CapabilityCallback() {
                 @Override
-                public void onCapabilitiesStatusChanged(ImsFeature.Capabilities config) {
-                    if (DBG) log("onCapabilitiesStatusChanged: " + config);
+                public void onCapabilitiesStatusChanged(
+                        MmTelFeature.MmTelCapabilities capabilities) {
+                    if (DBG) log("onCapabilitiesStatusChanged: " + capabilities);
                     SomeArgs args = SomeArgs.obtain();
-                    args.arg1 = config;
+                    args.arg1 = capabilities;
                     // Remove any pending updates; they're already stale, so no need to process
                     // them.
                     removeMessages(EVENT_ON_FEATURE_CAPABILITY_CHANGED);
@@ -3539,6 +3541,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     public boolean isInEmergencyCall() {
         return mIsInEmergencyCall;
+    }
+
+    /**
+     * @return true if the IMS capability for the specified registration technology is currently
+     * available.
+     */
+    public boolean isImsCapabilityAvailable(int capability, int regTech) {
+        return (getImsRegistrationTech() == regTech) && mMmTelCapabilities.isCapable(capability);
     }
 
     public boolean isVolteEnabled() {

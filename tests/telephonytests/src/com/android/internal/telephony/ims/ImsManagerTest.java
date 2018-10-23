@@ -73,7 +73,7 @@ public class ImsManagerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("SubscriptionControllerTest");
+        super.setUp("ImsManagerTest");
         mPhoneId = mPhone.getPhoneId();
         mBundle = mContextFixture.getCarrierConfigBundle();
 
