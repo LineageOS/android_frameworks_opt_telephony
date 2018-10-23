@@ -64,6 +64,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -281,6 +282,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private final String mActionDetached;
     private final String mActionAttached;
     protected DeviceStateMonitor mDeviceStateMonitor;
+    protected TransportManager mTransportManager;
     protected AccessNetworksManager mAccessNetworksManager;
 
     protected int mPhoneId;
@@ -1629,6 +1631,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     * Get call tracker
     */
     public CallTracker getCallTracker() {
+        return null;
+    }
+
+    /**
+     * @return The instance of transport manager
+     */
+    public TransportManager getTransportManager() {
         return null;
     }
 

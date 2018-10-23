@@ -100,6 +100,8 @@ import com.android.internal.telephony.cat.ComprehensionTlv;
 import com.android.internal.telephony.cat.ComprehensionTlvTag;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.dataconnection.TransportManager;
+import com.android.internal.telephony.dataconnection.TransportManager.IwlanOperationMode;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
@@ -152,6 +154,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public static final int FOR_WAKELOCK = 0;
     public static final int FOR_ACK_WAKELOCK = 1;
     private final ClientWakelockTracker mClientWakelockTracker = new ClientWakelockTracker();
+
+    private static final HalVersion RADIO_HAL_VERSION_UNKNOWN = new HalVersion(-1, -1);
+
+    private static final HalVersion RADIO_HAL_VERSION_1_0 = new HalVersion(1, 0);
+
+    private static final HalVersion RADIO_HAL_VERSION_1_1 = new HalVersion(1, 1);
+
+    private static final HalVersion RADIO_HAL_VERSION_1_2 = new HalVersion(1, 2);
+
+    private static final HalVersion RADIO_HAL_VERSION_1_3 = new HalVersion(1, 3);
+
+    // IRadio version
+    private final HalVersion mHalVersion;
 
     //***** Instance Variables
 
@@ -522,6 +537,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // wakelock stuff is initialized above as callbacks are received on separate binder threads)
         getRadioProxy(null);
         getOemHookProxy(null);
+
+        mHalVersion = getRadioHalVersion();
+        if (RILJ_LOGD) {
+            riljLog("Radio HAL version: " + mHalVersion);
+        }
     }
 
     @Override
@@ -5743,5 +5763,60 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.tdScdma.rscp,
                 signalStrength.wcdma.base.signalStrength,
                 signalStrength.wcdma.rscp);
+    }
+
+    private HalVersion getRadioHalVersion() {
+        if (mHalVersion != null) {
+            return mHalVersion;
+        }
+
+        IRadio radioProxy10 = getRadioProxy(null);
+
+        if (radioProxy10 != null) {
+            android.hardware.radio.V1_3.IRadio radioProxy13 =
+                    android.hardware.radio.V1_3.IRadio.castFrom(radioProxy10);
+            if (radioProxy13 != null) {
+                return RADIO_HAL_VERSION_1_3;
+            }
+
+            android.hardware.radio.V1_2.IRadio radioProxy12 =
+                    android.hardware.radio.V1_2.IRadio.castFrom(radioProxy10);
+            if (radioProxy12 != null) {
+                return RADIO_HAL_VERSION_1_2;
+            }
+
+            android.hardware.radio.V1_1.IRadio radioProxy11 =
+                    android.hardware.radio.V1_1.IRadio.castFrom(radioProxy10);
+            if (radioProxy11 != null) {
+                return RADIO_HAL_VERSION_1_1;
+            }
+
+            return RADIO_HAL_VERSION_1_0;
+        }
+
+        return RADIO_HAL_VERSION_UNKNOWN;
+    }
+
+    /**
+     * @return The {@link IwlanOperationMode IWLAN operation mode}
+     */
+    public @IwlanOperationMode int getIwlanOperationMode() {
+        // Get IWLAN operation mode from the system property. If the system property is missing,
+        // use the default mode.
+        int mode = SystemProperties.getInt(TransportManager.SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE,
+                TransportManager.IWLAN_OPERATION_MODE_DEFAULT);
+
+        // If the operation mode is default, then we use the HAL version to determine it.
+        // On 1.3 or later version of IRadio, it is expected the device to support
+        // IWLAN AP-assisted mode.
+        if (mode == TransportManager.IWLAN_OPERATION_MODE_DEFAULT) {
+            if (getRadioHalVersion().greaterOrEqual(RADIO_HAL_VERSION_1_3)) {
+                return TransportManager.IWLAN_OPERATION_MODE_AP_ASSISTED;
+            } else {
+                return TransportManager.IWLAN_OPERATION_MODE_LEGACY;
+            }
+        }
+
+        return mode;
     }
 }
