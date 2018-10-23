@@ -378,7 +378,8 @@ public abstract class TelephonyTest {
         doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
                 .makeNitzStateMachine(nullable(GsmCdmaPhone.class));
         doReturn(mLocaleTracker).when(mTelephonyComponentFactory)
-                .makeLocaleTracker(nullable(Phone.class), nullable(Looper.class));
+                .makeLocaleTracker(nullable(Phone.class), nullable(NitzStateMachine.class),
+                        nullable(Looper.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
