@@ -23,7 +23,9 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.verify;
 
 import android.os.Parcel;
+import android.os.RemoteException;
 import android.support.test.runner.AndroidJUnit4;
+import android.telephony.ims.aidl.IImsCapabilityCallback;
 import android.telephony.ims.feature.CapabilityChangeRequest;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
@@ -42,9 +44,29 @@ import org.mockito.MockitoAnnotations;
 
 @RunWith(AndroidJUnit4.class)
 public class ImsFeatureTest {
+    // Public for Mockito testing
+    public class CapabilityCallback extends IImsCapabilityCallback.Stub {
+
+        @Override
+        public void onQueryCapabilityConfiguration(int capability, int radioTech, boolean enabled)
+                throws RemoteException {
+
+        }
+
+        @Override
+        public void onChangeCapabilityConfigurationError(int capability, int radioTech, int reason)
+                throws RemoteException {
+
+        }
+
+        @Override
+        public void onCapabilitiesStatusChanged(int config) throws RemoteException {
+
+        }
+    }
 
     private TestImsFeature mTestImsFeature;
-    private ImsFeature.CapabilityCallback mCapabilityCallback;
+    private CapabilityCallback mCapabilityCallback;
 
     @Mock
     private IImsFeatureStatusCallback mTestStatusCallback;
@@ -55,7 +77,7 @@ public class ImsFeatureTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         mTestImsFeature = new TestImsFeature();
-        mCapabilityCallback = Mockito.spy(new ImsFeature.CapabilityCallback());
+        mCapabilityCallback = Mockito.spy(new CapabilityCallback());
         mTestImsFeature.addCapabilityCallback(mCapabilityCallback);
     }
 
@@ -183,7 +205,8 @@ public class ImsFeatureTest {
         mTestImsFeature.capabilitiesStatusChanged(status);
 
         assertEquals(status.getMask(), mTestImsFeature.queryCapabilityStatus().getMask());
-        verify(mCapabilityCallback).onCapabilitiesStatusChanged(eq(status));
+        verify(mCapabilityCallback).onCapabilitiesStatusChanged(
+                eq(TestImsFeature.CAPABILITY_TEST_1 | TestImsFeature.CAPABILITY_TEST_2));
     }
 
     @SmallTest
