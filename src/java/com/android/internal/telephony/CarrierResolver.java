@@ -164,12 +164,12 @@ public class CarrierResolver extends Handler {
      */
     @Override
     public void handleMessage(Message msg) {
-        if (VDBG) logd("handleMessage: " + msg.what);
+        if (DBG) logd("handleMessage: " + msg.what);
         switch (msg.what) {
             case SIM_LOAD_EVENT:
-            case CARRIER_ID_DB_UPDATE_EVENT:
                 mSpn = mIccRecords.getServiceProviderName();
                 mPreferApn = getPreferApn();
+            case CARRIER_ID_DB_UPDATE_EVENT:
                 loadCarrierMatchingRulesOnMccMnc();
                 break;
             case SIM_ABSENT_EVENT:
