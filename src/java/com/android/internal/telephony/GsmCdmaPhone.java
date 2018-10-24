@@ -169,7 +169,7 @@ public class GsmCdmaPhone extends Phone {
     private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
     private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     // Used for identify the carrier of current subscription
-    private CarrierIdentifier mCarrerIdentifier;
+    private CarrierResolver mCarrerResolver;
 
     private int mPrecisePhoneType;
 
@@ -226,7 +226,7 @@ public class GsmCdmaPhone extends Phone {
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
         mDcTracker = mTelephonyComponentFactory.makeDcTracker(this);
-        mCarrerIdentifier = mTelephonyComponentFactory.makeCarrierIdentifier(this);
+        mCarrerResolver = mTelephonyComponentFactory.makeCarrierResolver(this);
 
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mDeviceStateMonitor = mTelephonyComponentFactory.makeDeviceStateMonitor(this);
@@ -1555,17 +1555,17 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public int getCarrierId() {
-        return mCarrerIdentifier.getCarrierId();
+        return mCarrerResolver.getCarrierId();
     }
 
     @Override
     public String getCarrierName() {
-        return mCarrerIdentifier.getCarrierName();
+        return mCarrerResolver.getCarrierName();
     }
 
     @Override
     public int getCarrierIdListVersion() {
-        return mCarrerIdentifier.getCarrierListVersion();
+        return mCarrerResolver.getCarrierListVersion();
     }
 
     @Override
