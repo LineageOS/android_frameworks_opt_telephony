@@ -2322,7 +2322,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public List<SubscriptionInfo> getOpportunisticSubscriptions(int slotId, String callingPackage) {
+    public List<SubscriptionInfo> getOpportunisticSubscriptions(String callingPackage) {
         return getSubscriptionInfoListFromCacheHelper(
                 callingPackage, mCacheOpportunisticSubInfoList);
     }
