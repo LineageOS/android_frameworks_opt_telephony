@@ -103,13 +103,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // verify nothing has been done while there are no inputs
         assertFalse("data allowed initially", mDataAllowed[0]);
         assertFalse("data allowed initially", mDataAllowed[0]);
-        assertFalse("phone active initially", mPhoneSwitcher.isPhoneActive(0));
+        assertFalse("phone active initially", mPhoneSwitcher.shouldApplySpecifiedRequests(0));
 
         NetworkRequest internetNetworkRequest = addInternetNetworkRequest(null, 50);
         waitABit();
 
         assertFalse("data allowed after request", mDataAllowed[0]);
-        assertFalse("phone active after request", mPhoneSwitcher.isPhoneActive(0));
+        assertFalse("phone active after request", mPhoneSwitcher.shouldApplySpecifiedRequests(0));
 
         // not registered yet - shouldn't inc
         verify(mActivePhoneSwitchHandler, never()).sendMessageAtTime(any(), anyLong());
