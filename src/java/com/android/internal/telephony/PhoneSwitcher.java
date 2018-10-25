@@ -99,8 +99,19 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_REQUEST_NETWORK                = 103;
     private static final int EVENT_RELEASE_NETWORK                = 104;
     private static final int EVENT_EMERGENCY_TOGGLE               = 105;
-    private static final int EVENT_RESEND_DATA_ALLOWED            = 106;
+    private static final int EVENT_RADIO_CAPABILITY_CHANGED       = 106;
     private static final int EVENT_PREFERRED_SUBSCRIPTION_CHANGED = 107;
+    private static final int EVENT_RADIO_AVAILABLE                = 108;
+
+    // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
+    // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
+    // will be either HAL_COMMAND_ALLOW_DATA or HAL_COMMAND_ALLOW_DATA or HAL_COMMAND_UNKNOWN.
+    private static final int HAL_COMMAND_UNKNOWN        = 0;
+    private static final int HAL_COMMAND_ALLOW_DATA     = 1;
+    private static final int HAL_COMMAND_PREFERRED_DATA = 2;
+    private int mHalCommandToUse = HAL_COMMAND_UNKNOWN;
+
+    private RadioConfig mRadioConfig;
 
     private final static int MAX_LOCAL_LOG_LINES = 30;
 
@@ -138,6 +149,7 @@ public class PhoneSwitcher extends Handler {
         mLocalLog = null;
         mActivePhoneRegistrants = null;
         mNumPhones = 0;
+        mRadioConfig = RadioConfig.getInstance(mContext);
         mPhoneStateListener = new PhoneStateListener(looper) {
             public void onPhoneCapabilityChanged(PhoneCapability capability) {
                 onPhoneCapabilityChangedInternal(capability);
@@ -158,6 +170,7 @@ public class PhoneSwitcher extends Handler {
         mLocalLog = new LocalLog(MAX_LOCAL_LOG_LINES);
 
         mSubscriptionController = subscriptionController;
+        mRadioConfig = RadioConfig.getInstance(mContext);
 
         mPhoneStateListener = new PhoneStateListener(looper) {
             public void onPhoneCapabilityChanged(PhoneCapability capability) {
@@ -181,6 +194,7 @@ public class PhoneSwitcher extends Handler {
 
         mCommandsInterfaces = cis;
 
+        mCommandsInterfaces[0].registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         try {
             tr.addOnSubscriptionsChangedListener(context.getOpPackageName(),
                     mSubscriptionsChangedListener);
@@ -255,12 +269,17 @@ public class PhoneSwitcher extends Handler {
                 onEvaluate(REQUESTS_CHANGED, "emergencyToggle");
                 break;
             }
-            case EVENT_RESEND_DATA_ALLOWED: {
-                onResendDataAllowed(msg);
+            case EVENT_RADIO_CAPABILITY_CHANGED: {
+                resendRilCommands(msg);
                 break;
             }
             case EVENT_PREFERRED_SUBSCRIPTION_CHANGED: {
                 onEvaluate(REQUESTS_UNCHANGED, "preferredDataSubIdChanged");
+                break;
+            }
+            case EVENT_RADIO_AVAILABLE: {
+                updateHalCommandToUse();
+                onEvaluate(REQUESTS_UNCHANGED, "EVENT_RADIO_AVAILABLE");
                 break;
             }
         }
@@ -334,8 +353,8 @@ public class PhoneSwitcher extends Handler {
             return;
         }
 
-        // Check if preferred slotId is changed.
-        boolean diffDetected = requestsChanged;
+        // If we use HAL_COMMAND_PREFERRED_DATA,
+        boolean diffDetected = mHalCommandToUse != HAL_COMMAND_PREFERRED_DATA && requestsChanged;
 
         // Check if user setting of default data sub is changed.
         final int dataSub = mSubscriptionController.getDefaultDataSubId();
@@ -366,36 +385,45 @@ public class PhoneSwitcher extends Handler {
 
         if (diffDetected) {
             log("evaluating due to " + sb.toString());
-
-            List<Integer> newActivePhones = new ArrayList<Integer>();
-
-            for (DcRequest dcRequest : mPrioritizedDcRequests) {
-                int phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
-                if (phoneIdForRequest == INVALID_PHONE_INDEX) continue;
-                if (newActivePhones.contains(phoneIdForRequest)) continue;
-                newActivePhones.add(phoneIdForRequest);
-                if (newActivePhones.size() >= mMaxActivePhones) break;
-            }
-
-            if (VDBG) {
-                log("default subId = " + mDefaultDataSubId);
-                log("preferred subId = " + mPreferredDataSubId);
-                for (int i = 0; i < mNumPhones; i++) {
-                    log(" phone[" + i + "] using sub[" + mPhoneSubscriptions[i] + "]");
+            if (mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA) {
+                if (SubscriptionManager.isUsableSubIdValue(mPreferredDataPhoneId)) {
+                    mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, null);
+                    // Notify all registrants.
+                    for (int phoneId = 0; phoneId < mNumPhones; phoneId++) {
+                        mActivePhoneRegistrants[phoneId].notifyRegistrants();
+                    }
                 }
-                log(" newActivePhones:");
-                for (Integer i : newActivePhones) log("  " + i);
-            }
+            } else {
+                List<Integer> newActivePhones = new ArrayList<Integer>();
 
-            for (int phoneId = 0; phoneId < mNumPhones; phoneId++) {
-                if (newActivePhones.contains(phoneId) == false) {
-                    deactivate(phoneId);
+                for (DcRequest dcRequest : mPrioritizedDcRequests) {
+                    int phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
+                    if (phoneIdForRequest == INVALID_PHONE_INDEX) continue;
+                    if (newActivePhones.contains(phoneIdForRequest)) continue;
+                    newActivePhones.add(phoneIdForRequest);
+                    if (newActivePhones.size() >= mMaxActivePhones) break;
                 }
-            }
 
-            // only activate phones up to the limit
-            for (int phoneId : newActivePhones) {
-                activate(phoneId);
+                if (VDBG) {
+                    log("default subId = " + mDefaultDataSubId);
+                    log("preferred subId = " + mPreferredDataSubId);
+                    for (int i = 0; i < mNumPhones; i++) {
+                        log(" phone[" + i + "] using sub[" + mPhoneSubscriptions[i] + "]");
+                    }
+                    log(" newActivePhones:");
+                    for (Integer i : newActivePhones) log("  " + i);
+                }
+
+                for (int phoneId = 0; phoneId < mNumPhones; phoneId++) {
+                    if (!newActivePhones.contains(phoneId)) {
+                        deactivate(phoneId);
+                    }
+                }
+
+                // only activate phones up to the limit
+                for (int phoneId : newActivePhones) {
+                    activate(phoneId);
+                }
             }
         }
     }
@@ -405,46 +433,50 @@ public class PhoneSwitcher extends Handler {
         public long lastRequested = 0;
     }
 
-    private void deactivate(int phoneId) {
-        PhoneState state = mPhoneStates[phoneId];
-        if (state.active == false) return;
-        state.active = false;
-        log("deactivate " + phoneId);
-        state.lastRequested = System.currentTimeMillis();
-        // Skip ALLOW_DATA for single SIM device
-        if (mNumPhones > 1) {
-            mCommandsInterfaces[phoneId].setDataAllowed(false, null);
-        }
-        mActivePhoneRegistrants[phoneId].notifyRegistrants();
-    }
-
     private void activate(int phoneId) {
-        PhoneState state = mPhoneStates[phoneId];
-        if (state.active == true) return;
-        state.active = true;
-        log("activate " + phoneId);
-        state.lastRequested = System.currentTimeMillis();
-        // Skip ALLOW_DATA for single SIM device
-        if (mNumPhones > 1) {
-            mCommandsInterfaces[phoneId].setDataAllowed(true, null);
-        }
-        mActivePhoneRegistrants[phoneId].notifyRegistrants();
+        switchPhone(phoneId, true);
     }
 
-    // used when the modem may have been rebooted and we want to resend
-    // setDataAllowed
-    public void resendDataAllowed(int phoneId) {
+    private void deactivate(int phoneId) {
+        switchPhone(phoneId, false);
+    }
+
+    private void switchPhone(int phoneId, boolean active) {
+        PhoneState state = mPhoneStates[phoneId];
+        if (state.active == active) return;
+        state.active = active;
+        log(active ? "activate " : "deactivate " + phoneId);
+        state.lastRequested = System.currentTimeMillis();
+        if (mHalCommandToUse == HAL_COMMAND_ALLOW_DATA || mHalCommandToUse == HAL_COMMAND_UNKNOWN) {
+            // Skip ALLOW_DATA for single SIM device
+            if (mNumPhones > 1) {
+                mCommandsInterfaces[phoneId].setDataAllowed(active, null);
+            }
+        }
+        mActivePhoneRegistrants[phoneId].notifyRegistrants();
+
+    }
+
+    /**
+     * Used when the modem may have been rebooted and we
+     * want to resend setDataAllowed or setPreferredData
+     */
+    public void onRadioCapChanged(int phoneId) {
         validatePhoneId(phoneId);
-        Message msg = obtainMessage(EVENT_RESEND_DATA_ALLOWED);
+        Message msg = obtainMessage(EVENT_RADIO_CAPABILITY_CHANGED);
         msg.arg1 = phoneId;
         msg.sendToTarget();
     }
 
-    private void onResendDataAllowed(Message msg) {
+    private void resendRilCommands(Message msg) {
         final int phoneId = msg.arg1;
-        // Skip ALLOW_DATA for single SIM device
-        if (mNumPhones > 1) {
-            mCommandsInterfaces[phoneId].setDataAllowed(mPhoneStates[phoneId].active, null);
+        if (mHalCommandToUse == HAL_COMMAND_ALLOW_DATA || mHalCommandToUse == HAL_COMMAND_UNKNOWN) {
+            // Skip ALLOW_DATA for single SIM device
+            if (mNumPhones > 1) {
+                mCommandsInterfaces[phoneId].setDataAllowed(mPhoneStates[phoneId].active, null);
+            }
+        } else {
+            mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, null);
         }
     }
 
@@ -517,15 +549,27 @@ public class PhoneSwitcher extends Handler {
     }
 
     /**
-     * Returns whether phone should handle default network requests.
+     * Returns whether phone should handle network requests
+     * that don't specify a subId.
      */
-    public boolean isActiveForDefaultRequests(int phoneId) {
-        return isPhoneActive(phoneId) && phoneId == mPreferredDataPhoneId;
+    public boolean shouldApplyUnspecifiedRequests(int phoneId) {
+        validatePhoneId(phoneId);
+        if (mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA) {
+            return phoneId == mPreferredDataPhoneId;
+        } else {
+            return mPhoneStates[phoneId].active && phoneId == mPreferredDataPhoneId;
+        }
     }
 
-    public boolean isPhoneActive(int phoneId) {
+    /**
+     * Returns whether phone should handle network requests
+     * that specify a subId.
+     */
+    public boolean shouldApplySpecifiedRequests(int phoneId) {
         validatePhoneId(phoneId);
-        return mPhoneStates[phoneId].active;
+        // If we use SET_PREFERRED_DATA, always apply specified network requests. Otherwise,
+        // only apply network requests if the phone is active (dataAllowed).
+        return mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA || mPhoneStates[phoneId].active;
     }
 
     public void registerForActivePhoneSwitch(int phoneId, Handler h, int what, Object o) {
@@ -557,6 +601,11 @@ public class PhoneSwitcher extends Handler {
             Message msg = PhoneSwitcher.this.obtainMessage(EVENT_PREFERRED_SUBSCRIPTION_CHANGED);
             msg.sendToTarget();
         }
+    }
+
+    private void updateHalCommandToUse() {
+        mHalCommandToUse = mRadioConfig.isSetPreferredDataCommandSupported()
+                ? HAL_COMMAND_PREFERRED_DATA : HAL_COMMAND_ALLOW_DATA;
     }
 
     private void log(String l) {
