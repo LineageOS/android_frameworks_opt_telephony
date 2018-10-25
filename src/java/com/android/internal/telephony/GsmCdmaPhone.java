@@ -2449,7 +2449,7 @@ public class GsmCdmaPhone extends Phone {
 
             case EVENT_RUIM_RECORDS_LOADED:
                 logd("Event EVENT_RUIM_RECORDS_LOADED Received");
-                updateCurrentCarrierInProvider();
+                updateDataConnectionTracker();
                 break;
 
             case EVENT_RADIO_ON:
