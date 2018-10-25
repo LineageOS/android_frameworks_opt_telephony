@@ -46,6 +46,7 @@ import android.content.pm.Signature;
 import android.os.Parcelable;
 import android.os.RemoteException;
 import android.provider.Settings;
+import android.service.euicc.DownloadSubscriptionResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
@@ -139,7 +140,7 @@ public class EuiccControllerTest extends TelephonyTest {
         @Override
         public void addResolutionIntent(
                 Intent extrasIntent, String resolutionAction, String callingPackage,
-                boolean retried, EuiccOperation op) {
+                int resolvableErrors, boolean confirmationCodeRetried, EuiccOperation op) {
             mResolutionAction = resolutionAction;
             mOp = op;
         }
@@ -384,17 +385,18 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(
                 SUBSCRIPTION, true /* switchAfterDownload */, false /* complete */,
-                0 /* result */, "whatever" /* callingPackage */);
+                0 /* result */,  0 /* resolvableError */, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
-        verify(mMockConnector).downloadSubscription(any(), anyBoolean(), anyBoolean(), any());
+        verify(mMockConnector).downloadSubscription(
+                    any(), anyBoolean(), anyBoolean(), any(), any());
     }
 
     @Test
     public void testDownloadSubscription_error() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
-                42, "whatever" /* callingPackage */);
+                42,  0 /* resolvableError */, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 42 /* detailedCode */);
     }
@@ -403,7 +405,8 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testDownloadSubscription_mustDeactivateSim() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
-                EuiccService.RESULT_MUST_DEACTIVATE_SIM, "whatever" /* callingPackage */);
+                EuiccService.RESULT_MUST_DEACTIVATE_SIM, 0 /* resolvableError */,
+                "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
         verifyResolutionIntent(EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
@@ -414,18 +417,19 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testDownloadSubscription_needConfirmationCode() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
-                EuiccService.RESULT_NEED_CONFIRMATION_CODE, "whatever" /* callingPackage */);
+                EuiccService.RESULT_RESOLVABLE_ERRORS, 0b01 /* resolvableError */,
+                "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
-        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_CONFIRMATION_CODE,
-                EuiccOperation.ACTION_DOWNLOAD_CONFIRMATION_CODE);
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_RESOLVABLE_ERRORS,
+                EuiccOperation.ACTION_DOWNLOAD_RESOLVABLE_ERRORS);
     }
 
     @Test
     public void testDownloadSubscription_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                EuiccService.RESULT_OK, "whatever" /* callingPackage */);
+                EuiccService.RESULT_OK, 0 /* resolvableError */, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
         // switchAfterDownload = true so no refresh should occur.
         assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
@@ -435,7 +439,7 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testDownloadSubscription_noSwitch_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
-                EuiccService.RESULT_OK, "whatever" /* callingPackage */);
+                EuiccService.RESULT_OK, 0 /* resolvableError */, "whatever" /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
         assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
@@ -446,11 +450,11 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(false);
         prepareGetDownloadableSubscriptionMetadataCall(false /* complete */, null /* result */);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                12345, PACKAGE_NAME /* callingPackage */);
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).downloadSubscription(
-                any(), anyBoolean(), anyBoolean(), any());
+                any(), anyBoolean(), anyBoolean(), any(), any());
     }
 
     @Test
@@ -461,11 +465,11 @@ public class EuiccControllerTest extends TelephonyTest {
                 new GetDownloadableSubscriptionMetadataResult(42, null /* subscription */);
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                12345, PACKAGE_NAME /* callingPackage */);
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 42 /* detailedCode */);
         verify(mMockConnector, never()).downloadSubscription(
-                any(), anyBoolean(), anyBoolean(), any());
+                any(), anyBoolean(), anyBoolean(), any(), any());
     }
 
     @Test
@@ -477,7 +481,7 @@ public class EuiccControllerTest extends TelephonyTest {
                         EuiccService.RESULT_MUST_DEACTIVATE_SIM, null /* subscription */);
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                12345, PACKAGE_NAME /* callingPackage */);
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
         // In this case we go with the potentially stronger NO_PRIVILEGES consent dialog to avoid
@@ -495,7 +499,7 @@ public class EuiccControllerTest extends TelephonyTest {
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
         setHasCarrierPrivilegesOnActiveSubscription(true);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                EuiccService.RESULT_OK, PACKAGE_NAME /* callingPackage */);
+                EuiccService.RESULT_OK, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
         // switchAfterDownload = true so no refresh should occur.
         assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
@@ -511,11 +515,11 @@ public class EuiccControllerTest extends TelephonyTest {
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
         setHasCarrierPrivilegesOnActiveSubscription(false);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                12345, PACKAGE_NAME /* callingPackage */);
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).downloadSubscription(
-                any(), anyBoolean(), anyBoolean(), any());
+                any(), anyBoolean(), anyBoolean(), any(), any());
         verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                 EuiccOperation.ACTION_DOWNLOAD_NO_PRIVILEGES);
     }
@@ -532,12 +536,12 @@ public class EuiccControllerTest extends TelephonyTest {
         pi.signatures = new Signature[] { new Signature(new byte[] { 5, 4, 3, 2, 1 }) };
         when(mPackageManager.getPackageInfo(eq(PACKAGE_NAME), anyInt())).thenReturn(pi);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
-                12345, PACKAGE_NAME /* callingPackage */);
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mTelephonyManager, never()).checkCarrierPrivilegesForPackage(PACKAGE_NAME);
         verify(mMockConnector, never()).downloadSubscription(
-                any(), anyBoolean(), anyBoolean(), any());
+                any(), anyBoolean(), anyBoolean(), any(), any());
     }
 
     @Test
@@ -965,23 +969,25 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private void callDownloadSubscription(DownloadableSubscription subscription,
             boolean switchAfterDownload, final boolean complete, final int result,
-            String callingPackage) {
+            final int resolvableError, String callingPackage) {
         PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
-                EuiccConnector.DownloadCommandCallback cb = invocation.getArgument(3);
+                EuiccConnector.DownloadCommandCallback cb = invocation.getArgument(4);
                 if (complete) {
-                    cb.onDownloadComplete(result);
+                    DownloadSubscriptionResult downloadRes = new DownloadSubscriptionResult(
+                            result, resolvableError, -1 /* cardId */);
+                    cb.onDownloadComplete(downloadRes);
                 } else {
                     cb.onEuiccServiceUnavailable();
                 }
                 return null;
             }
         }).when(mMockConnector).downloadSubscription(
-                any(), eq(switchAfterDownload), anyBoolean(), any());
+                any(), eq(switchAfterDownload), anyBoolean(), any(), any());
         mController.downloadSubscription(subscription, switchAfterDownload, callingPackage,
-                resultCallback);
+                null /* resolvedBundle */, resultCallback);
         // EUICC_PROVISIONED setting should match whether the download was successful.
         assertEquals(complete && result == EuiccService.RESULT_OK ? 1 : 0,
                 Settings.Global.getInt(mContext.getContentResolver(),
