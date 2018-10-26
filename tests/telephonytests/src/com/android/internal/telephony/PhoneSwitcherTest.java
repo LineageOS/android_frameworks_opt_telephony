@@ -322,6 +322,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
         initialize(numPhones, maxActivePhones);
 
         addInternetNetworkRequest(null, 50);
+        waitABit();
+
         setSlotIndexToSubId(0, 0);
         setSlotIndexToSubId(1, 1);
         setDefaultDataSubId(0);
