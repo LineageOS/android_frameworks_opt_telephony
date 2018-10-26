@@ -76,7 +76,6 @@ import android.util.LocalLog;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.util.StatsLog;
-import android.util.TimeUtils;
 import android.util.TimestampedValue;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -521,7 +520,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         mLocaleTracker = TelephonyComponentFactory.getInstance().makeLocaleTracker(
-                mPhone, getLooper());
+                mPhone, mNitzState, getLooper());
 
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
@@ -608,7 +607,7 @@ public class ServiceStateTracker extends Handler {
         mMin = null;
         mPrlVersion = null;
         mIsMinInfoReady = false;
-        mNitzState.handleNetworkUnavailable();
+        mNitzState.handleNetworkCountryCodeUnavailable();
         mCellIdentity = null;
         mNewCellIdentity = null;
 
@@ -2697,7 +2696,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setStateOutOfService();
                 mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
-                mNitzState.handleNetworkUnavailable();
+                mNitzState.handleNetworkCountryCodeUnavailable();
                 pollStateDone();
                 break;
 
@@ -2705,7 +2704,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setStateOff();
                 mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
-                mNitzState.handleNetworkUnavailable();
+                mNitzState.handleNetworkCountryCodeUnavailable();
                 // don't poll when device is shutting down or the poll was not modemTrigged
                 // (they sent us new radio data) and current network is not IWLAN
                 if (mDeviceShuttingDown ||
@@ -2950,7 +2949,6 @@ public class ServiceStateTracker extends Handler {
 
         if (hasDeregistered) {
             mNetworkDetachedRegistrants.notifyRegistrants();
-            mNitzState.handleNetworkUnavailable();
         }
 
         if (hasRejectCauseChanged) {
@@ -2982,7 +2980,6 @@ public class ServiceStateTracker extends Handler {
                 // operator numeric in locale tracker is null. The async update will allow getting
                 // cell info from the modem instead of using the cached one.
                 mLocaleTracker.updateOperatorNumeric("");
-                mNitzState.handleNetworkUnavailable();
             } else if (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
                 // If the device is on IWLAN, modems manufacture a ServiceState with the MCC/MNC of
                 // the SIM as if we were talking to towers. Telephony code then uses that with
@@ -2994,28 +2991,6 @@ public class ServiceStateTracker extends Handler {
                 }
 
                 mLocaleTracker.updateOperatorNumeric(operatorNumeric);
-                String countryIsoCode = mLocaleTracker.getCurrentCountry();
-
-                // Update Time Zone.
-                boolean iccCardExists = iccCardExists();
-                boolean networkIsoChanged =
-                        networkCountryIsoChanged(countryIsoCode, prevCountryIsoCode);
-
-                // Determine countryChanged: networkIso is only reliable if there's an ICC card.
-                boolean countryChanged = iccCardExists && networkIsoChanged;
-                if (DBG) {
-                    long ctm = System.currentTimeMillis();
-                    log("Before handleNetworkCountryCodeKnown:"
-                            + " countryChanged=" + countryChanged
-                            + " iccCardExist=" + iccCardExists
-                            + " countryIsoChanged=" + networkIsoChanged
-                            + " operatorNumeric=" + operatorNumeric
-                            + " prevOperatorNumeric=" + prevOperatorNumeric
-                            + " countryIsoCode=" + countryIsoCode
-                            + " prevCountryIsoCode=" + prevCountryIsoCode
-                            + " ltod=" + TimeUtils.logTimeOfDay(ctm));
-                }
-                mNitzState.handleNetworkCountryCodeSet(countryChanged);
             }
 
             tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
