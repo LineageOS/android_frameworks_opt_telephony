@@ -30,7 +30,6 @@ import android.telephony.PreciseCallState;
 import android.telephony.PreciseDisconnectCause;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
-import android.telephony.VoLteServiceState;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -270,16 +269,5 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
 
         mDefaultPhoneNotifierUT.notifyOtaspChanged(mPhone, TelephonyManager.OTASP_UNKNOWN);
         verify(mTelephonyRegisteryMock).notifyOtaspChanged(TelephonyManager.OTASP_UNKNOWN);
-    }
-
-    @Test @SmallTest
-    public void testNotifyVoLteServiceStateChanged() throws Exception {
-        VoLteServiceState state = new VoLteServiceState(VoLteServiceState.NOT_SUPPORTED);
-        mDefaultPhoneNotifierUT.notifyVoLteServiceStateChanged(mPhone, state);
-        verify(mTelephonyRegisteryMock).notifyVoLteServiceStateChanged(state);
-
-        state = new VoLteServiceState(VoLteServiceState.HANDOVER_COMPLETED);
-        mDefaultPhoneNotifierUT.notifyVoLteServiceStateChanged(mPhone, state);
-        verify(mTelephonyRegisteryMock).notifyVoLteServiceStateChanged(state);
     }
 }

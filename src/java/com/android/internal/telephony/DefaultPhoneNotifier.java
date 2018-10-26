@@ -30,7 +30,6 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.VoLteServiceState;
 
 import java.util.List;
 
@@ -296,10 +295,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyVoLteServiceStateChanged(Phone sender, VoLteServiceState lteState) {
-        // FIXME: subID
+    public void notifySrvccStateChanged(Phone sender, @TelephonyManager.SrvccState int state) {
         try {
-            mRegistry.notifyVoLteServiceStateChanged(lteState);
+            mRegistry.notifySrvccStateChanged(sender.getSubId(), state);
         } catch (RemoteException ex) {
             // system process is dead
         }
