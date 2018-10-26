@@ -511,7 +511,7 @@ public class ServiceStateTracker extends Handler {
                 .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mRestrictedState = new RestrictedState();
 
-        mTransportManager = new TransportManager();
+        mTransportManager = mPhone.getTransportManager();
 
         for (int transportType : mTransportManager.getAvailableTransports()) {
             mRegStateManagers.append(transportType, new NetworkRegistrationManager(

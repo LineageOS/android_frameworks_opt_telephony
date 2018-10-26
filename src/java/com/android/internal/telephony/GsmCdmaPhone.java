@@ -75,6 +75,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
+import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -223,6 +224,7 @@ public class GsmCdmaPhone extends Phone {
         // after CarrierActionAgent.
         mCarrierActionAgent = mTelephonyComponentFactory.makeCarrierActionAgent(this);
         mCarrierSignalAgent = mTelephonyComponentFactory.makeCarrierSignalAgent(this);
+        mTransportManager = mTelephonyComponentFactory.makeTransportManager(this);
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
         mDcTracker = mTelephonyComponentFactory.makeDcTracker(this);
@@ -469,6 +471,11 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public CallTracker getCallTracker() {
         return mCT;
+    }
+
+    @Override
+    public TransportManager getTransportManager() {
+        return mTransportManager;
     }
 
     @Override
