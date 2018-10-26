@@ -348,7 +348,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         // Neither sub1 or sub2 are opportunistic. So getOpportunisticSubscriptions
         // should return empty list and no callback triggered.
         List<SubscriptionInfo> opptSubList = mSubscriptionControllerUT
-                .getOpportunisticSubscriptions(0, mCallingPackage);
+                .getOpportunisticSubscriptions(mCallingPackage);
 
         assertTrue(opptSubList.isEmpty());
         verify(mTelephonyRegisteryMock, times(0))
@@ -360,7 +360,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         verify(mTelephonyRegisteryMock, times(1))
                 .notifyOpportunisticSubscriptionInfoChanged();
         opptSubList = mSubscriptionControllerUT
-                .getOpportunisticSubscriptions(0, mCallingPackage);
+                .getOpportunisticSubscriptions(mCallingPackage);
         assertEquals(1, opptSubList.size());
         assertEquals("test2", opptSubList.get(0).getIccId());
 
