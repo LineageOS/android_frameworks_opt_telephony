@@ -89,6 +89,8 @@ public class LocaleTracker extends Handler {
 
     private final Phone mPhone;
 
+    private final NitzStateMachine mNitzStateMachine;
+
     /** SIM card state. Must be one of TelephonyManager.SIM_STATE_XXX */
     private int mSimState;
 
@@ -172,11 +174,13 @@ public class LocaleTracker extends Handler {
      * Constructor
      *
      * @param phone The phone object
+     * @param nitzStateMachine NITZ state machine
      * @param looper The looper message handler
      */
-    public LocaleTracker(Phone phone, Looper looper)  {
+    public LocaleTracker(Phone phone, NitzStateMachine nitzStateMachine, Looper looper)  {
         super(looper);
         mPhone = phone;
+        mNitzStateMachine = nitzStateMachine;
         mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
 
         final IntentFilter filter = new IntentFilter();
@@ -391,6 +395,7 @@ public class LocaleTracker extends Handler {
         String msg = "updateLocale: mcc = " + mcc + ", country = " + countryIso;
         log(msg);
         mLocalLog.log(msg);
+        boolean countryChanged = false;
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
             msg = "updateLocale: Change the current country to " + countryIso;
             log(msg);
@@ -405,6 +410,13 @@ public class LocaleTracker extends Handler {
             // broadcast on forbidden channels.
             ((WifiManager) mPhone.getContext().getSystemService(Context.WIFI_SERVICE))
                     .setCountryCode(countryIso);
+            countryChanged = true;
+        }
+
+        if (TextUtils.isEmpty(countryIso)) {
+            mNitzStateMachine.handleNetworkCountryCodeUnavailable();
+        } else {
+            mNitzStateMachine.handleNetworkCountryCodeSet(countryChanged);
         }
     }
 

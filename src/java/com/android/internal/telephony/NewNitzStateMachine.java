@@ -72,10 +72,10 @@ public final class NewNitzStateMachine implements NitzStateMachine {
     /**
      * Boolean is {@code true} if NITZ has been used to determine a time zone (which may not
      * ultimately have been used due to user settings). Cleared by {@link #handleNetworkAvailable()}
-     * and {@link #handleNetworkUnavailable()}. The flag can be used when historic NITZ data may no
-     * longer be valid. {@code false} indicates it is reasonable to try to set the time zone using
-     * less reliable algorithms than NITZ-based detection such as by just using network country
-     * code.
+     * and {@link #handleNetworkCountryCodeUnavailable()}. The flag can be used when historic NITZ
+     * data may no longer be valid. {@code false} indicates it is reasonable to try to set the time
+     * zone using less reliable algorithms than NITZ-based detection such as by just using network
+     * country code.
      */
     private boolean mNitzTimeZoneDetectionSuccessful = false;
 
@@ -282,9 +282,9 @@ public final class NewNitzStateMachine implements NitzStateMachine {
     }
 
     @Override
-    public void handleNetworkUnavailable() {
+    public void handleNetworkCountryCodeUnavailable() {
         if (DBG) {
-            Rlog.d(LOG_TAG, "handleNetworkUnavailable");
+            Rlog.d(LOG_TAG, "handleNetworkCountryCodeUnavailable");
         }
 
         mGotCountryCode = false;

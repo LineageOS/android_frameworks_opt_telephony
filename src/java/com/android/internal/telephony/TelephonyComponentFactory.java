@@ -191,8 +191,8 @@ public class TelephonyComponentFactory {
         return IDeviceIdleController.Stub.asInterface(
                 ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
     }
-
-    public LocaleTracker makeLocaleTracker(Phone phone, Looper looper) {
-        return new LocaleTracker(phone, looper);
+    public LocaleTracker makeLocaleTracker(Phone phone, NitzStateMachine nitzStateMachine,
+                                           Looper looper) {
+        return new LocaleTracker(phone, nitzStateMachine, looper);
     }
 }
