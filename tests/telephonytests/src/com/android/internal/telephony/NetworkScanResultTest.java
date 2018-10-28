@@ -45,7 +45,6 @@ public class NetworkScanResultTest {
         CellSignalStrengthGsm cssg = new CellSignalStrengthGsm(5, 6, 7);
         CellInfoGsm gsm = new CellInfoGsm();
         gsm.setRegistered(true);
-        gsm.setTimeStampType(8);
         gsm.setTimeStamp(9);
         gsm.setCellIdentity(cig);
         gsm.setCellSignalStrength(cssg);
@@ -55,7 +54,6 @@ public class NetworkScanResultTest {
         CellSignalStrengthLte cssl = new CellSignalStrengthLte(15, 16, 17, 18, 19, 20);
         CellInfoLte lte = new CellInfoLte();
         lte.setRegistered(false);
-        lte.setTimeStampType(21);
         lte.setTimeStamp(22);
         lte.setCellIdentity(cil);
         lte.setCellSignalStrength(cssl);

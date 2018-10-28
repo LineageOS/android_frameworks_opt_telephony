@@ -2293,14 +2293,11 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public int setPreferredData(int slotId) {
+    public int setPreferredData(int subId) {
         enforceModifyPhoneState("setPreferredData");
         final long token = Binder.clearCallingIdentity();
 
         try {
-            // TODO: make this API takes in subId directly.
-            int subId = getSubIdUsingPhoneId(slotId);
-
             if (mPreferredDataSubId != subId) {
                 mPreferredDataSubId = subId;
                 PhoneSwitcher.getInstance().setPreferredData(subId);
@@ -2325,7 +2322,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public List<SubscriptionInfo> getOpportunisticSubscriptions(int slotId, String callingPackage) {
+    public List<SubscriptionInfo> getOpportunisticSubscriptions(String callingPackage) {
         return getSubscriptionInfoListFromCacheHelper(
                 callingPackage, mCacheOpportunisticSubInfoList);
     }

@@ -28,6 +28,7 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
@@ -2237,7 +2238,11 @@ public interface CommandsInterface {
      */
     void stopNattKeepalive(int sessionHandle, Message result);
 
-    default public List<ClientRequestStats> getClientRequestStats() {
+    default List<ClientRequestStats> getClientRequestStats() {
         return null;
+    }
+
+    default int getIwlanOperationMode() {
+        return TransportManager.IWLAN_OPERATION_MODE_DEFAULT;
     }
 }
