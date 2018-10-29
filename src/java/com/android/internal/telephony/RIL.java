@@ -5356,7 +5356,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             android.hardware.radio.V1_0.RadioCapability rcRil, RIL ril) {
         int session = rcRil.session;
         int phase = rcRil.phase;
-        int rat = rcRil.raf;
+        // convert to public bitmask {@link TelephonyManager.NetworkTypeBitMask}
+        int rat = RadioAccessFamily.convertToNetworkTypeBitMask(rcRil.raf);
         String logicModemUuid = rcRil.logicalModemUuid;
         int status = rcRil.status;
 
@@ -5364,7 +5365,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 ", phase=" + phase +
                 ", rat=" + rat +
                 ", logicModemUuid=" + logicModemUuid +
-                ", status=" + status);
+                ", status=" + status + ", rcRil.raf=" + rcRil.raf);
         RadioCapability rc = new RadioCapability(
                 ril.mPhoneId, session, phase, rat, logicModemUuid, status);
         return rc;
