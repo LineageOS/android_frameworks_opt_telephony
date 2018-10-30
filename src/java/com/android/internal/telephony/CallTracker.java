@@ -209,7 +209,7 @@ public abstract class CallTracker extends Handler {
         String[] convertMaps = null;
         CarrierConfigManager configManager = (CarrierConfigManager)
                 phone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle bundle = configManager.getConfig();
+        PersistableBundle bundle = configManager.getConfigForSubId(phone.getSubId());
         if (bundle != null) {
             convertMaps =
                     bundle.getStringArray(CarrierConfigManager.KEY_DIAL_STRING_REPLACE_STRING_ARRAY);
