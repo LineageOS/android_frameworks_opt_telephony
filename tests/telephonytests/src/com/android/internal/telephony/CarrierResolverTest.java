@@ -195,17 +195,17 @@ public class CarrierResolverTest extends TelephonyTest {
         waitForMs(200);
 
         CarrierIdentifier identifier = new CarrierIdentifier(null, null, null, null, null, null);
-        int carrierid = mCarrierResolver.getCarrierIdFromIdentifier(identifier);
+        int carrierid = mCarrierResolver.getCarrierIdFromIdentifier(mContext, identifier);
         assertEquals(CID_UNKNOWN, carrierid);
 
         identifier = new CarrierIdentifier(MCCMNC.substring(0, 3), MCCMNC.substring(3), null, null,
                 null, null);
-        carrierid = mCarrierResolver.getCarrierIdFromIdentifier(identifier);
+        carrierid = mCarrierResolver.getCarrierIdFromIdentifier(mContext, identifier);
         assertEquals(CID_VZW, carrierid);
 
         identifier = new CarrierIdentifier(MCCMNC.substring(0, 3), MCCMNC.substring(3),  SPN_FI, null,
                 null, null);
-        carrierid = mCarrierResolver.getCarrierIdFromIdentifier(identifier);
+        carrierid = mCarrierResolver.getCarrierIdFromIdentifier(mContext, identifier);
         assertEquals(CID_FI, carrierid);
     }
 

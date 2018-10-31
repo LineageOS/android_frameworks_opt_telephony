@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import static android.provider.Telephony.CarrierId;
 
+import android.annotation.NonNull;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -37,12 +38,12 @@ import android.util.Log;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -87,7 +88,6 @@ public class CarrierResolver extends Handler {
     private Context mContext;
     private Phone mPhone;
     private IccRecords mIccRecords;
-    private UiccProfile mUiccProfile;
     private final LocalLog mCarrierIdLocalLog = new LocalLog(20);
     private final TelephonyManager mTelephonyMgr;
     private final SubscriptionsChangedListener mOnSubscriptionsChangedListener =
@@ -192,7 +192,7 @@ public class CarrierResolver extends Handler {
                 if (!equals(mPreferApn, preferApn, true)) {
                     logd("[updatePreferApn] from:" + mPreferApn + " to:" + preferApn);
                     mPreferApn = preferApn;
-                    matchCarrier(getSubscriptionMatchingRule(), true);
+                    matchSubscriptionCarrier();
                 }
                 break;
             case ICC_CHANGED_EVENT:
@@ -213,9 +213,6 @@ public class CarrierResolver extends Handler {
                         mIccRecords = newIccRecords;
                     }
                 }
-                // check UICC profile
-                mUiccProfile = UiccController.getInstance()
-                        .getUiccProfileForPhone(mPhone.getPhoneId());
                 break;
             default:
                 loge("invalid msg: " + msg.what);
@@ -241,7 +238,7 @@ public class CarrierResolver extends Handler {
                     while (cursor.moveToNext()) {
                         mCarrierMatchingRulesOnMccMnc.add(makeCarrierMatchingRule(cursor));
                     }
-                    matchCarrier(getSubscriptionMatchingRule(), true);
+                    matchSubscriptionCarrier();
                 }
             } finally {
                 if (cursor != null) {
@@ -251,6 +248,37 @@ public class CarrierResolver extends Handler {
         } catch (Exception ex) {
             loge("[loadCarrierMatchingRules]- ex: " + ex);
         }
+    }
+
+    private static List<CarrierMatchingRule> getCarrierMatchingRulesFromMccMnc(
+            @NonNull Context context, String mccmnc) {
+        List<CarrierMatchingRule> rules = new ArrayList<>();
+        try {
+            Cursor cursor = context.getContentResolver().query(
+                    CarrierId.All.CONTENT_URI,
+                    /* projection */ null,
+                    /* selection */ CarrierId.All.MCCMNC + "=?",
+                    /* selectionArgs */ new String[]{mccmnc}, null);
+            try {
+                if (cursor != null) {
+                    if (VDBG) {
+                        logd("[loadCarrierMatchingRules]- " + cursor.getCount()
+                                + " Records(s) in DB" + " mccmnc: " + mccmnc);
+                    }
+                    rules.clear();
+                    while (cursor.moveToNext()) {
+                        rules.add(makeCarrierMatchingRule(cursor));
+                    }
+                }
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+        } catch (Exception ex) {
+            loge("[loadCarrierMatchingRules]- ex: " + ex);
+        }
+        return rules;
     }
 
     private String getPreferApn() {
@@ -320,7 +348,9 @@ public class CarrierResolver extends Handler {
         }
     }
 
-    private CarrierMatchingRule makeCarrierMatchingRule(Cursor cursor) {
+    private static CarrierMatchingRule makeCarrierMatchingRule(Cursor cursor) {
+        String certs = cursor.getString(
+                cursor.getColumnIndexOrThrow(CarrierId.All.PRIVILEGE_ACCESS_RULE));
         return new CarrierMatchingRule(
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.MCCMNC)),
                 cursor.getString(cursor.getColumnIndexOrThrow(
@@ -332,7 +362,7 @@ public class CarrierResolver extends Handler {
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.PLMN)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.SPN)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.APN)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.All.PRIVILEGE_ACCESS_RULE)),
+                (TextUtils.isEmpty(certs) ? null : new ArrayList<>(Arrays.asList(certs))),
                 cursor.getInt(cursor.getColumnIndexOrThrow(CarrierId.CARRIER_ID)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CarrierId.CARRIER_NAME)));
     }
@@ -340,7 +370,7 @@ public class CarrierResolver extends Handler {
     /**
      * carrier matching attributes with corresponding cid
      */
-    private class CarrierMatchingRule {
+    private static class CarrierMatchingRule {
         /**
          * These scores provide the hierarchical relationship between the attributes, intended to
          * resolve conflicts in a deterministic way. The scores are constructed such that a match
@@ -371,7 +401,8 @@ public class CarrierResolver extends Handler {
         private final String mPlmn;
         private final String mSpn;
         private final String mApn;
-        private final String mPrivilegeAccessRule;
+        // there can be multiple certs configured in the UICC
+        private final List<String> mPrivilegeAccessRule;
 
         // user-facing carrier name
         private String mName;
@@ -382,7 +413,7 @@ public class CarrierResolver extends Handler {
 
         CarrierMatchingRule(String mccmnc, String imsiPrefixPattern, String iccidPrefix,
                 String gid1, String gid2, String plmn, String spn, String apn,
-                String privilegeAccessRule, int cid, String name) {
+                List<String> privilegeAccessRule, int cid, String name) {
             mMccMnc = mccmnc;
             mImsiPrefixPattern = imsiPrefixPattern;
             mIccidPrefix = iccidPrefix;
@@ -457,8 +488,8 @@ public class CarrierResolver extends Handler {
                 mScore += SCORE_SPN;
             }
 
-            if (mPrivilegeAccessRule != null) {
-                if (mUiccProfile == null || !mUiccProfile.hasCarrierPrivilegeRulesLoadedForCertHex(
+            if (mPrivilegeAccessRule != null && !mPrivilegeAccessRule.isEmpty()) {
+                if (!carrierPrivilegeRulesMatch(subscriptionRule.mPrivilegeAccessRule,
                         mPrivilegeAccessRule)) {
                     mScore = SCORE_INVALID;
                     return;
@@ -497,6 +528,22 @@ public class CarrierResolver extends Handler {
             return iccid.startsWith(prefix);
         }
 
+        private boolean carrierPrivilegeRulesMatch(List<String> certsFromSubscription,
+                                                   List<String> certs) {
+            if (certsFromSubscription == null || certsFromSubscription.isEmpty()) {
+                return false;
+            }
+            for (String cert : certs) {
+                for (String certFromSubscription : certsFromSubscription) {
+                    if (!TextUtils.isEmpty(cert)
+                            && cert.equalsIgnoreCase(certFromSubscription)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         public String toString() {
             return "[CarrierMatchingRule] -"
                     + " mccmnc: " + mMccMnc
@@ -523,9 +570,10 @@ public class CarrierResolver extends Handler {
         final String plmn = mPhone.getPlmn();
         final String spn = mSpn;
         final String apn = mPreferApn;
+        final List<String> accessRules = mTelephonyMgr.getCertsFromCarrierPrivilegeAccessRules();
 
         if (VDBG) {
-            logd("[matchCarrier]"
+            logd("[matchSubscriptionCarrier]"
                     + " mnnmnc:" + mccmnc
                     + " gid1: " + gid1
                     + " gid2: " + gid2
@@ -533,23 +581,22 @@ public class CarrierResolver extends Handler {
                     + " iccid: " + Rlog.pii(LOG_TAG, iccid)
                     + " plmn: " + plmn
                     + " spn: " + spn
-                    + " apn: " + apn);
+                    + " apn: " + apn
+                    + " accessRules: " + ((accessRules != null) ? accessRules : null));
         }
         return new CarrierMatchingRule(
-                mccmnc, imsi, iccid, gid1, gid2, plmn, spn, apn, null
-                /** fetching privilege access rule is handled by CarrierMatchingRule#match **/,
+                mccmnc, imsi, iccid, gid1, gid2, plmn, spn, apn, accessRules,
                 TelephonyManager.UNKNOWN_CARRIER_ID, null);
     }
 
     /**
-     * find the best matching carrier from candidates with matched MCCMNC.
-     * @param update if true, update cached mCarrierId and notify registrants on carrier id change.
+     * find the best matching carrier from candidates with matched subscription MCCMNC.
      * @return the best matching carrier id.
      */
-    private int matchCarrier(CarrierMatchingRule subscriptionRule, boolean update) {
+    private int matchSubscriptionCarrier() {
         int carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
-        if (update && !SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
-            logd("[matchCarrier]" + "skip before sim records loaded");
+        if (!SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
+            logd("[matchSubscriptionCarrier]" + "skip before sim records loaded");
             return carrierId;
         }
         int maxScore = CarrierMatchingRule.SCORE_INVALID;
@@ -559,6 +606,7 @@ public class CarrierResolver extends Handler {
          * cid from mnoRule. otherwise, mno carrier id is same as cid.
          */
         CarrierMatchingRule mnoRule = null;
+        CarrierMatchingRule subscriptionRule = getSubscriptionMatchingRule();
 
         for (CarrierMatchingRule rule : mCarrierMatchingRulesOnMccMnc) {
             rule.match(subscriptionRule);
@@ -571,17 +619,13 @@ public class CarrierResolver extends Handler {
                 mnoRule = rule;
             }
         }
-        // skip updating the cached carrierId
-        if (!update) {
-            return carrierId;
-        }
         if (maxScore == CarrierMatchingRule.SCORE_INVALID) {
-            logd("[matchCarrier - no match] cid: " + TelephonyManager.UNKNOWN_CARRIER_ID
+            logd("[matchSubscriptionCarrier - no match] cid: " + TelephonyManager.UNKNOWN_CARRIER_ID
                     + " name: " + null);
             updateCarrierIdAndName(TelephonyManager.UNKNOWN_CARRIER_ID,
                     TelephonyManager.UNKNOWN_CARRIER_ID, null);
         } else {
-            logd("[matchCarrier] cid: " + maxRule.mCid + " name: " + maxRule.mName);
+            logd("[matchSubscriptionCarrier] cid: " + maxRule.mCid + " name: " + maxRule.mName);
             updateCarrierIdAndName(maxRule.mCid,
                     (mnoRule == null) ? maxRule.mCid : mnoRule.mCid, maxRule.mName);
         }
@@ -629,27 +673,95 @@ public class CarrierResolver extends Handler {
 
     /**
      * a util function to convert carrierIdentifier to the best matching carrier id.
-     * If there is no exact match for MVNO, will fallback to match its MNO.
+     *
+     * @return the best matching carrier id.
      */
-    public int getCarrierIdFromIdentifier(CarrierIdentifier carrierIdentifier) {
+    public static int getCarrierIdFromIdentifier(@NonNull Context context,
+                                                 @NonNull CarrierIdentifier carrierIdentifier) {
         final String mccmnc = carrierIdentifier.getMcc() + carrierIdentifier.getMnc();
         final String gid1 = carrierIdentifier.getGid1();
         final String gid2 = carrierIdentifier.getGid2();
         final String imsi = carrierIdentifier.getImsi();
         final String spn = carrierIdentifier.getSpn();
-
         if (VDBG) {
-            logd("[matchCarrier]"
+            logd("[getCarrierIdFromIdentifier]"
                     + " mnnmnc:" + mccmnc
                     + " gid1: " + gid1
                     + " gid2: " + gid2
                     + " imsi: " + Rlog.pii(LOG_TAG, imsi)
                     + " spn: " + spn);
         }
-        CarrierMatchingRule rule = new CarrierMatchingRule(mccmnc, imsi, null, gid1, gid2, null,
+        // assign null to other fields which are not supported by carrierIdentifier.
+        CarrierMatchingRule targetRule =
+                new CarrierMatchingRule(mccmnc, imsi, null, gid1, gid2, null,
                 spn, null, null, -1, null);
-        // not trigger the updating logic for internal conversion.
-        return matchCarrier(rule, false);
+
+        int carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
+        int maxScore = CarrierMatchingRule.SCORE_INVALID;
+        List<CarrierMatchingRule> rules = getCarrierMatchingRulesFromMccMnc(
+                context, targetRule.mMccMnc);
+        for (CarrierMatchingRule rule : rules) {
+            rule.match(targetRule);
+            if (rule.mScore > maxScore) {
+                maxScore = rule.mScore;
+                carrierId = rule.mCid;
+            }
+        }
+        return carrierId;
+    }
+
+    /**
+     * a util function to convert {mccmnc, mvno_type, mvno_data} to all matching carrier ids.
+     *
+     * @return a list of id with matching {mccmnc, mvno_type, mvno_data}
+     */
+    public static List<Integer> getCarrierIdsFromApnQuery(@NonNull Context context,
+                                                          String mccmnc, String mvnoCase,
+                                                          String mvnoData) {
+        String selection = CarrierId.All.MCCMNC + "=" + mccmnc;
+        // build the proper query
+        if ("spn".equals(mvnoCase) && mvnoData != null) {
+            selection += " AND " + CarrierId.All.SPN + "='" + mvnoData + "'";
+        } else if ("imsi".equals(mvnoCase) && mvnoData != null) {
+            selection += " AND " + CarrierId.All.IMSI_PREFIX_XPATTERN + "='" + mvnoData + "'";
+        } else if ("gid1".equals(mvnoCase) && mvnoData != null) {
+            selection += " AND " + CarrierId.All.GID1 + "='" + mvnoData + "'";
+        } else if ("gid2".equals(mvnoCase) && mvnoData != null) {
+            selection += " AND " + CarrierId.All.GID2 + "='" + mvnoData +"'";
+        } else {
+            logd("mvno case empty or other invalid values");
+        }
+
+        List<Integer> ids = new ArrayList<>();
+        try {
+            Cursor cursor = context.getContentResolver().query(
+                    CarrierId.All.CONTENT_URI,
+                    /* projection */ null,
+                    /* selection */ selection,
+                    /* selectionArgs */ null, null);
+            try {
+                if (cursor != null) {
+                    if (VDBG) {
+                        logd("[getCarrierIdsFromApnQuery]- " + cursor.getCount()
+                                + " Records(s) in DB");
+                    }
+                    while (cursor.moveToNext()) {
+                        int cid = cursor.getInt(cursor.getColumnIndex(CarrierId.CARRIER_ID));
+                        if (!ids.contains(cid)) {
+                            ids.add(cid);
+                        }
+                    }
+                }
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+        } catch (Exception ex) {
+            loge("[getCarrierIdsFromApnQuery]- ex: " + ex);
+        }
+        logd(selection + " " + ids);
+        return ids;
     }
 
     private static boolean equals(String a, String b, boolean ignoreCase) {
