@@ -60,9 +60,9 @@ import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.ImsSuppServiceNotification;
+import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
-import android.telephony.ims.stub.ImsConfigImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.ArrayMap;
@@ -853,7 +853,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Only close on valid session.
         if (mImsManager != null) {
             try {
-                mImsManager.getConfigInterface().removeConfigCallback(mConfigCallback);
+                mImsManager.getConfigInterface().removeConfigCallback(mConfigCallback.getBinder());
             } catch (ImsException e) {
                 Log.w(LOG_TAG, "stopListeningForCalls: unable to remove config callback.");
             }
@@ -3112,14 +3112,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     };
 
-    private final ImsConfigImplBase.Callback mConfigCallback = new ImsConfigImplBase.Callback() {
+    private final ProvisioningManager.Callback mConfigCallback =
+            new ProvisioningManager.Callback() {
         @Override
-        public void onConfigChanged(int item, int value) {
+        public void onProvisioningIntChanged(int item, int value) {
             sendConfigChangedIntent(item, Integer.toString(value));
         }
 
         @Override
-        public void onConfigChanged(int item, String value) {
+        public void onProvisioningStringChanged(int item, String value) {
             sendConfigChangedIntent(item, value);
         }
 
