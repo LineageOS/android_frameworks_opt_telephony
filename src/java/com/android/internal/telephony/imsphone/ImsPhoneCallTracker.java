@@ -53,6 +53,7 @@ import android.telephony.PreciseDisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsMmTelManager;
@@ -63,7 +64,6 @@ import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsConfigImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
-import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -1893,11 +1893,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public void cancelUSSD() {
         if (mUssdSession == null) return;
 
-        try {
-            mUssdSession.terminate(ImsReasonInfo.CODE_USER_TERMINATED);
-        } catch (ImsException e) {
-        }
-
+        mUssdSession.terminate(ImsReasonInfo.CODE_USER_TERMINATED);
     }
 
     private synchronized ImsPhoneConnection findConnection(final ImsCall imsCall) {
@@ -2576,6 +2572,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (mPendingMO != null) {
                         dialPendingMO();
                     }
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                } else if (mPendingMO.isEmergency()) {
+                    // If mPendingMO is an emergency call, disconnect the call that we tried to
+                    // hold.
+                    mBackgroundCall.getImsCall().terminate(ImsReasonInfo.CODE_UNSPECIFIED);
+                    if (imsCall != mCallExpectedToResume) {
+                        mCallExpectedToResume = null;
+                    }
+                    // Leave mHoldSwitchingState as is for now -- we'll reset it
+                    // in onCallTerminated, which will also dial the outgoing emergency call.
                 } else if (bgState == ImsPhoneCall.State.ACTIVE) {
                     mForegroundCall.switchWith(mBackgroundCall);
 
@@ -2586,8 +2592,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (imsCall != mCallExpectedToResume) {
                         mCallExpectedToResume = null;
                     }
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
                 }
-                mHoldSwitchingState = HoldSwapState.INACTIVE;
                 mPhone.notifySuppServiceFailed(Phone.SuppService.HOLD);
             }
             mMetrics.writeOnImsCallHoldFailed(mPhone.getPhoneId(), imsCall.getCallSession(),
@@ -3986,11 +3992,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 log("downgradeVideoCall :: callId=" + conn.getTelecomCallId()
                         + " Disconnect call.");
                 // At this point the only choice we have is to terminate the call.
-                try {
-                    imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);
-                } catch (ImsException ie) {
-                    loge("Couldn't terminate call " + imsCall);
-                }
+                imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);
             }
         }
     }
