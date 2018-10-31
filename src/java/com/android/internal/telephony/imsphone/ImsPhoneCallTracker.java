@@ -1100,7 +1100,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // being sent to the lower layers/to the network.
             }
 
-            profile = setRttModeBasedOnOperator(profile);
+            int mode = QtiImsExtUtils.getRttOperatingMode(mPhone.getContext());
+            if (DBG) log("RTT: setRttModeBasedOnOperator mode = " + mode);
+
+            if (mPhone.isRttSupported() && mPhone.isRttOn()) {
+                if (!profile.isVideoCall() || QtiImsExtUtils.isRttSupportedOnVtCalls(
+                        mPhone.getPhoneId(),mPhone.getContext())) {
+                    profile.getMediaProfile().setRttMode(mode);
+                }
+            }
+
             ImsCall imsCall = mImsManager.makeCall(profile, callees, mImsCallListener);
             conn.setImsCall(imsCall);
 
@@ -4227,25 +4236,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public void setAlwaysPlayRemoteHoldTone(boolean shouldPlayRemoteHoldTone) {
         mAlwaysPlayRemoteHoldTone = shouldPlayRemoteHoldTone;
-    }
-
-    // Update the Rtt attribute
-    private ImsCallProfile setRttModeBasedOnOperator(ImsCallProfile profile) {
-        if (!(mPhone.isRttSupported() && mPhone.isRttOn())) {
-            return profile;
-        }
-
-        int mode = QtiImsExtUtils.getRttOperatingMode(mPhone.getContext());
-
-        if (DBG) log("RTT: setRttModeBasedOnOperator mode = " + mode);
-
-        if (!QtiImsExtUtils.isRttSupportedOnVtCalls(mPhone.getPhoneId(), mPhone.getContext())
-                && profile.isVideoCall()) {
-            return profile;
-        }
-
-        profile.mMediaProfile.setRttMode(mode);
-        return profile;
     }
 
     // Accept the call as RTT if incoming call as RTT attribute set
