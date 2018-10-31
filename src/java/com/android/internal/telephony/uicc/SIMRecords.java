@@ -1041,6 +1041,9 @@ public class SIMRecords extends IccRecords {
                                     AsyncResult.forMessage(((Message) ar.userObj)).exception =
                                             new IccVmNotSupportedException(
                                                     "Update SIM voice mailbox error");
+                                } else {
+                                    AsyncResult.forMessage(((Message) ar.userObj))
+                                            .exception = ar.exception;
                                 }
                             } else {
                                 AsyncResult.forMessage(((Message) ar.userObj))
