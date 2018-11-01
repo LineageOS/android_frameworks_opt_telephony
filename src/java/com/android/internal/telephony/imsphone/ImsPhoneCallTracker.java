@@ -1170,6 +1170,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         fromCode = Integer.parseInt(values[0]);
                     }
                     String message = values[1];
+                    if (message == null) {
+                        message = "";
+                    }
                     int toCode = Integer.parseInt(values[2]);
 
                     addReasonCodeRemapping(fromCode, message, toCode);
@@ -2027,22 +2030,29 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public int maybeRemapReasonCode(ImsReasonInfo reasonInfo) {
         int code = reasonInfo.getCode();
-
-        Pair<Integer, String> toCheck = new Pair<>(code, reasonInfo.getExtraMessage());
-        Pair<Integer, String> wildcardToCheck = new Pair<>(null, reasonInfo.getExtraMessage());
+        String reason = reasonInfo.getExtraMessage();
+        if (reason == null) {
+            reason = "";
+        }
+        log("maybeRemapReasonCode : fromCode = " + reasonInfo.getCode() + " ; message = "
+                + reason);
+        Pair<Integer, String> toCheck = new Pair<>(code, reason);
+        Pair<Integer, String> wildcardToCheck = new Pair<>(null, reason);
         if (mImsReasonCodeMap.containsKey(toCheck)) {
             int toCode = mImsReasonCodeMap.get(toCheck);
 
             log("maybeRemapReasonCode : fromCode = " + reasonInfo.getCode() + " ; message = "
-                    + reasonInfo.getExtraMessage() + " ; toCode = " + toCode);
+                    + reason + " ; toCode = " + toCode);
             return toCode;
-        } else if (mImsReasonCodeMap.containsKey(wildcardToCheck)) {
+        } else if (!reason.isEmpty() && mImsReasonCodeMap.containsKey(wildcardToCheck)) {
             // Handle the case where a wildcard is specified for the fromCode; in this case we will
             // match without caring about the fromCode.
+            // If the reason is empty, we won't do wildcard remapping; otherwise we'd basically be
+            // able to remap all ImsReasonInfo codes to a single code, which is not desirable.
             int toCode = mImsReasonCodeMap.get(wildcardToCheck);
 
             log("maybeRemapReasonCode : fromCode(wildcard) = " + reasonInfo.getCode() +
-                    " ; message = " + reasonInfo.getExtraMessage() + " ; toCode = " + toCode);
+                    " ; message = " + reason + " ; toCode = " + toCode);
             return toCode;
         }
         return code;

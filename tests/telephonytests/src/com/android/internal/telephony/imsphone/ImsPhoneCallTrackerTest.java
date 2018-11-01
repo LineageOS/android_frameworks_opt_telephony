@@ -115,6 +115,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
             mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+            mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, "",
+                    ImsReasonInfo.CODE_SIP_FORBIDDEN);
             mCTUT.setDataEnabled(true);
             mCTHander = new Handler(mCTUT.getLooper());
             setReady(true);
@@ -900,6 +902,15 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             return;
         }
         Assert.fail("Expected CallStateException");
+    }
+
+    @Test
+    @SmallTest
+    public void testNumericOnlyRemap() {
+        assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0)));
+        assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0, "")));
     }
 
     private void placeCallAndMakeActive() {
