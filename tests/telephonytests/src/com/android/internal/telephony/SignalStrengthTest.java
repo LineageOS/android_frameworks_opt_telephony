@@ -35,9 +35,9 @@ public class SignalStrengthTest {
     @Test
     public void testDefaults() throws Exception {
         SignalStrength s = new SignalStrength();
-        assertEquals(-1, s.getCdmaDbm());
+        assertEquals(SignalStrength.INVALID, s.getCdmaDbm());
         assertEquals(-1, s.getCdmaEcio());
-        assertEquals(-1, s.getEvdoDbm());
+        assertEquals(SignalStrength.INVALID, s.getEvdoDbm());
         assertEquals(-1, s.getEvdoEcio());
         assertEquals(-1, s.getEvdoSnr());
         assertEquals(-1, s.getGsmBitErrorRate());
