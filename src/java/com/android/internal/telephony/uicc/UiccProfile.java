@@ -64,6 +64,7 @@ import com.android.internal.telephony.uicc.euicc.EuiccCard;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -1464,23 +1465,21 @@ public class UiccProfile extends IccCard {
     }
 
     /**
-     * Match the input certificate to any loaded carrier privileges access rules.
+     * Return a list of certs in hex string from loaded carrier privileges access rules.
      *
-     * @param cert certificate in hex string
-     * @return true if matching certificate is found. false otherwise.
+     * @return a list of certificate in hex string. return {@code null} if there is no certs
+     * or privilege rules are not loaded yet.
      */
-    public boolean hasCarrierPrivilegeRulesLoadedForCertHex(String cert) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
+    public List<String> getCertsFromCarrierPrivilegeAccessRules() {
+        final List<String> certs = new ArrayList<>();
+        final UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
         if (carrierPrivilegeRules != null) {
             List<UiccAccessRule> accessRules = carrierPrivilegeRules.getAccessRules();
             for (UiccAccessRule accessRule : accessRules) {
-                String certHexString = accessRule.getCertificateHexString();
-                if (!TextUtils.isEmpty(certHexString) && certHexString.equalsIgnoreCase(cert)) {
-                    return true;
-                }
+                certs.add(accessRule.getCertificateHexString());
             }
         }
-        return false;
+        return certs.isEmpty() ? null : certs;
     }
 
     /**
