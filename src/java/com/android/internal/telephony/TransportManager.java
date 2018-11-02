@@ -16,25 +16,37 @@
 
 package com.android.internal.telephony.dataconnection;
 
-
 import android.annotation.IntDef;
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.dataconnection.AccessNetworksManager.QualifiedNetworks;
+import com.android.internal.util.IndentingPrintWriter;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class represents the transport manager which manages available transports and
- * route requests to correct transport.
+ * This class represents the transport manager which manages available transports (i.e. WWAN or
+ * WLAN)and determine the correct transport for {@link TelephonyNetworkFactory} to handle the data
+ * requests.
  */
-public class TransportManager {
+public class TransportManager extends Handler {
     private static final String TAG = TransportManager.class.getSimpleName();
+
+    private static final boolean DBG = true;
+
+    private static final int EVENT_QUALIFIED_NETWORKS_CHANGED = 1;
 
     public static final String SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE =
             "ro.telephony.iwlan_operation_mode";
@@ -70,13 +82,45 @@ public class TransportManager {
 
     private final List<Integer> mAvailableTransports = new ArrayList<>();
 
+    private final AccessNetworksManager mAccessNetworksManager;
+
     public TransportManager(Phone phone) {
         mPhone = phone;
-        // TODO: get transpot list from AccessNetworkManager.
+        mAccessNetworksManager = new AccessNetworksManager(phone);
+
+        mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
+                EVENT_QUALIFIED_NETWORKS_CHANGED);
+
+        // WWAN should be always available.
         mAvailableTransports.add(TransportType.WWAN);
+
+        // TODO: Add more logic to check whether we should add WLAN as a transport. For now, if
+        // the device operate in non-legacy mode, then we always add WLAN as a transport.
+        if (!isInLegacyMode()) {
+            mAvailableTransports.add(TransportType.WLAN);
+        }
     }
 
-    public List<Integer> getAvailableTransports() {
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_QUALIFIED_NETWORKS_CHANGED:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                List<QualifiedNetworks> networks = (List<QualifiedNetworks>) ar.result;
+                updateAvailableNetworks(networks);
+                break;
+            default:
+                loge("Unexpected event " + msg.what);
+                break;
+        }
+    }
+
+    private synchronized void updateAvailableNetworks(List<QualifiedNetworks> networks) {
+        log("updateAvailableNetworks: " + networks);
+        //TODO: Update available networks and transports.
+    }
+
+    public synchronized List<Integer> getAvailableTransports() {
         return new ArrayList<>(mAvailableTransports);
     }
 
@@ -95,6 +139,28 @@ public class TransportManager {
      */
     public boolean isInLegacyMode() {
         return (mPhone.mCi.getIwlanOperationMode() == IWLAN_OPERATION_MODE_LEGACY);
+    }
+
+    /**
+     * Dump the state of transport manager
+     *
+     * @param fd File descriptor
+     * @param printwriter Print writer
+     * @param args Arguments
+     */
+    public void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printwriter, "  ");
+        pw.println("TransportManager:");
+        pw.increaseIndent();
+        pw.print("mAvailableTransports=");
+        List<String> transportsStrings = new ArrayList<>();
+        for (int i = 0; i < mAvailableTransports.size(); i++) {
+            transportsStrings.add(TransportType.toString(mAvailableTransports.get(i)));
+        }
+        pw.println("[" + TextUtils.join(",", transportsStrings) + "]");
+        mAccessNetworksManager.dump(fd, pw, args);
+        pw.decreaseIndent();
+        pw.flush();
     }
 
     private void log(String s) {
