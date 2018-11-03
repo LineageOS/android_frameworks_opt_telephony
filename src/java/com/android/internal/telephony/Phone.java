@@ -3116,6 +3116,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
+    public int getPreciseCarrierId() {
+        return TelephonyManager.UNKNOWN_CARRIER_ID;
+    }
+
+    public String getPreciseCarrierName() {
+        return null;
+    }
+
     public int getCarrierIdListVersion() {
         return TelephonyManager.UNKNOWN_CARRIER_ID_LIST_VERSION;
     }
