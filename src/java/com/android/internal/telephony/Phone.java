@@ -2149,15 +2149,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Perform the specified type of NV config reset. The radio will be taken offline
-     * and the device must be rebooted after erasing the NV. Used for device
+     * Perform the radio modem reboot. The radio will be taken offline. Used for device
      * configuration by some CDMA operators.
+     * TODO: reuse nvResetConfig for now, should move to separate HAL API.
      *
-     * @param resetType reset type: 1: reload NV reset, 2: erase NV reset, 3: factory NV reset
      * @param response Callback message.
      */
-    public void nvResetConfig(int resetType, Message response) {
-        mCi.nvResetConfig(resetType, response);
+    public void rebootModem(Message response) {
+        mCi.nvResetConfig(1 /* 1: reload NV reset, trigger a modem reboot */, response);
+    }
+
+    /**
+     * Perform the modem configuration reset. Used for device configuration by some CDMA operators.
+     * TODO: reuse nvResetConfig for now, should move to separate HAL API.
+     *
+     * @param response Callback message.
+     */
+    public void resetModemConfig(Message response) {
+        mCi.nvResetConfig(3 /* factory NV reset */, response);
     }
 
     public void notifyDataActivity() {
@@ -2815,8 +2824,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Check if TETHER_DUN_APN setting or config_tether_apndata includes APN that matches
-     * current operator.
+     * Check if there are matching tethering (i.e DUN) for the carrier.
      * @return true if there is a matching DUN APN.
      */
     public boolean hasMatchedTetherApnSetting() {

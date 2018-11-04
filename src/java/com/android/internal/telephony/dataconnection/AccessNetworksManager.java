@@ -41,7 +41,9 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Access network manager manages the qualified/available networks for mobile data connection.
@@ -51,6 +53,16 @@ import java.util.Arrays;
 public class AccessNetworksManager {
     private static final String TAG = AccessNetworksManager.class.getSimpleName();
     private static final boolean DBG = false;
+
+    private static final int[] SUPPORTED_APN_TYPES = {
+            ApnSetting.TYPE_DEFAULT,
+            ApnSetting.TYPE_MMS,
+            ApnSetting.TYPE_FOTA,
+            ApnSetting.TYPE_IMS,
+            ApnSetting.TYPE_CBS,
+            ApnSetting.TYPE_SUPL,
+            ApnSetting.TYPE_EMERGENCY
+    };
 
     private final Phone mPhone;
 
@@ -88,8 +100,7 @@ public class AccessNetworksManager {
      * Represents qualified network types list on a specific APN type.
      */
     public static class QualifiedNetworks {
-        @ApnType
-        public final int apnType;
+        public final @ApnType int apnType;
         public final int[] qualifiedNetworks;
         public QualifiedNetworks(@ApnType int apnType, int[] qualifiedNetworks) {
             this.apnType = apnType;
@@ -132,24 +143,34 @@ public class AccessNetworksManager {
     private final class QualifiedNetworksServiceCallback extends
             IQualifiedNetworksServiceCallback.Stub {
         @Override
-        public void onQualifiedNetworkTypesChanged(int apnType, int[] qualifiedNetworkTypesList) {
-            log("onQualifiedNetworkTypesChanged. apnType = "
-                    + ApnSetting.getApnTypesStringFromBitmask(apnType)
-                    + ", networks = " + Arrays.toString(qualifiedNetworkTypesList));
-
-            // TODO: Verify the preference from data settings manager to make sure the order
-            // of the networks do not violate users/carrier's preference.
-            if (mAvailableNetworks.get(apnType) != null) {
-                if (Arrays.equals(mAvailableNetworks.get(apnType), qualifiedNetworkTypesList)) {
-                    log("Available networks for "
-                            + ApnSetting.getApnTypesStringFromBitmask(apnType) + " not changed.");
-                    return;
+        public void onQualifiedNetworkTypesChanged(int apnTypes, int[] qualifiedNetworkTypes) {
+            log("onQualifiedNetworkTypesChanged. apnTypes = "
+                    + ApnSetting.getApnTypesStringFromBitmask(apnTypes)
+                    + ", networks = " + Arrays.toString(qualifiedNetworkTypes));
+            List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
+            for (int supportedApnType : SUPPORTED_APN_TYPES) {
+                if ((apnTypes & supportedApnType) == supportedApnType) {
+                    // TODO: Verify the preference from data settings manager to make sure the order
+                    // of the networks do not violate users/carrier's preference.
+                    if (mAvailableNetworks.get(supportedApnType) != null) {
+                        if (Arrays.equals(mAvailableNetworks.get(supportedApnType),
+                                qualifiedNetworkTypes)) {
+                            log("Available networks for "
+                                    + ApnSetting.getApnTypesStringFromBitmask(supportedApnType)
+                                    + " not changed.");
+                            continue;
+                        }
+                    }
+                    mAvailableNetworks.put(supportedApnType, qualifiedNetworkTypes);
+                    qualifiedNetworksList.add(new QualifiedNetworks(supportedApnType,
+                            qualifiedNetworkTypes));
                 }
             }
-            mAvailableNetworks.put(apnType, qualifiedNetworkTypesList);
-            mQualifiedNetworksChangedRegistrants.notifyRegistrants(
-                    new AsyncResult(null,
-                            new QualifiedNetworks(apnType, qualifiedNetworkTypesList), null));
+
+            if (!qualifiedNetworksList.isEmpty()) {
+                mQualifiedNetworksChangedRegistrants.notifyRegistrants(
+                        new AsyncResult(null, qualifiedNetworksList, null));
+            }
         }
     }
 
