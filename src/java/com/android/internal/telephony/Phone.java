@@ -2336,6 +2336,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         } else {
             Rlog.e(LOG_TAG, "setVoiceMessageCount in sharedPreference: invalid subId " + subId);
         }
+        // store voice mail count in SIM
+        IccRecords records = UiccController.getInstance().getIccRecords(
+                mPhoneId, UiccController.APP_FAM_3GPP);
+        if (records != null) {
+            Rlog.d(LOG_TAG, "setVoiceMessageCount: updating SIM Records");
+            records.setVoiceMessageWaiting(1, countWaiting);
+        } else {
+            Rlog.d(LOG_TAG, "setVoiceMessageCount: SIM Records not found");
+        }
         // notify listeners of voice mail
         notifyMessageWaitingIndicator();
     }
