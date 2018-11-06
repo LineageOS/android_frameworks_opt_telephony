@@ -1405,6 +1405,7 @@ public class SIMRecords extends IccRecords {
 
     private void onLockedAllRecordsLoaded() {
         setSimLanguageFromEF();
+        setVoiceCallForwardingFlagFromSimRecords();
         if (mLockedRecordsReqReason == LOCKED_RECORDS_REQ_REASON_LOCKED) {
             mLockedRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
         } else if (mLockedRecordsReqReason == LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED) {
