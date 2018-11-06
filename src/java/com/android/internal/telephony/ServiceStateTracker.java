@@ -322,6 +322,7 @@ public class ServiceStateTracker extends Handler {
     private int mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     private boolean mImsRegistered = false;
+    private boolean mCarrierConfigLoaded = false;
 
     @UnsupportedAppUsage
     private SubscriptionManager mSubscriptionManager;
@@ -2388,7 +2389,7 @@ public class ServiceStateTracker extends Handler {
              * The test for the operators is to handle special roaming
              * agreements and MVNO's.
              */
-            boolean roaming = (mGsmRoaming || mDataRoaming);
+            boolean roaming = (mGsmRoaming || mDataRoaming) && mCarrierConfigLoaded;
 
             if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS)
                     && (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
@@ -4615,6 +4616,9 @@ public class ServiceStateTracker extends Handler {
         // Load the ERI based on carrier config. Carrier might have their specific ERI.
         mEriManager.loadEriFile();
         mCdnr.updateEfForEri(getOperatorNameFromEri());
+
+        mCarrierConfigLoaded = true;
+        pollState();
 
         updateLteEarfcnLists(config);
         updateReportingCriteria(config);
