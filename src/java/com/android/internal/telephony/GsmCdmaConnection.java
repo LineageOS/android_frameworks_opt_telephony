@@ -44,6 +44,8 @@ public class GsmCdmaConnection extends Connection {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
+    public static final String OTASP_NUMBER = "*22899";
+
     //***** Instance Variables
 
     GsmCdmaCallTracker mOwner;
@@ -1156,5 +1158,12 @@ public class GsmCdmaConnection extends Connection {
         }
 
         return false;
+    }
+
+    /**
+     * @return {@code true} if this call is an OTASP activation call, {@code false} otherwise.
+     */
+    public boolean isOtaspCall() {
+        return mAddress != null && OTASP_NUMBER.equals(mAddress);
     }
 }
