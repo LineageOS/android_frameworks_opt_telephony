@@ -666,12 +666,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mNotifyHandoverVideoFromLTEToWifi = false;
 
     /**
-     * When {@code} false, indicates that no handover from LTE to WIFI has occurred during the start
-     * of the call.
+     * When {@code} false, indicates that no handover from LTE to WIFI has been attempted during the
+     * start of the call.
      * When {@code true}, indicates that the start of call handover from LTE to WIFI has been
-     * attempted (it may have suceeded or failed).
+     * attempted (it may have succeeded or failed).
      */
-    private boolean mHasPerformedStartOfCallHandover = false;
+    private boolean mHasAttemptedStartOfCallHandover = false;
 
     /**
      * Carrier configuration option which determines whether the carrier supports the
@@ -2272,13 +2272,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     // Schedule check to see if handover succeeded.
                     sendMessageDelayed(obtainMessage(EVENT_CHECK_FOR_WIFI_HANDOVER, imsCall),
                             HANDOVER_TO_WIFI_TIMEOUT_MS);
+                    mHasAttemptedStartOfCallHandover = false;
                 } else {
                     // No wifi connectivity, so keep track of network availability for potential
                     // handover.
                     registerForConnectivityChanges();
+                    // No WIFI, so assume we've already attempted a handover.
+                    mHasAttemptedStartOfCallHandover = true;
                 }
             }
-            mHasPerformedStartOfCallHandover = false;
             mMetrics.writeOnImsCallStarted(mPhone.getPhoneId(), imsCall.getCallSession());
         }
 
@@ -2837,7 +2839,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (isHandoverToWifi) {
                         removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
 
-                        if (mNotifyHandoverVideoFromLTEToWifi && mHasPerformedStartOfCallHandover) {
+                        if (mNotifyHandoverVideoFromLTEToWifi && mHasAttemptedStartOfCallHandover) {
                             // This is a handover which happened mid-call (ie not the start of call
                             // handover from LTE to WIFI), so we'll notify the InCall UI.
                             conn.onConnectionEvent(
@@ -2887,9 +2889,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             } else {
                 loge("onCallHandover :: connection null.");
             }
-
-            if (!mHasPerformedStartOfCallHandover) {
-                mHasPerformedStartOfCallHandover = true;
+            // If there's a handover, then we're not in the "start of call" handover phase.
+            if (!mHasAttemptedStartOfCallHandover) {
+                mHasAttemptedStartOfCallHandover = true;
             }
             mMetrics.writeOnImsCallHandoverEvent(mPhone.getPhoneId(),
                     TelephonyCallSession.Event.Type.IMS_CALL_HANDOVER, imsCall.getCallSession(),
@@ -2927,8 +2929,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     conn.onHandoverToWifiFailed();
                 }
             }
-            if (!mHasPerformedStartOfCallHandover) {
-                mHasPerformedStartOfCallHandover = true;
+            if (!mHasAttemptedStartOfCallHandover) {
+                mHasAttemptedStartOfCallHandover = true;
             }
         }
 
@@ -3003,7 +3005,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onCallTerminated(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (DBG) log("mImsUssdListener onCallTerminated reasonCode=" + reasonInfo.getCode());
             removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
-            mHasPerformedStartOfCallHandover = false;
+            mHasAttemptedStartOfCallHandover = false;
             unregisterForConnectivityChanges();
 
             if (imsCall == mUssdSession) {
@@ -3302,6 +3304,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         unregisterForConnectivityChanges();
                         // Handover check and its not the foreground call any more.
                         return;
+                    }
+                    if (!mHasAttemptedStartOfCallHandover) {
+                        mHasAttemptedStartOfCallHandover = true;
                     }
                     if (!imsCall.isWifiCall()) {
                         // Call did not handover to wifi, notify of handover failure.
