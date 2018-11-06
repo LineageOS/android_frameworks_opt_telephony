@@ -1189,7 +1189,7 @@ public class ImsPhoneConnection extends Connection implements
                 || localCallProfile.mMediaProfile.mAudioQuality
                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB
                 || isEvsCodecHighDef)
-                && remoteCallProfile.mRestrictCause == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
+                && remoteCallProfile.getRestrictCause() == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
         return isHighDef ? AUDIO_QUALITY_HIGH_DEFINITION : AUDIO_QUALITY_STANDARD;
     }
 
