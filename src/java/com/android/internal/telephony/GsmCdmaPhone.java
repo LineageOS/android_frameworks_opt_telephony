@@ -232,7 +232,6 @@ public class GsmCdmaPhone extends Phone {
 
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mDeviceStateMonitor = mTelephonyComponentFactory.makeDeviceStateMonitor(this);
-        mAccessNetworksManager = mTelephonyComponentFactory.makeAccessNetworksManager(this);
 
         mSST.registerForVoiceRegStateOrRatChanged(this, EVENT_VRS_OR_RAT_CHANGED, null);
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
