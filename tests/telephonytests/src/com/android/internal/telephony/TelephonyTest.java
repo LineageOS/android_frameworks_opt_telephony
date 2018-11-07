@@ -58,7 +58,6 @@ import com.android.ims.ImsEcbm;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
-import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
@@ -193,8 +192,6 @@ public abstract class TelephonyTest {
     protected DeviceStateMonitor mDeviceStateMonitor;
     @Mock
     protected TransportManager mTransportManager;
-    @Mock
-    protected AccessNetworksManager mAccessNetworksManager;
     @Mock
     protected IntentBroadcaster mIntentBroadcaster;
     @Mock
@@ -373,8 +370,6 @@ public abstract class TelephonyTest {
                 .makeDeviceStateMonitor(nullable(Phone.class));
         doReturn(mTransportManager).when(mTelephonyComponentFactory)
                 .makeTransportManager(nullable(Phone.class));
-        doReturn(mAccessNetworksManager).when(mTelephonyComponentFactory)
-                .makeAccessNetworksManager(nullable(Phone.class));
         doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
                 .makeNitzStateMachine(nullable(GsmCdmaPhone.class));
         doReturn(mLocaleTracker).when(mTelephonyComponentFactory)

@@ -29,6 +29,7 @@ import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
@@ -40,7 +41,9 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.util.IndentingPrintWriter;
 
+import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -105,6 +108,19 @@ public class AccessNetworksManager {
         public QualifiedNetworks(@ApnType int apnType, int[] qualifiedNetworks) {
             this.apnType = apnType;
             this.qualifiedNetworks = qualifiedNetworks;
+        }
+
+        @Override
+        public String toString() {
+            List<String> accessNetworkStrings = new ArrayList<>();
+            for (int network : qualifiedNetworks) {
+                accessNetworkStrings.add(AccessNetworkType.toString(network));
+            }
+            return "[QualifiedNetworks: apnType="
+                    + ApnSetting.getApnTypeString(apnType)
+                    + ", networks="
+                    + TextUtils.join(", ", accessNetworkStrings)
+                    + "]";
         }
     }
 
@@ -287,12 +303,29 @@ public class AccessNetworksManager {
     }
 
     /**
-     * @return True if IWLAN legacy mode is used. No qualified network service there to provide
-     * information for platform to setup data connection. All data connection requests will be
-     * routed to the default (i.e. cellular) data/network service.
+     * Dump the state of transport manager
+     *
+     * @param fd File descriptor
+     * @param pw Print writer
+     * @param args Arguments
      */
-    public boolean isInLegacyMode() {
-        return TextUtils.isEmpty(getQualifiedNetworksServicePackageName());
+    public void dump(FileDescriptor fd, IndentingPrintWriter pw, String[] args) {
+        pw.println("AccessNetworksManager:");
+        pw.increaseIndent();
+        pw.println("Available networks:");
+        pw.increaseIndent();
+
+        for (int i = 0; i < mAvailableNetworks.size(); i++) {
+            pw.print("APN type "
+                    + ApnSetting.getApnTypeString(mAvailableNetworks.keyAt(i)) + ": ");
+            List<String> networksStrings = new ArrayList<>();
+            for (int network : mAvailableNetworks.valueAt(i)) {
+                networksStrings.add(AccessNetworkType.toString(network));
+            }
+            pw.println("[" + TextUtils.join(",", networksStrings) + "]");
+        }
+        pw.decreaseIndent();
+        pw.decreaseIndent();
     }
 
     private void log(String s) {
