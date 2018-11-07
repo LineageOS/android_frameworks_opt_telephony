@@ -25,7 +25,6 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.util.Log;
 
-import java.lang.Override;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -998,6 +997,21 @@ public abstract class Connection {
         mConvertedNumber = mAddress;
         mAddress = oriNumber;
         mDialString = oriNumber;
+    }
+
+    /**
+     * Changes the address and presentation for this call.
+     * @param newAddress The new address.
+     * @param numberPresentation The number presentation for the address.
+     */
+    public void setAddress(String newAddress, int numberPresentation) {
+        Rlog.i(TAG, "setAddress = " + newAddress);
+        mAddress = newAddress;
+        mNumberPresentation = numberPresentation;
+    }
+
+    public void setDialString(String newDialString) {
+        mDialString = newDialString;
     }
 
     /**
