@@ -19,6 +19,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -474,6 +475,24 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         mCTUT.dispatchCsCallRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
         // verify that call radio tech is set
         verify(mConnection).setCallRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+    }
+
+    @Test
+    @SmallTest
+    public void testCantCallOtaspInProgress() {
+        mDialString = "*22899";
+        testMOCallDial();
+        waitForHandlerAction(mSimulatedCommands.getHandler(), 5000);
+        mSimulatedCommands.progressConnectingToActive();
+        waitForHandlerAction(mSimulatedCommands.getHandler(), 5000);
+        // Try to place another call.
+        try {
+            mCTUT.dial("650-555-1212");
+        } catch (CallStateException cse) {
+            assertEquals(CallStateException.ERROR_OTASP_PROVISIONING_IN_PROCESS, cse.getError());
+            return;
+        }
+        fail("Expected otasp call state exception");
     }
 }
 
