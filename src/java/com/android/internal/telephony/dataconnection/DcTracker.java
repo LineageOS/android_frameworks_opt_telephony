@@ -1780,13 +1780,24 @@ public class DcTracker extends Handler {
                 .query(Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI,
                     "preferapnset/subId/" + mPhone.getSubId()),
                         new String[] {Telephony.Carriers.APN_SET_ID}, null, null, null);
+        if (c == null) {
+            loge("getPreferredApnSetId: cursor is null");
+            return Telephony.Carriers.NO_SET_SET;
+        }
+
+        int setId;
         if (c.getCount() < 1) {
             loge("getPreferredApnSetId: no APNs found");
-            return Telephony.Carriers.NO_SET_SET;
+            setId = Telephony.Carriers.NO_SET_SET;
         } else {
             c.moveToFirst();
-            return c.getInt(0 /* index of Telephony.Carriers.APN_SET_ID */);
+            setId = c.getInt(0 /* index of Telephony.Carriers.APN_SET_ID */);
         }
+
+        if (!c.isClosed()) {
+            c.close();
+        }
+        return setId;
     }
 
     public boolean hasMatchedTetherApnSetting() {
