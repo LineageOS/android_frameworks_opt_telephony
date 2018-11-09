@@ -17,13 +17,18 @@ package com.android.internal.telephony;
 
 import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANGE;
 import static android.telephony.PhoneStateListener.LISTEN_PREFERRED_DATA_SUBID_CHANGE;
+import static android.telephony.PhoneStateListener.LISTEN_SRVCC_STATE_CHANGED;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doReturn;
 
 import android.os.HandlerThread;
 import android.os.ServiceManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.server.TelephonyRegistry;
@@ -40,8 +45,15 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private TelephonyRegistry mTelephonyRegistry;
     private PhoneCapability mPhoneCapability;
     private int mPreferredSubId;
+    private int mSrvccState = -1;
 
     public class PhoneStateListenerWrapper extends PhoneStateListener {
+        @Override
+        public void onSrvccStateChanged(int srvccState) {
+            mSrvccState = srvccState;
+            setReady(true);
+        }
+
         @Override
         public void onPhoneCapabilityChanged(PhoneCapability capability) {
             mPhoneCapability = capability;
@@ -71,6 +83,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp("TelephonyRegistryTest");
+        // ServiceManager.getService("isub") will return this stub for any call to
+        // SubscriptionManager.
         mServiceManagerMockedServices.put("isub", mISubStub);
         mHandlerThread.start();
         waitUntilReady();
@@ -124,5 +138,54 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyPreferredDataSubIdChanged(preferredSubId);
         waitUntilReady();
         assertEquals(preferredSubId, mPreferredSubId);
+    }
+
+    /**
+     * Test that we first receive a callback when listen(...) is called that contains the latest
+     * notify(...) response and then that the callback is called correctly when notify(...) is
+     * called.
+     */
+    @Test
+    @SmallTest
+    public void testSrvccStateChanged() throws Exception {
+        // Return a phone ID of 0 for all sub ids given.
+        doReturn(0/*phoneId*/).when(mISubStub).getPhoneId(anyInt());
+        setReady(false);
+        int srvccState = TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
+        mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
+        // Should receive callback when listen is called that contains the latest notify result.
+        mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
+                mPhoneStateListener.callback,
+                LISTEN_SRVCC_STATE_CHANGED, true);
+        waitUntilReady();
+        assertEquals(srvccState, mSrvccState);
+
+        // trigger callback
+        setReady(false);
+        srvccState = TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED;
+        mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
+        waitUntilReady();
+        assertEquals(srvccState, mSrvccState);
+    }
+
+    /**
+     * Test that a SecurityException is thrown when we try to listen to a SRVCC state change without
+     * READ_PRIVILEGED_PHONE_STATE.
+     */
+    @Test
+    @SmallTest
+    public void testSrvccStateChangedNoPermission() {
+        // Clear all permission grants for test.
+        mContextFixture.addCallingOrSelfPermission("");
+        int srvccState = TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
+        mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
+        try {
+            mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
+                    mPhoneStateListener.callback,
+                    LISTEN_SRVCC_STATE_CHANGED, true);
+            fail();
+        } catch (SecurityException e) {
+            // pass test!
+        }
     }
 }

@@ -21,7 +21,6 @@ import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.TelephonyManager;
-import android.telephony.VoLteServiceState;
 
 import java.util.List;
 
@@ -65,7 +64,8 @@ public interface PhoneNotifier {
     public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
             String apn, String failCause);
 
-    public void notifyVoLteServiceStateChanged(Phone sender, VoLteServiceState lteState);
+    /** send a notification that the SRVCC state has changed.*/
+    void notifySrvccStateChanged(Phone sender, @TelephonyManager.SrvccState int state);
 
     public void notifyVoiceActivationStateChanged(Phone sender, int activationState);
 
