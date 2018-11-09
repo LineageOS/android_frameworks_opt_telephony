@@ -22,6 +22,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.data.ApnSetting;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.telephony.Phone;
@@ -118,7 +119,7 @@ public class ApnSettingUtils {
      * @return {@code true} if the APN type is metered, {@code false} otherwise.
      */
     public static boolean isMeteredApnType(String type, Phone phone) {
-        if (phone == null) {
+        if (phone == null || TextUtils.isEmpty(type)) {
             return true;
         }
 
@@ -193,11 +194,12 @@ public class ApnSettingUtils {
     /**
      * Check if this APN setting is metered.
      *
+     * @param apn APN setting
      * @param phone The phone object
      * @return True if this APN setting is metered, otherwise false.
      */
     public static boolean isMetered(ApnSetting apn, Phone phone) {
-        if (phone == null) {
+        if (phone == null || apn == null) {
             return true;
         }
 
