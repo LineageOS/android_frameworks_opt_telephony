@@ -28,6 +28,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.view.WindowManager;
 
 import com.android.internal.R;
@@ -115,6 +116,11 @@ public class UiccSlot extends Handler {
                 if (!mIsEuicc) {
                     mUiccCard = new UiccCard(mContext, mCi, ics, mPhoneId, mLock);
                 } else {
+                    // The EID should be reported with the card status, but in case it's not we want
+                    // to catch that here
+                    if (TextUtils.isEmpty(ics.eid)) {
+                        loge("update: eid is missing. ics.eid=" + ics.eid);
+                    }
                     mUiccCard = new EuiccCard(mContext, mCi, ics, phoneId, mLock);
                 }
             } else {
