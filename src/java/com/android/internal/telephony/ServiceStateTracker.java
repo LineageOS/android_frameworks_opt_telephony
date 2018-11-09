@@ -2261,6 +2261,7 @@ public class ServiceStateTracker extends Handler {
 
         String wfcVoiceSpnFormat = null;
         String wfcDataSpnFormat = null;
+        String wfcFlightSpnFormat = null;
         int combinedRegState = getCombinedRegState();
         if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()
                 && (combinedRegState == ServiceState.STATE_IN_SERVICE)) {
@@ -2273,6 +2274,7 @@ public class ServiceStateTracker extends Handler {
 
             int voiceIdx = 0;
             int dataIdx = 0;
+            int flightModeIdx = -1;
             boolean useRootLocale = false;
             CarrierConfigManager configLoader = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -2283,6 +2285,8 @@ public class ServiceStateTracker extends Handler {
                         voiceIdx = b.getInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT);
                         dataIdx = b.getInt(
                                 CarrierConfigManager.KEY_WFC_DATA_SPN_FORMAT_IDX_INT);
+                        flightModeIdx = b.getInt(
+                                CarrierConfigManager.KEY_WFC_FLIGHT_MODE_SPN_FORMAT_IDX_INT);
                         useRootLocale =
                                 b.getBoolean(CarrierConfigManager.KEY_WFC_SPN_USE_ROOT_LOCALE);
                     }
@@ -2303,9 +2307,15 @@ public class ServiceStateTracker extends Handler {
                 loge("updateSpnDisplay: KEY_WFC_DATA_SPN_FORMAT_IDX_INT out of bounds: " + dataIdx);
                 dataIdx = 0;
             }
+            if (flightModeIdx < 0 || flightModeIdx >= wfcSpnFormats.length) {
+                // KEY_WFC_FLIGHT_MODE_SPN_FORMAT_IDX_INT out of bounds. Use the value from
+                // voiceIdx.
+                flightModeIdx = voiceIdx;
+            }
 
             wfcVoiceSpnFormat = wfcSpnFormats[voiceIdx];
             wfcDataSpnFormat = wfcSpnFormats[dataIdx];
+            wfcFlightSpnFormat = wfcSpnFormats[flightModeIdx];
         }
 
         if (mPhone.isPhoneTypeGsm()) {
@@ -2381,6 +2391,11 @@ public class ServiceStateTracker extends Handler {
                     !TextUtils.isEmpty(wfcDataSpnFormat)) {
                 // Show SPN + Wi-Fi Calling If SIM has SPN and SPN display condition
                 // is satisfied or SPN override is enabled for this carrier.
+
+                // Handle Flight Mode
+                if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
+                    wfcVoiceSpnFormat = wfcFlightSpnFormat;
+                }
 
                 String originalSpn = spn.trim();
                 spn = String.format(wfcVoiceSpnFormat, originalSpn);
