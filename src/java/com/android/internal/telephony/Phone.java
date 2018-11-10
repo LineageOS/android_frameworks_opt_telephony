@@ -25,7 +25,6 @@ import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkStats;
 import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Bundle;
@@ -56,7 +55,6 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
@@ -515,23 +513,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
-        }
-
-        // The locale from the "ro.carrier" system property or R.array.carrier_properties.
-        // This will be overwritten by the Locale from the SIM language settings (EF-PL, EF-LI)
-        // if applicable.
-        final Locale carrierLocale = getLocaleFromCarrierProperties(mContext);
-        if (carrierLocale != null && !TextUtils.isEmpty(carrierLocale.getCountry())) {
-            final String country = carrierLocale.getCountry();
-            try {
-                Settings.Global.getInt(mContext.getContentResolver(),
-                        Settings.Global.WIFI_COUNTRY_CODE);
-            } catch (Settings.SettingNotFoundException e) {
-                // note this is not persisting
-                WifiManager wM = (WifiManager)
-                        mContext.getSystemService(Context.WIFI_SERVICE);
-                wM.setCountryCode(country, false);
-            }
         }
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.

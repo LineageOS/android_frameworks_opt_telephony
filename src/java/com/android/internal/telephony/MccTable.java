@@ -213,9 +213,7 @@ public final class MccTable {
             if (mcc != 0) {
                 setTimezoneFromMccIfNeeded(context, mcc);
             }
-            if (fromServiceState) {
-                setWifiCountryCodeFromMcc(context, mcc);
-            } else {
+            if (!fromServiceState) {
                 // from SIM
                 try {
                     Configuration config = new Configuration();
@@ -235,11 +233,6 @@ public final class MccTable {
                 } catch (RemoteException e) {
                     Slog.e(LOG_TAG, "Can't update configuration", e);
                 }
-            }
-        } else {
-            if (fromServiceState) {
-                // an empty mccmnc means no signal - tell wifi we don't know
-                setWifiCountryCodeFromMcc(context, 0);
             }
         }
     }
