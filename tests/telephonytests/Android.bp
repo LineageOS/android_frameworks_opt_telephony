@@ -4,20 +4,21 @@ android_test {
     srcs: ["**/*.java"],
 
     libs: [
-        "android.test.runner",
-        "ims-common",
         "android.test.base",
         "android.test.mock",
+        "android.test.runner",
+        "ims-common",
     ],
 
     static_libs: [
-        "guava",
+        "android-support-test",
         "frameworks-base-testutils",
+        "guava",
+        "mockito-target-minus-junit4",
+        "platform-test-annotations",
         "services.core",
         "telephony-common",
-        "mockito-target-minus-junit4",
-        "android-support-test",
-        "platform-test-annotations",
+        "truth-prebuilt",
     ],
 
     platform_apis: true,
