@@ -1575,6 +1575,11 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public int getMNOCarrierId() {
+        return mCarrerResolver.getMnoCarrierId();
+    }
+
+    @Override
     public int getCarrierIdListVersion() {
         return mCarrerResolver.getCarrierListVersion();
     }
