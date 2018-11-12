@@ -161,6 +161,8 @@ public class RILTest extends TelephonyTest {
     @Mock
     private IOemHook mOemHookProxy;
 
+    private HalVersion mRadioVersion = new HalVersion(1, 0);
+
     private RilHandler mRilHandler;
     private RIL mRILInstance;
     private RIL mRILUnderTest;
@@ -255,6 +257,11 @@ public class RILTest extends TelephonyTest {
             mRILUnderTest = spy(mRILInstance);
             doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
             doReturn(mOemHookProxy).when(mRILUnderTest).getOemHookProxy(any());
+
+            try {
+                replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersion);
+            } catch (Exception e) {
+            }
 
             mRilHandler = mRILUnderTest.getRilHandler();
 
@@ -712,7 +719,7 @@ public class RILTest extends TelephonyTest {
                 mSerialNumberCaptor.capture(),
                 eq((DataProfileInfo) invokeMethod(
                         mRILInstance,
-                        "convertToHalDataProfile",
+                        "convertToHalDataProfile10",
                         new Class<?>[] {DataProfile.class},
                         new Object[] {dataProfile})),
                 eq(dataProfile.isPersistent()),
@@ -1023,7 +1030,7 @@ public class RILTest extends TelephonyTest {
                 mRILInstance,
                 "obtainRequest",
                 new Class<?>[] {Integer.TYPE, Message.class, WorkSource.class},
-                new Object[] {RIL_REQUEST_GET_SIM_STATUS, obtainMessage(), null});
+                new Object[] {RIL_REQUEST_GET_SIM_STATUS, obtainMessage(), new WorkSource()});
 
         // The wake lock should be held when obtain a RIL request.
         assertTrue(mRILInstance.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
