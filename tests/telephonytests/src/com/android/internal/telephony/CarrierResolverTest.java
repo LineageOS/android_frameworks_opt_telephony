@@ -30,6 +30,7 @@ import android.os.HandlerThread;
 import android.provider.Telephony.CarrierId;
 import android.provider.Telephony.Carriers;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -59,8 +60,24 @@ public class CarrierResolverTest extends TelephonyTest {
     private static final int CID_DOCOMO = 3;
 
     private static final String NAME_TMO = "TMO";
-    private static final String GID1 = "ae";
+    private static final String MCCMNC_TMO = "310260";
     private static final int CID_TMO = 4;
+
+    private static final String MCCMNC_ATT = "310410";
+    private static final int CID_ATT = 5;
+
+    private static final int CID_TRACFONE = 6;
+    private static final int CID_TRACFONE_ATT = 7;
+    private static final int CID_TRACFONE_TMO = 8;
+    private static final String MCCMNC_TRACFONE_ATT = "310410";
+    private static final String MCCMNC_TRACFONE_TMO = "310260";
+    private static final String GID_TRACFONE = "DDFF";
+
+    private static final int CID_O2 = 9;
+    private static final int CID_O2_PREPAID = 10;
+    private static final String MCCMNC_O2 = "23410";
+    private static final String GID_O2_PREPAID = "61";
+
 
     private static final int CID_UNKNOWN = -1;
 
@@ -125,12 +142,6 @@ public class CarrierResolverTest extends TelephonyTest {
         waitForMs(200);
         assertEquals(CID_FI, mCarrierResolver.getCarrierId());
         assertEquals(NAME_FI, mCarrierResolver.getCarrierName());
-
-        doReturn(GID1).when(mPhone).getGroupIdLevel1();
-        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
-        waitForMs(200);
-        assertEquals(CID_TMO, mCarrierResolver.getCarrierId());
-        assertEquals(NAME_TMO, mCarrierResolver.getCarrierName());
     }
 
     @Test
@@ -155,6 +166,47 @@ public class CarrierResolverTest extends TelephonyTest {
         assertEquals(CID_VODAFONE, mCarrierResolver.getCarrierId());
         assertEquals(NAME_VODAFONE, mCarrierResolver.getCarrierName());
         assertEquals(CID_VODAFONE, mCarrierResolver.getMnoCarrierId());
+    }
+
+    @Test
+    @SmallTest
+    public void testPreciseCarrierId() {
+        int phoneId = mPhone.getPhoneId();
+        doReturn(MCCMNC_TRACFONE_ATT).when(mTelephonyManager)
+                .getSimOperatorNumericForPhone(eq(phoneId));
+
+        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
+        waitForMs(200);
+        assertEquals(CID_ATT, mCarrierResolver.getCarrierId());
+        assertEquals(CID_ATT, mCarrierResolver.getPreciseCarrierId());
+
+        doReturn(GID_TRACFONE).when(mPhone).getGroupIdLevel1();
+        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
+        waitForMs(200);
+        assertEquals(CID_TRACFONE, mCarrierResolver.getCarrierId());
+        assertEquals(CID_TRACFONE_ATT, mCarrierResolver.getPreciseCarrierId());
+
+        doReturn(MCCMNC_TRACFONE_TMO).when(mTelephonyManager)
+                .getSimOperatorNumericForPhone(eq(phoneId));
+        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
+        waitForMs(200);
+        assertEquals(CID_TRACFONE, mCarrierResolver.getCarrierId());
+        assertEquals(CID_TRACFONE_TMO, mCarrierResolver.getPreciseCarrierId());
+
+        doReturn(MCCMNC_O2).when(mTelephonyManager)
+                .getSimOperatorNumericForPhone(eq(phoneId));
+        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
+        waitForMs(200);
+        assertEquals(CID_O2, mCarrierResolver.getCarrierId());
+        assertEquals(CID_O2, mCarrierResolver.getPreciseCarrierId());
+
+        doReturn(MCCMNC_O2).when(mTelephonyManager)
+                .getSimOperatorNumericForPhone(eq(phoneId));
+        doReturn(GID_O2_PREPAID).when(mPhone).getGroupIdLevel1();
+        mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
+        waitForMs(200);
+        assertEquals(CID_O2, mCarrierResolver.getCarrierId());
+        assertEquals(CID_O2_PREPAID, mCarrierResolver.getPreciseCarrierId());
     }
 
     @Test
@@ -253,7 +305,8 @@ public class CarrierResolverTest extends TelephonyTest {
                                 CarrierId.All.SPN,
                                 CarrierId.All.APN,
                                 CarrierId.CARRIER_NAME,
-                                CarrierId.CARRIER_ID});
+                                CarrierId.CARRIER_ID,
+                                CarrierId.PARENT_CARRIER_ID});
 
                 mc.addRow(new Object[] {
                         1,                      // id
@@ -268,11 +321,12 @@ public class CarrierResolverTest extends TelephonyTest {
                         null,                   // apn
                         NAME,                   // carrier name
                         CID_VZW,                // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
                 });
                 mc.addRow(new Object[] {
                         2,                      // id
-                        MCCMNC,                 // mccmnc
-                        GID1,                   // gid1
+                        MCCMNC_TMO,             // mccmnc
+                        null,                   // gid1
                         null,                   // gid2
                         null,                   // plmn
                         null,                   // imsi_prefix
@@ -282,6 +336,7 @@ public class CarrierResolverTest extends TelephonyTest {
                         null,                   // apn
                         NAME_TMO,               // carrier name
                         CID_TMO,                // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
                 });
                 mc.addRow(new Object[] {
                         3,                      // id
@@ -296,9 +351,25 @@ public class CarrierResolverTest extends TelephonyTest {
                         null,                   // apn
                         NAME_FI,                // carrier name
                         CID_FI,                 // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
                 });
                 mc.addRow(new Object[] {
                         4,                      // id
+                        MCCMNC,                 // mccmnc
+                        null,                   // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        SPN_FI,                 // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_FI,                 // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
+                });
+                mc.addRow(new Object[] {
+                        5,                      // id
                         MCCMNC,                 // mccmnc
                         null,                   // gid1
                         null,                   // gid2
@@ -310,9 +381,10 @@ public class CarrierResolverTest extends TelephonyTest {
                         APN_DOCOMO,             // apn
                         NAME_DOCOMO,            // carrier name
                         CID_DOCOMO,             // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
                 });
                 mc.addRow(new Object[] {
-                        4,                      // id
+                        6,                      // id
                         MCCMNC_VODAFONE,        // mccmnc
                         null,                   // gid1
                         null,                   // gid2
@@ -324,6 +396,112 @@ public class CarrierResolverTest extends TelephonyTest {
                         null,                   // apn
                         NAME_VODAFONE,          // carrier name
                         CID_VODAFONE,           // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
+                });
+                mc.addRow(new Object[] {
+                        7,                      // id
+                        MCCMNC_ATT,             // mccmnc
+                        null,                   // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        null,                   // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_ATT,                // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
+                });
+                mc.addRow(new Object[] {
+                        8,                      // id
+                        MCCMNC_TRACFONE_ATT,    // mccmnc
+                        GID_TRACFONE,           // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        null,                   // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_TRACFONE,           // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
+                });
+                mc.addRow(new Object[] {
+                        9,                      // id
+                        MCCMNC_TRACFONE_TMO,    // mccmnc
+                        GID_TRACFONE,           // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        null,                   // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_TRACFONE,           // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID, // parent cid
+                });
+                mc.addRow(new Object[] {
+                        10,                     // id
+                        MCCMNC_TRACFONE_ATT,    // mccmnc
+                        GID_TRACFONE,           // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        null,                   // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_TRACFONE_ATT,       // cid
+                        CID_TRACFONE,           // parent cid
+                });
+                mc.addRow(new Object[] {
+                        11,                     // id
+                        MCCMNC_TRACFONE_TMO,    // mccmnc
+                        GID_TRACFONE,           // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        null,                   // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_TRACFONE_TMO,       // cid
+                        CID_TRACFONE,           // parent cid
+                });
+                mc.addRow(new Object[] {
+                        12,                     // id
+                        MCCMNC_O2,              // mccmnc
+                        null,                   // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        null,                   // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_O2,                 // cid
+                        TelephonyManager.UNKNOWN_CARRIER_ID,  // parent cid
+                });
+                mc.addRow(new Object[] {
+                        13,                     // id
+                        MCCMNC_O2,              // mccmnc
+                        GID_O2_PREPAID,         // gid1
+                        null,                   // gid2
+                        null,                   // plmn
+                        null,                   // imsi_prefix
+                        null,                   // iccid_prefix
+                        null,                   // access_rule
+                        null,                   // spn
+                        null,                   // apn
+                        null,                   // carrier name
+                        CID_O2_PREPAID,         // cid
+                        CID_O2,                 // parent cid
                 });
                 return mc;
             } else if (Carriers.CONTENT_URI.getAuthority().equals(uri.getAuthority())) {
