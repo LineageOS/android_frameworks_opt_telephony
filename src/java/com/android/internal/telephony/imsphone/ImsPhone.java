@@ -651,6 +651,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void setRadioPower(boolean on) {
+        mDefaultPhone.setRadioPower(on);
+    }
+
+    @Override
     public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
         return dialInternal(dialString, dialArgs, null);
     }
