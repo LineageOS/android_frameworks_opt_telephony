@@ -28,7 +28,6 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
-import android.telephony.VoLteServiceState;
 
 import com.android.internal.telephony.IOnSubscriptionsChangedListener;
 import com.android.internal.telephony.IPhoneStateListener;
@@ -384,7 +383,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyVoLteServiceStateChanged(VoLteServiceState lteState) {
+    public void notifySrvccStateChanged(int subId, int state) {
         throw new RuntimeException("Not implemented");
     }
 
