@@ -39,6 +39,11 @@ message CarrierId {
 
   // [Optional] Carrier attributes to match a carrier. At least one value is required.
   repeated CarrierAttribute carrier_attribute = 3;
+
+  // [Optional] A unique canonical number to represent its parent carrier. The parent-child
+  // relationship can be used to differentiate a single carrier by different networks,
+  // by prepaid v.s. postpaid  or even by 4G v.s. 3G plan.
+  optional int32 parent_canonical_id = 4;
 };
 
 // Attributes used to match a carrier.
