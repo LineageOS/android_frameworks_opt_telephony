@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e565ac7a_51181049",
+        "filename": "src/java/com/android/internal/telephony/LocaleTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2018-11-14T12:32:51Z",
+      "side": 1,
+      "message": "While at it, you can try to switch to:\n\nWifiManager wifiManager \u003d getSystemService(WifiManager.class);",
+      "range": {
+        "startLine": 411,
+        "startChar": 12,
+        "endLine": 412,
+        "endChar": 42
+      },
+      "revId": "72eb6221077eb249335cffcaddb1437f80bb7817",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
