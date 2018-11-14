@@ -5391,6 +5391,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return lce;
     }
 
+    // TODO(b/119224773) refactor the converter of CellInfo.
     private static void writeToParcelForGsm(
             Parcel p, int lac, int cid, int arfcn, int bsic, String mcc, String mnc,
             String al, String as, int ss, int ber, int ta) {
@@ -5408,6 +5409,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeInt(ta);
     }
 
+    // TODO(b/119224773) refactor the converter of CellInfo.
     private static void writeToParcelForCdma(
             Parcel p, int ni, int si, int bsi, int lon, int lat, String al, String as,
             int dbm, int ecio, int eDbm, int eEcio, int eSnr) {
@@ -5415,27 +5417,39 @@ public class RIL extends BaseCommands implements CommandsInterface {
         new CellSignalStrengthCdma(dbm, ecio, eDbm, eEcio, eSnr).writeToParcel(p, 0);
     }
 
+    // TODO(b/119224773) refactor the converter of CellInfo.
     private static void writeToParcelForLte(
             Parcel p, int ci, int pci, int tac, int earfcn, int bandwidth, String mcc, String mnc,
-            String al, String as, int ss, int rsrp, int rsrq, int rssnr, int cqi, int ta) {
+            String al, String as, int ss, int rsrp, int rsrq, int rssnr, int cqi, int ta,
+            boolean isEndcAvailable) {
+
+        // General CellInfo
         p.writeInt(CellInfo.TYPE_LTE);
         p.writeString(mcc);
         p.writeString(mnc);
         p.writeString(al);
         p.writeString(as);
+
+        // CellIdentity
         p.writeInt(ci);
         p.writeInt(pci);
         p.writeInt(tac);
         p.writeInt(earfcn);
         p.writeInt(bandwidth);
+
+        // CellSignalStrength
         p.writeInt(ss);
         p.writeInt(rsrp);
         p.writeInt(rsrq);
         p.writeInt(rssnr);
         p.writeInt(cqi);
         p.writeInt(ta);
+
+        // CellConfigLte
+        p.writeBoolean(isEndcAvailable);
     }
 
+    // TODO(b/119224773) refactor the converter of CellInfo.
     private static void writeToParcelForWcdma(
             Parcel p, int lac, int cid, int psc, int uarfcn, String mcc, String mnc,
             String al, String as, int ss, int ber, int rscp, int ecno) {
@@ -5454,6 +5468,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         p.writeInt(ecno);
     }
 
+    // TODO(b/119224773) refactor the converter of CellInfo.
     private static void writeToParcelForTdscdma(
             Parcel p, int lac, int cid, int cpid, int uarfcn, String mcc, String mnc,
             String al, String as, int ss, int ber, int rscp) {
@@ -5544,7 +5559,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             cellInfoLte.signalStrengthLte.rsrq,
                             cellInfoLte.signalStrengthLte.rssnr,
                             cellInfoLte.signalStrengthLte.cqi,
-                            cellInfoLte.signalStrengthLte.timingAdvance);
+                            cellInfoLte.signalStrengthLte.timingAdvance,
+                            false /* isEndcAvailable */);
                     break;
                 }
 
@@ -5670,7 +5686,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             cellInfoLte.signalStrengthLte.rsrq,
                             cellInfoLte.signalStrengthLte.rssnr,
                             cellInfoLte.signalStrengthLte.cqi,
-                            cellInfoLte.signalStrengthLte.timingAdvance);
+                            cellInfoLte.signalStrengthLte.timingAdvance,
+                            false /* isEndcAvailable */);
                     break;
                 }
 
