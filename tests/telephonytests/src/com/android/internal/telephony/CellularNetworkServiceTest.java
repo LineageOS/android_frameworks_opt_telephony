@@ -157,7 +157,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         expectedState = new NetworkRegistrationState(
                 domain, AccessNetworkConstants.TransportType.WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
-                false, availableServices, null, maxDataCalls);
+                false, availableServices, null, maxDataCalls, false, false);
 
         try {
             verify(mCallback, times(1)).onGetNetworkRegistrationStateComplete(
