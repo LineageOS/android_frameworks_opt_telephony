@@ -1528,6 +1528,7 @@ public class ServiceStateTracker extends Handler {
                     // broadcast intent to indicate an error related to Line1Number has been
                     // detected
                     Intent intent = new Intent(TelephonyIntents.ACTION_LINE1_NUMBER_ERROR_DETECTED);
+                    intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
                     mPhone.getContext().sendBroadcast(intent,
                             permission.READ_PRIVILEGED_PHONE_STATE);
 
