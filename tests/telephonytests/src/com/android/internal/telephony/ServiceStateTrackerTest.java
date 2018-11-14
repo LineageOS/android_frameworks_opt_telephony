@@ -1817,4 +1817,49 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(200);
         assertTrue(Arrays.equals(new int[0], sst.mSS.getCellBandwidths()));
     }
+
+    @Test
+    @SmallTest
+    public void testGetMdn() throws Exception {
+        doReturn(false).when(mPhone).isPhoneTypeGsm();
+        doReturn(false).when(mPhone).isPhoneTypeCdma();
+        doReturn(true).when(mPhone).isPhoneTypeCdmaLte();
+        doReturn(CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM).when(mCdmaSSM)
+                .getCdmaSubscriptionSource();
+
+        logd("Calling updatePhoneType");
+        // switch to CDMA
+        sst.updatePhoneType();
+
+        // trigger RUIM_RECORDS_LOADED
+        ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(mRuimRecords).registerForRecordsLoaded(eq(sst), integerArgumentCaptor.capture(),
+                nullable(Object.class));
+
+        // response for mRuimRecords.registerForRecordsLoaded()
+        Message msg = Message.obtain();
+        msg.what = integerArgumentCaptor.getValue();
+        msg.obj = new AsyncResult(null, null, null);
+        sst.sendMessage(msg);
+
+        // wait for RUIM_RECORDS_LOADED to be handled
+        waitForHandlerAction(sst, 5000);
+
+        // mdn should be null as nothing populated it
+        assertEquals(null, sst.getMdnNumber());
+
+        // if ruim is provisioned, mdn should still be null
+        doReturn(true).when(mRuimRecords).isProvisioned();
+        assertEquals(null, sst.getMdnNumber());
+
+        // if ruim is not provisioned, and mdn is non null, sst should still return null
+        doReturn(false).when(mRuimRecords).isProvisioned();
+        String mockMdn = "mockMdn";
+        doReturn(mockMdn).when(mRuimRecords).getMdn();
+        assertEquals(null, sst.getMdnNumber());
+
+        // if ruim is provisioned, and mdn is non null, sst should also return the correct value
+        doReturn(true).when(mRuimRecords).isProvisioned();
+        assertEquals(mockMdn, sst.getMdnNumber());
+    }
 }
