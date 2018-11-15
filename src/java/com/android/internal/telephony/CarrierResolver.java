@@ -60,10 +60,9 @@ public class CarrierResolver extends Handler {
 
     // events to trigger carrier identification
     private static final int SIM_LOAD_EVENT             = 1;
-    private static final int SIM_ABSENT_EVENT           = 2;
-    private static final int ICC_CHANGED_EVENT          = 3;
-    private static final int PREFER_APN_UPDATE_EVENT    = 4;
-    private static final int CARRIER_ID_DB_UPDATE_EVENT = 5;
+    private static final int ICC_CHANGED_EVENT          = 2;
+    private static final int PREFER_APN_UPDATE_EVENT    = 3;
+    private static final int CARRIER_ID_DB_UPDATE_EVENT = 4;
 
     private static final Uri CONTENT_URL_PREFER_APN = Uri.withAppendedPath(
             Telephony.Carriers.CONTENT_URI, "preferapn");
@@ -93,8 +92,6 @@ public class CarrierResolver extends Handler {
     private IccRecords mIccRecords;
     private final LocalLog mCarrierIdLocalLog = new LocalLog(20);
     private final TelephonyManager mTelephonyMgr;
-    private final SubscriptionsChangedListener mOnSubscriptionsChangedListener =
-            new SubscriptionsChangedListener();
 
     private final ContentObserver mContentObserver = new ContentObserver(this) {
         @Override
@@ -109,31 +106,6 @@ public class CarrierResolver extends Handler {
         }
     };
 
-    private class SubscriptionsChangedListener
-            extends SubscriptionManager.OnSubscriptionsChangedListener {
-        final AtomicInteger mPreviousSubId =
-                new AtomicInteger(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        /**
-         * Callback invoked when there is any change to any SubscriptionInfo. Typically
-         * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
-         */
-        @Override
-        public void onSubscriptionsChanged() {
-            int subId = mPhone.getSubId();
-            if (mPreviousSubId.getAndSet(subId) != subId) {
-                if (DBG) {
-                    logd("SubscriptionListener.onSubscriptionInfoChanged subId: "
-                            + mPreviousSubId);
-                }
-                if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                    sendEmptyMessage(SIM_LOAD_EVENT);
-                } else {
-                    sendEmptyMessage(SIM_ABSENT_EVENT);
-                }
-            }
-        }
-    }
-
     public CarrierResolver(Phone phone) {
         logd("Creating CarrierResolver[" + phone.getPhoneId() + "]");
         mContext = phone.getContext();
@@ -145,9 +117,58 @@ public class CarrierResolver extends Handler {
                 mContentObserver);
         mContext.getContentResolver().registerContentObserver(
                 CarrierId.All.CONTENT_URI, false, mContentObserver);
-        SubscriptionManager.from(mContext).addOnSubscriptionsChangedListener(
-                mOnSubscriptionsChangedListener);
         UiccController.getInstance().registerForIccChanged(this, ICC_CHANGED_EVENT, null);
+    }
+
+    /**
+     * This is triggered from SubscriptionInfoUpdater after sim state change.
+     * The sequence of sim loading would be
+     *  1. ACTION_SUBINFO_CONTENT_CHANGE
+     *  2. ACTION_SIM_STATE_CHANGED/ACTION_SIM_CARD_STATE_CHANGED
+     *  /ACTION_SIM_APPLICATION_STATE_CHANGED
+     *  3. ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED
+     *
+     *  For SIM refresh either reset or file update, SubscriptionInfoUpdater will re-trigger
+     *  carrier identification with sim loaded state.
+     */
+    public void resolveSubscriptionCarrierId(String simState) {
+        logd("[resolveSubscriptionCarrierId] simState: " + simState);
+        switch (simState) {
+            case IccCardConstants.INTENT_VALUE_ICC_ABSENT:
+                // only clear carrier id on absent to avoid transition to unknown carrier id during
+                // intermediate states of sim refresh
+                handleSimAbsent();
+                break;
+            case IccCardConstants.INTENT_VALUE_ICC_LOCKED:
+                // intentional fall through from above case, treat locked same as loaded
+            case IccCardConstants.INTENT_VALUE_ICC_LOADED:
+                handleSimLoaded();
+                break;
+        }
+    }
+
+    private void handleSimLoaded() {
+        if (mIccRecords != null) {
+            /**
+             * returns empty string to be consistent with
+             * {@link TelephonyManager#getSimOperatorName()}
+             */
+            mSpn = (mIccRecords.getServiceProviderName() == null) ? ""
+                    : mIccRecords.getServiceProviderName();
+        } else {
+            loge("mIccRecords is null on SIM_LOAD_EVENT, could not get SPN");
+        }
+        mPreferApn = getPreferApn();
+        loadCarrierMatchingRulesOnMccMnc();
+    }
+
+    private void handleSimAbsent() {
+        mCarrierMatchingRulesOnMccMnc.clear();
+        mSpn = null;
+        mPreferApn = null;
+        updateCarrierIdAndName(TelephonyManager.UNKNOWN_CARRIER_ID, null,
+                TelephonyManager.UNKNOWN_CARRIER_ID, null,
+                TelephonyManager.UNKNOWN_CARRIER_ID);
     }
 
     /**
@@ -174,22 +195,10 @@ public class CarrierResolver extends Handler {
         if (DBG) logd("handleMessage: " + msg.what);
         switch (msg.what) {
             case SIM_LOAD_EVENT:
-                if (mIccRecords != null) {
-                    mSpn = mIccRecords.getServiceProviderName();
-                } else {
-                    loge("mIccRecords is null on SIM_LOAD_EVENT, could not get SPN");
-                }
-                mPreferApn = getPreferApn();
+                handleSimLoaded();
+                break;
             case CARRIER_ID_DB_UPDATE_EVENT:
                 loadCarrierMatchingRulesOnMccMnc();
-                break;
-            case SIM_ABSENT_EVENT:
-                mCarrierMatchingRulesOnMccMnc.clear();
-                mSpn = null;
-                mPreferApn = null;
-                updateCarrierIdAndName(TelephonyManager.UNKNOWN_CARRIER_ID, null,
-                        TelephonyManager.UNKNOWN_CARRIER_ID, null,
-                        TelephonyManager.UNKNOWN_CARRIER_ID);
                 break;
             case PREFER_APN_UPDATE_EVENT:
                 String preferApn = getPreferApn();
@@ -200,7 +209,7 @@ public class CarrierResolver extends Handler {
                 }
                 break;
             case ICC_CHANGED_EVENT:
-                // all records used for carrier identification are from SimRecord
+                // all records used for carrier identification are from SimRecord.
                 final IccRecords newIccRecords = UiccController.getInstance().getIccRecords(
                         mPhone.getPhoneId(), UiccController.APP_FAM_3GPP);
                 if (mIccRecords != newIccRecords) {
@@ -538,18 +547,14 @@ public class CarrierResolver extends Handler {
                 mScore += SCORE_ICCID_PREFIX;
             }
             if (mGid1 != null) {
-                // full string match. carrier matching should cover the corner case that gid1
-                // with garbage tail due to SIM manufacture issues.
-                if (!CarrierResolver.equals(subscriptionRule.mGid1, mGid1, true)) {
+                if (!gidMatch(subscriptionRule.mGid1, mGid1)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_GID1;
             }
             if (mGid2 != null) {
-                // full string match. carrier matching should cover the corner case that gid2
-                // with garbage tail due to SIM manufacture issues.
-                if (!CarrierResolver.equals(subscriptionRule.mGid2, mGid2, true)) {
+                if (!gidMatch(subscriptionRule.mGid2, mGid2)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
@@ -608,6 +613,13 @@ public class CarrierResolver extends Handler {
                 return false;
             }
             return iccid.startsWith(prefix);
+        }
+
+        // We are doing prefix and case insensitive match.
+        // Ideally we should do full string match. However due to SIM manufacture issues
+        // gid from some SIM might has garbage tail.
+        private boolean gidMatch(String gidFromSim, String gid) {
+            return (gidFromSim != null) && gidFromSim.toLowerCase().startsWith(gid.toLowerCase());
         }
 
         private boolean carrierPrivilegeRulesMatch(List<String> certsFromSubscription,
@@ -886,6 +898,44 @@ public class CarrierResolver extends Handler {
         }
         logd(selection + " " + ids);
         return ids;
+    }
+
+    // static helper function to get carrier id from mccmnc
+    public static int getCarrierIdFromMccMnc(@NonNull Context context, String mccmnc) {
+        try {
+            Cursor cursor = context.getContentResolver().query(
+                    CarrierId.All.CONTENT_URI,
+                    /* projection */ null,
+                    /* selection */ CarrierId.All.MCCMNC + "=? AND "
+                            + CarrierId.All.GID1 + " is NULL AND "
+                            + CarrierId.All.GID2 + " is NULL AND "
+                            + CarrierId.All.IMSI_PREFIX_XPATTERN + " is NULL AND "
+                            + CarrierId.All.SPN + " is NULL AND "
+                            + CarrierId.All.ICCID_PREFIX + " is NULL AND "
+                            + CarrierId.All.PLMN + " is NULL AND "
+                            + CarrierId.All.PRIVILEGE_ACCESS_RULE + " is NULL AND "
+                            + CarrierId.All.APN + " is NULL",
+                    /* selectionArgs */ new String[]{mccmnc},
+                    null);
+            try {
+                if (cursor != null) {
+                    if (VDBG) {
+                        logd("[getCarrierIdFromMccMnc]- " + cursor.getCount()
+                                + " Records(s) in DB" + " mccmnc: " + mccmnc);
+                    }
+                    while (cursor.moveToNext()) {
+                        return cursor.getInt(cursor.getColumnIndex(CarrierId.CARRIER_ID));
+                    }
+                }
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+        } catch (Exception ex) {
+            loge("[getCarrierIdFromMccMnc]- ex: " + ex);
+        }
+        return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
     private static boolean equals(String a, String b, boolean ignoreCase) {
