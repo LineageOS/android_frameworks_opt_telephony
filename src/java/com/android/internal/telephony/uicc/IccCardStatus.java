@@ -67,6 +67,7 @@ public class IccCardStatus {
     public int        physicalSlotIndex = UiccController.INVALID_SLOT_ID;
     public String     atr;
     public String     iccid;
+    public String     eid;
 
     public IccCardApplicationStatus[] mApplications;
 
@@ -149,6 +150,7 @@ public class IccCardStatus {
 
         sb.append(",physical_slot_id=").append(physicalSlotIndex).append(",atr=").append(atr);
         sb.append(",iccid=").append(SubscriptionInfo.givePrintableIccid(iccid));
+        sb.append(",eid=").append(eid);
 
         sb.append("}");
         return sb.toString();
