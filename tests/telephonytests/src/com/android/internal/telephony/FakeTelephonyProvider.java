@@ -97,7 +97,7 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + SubscriptionManager.WFC_IMS_ROAMING_MODE + " INTEGER DEFAULT -1,"
                     + SubscriptionManager.WFC_IMS_ROAMING_ENABLED + " INTEGER DEFAULT -1,"
                     + SubscriptionManager.IS_OPPORTUNISTIC + " INTEGER DEFAULT 0,"
-                    + SubscriptionManager.PARENT_SUB_ID + " INTEGER DEFAULT -1"
+                    + SubscriptionManager.GROUP_UUID + " TEXT"
                     + ");";
         }
 
