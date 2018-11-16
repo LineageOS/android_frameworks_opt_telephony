@@ -29,7 +29,7 @@ import com.android.internal.app.LocaleStore;
 import com.android.internal.app.LocaleStore.LocaleInfo;
 
 import libcore.icu.ICU;
-import libcore.util.TimeZoneFinder;
+import libcore.timezone.TimeZoneFinder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
