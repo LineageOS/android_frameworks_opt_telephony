@@ -259,8 +259,7 @@ public class PhoneFactory {
                 sTelephonyNetworkFactories = new TelephonyNetworkFactory[numPhones];
                 for (int i = 0; i < numPhones; i++) {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                            sPhoneSwitcher, sc, sSubscriptionMonitor, Looper.myLooper(),
-                            sContext, i, sPhones[i].mDcTracker);
+                            sSubscriptionMonitor, Looper.myLooper(), sPhones[i]);
                 }
             }
         }
