@@ -113,6 +113,15 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param cardStatus ICC card status as defined by CardStatus in 1.3/types.hal
+     */
+    public void getIccCardStatusResponse_1_3(RadioResponseInfo responseInfo,
+                                             android.hardware.radio.V1_3.CardStatus cardStatus) {
+        responseIccCardStatus_1_3(responseInfo, cardStatus);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPinForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
@@ -1433,6 +1442,24 @@ public class RadioResponse extends IRadioResponse.Stub {
             iccCardStatus.physicalSlotIndex = cardStatus.physicalSlotId;
             iccCardStatus.atr = cardStatus.atr;
             iccCardStatus.iccid = cardStatus.iccid;
+            mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, iccCardStatus);
+            }
+            mRil.processResponseDone(rr, responseInfo, iccCardStatus);
+        }
+    }
+
+    private void responseIccCardStatus_1_3(RadioResponseInfo responseInfo,
+                                           android.hardware.radio.V1_3.CardStatus cardStatus) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            IccCardStatus iccCardStatus = convertHalCardStatus(cardStatus.base.base);
+            iccCardStatus.physicalSlotIndex = cardStatus.base.physicalSlotId;
+            iccCardStatus.atr = cardStatus.base.atr;
+            iccCardStatus.iccid = cardStatus.base.iccid;
+            iccCardStatus.eid = cardStatus.eid;
             mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, iccCardStatus);
