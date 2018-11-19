@@ -1962,8 +1962,15 @@ public class GsmCdmaPhone extends Phone {
                 imsPhone.setCallWaiting(enable, onComplete);
                 return;
             }
-
-            mCi.setCallWaiting(enable, CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
+            int serviceClass = CommandsInterface.SERVICE_CLASS_VOICE;
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle b = configManager.getConfigForSubId(getSubId());
+            if (b != null) {
+                serviceClass = b.getInt(CarrierConfigManager.KEY_CALL_WAITING_SERVICE_CLASS_INT,
+                        CommandsInterface.SERVICE_CLASS_VOICE);
+            }
+            mCi.setCallWaiting(enable, serviceClass, onComplete);
         } else {
             loge("method setCallWaiting is NOT supported in CDMA without IMS!");
         }
