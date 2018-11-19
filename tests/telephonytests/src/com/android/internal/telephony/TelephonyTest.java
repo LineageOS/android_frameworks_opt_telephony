@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
@@ -339,6 +340,7 @@ public abstract class TelephonyTest {
         mPackageManager = mContext.getPackageManager();
 
         //mTelephonyComponentFactory
+        doReturn(mTelephonyComponentFactory).when(mTelephonyComponentFactory).inject(anyString());
         doReturn(mSST).when(mTelephonyComponentFactory)
                 .makeServiceStateTracker(nullable(GsmCdmaPhone.class),
                         nullable(CommandsInterface.class));
