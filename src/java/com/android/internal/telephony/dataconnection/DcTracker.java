@@ -3350,7 +3350,7 @@ public class DcTracker extends Handler {
             dest.isEnabled(), networkTypeBitmask, dest.getProfileId(),
             (dest.isPersistent() || src.isPersistent()), dest.getMaxConns(),
             dest.getWaitTime(), dest.getMaxConnsTime(), dest.getMtu(), dest.getMvnoType(),
-            dest.getMvnoMatchData(), dest.getApnSetId());
+            dest.getMvnoMatchData(), dest.getApnSetId(), dest.getCarrierId());
     }
 
     private DataConnection createDataConnection() {

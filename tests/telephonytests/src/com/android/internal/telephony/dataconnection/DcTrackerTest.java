@@ -241,7 +241,8 @@ public class DcTrackerTest extends TelephonyTest {
                                     Telephony.Carriers.MVNO_TYPE,
                                     Telephony.Carriers.MVNO_MATCH_DATA,
                                     Telephony.Carriers.NETWORK_TYPE_BITMASK,
-                                    Telephony.Carriers.APN_SET_ID});
+                                    Telephony.Carriers.APN_SET_ID,
+                                    Telephony.Carriers.CARRIER_ID});
 
                     mc.addRow(new Object[]{
                             2163,                   // id
@@ -271,7 +272,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -302,7 +304,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -333,7 +336,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             0,                      // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -364,7 +368,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_EHRPD_BITMASK, // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -395,7 +400,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             0,                      // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     return mc;
