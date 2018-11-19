@@ -18,7 +18,6 @@ package com.android.internal.telephony.dataconnection;
 
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
-import android.content.Context;
 import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
 import android.net.NetworkRequest;
@@ -29,6 +28,7 @@ import android.os.Message;
 import android.telephony.Rlog;
 import android.util.LocalLog;
 
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.SubscriptionMonitor;
@@ -52,7 +52,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private final HashMap<NetworkRequest, LocalLog> mSpecificRequests =
             new HashMap<NetworkRequest, LocalLog>();
 
-    private final int mPhoneId;
+    private final Phone mPhone;
     // Only when this network factory is active, it will apply any network requests.
     private boolean mIsActive;
     // Whether this network factory is active and should handle default network requests.
@@ -68,28 +68,29 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private static final int EVENT_NETWORK_REQUEST              = 3;
     private static final int EVENT_NETWORK_RELEASE              = 4;
 
-    public TelephonyNetworkFactory(PhoneSwitcher phoneSwitcher,
-            SubscriptionController subscriptionController, SubscriptionMonitor subscriptionMonitor,
-            Looper looper, Context context, int phoneId, DcTracker dcTracker) {
-        super(looper, context, "TelephonyNetworkFactory[" + phoneId + "]", null);
+    public TelephonyNetworkFactory(SubscriptionMonitor subscriptionMonitor, Looper looper,
+                                   Phone phone) {
+        super(looper, phone.getContext(), "TelephonyNetworkFactory[" + phone.getPhoneId()
+                + "]", null);
+        mPhone = phone;
         mInternalHandler = new InternalHandler(looper);
 
-        setCapabilityFilter(makeNetworkFilter(subscriptionController, phoneId));
+        mSubscriptionController = SubscriptionController.getInstance();
+
+        setCapabilityFilter(makeNetworkFilter(mSubscriptionController, mPhone.getPhoneId()));
         setScoreFilter(TELEPHONY_NETWORK_SCORE);
 
-        mPhoneSwitcher = phoneSwitcher;
-        mSubscriptionController = subscriptionController;
+        mPhoneSwitcher = PhoneSwitcher.getInstance();
         mSubscriptionMonitor = subscriptionMonitor;
-        mPhoneId = phoneId;
-        LOG_TAG = "TelephonyNetworkFactory[" + phoneId + "]";
-        mDcTracker = dcTracker;
+        LOG_TAG = "TelephonyNetworkFactory[" + mPhone.getPhoneId() + "]";
+        mDcTracker = mPhone.mDcTracker;
 
         mIsActive = false;
         mPhoneSwitcher.registerForActivePhoneSwitch(mInternalHandler, EVENT_ACTIVE_PHONE_SWITCH,
                 null);
 
         mSubscriptionId = INVALID_SUBSCRIPTION_ID;
-        mSubscriptionMonitor.registerForSubscriptionChanged(mPhoneId, mInternalHandler,
+        mSubscriptionMonitor.registerForSubscriptionChanged(mPhone.getPhoneId(), mInternalHandler,
                 EVENT_SUBSCRIPTION_CHANGED, null);
 
         mIsActiveForDefault = false;
@@ -183,9 +184,10 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     // apply or revoke requests if our active-ness changes
     private void onActivePhoneSwitch() {
-        final boolean newIsActive = mPhoneSwitcher.shouldApplySpecifiedRequests(mPhoneId);
+        final boolean newIsActive = mPhoneSwitcher.shouldApplySpecifiedRequests(
+                mPhone.getPhoneId());
         final boolean newIsActiveForDefault =
-                mPhoneSwitcher.shouldApplyUnspecifiedRequests(mPhoneId);
+                mPhoneSwitcher.shouldApplyUnspecifiedRequests(mPhone.getPhoneId());
 
         String logString = "onActivePhoneSwitch(newIsActive " + newIsActive + ", "
                 + "newIsActiveForDefault " + newIsActiveForDefault + ")";
@@ -202,7 +204,8 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     // watch for phone->subId changes, reapply new filter and let
     // that flow through to apply/revoke of requests
     private void onSubIdChange() {
-        final int newSubscriptionId = mSubscriptionController.getSubIdUsingPhoneId(mPhoneId);
+        final int newSubscriptionId = mSubscriptionController.getSubIdUsingPhoneId(
+                mPhone.getPhoneId());
         if (mSubscriptionId != newSubscriptionId) {
             if (DBG) log("onSubIdChange " + mSubscriptionId + "->" + newSubscriptionId);
             mSubscriptionId = newSubscriptionId;
