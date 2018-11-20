@@ -30,13 +30,13 @@ import org.junit.Test;
 
 public class CellSignalStrengthNrTest extends AndroidTestCase {
     private static final int CSIRSRP = -123;
-    private static final int CSIRSRQ = -111;
+    private static final int CSIRSRQ = -11;
     private static final int ANOTHER_CSIRSRP = -111;
-    private static final int ANOTHER_CSIRSRQ = -120;
+    private static final int ANOTHER_CSIRSRQ = -12;
     private static final int INVALID_CSIRSRP = Integer.MAX_VALUE;
-    private static final int CSISINR = 64;
+    private static final int CSISINR = 18;
     private static final int SSRSRP = -112;
-    private static final int SSRSRQ = -94;
+    private static final int SSRSRQ = -13;
     private static final int SSSINR = 32;
 
     @Test
