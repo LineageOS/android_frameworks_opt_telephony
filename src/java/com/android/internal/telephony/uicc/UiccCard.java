@@ -47,8 +47,8 @@ public class UiccCard {
             "com.android.internal.telephony.uicc.ICC_CARD_ADDED";
 
     // The lock object is created by UiccSlot that owns this UiccCard - this is to share the lock
-    // between UiccSlot, UiccCard and UiccProfile for now.
-    private final Object mLock;
+    // between UiccSlot, UiccCard, EuiccCard, and UiccProfile for now.
+    protected final Object mLock;
     private CardState mCardState;
     private String mIccid;
     protected String mCardId;
