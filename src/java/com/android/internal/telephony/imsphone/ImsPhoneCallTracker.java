@@ -266,21 +266,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
             };
 
-    private final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
-            new OnSubscriptionsChangedListener() {
-                final AtomicInteger mPreviousSubId =
-                        new AtomicInteger(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-
-                @Override
-                public void onSubscriptionsChanged() {
-                    int subId = mPhone.getSubId();
-                    if (mPreviousSubId.getAndSet(subId) != subId
-                            && SubscriptionController.getInstance().isActiveSubId(subId)) {
-                        cacheCarrierConfiguration(subId);
-                    }
-                }
-            };
-
     //***** Constants
 
     static final int MAX_CONNECTIONS = 7;
@@ -734,8 +719,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intentfilter.addAction(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER);
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
-        SubscriptionManager.from(mPhone.getContext())
-            .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         cacheCarrierConfiguration(mPhone.getSubId());
 
         mPhone.getDefaultPhone().registerForDataEnabledChanged(
@@ -877,8 +860,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getContext().unregisterReceiver(mReceiver);
         mPhone.getDefaultPhone().unregisterForDataEnabledChanged(this);
         mImsManagerConnector.disconnect();
-        SubscriptionManager.from(mPhone.getContext())
-            .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
     }
 
     @Override

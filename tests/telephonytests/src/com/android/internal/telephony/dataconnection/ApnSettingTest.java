@@ -229,7 +229,17 @@ public class ApnSettingTest extends TelephonyTest {
         expectedApn = ApnSetting.makeApnSetting(
                 -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
                 mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                0, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn", 3);
+                0, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn", 3, -1);
+        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
+
+        // A v6 string with carrierId=100
+        testString =
+            "[ApnSettingV5] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,0,3,"
+                + "100";
+        expectedApn = ApnSetting.makeApnSetting(
+            -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
+            mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
+            0, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn", 3, 100);
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
         // Return no apn if insufficient fields given.
@@ -269,7 +279,7 @@ public class ApnSettingTest extends TelephonyTest {
         expectedApns.add(ApnSetting.makeApnSetting(
                 -1, "12346", "Name1", "apn2", "", -1, null, "", -1, "", "", 0,
                 mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                0, 0, false, 0, 0, 0, 0, -1, "", 3));
+                0, 0, false, 0, 0, 0, 0, -1, "", 3, -1));
         assertApnSettingsEqual(expectedApns, ApnSetting.arrayFromString(testString));
     }
 
@@ -292,7 +302,7 @@ public class ApnSettingTest extends TelephonyTest {
                 99, "12345", "Name", "apn", null, 10,
                 null, null, -1, "user", "password", 0,
                 ApnSetting.TYPE_DEFAULT, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "", 3);
+                networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "", 3, -1);
         expected = "[ApnSettingV5] Name, 99, 12345, apn, null, "
                 + "null, null, null, 10, 0, hipri | default, "
                 + "IPV6, IP, true, 0, false, 0, 0, 0, 0, spn, , false, 8192, 3";

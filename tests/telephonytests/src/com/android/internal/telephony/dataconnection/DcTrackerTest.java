@@ -241,7 +241,8 @@ public class DcTrackerTest extends TelephonyTest {
                                     Telephony.Carriers.MVNO_TYPE,
                                     Telephony.Carriers.MVNO_MATCH_DATA,
                                     Telephony.Carriers.NETWORK_TYPE_BITMASK,
-                                    Telephony.Carriers.APN_SET_ID});
+                                    Telephony.Carriers.APN_SET_ID,
+                                    Telephony.Carriers.CARRIER_ID});
 
                     mc.addRow(new Object[]{
                             2163,                   // id
@@ -271,7 +272,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -302,7 +304,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -333,7 +336,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             0,                      // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -364,7 +368,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_EHRPD_BITMASK, // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     mc.addRow(new Object[]{
@@ -395,7 +400,8 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
                             0,                      // network_type_bitmask
-                            0                       // apn_set_id
+                            0,                      // apn_set_id
+                            -1                      // carrier_id
                     });
 
                     return mc;
@@ -1026,7 +1032,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(true).when(mApnContext).isEnabled();
         doReturn(true).when(mApnContext).getDependencyMet();
         doReturn(true).when(mApnContext).isReady();
-        doReturn(true).when(mApnContext).hasNoRestrictedRequests(eq(true));
+        doReturn(false).when(mApnContext).hasRestrictedRequests(eq(true));
     }
 
     // Test the emergency APN setup.
@@ -1130,7 +1136,7 @@ public class DcTrackerTest extends TelephonyTest {
     @SmallTest
     public void testTrySetupRestrictedDataDisabled() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
-        doReturn(false).when(mApnContext).hasNoRestrictedRequests(eq(true));
+        doReturn(true).when(mApnContext).hasRestrictedRequests(eq(true));
 
         mDct.setUserDataEnabled(false);
 
@@ -1158,7 +1164,7 @@ public class DcTrackerTest extends TelephonyTest {
     @SmallTest
     public void testTrySetupRestrictedRoamingDisabled() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
-        doReturn(false).when(mApnContext).hasNoRestrictedRequests(eq(true));
+        doReturn(true).when(mApnContext).hasRestrictedRequests(eq(true));
 
         mDct.setUserDataEnabled(true);
         mDct.setDataRoamingEnabledByUser(false);
@@ -1178,8 +1184,7 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
         waitForMs(200);
 
-        // expect no restricted data connection
-        verify(mSimulatedCommandsVerifier, times(0)).setupDataCall(anyInt(), any(DataProfile.class),
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(anyInt(), any(DataProfile.class),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
     }
