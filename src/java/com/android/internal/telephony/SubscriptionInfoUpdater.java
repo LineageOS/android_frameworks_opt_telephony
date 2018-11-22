@@ -243,10 +243,11 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_UNKNOWN:
-                updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
                 broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null);
                 broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_UNKNOWN);
                 broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_UNKNOWN);
+                updateSubscriptionCarrierId(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
+                updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
                 break;
 
             case EVENT_SIM_IO_ERROR:
@@ -254,12 +255,14 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_RESTRICTED:
-                updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED);
                 broadcastSimStateChanged(msg.arg1,
                         IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED,
                         IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED);
                 broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_CARD_RESTRICTED);
                 broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_NOT_READY);
+                updateSubscriptionCarrierId(msg.arg1,
+                        IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED);
+                updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_RESTRICTED);
                 break;
 
             case EVENT_SIM_READY:
@@ -333,10 +336,11 @@ public class SubscriptionInfoUpdater extends Handler {
             updateSubscriptionInfoByIccId();
         }
 
-        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
         broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_PRESENT);
         broadcastSimApplicationStateChanged(slotId, getSimStateFromLockedReason(reason));
+        updateSubscriptionCarrierId(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
     }
 
     private static int getSimStateFromLockedReason(String lockedReason) {
@@ -467,9 +471,18 @@ public class SubscriptionInfoUpdater extends Handler {
                 mPackageManager, TelephonyManager.getDefault(),
                 mContext.getContentResolver(), mCurrentlyActiveUserId);
 
+        /**
+         * The sim loading sequence will be
+         *  1. ACTION_SUBINFO_CONTENT_CHANGE happens through updateSubscriptionInfoByIccId() above.
+         *  2. ACTION_SIM_STATE_CHANGED/ACTION_SIM_CARD_STATE_CHANGED
+         *  /ACTION_SIM_APPLICATION_STATE_CHANGED
+         *  3. ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED
+         *  4. ACTION_CARRIER_CONFIG_CHANGED
+         */
         broadcastSimStateChanged(loadedSlotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
         broadcastSimCardStateChanged(loadedSlotId, TelephonyManager.SIM_STATE_PRESENT);
         broadcastSimApplicationStateChanged(loadedSlotId, TelephonyManager.SIM_STATE_LOADED);
+        updateSubscriptionCarrierId(loadedSlotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
         updateCarrierServices(loadedSlotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
@@ -480,6 +493,12 @@ public class SubscriptionInfoUpdater extends Handler {
         mCarrierServiceBindHelper.updateForPhoneId(slotId, simState);
     }
 
+    private void updateSubscriptionCarrierId(int slotId, String simState) {
+        if (mPhone != null && mPhone[slotId] != null) {
+            mPhone[slotId].resolveSubscriptionCarrierId(simState);
+        }
+    }
+
     private void handleSimAbsent(int slotId) {
         if (mIccId[slotId] != null && !mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
             logd("SIM" + (slotId + 1) + " hot plug out");
@@ -488,10 +507,11 @@ public class SubscriptionInfoUpdater extends Handler {
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
         }
-        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT, null);
         broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_ABSENT);
         broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
+        updateSubscriptionCarrierId(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
     }
 
     private void handleSimError(int slotId) {
@@ -502,11 +522,12 @@ public class SubscriptionInfoUpdater extends Handler {
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
         }
-        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR,
                 IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
         broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_CARD_IO_ERROR);
         broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
+        updateSubscriptionCarrierId(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
     }
 
     /**

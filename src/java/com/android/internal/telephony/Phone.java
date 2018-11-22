@@ -3129,6 +3129,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return TelephonyManager.UNKNOWN_CARRIER_ID_LIST_VERSION;
     }
 
+    public void resolveSubscriptionCarrierId(String simState) {
+    }
+
     /**
      *  Resets the Carrier Keys in the database. This involves 2 steps:
      *  1. Delete the keys from the database.
