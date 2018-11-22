@@ -3710,6 +3710,7 @@ public class DcTracker extends Handler {
                 String url = (String) msg.obj;
                 log("dataConnectionTracker.handleMessage: EVENT_REDIRECTION_DETECTED=" + url);
                 onDataConnectionRedirected(url);
+                break;
 
             case DctConstants.EVENT_RADIO_AVAILABLE:
                 onRadioAvailable();
