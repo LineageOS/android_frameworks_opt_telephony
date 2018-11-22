@@ -66,7 +66,6 @@ public class ImsFeatureTest {
     }
 
     private TestImsFeature mTestImsFeature;
-    private CapabilityCallback mCapabilityCallback;
 
     @Mock
     private IImsFeatureStatusCallback mTestStatusCallback;
@@ -77,14 +76,11 @@ public class ImsFeatureTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         mTestImsFeature = new TestImsFeature();
-        mCapabilityCallback = Mockito.spy(new CapabilityCallback());
-        mTestImsFeature.addCapabilityCallback(mCapabilityCallback);
     }
 
     @After
     public void tearDown() {
         mTestImsFeature = null;
-        mCapabilityCallback = null;
     }
 
     @Test
@@ -167,14 +163,17 @@ public class ImsFeatureTest {
     @SmallTest
     @Test
     public void testSetCapabilityConfigError() throws Exception {
+        CapabilityCallback capabilityCallback = Mockito.spy(new CapabilityCallback());
+        mTestImsFeature.addCapabilityCallback(capabilityCallback);
+
         CapabilityChangeRequest request = new CapabilityChangeRequest();
         request.addCapabilitiesToEnableForTech(TestImsFeature.CAPABILITY_TEST_1,
                 ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
 
         mTestImsFeature.setCapabilitiesResult = ImsFeature.CAPABILITY_ERROR_GENERIC;
-        mTestImsFeature.requestChangeEnabledCapabilities(request, mCapabilityCallback);
+        mTestImsFeature.requestChangeEnabledCapabilities(request, capabilityCallback);
 
-        verify(mCapabilityCallback).onChangeCapabilityConfigurationError(
+        verify(capabilityCallback).onChangeCapabilityConfigurationError(
                 eq(TestImsFeature.CAPABILITY_TEST_1),
                 eq(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN),
                 eq(ImsFeature.CAPABILITY_ERROR_GENERIC));
@@ -197,6 +196,9 @@ public class ImsFeatureTest {
     @SmallTest
     @Test
     public void testNotifyCapabilityStatusChangedCallback() throws Exception {
+        CapabilityCallback capabilityCallback = Mockito.spy(new CapabilityCallback());
+        mTestImsFeature.addCapabilityCallback(capabilityCallback);
+
         ImsFeature.Capabilities status =
                 new ImsFeature.Capabilities();
         status.addCapabilities(TestImsFeature.CAPABILITY_TEST_1);
@@ -205,7 +207,7 @@ public class ImsFeatureTest {
         mTestImsFeature.capabilitiesStatusChanged(status);
 
         assertEquals(status.getMask(), mTestImsFeature.queryCapabilityStatus().getMask());
-        verify(mCapabilityCallback).onCapabilitiesStatusChanged(
+        verify(capabilityCallback).onCapabilitiesStatusChanged(
                 eq(TestImsFeature.CAPABILITY_TEST_1 | TestImsFeature.CAPABILITY_TEST_2));
     }
 
@@ -253,5 +255,24 @@ public class ImsFeatureTest {
         p.recycle();
 
         assertEquals(request, result);
+    }
+
+    @SmallTest
+    @Test
+    public void testCapabilityCallbackWhenRegistering() throws Exception {
+        CapabilityCallback capabilityCallback = Mockito.spy(new CapabilityCallback());
+
+        // Signal the status has changed
+        ImsFeature.Capabilities status =
+                new ImsFeature.Capabilities();
+        status.addCapabilities(TestImsFeature.CAPABILITY_TEST_1);
+        status.addCapabilities(TestImsFeature.CAPABILITY_TEST_2);
+        mTestImsFeature.capabilitiesStatusChanged(status);
+
+        // addCapabilityCallback should cause capabilityCallback to call back with status.
+        mTestImsFeature.addCapabilityCallback(capabilityCallback);
+        assertEquals(status.getMask(), mTestImsFeature.queryCapabilityStatus().getMask());
+        verify(capabilityCallback).onCapabilitiesStatusChanged(
+                eq(TestImsFeature.CAPABILITY_TEST_1 | TestImsFeature.CAPABILITY_TEST_2));
     }
 }

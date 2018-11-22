@@ -242,6 +242,7 @@ public class UiccProfile extends IccCard {
         }
 
         if (mUiccCard instanceof EuiccCard) {
+            // for RadioConfig<1.1 eid is not known when the EuiccCard is constructed
             ((EuiccCard) mUiccCard).registerForEidReady(mHandler, EVENT_EID_READY, null);
         }
 
@@ -423,6 +424,7 @@ public class UiccProfile extends IccCard {
         }
 
         if (mUiccCard instanceof EuiccCard && ((EuiccCard) mUiccCard).getEid() == null) {
+            // for RadioConfig<1.1 the EID is not known when the EuiccCard is constructed
             if (DBG) log("EID is not ready yet.");
             return;
         }
