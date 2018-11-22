@@ -83,9 +83,8 @@ public class CarrierResolverTest extends TelephonyTest {
 
     // events to trigger carrier identification
     private static final int SIM_LOAD_EVENT       = 1;
-    private static final int SIM_ABSENT_EVENT     = 2;
-    private static final int ICC_CHANGED_EVENT    = 3;
-    private static final int PREFER_APN_SET_EVENT = 4;
+    private static final int ICC_CHANGED_EVENT    = 2;
+    private static final int PREFER_APN_SET_EVENT = 3;
 
     private CarrierResolver mCarrierResolver;
     private CarrierResolverHandler mCarrierCarrierResolverHandler;
@@ -220,7 +219,7 @@ public class CarrierResolverTest extends TelephonyTest {
         assertEquals(CID_VZW, mCarrierResolver.getCarrierId());
         assertEquals(NAME, mCarrierResolver.getCarrierName());
         // trigger sim absent event
-        mCarrierResolver.sendEmptyMessage(SIM_ABSENT_EVENT);
+        mCarrierResolver.resolveSubscriptionCarrierId(IccCardConstants.INTENT_VALUE_ICC_ABSENT);
         waitForMs(200);
         assertEquals(CID_UNKNOWN, mCarrierResolver.getCarrierId());
         assertNull(mCarrierResolver.getCarrierName());

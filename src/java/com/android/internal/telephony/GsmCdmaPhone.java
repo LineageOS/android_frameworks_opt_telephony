@@ -170,7 +170,7 @@ public class GsmCdmaPhone extends Phone {
     private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
     private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     // Used for identify the carrier of current subscription
-    private CarrierResolver mCarrerResolver;
+    private CarrierResolver mCarrierResolver;
 
     private int mPrecisePhoneType;
 
@@ -228,7 +228,7 @@ public class GsmCdmaPhone extends Phone {
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
         mDcTracker = mTelephonyComponentFactory.makeDcTracker(this);
-        mCarrerResolver = mTelephonyComponentFactory.makeCarrierResolver(this);
+        mCarrierResolver = mTelephonyComponentFactory.makeCarrierResolver(this);
 
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mDeviceStateMonitor = mTelephonyComponentFactory.makeDeviceStateMonitor(this);
@@ -1566,32 +1566,37 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public int getCarrierId() {
-        return mCarrerResolver.getCarrierId();
+        return mCarrierResolver.getCarrierId();
     }
 
     @Override
     public String getCarrierName() {
-        return mCarrerResolver.getCarrierName();
+        return mCarrierResolver.getCarrierName();
     }
 
     @Override
     public int getMNOCarrierId() {
-        return mCarrerResolver.getMnoCarrierId();
+        return mCarrierResolver.getMnoCarrierId();
     }
 
     @Override
     public int getPreciseCarrierId() {
-        return mCarrerResolver.getPreciseCarrierId();
+        return mCarrierResolver.getPreciseCarrierId();
     }
 
     @Override
     public String getPreciseCarrierName() {
-        return mCarrerResolver.getPreciseCarrierName();
+        return mCarrierResolver.getPreciseCarrierName();
+    }
+
+    @Override
+    public void resolveSubscriptionCarrierId(String simState) {
+        mCarrierResolver.resolveSubscriptionCarrierId(simState);
     }
 
     @Override
     public int getCarrierIdListVersion() {
-        return mCarrerResolver.getCarrierListVersion();
+        return mCarrierResolver.getCarrierListVersion();
     }
 
     @Override
