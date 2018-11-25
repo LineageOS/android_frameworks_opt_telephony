@@ -294,9 +294,9 @@ public class CellularNetworkService extends NetworkService {
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
                         false /* isNrAvailable */);
-            } else if (result instanceof android.hardware.radio.V1_3.DataRegStateResult) {
-                android.hardware.radio.V1_3.DataRegStateResult dataRegState =
-                        (android.hardware.radio.V1_3.DataRegStateResult) result;
+            } else if (result instanceof android.hardware.radio.V1_4.DataRegStateResult) {
+                android.hardware.radio.V1_4.DataRegStateResult dataRegState =
+                        (android.hardware.radio.V1_4.DataRegStateResult) result;
                 int regState = getRegStateFromHalRegState(dataRegState.base.regState);
                 int accessNetworkTechnology = getAccessNetworkTechnologyFromRat(
                         dataRegState.base.rat);
