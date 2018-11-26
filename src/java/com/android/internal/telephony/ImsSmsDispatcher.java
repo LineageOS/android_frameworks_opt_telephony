@@ -39,6 +39,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
 import com.android.telephony.Rlog;
 
@@ -400,7 +401,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     token,
                     tracker.mMessageRef,
                     format,
-                    smsc != null ? new String(smsc) : null,
+                    smsc != null ? IccUtils.bytesToHexString(smsc) : null,
                     isRetry,
                     pdu);
             mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
