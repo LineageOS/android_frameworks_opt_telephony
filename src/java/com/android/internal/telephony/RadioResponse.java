@@ -113,11 +113,11 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param cardStatus ICC card status as defined by CardStatus in 1.3/types.hal
+     * @param cardStatus ICC card status as defined by CardStatus in 1.4/types.hal
      */
-    public void getIccCardStatusResponse_1_3(RadioResponseInfo responseInfo,
-                                             android.hardware.radio.V1_3.CardStatus cardStatus) {
-        responseIccCardStatus_1_3(responseInfo, cardStatus);
+    public void getIccCardStatusResponse_1_4(RadioResponseInfo responseInfo,
+                                             android.hardware.radio.V1_4.CardStatus cardStatus) {
+        responseIccCardStatus_1_4(responseInfo, cardStatus);
     }
 
     /**
@@ -1450,8 +1450,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
-    private void responseIccCardStatus_1_3(RadioResponseInfo responseInfo,
-                                           android.hardware.radio.V1_3.CardStatus cardStatus) {
+    private void responseIccCardStatus_1_4(RadioResponseInfo responseInfo,
+                                           android.hardware.radio.V1_4.CardStatus cardStatus) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
