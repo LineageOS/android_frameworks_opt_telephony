@@ -85,8 +85,8 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         mDcTracker = dcTracker;
 
         mIsActive = false;
-        mPhoneSwitcher.registerForActivePhoneSwitch(mPhoneId, mInternalHandler,
-                EVENT_ACTIVE_PHONE_SWITCH, null);
+        mPhoneSwitcher.registerForActivePhoneSwitch(mInternalHandler, EVENT_ACTIVE_PHONE_SWITCH,
+                null);
 
         mSubscriptionId = INVALID_SUBSCRIPTION_ID;
         mSubscriptionMonitor.registerForSubscriptionChanged(mPhoneId, mInternalHandler,
@@ -188,7 +188,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                 mPhoneSwitcher.shouldApplyUnspecifiedRequests(mPhoneId);
 
         String logString = "onActivePhoneSwitch(newIsActive " + newIsActive + ", "
-                + "newIsActive " + newIsActiveForDefault + ")";
+                + "newIsActiveForDefault " + newIsActiveForDefault + ")";
         if (DBG) log(logString);
 
         applyRequests(mSpecificRequests, getAction(mIsActive, newIsActive), logString);
