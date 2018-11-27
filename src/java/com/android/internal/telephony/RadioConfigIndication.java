@@ -51,9 +51,9 @@ public class RadioConfigIndication extends IRadioConfigIndication.Stub {
     /**
      * Unsolicited indication for slot status changed
      */
-    public void simSlotsStatusChanged_1_1(int indicationType,
-            ArrayList<android.hardware.radio.config.V1_1.SimSlotStatus> slotStatus) {
-        ArrayList<IccSlotStatus> ret = RadioConfig.convertHalSlotStatus_1_1(slotStatus);
+    public void simSlotsStatusChanged_1_2(int indicationType,
+            ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus> slotStatus) {
+        ArrayList<IccSlotStatus> ret = RadioConfig.convertHalSlotStatus_1_2(slotStatus);
         Rlog.d(TAG, "[UNSL]< " + " UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
         if (mRadioConfig.mSimSlotStatusRegistrant != null) {
             mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
