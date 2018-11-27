@@ -25,7 +25,6 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyObject;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
@@ -39,6 +38,7 @@ import static org.mockito.Mockito.when;
 import android.app.IAlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -59,7 +59,6 @@ import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.support.test.filters.FlakyTest;
-import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
@@ -68,6 +67,7 @@ import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
+import android.telephony.INetworkService;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
 import android.telephony.PhysicalChannelConfig;
@@ -84,7 +84,6 @@ import android.util.TimestampedValue;
 
 import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
-import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 
@@ -102,9 +101,6 @@ import java.util.HashSet;
 import java.util.List;
 
 public class ServiceStateTrackerTest extends TelephonyTest {
-
-    @Mock
-    private DcTracker mDct;
     @Mock
     private ProxyController mProxyController;
     @Mock
@@ -112,7 +108,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Mock
     protected IAlarmManager mAlarmManager;
 
-    CellularNetworkService mCellularNetworkService;
+    private CellularNetworkService mCellularNetworkService;
+
+    @Mock
+    private NetworkService mIwlanNetworkService;
+    @Mock
+    private INetworkService.Stub mIwlanNetworkServiceStub;
 
     private ServiceStateTracker sst;
     private ServiceStateTrackerTestHandler mSSTTestHandler;
@@ -146,17 +147,33 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     private void addNetworkService() {
         mCellularNetworkService = new CellularNetworkService();
-        ServiceInfo serviceInfo =  new ServiceInfo();
-        serviceInfo.packageName = "com.android.phone";
-        serviceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
-        IntentFilter filter = new IntentFilter();
+        ServiceInfo CellularServiceInfo = new ServiceInfo();
+        CellularServiceInfo.packageName = "com.android.phone";
+        CellularServiceInfo.name = "CellularNetworkService";
+        CellularServiceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
+        IntentFilter cellularIntentfilter = new IntentFilter();
         mContextFixture.addService(
                 NetworkService.NETWORK_SERVICE_INTERFACE,
-                null,
+                new ComponentName("com.android.phone",
+                        "com.android.internal.telephony.CellularNetworkService"),
                 "com.android.phone",
                 mCellularNetworkService.mBinder,
-                serviceInfo,
-                filter);
+                CellularServiceInfo,
+                cellularIntentfilter);
+
+        ServiceInfo iwlanServiceInfo = new ServiceInfo();
+        iwlanServiceInfo.packageName = "com.xyz.iwlan.networkservice";
+        iwlanServiceInfo.name = "IwlanNetworkService";
+        iwlanServiceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
+        IntentFilter iwlanIntentFilter = new IntentFilter();
+        mContextFixture.addService(
+                NetworkService.NETWORK_SERVICE_INTERFACE,
+                new ComponentName("com.xyz.iwlan.networkservice",
+                        "com.xyz.iwlan.IwlanNetworkService"),
+                "com.xyz.iwlan.networkservice",
+                mIwlanNetworkServiceStub,
+                iwlanServiceInfo,
+                iwlanIntentFilter);
     }
 
     @Before
@@ -167,10 +184,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
+        mContextFixture.putResource(R.string.config_wlan_network_service_package,
+                "com.xyz.iwlan.networkservice");
+        doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
 
-        doReturn(true).when(mDct).isDisconnected();
-        mPhone.mDcTracker = mDct;
+        doReturn(true).when(mDcTracker).isDisconnected();
 
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
         mBundle = mContextFixture.getCarrierConfigBundle();
@@ -191,9 +210,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
-
-        doReturn(new ArrayList<Integer>(Arrays.asList(AccessNetworkConstants.TransportType.WWAN)))
-                .when(mTransportManager).getAvailableTransports();
+        doReturn(true).when(mPhone).areAllDataDisconnected();
 
         mSSTTestHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSSTTestHandler.start();
@@ -225,11 +242,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testSetRadioPowerOffUnderDataConnected() {
         sst.setRadioPower(true);
         waitForMs(100);
-        doReturn(false).when(mDct).isDisconnected();
+        doReturn(false).when(mPhone).areAllDataDisconnected();
         sst.setRadioPower(false);
         waitForMs(200);
         verify(this.mProxyController, times(1)).registerForAllDataDisconnected(anyInt(),
-                 eq(sst), anyInt(), anyObject());
+                 eq(sst), anyInt());
     }
 
     @Test
