@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
@@ -27,6 +28,8 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.Manifest;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.UserHandle;
@@ -49,6 +52,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private String mCallingPackage;
     private SubscriptionController mSubscriptionControllerUT;
     private MockContentResolver mMockContentResolver;
+    private FakeTelephonyProvider mFakeTelephonyProvider;
     @Mock
     private ITelephonyRegistry.Stub mTelephonyRegisteryMock;
 
@@ -70,13 +74,15 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         mSubscriptionControllerUT.getInstance().updatePhonesAvailability(new Phone[]{mPhone});
         mMockContentResolver = (MockContentResolver) mContext.getContentResolver();
+        mFakeTelephonyProvider = new FakeTelephonyProvider();
         mMockContentResolver.addProvider(SubscriptionManager.CONTENT_URI.getAuthority(),
-                new FakeTelephonyProvider());
+                mFakeTelephonyProvider);
 
     }
 
     @After
     public void tearDown() throws Exception {
+        mContextFixture.addCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         /* should clear fake content provider and resolver here */
         mContext.getContentResolver().delete(SubscriptionManager.CONTENT_URI, null, null);
 
@@ -343,7 +349,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 .notifyOpportunisticSubscriptionInfoChanged();
 
         testInsertSim();
-        testInsertSim2();
+        mSubscriptionControllerUT.addSubInfoRecord("test2", 0);
 
         // Neither sub1 or sub2 are opportunistic. So getOpportunisticSubscriptions
         // should return empty list and no callback triggered.
@@ -374,16 +380,84 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 .notifyOpportunisticSubscriptionInfoChanged();
     }
 
-    private void testInsertSim2() {
-        // verify there's already a SIM profile added.
-        assertEquals(1, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
+    @Test
+    @SmallTest
+    public void testSetSubscriptionGroupWithModifyPermission() throws Exception {
+        testInsertSim();
+        mSubscriptionControllerUT.addSubInfoRecord("test2", 0);
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
 
-        int slotID = 0;
-        //insert one Subscription Info
-        mSubscriptionControllerUT.addSubInfoRecord("test2", slotID);
+        int[] subIdList = new int[] {1, 2};
+        // It should fail since it has no permission.
+        String groupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertEquals(null, groupId);
 
-        //verify there is one sim
-        assertEquals(2, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
+        // With modify permission it should succeed.
+        mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE);
+        groupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertNotEquals(null, groupId);
+
+        // Calling it again should generate a new group ID.
+        String newGroupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertNotEquals(null, newGroupId);
+        assertNotEquals(groupId, newGroupId);
+
+        // SubId 6 doesn't exist. Should fail.
+        subIdList = new int[] {1, 6};
+        mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE);
+        groupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertEquals(null, groupId);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetSubscriptionGroupWithCarrierPrivilegePermission() throws Exception {
+        testInsertSim();
+        // Adding a second profile and mark as embedded.
+        mSubscriptionControllerUT.addSubInfoRecord("test2", 0);
+        ContentValues values = new ContentValues();
+        values.put(SubscriptionManager.IS_EMBEDDED, 1);
+        mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + 2, null);
+        mSubscriptionControllerUT.refreshCachedActiveSubscriptionInfoList();
+
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+
+        int[] subIdList = new int[] {1, 2};
+        // It should fail since it has no permission.
+        String groupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertEquals(null, groupId);
+
+        // With modify permission it should succeed.
+        doReturn(true).when(mTelephonyManager).hasCarrierPrivileges(1);
+        groupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertEquals(null, groupId);
+
+        doReturn(true).when(mTelephonyManager).hasCarrierPrivileges(2);
+        groupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertNotEquals(null, groupId);
+
+        List<SubscriptionInfo> subInfoList = mSubscriptionControllerUT
+                .getActiveSubscriptionInfoList(mContext.getOpPackageName());
+
+        // Revoke carrier privilege of sub 2 but make it manageable by caller.
+        doReturn(false).when(mTelephonyManager).hasCarrierPrivileges(2);
+        doReturn(true).when(mSubscriptionManager).canManageSubscription(
+                eq(subInfoList.get(1)), anyString());
+
+        String newGroupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertNotEquals(null, newGroupId);
+        assertNotEquals(groupId, newGroupId);
     }
 
     private void registerMockTelephonyRegistry() {
