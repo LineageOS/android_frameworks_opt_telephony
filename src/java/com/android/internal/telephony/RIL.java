@@ -165,6 +165,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private static final HalVersion RADIO_HAL_VERSION_1_3 = new HalVersion(1, 3);
 
+    private static final HalVersion RADIO_HAL_VERSION_1_4 = new HalVersion(1, 4);
+
     // IRadio version
     private HalVersion mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
 
@@ -401,10 +403,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         + " is disabled");
             } else {
                 try {
-                    mRadioProxy = android.hardware.radio.V1_3.IRadio.getService(
+                    mRadioProxy = android.hardware.radio.V1_4.IRadio.getService(
                             HIDL_SERVICE_NAME[mPhoneId], true);
-                    mRadioVersion = RADIO_HAL_VERSION_1_3;
+                    mRadioVersion = RADIO_HAL_VERSION_1_4;
                 } catch (NoSuchElementException e) {
+                }
+
+                if (mRadioProxy == null) {
+                    try {
+                        mRadioProxy = android.hardware.radio.V1_3.IRadio.getService(
+                                HIDL_SERVICE_NAME[mPhoneId], true);
+                        mRadioVersion = RADIO_HAL_VERSION_1_3;
+                    } catch (NoSuchElementException e) {
+                    }
                 }
 
                 if (mRadioProxy == null) {
@@ -1235,14 +1246,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
-     * Convert to DataProfileInfo defined in radio/1.3/types.hal
+     * Convert to DataProfileInfo defined in radio/1.4/types.hal
      * @param dp Data profile
      * @return A converted data profile
      */
-    private static android.hardware.radio.V1_3.DataProfileInfo convertToHalDataProfile13(
+    private static android.hardware.radio.V1_4.DataProfileInfo convertToHalDataProfile14(
             DataProfile dp) {
-        android.hardware.radio.V1_3.DataProfileInfo dpi =
-                new android.hardware.radio.V1_3.DataProfileInfo();
+        android.hardware.radio.V1_4.DataProfileInfo dpi =
+                new android.hardware.radio.V1_4.DataProfileInfo();
 
         dpi.apn = dp.getApn();
         dpi.protocol = dp.getProtocol();
@@ -1311,14 +1322,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_3)) {
-                    // IRadio V1.3
-                    android.hardware.radio.V1_3.IRadio radioProxy13 =
-                            (android.hardware.radio.V1_3.IRadio) radioProxy;
+                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+                    // IRadio V1.4
+                    android.hardware.radio.V1_4.IRadio radioProxy14 =
+                            (android.hardware.radio.V1_4.IRadio) radioProxy;
 
                     // Convert to HAL data profile
-                    android.hardware.radio.V1_3.DataProfileInfo dpi =
-                            convertToHalDataProfile13(dataProfile);
+                    android.hardware.radio.V1_4.DataProfileInfo dpi =
+                            convertToHalDataProfile14(dataProfile);
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
@@ -1327,10 +1338,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 + ",addresses=" + addresses + ",dnses=" + dnses);
                     }
 
-                    radioProxy13.setupDataCall_1_3(rr.mSerial, accessNetworkType, dpi, allowRoaming,
+                    radioProxy14.setupDataCall_1_4(rr.mSerial, accessNetworkType, dpi, allowRoaming,
                             reason, addresses, dnses);
                 } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
-                    // IRadio V1.2
+                    // IRadio V1.2 and IRadio V1.3
                     android.hardware.radio.V1_2.IRadio radioProxy12 =
                             (android.hardware.radio.V1_2.IRadio) radioProxy;
 
@@ -3144,14 +3155,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_3)) {
-                    // v1.3
-                    android.hardware.radio.V1_3.IRadio radioProxy13 =
-                            (android.hardware.radio.V1_3.IRadio) radioProxy;
-                    radioProxy13.setInitialAttachApn_1_3(rr.mSerial,
-                            convertToHalDataProfile13(dataProfile));
+                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+                    // v1.4
+                    android.hardware.radio.V1_4.IRadio radioProxy14 =
+                            (android.hardware.radio.V1_4.IRadio) radioProxy;
+                    radioProxy14.setInitialAttachApn_1_4(rr.mSerial,
+                            convertToHalDataProfile14(dataProfile));
                 } else {
-                    // v1.2, v1.1, and v1.0
+                    // v1.3, v1.2, v1.1, and v1.0
                     radioProxy.setInitialAttachApn(rr.mSerial,
                             convertToHalDataProfile10(dataProfile), dataProfile.isPersistent(),
                             isRoaming);
@@ -3544,17 +3555,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             RILRequest rr = null;
             try {
-                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_3)) {
-                    // V1.3
-                    android.hardware.radio.V1_3.IRadio radioProxy13 =
-                            (android.hardware.radio.V1_3.IRadio) radioProxy;
+                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+                    // V1.4
+                    android.hardware.radio.V1_4.IRadio radioProxy14 =
+                            (android.hardware.radio.V1_4.IRadio) radioProxy;
 
                     rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
                             mRILDefaultWorkSource);
 
-                    ArrayList<android.hardware.radio.V1_3.DataProfileInfo> dpis = new ArrayList<>();
+                    ArrayList<android.hardware.radio.V1_4.DataProfileInfo> dpis = new ArrayList<>();
                     for (DataProfile dp : dps) {
-                        dpis.add(convertToHalDataProfile13(dp));
+                        dpis.add(convertToHalDataProfile14(dp));
                     }
 
                     if (RILJ_LOGD) {
@@ -3565,9 +3576,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                     }
 
-                    radioProxy13.setDataProfile_1_3(rr.mSerial, dpis);
+                    radioProxy14.setDataProfile_1_4(rr.mSerial, dpis);
                 } else {
-                    // V1.0, 1.1, and 1.2
+                    // V1.0, 1.1, 1,2 and 1.3
                     ArrayList<android.hardware.radio.V1_0.DataProfileInfo> dpis = new ArrayList<>();
                     for (DataProfile dp : dps) {
                         // For v1.0 to v1.2, we only send data profiles that has the persistent
@@ -5806,10 +5817,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 TransportManager.IWLAN_OPERATION_MODE_DEFAULT);
 
         // If the operation mode is default, then we use the HAL version to determine it.
-        // On 1.3 or later version of IRadio, it is expected the device to support
+        // On 1.4 or later version of IRadio, it is expected the device to support
         // IWLAN AP-assisted mode.
         if (mode == TransportManager.IWLAN_OPERATION_MODE_DEFAULT) {
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_3)) {
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
                 return TransportManager.IWLAN_OPERATION_MODE_AP_ASSISTED;
             } else {
                 return TransportManager.IWLAN_OPERATION_MODE_LEGACY;
