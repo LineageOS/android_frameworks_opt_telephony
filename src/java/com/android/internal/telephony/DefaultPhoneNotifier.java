@@ -30,6 +30,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 
 import java.util.List;
 
@@ -182,7 +183,8 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             if (mRegistry != null) {
                 mRegistry.notifyDataConnectionForSubscriber(subId,
                     PhoneConstantConversions.convertDataState(state),
-                        sender.isDataAllowed(), reason,
+                        sender.isDataAllowed(ApnSetting.getApnTypesBitmaskFromString(apnType)),
+                        reason,
                         sender.getActiveApnHost(apnType),
                         apnType,
                         linkProperties,

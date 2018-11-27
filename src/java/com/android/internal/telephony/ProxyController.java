@@ -147,28 +147,11 @@ public class ProxyController {
         logd("Constructor - Exit");
     }
 
-    public void updateDataConnectionTracker(int sub) {
-        mPhones[sub].updateDataConnectionTracker();
-    }
-
-    public void enableDataConnectivity(int sub) {
-        mPhones[sub].setInternalDataEnabled(true, null);
-    }
-
-    public void disableDataConnectivity(int sub,
-            Message dataCleanedUpMsg) {
-        mPhones[sub].setInternalDataEnabled(false, dataCleanedUpMsg);
-    }
-
-    public void updateCurrentCarrierInProvider(int sub) {
-        mPhones[sub].updateCurrentCarrierInProvider();
-    }
-
-    public void registerForAllDataDisconnected(int subId, Handler h, int what, Object obj) {
+    public void registerForAllDataDisconnected(int subId, Handler h, int what) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
-            mPhones[phoneId].registerForAllDataDisconnected(h, what, obj);
+            mPhones[phoneId].registerForAllDataDisconnected(h, what);
         }
     }
 
@@ -177,17 +160,6 @@ public class ProxyController {
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
             mPhones[phoneId].unregisterForAllDataDisconnected(h);
-        }
-    }
-
-    public boolean isDataDisconnected(int subId) {
-        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
-
-        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
-            return mPhones[phoneId].mDcTracker.isDisconnected();
-        } else {
-            // if we can't find a phone for the given subId, it is disconnected.
-            return true;
         }
     }
 
