@@ -1729,7 +1729,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ArrayList<PhysicalChannelConfig> pc = new ArrayList<>();
         int ssType = PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
         for (int bw : bandwidths) {
-            pc.add(new PhysicalChannelConfig(ssType, bw));
+            pc.add(new PhysicalChannelConfig.Builder()
+                    .setCellConnectionStatus(ssType)
+                    .setCellBandwidthDownlinkKhz(bw)
+                    .build());
 
             // All cells after the first are secondary serving cells.
             ssType = PhysicalChannelConfig.CONNECTION_SECONDARY_SERVING;
