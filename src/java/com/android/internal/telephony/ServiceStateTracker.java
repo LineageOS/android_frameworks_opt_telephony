@@ -34,6 +34,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.hardware.radio.V1_0.CellInfoType;
+import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Build;
@@ -50,6 +51,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
@@ -82,6 +84,8 @@ import android.util.TimestampedValue;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
+import com.android.internal.telephony.dataconnection.DataConnection;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -1437,9 +1441,16 @@ public class ServiceStateTracker extends Handler {
                     }
                     mPhone.notifyPhysicalChannelConfiguration(list);
                     mLastPhysicalChannelConfigList = list;
+                    boolean hasChanged =
+                            updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS);
+                    hasChanged |= updateNrStatusFromPhysicalChannelConfigs(
+                            list,
+                            mSS.getNetworkRegistrationState(
+                                    NetworkRegistrationState.DOMAIN_PS, AccessNetworkType.EUTRAN));
 
-                    // only notify if bandwidths changed
-                    if (RatRatcheter.updateBandwidths(getBandwidthsFromConfigs(list), mSS)) {
+                    // Notify NR frequency, NR connection status or bandwidths changed.
+                    if (hasChanged
+                            || RatRatcheter.updateBandwidths(getBandwidthsFromConfigs(list), mSS)) {
                         mPhone.notifyServiceStateChanged(mSS);
                     }
                 }
@@ -1811,6 +1822,78 @@ public class ServiceStateTracker extends Handler {
         return cdmaRoaming && !isSameOperatorNameFromSimAndSS(s);
     }
 
+    private boolean isNrStatusChanged(
+            NetworkRegistrationState oldRegState, NetworkRegistrationState newRegState) {
+        if (oldRegState == null || newRegState == null) {
+            return oldRegState != newRegState;
+        }
+
+        return oldRegState.getNrStatus() != newRegState.getNrStatus();
+    }
+
+    private boolean updateNrFrequencyRangeFromPhysicalChannelConfigs(
+            List<PhysicalChannelConfig> physicalChannelConfigs, ServiceState ss) {
+        int newFrequencyRange = ServiceState.FREQUENCY_RANGE_UNKNOWN;
+
+        if (physicalChannelConfigs != null) {
+            DcTracker dcTracker = mPhone.getDcTracker(TransportType.WWAN);
+            for (PhysicalChannelConfig config : physicalChannelConfigs) {
+                if (isNrPhysicalChannelConfig(config)) {
+                    // Update the frequency range of the NR parameters if there is an internet data
+                    // connection associate to this NR physical channel channel config.
+                    int[] contextIds = config.getContextIds();
+                    for (int cid : contextIds) {
+                        DataConnection dc = dcTracker.getDataConnectionByContextId(cid);
+                        if (dc != null && dc.getNetworkCapabilities().hasCapability(
+                                NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                            newFrequencyRange = ServiceState.getBetterNRFrequencyRange(
+                                    newFrequencyRange, config.getFrequencyRange());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        boolean hasChanged = newFrequencyRange != ss.getNrFrequencyRange();
+        ss.setNrFrequencyRange(newFrequencyRange);
+        return hasChanged;
+    }
+
+    private boolean updateNrStatusFromPhysicalChannelConfigs(
+            List<PhysicalChannelConfig> configs, NetworkRegistrationState regState) {
+
+        if (regState == null || configs == null) return false;
+
+        boolean hasNrSecondaryServingCell = false;
+        for (PhysicalChannelConfig config : configs) {
+            if (isNrPhysicalChannelConfig(config) && config.getConnectionStatus()
+                    == PhysicalChannelConfig.CONNECTION_SECONDARY_SERVING) {
+                hasNrSecondaryServingCell = true;
+                break;
+            }
+        }
+
+        int newNrStatus = regState.getNrStatus();
+        if (hasNrSecondaryServingCell) {
+            if (regState.getNrStatus() == NetworkRegistrationState.NR_STATUS_NOT_RESTRICTED) {
+                newNrStatus = NetworkRegistrationState.NR_STATUS_CONNECTED;
+            }
+        } else {
+            if (regState.getNrStatus() == NetworkRegistrationState.NR_STATUS_CONNECTED) {
+                newNrStatus = NetworkRegistrationState.NR_STATUS_NOT_RESTRICTED;
+            }
+        }
+
+        boolean hasChanged = newNrStatus != regState.getNrStatus();
+        regState.setNrStatus(newNrStatus);
+        return hasChanged;
+    }
+
+    private boolean isNrPhysicalChannelConfig(PhysicalChannelConfig config) {
+        return config.getRat() == TelephonyManager.NETWORK_TYPE_NR;
+    }
+
     void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
         switch (what) {
@@ -1903,14 +1986,17 @@ public class ServiceStateTracker extends Handler {
                         networkRegState.getAccessNetworkTechnology());
                 mNewSS.setDataRegState(serviceState);
                 mNewSS.setRilDataRadioTechnology(newDataRat);
-                mNewSS.addNetworkRegistrationState(networkRegState);
 
                 // When we receive OOS reset the PhyChanConfig list so that non-return-to-idle
                 // implementers of PhyChanConfig unsol will not carry forward a CA report
                 // (2 or more cells) to a new cell if they camp for emergency service only.
                 if (serviceState == ServiceState.STATE_OUT_OF_SERVICE) {
                     mLastPhysicalChannelConfigList = null;
+                    updateNrFrequencyRangeFromPhysicalChannelConfigs(null, mNewSS);
                 }
+                updateNrStatusFromPhysicalChannelConfigs(
+                        mLastPhysicalChannelConfigList, networkRegState);
+                mNewSS.addNetworkRegistrationState(networkRegState);
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 if (mPhone.isPhoneTypeGsm()) {
@@ -2849,6 +2935,15 @@ public class ServiceStateTracker extends Handler {
         boolean hasVoiceRegStateChanged =
                 mSS.getVoiceRegState() != mNewSS.getVoiceRegState();
 
+        boolean hasNrFrequencyRangeChanged =
+                mSS.getNrFrequencyRange() != mNewSS.getNrFrequencyRange();
+
+        boolean hasNrStatusChanged = isNrStatusChanged(
+                mSS.getNetworkRegistrationState(
+                        NetworkRegistrationState.DOMAIN_PS, AccessNetworkType.EUTRAN),
+                mNewSS.getNetworkRegistrationState(
+                        NetworkRegistrationState.DOMAIN_PS, AccessNetworkType.EUTRAN));
+
         // TODO: loosen this restriction to exempt fields that are provided through system
         // information; otherwise, we will get false positives when things like the operator
         // alphas are provided later - that's better than missing location changes, but
@@ -2912,23 +3007,25 @@ public class ServiceStateTracker extends Handler {
 
         if (DBG) {
             log("pollStateDone:"
-                    + " hasRegistered=" + hasRegistered
-                    + " hasDeregistered=" + hasDeregistered
-                    + " hasDataAttached=" + hasDataAttached
-                    + " hasDataDetached=" + hasDataDetached
-                    + " hasDataRegStateChanged=" + hasDataRegStateChanged
-                    + " hasRilVoiceRadioTechnologyChanged= " + hasRilVoiceRadioTechnologyChanged
-                    + " hasRilDataRadioTechnologyChanged=" + hasRilDataRadioTechnologyChanged
-                    + " hasChanged=" + hasChanged
-                    + " hasVoiceRoamingOn=" + hasVoiceRoamingOn
-                    + " hasVoiceRoamingOff=" + hasVoiceRoamingOff
-                    + " hasDataRoamingOn=" + hasDataRoamingOn
-                    + " hasDataRoamingOff=" + hasDataRoamingOff
-                    + " hasLocationChanged=" + hasLocationChanged
+                    + " hasRegistered = " + hasRegistered
+                    + " hasDeregistered = " + hasDeregistered
+                    + " hasDataAttached = " + hasDataAttached
+                    + " hasDataDetached = " + hasDataDetached
+                    + " hasDataRegStateChanged = " + hasDataRegStateChanged
+                    + " hasRilVoiceRadioTechnologyChanged = " + hasRilVoiceRadioTechnologyChanged
+                    + " hasRilDataRadioTechnologyChanged = " + hasRilDataRadioTechnologyChanged
+                    + " hasChanged = " + hasChanged
+                    + " hasVoiceRoamingOn = " + hasVoiceRoamingOn
+                    + " hasVoiceRoamingOff = " + hasVoiceRoamingOff
+                    + " hasDataRoamingOn =" + hasDataRoamingOn
+                    + " hasDataRoamingOff = " + hasDataRoamingOff
+                    + " hasLocationChanged = " + hasLocationChanged
                     + " has4gHandoff = " + has4gHandoff
-                    + " hasMultiApnSupport=" + hasMultiApnSupport
-                    + " hasLostMultiApnSupport=" + hasLostMultiApnSupport
-                    + " hasCssIndicatorChanged=" + hasCssIndicatorChanged);
+                    + " hasMultiApnSupport = " + hasMultiApnSupport
+                    + " hasLostMultiApnSupport = " + hasLostMultiApnSupport
+                    + " hasCssIndicatorChanged = " + hasCssIndicatorChanged
+                    + " hasNrFrequencyRangeChanged = " + hasNrFrequencyRangeChanged
+                    + " hasNrStatusChanged = " + hasNrStatusChanged);
         }
 
         // Add an event log when connection state changes
