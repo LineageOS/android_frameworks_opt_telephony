@@ -128,8 +128,10 @@ public class PhoneStateListenerTest extends TelephonyTest {
 
         assertNull(mPhysicalChannelConfigs);
 
-        PhysicalChannelConfig config = new PhysicalChannelConfig(
-                PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING, 20000 /* bandwidth */);
+        PhysicalChannelConfig config = new PhysicalChannelConfig.Builder()
+                .setCellConnectionStatus(PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING)
+                .setCellBandwidthDownlinkKhz(20000 /* bandwidth */)
+                .build();
 
         List<PhysicalChannelConfig> configs = Collections.singletonList(config);
 
