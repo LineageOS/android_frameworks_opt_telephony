@@ -294,7 +294,10 @@ public class RadioIndication extends IRadioIndication.Stub {
                     break;
             }
 
-            response.add(new PhysicalChannelConfig(status, config.cellBandwidthDownlink));
+            response.add(new PhysicalChannelConfig.Builder()
+                    .setCellConnectionStatus(status)
+                    .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlink)
+                    .build());
         }
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
