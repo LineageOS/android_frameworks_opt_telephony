@@ -43,6 +43,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Data Connection Controller which is a package visible class and controls
@@ -314,7 +315,8 @@ public class DcController extends StateMachine {
                     continue;
                 }
 
-                if (dc.mApnContexts.size() == 0) {
+                List<ApnContext> apnContexts = dc.getApnContexts();
+                if (apnContexts.size() == 0) {
                     if (DBG) loge("onDataStateChanged: no connected apns, ignore");
                 } else {
                     // Determine if the connection/apnContext should be cleaned up
@@ -325,7 +327,7 @@ public class DcController extends StateMachine {
                     }
                     if (newState.getActive() == DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE) {
                         if (mDct.isCleanupRequired.get()) {
-                            apnsToCleanup.addAll(dc.mApnContexts.keySet());
+                            apnsToCleanup.addAll(apnContexts);
                             mDct.isCleanupRequired.set(false);
                         } else {
                             DcFailCause failCause = DcFailCause.fromInt(newState.getStatus());
@@ -341,7 +343,7 @@ public class DcController extends StateMachine {
                                     log("onDataStateChanged: inactive, add to cleanup list. "
                                             + "failCause=" + failCause);
                                 }
-                                apnsToCleanup.addAll(dc.mApnContexts.keySet());
+                                apnsToCleanup.addAll(apnContexts);
                             } else {
                                 if (DBG) {
                                     log("onDataStateChanged: inactive, add to retry list. "
@@ -382,16 +384,16 @@ public class DcController extends StateMachine {
                                     }
                                     if (needToClean) {
                                         if (DBG) {
-                                            log("onDataStateChanged: addr change," +
-                                                    " cleanup apns=" + dc.mApnContexts +
-                                                    " oldLp=" + result.oldLp +
-                                                    " newLp=" + result.newLp);
+                                            log("onDataStateChanged: addr change,"
+                                                    + " cleanup apns=" + apnContexts
+                                                    + " oldLp=" + result.oldLp
+                                                    + " newLp=" + result.newLp);
                                         }
-                                        apnsToCleanup.addAll(dc.mApnContexts.keySet());
+                                        apnsToCleanup.addAll(apnContexts);
                                     } else {
                                         if (DBG) log("onDataStateChanged: simple change");
 
-                                        for (ApnContext apnContext : dc.mApnContexts.keySet()) {
+                                        for (ApnContext apnContext : apnContexts) {
                                              mPhone.notifyDataConnection(
                                                  PhoneConstants.REASON_LINK_PROPERTIES_CHANGED,
                                                  apnContext.getApnType());
@@ -403,10 +405,10 @@ public class DcController extends StateMachine {
                                     }
                                 }
                             } else {
-                                apnsToCleanup.addAll(dc.mApnContexts.keySet());
+                                apnsToCleanup.addAll(apnContexts);
                                 if (DBG) {
                                     log("onDataStateChanged: interface change, cleanup apns="
-                                            + dc.mApnContexts);
+                                            + apnContexts);
                                 }
                             }
                         }

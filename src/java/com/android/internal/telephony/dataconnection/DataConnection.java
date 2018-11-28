@@ -78,9 +78,12 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -189,7 +192,7 @@ public class DataConnection extends StateMachine {
 
     int mTag;
     public int mCid;
-    public HashMap<ApnContext, ConnectionParams> mApnContexts = null;
+    private final Map<ApnContext, ConnectionParams> mApnContexts = new ConcurrentHashMap<>();
     PendingIntent mReconnectIntent = null;
 
 
@@ -489,8 +492,6 @@ public class DataConnection extends StateMachine {
             addState(mDisconnectingState, mDefaultState);
             addState(mDisconnectingErrorCreatingConnection, mDefaultState);
         setInitialState(mInactiveState);
-
-        mApnContexts = new HashMap<>();
     }
 
     /**
@@ -1282,7 +1283,7 @@ public class DataConnection extends StateMachine {
                 mAc.disconnected();
                 mAc = null;
             }
-            mApnContexts = null;
+            mApnContexts.clear();
             mReconnectIntent = null;
             mDct = null;
             mApnSetting = null;
@@ -2449,6 +2450,10 @@ public class DataConnection extends StateMachine {
         // We need to cast it to long because the value returned from RIL is a 32-bit integer,
         // but the time values used in AlarmManager are all 64-bit long.
         return (long) response.getSuggestedRetryTime();
+    }
+
+    public List<ApnContext> getApnContexts() {
+        return new ArrayList<>(mApnContexts.keySet());
     }
 
     /**
