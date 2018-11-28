@@ -357,10 +357,10 @@ public class RadioConfig extends Handler {
         return response;
     }
 
-    static ArrayList<IccSlotStatus> convertHalSlotStatus_1_1(
-            ArrayList<android.hardware.radio.config.V1_1.SimSlotStatus> halSlotStatusList) {
+    static ArrayList<IccSlotStatus> convertHalSlotStatus_1_2(
+            ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus> halSlotStatusList) {
         ArrayList<IccSlotStatus> response = new ArrayList<IccSlotStatus>(halSlotStatusList.size());
-        for (android.hardware.radio.config.V1_1.SimSlotStatus slotStatus : halSlotStatusList) {
+        for (android.hardware.radio.config.V1_2.SimSlotStatus slotStatus : halSlotStatusList) {
             IccSlotStatus iccSlotStatus = new IccSlotStatus();
             iccSlotStatus.setCardState(slotStatus.base.cardState);
             iccSlotStatus.setSlotState(slotStatus.base.slotState);
