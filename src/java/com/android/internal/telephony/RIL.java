@@ -48,6 +48,8 @@ import android.hardware.radio.V1_0.SimApdu;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
 import android.hardware.radio.V1_2.AccessNetwork;
+import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
+import android.hardware.radio.V1_4.SimLockMultiSimPolicy;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
 import android.net.KeepalivePacketData;
@@ -65,6 +67,7 @@ import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
@@ -612,7 +615,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         resetProxyAndRequestList();
     }
 
-    private String convertNullToEmptyString(String string) {
+    private static String convertNullToEmptyString(String string) {
         return string != null ? string : "";
     }
 
@@ -3843,62 +3846,121 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     }
 
+    /**
+     * Convert a list of CarrierIdentifier into a list of Carrier defined in 1.0/types.hal.
+     * @param carriers List of CarrierIdentifier
+     * @return List of converted objects
+     */
+    @VisibleForTesting
+    public static ArrayList<Carrier> createCarrierRestrictionList(
+            List<CarrierIdentifier> carriers) {
+        ArrayList<Carrier> result = new ArrayList<>();
+        for (CarrierIdentifier ci : carriers) {
+            Carrier c = new Carrier();
+            c.mcc = convertNullToEmptyString(ci.getMcc());
+            c.mnc = convertNullToEmptyString(ci.getMnc());
+            int matchType = CarrierIdentifier.MatchType.ALL;
+            String matchData = null;
+            if (!TextUtils.isEmpty(ci.getSpn())) {
+                matchType = CarrierIdentifier.MatchType.SPN;
+                matchData = ci.getSpn();
+            } else if (!TextUtils.isEmpty(ci.getImsi())) {
+                matchType = CarrierIdentifier.MatchType.IMSI_PREFIX;
+                matchData = ci.getImsi();
+            } else if (!TextUtils.isEmpty(ci.getGid1())) {
+                matchType = CarrierIdentifier.MatchType.GID1;
+                matchData = ci.getGid1();
+            } else if (!TextUtils.isEmpty(ci.getGid2())) {
+                matchType = CarrierIdentifier.MatchType.GID2;
+                matchData = ci.getGid2();
+            }
+            c.matchType = matchType;
+            c.matchData = convertNullToEmptyString(matchData);
+            result.add(c);
+        }
+        return result;
+    }
+
     @Override
-    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result,
-            WorkSource workSource) {
-        checkNotNull(carriers, "Allowed carriers list cannot be null.");
+    public void setAllowedCarriers(CarrierRestrictionRules carrierRestrictionRules,
+            Message result, WorkSource workSource) {
+        riljLog("RIL.java - setAllowedCarriers");
+
+        checkNotNull(carrierRestrictionRules, "Carrier restriction cannot be null.");
         workSource = getDeafultWorkSourceIfInvalid(workSource);
 
         IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_SET_ALLOWED_CARRIERS, result,
-                    workSource);
+        if (radioProxy == null) {
+            return;
+        }
 
-            if (RILJ_LOGD) {
-                String logStr = "";
-                for (int i = 0; i < carriers.size(); i++) {
-                    logStr = logStr + carriers.get(i) + " ";
-                }
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " carriers = "
-                        + logStr);
-            }
+        RILRequest rr = obtainRequest(RIL_REQUEST_SET_ALLOWED_CARRIERS, result, workSource);
 
-            boolean allAllowed;
-            if (carriers.size() == 0) {
-                allAllowed = true;
-            } else {
-                allAllowed = false;
-            }
-            CarrierRestrictions carrierList = new CarrierRestrictions();
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " params: "
+                    + carrierRestrictionRules);
+        }
 
-            for (CarrierIdentifier ci : carriers) { /* allowed carriers */
-                Carrier c = new Carrier();
-                c.mcc = convertNullToEmptyString(ci.getMcc());
-                c.mnc = convertNullToEmptyString(ci.getMnc());
-                int matchType = CarrierIdentifier.MatchType.ALL;
-                String matchData = null;
-                if (!TextUtils.isEmpty(ci.getSpn())) {
-                    matchType = CarrierIdentifier.MatchType.SPN;
-                    matchData = ci.getSpn();
-                } else if (!TextUtils.isEmpty(ci.getImsi())) {
-                    matchType = CarrierIdentifier.MatchType.IMSI_PREFIX;
-                    matchData = ci.getImsi();
-                } else if (!TextUtils.isEmpty(ci.getGid1())) {
-                    matchType = CarrierIdentifier.MatchType.GID1;
-                    matchData = ci.getGid1();
-                } else if (!TextUtils.isEmpty(ci.getGid2())) {
-                    matchType = CarrierIdentifier.MatchType.GID2;
-                    matchData = ci.getGid2();
-                }
-                c.matchType = matchType;
-                c.matchData = convertNullToEmptyString(matchData);
-                carrierList.allowedCarriers.add(c);
-            }
+        // Extract multisim policy
+        int policy = SimLockMultiSimPolicy.NO_MULTISIM_POLICY;
+        switch (carrierRestrictionRules.getMultiSimPolicy()) {
+            case CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT:
+                policy = SimLockMultiSimPolicy.ONE_VALID_SIM_MUST_BE_PRESENT;
+                break;
+        }
 
-            /* TODO: add excluded carriers */
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+            riljLog("RIL.java - Using IRadio 1.4 or greater");
+
+            android.hardware.radio.V1_4.IRadio radioProxy14 =
+                    (android.hardware.radio.V1_4.IRadio) radioProxy;
+
+            // Prepare structure with allowed list, excluded list and priority
+            CarrierRestrictionsWithPriority carrierRestrictions =
+                    new CarrierRestrictionsWithPriority();
+            carrierRestrictions.allowedCarriers =
+                    createCarrierRestrictionList(carrierRestrictionRules.getAllowedCarriers());
+            carrierRestrictions.excludedCarriers =
+                    createCarrierRestrictionList(carrierRestrictionRules.getExcludedCarriers());
+            carrierRestrictions.allowedCarriersPrioritized =
+                    (carrierRestrictionRules.getDefaultCarrierRestriction()
+                        == CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED);
 
             try {
-                radioProxy.setAllowedCarriers(rr.mSerial, allAllowed, carrierList);
+                radioProxy14.setAllowedCarriers_1_4(rr.mSerial, carrierRestrictions, policy);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "setAllowedCarriers_1_4", e);
+            }
+        } else {
+            boolean isAllCarriersAllowed = carrierRestrictionRules.isAllCarriersAllowed();
+
+            boolean supported = (isAllCarriersAllowed
+                    || (carrierRestrictionRules.getExcludedCarriers().isEmpty()
+                        && (carrierRestrictionRules.getDefaultCarrierRestriction()
+                            == CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED)));
+            supported = supported && (policy == SimLockMultiSimPolicy.NO_MULTISIM_POLICY);
+
+            if (!supported) {
+                // Feature is not supported by IRadio interface
+                riljLoge("setAllowedCarriers does not support excluded list on IRadio version"
+                        + " less than 1.4");
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+                return;
+            }
+            riljLog("RIL.java - Using IRadio 1.3 or lower");
+
+            // Prepare structure with allowed list
+            CarrierRestrictions carrierRestrictions = new CarrierRestrictions();
+            carrierRestrictions.allowedCarriers =
+                    createCarrierRestrictionList(carrierRestrictionRules.getAllowedCarriers());
+
+            try {
+                radioProxy.setAllowedCarriers(rr.mSerial, isAllCarriersAllowed,
+                        carrierRestrictions);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setAllowedCarriers", e);
             }
@@ -3910,13 +3972,30 @@ public class RIL extends BaseCommands implements CommandsInterface {
         workSource = getDeafultWorkSourceIfInvalid(workSource);
 
         IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_ALLOWED_CARRIERS, result,
-                    workSource);
+        if (radioProxy == null) {
+            return;
+        }
 
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        RILRequest rr = obtainRequest(RIL_REQUEST_GET_ALLOWED_CARRIERS, result,
+                workSource);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+            riljLog("RIL.java - Using IRadio 1.4 or greater");
+
+            android.hardware.radio.V1_4.IRadio radioProxy14 =
+                    (android.hardware.radio.V1_4.IRadio) radioProxy;
+
+            try {
+                radioProxy14.getAllowedCarriers_1_4(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "getAllowedCarriers_1_4", e);
             }
+        } else {
+            riljLog("RIL.java - Using IRadio 1.3 or lower");
 
             try {
                 radioProxy.getAllowedCarriers(rr.mSerial);
