@@ -38,6 +38,7 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNK
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.os.Build;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyHistogram;
@@ -431,6 +432,7 @@ public class TelephonyMetrics {
         pw.println("Amount of time modem is in rx (ms): " + s.rxTimeMs);
         pw.println("Amount of time modem is in tx (ms): " + Arrays.toString(s.txTimeMs));
         pw.decreaseIndent();
+        pw.println("Hardware Version: " + SystemProperties.get("ro.boot.revision", ""));
     }
 
     /**
@@ -526,6 +528,9 @@ public class TelephonyMetrics {
 
         // Build modem power metrics
         log.modemPowerStats = new ModemPowerMetrics().buildProto();
+
+        // Log the hardware revision
+        log.hardwareRevision = SystemProperties.get("ro.boot.revision", "");
 
         // Log the starting system time
         log.startTime = new TelephonyProto.Time();
@@ -1761,9 +1766,12 @@ public class TelephonyMetrics {
      * @param isCMAS true if msg is CMAS
      * @param isETWS true if msg is ETWS
      * @param serviceCategory Service category of CB msg
+     * @param serialNumber Serial number of the message
+     * @param deliveredTimestamp Message's delivered timestamp
      */
     public synchronized void writeNewCBSms(int phoneId, int format, int priority, boolean isCMAS,
-                                           boolean isETWS, int serviceCategory) {
+                                           boolean isETWS, int serviceCategory, int serialNumber,
+                                           long deliveredTimestamp) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
 
         int type;
@@ -1780,6 +1788,8 @@ public class TelephonyMetrics {
         cbm.msgPriority = priority + 1;
         cbm.msgType = type;
         cbm.serviceCategory = serviceCategory;
+        cbm.serialNumber = serialNumber;
+        cbm.deliveredTimestampMillis = deliveredTimestamp;
 
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.CB_SMS_RECEIVED)
                 .setCellBroadcastMessage(cbm)

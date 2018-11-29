@@ -642,14 +642,17 @@ public class UiccController extends Handler {
 
         boolean changed = false;
         switch(resp.refreshResult) {
+            // Reset the required apps when we know about the refresh so that
+            // anyone interested does not get stale state.
             case IccRefreshResponse.REFRESH_RESULT_RESET:
+                changed = uiccCard.resetAppWithAid(resp.aid, true /* disposeCatService */);
+                break;
             case IccRefreshResponse.REFRESH_RESULT_INIT:
-                 // Reset the required apps when we know about the refresh so that
-                 // anyone interested does not get stale state.
-                 changed = uiccCard.resetAppWithAid(resp.aid);
-                 break;
+                // don't dispose CatService on SIM REFRESH of type INIT
+                changed = uiccCard.resetAppWithAid(resp.aid, false /* disposeCatService */);
+                break;
             default:
-                 return;
+                return;
         }
 
         if (changed && resp.refreshResult == IccRefreshResponse.REFRESH_RESULT_RESET) {

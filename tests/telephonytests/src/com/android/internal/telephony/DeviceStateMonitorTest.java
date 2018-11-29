@@ -124,4 +124,12 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier, times(1)).sendDeviceState(eq(CHARGING_STATE),
                 eq(false), nullable(Message.class));
     }
+
+    @FlakyTest
+    public void testReset() throws Exception {
+        mDSM.obtainMessage(6).sendToTarget();
+
+        verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(-1),
+                nullable(Message.class));
+    }
 }

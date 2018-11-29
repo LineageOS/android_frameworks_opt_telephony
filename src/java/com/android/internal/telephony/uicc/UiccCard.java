@@ -230,13 +230,13 @@ public class UiccCard {
      *
      * A null aid implies a card level reset - all applications must be reset.
      *
-     * @deprecated Please use {@link UiccProfile#resetAppWithAid(String)} instead.
+     * @deprecated Please use {@link UiccProfile#resetAppWithAid(String, boolean)} instead.
      */
     @Deprecated
-    public boolean resetAppWithAid(String aid) {
+    public boolean resetAppWithAid(String aid, boolean disposeCatService) {
         synchronized (mLock) {
             if (mUiccProfile != null) {
-                return mUiccProfile.resetAppWithAid(aid);
+                return mUiccProfile.resetAppWithAid(aid, disposeCatService);
             } else {
                 return false;
             }
