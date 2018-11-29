@@ -469,6 +469,54 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertNotEquals(groupId, newGroupId);
     }
 
+    @Test
+    @SmallTest
+    public void testDisabledSubscriptionGroup() throws Exception {
+        registerMockTelephonyRegistry();
+
+        testInsertSim();
+        // Adding a second profile and mark as embedded.
+        mSubscriptionControllerUT.addSubInfoRecord("test2", 0);
+
+        ContentValues values = new ContentValues();
+        values.put(SubscriptionManager.IS_EMBEDDED, 1);
+        values.put(SubscriptionManager.IS_OPPORTUNISTIC, 1);
+        mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + 2, null);
+        mSubscriptionControllerUT.refreshCachedActiveSubscriptionInfoList();
+
+        verify(mTelephonyRegisteryMock, times(1))
+                .notifyOpportunisticSubscriptionInfoChanged();
+
+        // Set sub 1 and 2 into same group.
+        int[] subIdList = new int[] {1, 2};
+        String groupId = mSubscriptionControllerUT.setSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertNotEquals(null, groupId);
+
+        verify(mTelephonyRegisteryMock, times(2))
+                .notifyOpportunisticSubscriptionInfoChanged();
+        List<SubscriptionInfo> opptSubList = mSubscriptionControllerUT
+                .getOpportunisticSubscriptions(mCallingPackage);
+        assertEquals(1, opptSubList.size());
+        assertEquals(2, opptSubList.get(0).getSubscriptionId());
+        assertEquals(false, opptSubList.get(0).isGroupDisabled());
+
+        // Unplug SIM 1. This should trigger subscription controller disabling sub 2.
+        values = new ContentValues();
+        values.put(SubscriptionManager.SIM_SLOT_INDEX, -1);
+        mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + 1, null);
+        mSubscriptionControllerUT.refreshCachedActiveSubscriptionInfoList();
+
+        verify(mTelephonyRegisteryMock, times(3))
+                .notifyOpportunisticSubscriptionInfoChanged();
+        opptSubList = mSubscriptionControllerUT.getOpportunisticSubscriptions(mCallingPackage);
+        assertEquals(1, opptSubList.size());
+        assertEquals(2, opptSubList.get(0).getSubscriptionId());
+        assertEquals(true, opptSubList.get(0).isGroupDisabled());
+    }
+
     private void registerMockTelephonyRegistry() {
         mServiceManagerMockedServices.put("telephony.registry", mTelephonyRegisteryMock);
         doReturn(mTelephonyRegisteryMock).when(mTelephonyRegisteryMock)
