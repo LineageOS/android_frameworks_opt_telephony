@@ -36,6 +36,7 @@ import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
 
 import java.util.HashMap;
@@ -61,6 +62,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     private volatile boolean mIsImsServiceUp;
     private volatile boolean mIsRegistered;
     private final ImsManager.Connector mImsManagerConnector;
+    /** Telephony metrics instance for logging metrics event */
+    private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
+
     /**
      * Listen to the IMS service state change
      *
@@ -112,6 +116,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 int reason) throws RemoteException {
             Rlog.d(TAG, "onSendSmsResult token=" + token + " messageRef=" + messageRef
                     + " status=" + status + " reason=" + reason);
+            mMetrics.writeOnImsServiceSmsSolicitedResponse(mPhone.getPhoneId(), status, reason);
             SmsTracker tracker = mTrackers.get(token);
             if (tracker == null) {
                 throw new IllegalArgumentException("Invalid token.");
@@ -165,8 +170,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         }
 
         @Override
-        public void onSmsReceived(int token, String format, byte[] pdu)
-                throws RemoteException {
+        public void onSmsReceived(int token, String format, byte[] pdu) {
             Rlog.d(TAG, "SMS received.");
             android.telephony.SmsMessage message =
                     android.telephony.SmsMessage.createFromPdu(pdu, format);
@@ -199,6 +203,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
                 }
             }, true);
+            mMetrics.writeImsServiceNewSms(mPhone.getPhoneId(), format);
         }
     };
 
@@ -339,8 +344,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         byte[] pdu = (byte[]) map.get(MAP_KEY_PDU);
         byte smsc[] = (byte[]) map.get(MAP_KEY_SMSC);
         boolean isRetry = tracker.mRetryCount > 0;
+        String format = getFormat();
 
-        if (SmsConstants.FORMAT_3GPP.equals(getFormat()) && tracker.mRetryCount > 0) {
+        if (SmsConstants.FORMAT_3GPP.equals(format) && tracker.mRetryCount > 0) {
             // per TS 23.040 Section 9.2.3.6:  If TP-MTI SMS-SUBMIT (0x01) type
             //   TP-RD (bit 2) is 1 for retry
             //   and TP-MR is set to previously failed sms TP-MR
@@ -356,10 +362,11 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             getImsManager().sendSms(
                     token,
                     tracker.mMessageRef,
-                    getFormat(),
+                    format,
                     smsc != null ? new String(smsc) : null,
                     isRetry,
                     pdu);
+            mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format);
         } catch (ImsException e) {
             Rlog.e(TAG, "sendSms failed. Falling back to PSTN. Error: " + e.getMessage());
             fallbackToPstn(token, tracker);
