@@ -857,26 +857,41 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public void requestEmbeddedSubscriptionInfoListRefresh() {
+    public void requestEmbeddedSubscriptionInfoListRefresh(int cardId) {
         mContext.enforceCallingOrSelfPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS,
                 "requestEmbeddedSubscriptionInfoListRefresh");
         long token = Binder.clearCallingIdentity();
         try {
-            PhoneFactory.requestEmbeddedSubscriptionInfoListRefresh(null /* callback */);
+            PhoneFactory.requestEmbeddedSubscriptionInfoListRefresh(cardId, null /* callback */);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
     /**
-     * Asynchronously refresh the embedded subscription info list.
+     * Asynchronously refresh the embedded subscription info list for the embedded card has the
+     * given card id {@code cardId}.
+     *
+     * @param callback Optional callback to execute after the refresh completes. Must terminate
+     *     quickly as it will be called from SubscriptionInfoUpdater's handler thread.
+     */
+    // No permission check needed as this is not exposed via AIDL.
+    public void requestEmbeddedSubscriptionInfoListRefresh(
+            int cardId, @Nullable Runnable callback) {
+        PhoneFactory.requestEmbeddedSubscriptionInfoListRefresh(cardId, callback);
+    }
+
+    /**
+     * Asynchronously refresh the embedded subscription info list for the embedded card has the
+     * default card id return by {@link TelephonyManager#getCardIdForDefaultEuicc()}.
      *
      * @param callback Optional callback to execute after the refresh completes. Must terminate
      *     quickly as it will be called from SubscriptionInfoUpdater's handler thread.
      */
     // No permission check needed as this is not exposed via AIDL.
     public void requestEmbeddedSubscriptionInfoListRefresh(@Nullable Runnable callback) {
-        PhoneFactory.requestEmbeddedSubscriptionInfoListRefresh(callback);
+        PhoneFactory.requestEmbeddedSubscriptionInfoListRefresh(
+                mTelephonyManager.getCardIdForDefaultEuicc(), callback);
     }
 
     /**

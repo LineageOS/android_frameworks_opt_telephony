@@ -503,15 +503,17 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     /**
-     * Blocking call to {@link EuiccService#onGetEuiccProfileInfoList}.
+     * Blocking call to {@link EuiccService#onGetEuiccProfileInfoList} of the eUICC with card ID
+     * {@code cardId}.
      *
      * <p>Does not perform permission checks as this is not an exposed API and is only used within
      * the phone process.
      */
-    public GetEuiccProfileInfoListResult blockingGetEuiccProfileInfoList() {
+    public GetEuiccProfileInfoListResult blockingGetEuiccProfileInfoList(int cardId) {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<GetEuiccProfileInfoListResult> resultRef = new AtomicReference<>();
         mConnector.getEuiccProfileInfoList(
+                cardId,
                 new EuiccConnector.GetEuiccProfileInfoListCommandCallback() {
                     @Override
                     public void onListComplete(GetEuiccProfileInfoListResult result) {

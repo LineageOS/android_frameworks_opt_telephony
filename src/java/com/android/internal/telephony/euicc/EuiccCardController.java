@@ -478,7 +478,9 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onResult(Void result) {
                 Log.i(TAG, "Request subscription info list refresh after delete.");
-                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh();
+                SubscriptionController.getInstance()
+                        .requestEmbeddedSubscriptionInfoListRefresh(
+                                mUiccController.convertToPublicCardId(cardId));
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK);
                 } catch (RemoteException exception) {
@@ -528,7 +530,9 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onResult(Void result) {
                 Log.i(TAG, "Request subscription info list refresh after reset memory.");
-                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh();
+                SubscriptionController.getInstance()
+                        .requestEmbeddedSubscriptionInfoListRefresh(
+                                mUiccController.convertToPublicCardId(cardId));
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK);
                 } catch (RemoteException exception) {
@@ -1015,7 +1019,9 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onResult(byte[] result) {
                 Log.i(TAG, "Request subscription info list refresh after install.");
-                SubscriptionController.getInstance().requestEmbeddedSubscriptionInfoListRefresh();
+                SubscriptionController.getInstance()
+                        .requestEmbeddedSubscriptionInfoListRefresh(
+                                mUiccController.convertToPublicCardId(cardId));
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {
