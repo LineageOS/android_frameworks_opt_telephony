@@ -47,6 +47,9 @@ message TelephonyLog {
 
   // Modem power stats
   optional ModemPowerStats modem_power_stats = 8;
+
+  // Hardware revision (EVT, DVT, PVT etc.)
+  optional string hardware_revision = 9;
 }
 
 // The time information
@@ -1355,6 +1358,12 @@ message SmsSession {
 
       // Service category of CB message
       optional int32 service_category = 4;
+
+      // Message's serial number
+      optional int32 serial_number = 5;
+
+      // The delivered time (UTC) of the message
+      optional int64 delivered_timestamp_millis = 6;
     }
 
     enum CBMessageType {
