@@ -43,6 +43,7 @@ import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.provider.Settings;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -347,7 +348,7 @@ public abstract class TelephonyTest {
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
                 .makeIccPhoneBookInterfaceManager(nullable(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory)
-                .makeDcTracker(nullable(Phone.class));
+                .makeDcTracker(nullable(Phone.class), anyInt());
         doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory)
                 .makeWspTypeDecoder(nullable(byte[].class));
         doReturn(mImsCT).when(mTelephonyComponentFactory)
@@ -384,7 +385,6 @@ public abstract class TelephonyTest {
         doReturn(mServiceState).when(mPhone).getServiceState();
         doReturn(mServiceState).when(mImsPhone).getServiceState();
         doReturn(mPhone).when(mImsPhone).getDefaultPhone();
-        mPhone.mDcTracker = mDcTracker;
         doReturn(true).when(mDcTracker).isDataEnabled();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
@@ -395,6 +395,7 @@ public abstract class TelephonyTest {
         doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
         doReturn(mIccSmsInterfaceManager).when(mPhone).getIccSmsInterfaceManager();
         doReturn(mTransportManager).when(mPhone).getTransportManager();
+        doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
         mPhone.mEriManager = mEriManager;
 
@@ -467,6 +468,9 @@ public abstract class TelephonyTest {
         mSST.mSS = mServiceState;
         mSST.mRestrictedState = mRestrictedState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
+        doReturn(new int[]{TransportType.WWAN, TransportType.WLAN})
+                .when(mTransportManager).getAvailableTransports();
+        doReturn(TransportType.WWAN).when(mTransportManager).getCurrentTransport(anyInt());
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();

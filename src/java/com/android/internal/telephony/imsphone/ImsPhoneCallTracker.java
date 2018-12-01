@@ -46,6 +46,7 @@ import android.provider.Settings;
 import android.telecom.ConferenceParticipant;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -53,7 +54,6 @@ import android.telephony.PreciseDisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
-import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
@@ -2827,7 +2827,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             // Check with the DCTracker to see if data is enabled; there may be a case when
             // ImsPhoneCallTracker isn't being informed of the right data enabled state via its
             // registration, so we'll refresh now.
-            boolean isDataEnabled = mPhone.getDefaultPhone().mDcTracker.isDataEnabled();
+            boolean isDataEnabled = false;
+            if (mPhone.getDefaultPhone().getDcTracker(TransportType.WWAN) != null) {
+                isDataEnabled = mPhone.getDefaultPhone().getDcTracker(TransportType.WWAN)
+                        .isDataEnabled();
+            }
+
             if (DBG) {
                 log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech="
                         + targetAccessTech + ", reasonInfo=" + reasonInfo + ", dataEnabled="

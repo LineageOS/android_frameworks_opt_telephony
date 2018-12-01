@@ -25,6 +25,7 @@ import android.net.StringNetworkSpecifier;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Rlog;
 import android.util.LocalLog;
 
@@ -83,7 +84,9 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         mPhoneSwitcher = PhoneSwitcher.getInstance();
         mSubscriptionMonitor = subscriptionMonitor;
         LOG_TAG = "TelephonyNetworkFactory[" + mPhone.getPhoneId() + "]";
-        mDcTracker = mPhone.mDcTracker;
+        // TODO: Will need to dynamically route network requests to the corresponding DcTracker in
+        // the future. For now we route everything to WWAN.
+        mDcTracker = mPhone.getDcTracker(TransportType.WWAN);
 
         mIsActive = false;
         mPhoneSwitcher.registerForActivePhoneSwitch(mInternalHandler, EVENT_ACTIVE_PHONE_SWITCH,
