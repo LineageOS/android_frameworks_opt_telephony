@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
-import android.hardware.radio.config.V1_1.PhoneCapability;
 import android.hardware.radio.config.V1_2.IRadioConfigResponse;
 import android.telephony.Rlog;
 
@@ -111,16 +110,5 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
         }
     }
 
-    /**
-     * Response function for IRadioConfig.getPhoneCapability().
-     */
-    public void getPhoneCapabilityResponse(RadioResponseInfo info,
-            PhoneCapability phoneCapability) {
-    }
 
-    /**
-     * Response function for IRadioConfig.setPreferredDataModem().
-     */
-    public void setPreferredDataModemResponse(RadioResponseInfo info) {
-    }
 }
