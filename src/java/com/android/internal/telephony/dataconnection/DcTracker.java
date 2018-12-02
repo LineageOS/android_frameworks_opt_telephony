@@ -2074,7 +2074,7 @@ public class DcTracker extends Handler {
     private void restartRadio() {
         if (DBG) log("restartRadio: ************TURN OFF RADIO**************");
         cleanUpAllConnections(true, Phone.REASON_RADIO_TURNED_OFF);
-        mPhone.getServiceStateTracker().powerOffRadioSafely(this);
+        mPhone.getServiceStateTracker().powerOffRadioSafely();
         /* Note: no need to call setRadioPower(true).  Assuming the desired
          * radio power state is still ON (as tracked by ServiceStateTracker),
          * ServiceStateTracker will call setRadioPower when it receives the
@@ -3918,10 +3918,6 @@ public class DcTracker extends Handler {
         cleanUpAllConnections(cause, null);
     }
 
-    public void updateRecords() {
-        onUpdateIcc();
-    }
-
     public void cleanUpAllConnections(String cause, Message disconnectAllCompleteMsg) {
         log("cleanUpAllConnections");
         if (disconnectAllCompleteMsg != null) {
@@ -3948,8 +3944,8 @@ public class DcTracker extends Handler {
         mAllDataDisconnectedRegistrants.notifyRegistrants();
     }
 
-    public void registerForAllDataDisconnected(Handler h, int what, Object obj) {
-        mAllDataDisconnectedRegistrants.addUnique(h, what, obj);
+    public void registerForAllDataDisconnected(Handler h, int what) {
+        mAllDataDisconnectedRegistrants.addUnique(h, what, null);
 
         if (isDisconnected()) {
             log("notify All Data Disconnected");

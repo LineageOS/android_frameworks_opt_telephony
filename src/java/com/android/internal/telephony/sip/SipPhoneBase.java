@@ -441,7 +441,7 @@ abstract class SipPhoneBase extends Phone {
     }
 
     @Override
-    public boolean isDataAllowed() {
+    public boolean isDataAllowed(int apnType) {
         return false;
     }
 
