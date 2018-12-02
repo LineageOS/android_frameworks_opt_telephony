@@ -303,8 +303,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.MNC_STRING));
         String cardId = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.CARD_ID));
-        // FIXME: consider stick this into database too
-        String countryIso = getSubscriptionCountryIso(id);
+        String countryIso = cursor.getString(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.ISO_COUNTRY_CODE));
         boolean isEmbedded = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_EMBEDDED)) == 1;
         UiccAccessRule[] accessRules;
@@ -341,20 +341,6 @@ public class SubscriptionController extends ISub.Stub {
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
                 isEmbedded, accessRules, cardId, isOpportunistic, groupUUID, isMetered);
-    }
-
-    /**
-     * Get ISO country code for the subscription's provider
-     *
-     * @param subId The subscription ID
-     * @return The ISO country code for the subscription's provider
-     */
-    private String getSubscriptionCountryIso(int subId) {
-        final int phoneId = getPhoneId(subId);
-        if (phoneId < 0) {
-            return "";
-        }
-        return mTelephonyManager.getSimCountryIsoForPhone(phoneId);
     }
 
     /**
@@ -1385,6 +1371,27 @@ public class SubscriptionController extends ISub.Stub {
 
         notifySubscriptionInfoChanged();
 
+        return result;
+    }
+
+    /**
+     * Set ISO country code by subscription ID
+     * @param iso iso country code associated with the subscription
+     * @param subId the unique SubInfoRecord index in database
+     * @return the number of records updated
+     */
+    public int setCountryIso(String iso, int subId) {
+        if (DBG) logd("[setCountryIso]+ iso:" + iso + " subId:" + subId);
+        ContentValues value = new ContentValues();
+        value.put(SubscriptionManager.ISO_COUNTRY_CODE, iso);
+
+        int result = mContext.getContentResolver().update(
+                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+
+        // Refresh the Cache of Active Subscription Info List
+        refreshCachedActiveSubscriptionInfoList();
+
+        notifySubscriptionInfoChanged();
         return result;
     }
 
