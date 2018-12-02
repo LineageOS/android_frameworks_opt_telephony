@@ -363,6 +363,7 @@ public class GsmCdmaPhone extends Phone {
         if (TextUtils.isEmpty(operatorNumeric)) {
             logd("setIsoCountryProperty: clear 'gsm.sim.operator.iso-country'");
             tm.setSimCountryIsoForPhone(mPhoneId, "");
+            SubscriptionController.getInstance().setCountryIso("", getSubId());
         } else {
             String iso = "";
             try {
@@ -373,6 +374,7 @@ public class GsmCdmaPhone extends Phone {
 
             logd("setIsoCountryProperty: set 'gsm.sim.operator.iso-country' to iso=" + iso);
             tm.setSimCountryIsoForPhone(mPhoneId, iso);
+            SubscriptionController.getInstance().setCountryIso(iso, getSubId());
         }
     }
 

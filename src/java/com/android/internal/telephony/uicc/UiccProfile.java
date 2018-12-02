@@ -205,6 +205,7 @@ public class UiccProfile extends IccCard {
 
                 case EVENT_CARRIER_CONFIG_CHANGED:
                     handleCarrierNameOverride();
+                    handleSimCountryIsoOverride();
                     break;
 
                 case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
@@ -351,6 +352,41 @@ public class UiccProfile extends IccCard {
         }
 
         updateCarrierNameForSubscription(subCon, subId);
+    }
+
+    /**
+     * Override sim country iso based on carrier config.
+     * Telephony country iso is based on MCC table which is coarse and doesn't work with dual IMSI
+     * SIM. e.g, a US carrier might have a roaming agreement with carriers from Europe. Devices
+     * will switch to different IMSI (differnt mccmnc) when enter roaming state. As a result, sim
+     * country iso (locale) will change to non-US.
+     *
+     * Each sim carrier should have a single country code. We should improve the accuracy of
+     * SIM country code look-up by using carrierid-to-countrycode table as an override on top of
+     * MCC table
+     */
+    private void handleSimCountryIsoOverride() {
+        SubscriptionController subCon = SubscriptionController.getInstance();
+        final int subId = subCon.getSubIdUsingPhoneId(mPhoneId);
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            loge("subId not valid for Phone " + mPhoneId);
+            return;
+        }
+
+        CarrierConfigManager configLoader = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configLoader == null) {
+            loge("Failed to load a Carrier Config");
+            return;
+        }
+
+        PersistableBundle config = configLoader.getConfigForSubId(subId);
+        String iso = config.getString(CarrierConfigManager.KEY_SIM_COUNTRY_ISO_OVERRIDE_STRING);
+        if (!TextUtils.isEmpty(iso) &&
+                !iso.equals(mTelephonyManager.getSimCountryIsoForPhone(mPhoneId))) {
+            mTelephonyManager.setSimCountryIsoForPhone(mPhoneId, iso);
+            SubscriptionController.getInstance().setCountryIso(iso, subId);
+        }
     }
 
     private void updateCarrierNameForSubscription(SubscriptionController subCon, int subId) {
