@@ -1432,7 +1432,7 @@ public class GsmCdmaPhone extends Phone {
                         b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING);
                 if (!TextUtils.isEmpty(defaultVmNumberRoaming) && mSST.mSS.getRoaming()) {
                     number = defaultVmNumberRoaming;
-                } else {
+                } else if (!TextUtils.isEmpty(defaultVmNumber)) {
                     number = defaultVmNumber;
                 }
             }
