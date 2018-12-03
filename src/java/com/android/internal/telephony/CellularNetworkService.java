@@ -294,26 +294,7 @@ public class CellularNetworkService extends NetworkService {
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
                         false /* isNrAvailable */);
-            } else if (result instanceof android.hardware.radio.V1_4.DataRegStateResult) {
-                android.hardware.radio.V1_4.DataRegStateResult dataRegState =
-                        (android.hardware.radio.V1_4.DataRegStateResult) result;
-                int regState = getRegStateFromHalRegState(dataRegState.base.regState);
-                int accessNetworkTechnology = getAccessNetworkTechnologyFromRat(
-                        dataRegState.base.rat);
-                int reasonForDenial = dataRegState.base.reasonDataDenied;
-                boolean emergencyOnly = isEmergencyOnly(dataRegState.base.regState);
-                int maxDataCalls = dataRegState.base.maxDataCalls;
-                int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
-                CellIdentity cellIdentity =
-                        convertHalCellIdentityToCellIdentity(dataRegState.base.cellIdentity);
-                boolean isDcNrRestricted = dataRegState.isDcNrRestricted;
-                boolean isNrAvailable = dataRegState.isNrAvailable;
-                return new NetworkRegistrationState(domain, transportType, regState,
-                        accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
-                        cellIdentity, maxDataCalls, isDcNrRestricted, isNrAvailable);
-
             }
-
             return null;
         }
 
