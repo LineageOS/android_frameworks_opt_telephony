@@ -318,8 +318,6 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.IS_OPPORTUNISTIC)) == 1;
         String groupUUID = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.GROUP_UUID));
-        boolean isMetered = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.IS_METERED)) == 1;
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -330,7 +328,7 @@ public class SubscriptionController extends ISub.Stub {
                     + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso + " isEmbedded:"
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
                     + " cardId:" + cardIdToPrint + " isOpportunistic:" + isOpportunistic
-                    + " groupUUID:" + groupUUID + " isMetered:" + isMetered);
+                    + " groupUUID:" + groupUUID);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -340,7 +338,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                isEmbedded, accessRules, cardId, isOpportunistic, groupUUID, isMetered);
+                isEmbedded, accessRules, cardId, isOpportunistic, groupUUID);
     }
 
     /**
@@ -2030,7 +2028,6 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.CB_OPT_OUT_DIALOG:
             case SubscriptionManager.ENHANCED_4G_MODE_ENABLED:
             case SubscriptionManager.IS_OPPORTUNISTIC:
-            case SubscriptionManager.IS_METERED:
             case SubscriptionManager.VT_IMS_ENABLED:
             case SubscriptionManager.WFC_IMS_ENABLED:
             case SubscriptionManager.WFC_IMS_MODE:
@@ -2091,7 +2088,6 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                         case SubscriptionManager.IS_OPPORTUNISTIC:
                         case SubscriptionManager.GROUP_UUID:
-                        case SubscriptionManager.IS_METERED:
                             resultValue = cursor.getInt(0) + "";
                             break;
                         default:
@@ -2241,19 +2237,6 @@ public class SubscriptionController extends ISub.Stub {
     public int setOpportunistic(boolean opportunistic, int subId) {
         return setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
                 String.valueOf(opportunistic ? 1 : 0));
-    }
-
-    /**
-     * Set whether a subscription is metered
-     *
-     * @param isMetered whether it’s a metered subscription.
-     * @param subId the unique SubscriptionInfo index in database
-     * @return the number of records updated
-     */
-    @Override
-    public int setMetered(boolean isMetered, int subId) {
-        return setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
-                String.valueOf(isMetered ? 1 : 0));
     }
 
     @Override

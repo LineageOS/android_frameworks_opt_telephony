@@ -135,7 +135,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
         String disName = "TESTING";
         String disNum = "12345";
         boolean isOpportunistic = true;
-        boolean isMetered = false;
 
         testInsertSim();
         /* Get SUB ID */
@@ -143,30 +142,22 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(subIds != null && subIds.length != 0);
         int subID = subIds[0];
 
-        /* Getting, there is no direct getter function for each fields of property */
-        SubscriptionInfo subInfo = mSubscriptionControllerUT
-                .getActiveSubscriptionInfo(subID, mCallingPackage);
-        //isMetered should initialize as true
-        assertTrue(subInfo.isMetered());
-
         /* Setting */
         mSubscriptionControllerUT.setDisplayName(disName, subID);
         mSubscriptionControllerUT.setDataRoaming(dataRoaming, subID);
         mSubscriptionControllerUT.setDisplayNumber(disNum, subID);
         mSubscriptionControllerUT.setIconTint(iconTint, subID);
         mSubscriptionControllerUT.setOpportunistic(isOpportunistic, subID);
-        mSubscriptionControllerUT.setMetered(isMetered, subID);
 
-        subInfo = mSubscriptionControllerUT
-            .getActiveSubscriptionInfo(subID, mCallingPackage);
-
+        /* Getting, there is no direct getter function for each fields of property */
+        SubscriptionInfo subInfo = mSubscriptionControllerUT
+                .getActiveSubscriptionInfo(subID, mCallingPackage);
         assertNotNull(subInfo);
         assertEquals(dataRoaming, subInfo.getDataRoaming());
         assertEquals(disName, subInfo.getDisplayName());
         assertEquals(iconTint, subInfo.getIconTint());
         assertEquals(disNum, subInfo.getNumber());
         assertEquals(isOpportunistic, subInfo.isOpportunistic());
-        assertEquals(isMetered, subInfo.isMetered());
 
         /* verify broadcast intent */
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
