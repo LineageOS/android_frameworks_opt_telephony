@@ -28,6 +28,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
@@ -320,7 +321,7 @@ public class CarrierSignalAgent extends Handler {
             if (!wakeup) signal.setFlags(Intent.FLAG_EXCLUDE_STOPPED_PACKAGES);
 
             try {
-                mPhone.getContext().sendBroadcast(signal);
+                mPhone.getContext().sendBroadcastAsUser(signal, UserHandle.ALL);
                 if (DBG) {
                     log("Sending signal " + signal.getAction() + ((signal.getComponent() != null)
                             ? " to the carrier signal receiver: " + signal.getComponent() : ""));
