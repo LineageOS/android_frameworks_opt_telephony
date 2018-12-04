@@ -194,7 +194,7 @@ public class PhoneSwitcher extends Handler {
     protected int mPreferredDataPhoneId = SubscriptionManager.INVALID_PHONE_INDEX;
 
     // Subscription ID corresponds to mPreferredDataPhoneId.
-    private int mPreferredDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    protected int mPreferredDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     // If non-null, An emergency call is about to be started, is ongoing, or has just ended and we
     // are overriding the DDS.
@@ -1013,7 +1013,7 @@ public class PhoneSwitcher extends Handler {
 
     // This updates mPreferredDataPhoneId which decides which phone should handle default network
     // requests.
-    private void updatePreferredDataPhoneId() {
+    protected void updatePreferredDataPhoneId() {
         Phone voicePhone = findPhoneById(mPhoneIdInVoiceCall);
         if (mEmergencyOverride != null && findPhoneById(mEmergencyOverride.mPhoneId) != null) {
             // Override DDS for emergency even if user data is not enabled, since it is an
