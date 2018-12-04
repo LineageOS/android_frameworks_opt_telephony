@@ -433,14 +433,22 @@ public class TelephonyMetrics {
         pw.println("Power log duration (battery time) (ms): " + s.loggingDurationMs);
         pw.println("Energy consumed by modem (mAh): " + s.energyConsumedMah);
         pw.println("Number of packets sent (tx): " + s.numPacketsTx);
-        pw.println("Amount of time kernel is active because of cellular data (ms): " +
-            s.cellularKernelActiveTimeMs);
-        pw.println("Amount of time spent in very poor rx signal level (ms): " +
-            s.timeInVeryPoorRxSignalLevelMs);
+        pw.println("Number of bytes sent (tx): " + s.numBytesTx);
+        pw.println("Number of packets received (rx): " + s.numPacketsRx);
+        pw.println("Number of bytes received (rx): " + s.numBytesRx);
+        pw.println("Amount of time kernel is active because of cellular data (ms): "
+                + s.cellularKernelActiveTimeMs);
+        pw.println("Amount of time spent in very poor rx signal level (ms): "
+                + s.timeInVeryPoorRxSignalLevelMs);
         pw.println("Amount of time modem is in sleep (ms): " + s.sleepTimeMs);
         pw.println("Amount of time modem is in idle (ms): " + s.idleTimeMs);
         pw.println("Amount of time modem is in rx (ms): " + s.rxTimeMs);
         pw.println("Amount of time modem is in tx (ms): " + Arrays.toString(s.txTimeMs));
+        pw.println("Amount of time phone spent in various Radio Access Technologies (ms): "
+                + Arrays.toString(s.timeInRatMs));
+        pw.println("Amount of time phone spent in various cellular "
+                + "rx signal strength levels (ms): "
+                + Arrays.toString(s.timeInRxSignalStrengthLevelMs));
         pw.decreaseIndent();
     }
 
