@@ -788,6 +788,16 @@ public class UiccProfile extends IccCard {
     }
 
     @Override
+    public boolean isEmptyProfile() {
+        // If there's no UiccCardApplication, it's an empty profile.
+        // Empty profile is a valid case of eSIM (default boot profile).
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null) return false;
+        }
+        return true;
+    }
+
+    @Override
     public void setIccLockEnabled(boolean enabled, String password, Message onComplete) {
         synchronized (mLock) {
             if (mUiccApplication != null) {
