@@ -276,7 +276,7 @@ public class CellularNetworkService extends NetworkService {
                 return new NetworkRegistrationState(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
-                        false /* isNrAvailable */);
+                        false /* isNrAvailable */, false /* isEnDcAvailable */);
 
             } else if (result instanceof android.hardware.radio.V1_2.DataRegStateResult) {
                 android.hardware.radio.V1_2.DataRegStateResult dataRegState =
@@ -293,7 +293,25 @@ public class CellularNetworkService extends NetworkService {
                 return new NetworkRegistrationState(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
-                        false /* isNrAvailable */);
+                        false /* isNrAvailable */, false /* isEnDcAvailable */);
+            } else if (result instanceof android.hardware.radio.V1_4.DataRegStateResult) {
+                android.hardware.radio.V1_4.DataRegStateResult dataRegState =
+                        (android.hardware.radio.V1_4.DataRegStateResult) result;
+                int regState = getRegStateFromHalRegState(dataRegState.base.regState);
+                int accessNetworkTechnology =
+                        getAccessNetworkTechnologyFromRat(dataRegState.base.rat);
+                int reasonForDenial = dataRegState.base.reasonDataDenied;
+                boolean emergencyOnly = isEmergencyOnly(dataRegState.base.regState);
+                int maxDataCalls = dataRegState.base.maxDataCalls;
+                int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
+                CellIdentity cellIdentity =
+                        convertHalCellIdentityToCellIdentity(dataRegState.base.cellIdentity);
+                android.hardware.radio.V1_4.NrIndicators nrIndicators = dataRegState.nrIndicators;
+
+                return new NetworkRegistrationState(domain, transportType, regState,
+                        accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
+                        cellIdentity, maxDataCalls, nrIndicators.isDcNrRestricted,
+                        nrIndicators.isNrAvailable, nrIndicators.isEndcAvailable);
             }
             return null;
         }
