@@ -31,7 +31,6 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
-import android.telephony.emergency.EmergencyNumber;
 
 import java.util.List;
 
@@ -364,12 +363,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyEmergencyNumberList(Phone sender,
-                                          List<EmergencyNumber> emergencyNumberList) {
-        int subId = sender.getSubId();
+    public void notifyEmergencyNumberList() {
         try {
             if (mRegistry != null) {
-                mRegistry.notifyEmergencyNumberList(emergencyNumberList);
+                mRegistry.notifyEmergencyNumberList();
             }
         } catch (RemoteException ex) {
             // system process is dead
