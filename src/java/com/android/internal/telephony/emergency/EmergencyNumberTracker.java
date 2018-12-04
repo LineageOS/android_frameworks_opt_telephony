@@ -25,15 +25,25 @@ import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
+import com.android.phone.ecc.nano.ProtobufEccData.EccInfo;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
+
+import libcore.io.IoUtils;
 
 /**
  * Emergency Number Tracker that handles update of emergency number list from RIL and emergency
@@ -47,6 +57,9 @@ public class EmergencyNumberTracker extends Handler {
 
     private final CommandsInterface mCi;
     private final Phone mPhone;
+
+    private static final String EMERGENCY_NUMBER_DB_ASSETS_FILE = "eccdata";
+
     private List<EmergencyNumber> mEmergencyNumberListFromDatabase = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberListFromRadio = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberList = new ArrayList<>();
@@ -57,14 +70,16 @@ public class EmergencyNumberTracker extends Handler {
 
     /** Event indicating the update for the emergency number list from the radio. */
     private static final int EVENT_UNSOL_EMERGENCY_NUMBER_LIST = 1;
-
-    // TODO EVENT_UPDATE_NETWORK_COUNTRY_ISO
+    /**
+     * Event indicating the update for the emergency number list from the database due to the
+     * change of country code.
+     **/
+    private static final int EVENT_UPDATE_DB_COUNTRY_ISO_CHANGED = 2;
 
     public EmergencyNumberTracker(Phone phone, CommandsInterface ci) {
         mPhone = phone;
         mCi = ci;
-        // TODO cache Emergency Number List Database per country ISO;
-        // TODO register for Locale Tracker Country ISO Change
+        initializeDatabaseEmergencyNumberList();
         mCi.registerForEmergencyNumberList(this, EVENT_UNSOL_EMERGENCY_NUMBER_LIST, null);
     }
 
@@ -83,57 +98,207 @@ public class EmergencyNumberTracker extends Handler {
                 if (ar.result == null) {
                     loge("EVENT_UNSOL_EMERGENCY_NUMBER_LIST: Result from RIL is null.");
                 } else if ((ar.result != null) && (ar.exception == null)) {
-                    updateAndNotifyEmergencyNumberList((List<EmergencyNumber>) ar.result);
+                    updateRadioEmergencyNumberListAndNotify((List<EmergencyNumber>) ar.result);
                 } else {
                     loge("EVENT_UNSOL_EMERGENCY_NUMBER_LIST: Exception from RIL : "
                             + ar.exception);
                 }
                 break;
+            case EVENT_UPDATE_DB_COUNTRY_ISO_CHANGED:
+                if (msg.obj == null) {
+                    loge("EVENT_UPDATE_DB_COUNTRY_ISO_CHANGED: Result from UpdateCountryIso is"
+                            + " null.");
+                } else {
+                    updateEmergencyNumberListDatabaseAndNotify((String) msg.obj);
+                }
+                break;
         }
     }
 
-    private void updateAndNotifyEmergencyNumberList(
+    private void initializeDatabaseEmergencyNumberList() {
+        cacheEmergencyDatabaseByCountry(getInitialCountryIso());
+    }
+
+    private String getInitialCountryIso() {
+        if (mPhone != null) {
+            ServiceStateTracker sst = mPhone.getServiceStateTracker();
+            if (sst != null) {
+                LocaleTracker lt = sst.getLocaleTracker();
+                if (lt != null) {
+                    return lt.getCurrentCountry();
+                }
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Update Emergency Number database based on changed Country ISO.
+     *
+     * @param countryIso
+     *
+     * @hide
+     */
+    public void updateEmergencyNumberDatabaseCountryChange(String countryIso) {
+        this.obtainMessage(EVENT_UPDATE_DB_COUNTRY_ISO_CHANGED, countryIso).sendToTarget();
+    }
+
+    private EmergencyNumber convertEmergencyNumberFromEccInfo(EccInfo eccInfo, String countryIso) {
+        String phoneNumber = eccInfo.phoneNumber.trim();
+        if (phoneNumber.isEmpty()) {
+            loge("EccInfo has empty phone number.");
+            return null;
+        }
+        int emergencyServiceCategoryBitmask = 0;
+        for (int typeData : eccInfo.types) {
+            switch (typeData) {
+                case EccInfo.Type.POLICE:
+                    emergencyServiceCategoryBitmask = emergencyServiceCategoryBitmask == 0
+                            ? EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
+                            : emergencyServiceCategoryBitmask
+                            | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE;
+                    break;
+                case EccInfo.Type.AMBULANCE:
+                    emergencyServiceCategoryBitmask = emergencyServiceCategoryBitmask == 0
+                            ? EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
+                            : emergencyServiceCategoryBitmask
+                            | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE;
+                    break;
+                case EccInfo.Type.FIRE:
+                    emergencyServiceCategoryBitmask = emergencyServiceCategoryBitmask == 0
+                            ? EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE
+                            : emergencyServiceCategoryBitmask
+                            | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE;
+                    break;
+                default:
+                    // Ignores unknown types.
+            }
+        }
+        return new EmergencyNumber(phoneNumber, countryIso, "", emergencyServiceCategoryBitmask,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE);
+    }
+
+    private void cacheEmergencyDatabaseByCountry(String countryIso) {
+        BufferedInputStream inputStream = null;
+        ProtobufEccData.AllInfo allEccMessages = null;
+        List<EmergencyNumber> updatedEmergencyNumberList = new ArrayList<>();
+        try {
+            inputStream = new BufferedInputStream(
+                    mPhone.getContext().getAssets().open(EMERGENCY_NUMBER_DB_ASSETS_FILE));
+            allEccMessages = ProtobufEccData.AllInfo.parseFrom(readInputStreamToByteArray(
+                    new GZIPInputStream(inputStream)));
+            logd("Emergency database is loaded. ");
+            for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
+                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase())) {
+                    for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
+                        updatedEmergencyNumberList.add(convertEmergencyNumberFromEccInfo(
+                                eccInfo, countryIso));
+                    }
+                }
+            }
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(updatedEmergencyNumberList);
+            mEmergencyNumberListFromDatabase = updatedEmergencyNumberList;
+        } catch (IOException ex) {
+            loge("Cache emergency database failure: " + ex);
+        } finally {
+            IoUtils.closeQuietly(inputStream);
+        }
+    }
+
+    /**
+     * Util function to convert inputStream to byte array before parsing proto data.
+     */
+    private static byte[] readInputStreamToByteArray(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        int nRead;
+        int size = 16 * 1024; // Read 16k chunks
+        byte[] data = new byte[size];
+        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        buffer.flush();
+        return buffer.toByteArray();
+    }
+
+    private void updateRadioEmergencyNumberListAndNotify(
             List<EmergencyNumber> emergencyNumberListRadio) {
         Collections.sort(emergencyNumberListRadio);
-        logd("updateAndNotifyEmergencyNumberList(): receiving " + emergencyNumberListRadio);
+        logd("updateRadioEmergencyNumberListAndNotify(): receiving " + emergencyNumberListRadio);
 
         if (!emergencyNumberListRadio.equals(mEmergencyNumberListFromRadio)) {
             try {
+                EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberListRadio);
                 mEmergencyNumberListFromRadio = emergencyNumberListRadio;
                 if (!DBG) {
                     mEmergencyNumberListRadioLocalLog.log("updateRadioEmergencyNumberList:"
                             + emergencyNumberListRadio);
                 }
-                List<EmergencyNumber> emergencyNumberListMergedWithDatabase =
-                        constructEmergencyNumberListWithDatabase();
-                mEmergencyNumberList = emergencyNumberListMergedWithDatabase;
+                mergeRadioAndDatabaseList();
                 if (!DBG) {
-                    mEmergencyNumberListLocalLog.log("updateEmergencyNumberList:"
-                            + emergencyNumberListMergedWithDatabase);
+                    mEmergencyNumberListLocalLog.log("updateRadioEmergencyNumberListAndNotify:"
+                            + mEmergencyNumberList);
                 }
                 notifyEmergencyNumberList();
             } catch (NullPointerException ex) {
-                loge("updateAndNotifyEmergencyNumberList() Phone already destroyed: " + ex
-                        + "EmergencyNumberList not notified");
+                loge("updateRadioEmergencyNumberListAndNotify() Phone already destroyed: " + ex
+                        + " EmergencyNumberList not notified");
             }
         }
     }
 
+    private void updateEmergencyNumberListDatabaseAndNotify(String countryIso) {
+        logd("updateEmergencyNumberListDatabaseAndNotify(): receiving countryIso: "
+                + countryIso);
+
+        cacheEmergencyDatabaseByCountry(countryIso);
+        if (!DBG) {
+            mEmergencyNumberListDatabaseLocalLog.log(
+                    "updateEmergencyNumberListDatabaseAndNotify:"
+                            + mEmergencyNumberListFromDatabase);
+        }
+        mergeRadioAndDatabaseList();
+        if (!DBG) {
+            mEmergencyNumberListLocalLog.log("updateEmergencyNumberListDatabaseAndNotify:"
+                    + mEmergencyNumberList);
+        }
+        notifyEmergencyNumberList();
+    }
+
     private void notifyEmergencyNumberList() {
-        List<EmergencyNumber> emergencyNumberListToNotify = getEmergencyNumberList();
-        mPhone.notifyEmergencyNumberList(emergencyNumberListToNotify);
-        logd("notifyEmergencyNumberList():" + emergencyNumberListToNotify);
+        try {
+            if (getEmergencyNumberList() != null) {
+                mPhone.notifyEmergencyNumberList();
+                logd("notifyEmergencyNumberList(): notified");
+            }
+        } catch (NullPointerException ex) {
+            loge("notifyEmergencyNumberList(): failure: Phone already destroyed: " + ex);
+        }
     }
 
-    private List<EmergencyNumber> constructEmergencyNumberListWithDatabase() {
-        List<EmergencyNumber> emergencyNumberListRadioAndDatabase = mEmergencyNumberListFromRadio;
-        // TODO integrate with emergency number database
-        // TODO sorting
-        return emergencyNumberListRadioAndDatabase;
+    /**
+     * Merge emergency numbers from the radio and database list, if they are the same emergency
+     * numbers.
+     */
+    private void mergeRadioAndDatabaseList() {
+        List<EmergencyNumber> mergedEmergencyNumberList =
+                new ArrayList<>(mEmergencyNumberListFromDatabase);
+        mergedEmergencyNumberList.addAll(mEmergencyNumberListFromRadio);
+        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+        Collections.sort(mergedEmergencyNumberList);
+        mEmergencyNumberList = mergedEmergencyNumberList;
     }
 
+    /**
+     * Get the emergency number list.
+     *
+     * @return the emergency number list or null if radio indication not support from the HAL
+     */
     public List<EmergencyNumber> getEmergencyNumberList() {
-        return new ArrayList<>(mEmergencyNumberList);
+        if (!mEmergencyNumberListFromRadio.isEmpty()) {
+            return new ArrayList<>(mEmergencyNumberList);
+        } else {
+            return null;
+        }
     }
 
     @VisibleForTesting

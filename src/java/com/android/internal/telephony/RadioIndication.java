@@ -25,6 +25,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SM
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LIST;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EMERGENCY_NUMBER_LIST;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_HARDWARE_CONFIG_CHANGED;
@@ -92,6 +93,7 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
@@ -303,6 +305,27 @@ public class RadioIndication extends IRadioIndication.Stub {
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
 
         mRil.mPhysicalChannelConfigurationRegistrants.notifyRegistrants(
+                new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Indicates current emergency number list.
+     */
+    public void currentEmergencyNumberList(int indicationType,
+            ArrayList<android.hardware.radio.V1_4.EmergencyNumber> emergencyNumberList) {
+        List<EmergencyNumber> response = new ArrayList<>(emergencyNumberList.size());
+
+        for (android.hardware.radio.V1_4.EmergencyNumber emergencyNumberHal
+                : emergencyNumberList) {
+            EmergencyNumber emergencyNumber = new EmergencyNumber(emergencyNumberHal.number,
+                    MccTable.countryCodeForMcc(emergencyNumberHal.mcc), emergencyNumberHal.mnc,
+                    emergencyNumberHal.categories, emergencyNumberHal.sources);
+            response.add(emergencyNumber);
+        }
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NUMBER_LIST, response);
+
+        mRil.mEmergencyNumberListRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
     }
 
