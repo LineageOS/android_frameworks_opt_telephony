@@ -166,6 +166,28 @@ public class EuiccCardTest extends TelephonyTest {
     }
 
     @Test
+    public void testPassEidInContructor() throws InterruptedException {
+        mMockIccCardStatus.eid = "1A2B3C4D";
+        mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
+                mMockIccCardStatus, 0 /* phoneId */, new Object());
+
+        final int eventEidReady = 0;
+        final CountDownLatch latch = new CountDownLatch(1);
+        Handler handler = new Handler(mTestHandlerThread.getLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                if (msg.what == eventEidReady) {
+                    assertEquals("1A2B3C4D", mEuiccCard.getEid());
+                    latch.countDown();
+                }
+            }
+        };
+        // This will instantly return, since EID is already set
+        mEuiccCard.registerForEidReady(handler, eventEidReady, null /* obj */);
+        assertTrue(latch.await(WAIT_TIMEOUT_MLLIS, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
     public void testLoadEidAndNotifyRegistrants() throws InterruptedException {
         int channel = mockLogicalChannelResponses("BF3E065A041A2B3C4D9000");
 
