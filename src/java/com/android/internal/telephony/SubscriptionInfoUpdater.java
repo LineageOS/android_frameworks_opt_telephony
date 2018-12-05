@@ -412,6 +412,14 @@ public class SubscriptionInfoUpdater extends Handler {
                     logd("EVENT_RECORDS_LOADED Operator name is null");
                 }
 
+                String iso = tm.getSimCountryIsoForPhone(slotId);
+
+                if (!TextUtils.isEmpty(iso)) {
+                    SubscriptionController.getInstance().setCountryIso(iso, subId);
+                } else {
+                    logd("EVENT_RECORDS_LOADED sim country iso is null");
+                }
+
                 String msisdn = tm.getLine1Number(subId);
                 ContentResolver contentResolver = mContext.getContentResolver();
 
