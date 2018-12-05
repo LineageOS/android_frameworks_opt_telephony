@@ -55,6 +55,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telecom.VideoProfile;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ImsiEncryptionInfo;
@@ -66,6 +67,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UssdResponse;
+import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
@@ -227,7 +229,11 @@ public class GsmCdmaPhone extends Phone {
         mTransportManager = mTelephonyComponentFactory.makeTransportManager(this);
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
-        mDcTracker = mTelephonyComponentFactory.makeDcTracker(this);
+        for (int transport : mTransportManager.getAvailableTransports()) {
+            mDcTrackers.put(transport, mTelephonyComponentFactory.makeDcTracker(this,
+                    transport));
+        }
+
         mCarrierResolver = mTelephonyComponentFactory.makeCarrierResolver(this);
 
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
@@ -523,21 +529,25 @@ public class GsmCdmaPhone extends Phone {
 
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else { /* mSST.gprsState == ServiceState.STATE_IN_SERVICE */
-            switch (mDcTracker.getState(apnType)) {
-                case CONNECTED:
-                case DISCONNECTING:
-                    if ( mCT.mState != PhoneConstants.State.IDLE
-                            && !mSST.isConcurrentVoiceAndDataAllowed()) {
-                        ret = PhoneConstants.DataState.SUSPENDED;
-                    } else {
-                        ret = PhoneConstants.DataState.CONNECTED;
-                    }
-                    break;
-                case CONNECTING:
-                    ret = PhoneConstants.DataState.CONNECTING;
-                    break;
-                default:
-                    ret = PhoneConstants.DataState.DISCONNECTED;
+            int currentTransport = mTransportManager.getCurrentTransport(
+                    ApnSetting.getApnTypesBitmaskFromString(apnType));
+            if (getDcTracker(currentTransport) != null) {
+                switch (getDcTracker(currentTransport).getState(apnType)) {
+                    case CONNECTED:
+                    case DISCONNECTING:
+                        if (mCT.mState != PhoneConstants.State.IDLE
+                                && !mSST.isConcurrentVoiceAndDataAllowed()) {
+                            ret = PhoneConstants.DataState.SUSPENDED;
+                        } else {
+                            ret = PhoneConstants.DataState.CONNECTED;
+                        }
+                        break;
+                    case CONNECTING:
+                        ret = PhoneConstants.DataState.CONNECTING;
+                        break;
+                    default:
+                        ret = PhoneConstants.DataState.DISCONNECTED;
+                }
             }
         }
 
@@ -549,8 +559,9 @@ public class GsmCdmaPhone extends Phone {
     public DataActivityState getDataActivityState() {
         DataActivityState ret = DataActivityState.NONE;
 
-        if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE) {
-            switch (mDcTracker.getActivity()) {
+        if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE
+                && getDcTracker(TransportType.WWAN) != null) {
+            switch (getDcTracker(TransportType.WWAN).getActivity()) {
                 case DATAIN:
                     ret = DataActivityState.DATAIN;
                 break;
@@ -2036,12 +2047,17 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean getDataRoamingEnabled() {
-        return mDcTracker.getDataRoamingEnabled();
+        if (getDcTracker(TransportType.WWAN) != null) {
+            return getDcTracker(TransportType.WWAN).getDataRoamingEnabled();
+        }
+        return false;
     }
 
     @Override
     public void setDataRoamingEnabled(boolean enable) {
-        mDcTracker.setDataRoamingEnabledByUser(enable);
+        if (getDcTracker(TransportType.WWAN) != null) {
+            getDcTracker(TransportType.WWAN).setDataRoamingEnabledByUser(enable);
+        }
     }
 
     @Override
@@ -2086,17 +2102,25 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean isUserDataEnabled() {
-        return mDcTracker.isUserDataEnabled();
+        if (getDcTracker(TransportType.WWAN) != null) {
+            return getDcTracker(TransportType.WWAN).isUserDataEnabled();
+        }
+        return false;
     }
 
     @Override
     public boolean isDataEnabled() {
-        return mDcTracker.isDataEnabled();
+        if (getDcTracker(TransportType.WWAN) != null) {
+            return getDcTracker(TransportType.WWAN).isDataEnabled();
+        }
+        return false;
     }
 
     @Override
     public void setUserDataEnabled(boolean enable) {
-        mDcTracker.setUserDataEnabled(enable);
+        if (getDcTracker(TransportType.WWAN) != null) {
+            getDcTracker(TransportType.WWAN).setUserDataEnabled(enable);
+        }
     }
 
     /**
@@ -3065,7 +3089,9 @@ public class GsmCdmaPhone extends Phone {
             // send an Intent
             sendEmergencyCallbackModeChange();
             // Re-initiate data connection
-            mDcTracker.setInternalDataEnabled(true);
+            if (getDcTracker(TransportType.WWAN) != null) {
+                getDcTracker(TransportType.WWAN).setInternalDataEnabled(true);
+            }
             notifyEmergencyCallRegistrants(false);
         }
     }
