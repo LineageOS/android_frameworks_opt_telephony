@@ -82,7 +82,6 @@ import android.util.TimestampedValue;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
-import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -446,8 +445,7 @@ public class ServiceStateTracker extends Handler {
                 updateSpnDisplay();
             } else if (intent.getAction().equals(ACTION_RADIO_OFF)) {
                 mAlarmSwitch = false;
-                DcTracker dcTracker = mPhone.mDcTracker;
-                powerOffRadioSafely(dcTracker);
+                powerOffRadioSafely();
             }
         }
     };
@@ -579,6 +577,7 @@ public class ServiceStateTracker extends Handler {
 
     @VisibleForTesting
     public void updatePhoneType() {
+
         // If we are previously voice roaming, we need to notify that roaming status changed before
         // we change back to non-roaming.
         if (mSS != null && mSS.getVoiceRoaming()) {
@@ -2592,12 +2591,10 @@ public class ServiceStateTracker extends Handler {
                     am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                             SystemClock.elapsedRealtime() + 3000, mRadioOffIntent);
                 } else {
-                    DcTracker dcTracker = mPhone.mDcTracker;
-                    powerOffRadioSafely(dcTracker);
+                    powerOffRadioSafely();
                 }
             } else {
-                DcTracker dcTracker = mPhone.mDcTracker;
-                powerOffRadioSafely(dcTracker);
+                powerOffRadioSafely();
             }
         } else if (mDeviceShuttingDown
                 && (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE)) {
@@ -4063,12 +4060,12 @@ public class ServiceStateTracker extends Handler {
      *
      * Hang up the existing voice calls to decrease call drop rate.
      */
-    public void powerOffRadioSafely(DcTracker dcTracker) {
+    public void powerOffRadioSafely() {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 // To minimize race conditions we call cleanUpAllConnections on
                 // both if else paths instead of before this isDisconnected test.
-                if (dcTracker.isDisconnected()) {
+                if (mPhone.areAllDataDisconnected()) {
                     // To minimize race conditions we do this after isDisconnected
                     if (DBG) log("Data disconnected, turn off radio right away.");
                     hangupAndPowerOff();
@@ -4083,9 +4080,14 @@ public class ServiceStateTracker extends Handler {
                     // Data is not disconnected. Wait for the data disconnect complete
                     // before sending the RADIO_POWER off.
                     ProxyController.getInstance().registerForAllDataDisconnected(
-                            mPhone.getSubId(), this, EVENT_ALL_DATA_DISCONNECTED, null);
+                            mPhone.getSubId(), this, EVENT_ALL_DATA_DISCONNECTED);
                     mPendingRadioPowerOffAfterDataOff = true;
-                    dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
+                    for (int transport : mTransportManager.getAvailableTransports()) {
+                        if (mPhone.getDcTracker(transport) != null) {
+                            mPhone.getDcTracker(transport).cleanUpAllConnections(
+                                    Phone.REASON_RADIO_TURNED_OFF);
+                        }
+                    }
 
                     Message msg = Message.obtain(this);
                     msg.what = EVENT_SET_RADIO_POWER_OFF;
