@@ -20,7 +20,6 @@ import android.content.Context;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -1025,7 +1024,7 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public void registerForAllDataDisconnected(Handler h, int what, Object obj) {
+    public void registerForAllDataDisconnected(Handler h, int what) {
         throw new RuntimeException("not implemented");
     }
 

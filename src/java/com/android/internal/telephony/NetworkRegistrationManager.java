@@ -127,7 +127,8 @@ public class NetworkRegistrationManager {
     private class NetworkServiceConnection implements ServiceConnection {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            logd("service connected.");
+            logd("service " + name + " for transport "
+                    + TransportType.toString(mTransportType) + " is now connected.");
             mServiceBinder = (INetworkService.Stub) service;
             mDeathRecipient = new RegManagerDeathRecipient(name);
             try {
@@ -144,7 +145,8 @@ public class NetworkRegistrationManager {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            logd("onServiceDisconnected " + name);
+            logd("service " + name + " for transport "
+                    + TransportType.toString(mTransportType) + " is now disconnected.");
             if (mServiceBinder != null) {
                 mServiceBinder.unlinkToDeath(mDeathRecipient, 0);
             }
@@ -180,6 +182,8 @@ public class NetworkRegistrationManager {
         try {
             // We bind this as a foreground service because it is operating directly on the SIM,
             // and we do not want it subjected to power-savings restrictions while doing so.
+            logd("Trying to bind " + getPackageName() + " for transport "
+                    + TransportType.toString(mTransportType));
             return mPhone.getContext().bindService(intent, new NetworkServiceConnection(),
                     Context.BIND_AUTO_CREATE);
         } catch (SecurityException e) {
@@ -218,9 +222,6 @@ public class NetworkRegistrationManager {
             // If carrier config overrides it, use the one from carrier config
             packageName = b.getString(carrierConfig, packageName);
         }
-
-        logd("Binding to packageName " + packageName + " for transport type"
-                + mTransportType);
 
         return packageName;
     }
