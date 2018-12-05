@@ -2220,6 +2220,22 @@ public interface CommandsInterface {
     void unregisterForNattKeepaliveStatus(Handler h);
 
     /**
+     * Register for unsolicited Emergency Number List Indications
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForEmergencyNumberList(Handler h, int what, Object obj);
+
+    /**
+     * Deregister for unsolicited Emergency Number List Indications
+     *
+     * @param h Handler for notification message.
+     */
+    void unregisterForEmergencyNumberList(Handler h);
+
+    /**
      * Start sending NATT Keepalive packets on a specified data connection
      *
      * @param contextId cid that identifies the data connection for this keepalive

@@ -981,7 +981,10 @@ public class DataConnection extends StateMachine {
         return true;
     }
 
-    NetworkCapabilities getNetworkCapabilities() {
+    /**
+     * @return the {@link NetworkCapabilities} of this data connection.
+     */
+    public NetworkCapabilities getNetworkCapabilities() {
         NetworkCapabilities result = new NetworkCapabilities();
         result.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
 

@@ -121,8 +121,12 @@ public class IccCardStatus {
 
         StringBuilder sb = new StringBuilder();
         sb.append("IccCardState {").append(mCardState).append(",")
-        .append(mUniversalPinState)
-        .append(",num_apps=").append(mApplications.length);
+        .append(mUniversalPinState);
+        if (mApplications != null) {
+            sb.append(",num_apps=").append(mApplications.length);
+        } else {
+            sb.append(",mApplications=null");
+        }
 
         sb.append(",gsm_id=").append(mGsmUmtsSubscriptionAppIndex);
         if (mApplications != null

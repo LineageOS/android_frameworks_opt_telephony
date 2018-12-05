@@ -276,16 +276,8 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_NOT_READY:
-                broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_NOT_READY,
-                        null);
-                broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_PRESENT);
-                broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_NOT_READY);
+                handleSimNotReady(msg.arg1);
                 // intentional fall through
-                // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
-                // phase, the subscription list is accessible.
-                // TODO(b/64216093): Clean up this special case, likely by treating NOT_READY
-                // as equivalent to ABSENT, once the rest of the system can handle it. Currently
-                // this breaks SystemUI which shows a "No SIM" icon.
 
             case EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS:
                 if (updateEmbeddedSubscriptions()) {
@@ -359,6 +351,26 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
+    private void handleSimNotReady(int slotId) {
+        logd("handleSimNotReady: slotId: " + slotId);
+
+        IccCard iccCard = mPhone[slotId].getIccCard();
+        if (iccCard.isEmptyProfile()) {
+            // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
+            // phase, the subscription list is accessible. Treating NOT_READY
+            // as equivalent to ABSENT, once the rest of the system can handle it.
+            mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+            if (isAllIccIdQueryDone()) {
+                updateSubscriptionInfoByIccId();
+            }
+        }
+
+        broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_NOT_READY,
+                null);
+        broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_PRESENT);
+        broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
+    }
+
     private void handleSimLoaded(int slotId) {
         logd("handleSimLoaded: slotId: " + slotId);
 
@@ -398,6 +410,14 @@ public class SubscriptionInfoUpdater extends Handler {
                     SubscriptionController.getInstance().setMccMnc(operator, subId);
                 } else {
                     logd("EVENT_RECORDS_LOADED Operator name is null");
+                }
+
+                String iso = tm.getSimCountryIsoForPhone(slotId);
+
+                if (!TextUtils.isEmpty(iso)) {
+                    SubscriptionController.getInstance().setCountryIso(iso, subId);
+                } else {
+                    logd("EVENT_RECORDS_LOADED sim country iso is null");
                 }
 
                 String msisdn = tm.getLine1Number(subId);
