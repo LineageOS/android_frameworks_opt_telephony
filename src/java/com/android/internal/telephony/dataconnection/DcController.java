@@ -451,7 +451,7 @@ public class DcController extends StateMachine {
 
             // Cleanup connections that have changed
             for (ApnContext apnContext : apnsToCleanup) {
-               mDct.sendCleanUpConnection(true, apnContext);
+                mDct.cleanUpConnection(apnContext);
             }
 
             // Retry connections that have disappeared
