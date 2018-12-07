@@ -259,4 +259,28 @@ public class UiccControllerTest extends TelephonyTest {
         // assert that the card ID was created
         assertEquals(0, mUiccControllerUT.convertToPublicCardId(iss.eid));
     }
+
+    @Test
+    public void testCardIdForDefaultEuicc() {
+        // Give UiccController a real context so it can use shared preferences
+        mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
+
+        // Mock out UiccSlots
+        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        doReturn(true).when(mMockSlot).isEuicc();
+
+        // simulate slot status loaded
+        IccSlotStatus iss = new IccSlotStatus();
+        iss.setSlotState(1 /* active */);
+        iss.eid = "ABADACB";
+        ArrayList<IccSlotStatus> status = new ArrayList<IccSlotStatus>();
+        status.add(iss);
+        AsyncResult ar = new AsyncResult(null, status, null);
+        Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_SLOT_STATUS_DONE, ar);
+        mUiccControllerUT.handleMessage(msg);
+
+        // assert that the default cardId is the slot with the lowest slot index, even if inactive
+        assertEquals(mUiccControllerUT.convertToPublicCardId(iss.eid),
+                mUiccControllerUT.getCardIdForDefaultEuicc());
+    }
 }
