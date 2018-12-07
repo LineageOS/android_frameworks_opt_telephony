@@ -208,8 +208,8 @@ public class DcTrackerTest extends TelephonyTest {
             logd("   sortOrder = " + sortOrder);
 
             if (uri.compareTo(Telephony.Carriers.CONTENT_URI) == 0
-                    || uri.compareTo(Uri.withAppendedPath(
-                            Telephony.Carriers.CONTENT_URI, "filtered")) == 0) {
+                    || uri.toString().startsWith(Uri.withAppendedPath(
+                            Telephony.Carriers.CONTENT_URI, "filtered").toString())) {
                 if (projection == null && selectionArgs == null && selection != null) {
 
                     Pattern pattern = Pattern.compile("^numeric = '([0-9]*)'");
