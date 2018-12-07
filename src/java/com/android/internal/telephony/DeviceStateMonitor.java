@@ -27,6 +27,9 @@ import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
 import android.hardware.radio.V1_2.IndicationFilter;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Message;
@@ -39,11 +42,14 @@ import android.util.LocalLog;
 import android.util.SparseIntArray;
 import android.view.Display;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * The device state monitor monitors the device state such as charging state, power saving sate,
@@ -58,20 +64,64 @@ public class DeviceStateMonitor extends Handler {
     protected static final boolean DBG = false;      /* STOPSHIP if true */
     protected static final String TAG = DeviceStateMonitor.class.getSimpleName();
 
-    private static final int EVENT_RIL_CONNECTED                = 0;
-    private static final int EVENT_UPDATE_MODE_CHANGED          = 1;
-    private static final int EVENT_SCREEN_STATE_CHANGED         = 2;
-    private static final int EVENT_POWER_SAVE_MODE_CHANGED      = 3;
-    private static final int EVENT_CHARGING_STATE_CHANGED       = 4;
-    private static final int EVENT_TETHERING_STATE_CHANGED      = 5;
-    private static final int EVENT_RADIO_AVAILABLE              = 6;
+    static final int EVENT_RIL_CONNECTED                = 0;
+    static final int EVENT_UPDATE_MODE_CHANGED          = 1;
+    @VisibleForTesting
+    static final int EVENT_SCREEN_STATE_CHANGED         = 2;
+    static final int EVENT_POWER_SAVE_MODE_CHANGED      = 3;
+    @VisibleForTesting
+    static final int EVENT_CHARGING_STATE_CHANGED       = 4;
+    static final int EVENT_TETHERING_STATE_CHANGED      = 5;
+    static final int EVENT_RADIO_AVAILABLE              = 6;
+    @VisibleForTesting
+    static final int EVENT_WIFI_CONNECTION_CHANGED      = 7;
 
     // TODO(b/74006656) load hysteresis values from a property when DeviceStateMonitor starts
     private static final int HYSTERESIS_KBPS = 50;
 
+    private static final int WIFI_UNAVAILABLE = 0;
+    private static final int WIFI_AVAILABLE = 1;
+
     private final Phone mPhone;
 
     private final LocalLog mLocalLog = new LocalLog(100);
+
+    private final NetworkRequest mWifiNetworkRequest =
+            new NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+            .build();
+
+    private final ConnectivityManager.NetworkCallback mNetworkCallback =
+            new ConnectivityManager.NetworkCallback() {
+        Set<Network> mWifiNetworks = new HashSet<>();
+
+        @Override
+        public void onAvailable(Network network) {
+            synchronized (mWifiNetworks) {
+                if (mWifiNetworks.size() == 0) {
+                    // We just connected to Wifi, so send an update.
+                    obtainMessage(EVENT_WIFI_CONNECTION_CHANGED, WIFI_AVAILABLE, 0).sendToTarget();
+                    log("Wifi (default) connected", true);
+                }
+                mWifiNetworks.add(network);
+            }
+        }
+
+        @Override
+        public void onLost(Network network) {
+            synchronized (mWifiNetworks) {
+                mWifiNetworks.remove(network);
+                if (mWifiNetworks.size() == 0) {
+                    // We just disconnected from the last connected wifi, so send an update.
+                    obtainMessage(
+                            EVENT_WIFI_CONNECTION_CHANGED, WIFI_UNAVAILABLE, 0).sendToTarget();
+                    log("Wifi (default) disconnected", true);
+                }
+            }
+        }
+    };
 
     /**
      * Flag for wifi/usb/bluetooth tethering turned on or not
@@ -104,6 +154,22 @@ public class DeviceStateMonitor extends Handler {
      * doesn't mean no data is expected.
      */
     private boolean mIsLowDataExpected;
+
+    /**
+     * Wifi is connected. True means both that cellular is likely to be asleep when the screen is
+     * on and that in most cases the device location is relatively close to the WiFi AP. This means
+     * that fewer location updates should be provided by cellular.
+     */
+    private boolean mIsWifiConnected;
+
+    @VisibleForTesting
+    static final int CELL_INFO_INTERVAL_SHORT_MS = 2000;
+    @VisibleForTesting
+    static final int CELL_INFO_INTERVAL_LONG_MS = 10000;
+
+    /** The minimum required wait time between cell info requests to the modem */
+    private int mCellInfoMinInterval = CELL_INFO_INTERVAL_SHORT_MS;
+
 
     private SparseIntArray mUpdateModes = new SparseIntArray();
 
@@ -202,6 +268,10 @@ public class DeviceStateMonitor extends Handler {
 
         mPhone.mCi.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mPhone.mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+
+        ConnectivityManager cm = (ConnectivityManager) phone.getContext().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        cm.registerNetworkCallback(mWifiNetworkRequest, mNetworkCallback);
     }
 
     /**
@@ -209,6 +279,27 @@ public class DeviceStateMonitor extends Handler {
      */
     private boolean isLowDataExpected() {
         return !mIsCharging && !mIsTetheringOn && !mIsScreenOn;
+    }
+
+    /**
+     * @return The minimum period between CellInfo requests to the modem
+     */
+    @VisibleForTesting
+    public int computeCellInfoMinInterval() {
+        // The screen is on and we're either on cellular or charging. Screen on + Charging is
+        // a likely vehicular scenario, even if there is a nomadic AP.
+        if (mIsScreenOn && !mIsWifiConnected) {
+            // Screen on without WiFi - We are in a high power likely mobile situation.
+            return CELL_INFO_INTERVAL_SHORT_MS;
+        } else if (mIsScreenOn && mIsCharging) {
+            // Screen is on and we're charging, so we favor accuracy over power.
+            return CELL_INFO_INTERVAL_SHORT_MS;
+        } else {
+            // If the screen is off, apps should not need cellular location at rapid intervals.
+            // If the screen is on but we are on wifi and not charging then cellular location
+            // accuracy is not crucial, so favor modem power saving over high accuracy.
+            return CELL_INFO_INTERVAL_LONG_MS;
+        }
     }
 
     /**
@@ -358,6 +449,9 @@ public class DeviceStateMonitor extends Handler {
             case EVENT_TETHERING_STATE_CHANGED:
                 onUpdateDeviceState(msg.what, msg.arg1 != 0);
                 break;
+            case EVENT_WIFI_CONNECTION_CHANGED:
+                onUpdateDeviceState(msg.what, msg.arg1 != WIFI_UNAVAILABLE);
+                break;
             default:
                 throw new IllegalStateException("Unexpected message arrives. msg = " + msg.what);
         }
@@ -389,8 +483,20 @@ public class DeviceStateMonitor extends Handler {
                 mIsPowerSaveOn = state;
                 sendDeviceState(POWER_SAVE_MODE, mIsPowerSaveOn);
                 break;
+            case EVENT_WIFI_CONNECTION_CHANGED:
+                if (mIsWifiConnected == state) return;
+                mIsWifiConnected = state;
+
+                break;
             default:
                 return;
+        }
+
+        final int newCellInfoMinInterval = computeCellInfoMinInterval();
+        if (mCellInfoMinInterval != newCellInfoMinInterval) {
+            mCellInfoMinInterval = newCellInfoMinInterval;
+            setCellInfoMinInterval(mCellInfoMinInterval);
+            log("CellInfo Min Interval Updated to " + newCellInfoMinInterval, true);
         }
 
         if (mIsLowDataExpected != isLowDataExpected()) {
@@ -437,6 +543,7 @@ public class DeviceStateMonitor extends Handler {
         setUnsolResponseFilter(mUnsolicitedResponseFilter, true);
         setSignalStrengthReportingCriteria();
         setLinkCapacityReportingCriteria();
+        setCellInfoMinInterval(mCellInfoMinInterval);
     }
 
     /**
@@ -499,6 +606,10 @@ public class DeviceStateMonitor extends Handler {
                 LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.EUTRAN);
         mPhone.setLinkCapacityReportingCriteria(LINK_CAPACITY_DOWNLINK_THRESHOLDS,
                 LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.CDMA2000);
+    }
+
+    private void setCellInfoMinInterval(int rate) {
+        mPhone.setCellInfoMinInterval(rate);
     }
 
     /**
@@ -579,6 +690,7 @@ public class DeviceStateMonitor extends Handler {
         ipw.println("mIsPowerSaveOn=" + mIsPowerSaveOn);
         ipw.println("mIsLowDataExpected=" + mIsLowDataExpected);
         ipw.println("mUnsolicitedResponseFilter=" + mUnsolicitedResponseFilter);
+        ipw.println("mIsWifiConnected=" + mIsWifiConnected);
         ipw.println("Local logs:");
         ipw.increaseIndent();
         mLocalLog.dump(fd, ipw, args);
