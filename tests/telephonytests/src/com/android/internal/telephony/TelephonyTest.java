@@ -61,6 +61,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
@@ -103,6 +104,8 @@ public abstract class TelephonyTest {
     protected ImsPhone mImsPhone;
     @Mock
     protected ServiceStateTracker mSST;
+    @Mock
+    protected EmergencyNumberTracker mEmergencyNumberTracker;
     @Mock
     protected GsmCdmaCallTracker mCT;
     @Mock
@@ -339,6 +342,9 @@ public abstract class TelephonyTest {
         doReturn(mSST).when(mTelephonyComponentFactory)
                 .makeServiceStateTracker(nullable(GsmCdmaPhone.class),
                         nullable(CommandsInterface.class));
+        doReturn(mEmergencyNumberTracker).when(mTelephonyComponentFactory)
+                .makeEmergencyNumberTracker(nullable(Phone.class),
+                        nullable(CommandsInterface.class));
         doReturn(mUiccProfile).when(mTelephonyComponentFactory)
                 .makeUiccProfile(nullable(Context.class), nullable(CommandsInterface.class),
                         nullable(IccCardStatus.class), anyInt(), nullable(UiccCard.class),
@@ -390,6 +396,7 @@ public abstract class TelephonyTest {
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
+        doReturn(mEmergencyNumberTracker).when(mPhone).getEmergencyNumberTracker();
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
         doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();
         doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
