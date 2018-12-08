@@ -1422,6 +1422,14 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void registerForEmergencyNumberList(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForEmergencyNumberList(Handler h) {
+    }
+
+    @Override
     public void startNattKeepalive(
             int contextId, KeepalivePacketData packetData, int intervalMillis, Message result) {
     }

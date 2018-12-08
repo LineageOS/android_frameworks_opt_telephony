@@ -21,6 +21,7 @@ import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
 
 import java.util.List;
 
@@ -78,4 +79,7 @@ public interface PhoneNotifier {
     public void notifyPhoneCapabilityChanged(PhoneCapability capability);
 
     void notifyRadioPowerStateChanged(@TelephonyManager.RadioPowerState int state);
+
+    /** Notify of change to EmergencyNumberList. */
+    void notifyEmergencyNumberList(Phone sender, List<EmergencyNumber> emergencyNumberList);
 }

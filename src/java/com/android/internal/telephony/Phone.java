@@ -57,6 +57,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.SparseArray;
@@ -68,6 +69,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -1629,6 +1631,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Retrieves the EmergencyNumberTracker of the phone instance.
+     */
+    public EmergencyNumberTracker getEmergencyNumberTracker() {
+        return null;
+    }
+
+    /**
     * Get call tracker
     */
     public CallTracker getCallTracker() {
@@ -2244,6 +2253,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void notifySrvccStateChanged(int state) {
         mNotifier.notifySrvccStateChanged(this, state);
+    }
+
+    /** Notify the list of {@link EmergencyNumber} changes. */
+    public void notifyEmergencyNumberList(List<EmergencyNumber> emergencyNumberList) {
+        mNotifier.notifyEmergencyNumberList(this, emergencyNumberList);
     }
 
     /**
@@ -3914,6 +3928,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (getServiceStateTracker() != null) {
             try {
                 getServiceStateTracker().dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (getEmergencyNumberTracker() != null) {
+            try {
+                getEmergencyNumberTracker().dump(fd, pw, args);
             } catch (Exception e) {
                 e.printStackTrace();
             }
