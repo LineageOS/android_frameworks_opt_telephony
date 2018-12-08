@@ -78,6 +78,7 @@ import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.TransportManager;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -169,6 +170,7 @@ public class GsmCdmaPhone extends Phone {
     private IsimUiccRecords mIsimUiccRecords;
     public GsmCdmaCallTracker mCT;
     public ServiceStateTracker mSST;
+    public EmergencyNumberTracker mEmergencyNumberTracker;
     private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
     private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     // Used for identify the carrier of current subscription
@@ -228,6 +230,8 @@ public class GsmCdmaPhone extends Phone {
         mCarrierSignalAgent = mTelephonyComponentFactory.makeCarrierSignalAgent(this);
         mTransportManager = mTelephonyComponentFactory.makeTransportManager(this);
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
+        mEmergencyNumberTracker = mTelephonyComponentFactory.makeEmergencyNumberTracker(
+                this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
         for (int transport : mTransportManager.getAvailableTransports()) {
             mDcTrackers.put(transport, mTelephonyComponentFactory.makeDcTracker(this,
@@ -473,6 +477,11 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public ServiceStateTracker getServiceStateTracker() {
         return mSST;
+    }
+
+    @Override
+    public EmergencyNumberTracker getEmergencyNumberTracker() {
+        return mEmergencyNumberTracker;
     }
 
     @Override
