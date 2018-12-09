@@ -465,12 +465,6 @@ public class DcTracker extends Handler {
         sendMessage(msg);
     }
 
-    /**
-     * List of messages that are waiting to be posted, when data call disconnect
-     * is complete
-     */
-    private ArrayList<Message> mDisconnectAllCompleteMsgList = new ArrayList<Message>();
-
     private RegistrantList mAllDataDisconnectedRegistrants = new RegistrantList();
 
     // member variables
@@ -734,7 +728,7 @@ public class DcTracker extends Handler {
             mProvisioningSpinner = null;
         }
 
-        cleanUpAllConnections(true, null);
+        cleanUpAllConnectionsInternal(true, null);
 
         mIsDisposed = true;
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
@@ -805,7 +799,7 @@ public class DcTracker extends Handler {
                 reevaluateDataConnections();
                 onTrySetupData(Phone.REASON_DATA_ENABLED);
             } else {
-                onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
+                cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
             }
         }
     }
@@ -836,7 +830,7 @@ public class DcTracker extends Handler {
             reevaluateDataConnections();
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
-            onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
+            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
         }
     }
 
@@ -848,7 +842,7 @@ public class DcTracker extends Handler {
             reevaluateDataConnections();
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
-            onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
+            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
         }
     }
 
@@ -1512,17 +1506,33 @@ public class DcTracker extends Handler {
     }
 
     /**
-     * If tearDown is true, this only tears down a CONNECTED session. Presently,
-     * there is no mechanism for abandoning an CONNECTING session,
-     * but would likely involve cancelling pending async requests or
-     * setting a flag or new state to ignore them when they came in
-     * @param tearDown true if the underlying DataConnection should be
-     * disconnected.
+     * Clean up all data connections. Note this is just detach the APN context from the data
+     * connection. After all APN contexts are detached from the data connection, the data
+     * connection will be torn down.
+     *
+     * @param reason Reason for the clean up.
+     */
+    public void cleanUpAllConnections(String reason) {
+        log("cleanUpAllConnections");
+        Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS);
+        msg.obj = reason;
+        sendMessage(msg);
+    }
+
+    /**
+     * Clean up all data connections by detaching the APN contexts from the data connections, which
+     * eventually tearing down all data connections after all APN contexts are detached from the
+     * data connections.
+     *
+     * @param tearDown True if the underlying data connection should be disconnected when no
+     * APN context attached to the data connection. False if we only want to reset the data
+     * connection's state machine without requesting modem to tearing down the data connections.
+     *
      * @param reason reason for the clean up.
      * @return boolean - true if we did cleanup any connections, false if they
      *                   were already all disconnected.
      */
-    private boolean cleanUpAllConnections(boolean tearDown, String reason) {
+    private boolean cleanUpAllConnectionsInternal(boolean tearDown, String reason) {
         if (DBG) log("cleanUpAllConnections: tearDown=" + tearDown + " reason=" + reason);
         boolean didDisconnect = false;
         boolean disableMeteredOnly = false;
@@ -1544,7 +1554,7 @@ public class DcTracker extends Handler {
                     if (apnContext.isDisconnected() == false) didDisconnect = true;
                     if (DBG) log("clean up metered ApnContext Type: " + apnContext.getApnType());
                     apnContext.setReason(reason);
-                    cleanUpConnection(tearDown, apnContext);
+                    cleanUpConnectionInternal(tearDown, apnContext);
                 }
             } else {
                 // Exclude the IMS APN from single DataConenction case.
@@ -1555,7 +1565,7 @@ public class DcTracker extends Handler {
                 // TODO - only do cleanup if not disconnected
                 if (apnContext.isDisconnected() == false) didDisconnect = true;
                 apnContext.setReason(reason);
-                cleanUpConnection(tearDown, apnContext);
+                cleanUpConnectionInternal(tearDown, apnContext);
             }
         }
 
@@ -1565,9 +1575,8 @@ public class DcTracker extends Handler {
         // TODO: Do we need mRequestedApnType?
         mRequestedApnType = ApnSetting.TYPE_DEFAULT;
 
-        log("cleanUpConnection: mDisconnectPendingCount = " + mDisconnectPendingCount);
+        log("cleanUpConnectionInternal: mDisconnectPendingCount = " + mDisconnectPendingCount);
         if (tearDown && mDisconnectPendingCount == 0) {
-            notifyDataDisconnectComplete();
             notifyAllDataDisconnected();
         }
 
@@ -1575,36 +1584,36 @@ public class DcTracker extends Handler {
     }
 
     /**
-     * Cleanup all connections.
+     * Detach the APN context from the associated data connection. This data connection might be
+     * torn down if no other APN context is attached to it.
      *
-     * TODO: Cleanup only a specified connection passed as a parameter.
-     *       Also, make sure when you clean up a conn, if it is last apply
-     *       logic as though it is cleanupAllConnections
-     *
-     * @param cause for the clean up.
+     * @param apnContext The APN context to be detached
      */
-    private void onCleanUpAllConnections(String cause) {
-        cleanUpAllConnections(true, cause);
-    }
-
-    void sendCleanUpConnection(boolean tearDown, ApnContext apnContext) {
-        if (DBG) log("sendCleanUpConnection: tearDown=" + tearDown + " apnContext=" + apnContext);
+    void cleanUpConnection(ApnContext apnContext) {
+        if (DBG) log("cleanUpConnection: apnContext=" + apnContext);
         Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_CONNECTION);
-        msg.arg1 = tearDown ? 1 : 0;
         msg.arg2 = 0;
         msg.obj = apnContext;
         sendMessage(msg);
     }
 
-    private void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
+    /**
+     * Detach the APN context from the associated data connection. This data connection might be
+     * torn down if no other APN context is attached to it.
+     *
+     * @param tearDown True if tearing down data connection when no other APN context attached.
+     * False to only reset the data connection's state machine.
+     * @param apnContext The APN context to be detached
+     */
+    private void cleanUpConnectionInternal(boolean tearDown, ApnContext apnContext) {
         if (apnContext == null) {
-            if (DBG) log("cleanUpConnection: apn context is null");
+            if (DBG) log("cleanUpConnectionInternal: apn context is null");
             return;
         }
 
         DataConnection dataConnection = apnContext.getDataConnection();
-        String str = "cleanUpConnection: tearDown=" + tearDown + " reason=" +
-                apnContext.getReason();
+        String str = "cleanUpConnectionInternal: tearDown=" + tearDown + " reason="
+                + apnContext.getReason();
         if (VDBG) log(str + " apnContext=" + apnContext);
         apnContext.requestLog(str);
         if (tearDown) {
@@ -1614,7 +1623,7 @@ public class DcTracker extends Handler {
                 apnContext.setState(DctConstants.State.IDLE);
                 if (!apnContext.isReady()) {
                     if (dataConnection != null) {
-                        str = "cleanUpConnection: teardown, disconnected, !ready";
+                        str = "cleanUpConnectionInternal: teardown, disconnected, !ready";
                         if (DBG) log(str + " apnContext=" + apnContext);
                         apnContext.requestLog(str);
                         dataConnection.tearDown(apnContext, "", null);
@@ -1631,7 +1640,7 @@ public class DcTracker extends Handler {
                             // if (PhoneConstants.APN_TYPE_DUN.equals(PhoneConstants.APN_TYPE_DEFAULT)) {
                             if (teardownForDun()) {
                                 if (DBG) {
-                                    log("cleanUpConnection: disconnectAll DUN connection");
+                                    log("cleanUpConnectionInternal: disconnectAll DUN connection");
                                 }
                                 // we need to tear it down - we brought it up just for dun and
                                 // other people are camped on it and now dun is done.  We need
@@ -1641,12 +1650,11 @@ public class DcTracker extends Handler {
                             }
                         }
                         final int generation = apnContext.getConnectionGeneration();
-                        str = "cleanUpConnection: tearing down" + (disconnectAll ? " all" : "") +
-                                " using gen#" + generation;
+                        str = "cleanUpConnectionInternal: tearing down"
+                                + (disconnectAll ? " all" : "") + " using gen#" + generation;
                         if (DBG) log(str + "apnContext=" + apnContext);
                         apnContext.requestLog(str);
-                        Pair<ApnContext, Integer> pair =
-                                new Pair<ApnContext, Integer>(apnContext, generation);
+                        Pair<ApnContext, Integer> pair = new Pair<>(apnContext, generation);
                         Message msg = obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, pair);
 
                         if (disconnectAll) {
@@ -1662,7 +1670,7 @@ public class DcTracker extends Handler {
                     // apn is connected but no reference to the data connection.
                     // Should not be happen, but reset the state in case.
                     apnContext.setState(DctConstants.State.IDLE);
-                    apnContext.requestLog("cleanUpConnection: connected, bug no dc");
+                    apnContext.requestLog("cleanUpConnectionInternal: connected, bug no dc");
                     mPhone.notifyDataConnection(apnContext.getReason(),
                                                 apnContext.getApnType());
                 }
@@ -1680,7 +1688,8 @@ public class DcTracker extends Handler {
         if (dataConnection != null) {
             cancelReconnectAlarm(apnContext);
         }
-        str = "cleanUpConnection: X tearDown=" + tearDown + " reason=" + apnContext.getReason();
+        str = "cleanUpConnectionInternal: X tearDown=" + tearDown + " reason="
+                + apnContext.getReason();
         if (DBG) log(str + " apnContext=" + apnContext + " dc=" + apnContext.getDataConnection());
         apnContext.requestLog(str);
     }
@@ -1737,13 +1746,13 @@ public class DcTracker extends Handler {
                         new String[] {Telephony.Carriers.APN_SET_ID}, null, null, null);
         if (c == null) {
             loge("getPreferredApnSetId: cursor is null");
-            return Telephony.Carriers.NO_SET_SET;
+            return Telephony.Carriers.NO_APN_SET_ID;
         }
 
         int setId;
         if (c.getCount() < 1) {
             loge("getPreferredApnSetId: no APNs found");
-            setId = Telephony.Carriers.NO_SET_SET;
+            setId = Telephony.Carriers.NO_APN_SET_ID;
         } else {
             c.moveToFirst();
             setId = c.getInt(0 /* index of Telephony.Carriers.APN_SET_ID */);
@@ -1881,7 +1890,7 @@ public class DcTracker extends Handler {
                     // Only lower priority calls left.  Disconnect them all in this single PDP case
                     // so that we can bring up the requested higher priority call (once we receive
                     // response for deactivate request for the calls we are about to disconnect
-                    if (cleanUpAllConnections(true, Phone.REASON_SINGLE_PDN_ARBITRATION)) {
+                    if (cleanUpAllConnectionsInternal(true, Phone.REASON_SINGLE_PDN_ARBITRATION)) {
                         // If any call actually requested to be disconnected, means we can't
                         // bring up this connection yet as we need to wait for those data calls
                         // to be disconnected.
@@ -2080,7 +2089,7 @@ public class DcTracker extends Handler {
 
     private void restartRadio() {
         if (DBG) log("restartRadio: ************TURN OFF RADIO**************");
-        cleanUpAllConnections(true, Phone.REASON_RADIO_TURNED_OFF);
+        cleanUpAllConnectionsInternal(true, Phone.REASON_RADIO_TURNED_OFF);
         mPhone.getServiceStateTracker().powerOffRadioSafely();
         /* Note: no need to call setRadioPower(true).  Assuming the desired
          * radio power state is still ON (as tracked by ServiceStateTracker),
@@ -2189,7 +2198,8 @@ public class DcTracker extends Handler {
                 // Send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
                 mPhone.notifyOtaspChanged(TelephonyManager.OTASP_SIM_UNPROVISIONED);
                 // Tear down all metered apns
-                cleanUpAllConnections(true, Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
+                cleanUpAllConnectionsInternal(true,
+                        Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
             } else {
                 // Re-evaluate Otasp state
                 int otaspState = mPhone.getServiceStateTracker().getOtasp();
@@ -2204,7 +2214,7 @@ public class DcTracker extends Handler {
     private void onSimNotReady() {
         if (DBG) log("onSimNotReady");
 
-        cleanUpAllConnections(true, Phone.REASON_SIM_NOT_READY);
+        cleanUpAllConnectionsInternal(true, Phone.REASON_SIM_NOT_READY);
         mAllApnSettings.clear();
         mAutoAttachOnCreationConfig = false;
         // Clear auto attach as modem is expected to do a new attach once SIM is ready
@@ -2234,7 +2244,7 @@ public class DcTracker extends Handler {
                     reevaluateDataConnections();
                     onTrySetupData(Phone.REASON_DATA_ENABLED);
                 } else {
-                    onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
+                    cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
                 }
             }
         }
@@ -2312,7 +2322,7 @@ public class DcTracker extends Handler {
         }
         apnContext.setEnabled(enabled);
         apnContext.setDependencyMet(met);
-        if (cleanup) cleanUpConnection(true, apnContext);
+        if (cleanup) cleanUpConnectionInternal(true, apnContext);
         if (trySetup) {
             apnContext.resetErrorCodeRetries();
             trySetupData(apnContext);
@@ -2626,7 +2636,7 @@ public class DcTracker extends Handler {
             // roaming, we need to tear down the data connection otherwise the user might be
             // charged for data roaming usage.
             if (DBG) log("onDataRoamingOnOrSettingsChanged: Tear down data connection on roaming.");
-            cleanUpAllConnections(true, Phone.REASON_ROAMING_ON);
+            cleanUpAllConnectionsInternal(true, Phone.REASON_ROAMING_ON);
             notifyOffApnsOfAvailability(Phone.REASON_ROAMING_ON);
         }
     }
@@ -2664,7 +2674,7 @@ public class DcTracker extends Handler {
         }
 
         if (getOverallState() != DctConstants.State.IDLE) {
-            cleanUpConnection(true, null);
+            cleanUpConnectionInternal(true, null);
         }
     }
 
@@ -2683,7 +2693,7 @@ public class DcTracker extends Handler {
             log("We're on the simulator; assuming radio off is meaningless");
         } else {
             if (DBG) log("onRadioOffOrNotAvailable: is off and clean up all connections");
-            cleanUpAllConnections(false, Phone.REASON_RADIO_TURNED_OFF);
+            cleanUpAllConnectionsInternal(false, Phone.REASON_RADIO_TURNED_OFF);
         }
         notifyOffApnsOfAvailability(null);
     }
@@ -2915,7 +2925,7 @@ public class DcTracker extends Handler {
          * to clean data connections.
          */
         if (!mDataEnabledSettings.isInternalDataEnabled()) {
-            cleanUpAllConnections(Phone.REASON_DATA_DISABLED);
+            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_DISABLED);
         }
 
     }
@@ -3015,7 +3025,6 @@ public class DcTracker extends Handler {
                 }
 
                 if (mDisconnectPendingCount == 0) {
-                    notifyDataDisconnectComplete();
                     notifyAllDataDisconnected();
                 }
                 return;
@@ -3062,7 +3071,6 @@ public class DcTracker extends Handler {
         if (mDisconnectPendingCount == 0) {
             apnContext.setConcurrentVoiceAndDataAllowed(
                     mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed());
-            notifyDataDisconnectComplete();
             notifyAllDataDisconnected();
         }
 
@@ -3115,7 +3123,7 @@ public class DcTracker extends Handler {
         ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext != null) {
             apnContext.setReason(reason);
-            cleanUpConnection(tearDown, apnContext);
+            cleanUpConnectionInternal(tearDown, apnContext);
         }
     }
 
@@ -3187,8 +3195,8 @@ public class DcTracker extends Handler {
 
         // ORDER BY Telephony.Carriers._ID ("_id")
         Cursor cursor = mPhone.getContext().getContentResolver().query(
-                Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
-                null, null, null, Telephony.Carriers._ID);
+                Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered/subId/"
+                        + mPhone.getSubId()), null, null, null, Telephony.Carriers._ID);
 
         if (cursor != null) {
             while (cursor.moveToNext()) {
@@ -3418,7 +3426,7 @@ public class DcTracker extends Handler {
     public ArrayList<ApnSetting> sortApnListByPreferred(ArrayList<ApnSetting> list) {
         if (list == null || list.size() <= 1) return list;
         int preferredApnSetId = getPreferredApnSetId();
-        if (preferredApnSetId != Telephony.Carriers.NO_SET_SET) {
+        if (preferredApnSetId != Telephony.Carriers.NO_APN_SET_ID) {
             list.sort(new Comparator<ApnSetting>() {
                 @Override
                 public int compare(ApnSetting apn1, ApnSetting apn2) {
@@ -3565,7 +3573,7 @@ public class DcTracker extends Handler {
                 } else {
                     // TODO: Should all PDN states be checked to fail?
                     if (mState == DctConstants.State.FAILED) {
-                        cleanUpAllConnections(false, Phone.REASON_PS_RESTRICT_ENABLED);
+                        cleanUpAllConnectionsInternal(false, Phone.REASON_PS_RESTRICT_ENABLED);
                         mReregisterOnReconnectFailure = false;
                     }
                     ApnContext apnContext = mApnContextsByType.get(ApnSetting.TYPE_DEFAULT);
@@ -3592,24 +3600,19 @@ public class DcTracker extends Handler {
                 break;
 
             case DctConstants.EVENT_CLEAN_UP_CONNECTION:
-                boolean tearDown = (msg.arg1 == 0) ? false : true;
-                if (DBG) log("EVENT_CLEAN_UP_CONNECTION tearDown=" + tearDown);
-                if (msg.obj instanceof ApnContext) {
-                    cleanUpConnection(tearDown, (ApnContext)msg.obj);
-                } else {
-                    onCleanUpConnection(tearDown, msg.arg2, (String) msg.obj);
-                }
+                if (DBG) log("EVENT_CLEAN_UP_CONNECTION");
+                cleanUpConnectionInternal(true, (ApnContext) msg.obj);
                 break;
             case DctConstants.EVENT_SET_INTERNAL_DATA_ENABLE: {
                 final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                onSetInternalDataEnabled(enabled, (Message) msg.obj);
+                onSetInternalDataEnabled(enabled);
                 break;
             }
             case DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS:
                 if ((msg.obj != null) && (msg.obj instanceof String == false)) {
                     msg.obj = null;
                 }
-                onCleanUpAllConnections((String) msg.obj);
+                cleanUpAllConnectionsInternal(true, (String) msg.obj);
                 break;
 
             case DctConstants.EVENT_DATA_RAT_CHANGED:
@@ -3776,7 +3779,7 @@ public class DcTracker extends Handler {
                         mIsProvisioning = false;
                         mProvisioningUrl = null;
                         stopProvisioningApnAlarm();
-                        sendCleanUpConnection(true, apnCtx);
+                        cleanUpConnectionInternal(true, apnCtx);
                     } else {
                         if (DBG) {
                             log("EVENT_PROVISIONING_APN_ALARM: ignore stale tag,"
@@ -3911,6 +3914,11 @@ public class DcTracker extends Handler {
         }
     }
 
+    /**
+     * Update DcTracker.
+     *
+     * TODO: This should be cleaned up. DcTracker should listen to those events.
+     */
     public void update() {
         log("update sub = " + mPhone.getSubId());
         log("update(): Active DDS, register for all events now!");
@@ -3918,32 +3926,8 @@ public class DcTracker extends Handler {
 
         mAutoAttachOnCreation.set(false);
 
-        ((GsmCdmaPhone)mPhone).updateCurrentCarrierInProvider();
+        mPhone.updateCurrentCarrierInProvider();
     }
-
-    public void cleanUpAllConnections(String cause) {
-        cleanUpAllConnections(cause, null);
-    }
-
-    public void cleanUpAllConnections(String cause, Message disconnectAllCompleteMsg) {
-        log("cleanUpAllConnections");
-        if (disconnectAllCompleteMsg != null) {
-            mDisconnectAllCompleteMsgList.add(disconnectAllCompleteMsg);
-        }
-
-        Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS);
-        msg.obj = cause;
-        sendMessage(msg);
-    }
-
-    private void notifyDataDisconnectComplete() {
-        log("notifyDataDisconnectComplete");
-        for (Message m: mDisconnectAllCompleteMsgList) {
-            m.sendToTarget();
-        }
-        mDisconnectAllCompleteMsgList.clear();
-    }
-
 
     private void notifyAllDataDisconnected() {
         sEnableFailFastRefCounter = 0;
@@ -3972,35 +3956,22 @@ public class DcTracker extends Handler {
         mDataEnabledSettings.unregisterForDataEnabledChanged(h);
     }
 
-    private void onSetInternalDataEnabled(boolean enabled, Message onCompleteMsg) {
+    private void onSetInternalDataEnabled(boolean enabled) {
         if (DBG) log("onSetInternalDataEnabled: enabled=" + enabled);
-        boolean sendOnComplete = true;
-
         mDataEnabledSettings.setInternalDataEnabled(enabled);
         if (enabled) {
             log("onSetInternalDataEnabled: changed to enabled, try to setup data call");
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
-            sendOnComplete = false;
             log("onSetInternalDataEnabled: changed to disabled, cleanUpAllConnections");
-            cleanUpAllConnections(Phone.REASON_DATA_DISABLED, onCompleteMsg);
-        }
-
-        if (sendOnComplete) {
-            if (onCompleteMsg != null) {
-                onCompleteMsg.sendToTarget();
-            }
+            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_DISABLED);
         }
     }
 
     public boolean setInternalDataEnabled(boolean enable) {
-        return setInternalDataEnabled(enable, null);
-    }
-
-    public boolean setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
         if (DBG) log("setInternalDataEnabled(" + enable + ")");
 
-        Message msg = obtainMessage(DctConstants.EVENT_SET_INTERNAL_DATA_ENABLE, onCompleteMsg);
+        Message msg = obtainMessage(DctConstants.EVENT_SET_INTERNAL_DATA_ENABLE);
         msg.arg1 = (enable ? DctConstants.ENABLED : DctConstants.DISABLED);
         sendMessage(msg);
         return true;
@@ -4210,7 +4181,7 @@ public class DcTracker extends Handler {
     private void cleanUpConnectionsOnUpdatedApns(boolean tearDown, String reason) {
         if (DBG) log("cleanUpConnectionsOnUpdatedApns: tearDown=" + tearDown);
         if (mAllApnSettings.isEmpty()) {
-            cleanUpAllConnections(tearDown, Phone.REASON_APN_CHANGED);
+            cleanUpAllConnectionsInternal(tearDown, Phone.REASON_APN_CHANGED);
         } else {
             int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
             if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
@@ -4236,7 +4207,7 @@ public class DcTracker extends Handler {
                     if (!apnContext.isDisconnected()) {
                         if (VDBG) log("cleanUpConnectionsOnUpdatedApns for " + apnContext);
                         apnContext.setReason(reason);
-                        cleanUpConnection(true, apnContext);
+                        cleanUpConnectionInternal(true, apnContext);
                     }
                 }
             }
@@ -4251,7 +4222,6 @@ public class DcTracker extends Handler {
 
         if (DBG) log("mDisconnectPendingCount = " + mDisconnectPendingCount);
         if (tearDown && mDisconnectPendingCount == 0) {
-            notifyDataDisconnectComplete();
             notifyAllDataDisconnected();
         }
     }
@@ -4471,7 +4441,7 @@ public class DcTracker extends Handler {
                     EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP,
                             mSentSinceLastRecv);
                     if (DBG) log("doRecovery() cleanup all connections");
-                    cleanUpAllConnections(Phone.REASON_PDP_RESET);
+                    cleanUpAllConnectionsInternal(true, Phone.REASON_PDP_RESET);
                     putRecoveryAction(RecoveryAction.REREGISTER);
                     break;
                 case RecoveryAction.REREGISTER:

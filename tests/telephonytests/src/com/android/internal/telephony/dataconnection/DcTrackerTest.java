@@ -207,8 +207,8 @@ public class DcTrackerTest extends TelephonyTest {
             logd("   sortOrder = " + sortOrder);
 
             if (uri.compareTo(Telephony.Carriers.CONTENT_URI) == 0
-                    || uri.compareTo(Uri.withAppendedPath(
-                            Telephony.Carriers.CONTENT_URI, "filtered")) == 0) {
+                    || uri.toString().startsWith(Uri.withAppendedPath(
+                            Telephony.Carriers.CONTENT_URI, "filtered").toString())) {
                 if (projection == null) {
 
                     logd("Query '" + FAKE_PLMN + "' APN settings");
@@ -225,9 +225,11 @@ public class DcTrackerTest extends TelephonyTest {
                                     Telephony.Carriers.CARRIER_ENABLED, Telephony.Carriers.BEARER,
                                     Telephony.Carriers.BEARER_BITMASK,
                                     Telephony.Carriers.PROFILE_ID,
-                                    Telephony.Carriers.MODEM_COGNITIVE,
-                                    Telephony.Carriers.MAX_CONNS, Telephony.Carriers.WAIT_TIME,
-                                    Telephony.Carriers.MAX_CONNS_TIME, Telephony.Carriers.MTU,
+                                    Telephony.Carriers.MODEM_PERSIST,
+                                    Telephony.Carriers.MAX_CONNECTIONS,
+                                    Telephony.Carriers.WAIT_TIME_RETRY,
+                                    Telephony.Carriers.TIME_LIMIT_FOR_MAX_CONNECTIONS,
+                                    Telephony.Carriers.MTU,
                                     Telephony.Carriers.MVNO_TYPE,
                                     Telephony.Carriers.MVNO_MATCH_DATA,
                                     Telephony.Carriers.NETWORK_TYPE_BITMASK,

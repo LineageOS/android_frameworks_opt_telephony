@@ -21,6 +21,7 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import android.Manifest;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
+import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -615,7 +616,7 @@ public class SubscriptionController extends ISub.Stub {
             return;
         }
 
-        boolean opptSubListChanged = false;
+        boolean opptSubListChanged;
 
         synchronized (mSubInfoListLock) {
             mCacheActiveSubInfoList.clear();
@@ -2450,14 +2451,31 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-
     private boolean refreshCachedOpportunisticSubscriptionInfoList() {
         synchronized (mSubInfoListLock) {
             List<SubscriptionInfo> oldOpptCachedList = mCacheOpportunisticSubInfoList;
 
-            mCacheOpportunisticSubInfoList = mCacheActiveSubInfoList.stream()
-                    .filter(subscriptionInfo -> subscriptionInfo.isOpportunistic())
-                    .collect(Collectors.toList());
+            List<SubscriptionInfo> subList = getSubInfo(
+                    SubscriptionManager.IS_OPPORTUNISTIC + "=1 AND ("
+                            + SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
+                            + SubscriptionManager.IS_EMBEDDED + "=1)", null);
+
+            if (subList != null) {
+                subList.sort(SUBSCRIPTION_INFO_COMPARATOR);
+            } else {
+                subList = new ArrayList<>();
+            }
+
+            mCacheOpportunisticSubInfoList = subList;
+
+            for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
+                if (shouldDisableSubGroup(info.getGroupUuid())) {
+                    info.setGroupDisabled(true);
+                    if (isActiveSubId(info.getSubscriptionId())) {
+                        deactivateSubscription(info);
+                    }
+                }
+            }
 
             if (DBG_CACHE) {
                 if (!mCacheOpportunisticSubInfoList.isEmpty()) {
@@ -2471,6 +2489,27 @@ public class SubscriptionController extends ISub.Stub {
             }
 
             return !oldOpptCachedList.equals(mCacheOpportunisticSubInfoList);
+        }
+    }
+
+    private boolean shouldDisableSubGroup(String groupUuid) {
+        if (groupUuid == null) return false;
+
+        for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {
+            if (!activeInfo.isOpportunistic() && groupUuid.equals(activeInfo.getGroupUuid())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void deactivateSubscription(SubscriptionInfo info) {
+        // TODO: b/120439488 deactivate pSIM.
+        if (info.isEmbedded()) {
+            EuiccManager euiccManager = new EuiccManager(mContext);
+            euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                    PendingIntent.getService(mContext, 0, new Intent(), 0));
         }
     }
 }
