@@ -1556,4 +1556,20 @@ message ModemPowerStats {
 
   // Amount of time modem is in tx (ms)
   repeated int64 tx_time_ms = 9;
+
+  // Number of bytes sent (tx)
+  optional int64 num_bytes_tx = 10;
+
+  // Number of packets received (rx)
+  optional int64 num_packets_rx = 11;
+
+  // Number of bytes received (rx)
+  optional int64 num_bytes_rx = 12;
+
+  // Amount of time phone spends in various Radio Access Technologies (ms)
+  repeated int64 time_in_rat_ms = 13;
+
+  // Amount of time phone spends in various cellular
+  // rx signal strength levels (ms)
+  repeated int64 time_in_rx_signal_strength_level_ms = 14;
 }
