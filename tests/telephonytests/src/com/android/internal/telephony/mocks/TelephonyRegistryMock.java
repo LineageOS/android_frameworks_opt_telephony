@@ -28,7 +28,6 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
-import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.IOnSubscriptionsChangedListener;
 import com.android.internal.telephony.IPhoneStateListener;
@@ -362,7 +361,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyEmergencyNumberList(List<EmergencyNumber> emergencyNumberList) {
+    public void notifyEmergencyNumberList() {
         throw new RuntimeException("Not implemented");
     }
 

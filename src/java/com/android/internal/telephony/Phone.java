@@ -2255,9 +2255,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifySrvccStateChanged(this, state);
     }
 
-    /** Notify the list of {@link EmergencyNumber} changes. */
-    public void notifyEmergencyNumberList(List<EmergencyNumber> emergencyNumberList) {
-        mNotifier.notifyEmergencyNumberList(this, emergencyNumberList);
+    /** Notify the {@link EmergencyNumber} changes. */
+    public void notifyEmergencyNumberList() {
+        mNotifier.notifyEmergencyNumberList();
     }
 
     /**
