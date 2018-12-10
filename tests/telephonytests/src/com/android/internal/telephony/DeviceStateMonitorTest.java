@@ -20,6 +20,7 @@ import static android.hardware.radio.V1_0.DeviceStateType.LOW_DATA_EXPECTED;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.times;
@@ -33,14 +34,14 @@ import android.os.BatteryManager;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.support.test.filters.FlakyTest;
+import android.test.suitebuilder.annotation.MediumTest;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
+import org.junit.Test;
 
 import java.util.ArrayList;
 
-@Ignore
 public class DeviceStateMonitorTest extends TelephonyTest {
 
     private DeviceStateMonitor mDSM;
@@ -131,5 +132,42 @@ public class DeviceStateMonitorTest extends TelephonyTest {
 
         verify(mSimulatedCommandsVerifier, times(1)).setUnsolResponseFilter(eq(-1),
                 nullable(Message.class));
+    }
+
+    private void sendStates(int screenState, int chargingState, int wifiState) {
+        setReady(false);
+        mDSM.obtainMessage(
+                DeviceStateMonitor.EVENT_SCREEN_STATE_CHANGED, screenState, 0).sendToTarget();
+        mDSM.obtainMessage(
+                DeviceStateMonitor.EVENT_CHARGING_STATE_CHANGED, chargingState, 0).sendToTarget();
+        mDSM.obtainMessage(
+                DeviceStateMonitor.EVENT_WIFI_CONNECTION_CHANGED, wifiState, 0).sendToTarget();
+        mDSM.post(() -> setReady(true));
+        waitUntilReady();
+    }
+
+    @Test
+    @MediumTest
+    public void testWifi() throws Exception  {
+        // screen off
+        sendStates(0, 0, 0);
+        assertEquals(
+                DeviceStateMonitor.CELL_INFO_INTERVAL_LONG_MS, mDSM.computeCellInfoMinInterval());
+        // screen off, but charging
+        sendStates(0, 1, 0);
+        assertEquals(
+                DeviceStateMonitor.CELL_INFO_INTERVAL_LONG_MS, mDSM.computeCellInfoMinInterval());
+        // screen on, no wifi
+        sendStates(1, 0, 0);
+        assertEquals(
+                DeviceStateMonitor.CELL_INFO_INTERVAL_SHORT_MS, mDSM.computeCellInfoMinInterval());
+        // screen on, but on wifi
+        sendStates(1, 0, 1);
+        assertEquals(
+                DeviceStateMonitor.CELL_INFO_INTERVAL_LONG_MS, mDSM.computeCellInfoMinInterval());
+        // screen on, charging
+        sendStates(1, 1, 0);
+        assertEquals(
+                DeviceStateMonitor.CELL_INFO_INTERVAL_SHORT_MS, mDSM.computeCellInfoMinInterval());
     }
 }

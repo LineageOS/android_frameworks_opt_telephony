@@ -132,13 +132,13 @@ public class ServiceStateTracker extends Handler {
     private ServiceState mNewSS;
 
     // This is the minimum interval at which CellInfo requests will be serviced by the modem.
-    // Any requests that arrive within MAX_AGE of the previous reuqest will simply receive the
+    // Any requests that arrive within MinInterval of the previous reuqest will simply receive the
     // cached result. This is a power-saving feature, because requests to the modem may require
     // wakeup of a separate chip and bus communication. Because the cost of wakeups is
     // architecture dependent, it would be preferable if this sort of optimization could be
     // handled in SoC-specific code, but for now, keep it here to ensure that in case further
     // optimizations are not present elsewhere, there is a power-management scheme of last resort.
-    private static final long LAST_CELL_INFO_LIST_MAX_AGE_MS = 2000;
+    private int mCellInfoMinIntervalMs =  2000;
 
     // Maximum time to wait for a CellInfo request before assuming it won't arrive and returning
     // null to callers. Note, that if a CellInfo response does arrive later, then it will be
@@ -4451,6 +4451,11 @@ public class ServiceStateTracker extends Handler {
         return mLastCellInfoList;
     }
 
+    /** Set the minimum time between CellInfo requests to the modem, in milliseconds */
+    public void setCellInfoMinInterval(int interval) {
+        mCellInfoMinIntervalMs = interval;
+    }
+
     /**
      * Request the latest CellInfo from the modem.
      *
@@ -4478,7 +4483,7 @@ public class ServiceStateTracker extends Handler {
             // Check to see whether the elapsed time is sufficient for a new request; if not, then
             // return the result of the last request (if expected).
             final long curTime = SystemClock.elapsedRealtime();
-            if ((curTime - mLastCellInfoReqTime) < LAST_CELL_INFO_LIST_MAX_AGE_MS) {
+            if ((curTime - mLastCellInfoReqTime) < mCellInfoMinIntervalMs) {
                 if (rspMsg != null) {
                     if (DBG) log("SST.requestAllCellInfo(): return last, back to back calls");
                     AsyncResult.forMessage(rspMsg, mLastCellInfoList, null);
@@ -4660,6 +4665,7 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
         pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
         pw.println(" mLteRsrpBoost=" + mLteRsrpBoost);
+        pw.println(" mCellInfoMinIntervalMs=" + mCellInfoMinIntervalMs);
         dumpEarfcnPairList(pw);
 
         mLocaleTracker.dump(fd, pw, args);
