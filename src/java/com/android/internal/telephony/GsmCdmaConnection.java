@@ -528,6 +528,7 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.USER_ALERTING_NO_ANSWER:
                 return DisconnectCause.TIMED_OUT;
 
+            case CallFailCause.ACCESS_CLASS_BLOCKED:
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:
@@ -562,7 +563,8 @@ public class GsmCdmaConnection extends Connection {
                     }
                 }
                 if (isPhoneTypeGsm()) {
-                    if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
+                    if (causeCode == CallFailCause.ERROR_UNSPECIFIED ||
+                                   causeCode == CallFailCause.ACCESS_CLASS_BLOCKED ) {
                         if (phone.mSST.mRestrictedState.isCsRestricted()) {
                             return DisconnectCause.CS_RESTRICTED;
                         } else if (phone.mSST.mRestrictedState.isCsEmergencyRestricted()) {
