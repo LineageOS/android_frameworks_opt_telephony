@@ -785,6 +785,7 @@ public class SubscriptionInfoUpdater extends Handler {
             values.put(SubscriptionManager.IS_REMOVABLE, isRemovable);
             values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.getNickname());
             values.put(SubscriptionManager.NAME_SOURCE, SubscriptionManager.NAME_SOURCE_USER_INPUT);
+            values.put(SubscriptionManager.PROFILE_CLASS, embeddedProfile.getProfileClass());
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
                     SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.getIccid() + "\"", null);
