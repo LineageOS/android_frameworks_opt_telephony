@@ -208,7 +208,9 @@ public class DcTrackerTest extends TelephonyTest {
 
             if (uri.compareTo(Telephony.Carriers.CONTENT_URI) == 0
                     || uri.toString().startsWith(Uri.withAppendedPath(
-                            Telephony.Carriers.CONTENT_URI, "filtered").toString())) {
+                            Telephony.Carriers.CONTENT_URI, "filtered").toString())
+                    || uri.toString().startsWith(Uri.withAppendedPath(
+                            Telephony.Carriers.SIM_APN_LIST, "filtered").toString())) {
                 if (projection == null) {
 
                     logd("Query '" + FAKE_PLMN + "' APN settings");
