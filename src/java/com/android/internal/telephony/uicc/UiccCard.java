@@ -85,7 +85,8 @@ public class UiccCard {
 
             if (mCardState != CardState.CARDSTATE_ABSENT) {
                 if (mUiccProfile == null) {
-                    mUiccProfile = TelephonyComponentFactory.getInstance().makeUiccProfile(
+                    mUiccProfile = TelephonyComponentFactory.getInstance()
+                            .inject(UiccProfile.class.getName()).makeUiccProfile(
                             mContext, mCi, ics, mPhoneId, this, mLock);
                 } else {
                     mUiccProfile.update(mContext, mCi, ics);
