@@ -2275,29 +2275,92 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Switch to a certain subscription
+     * Set whether a subscription is opportunistic.
+     *
+     * Throws SecurityException if doesn't have required permission.
      *
      * @param opportunistic whether it’s opportunistic subscription.
      * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage The package making the IPC.
      * @return the number of records updated
      */
     @Override
-    public int setOpportunistic(boolean opportunistic, int subId) {
-        return setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
-                String.valueOf(opportunistic ? 1 : 0));
+    public int setOpportunistic(boolean opportunistic, int subId, String callingPackage) {
+        try {
+            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                    mContext, subId, callingPackage);
+        } catch (SecurityException e) {
+            // The subscription may be inactive eSIM profile. If so, check the access rule in
+            // database.
+            enforceCarrierPrivilegeOnInactiveSub(subId, callingPackage,
+                    "Caller requires permission on sub " + subId);
+        }
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            return setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
+                    String.valueOf(opportunistic ? 1 : 0));
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     /**
      * Set whether a subscription is metered
      *
+     * Throws SecurityException if doesn't have required permission.
+     *
      * @param isMetered whether it’s a metered subscription.
      * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage The package making the IPC.
      * @return the number of records updated
      */
     @Override
-    public int setMetered(boolean isMetered, int subId) {
-        return setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
-                String.valueOf(isMetered ? 1 : 0));
+    public int setMetered(boolean isMetered, int subId, String callingPackage) {
+        try {
+            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                    mContext, subId, callingPackage);
+        } catch (SecurityException e) {
+            // The subscription may be inactive eSIM profile. If so, check the access rule in
+            // database.
+            enforceCarrierPrivilegeOnInactiveSub(subId, callingPackage,
+                    "Caller requires permission on sub " + subId);
+        }
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            return setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
+                    String.valueOf(isMetered ? 1 : 0));
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    /**
+     * Get subscription info from database, and check whether caller has carrier privilege
+     * permission with it. If checking fails, throws SecurityException.
+     */
+    private void enforceCarrierPrivilegeOnInactiveSub(int subId, String callingPackage,
+            String message) {
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
+
+        SubscriptionManager subManager = (SubscriptionManager)
+                mContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        List<SubscriptionInfo> subInfo = getSubInfo(
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+
+        try {
+            if (!isActiveSubId(subId) && subInfo != null && subInfo.size() == 1
+                    && subManager.canManageSubscription(subInfo.get(0), callingPackage)) {
+                return;
+            }
+            throw new SecurityException(message);
+        } catch (IllegalArgumentException e) {
+            // canManageSubscription will throw IllegalArgumentException if sub is not embedded
+            // or package name is unknown. In this case, we also see it as permission check failure
+            // and throw a SecurityException.
+            throw new SecurityException(message);
+        }
     }
 
     @Override
