@@ -256,8 +256,11 @@ public class ImsPhone extends ImsPhoneBase {
         // setting the multiendpoint listener on the external call tracker.  So we need to ensure
         // the external call tracker is available first to avoid potential timing issues.
         mExternalCallTracker =
-                TelephonyComponentFactory.getInstance().makeImsExternalCallTracker(this);
-        mCT = TelephonyComponentFactory.getInstance().makeImsPhoneCallTracker(this);
+                TelephonyComponentFactory.getInstance()
+                        .inject(ImsExternalCallTracker.class.getName())
+                        .makeImsExternalCallTracker(this);
+        mCT = TelephonyComponentFactory.getInstance().inject(ImsPhoneCallTracker.class.getName())
+                .makeImsPhoneCallTracker(this);
         mCT.registerPhoneStateListener(mExternalCallTracker);
         mExternalCallTracker.setCallPuller(mCT);
 

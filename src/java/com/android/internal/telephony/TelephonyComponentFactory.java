@@ -16,12 +16,15 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
 import android.content.Context;
+import android.content.res.XmlResourceParser;
 import android.database.Cursor;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
 import android.os.Looper;
 import android.os.ServiceManager;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
@@ -35,17 +38,192 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccProfile;
 
+import dalvik.system.PathClassLoader;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Consumer;
+
 /**
  * This class has one-line methods to instantiate objects only. The purpose is to make code
  * unit-test friendly and use this class as a way to do dependency injection. Instantiating objects
  * this way makes it easier to mock them in tests.
  */
 public class TelephonyComponentFactory {
+
+    private static final String TAG = TelephonyComponentFactory.class.getSimpleName();
+
     private static TelephonyComponentFactory sInstance;
+
+    private InjectedComponents mInjectedComponents;
+
+    private static class InjectedComponents {
+        private static final String ATTRIBUTE_JAR = "jar";
+        private static final String ATTRIBUTE_PACKAGE = "package";
+        private static final String TAG_INJECTION = "injection";
+        private static final String TAG_COMPONENTS = "components";
+        private static final String TAG_COMPONENT = "component";
+
+        private final Set<String> mComponentNames = new HashSet<>();
+        private TelephonyComponentFactory mInjectedInstance;
+        private String mPackageName;
+        private String mJarPath;
+
+        private boolean isInjected() {
+            return mPackageName != null && mJarPath != null;
+        }
+
+        private void makeInjectedInstance() {
+            if (isInjected()) {
+                PathClassLoader classLoader = new PathClassLoader(mJarPath,
+                        ClassLoader.getSystemClassLoader());
+                try {
+                    Class<?> cls = classLoader.loadClass(mPackageName);
+                    mInjectedInstance = (TelephonyComponentFactory) cls.newInstance();
+                } catch (ClassNotFoundException e) {
+                    Rlog.e(TAG, "failed: " + e.getMessage());
+                } catch (IllegalAccessException | InstantiationException e) {
+                    Rlog.e(TAG, "injection failed: " + e.getMessage());
+                }
+            }
+        }
+
+        private boolean isComponentInjected(String componentName) {
+            if (mInjectedInstance == null) {
+                return false;
+            }
+            return mComponentNames.contains(componentName);
+        }
+
+        /**
+         * Find the injection tag, set attributes, and then parse the injection.
+         */
+        private void parseXml(@NonNull XmlPullParser parser) {
+            parseXmlByTag(parser, false, p -> {
+                setAttributes(p);
+                parseInjection(p);
+            }, TAG_INJECTION);
+        }
+
+        /**
+         * Only parse the first injection tag. Find the components tag, then try parse it next.
+         */
+        private void parseInjection(@NonNull XmlPullParser parser) {
+            parseXmlByTag(parser, false, p -> parseComponents(p), TAG_COMPONENTS);
+        }
+
+        /**
+         * Only parse the first components tag. Find the component tags, then try parse them next.
+         */
+        private void parseComponents(@NonNull XmlPullParser parser) {
+            parseXmlByTag(parser, true, p -> parseComponent(p), TAG_COMPONENT);
+        }
+
+        /**
+         * Extract text values from component tags.
+         */
+        private void parseComponent(@NonNull XmlPullParser parser) {
+            try {
+                int outerDepth = parser.getDepth();
+                int type;
+                while ((type = parser.next()) != XmlPullParser.END_DOCUMENT
+                        && (type != XmlPullParser.END_TAG || parser.getDepth() > outerDepth)) {
+                    if (type == XmlPullParser.TEXT) {
+                        mComponentNames.add(parser.getText());
+                    }
+                }
+            } catch (XmlPullParserException | IOException e) {
+                Rlog.e(TAG, "Failed to parse the component." , e);
+            }
+        }
+
+        /**
+         * Iterates the tags, finds the corresponding tag and then applies the consumer.
+         */
+        private void parseXmlByTag(@NonNull XmlPullParser parser, boolean allowDuplicate,
+                @NonNull Consumer<XmlPullParser> consumer, @NonNull final String tag) {
+            try {
+                int outerDepth = parser.getDepth();
+                int type;
+                while ((type = parser.next()) != XmlPullParser.END_DOCUMENT
+                        && (type != XmlPullParser.END_TAG || parser.getDepth() > outerDepth)) {
+                    if (type == XmlPullParser.START_TAG && tag.equals(parser.getName())) {
+                        consumer.accept(parser);
+                        if (!allowDuplicate) {
+                            return;
+                        }
+                    }
+                }
+            } catch (XmlPullParserException | IOException e) {
+                Rlog.e(TAG, "Failed to parse or find tag: " + tag, e);
+            }
+        }
+
+        /**
+         * Sets the mPackageName and mJarPath by <injection/> tag.
+         * @param parser
+         * @return
+         */
+        private void setAttributes(@NonNull XmlPullParser parser) {
+            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                String name = parser.getAttributeName(i);
+                String value = parser.getAttributeValue(i);
+                if (InjectedComponents.ATTRIBUTE_PACKAGE.equals(name)) {
+                    mPackageName = value;
+                } else if (InjectedComponents.ATTRIBUTE_JAR.equals(name)) {
+                    mJarPath = value;
+                }
+            }
+        }
+    }
 
     public static TelephonyComponentFactory getInstance() {
         if (sInstance == null) {
             sInstance = new TelephonyComponentFactory();
+        }
+        return sInstance;
+    }
+
+    /**
+     * Inject TelephonyComponentFactory using a xml config file.
+     * @param parser a nullable {@link XmlResourceParser} created with the injection config file.
+     * The config xml should has below formats:
+     * <injection package="package.InjectedTelephonyComponentFactory" jar="path to jar file">
+     *     <components>
+     *         <component>example.package.ComponentAbc</component>
+     *         <component>example.package.ComponentXyz</component>
+     *         <!-- e.g. com.android.internal.telephony.GsmCdmaPhone -->
+     *     </components>
+     * </injection>
+     */
+    public void injectTheComponentFactory(XmlResourceParser parser) {
+        if (mInjectedComponents != null) {
+            Rlog.i(TAG, "Already injected.");
+            return;
+        }
+
+        if (parser != null) {
+            mInjectedComponents = new InjectedComponents();
+            mInjectedComponents.parseXml(parser);
+            mInjectedComponents.makeInjectedInstance();
+            Rlog.i(TAG, "Total components injected: "
+                    + mInjectedComponents.mComponentNames.size());
+        }
+    }
+
+    /**
+     * Use the injected TelephonyComponentFactory if configured. Otherwise, use the default.
+     * @param componentName Name of the component class uses the injected component factory,
+     * e.g. GsmCdmaPhone.class.getName() for {@link GsmCdmaPhone}
+     * @return injected component factory. If not configured or injected, return the default one.
+     */
+    public TelephonyComponentFactory inject(String componentName) {
+        if (mInjectedComponents != null && mInjectedComponents.isComponentInjected(componentName)) {
+            return mInjectedComponents.mInjectedInstance;
         }
         return sInstance;
     }
