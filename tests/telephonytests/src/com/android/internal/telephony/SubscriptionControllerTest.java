@@ -155,8 +155,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.setDataRoaming(dataRoaming, subID);
         mSubscriptionControllerUT.setDisplayNumber(disNum, subID);
         mSubscriptionControllerUT.setIconTint(iconTint, subID);
-        mSubscriptionControllerUT.setOpportunistic(isOpportunistic, subID);
-        mSubscriptionControllerUT.setMetered(isMetered, subID);
+        mSubscriptionControllerUT.setOpportunistic(isOpportunistic, subID, mCallingPackage);
+        mSubscriptionControllerUT.setMetered(isMetered, subID, mCallingPackage);
 
         subInfo = mSubscriptionControllerUT
             .getActiveSubscriptionInfo(subID, mCallingPackage);
@@ -371,7 +371,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 .notifyOpportunisticSubscriptionInfoChanged();
 
         // Setting sub2 as opportunistic should trigger callback.
-        mSubscriptionControllerUT.setOpportunistic(true, 2);
+        mSubscriptionControllerUT.setOpportunistic(true, 2, mCallingPackage);
 
         verify(mTelephonyRegisteryMock, times(1))
                 .notifyOpportunisticSubscriptionInfoChanged();
