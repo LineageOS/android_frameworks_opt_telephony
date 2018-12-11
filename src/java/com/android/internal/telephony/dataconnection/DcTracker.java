@@ -3245,8 +3245,8 @@ public class DcTracker extends Handler {
 
             // ORDER BY Telephony.Carriers._ID ("_id")
             Cursor cursor = mPhone.getContext().getContentResolver().query(
-                    Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
-                    null, selection, null, Telephony.Carriers._ID);
+                    Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered/subId/"
+                            + mPhone.getSubId()), null, selection, null, Telephony.Carriers._ID);
 
             if (cursor != null) {
                 if (cursor.getCount() > 0) {
