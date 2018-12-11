@@ -52,7 +52,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.os.Parcel;
 import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.SystemClock;
@@ -380,31 +379,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     private CellInfoGsm getCellInfoGsm() {
-        Parcel p = Parcel.obtain();
-        // CellInfo
-        p.writeInt(1);
-        p.writeInt(1);
-        p.writeInt(2);
-        p.writeLong(1453510289108L);
-        p.writeInt(0);
-        // CellIdentity
-        p.writeInt(1);
-        p.writeString("310");
-        p.writeString("260");
-        p.writeString("long");
-        p.writeString("short");
-        // CellIdentityGsm
-        p.writeInt(123);
-        p.writeInt(456);
-        p.writeInt(950);
-        p.writeInt(27);
-        // CellSignalStrength
-        p.writeInt(99);
-        p.writeInt(0);
-        p.writeInt(3);
-        p.setDataPosition(0);
-
-        return CellInfoGsm.CREATOR.createFromParcel(p);
+        CellInfoGsm tmp = new CellInfoGsm();
+        tmp.setCellIdentity(new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst"));
+        tmp.setCellSignalStrength(new CellSignalStrengthGsm(-85, 2, 3));
+        return tmp;
     }
 
     @Test
@@ -672,7 +650,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @MediumTest
     // TODO(nharold): we probably should remove support for this procedure (GET_LOC)
     public void testGsmCellLocation() {
-        CellIdentityGsm cellIdentityGsm = new CellIdentityGsm(0, 0, 2, 3);
+        CellIdentityGsm cellIdentityGsm = new CellIdentityGsm(
+                2, 3, 900, 5, "001", "01", "test", "tst");
         NetworkRegistrationState result = new NetworkRegistrationState(
                 0, 0, 0, 0, 0, false, null, cellIdentityGsm);
 
@@ -691,7 +670,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @MediumTest
     // TODO(nharold): we probably should remove support for this procedure (GET_LOC)
     public void testCdmaCellLocation() {
-        CellIdentityCdma cellIdentityCdma = new CellIdentityCdma(1, 2, 3, 4, 5);
+        CellIdentityCdma cellIdentityCdma = new CellIdentityCdma(1, 2, 3, 4, 5, "test", "tst");
         NetworkRegistrationState result = new NetworkRegistrationState(
                 0, 0, 0, 0, 0, false, null, cellIdentityCdma);
 
@@ -1616,7 +1595,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     // Expect no rat update when move from E to G.
     @Test
     public void testRatRatchet() throws Exception {
-        CellIdentityGsm cellIdentity = new CellIdentityGsm(-1, -1, -1, -1, -1, -1);
+        CellIdentityGsm cellIdentity =
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst");
         // start on GPRS
         changeRegState(1, cellIdentity, 16, 1);
         assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
@@ -1633,14 +1613,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     // Bypass rat rachet when cell id changed. Expect rat update from E to G
     @Test
     public void testRatRatchetWithCellChange() throws Exception {
-        CellIdentityGsm cellIdentity = new CellIdentityGsm(-1, -1, -1, -1, -1, -1);
+        CellIdentityGsm cellIdentity =
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst");
         // update data reg state to be in service
         changeRegState(1, cellIdentity, 16, 2);
         assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GSM, sst.mSS.getRilVoiceRadioTechnology());
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
-        // RAT: EDGE -> GPRS cell ID: -1 -> 5
-        cellIdentity = new CellIdentityGsm(-1, -1, -1, 5, -1, -1);
+        // RAT: EDGE -> GPRS cell ID: 1 -> 2
+        cellIdentity = new CellIdentityGsm(0, 2, 900, 5, "001", "01", "test", "tst");
         changeRegState(1, cellIdentity, 16, 1);
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilDataRadioTechnology());
 
@@ -1654,7 +1635,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     public void testRatRatchetWithCellChangeBeforeRatChange() throws Exception {
         // cell ID update
-        CellIdentityGsm cellIdentity = new CellIdentityGsm(-1, -1, -1, 5, -1, -1);
+        CellIdentityGsm cellIdentity =
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst");
         changeRegState(1, cellIdentity, 16, 2);
         assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
