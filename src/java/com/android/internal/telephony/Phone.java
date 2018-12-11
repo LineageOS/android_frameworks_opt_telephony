@@ -1731,6 +1731,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return (r != null) ? r.getRecordsLoaded() : false;
     }
 
+    /** Set the minimum interval for CellInfo requests to the modem */
+    public void setCellInfoMinInterval(int interval) {
+        getServiceStateTracker().setCellInfoMinInterval(interval);
+    }
+
     /**
      * @return the last known CellInfo
      */
@@ -2250,9 +2255,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifySrvccStateChanged(this, state);
     }
 
-    /** Notify the list of {@link EmergencyNumber} changes. */
-    public void notifyEmergencyNumberList(List<EmergencyNumber> emergencyNumberList) {
-        mNotifier.notifyEmergencyNumberList(this, emergencyNumberList);
+    /** Notify the {@link EmergencyNumber} changes. */
+    public void notifyEmergencyNumberList() {
+        mNotifier.notifyEmergencyNumberList();
     }
 
     /**
