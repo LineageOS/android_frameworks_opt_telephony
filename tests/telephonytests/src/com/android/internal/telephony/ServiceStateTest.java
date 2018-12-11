@@ -291,7 +291,7 @@ public class ServiceStateTest extends TestCase {
 
         NetworkRegistrationState wwanDataRegState = new NetworkRegistrationState(
                 NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
-                0, 0, 0, false, null, null, 0, false, false);
+                0, 0, 0, false, null, null, 0, false, false, false);
 
         NetworkRegistrationState wlanRegState = new NetworkRegistrationState(
                 NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WLAN,
@@ -313,7 +313,7 @@ public class ServiceStateTest extends TestCase {
 
         wwanDataRegState = new NetworkRegistrationState(
                 NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
-                0, 0, 0, true, null, null, 0, false, false);
+                0, 0, 0, true, null, null, 0, false, false, false);
         ss.addNetworkRegistrationState(wwanDataRegState);
         assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
                 AccessNetworkConstants.TransportType.WWAN), wwanDataRegState);
