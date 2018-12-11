@@ -1673,7 +1673,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     private void changeRegState(int state, CellIdentity cid, int voiceRat, int dataRat) {
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                0, 0, state, dataRat, 0, false, null, cid, 1, false, false);
+                0, 0, state, dataRat, 0, false, null, cid, 1, false, false, false);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
@@ -1762,7 +1762,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private void sendRegStateUpdateForLteCellId(CellIdentityLte cellId) {
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
                 2, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1,
-                false, false);
+                false, false, false);
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
                 1, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId,
                 false, 0, 0, 0);
@@ -1826,7 +1826,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         testPhyChanBandwidthRatchetedOnPhyChanBandwidth();
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
                 2, 1, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, 1, false,
-                false);
+                false, false);
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
                 1, 1, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null,
                 false, 0, 0, 0);
