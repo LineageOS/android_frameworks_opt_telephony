@@ -259,7 +259,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, name);
         mWakeLock.acquire();    // wake lock released after we enter idle state
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
-        mDeviceIdleController = TelephonyComponentFactory.getInstance().getIDeviceIdleController();
+        mDeviceIdleController = TelephonyComponentFactory.getInstance()
+                .inject(IDeviceIdleController.class.getName()).getIDeviceIdleController();
 
         addState(mDefaultState);
         addState(mStartupState, mDefaultState);
@@ -716,8 +717,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                 destPort = smsHeader.portAddrs.destPort;
                 if (DBG) log("destination port: " + destPort);
             }
-
-            tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
+            tracker = TelephonyComponentFactory.getInstance()
+                    .inject(InboundSmsTracker.class.getName())
+                    .makeInboundSmsTracker(sms.getPdu(),
                     sms.getTimestampMillis(), destPort, is3gpp2(), false,
                     sms.getOriginatingAddress(), sms.getDisplayOriginatingAddress(),
                     sms.getMessageBody());
@@ -726,8 +728,9 @@ public abstract class InboundSmsHandler extends StateMachine {
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
             SmsHeader.PortAddrs portAddrs = smsHeader.portAddrs;
             int destPort = (portAddrs != null ? portAddrs.destPort : -1);
-
-            tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
+            tracker = TelephonyComponentFactory.getInstance()
+                    .inject(InboundSmsTracker.class.getName())
+                    .makeInboundSmsTracker(sms.getPdu(),
                     sms.getTimestampMillis(), destPort, is3gpp2(), sms.getOriginatingAddress(),
                     sms.getDisplayOriginatingAddress(), concatRef.refNumber, concatRef.seqNumber,
                     concatRef.msgCount, false, sms.getMessageBody());

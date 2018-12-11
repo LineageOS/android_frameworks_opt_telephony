@@ -498,7 +498,9 @@ public class ServiceStateTracker extends Handler {
     private static final int INVALID_LTE_EARFCN = -1;
 
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
-        mNitzState = TelephonyComponentFactory.getInstance().makeNitzStateMachine(phone);
+        mNitzState = TelephonyComponentFactory.getInstance()
+                .inject(NitzStateMachine.class.getName())
+                .makeNitzStateMachine(phone);
         mPhone = phone;
         mCi = ci;
 
@@ -526,9 +528,9 @@ public class ServiceStateTracker extends Handler {
             mRegStateManagers.get(transportType).registerForNetworkRegistrationStateChanged(
                     this, EVENT_NETWORK_STATE_CHANGED, null);
         }
-
-        mLocaleTracker = TelephonyComponentFactory.getInstance().makeLocaleTracker(
-                mPhone, mNitzState, getLooper());
+        mLocaleTracker = TelephonyComponentFactory.getInstance()
+                .inject(LocaleTracker.class.getName())
+                .makeLocaleTracker(mPhone, mNitzState, getLooper());
 
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);

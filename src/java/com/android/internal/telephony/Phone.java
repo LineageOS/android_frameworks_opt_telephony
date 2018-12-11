@@ -485,7 +485,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi = ci;
         mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
         mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
-        mAppSmsManager = telephonyComponentFactory.makeAppSmsManager(context);
+        mAppSmsManager = telephonyComponentFactory.inject(AppSmsManager.class.getName())
+                .makeAppSmsManager(context);
 
         if (Build.IS_DEBUGGABLE) {
             mTelephonyTester = new TelephonyTester(this);
@@ -547,11 +548,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
         mTelephonyComponentFactory = telephonyComponentFactory;
-        mSmsStorageMonitor = mTelephonyComponentFactory.makeSmsStorageMonitor(this);
-        mSmsUsageMonitor = mTelephonyComponentFactory.makeSmsUsageMonitor(context);
+        mSmsStorageMonitor = mTelephonyComponentFactory.inject(SmsStorageMonitor.class.getName())
+                .makeSmsStorageMonitor(this);
+        mSmsUsageMonitor = mTelephonyComponentFactory.inject(SmsUsageMonitor.class.getName())
+                .makeSmsUsageMonitor(context);
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
-        mSimActivationTracker = mTelephonyComponentFactory.makeSimActivationTracker(this);
+        mSimActivationTracker = mTelephonyComponentFactory
+                .inject(SimActivationTracker.class.getName())
+                .makeSimActivationTracker(this);
         if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {
             mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         }
