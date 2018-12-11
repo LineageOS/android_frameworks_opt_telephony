@@ -98,8 +98,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class DcTrackerTest extends TelephonyTest {
 
@@ -132,6 +130,7 @@ public class DcTrackerTest extends TelephonyTest {
     private static final Uri PREFERAPN_URI = Uri.parse(
             Telephony.Carriers.CONTENT_URI + "/preferapn");
     private static final int DATA_ENABLED_CHANGED = 0;
+    private static final String FAKE_PLMN = "44010";
 
     @Mock
     ISub mIsub;
@@ -210,18 +209,9 @@ public class DcTrackerTest extends TelephonyTest {
             if (uri.compareTo(Telephony.Carriers.CONTENT_URI) == 0
                     || uri.toString().startsWith(Uri.withAppendedPath(
                             Telephony.Carriers.CONTENT_URI, "filtered").toString())) {
-                if (projection == null && selectionArgs == null && selection != null) {
+                if (projection == null) {
 
-                    Pattern pattern = Pattern.compile("^numeric = '([0-9]*)'");
-                    Matcher matcher = pattern.matcher(selection);
-                    if (!matcher.find()) {
-                        logd("Cannot find MCC/MNC from " + selection);
-                        return null;
-                    }
-
-                    String plmn = matcher.group(1);
-
-                    logd("Query '" + plmn + "' APN settings");
+                    logd("Query '" + FAKE_PLMN + "' APN settings");
                     MatrixCursor mc = new MatrixCursor(
                             new String[]{Telephony.Carriers._ID, Telephony.Carriers.NUMERIC,
                                     Telephony.Carriers.NAME, Telephony.Carriers.APN,
@@ -248,7 +238,7 @@ public class DcTrackerTest extends TelephonyTest {
 
                     mc.addRow(new Object[]{
                             2163,                   // id
-                            plmn,                   // numeric
+                            FAKE_PLMN,              // numeric
                             "sp-mode",              // name
                             FAKE_APN1,              // apn
                             "",                     // proxy
@@ -280,7 +270,7 @@ public class DcTrackerTest extends TelephonyTest {
 
                     mc.addRow(new Object[]{
                             2164,                   // id
-                            plmn,                   // numeric
+                            FAKE_PLMN,              // numeric
                             "mopera U",             // name
                             FAKE_APN2,              // apn
                             "",                     // proxy
@@ -312,7 +302,7 @@ public class DcTrackerTest extends TelephonyTest {
 
                     mc.addRow(new Object[]{
                             2165,                   // id
-                            plmn,                   // numeric
+                            FAKE_PLMN,              // numeric
                             "b-mobile for Nexus",   // name
                             FAKE_APN3,              // apn
                             "",                     // proxy
@@ -344,7 +334,7 @@ public class DcTrackerTest extends TelephonyTest {
 
                     mc.addRow(new Object[]{
                             2166,                   // id
-                            plmn,                   // numeric
+                            FAKE_PLMN,              // numeric
                             "sp-mode ehrpd",        // name
                             FAKE_APN4,              // apn
                             "",                     // proxy
@@ -376,7 +366,7 @@ public class DcTrackerTest extends TelephonyTest {
 
                     mc.addRow(new Object[]{
                             2166,                   // id
-                            plmn,                   // numeric
+                            FAKE_PLMN,              // numeric
                             "b-mobile for Nexus",   // name
                             FAKE_APN5,              // apn
                             "",                     // proxy
@@ -437,7 +427,6 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
                 .getRilDataRadioTechnology();
-        doReturn("44010").when(mSimRecords).getOperatorNumeric();
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
                 sNetworkAttributes);
