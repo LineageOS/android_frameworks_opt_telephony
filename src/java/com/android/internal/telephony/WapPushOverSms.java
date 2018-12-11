@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_DELIVERY_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_READ_ORIG_IND;
+
 import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
@@ -38,7 +39,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.IDeviceIdleController;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
@@ -51,8 +51,6 @@ import android.util.Log;
 
 import com.android.internal.telephony.uicc.IccUtils;
 
-import java.util.HashMap;
-
 import com.google.android.mms.MmsException;
 import com.google.android.mms.pdu.DeliveryInd;
 import com.google.android.mms.pdu.GenericPdu;
@@ -61,6 +59,8 @@ import com.google.android.mms.pdu.PduHeaders;
 import com.google.android.mms.pdu.PduParser;
 import com.google.android.mms.pdu.PduPersister;
 import com.google.android.mms.pdu.ReadOrigInd;
+
+import java.util.HashMap;
 
 /**
  * WAP push handler class.
@@ -133,7 +133,8 @@ public class WapPushOverSms implements ServiceConnection {
 
     public WapPushOverSms(Context context) {
         mContext = context;
-        mDeviceIdleController = TelephonyComponentFactory.getInstance().getIDeviceIdleController();
+        mDeviceIdleController = TelephonyComponentFactory.getInstance()
+                .inject(IDeviceIdleController.class.getName()).getIDeviceIdleController();
 
         UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
 
@@ -200,9 +201,9 @@ public class WapPushOverSms implements ServiceConnection {
                     return result;
                 }
             }
-
             WspTypeDecoder pduDecoder =
-                    TelephonyComponentFactory.getInstance().makeWspTypeDecoder(pdu);
+                    TelephonyComponentFactory.getInstance().inject(WspTypeDecoder.class.getName())
+                            .makeWspTypeDecoder(pdu);
 
             /**
              * Parse HeaderLen(unsigned integer).

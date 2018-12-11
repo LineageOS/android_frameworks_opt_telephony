@@ -286,8 +286,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         // pass the user data portion of the PDU to the shared handler in SMSDispatcher
         byte[] userData = new byte[pdu.length - index];
         System.arraycopy(pdu, index, userData, 0, pdu.length - index);
-
-        InboundSmsTracker tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(
+        InboundSmsTracker tracker = TelephonyComponentFactory.getInstance()
+                .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(
                 userData, timestamp, destinationPort, true, address, dispAddr, referenceNumber,
                 segment, totalSegments, true, HexDump.toHexString(userData));
 
