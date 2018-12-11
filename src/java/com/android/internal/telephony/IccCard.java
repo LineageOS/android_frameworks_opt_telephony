@@ -275,6 +275,14 @@ public class IccCard {
         return false;
     }
 
+    /**
+     * @return whether the card is an empty profile, meaning there's no UiccCardApplication,
+     * and that we don't need to wait for LOADED state.
+     */
+    public boolean isEmptyProfile() {
+        return false;
+    }
+
     private void sendMessageWithCardAbsentException(Message onComplete) {
         AsyncResult ret = AsyncResult.forMessage(onComplete);
         ret.exception = new RuntimeException("No valid IccCard");
