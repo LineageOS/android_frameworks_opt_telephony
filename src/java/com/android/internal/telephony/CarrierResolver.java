@@ -373,7 +373,6 @@ public class CarrierResolver extends Handler {
                     .ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED);
             intent.putExtra(TelephonyManager.EXTRA_CARRIER_ID, mCarrierId);
             intent.putExtra(TelephonyManager.EXTRA_CARRIER_NAME, mCarrierName);
-            intent.putExtra(TelephonyManager.EXTRA_MNO_CARRIER_ID, mMnoCarrierId);
             intent.putExtra(TelephonyManager.EXTRA_SUBSCRIPTION_ID, mPhone.getSubId());
             mContext.sendBroadcast(intent);
 
@@ -381,10 +380,8 @@ public class CarrierResolver extends Handler {
             ContentValues cv = new ContentValues();
             cv.put(CarrierId.CARRIER_ID, mCarrierId);
             cv.put(CarrierId.CARRIER_NAME, mCarrierName);
-            cv.put(CarrierId.MNO_CARRIER_ID, mMnoCarrierId);
             mContext.getContentResolver().update(
-                    Uri.withAppendedPath(CarrierId.CONTENT_URI,
-                            Integer.toString(mPhone.getSubId())), cv, null, null);
+                    Telephony.CarrierId.getUriForSubscriptionId(mPhone.getSubId()), cv, null, null);
         }
 
         update = false;
