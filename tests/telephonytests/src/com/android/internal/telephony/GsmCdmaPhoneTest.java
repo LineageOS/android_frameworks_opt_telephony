@@ -729,7 +729,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(EVENT_EMERGENCY_CALL_TOGGLE, msgList.get(1).what);
 
         // verify setInternalDataEnabled
-        verify(mDcTracker).setInternalDataEnabled(true);
+        verify(mDataEnabledSettings).setInternalDataEnabled(true);
 
         // verify wakeLock released
         assertEquals(false, mPhoneUT.getWakeLock().isHeld());
@@ -817,7 +817,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(EVENT_EMERGENCY_CALL_TOGGLE, msgList.get(1).what);
 
         // verify setInternalDataEnabled
-        verify(mDcTracker).setInternalDataEnabled(true);
+        verify(mDataEnabledSettings).setInternalDataEnabled(true);
 
         // verify wakeLock released
         assertEquals(false, mPhoneUT.getWakeLock().isHeld());
