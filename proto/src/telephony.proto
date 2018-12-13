@@ -1070,6 +1070,9 @@ message TelephonyCallSession {
 
       // System time overwritten by NITZ (Network time)
       NITZ_TIME = 21;
+
+      // Change of audio codec
+      AUDIO_CODEC = 22;
     }
 
     enum RilRequest {
@@ -1160,6 +1163,53 @@ message TelephonyCallSession {
       CALL_DISCONNECTED = 8;
 
       CALL_DISCONNECTING = 9;
+    }
+
+    // Audio codecs
+    enum AudioCodec {
+
+      // Unknown codec
+      AUDIO_CODEC_UNKNOWN = 0;
+
+      AUDIO_CODEC_AMR = 1;
+
+      AUDIO_CODEC_AMR_WB = 2;
+
+      AUDIO_CODEC_QCELP13K = 3;
+
+      AUDIO_CODEC_EVRC = 4;
+
+      AUDIO_CODEC_EVRC_B = 5;
+
+      AUDIO_CODEC_EVRC_WB = 6;
+
+      AUDIO_CODEC_EVRC_NW = 7;
+
+      AUDIO_CODEC_GSM_EFR = 8;
+
+      AUDIO_CODEC_GSM_FR = 9;
+
+      AUDIO_CODEC_GSM_HR = 10;
+
+      AUDIO_CODEC_G711U = 11;
+
+      AUDIO_CODEC_G723 = 12;
+
+      AUDIO_CODEC_G711A = 13;
+
+      AUDIO_CODEC_G722 = 14;
+
+      AUDIO_CODEC_G711AB = 15;
+
+      AUDIO_CODEC_G729 = 16;
+
+      AUDIO_CODEC_EVS_NB = 17;
+
+      AUDIO_CODEC_EVS_WB = 18;
+
+      AUDIO_CODEC_EVS_SWB = 19;
+
+      AUDIO_CODEC_EVS_FB = 20;
     }
 
     // The information about a voice call
@@ -1269,6 +1319,9 @@ message TelephonyCallSession {
 
     // NITZ time in milliseconds
     optional int64 nitz_timestamp_millis = 21;
+
+    // Audio codec at the beginning of the session or when changed
+    optional AudioCodec audio_codec = 22;
   }
 
   // Time when call has started, in minutes since epoch,
