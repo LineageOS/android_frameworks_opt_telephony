@@ -100,7 +100,7 @@ public class LocaleTracker extends Handler {
 
     /** Current cell tower information */
     @Nullable
-    private List<CellInfo> mCellInfo;
+    private List<CellInfo> mCellInfoList;
 
     /** Count of invalid cell info we've got so far. Will reset once we get a successful one */
     private int mFailCellInfoCount;
@@ -146,14 +146,14 @@ public class LocaleTracker extends Handler {
             case EVENT_UNSOL_CELL_INFO:
                 processCellInfo((AsyncResult) msg.obj);
                 // If the unsol happened to be useful, use it; otherwise, pretend it didn't happen.
-                if (mCellInfo != null && mCellInfo.size() > 0) requestNextCellInfo(true);
+                if (mCellInfoList != null && mCellInfoList.size() > 0) requestNextCellInfo(true);
                 break;
 
             case EVENT_RESPONSE_CELL_INFO:
                 processCellInfo((AsyncResult) msg.obj);
                 // If the cellInfo was non-empty then it's business as usual. Either way, this
                 // cell info was requested by us, so it's our trigger to schedule another one.
-                requestNextCellInfo(mCellInfo != null && mCellInfo.size() > 0);
+                requestNextCellInfo(mCellInfoList != null && mCellInfoList.size() > 0);
                 break;
 
             case EVENT_SERVICE_STATE_CHANGED:
@@ -209,10 +209,10 @@ public class LocaleTracker extends Handler {
     @Nullable
     private String getMccFromCellInfo() {
         String selectedMcc = null;
-        if (mCellInfo != null) {
+        if (mCellInfoList != null) {
             Map<String, Integer> countryCodeMap = new HashMap<>();
             int maxCount = 0;
-            for (CellInfo cellInfo : mCellInfo) {
+            for (CellInfo cellInfo : mCellInfoList) {
                 String mcc = null;
                 if (cellInfo instanceof CellInfoGsm) {
                     mcc = ((CellInfoGsm) cellInfo).getCellIdentity().getMccString();
@@ -281,13 +281,28 @@ public class LocaleTracker extends Handler {
 
     private void processCellInfo(AsyncResult ar) {
         if (ar == null || ar.exception != null) {
-            mCellInfo = null;
+            mCellInfoList = null;
             return;
         }
-        mCellInfo = (List<CellInfo>) ar.result;
-        String msg = "getCellInfo: cell info=" + mCellInfo;
+        List<CellInfo> cellInfoList = (List<CellInfo>) ar.result;
+        String msg = "getCellInfo: cell info=" + cellInfoList;
         if (DBG) log(msg);
-        mLocalLog.log(msg);
+        if (cellInfoList != null) {
+            // We only log when cell identity changes, otherwise the local log is flooded with cell
+            // info.
+            if (mCellInfoList == null || cellInfoList.size() != mCellInfoList.size()) {
+                mLocalLog.log(msg);
+            } else {
+                for (int i = 0; i < cellInfoList.size(); i++) {
+                    if (!Objects.equals(mCellInfoList.get(i).getCellIdentity(),
+                            cellInfoList.get(i).getCellIdentity())) {
+                        mLocalLog.log(msg);
+                        break;
+                    }
+                }
+            }
+        }
+        mCellInfoList = cellInfoList;
         updateLocale();
     }
 
@@ -355,7 +370,7 @@ public class LocaleTracker extends Handler {
         String msg = "Stopping LocaleTracker";
         if (DBG) log(msg);
         mLocalLog.log(msg);
-        mCellInfo = null;
+        mCellInfoList = null;
         resetCellInfoRetry();
     }
 
@@ -392,12 +407,11 @@ public class LocaleTracker extends Handler {
             countryIso = MccTable.countryCodeForMcc(mcc);
         }
 
-        String msg = "updateLocale: mcc = " + mcc + ", country = " + countryIso;
-        log(msg);
-        mLocalLog.log(msg);
+        log("updateLocale: mcc = " + mcc + ", country = " + countryIso);
         boolean countryChanged = false;
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
-            msg = "updateLocale: Change the current country to " + countryIso;
+            String msg = "updateLocale: Change the current country to \"" + countryIso
+                    + "\", mcc = " + mcc;
             log(msg);
             mLocalLog.log(msg);
             mCurrentCountryIso = countryIso;
@@ -457,7 +471,7 @@ public class LocaleTracker extends Handler {
         ipw.println("mIsTracking = " + mIsTracking);
         ipw.println("mOperatorNumeric = " + mOperatorNumeric);
         ipw.println("mSimState = " + mSimState);
-        ipw.println("mCellInfo = " + mCellInfo);
+        ipw.println("mCellInfoList = " + mCellInfoList);
         ipw.println("mCurrentCountryIso = " + mCurrentCountryIso);
         ipw.println("mFailCellInfoCount = " + mFailCellInfoCount);
         ipw.println("Local logs:");

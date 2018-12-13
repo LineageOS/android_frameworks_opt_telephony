@@ -783,14 +783,6 @@ public class DcTracker extends Handler {
     private void onSetUserDataEnabled(boolean enabled) {
         if (mDataEnabledSettings.isUserDataEnabled() != enabled) {
             mDataEnabledSettings.setUserDataEnabled(enabled);
-            if (!getDataRoamingEnabled() && mPhone.getServiceState().getDataRoaming()) {
-                if (enabled) {
-                    notifyOffApnsOfAvailability(Phone.REASON_ROAMING_ON);
-                } else {
-                    notifyOffApnsOfAvailability(Phone.REASON_DATA_DISABLED);
-                }
-            }
-
             mPhone.notifyUserMobileDataStateChanged(enabled);
 
             // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
@@ -2195,16 +2187,10 @@ public class DcTracker extends Handler {
             mDataEnabledSettings.setCarrierDataEnabled(enabled);
 
             if (!enabled) {
-                // Send otasp_sim_unprovisioned so that SuW is able to proceed and notify users
-                mPhone.notifyOtaspChanged(TelephonyManager.OTASP_SIM_UNPROVISIONED);
                 // Tear down all metered apns
                 cleanUpAllConnectionsInternal(true,
                         Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
             } else {
-                // Re-evaluate Otasp state
-                int otaspState = mPhone.getServiceStateTracker().getOtasp();
-                mPhone.notifyOtaspChanged(otaspState);
-
                 reevaluateDataConnections();
                 setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
             }
