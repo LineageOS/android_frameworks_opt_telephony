@@ -2856,6 +2856,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Action set from carrier signalling broadcast receivers to reset all carrier actions
+     */
+    public void carrierActionResetAll() {
+        mCarrierActionAgent.carrierActionReset();
+    }
+
+    /**
      * Notify registrants of a new ringing Connection.
      * Subclasses of Phone probably want to replace this with a
      * version scoped to their packages
