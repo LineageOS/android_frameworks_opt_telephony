@@ -824,7 +824,8 @@ public interface CommandsInterface {
      * CLIR_SUPPRESSION == on "CLIR suppression" (allow CLI presentation)
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
-    void dial (String address, int clirMode, Message result);
+    void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+               int clirMode, Message result);
 
     /**
      *  returned message
@@ -837,7 +838,8 @@ public interface CommandsInterface {
      * CLIR_SUPPRESSION == on "CLIR suppression" (allow CLI presentation)
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
-    void dial(String address, int clirMode, UUSInfo uusInfo, Message result);
+    void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+              int clirMode, UUSInfo uusInfo, Message result);
 
     /**
      *  returned message
