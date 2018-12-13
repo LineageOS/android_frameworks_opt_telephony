@@ -19,25 +19,26 @@ package com.android.internal.telephony;
 import android.content.Context;
 import android.os.ServiceManager;
 import android.telephony.Rlog;
-import android.telephony.rcs.RcsManager;
+import android.telephony.ims.RcsMessageStore;
+import android.telephony.ims.aidl.IRcs;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.rcs.IRcs;
 
-/** Backing implementation of {@link RcsManager}. */
-public class RcsController extends IRcs.Stub {
-    private static final String TAG = "RcsController";
+
+/** Backing implementation of {@link RcsMessageStore}. */
+public class RcsMessageStoreController extends IRcs.Stub {
+    private static final String TAG = "RcsMessageStoreController";
     private static final String RCS_SERVICE_NAME = "ircs";
 
-    private static RcsController sInstance;
+    private static RcsMessageStoreController sInstance;
 
     private final Context mContext;
 
     /** Initialize the instance. Should only be called once. */
-    public static RcsController init(Context context) {
-        synchronized (RcsController.class) {
+    public static RcsMessageStoreController init(Context context) {
+        synchronized (RcsMessageStoreController.class) {
             if (sInstance == null) {
-                sInstance = new RcsController(context);
+                sInstance = new RcsMessageStoreController(context);
             } else {
                 Rlog.e(TAG, "init() called multiple times! sInstance = " + sInstance);
             }
@@ -45,7 +46,7 @@ public class RcsController extends IRcs.Stub {
         return sInstance;
     }
 
-    private RcsController(Context context) {
+    private RcsMessageStoreController(Context context) {
         mContext = context;
         if (ServiceManager.getService(RCS_SERVICE_NAME) == null) {
             ServiceManager.addService(RCS_SERVICE_NAME, this);
@@ -53,7 +54,7 @@ public class RcsController extends IRcs.Stub {
     }
 
     @VisibleForTesting
-    public RcsController(Context context, Void unused) {
+    public RcsMessageStoreController(Context context, Void unused) {
         mContext = context;
     }
 
