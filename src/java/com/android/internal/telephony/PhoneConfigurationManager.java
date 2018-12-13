@@ -26,8 +26,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RegistrantList;
-import android.os.SystemProperties;
 import android.os.storage.StorageManager;
+import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
@@ -420,10 +420,9 @@ public class PhoneConfigurationManager {
          */
         @VisibleForTesting
         public boolean isRebootRequiredForModemConfigChange() {
-            String rebootRequired = SystemProperties.get(
-                    TelephonyProperties.PROPERTY_REBOOT_REQUIRED_ON_MODEM_CHANGE);
+            boolean rebootRequired = TelephonyProperties.reboot_on_modem_change().orElse(false);
             log("isRebootRequiredForModemConfigChange: isRebootRequired = " + rebootRequired);
-            return !rebootRequired.equals("false");
+            return rebootRequired;
         }
 
         /**
@@ -444,7 +443,7 @@ public class PhoneConfigurationManager {
             }
 
             log("setMultiSimProperties to " + multiSimConfig);
-            SystemProperties.set(TelephonyProperties.PROPERTY_MULTI_SIM_CONFIG, multiSimConfig);
+            TelephonyProperties.multi_sim_config(multiSimConfig);
         }
 
         /**

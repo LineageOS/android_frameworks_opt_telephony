@@ -53,6 +53,7 @@ import android.os.UserHandle;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.sysprop.TelephonyProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -388,9 +389,7 @@ public class ServiceStateTracker extends Handler {
                             com.android.internal.R.bool.skip_restoring_network_selection);
                     mPhone.sendSubscriptionSettings(restoreSelection);
 
-                    mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                            ServiceState.rilRadioTechnologyToString(
-                                    mSS.getRilDataRadioTechnology()));
+                    setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
 
                     if (mSpnUpdatePending) {
                         mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
@@ -768,8 +767,7 @@ public class ServiceStateTracker extends Handler {
         // on fields like mIsSubscriptionFromRuim (which is updated above)
         onUpdateIccAvailability();
 
-        mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
+        setDataNetworkTypeForPhone(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
         // Query signal strength from the modem after service tracker is created (i.e. boot up,
         // switching between GSM and CDMA phone), because the unsolicited signal strength
         // information might come late or even never come. This will get the accurate signal
@@ -871,8 +869,7 @@ public class ServiceStateTracker extends Handler {
                 registrantList.notifyResult(new Pair<>(drs, rat));
             }
         }
-        mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
+        setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
     }
 
     /**
@@ -3714,16 +3711,19 @@ public class ServiceStateTracker extends Handler {
 
     @UnsupportedAppUsage
     protected void setOperatorIdd(String operatorNumeric) {
+        if (mPhone.getUnitTestMode()) {
+            return;
+        }
+
         // Retrieve the current country information
         // with the MCC got from opeatorNumeric.
         String idd = mHbpcdUtils.getIddByMcc(
                 Integer.parseInt(operatorNumeric.substring(0,3)));
         if (idd != null && !idd.isEmpty()) {
-            mPhone.setGlobalSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING,
-                    idd);
+            TelephonyProperties.operator_idp_string(idd);
         } else {
             // use default "+", since we don't know the current IDP
-            mPhone.setGlobalSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING, "+");
+            TelephonyProperties.operator_idp_string("+");
         }
     }
 
@@ -5638,5 +5638,14 @@ public class ServiceStateTracker extends Handler {
         }
 
         return idSet;
+    }
+
+    private void setDataNetworkTypeForPhone(int type) {
+        if (mPhone.getUnitTestMode()) {
+            return;
+        }
+        TelephonyManager tm = (TelephonyManager) mPhone.getContext().getSystemService(
+                Context.TELEPHONY_SERVICE);
+        tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), type);
     }
 }
