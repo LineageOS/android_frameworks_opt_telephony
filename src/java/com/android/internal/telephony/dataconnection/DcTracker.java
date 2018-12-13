@@ -80,7 +80,6 @@ import android.util.SparseArray;
 import android.view.WindowManager;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.CarrierActionAgent;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.GsmCdmaPhone;
@@ -93,6 +92,7 @@ import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataAllowedReasonType;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataDisallowedReasonType;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
@@ -324,12 +324,6 @@ public class DcTracker extends Handler {
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DATA_ROAMING + simSuffix),
                 DctConstants.EVENT_ROAMING_SETTING_CHANGE);
-        mSettingsObserver.observe(
-                Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
-                DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE);
-        mSettingsObserver.observe(
-                Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED),
-                DctConstants.EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE);
     }
 
     /**
@@ -609,7 +603,10 @@ public class DcTracker extends Handler {
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
 
-        mDataEnabledSettings = new DataEnabledSettings(phone);
+        mDataEnabledSettings = mPhone.getDataEnabledSettings();
+
+        mDataEnabledSettings.registerForDataEnabledChanged(this,
+                DctConstants.EVENT_DATA_ENABLED_CHANGED, null);
 
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
@@ -709,9 +706,6 @@ public class DcTracker extends Handler {
         mPhone.getCallTracker().registerForVoiceCallStarted(this,
                 DctConstants.EVENT_VOICE_CALL_STARTED, null);
         registerServiceStateTrackerEvents();
-        mPhone.getCarrierActionAgent().registerForCarrierAction(
-                CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED, this,
-                DctConstants.EVENT_SET_CARRIER_DATA_ENABLED, null, false);
         mDataServiceManager.registerForServiceBindingChanged(this,
                 DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED, null);
     }
@@ -765,35 +759,7 @@ public class DcTracker extends Handler {
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         unregisterServiceStateTrackerEvents();
-        mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
-                CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED);
         mDataServiceManager.unregisterForServiceBindingChanged(this);
-    }
-
-    /**
-     * Modify {@link android.provider.Settings.Global#MOBILE_DATA} value.
-     */
-    public void setUserDataEnabled(boolean enable) {
-        Message msg = obtainMessage(DctConstants.CMD_SET_USER_DATA_ENABLE);
-        msg.arg1 = enable ? 1 : 0;
-        if (DBG) log("setDataEnabled: sendMessage: enable=" + enable);
-        sendMessage(msg);
-    }
-
-    private void onSetUserDataEnabled(boolean enabled) {
-        if (mDataEnabledSettings.isUserDataEnabled() != enabled) {
-            mDataEnabledSettings.setUserDataEnabled(enabled);
-            mPhone.notifyUserMobileDataStateChanged(enabled);
-
-            // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
-            // handle the rest from there.
-            if (enabled) {
-                reevaluateDataConnections();
-                onTrySetupData(Phone.REASON_DATA_ENABLED);
-            } else {
-                cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
-            }
-        }
     }
 
     /**
@@ -811,30 +777,6 @@ public class DcTracker extends Handler {
     private void reevaluateDataConnections() {
         for (DataConnection dataConnection : mDataConnections.values()) {
             dataConnection.reevaluateRestrictedState();
-        }
-    }
-
-    private void onDeviceProvisionedChange() {
-        mDataEnabledSettings.updateProvisionedChanged();
-        // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
-        // handle the rest from there.
-        if (isDataEnabled()) {
-            reevaluateDataConnections();
-            onTrySetupData(Phone.REASON_DATA_ENABLED);
-        } else {
-            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
-        }
-    }
-
-    private void onDeviceProvisioningDataChange() {
-        mDataEnabledSettings.updateProvisioningDataEnabled();
-        // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
-        // handle the rest from there.
-        if (isDataEnabled()) {
-            reevaluateDataConnections();
-            onTrySetupData(Phone.REASON_DATA_ENABLED);
-        } else {
-            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
         }
     }
 
@@ -1127,15 +1069,6 @@ public class DcTracker extends Handler {
             if (VDBG) log( "overall state is FAILED");
             return DctConstants.State.FAILED;
         }
-    }
-
-    /**
-     * Whether data is enabled. This does not only check isUserDataEnabled(), but also
-     * others like CarrierDataEnabled and internalDataEnabled.
-     */
-    @VisibleForTesting
-    public boolean isDataEnabled() {
-        return mDataEnabledSettings.isDataEnabled();
     }
 
     //****** Called from ServiceStateTracker
@@ -2169,34 +2102,6 @@ public class DcTracker extends Handler {
         setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
     }
 
-    /**
-     * Action set from carrier signalling broadcast receivers to enable/disable metered apns.
-     */
-    private void onSetCarrierDataEnabled(AsyncResult ar) {
-        if (ar.exception != null) {
-            loge("CarrierDataEnable exception: " + ar.exception);
-            return;
-        }
-        boolean enabled = (boolean) ar.result;
-        if (enabled != mDataEnabledSettings.isCarrierDataEnabled()) {
-            if (DBG) {
-                log("carrier Action: set metered apns enabled: " + enabled);
-            }
-
-            // Disable/enable all metered apns
-            mDataEnabledSettings.setCarrierDataEnabled(enabled);
-
-            if (!enabled) {
-                // Tear down all metered apns
-                cleanUpAllConnectionsInternal(true,
-                        Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
-            } else {
-                reevaluateDataConnections();
-                setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED);
-            }
-        }
-    }
-
     private void onSimNotReady() {
         if (DBG) log("onSimNotReady");
 
@@ -2210,30 +2115,6 @@ public class DcTracker extends Handler {
         // In no-sim case, we should still send the emergency APN to the modem, if there is any.
         createAllApnList();
         setDataProfilesAsNeeded();
-    }
-
-    public void setPolicyDataEnabled(boolean enabled) {
-        if (DBG) log("setPolicyDataEnabled: " + enabled);
-        Message msg = obtainMessage(DctConstants.CMD_SET_POLICY_DATA_ENABLE);
-        msg.arg1 = (enabled ? DctConstants.ENABLED : DctConstants.DISABLED);
-        sendMessage(msg);
-    }
-
-    private void onSetPolicyDataEnabled(boolean enabled) {
-        final boolean prevEnabled = isDataEnabled();
-        if (mDataEnabledSettings.isPolicyDataEnabled() != enabled) {
-            mDataEnabledSettings.setPolicyDataEnabled(enabled);
-            // TODO: We should register for DataEnabledSetting's data enabled/disabled event and
-            // handle the rest from there.
-            if (prevEnabled != isDataEnabled()) {
-                if (!prevEnabled) {
-                    reevaluateDataConnections();
-                    onTrySetupData(Phone.REASON_DATA_ENABLED);
-                } else {
-                    cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_SPECIFIC_DISABLED);
-                }
-            }
-        }
     }
 
     private void applyNewState(ApnContext apnContext, boolean enabled, boolean met) {
@@ -2270,7 +2151,7 @@ public class DcTracker extends Handler {
                     }
                 }
             } else if (met) {
-                apnContext.setReason(Phone.REASON_DATA_DISABLED);
+                apnContext.setReason(Phone.REASON_DATA_DISABLED_INTERNAL);
                 // If ConnectivityService has disabled this network, stop trying to bring
                 // it up, but do not tear it down - ConnectivityService will do that
                 // directly by talking with the DataConnection.
@@ -2430,19 +2311,6 @@ public class DcTracker extends Handler {
     private boolean onTrySetupData(ApnContext apnContext) {
         if (DBG) log("onTrySetupData: apnContext=" + apnContext);
         return trySetupData(apnContext);
-    }
-
-    /**
-     * Whether data is enabled by user. Unlike isDataEnabled, this only
-     * checks user setting stored in {@link android.provider.Settings.Global#MOBILE_DATA}
-     * if not provisioning, or isProvisioningDataEnabled if provisioning.
-     */
-    public boolean isUserDataEnabled() {
-        if (mDataEnabledSettings.isProvisioning()) {
-            return mDataEnabledSettings.isProvisioningDataEnabled();
-        } else {
-            return mDataEnabledSettings.isUserDataEnabled();
-        }
     }
 
     /**
@@ -2906,14 +2774,6 @@ public class DcTracker extends Handler {
         if (handleError) {
             onDataSetupCompleteError(ar);
         }
-
-        /* If flag is set to false after SETUP_DATA_CALL is invoked, we need
-         * to clean data connections.
-         */
-        if (!mDataEnabledSettings.isInternalDataEnabled()) {
-            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_DISABLED);
-        }
-
     }
 
     /**
@@ -3589,11 +3449,6 @@ public class DcTracker extends Handler {
                 if (DBG) log("EVENT_CLEAN_UP_CONNECTION");
                 cleanUpConnectionInternal(true, (ApnContext) msg.obj);
                 break;
-            case DctConstants.EVENT_SET_INTERNAL_DATA_ENABLE: {
-                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                onSetInternalDataEnabled(enabled);
-                break;
-            }
             case DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS:
                 if ((msg.obj != null) && (msg.obj instanceof String == false)) {
                     msg.obj = null;
@@ -3639,15 +3494,6 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_ROAMING_SETTING_CHANGE:
                 onDataRoamingOnOrSettingsChanged(msg.what);
                 break;
-
-            case DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE:
-                onDeviceProvisionedChange();
-                break;
-
-            case DctConstants.EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE:
-                onDeviceProvisioningDataChange();
-                break;
-
             case DctConstants.EVENT_REDIRECTION_DETECTED:
                 String url = (String) msg.obj;
                 log("dataConnectionTracker.handleMessage: EVENT_REDIRECTION_DETECTED=" + url);
@@ -3687,17 +3533,6 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_VOICE_CALL_ENDED:
                 onVoiceCallEnded();
                 break;
-            case DctConstants.CMD_SET_USER_DATA_ENABLE: {
-                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                if (DBG) log("CMD_SET_USER_DATA_ENABLE enabled=" + enabled);
-                onSetUserDataEnabled(enabled);
-                break;
-            }
-            case DctConstants.CMD_SET_POLICY_DATA_ENABLE: {
-                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                onSetPolicyDataEnabled(enabled);
-                break;
-            }
             case DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: {
                 sEnableFailFastRefCounter += (msg.arg1 == DctConstants.ENABLED) ? 1 : -1;
                 if (DBG) {
@@ -3822,14 +3657,20 @@ public class DcTracker extends Handler {
                 handlePcoData((AsyncResult)msg.obj);
                 break;
             }
-            case DctConstants.EVENT_SET_CARRIER_DATA_ENABLED:
-                onSetCarrierDataEnabled((AsyncResult) msg.obj);
-                break;
             case DctConstants.EVENT_DATA_RECONNECT:
                 onDataReconnect(msg.getData());
                 break;
             case DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED:
                 onDataServiceBindingChanged((Boolean) ((AsyncResult) msg.obj).result);
+                break;
+            case DctConstants.EVENT_DATA_ENABLED_CHANGED:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar.result instanceof Pair) {
+                    Pair<Boolean, Integer> p = (Pair<Boolean, Integer>) ar.result;
+                    boolean enabled = p.first;
+                    int reason = p.second;
+                    onDataEnabledChanged(enabled, reason);
+                }
                 break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
@@ -3934,33 +3775,36 @@ public class DcTracker extends Handler {
         mAllDataDisconnectedRegistrants.remove(h);
     }
 
-    public void registerForDataEnabledChanged(Handler h, int what, Object obj) {
-        mDataEnabledSettings.registerForDataEnabledChanged(h, what, obj);
-    }
+    private void onDataEnabledChanged(boolean enable,
+                                      @DataEnabledChangedReason int enabledChangedReason) {
+        if (DBG) {
+            log("onDataEnabledChanged: enable=" + enable + ", enabledChangedReason="
+                    + enabledChangedReason);
+        }
 
-    public void unregisterForDataEnabledChanged(Handler h) {
-        mDataEnabledSettings.unregisterForDataEnabledChanged(h);
-    }
-
-    private void onSetInternalDataEnabled(boolean enabled) {
-        if (DBG) log("onSetInternalDataEnabled: enabled=" + enabled);
-        mDataEnabledSettings.setInternalDataEnabled(enabled);
-        if (enabled) {
-            log("onSetInternalDataEnabled: changed to enabled, try to setup data call");
+        if (enable) {
+            reevaluateDataConnections();
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
-            log("onSetInternalDataEnabled: changed to disabled, cleanUpAllConnections");
-            cleanUpAllConnectionsInternal(true, Phone.REASON_DATA_DISABLED);
+            String cleanupReason;
+            switch (enabledChangedReason) {
+                case DataEnabledSettings.REASON_INTERNAL_DATA_ENABLED:
+                    cleanupReason = Phone.REASON_DATA_DISABLED_INTERNAL;
+                    break;
+                case DataEnabledSettings.REASON_DATA_ENABLED_BY_CARRIER:
+                    cleanupReason = Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN;
+                    break;
+                case DataEnabledSettings.REASON_USER_DATA_ENABLED:
+                case DataEnabledSettings.REASON_POLICY_DATA_ENABLED:
+                case DataEnabledSettings.REASON_PROVISIONED_CHANGED:
+                case DataEnabledSettings.REASON_PROVISIONING_DATA_ENABLED_CHANGED:
+                default:
+                    cleanupReason = Phone.REASON_DATA_SPECIFIC_DISABLED;
+                    break;
+
+            }
+            cleanUpAllConnectionsInternal(true, cleanupReason);
         }
-    }
-
-    public boolean setInternalDataEnabled(boolean enable) {
-        if (DBG) log("setInternalDataEnabled(" + enable + ")");
-
-        Message msg = obtainMessage(DctConstants.EVENT_SET_INTERNAL_DATA_ENABLE);
-        msg.arg1 = (enable ? DctConstants.ENABLED : DctConstants.DISABLED);
-        sendMessage(msg);
-        return true;
     }
 
     private void log(String s) {

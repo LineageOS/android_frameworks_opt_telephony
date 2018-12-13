@@ -28,6 +28,7 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
@@ -371,8 +372,13 @@ public class TelephonyComponentFactory {
         return IDeviceIdleController.Stub.asInterface(
                 ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
     }
+
     public LocaleTracker makeLocaleTracker(Phone phone, NitzStateMachine nitzStateMachine,
                                            Looper looper) {
         return new LocaleTracker(phone, nitzStateMachine, looper);
+    }
+
+    public DataEnabledSettings makeDataEnabledSettings(Phone phone) {
+        return new DataEnabledSettings(phone);
     }
 }

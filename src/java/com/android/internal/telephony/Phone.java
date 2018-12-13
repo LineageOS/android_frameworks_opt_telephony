@@ -67,6 +67,7 @@ import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
@@ -209,8 +210,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_VRS_OR_RAT_CHANGED             = 46;
     // Radio state change
     protected static final int EVENT_RADIO_STATE_CHANGED            = 47;
+    protected static final int EVENT_SET_CARRIER_DATA_ENABLED       = 48;
+    protected static final int EVENT_DEVICE_PROVISIONED_CHANGE      = 49;
+    protected static final int EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE = 50;
 
-    protected static final int EVENT_LAST                       = EVENT_RADIO_STATE_CHANGED;
+    protected static final int EVENT_LAST = EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -294,6 +298,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private final String mActionAttached;
     protected DeviceStateMonitor mDeviceStateMonitor;
     protected TransportManager mTransportManager;
+    protected DataEnabledSettings mDataEnabledSettings;
 
     protected int mPhoneId;
 
@@ -3732,16 +3737,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mAllDataDisconnectedRegistrants.remove(h);
     }
 
-    public void registerForDataEnabledChanged(Handler h, int what, Object obj) {
-        if (getDcTracker(TransportType.WWAN) != null) {
-            getDcTracker(TransportType.WWAN).registerForDataEnabledChanged(h, what, obj);
-        }
-    }
-
-    public void unregisterForDataEnabledChanged(Handler h) {
-        if (getDcTracker(TransportType.WWAN) != null) {
-            getDcTracker(TransportType.WWAN).unregisterForDataEnabledChanged(h);
-        }
+    public DataEnabledSettings getDataEnabledSettings() {
+        return mDataEnabledSettings;
     }
 
     public IccSmsInterfaceManager getIccSmsInterfaceManager(){
@@ -3812,20 +3809,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public NetworkStats getVtDataUsage(boolean perUidStats) {
         if (mImsPhone == null) return null;
         return mImsPhone.getVtDataUsage(perUidStats);
-    }
-
-    /**
-     * Policy control of data connection. Usually used when we hit data limit.
-     * @param enabled True if enabling the data, otherwise disabling.
-     */
-    public void setPolicyDataEnabled(boolean enabled) {
-        if (mTransportManager != null) {
-            for (int transport : mTransportManager.getAvailableTransports()) {
-                if (getDcTracker(transport) != null) {
-                    getDcTracker(transport).setPolicyDataEnabled(enabled);
-                }
-            }
-        }
     }
 
     /**
