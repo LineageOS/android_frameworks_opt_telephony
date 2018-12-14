@@ -27,6 +27,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.DataFailCause;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
@@ -330,7 +331,7 @@ public class DcController extends StateMachine {
                             apnsToCleanup.addAll(apnContexts);
                             mDct.isCleanupRequired.set(false);
                         } else {
-                            DcFailCause failCause = DcFailCause.fromInt(newState.getStatus());
+                            DataFailCause failCause = DataFailCause.fromInt(newState.getStatus());
                             if (failCause.isRadioRestartFailure(mPhone.getContext(),
                                         mPhone.getSubId())) {
                                 if (DBG) {
