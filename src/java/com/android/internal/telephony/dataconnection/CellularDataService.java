@@ -69,6 +69,8 @@ public class CellularDataService extends DataService {
 
         private final Handler mHandler;
 
+        private final HandlerThread mHandlerThread;
+
         private final Phone mPhone;
 
         private CellularDataServiceProvider(int slotId) {
@@ -76,9 +78,9 @@ public class CellularDataService extends DataService {
 
             mPhone = PhoneFactory.getPhone(getSlotId());
 
-            HandlerThread thread = new HandlerThread(CellularDataService.class.getSimpleName());
-            thread.start();
-            mLooper = thread.getLooper();
+            mHandlerThread = new HandlerThread(CellularDataService.class.getSimpleName());
+            mHandlerThread.start();
+            mLooper = mHandlerThread.getLooper();
             mHandler = new Handler(mLooper) {
                 @Override
                 public void handleMessage(Message message) {
@@ -218,6 +220,12 @@ public class CellularDataService extends DataService {
                 mCallbackMap.put(message, callback);
             }
             mPhone.mCi.getDataCallList(message);
+        }
+
+        @Override
+        public void close() {
+            mPhone.mCi.unregisterForDataCallListChanged(mHandler);
+            mHandlerThread.quit();
         }
     }
 
