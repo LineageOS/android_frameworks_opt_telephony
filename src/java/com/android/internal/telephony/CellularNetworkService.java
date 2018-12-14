@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.annotation.CallSuper;
 import android.hardware.radio.V1_0.CellInfoType;
 import android.hardware.radio.V1_0.RegState;
 import android.os.AsyncResult;
@@ -506,10 +505,8 @@ public class CellularNetworkService extends NetworkService {
             }
         }
 
-        @CallSuper
-        protected void onDestroy() {
-            super.onDestroy();
-
+        @Override
+        public void close() {
             mCallbackMap.clear();
             mHandlerThread.quit();
             mPhone.mCi.unregisterForNetworkStateChanged(mHandler);
