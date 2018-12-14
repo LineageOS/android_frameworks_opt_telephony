@@ -641,11 +641,16 @@ public class GsmCdmaPhone extends Phone {
         intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
         ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
-        if (DBG) logd("sendEmergencyCallbackModeChange");
+        logi("sendEmergencyCallbackModeChange");
     }
 
     @Override
     public void sendEmergencyCallStateChange(boolean callActive) {
+        if (!isPhoneTypeCdma()) {
+            // It possible that this method got called from ImsPhoneCallTracker#
+            logi("sendEmergencyCallbackModeChange - skip for non-cdma");
+            return;
+        }
         if (mBroadcastEmergencyCallStateChanges) {
             Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
             intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
