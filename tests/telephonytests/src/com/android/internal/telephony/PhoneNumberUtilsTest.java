@@ -22,11 +22,12 @@ import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 
 import android.net.Uri;
-import android.support.test.filters.FlakyTest;
 import android.telephony.PhoneNumberUtils;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.SpannableStringBuilder;
 import android.text.style.TtsSpan;
+
+import androidx.test.filters.FlakyTest;
 
 import org.junit.Ignore;
 import org.junit.Test;

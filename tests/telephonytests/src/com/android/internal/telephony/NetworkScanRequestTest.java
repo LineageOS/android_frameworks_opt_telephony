@@ -19,19 +19,19 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertEquals;
 
 import android.os.Parcel;
-import android.support.test.filters.SmallTest;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.EutranBand;
 import android.telephony.AccessNetworkConstants.GeranBand;
 import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
 
+import androidx.test.filters.SmallTest;
+
 import org.junit.Test;
 
 import java.util.ArrayList;
 
 /** Unit tests for {@link NetworkScanRequest}. */
-
 public class NetworkScanRequestTest {
 
     @Test

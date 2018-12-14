@@ -26,19 +26,20 @@ import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import static java.util.Arrays.asList;
-
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.os.BatteryManager;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.MediumTest;
+
+import androidx.test.filters.FlakyTest;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import static java.util.Arrays.asList;
 
 import java.util.ArrayList;
 

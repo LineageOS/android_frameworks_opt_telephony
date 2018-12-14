@@ -25,10 +25,11 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.BaseColumns;
-import android.support.test.InstrumentationRegistry;
 import android.telephony.SubscriptionManager;
 import android.test.mock.MockContentProvider;
 import android.util.Log;
+
+import androidx.test.InstrumentationRegistry;
 
 public class FakeTelephonyProvider extends MockContentProvider {
     static final String TAG = "FakeTelephonyProvider";
