@@ -384,6 +384,7 @@ public class CarrierResolver extends Handler {
             cv.put(CarrierId.CARRIER_NAME, mCarrierName);
             mContext.getContentResolver().update(
                     Telephony.CarrierId.getUriForSubscriptionId(mPhone.getSubId()), cv, null, null);
+            SubscriptionController.getInstance().setCarrierId(mCarrierId, mPhone.getSubId());
         }
 
         update = false;
