@@ -160,8 +160,8 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private static final int ACTION_REQUEST = 1;
     private static final int ACTION_RELEASE = 2;
 
-    private void applyRequests(HashMap<NetworkRequest, LocalLog> requestMap,
-            int action, String logStr) {
+    private void applyRequestsOnActivePhoneSwitch(HashMap<NetworkRequest, LocalLog> requestMap,
+            boolean cleanUpOnRelease, int action, String logStr) {
         if (action == ACTION_NO_OP) return;
 
         for (NetworkRequest networkRequest : requestMap.keySet()) {
@@ -170,7 +170,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
             if (action == ACTION_REQUEST) {
                 mDcTracker.requestNetwork(networkRequest, localLog);
             } else if (action == ACTION_RELEASE) {
-                mDcTracker.releaseNetwork(networkRequest, localLog);
+                mDcTracker.releaseNetwork(networkRequest, localLog, cleanUpOnRelease);
             }
         }
     }
@@ -196,9 +196,10 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                 + "newIsActiveForDefault " + newIsActiveForDefault + ")";
         if (DBG) log(logString);
 
-        applyRequests(mSpecificRequests, getAction(mIsActive, newIsActive), logString);
-        applyRequests(mDefaultRequests, getAction(mIsActiveForDefault, newIsActiveForDefault),
-                logString);
+        applyRequestsOnActivePhoneSwitch(mSpecificRequests, false,
+                getAction(mIsActive, newIsActive), logString);
+        applyRequestsOnActivePhoneSwitch(mDefaultRequests, true,
+                getAction(mIsActiveForDefault, newIsActiveForDefault), logString);
 
         mIsActive = newIsActive;
         mIsActiveForDefault = newIsActiveForDefault;
@@ -279,7 +280,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
             String s = "onReleaseNetworkFor";
             localLog.log(s);
             log(s + " " + networkRequest);
-            mDcTracker.releaseNetwork(networkRequest, localLog);
+            mDcTracker.releaseNetwork(networkRequest, localLog, false);
         } else {
             String s = "not releasing - isApplicable=" + isApplicable + ", mIsActive=" + mIsActive;
             localLog.log(s);
