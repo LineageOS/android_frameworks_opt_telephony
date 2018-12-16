@@ -59,7 +59,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.provider.Settings;
 import android.provider.Telephony;
-import android.support.test.filters.FlakyTest;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
@@ -76,6 +75,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;

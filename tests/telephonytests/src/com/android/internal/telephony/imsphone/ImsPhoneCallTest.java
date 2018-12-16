@@ -24,9 +24,10 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.support.test.filters.FlakyTest;
-import android.test.suitebuilder.annotation.SmallTest;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.TelephonyTest;
