@@ -549,8 +549,10 @@ public class SimulatedCommands extends BaseCommands
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
     @Override
-    public void dial (String address, int clirMode, Message result) {
-        SimulatedCommandsVerifier.getInstance().dial(address, clirMode, result);
+    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+                      int clirMode, Message result) {
+        SimulatedCommandsVerifier.getInstance().dial(address, isEmergencyCall,
+                emergencyServiceCategories, clirMode, result);
         simulatedCallState.onDial(address);
 
         resultSuccess(result, null);
@@ -568,8 +570,10 @@ public class SimulatedCommands extends BaseCommands
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
     @Override
-    public void dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
-        SimulatedCommandsVerifier.getInstance().dial(address, clirMode, uusInfo, result);
+    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+                     int clirMode, UUSInfo uusInfo, Message result) {
+        SimulatedCommandsVerifier.getInstance().dial(address, isEmergencyCall,
+                emergencyServiceCategories, clirMode, uusInfo, result);
         simulatedCallState.onDial(address);
 
         resultSuccess(result, null);

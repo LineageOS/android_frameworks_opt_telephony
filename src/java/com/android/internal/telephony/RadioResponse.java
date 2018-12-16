@@ -1468,6 +1468,13 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void emergencyDialResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
     private void responseInts(RadioResponseInfo responseInfo, int ...var) {
         final ArrayList<Integer> ints = new ArrayList<>();
         for (int i = 0; i < var.length; i++) {

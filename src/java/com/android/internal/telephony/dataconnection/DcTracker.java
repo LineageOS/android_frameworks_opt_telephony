@@ -62,6 +62,7 @@ import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
+import android.telephony.DataFailCause;
 import android.telephony.PcoData;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -256,6 +257,7 @@ public class DcTracker extends Handler {
                 if (DBG) log("Provisioning apn alarm");
                 onActionIntentProvisioningApnAlarm(intent);
             } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                if (DBG) log("received carrier config change");
                 if (mIccRecords.get() != null && mIccRecords.get().getRecordsLoaded()) {
                     setDefaultDataRoamingEnabled();
                 }
@@ -859,11 +861,15 @@ public class DcTracker extends Handler {
         if (apnContext != null) apnContext.requestNetwork(networkRequest, log);
     }
 
-    public void releaseNetwork(NetworkRequest networkRequest, LocalLog log) {
+    public void releaseNetwork(NetworkRequest networkRequest, LocalLog log,
+            boolean cleanUpConnection) {
         final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsByType.get(apnType);
         log.log("DcTracker.releaseNetwork for " + networkRequest + " found " + apnContext);
-        if (apnContext != null) apnContext.releaseNetwork(networkRequest, log);
+        if (apnContext != null) {
+            apnContext.releaseNetwork(networkRequest, log);
+            if (cleanUpConnection) cleanUpConnectionInternal(true, apnContext);
+        }
     }
 
     // Turn telephony radio on or off.
@@ -1429,7 +1435,7 @@ public class DcTracker extends Handler {
                 ArrayList<ApnSetting> waitingApns =
                         buildWaitingApns(apnContext.getApnType(), radioTech);
                 if (waitingApns.isEmpty()) {
-                    notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
+                    notifyNoData(DataFailCause.MISSING_UNKNOWN_APN, apnContext);
                     notifyOffApnsOfAvailability(apnContext.getReason());
                     String str = "trySetupData: X No APN found retValue=false";
                     if (DBG) log(str);
@@ -1799,9 +1805,9 @@ public class DcTracker extends Handler {
         }
     }
 
-    boolean isPermanentFailure(DcFailCause dcFailCause) {
+    boolean isPermanentFailure(DataFailCause dcFailCause) {
         return (dcFailCause.isPermanentFailure(mPhone.getContext(), mPhone.getSubId()) &&
-                (mAttached.get() == false || dcFailCause != DcFailCause.SIGNAL_LOST));
+                (mAttached.get() == false || dcFailCause != DataFailCause.SIGNAL_LOST));
     }
 
     private DataConnection findFreeDataConnection() {
@@ -2141,7 +2147,7 @@ public class DcTracker extends Handler {
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
     }
 
-    private void notifyNoData(DcFailCause lastFailCauseCode,
+    private void notifyNoData(DataFailCause lastFailCauseCode,
                               ApnContext apnContext) {
         if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
         if (isPermanentFailure(lastFailCauseCode)
@@ -2538,6 +2544,8 @@ public class DcTracker extends Handler {
             // for single sim device, update to carrier default if user action is not set
             useCarrierSpecificDefault = true;
         }
+        log("setDefaultDataRoamingEnabled: useCarrierSpecificDefault "
+                + useCarrierSpecificDefault);
         if (useCarrierSpecificDefault) {
             boolean defaultVal = getDefaultDataRoamingEnabled();
             log("setDefaultDataRoamingEnabled: " + setting + "default value: " + defaultVal);
@@ -2722,7 +2730,7 @@ public class DcTracker extends Handler {
      */
     private void onDataSetupComplete(AsyncResult ar) {
 
-        DcFailCause cause = DcFailCause.UNKNOWN;
+        DataFailCause cause = DataFailCause.UNKNOWN;
         boolean handleError = false;
         ApnContext apnContext = getValidApnContext(ar, "onDataSetupComplete");
 
@@ -2751,7 +2759,7 @@ public class DcTracker extends Handler {
             }
             if (dataConnection == null) {
                 log("onDataSetupComplete: no connection to DC, handle as error");
-                cause = DcFailCause.CONNECTION_TO_DATACONNECTIONAC_BROKEN;
+                cause = DataFailCause.CONNECTION_TO_DATACONNECTIONAC_BROKEN;
                 handleError = true;
             } else {
                 ApnSetting apn = apnContext.getApnSetting();
@@ -2863,7 +2871,7 @@ public class DcTracker extends Handler {
                 }
             }
         } else {
-            cause = (DcFailCause) (ar.result);
+            cause = (DataFailCause) (ar.result);
             if (DBG) {
                 ApnSetting apn = apnContext.getApnSetting();
                 log(String.format("onDataSetupComplete: error apn=%s cause=%s",

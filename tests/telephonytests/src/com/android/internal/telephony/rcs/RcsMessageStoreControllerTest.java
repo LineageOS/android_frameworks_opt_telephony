@@ -18,19 +18,19 @@ package com.android.internal.telephony.rcs;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.internal.telephony.RcsController;
+import com.android.internal.telephony.RcsMessageStoreController;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.Before;
 import org.junit.Test;
 
-public class RcsControllerTest extends TelephonyTest {
+public class RcsMessageStoreControllerTest extends TelephonyTest {
 
-    private RcsController mRcsController;
+    private RcsMessageStoreController mRcsMessageStoreController;
 
     @Before
     public void setUp() {
-        mRcsController = new RcsController(mContext, null);
+        mRcsMessageStoreController = new RcsMessageStoreController(mContext, null);
     }
 
     /**
@@ -38,6 +38,6 @@ public class RcsControllerTest extends TelephonyTest {
      */
     @Test
     public void testGetMessageCount() {
-        assertEquals(1018, mRcsController.getMessageCount(0));
+        assertEquals(1018, mRcsMessageStoreController.getMessageCount(0));
     }
 }

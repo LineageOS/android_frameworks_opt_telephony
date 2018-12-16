@@ -102,12 +102,13 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
-    public void dial(String address, int clirMode, Message result) {
+    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+               int clirMode, Message result) {
     }
 
     @Override
-    public void dial(String address, int clirMode, UUSInfo uusInfo,
-            Message result) {
+    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+              int clirMode, UUSInfo uusInfo, Message result) {
     }
 
     @Override

@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.Intent;
+import android.telephony.DataFailCause;
 import android.telephony.Rlog;
 
 /**
@@ -39,8 +40,8 @@ public class DcFailBringUp {
 
     // failCause with its --ei option name and default value
     static final String FAIL_CAUSE = "fail_cause";
-    static final DcFailCause DEFAULT_FAIL_CAUSE = DcFailCause.ERROR_UNSPECIFIED;
-    DcFailCause mFailCause;
+    static final DataFailCause DEFAULT_FAIL_CAUSE = DataFailCause.ERROR_UNSPECIFIED;
+    DataFailCause mFailCause;
 
     // suggestedRetryTime with its --ei option name and default value
     static final String SUGGESTED_RETRY_TIME = "suggested_retry_time";
@@ -51,7 +52,7 @@ public class DcFailBringUp {
     void saveParameters(Intent intent, String s) {
         if (DBG) log(s + ".saveParameters: action=" + intent.getAction());
         mCounter = intent.getIntExtra(COUNTER, DEFAULT_COUNTER);
-        mFailCause = DcFailCause.fromInt(
+        mFailCause = DataFailCause.fromInt(
                 intent.getIntExtra(FAIL_CAUSE, DEFAULT_FAIL_CAUSE.getErrorCode()));
         mSuggestedRetryTime =
                 intent.getIntExtra(SUGGESTED_RETRY_TIME, DEFAULT_SUGGESTED_RETRY_TIME);
@@ -62,7 +63,7 @@ public class DcFailBringUp {
 
     public void saveParameters(int counter, int failCause, int suggestedRetryTime) {
         mCounter = counter;
-        mFailCause = DcFailCause.fromInt(failCause);
+        mFailCause = DataFailCause.fromInt(failCause);
         mSuggestedRetryTime = suggestedRetryTime;
     }
 
