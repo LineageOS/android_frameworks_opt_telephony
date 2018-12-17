@@ -1764,6 +1764,13 @@ public class DcTracker extends Handler {
     }
 
     /**
+     * @return the {@link DataConnection} with the given context id {@code cid}.
+     */
+    public DataConnection getDataConnectionByContextId(int cid) {
+        return mDcc.getActiveDcByCid(cid);
+    }
+
+    /**
      * Determine if DUN connection is special and we need to teardown on start/stop
      */
     private boolean teardownForDun() {
