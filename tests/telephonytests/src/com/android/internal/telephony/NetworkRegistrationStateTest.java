@@ -19,16 +19,16 @@ package com.android.internal.telephony;
 import static junit.framework.Assert.assertEquals;
 
 import android.os.Parcel;
-import android.support.test.filters.SmallTest;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CellIdentityLte;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.TelephonyManager;
 
+import androidx.test.filters.SmallTest;
+
 import org.junit.Test;
 
 /** Unit tests for {@link NetworkRegistrationState}. */
-
 public class NetworkRegistrationStateTest {
 
     @Test

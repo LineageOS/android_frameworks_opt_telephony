@@ -44,11 +44,12 @@ import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Telephony;
-import android.support.test.filters.FlakyTest;
 import android.telephony.SmsManager;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Singleton;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.ISub;

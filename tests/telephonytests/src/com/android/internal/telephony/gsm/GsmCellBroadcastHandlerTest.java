@@ -38,7 +38,8 @@ import android.os.HandlerThread;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
-import android.support.test.filters.FlakyTest;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;

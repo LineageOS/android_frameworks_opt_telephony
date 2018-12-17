@@ -36,10 +36,11 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.RemoteException;
-import android.support.test.filters.FlakyTest;
-import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
+
+import androidx.test.filters.FlakyTest;
+import androidx.test.runner.AndroidJUnit4;
 
 import com.android.ims.internal.IImsServiceFeatureCallback;
 

@@ -21,9 +21,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.aidl.IImsCallSessionListener;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.runner.AndroidJUnit4;
 
 import com.android.ims.internal.IImsMMTelFeature;
 

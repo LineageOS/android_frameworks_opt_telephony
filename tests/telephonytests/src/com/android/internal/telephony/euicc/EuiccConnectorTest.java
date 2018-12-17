@@ -40,7 +40,8 @@ import android.os.test.TestLooper;
 import android.service.euicc.EuiccService;
 import android.service.euicc.IEuiccService;
 import android.service.euicc.IGetEidCallback;
-import android.support.test.runner.AndroidJUnit4;
+
+import androidx.test.runner.AndroidJUnit4;
 
 import com.android.internal.telephony.TelephonyTest;
 
