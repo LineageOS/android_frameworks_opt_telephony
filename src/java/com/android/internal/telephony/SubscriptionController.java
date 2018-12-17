@@ -308,6 +308,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.ISO_COUNTRY_CODE));
         boolean isEmbedded = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_EMBEDDED)) == 1;
+        int carrierId = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.CARRIER_ID));
         UiccAccessRule[] accessRules;
         if (isEmbedded) {
             accessRules = UiccAccessRule.decodeRules(cursor.getBlob(
@@ -326,9 +328,10 @@ public class SubscriptionController extends ISub.Stub {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
             String cardIdToPrint = SubscriptionInfo.givePrintableIccid(cardId);
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccIdToPrint + " simSlotIndex:"
-                    + simSlotIndex + " displayName:" + displayName + " nameSource:" + nameSource
-                    + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
-                    + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso + " isEmbedded:"
+                    + simSlotIndex + " carrierid:" + carrierId + " displayName:" + displayName
+                    + " nameSource:" + nameSource + " iconTint:" + iconTint
+                    + " dataRoaming:" + dataRoaming + " mcc:" + mcc + " mnc:" + mnc
+                    + " countIso:" + countryIso + " isEmbedded:"
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
                     + " cardId:" + cardIdToPrint + " isOpportunistic:" + isOpportunistic
                     + " groupUUID:" + groupUUID + " isMetered:" + isMetered);
@@ -341,7 +344,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                isEmbedded, accessRules, cardId, isOpportunistic, groupUUID, isMetered);
+                isEmbedded, accessRules, cardId, isOpportunistic, groupUUID, isMetered, carrierId);
     }
 
     /**
@@ -1326,6 +1329,39 @@ public class SubscriptionController extends ISub.Stub {
             value.put(SubscriptionManager.DATA_ROAMING, roaming);
             if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
 
+            int result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+
+            // Refresh the Cache of Active Subscription Info List
+            refreshCachedActiveSubscriptionInfoList();
+
+            notifySubscriptionInfoChanged();
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     * Set carrier id by subId
+     * @param carrierId the subscription carrier id.
+     * @param subId the unique SubInfoRecord index in database
+     * @return the number of records updated
+     *
+     * @see TelephonyManager#getSimCarrierId()
+     */
+    public int setCarrierId(int carrierId, int subId) {
+        if (DBG) logd("[setCarrierId]+ carrierId:" + carrierId + " subId:" + subId);
+
+        enforceModifyPhoneState("setCarrierId");
+
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.CARRIER_ID, carrierId);
             int result = mContext.getContentResolver().update(
                     SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 

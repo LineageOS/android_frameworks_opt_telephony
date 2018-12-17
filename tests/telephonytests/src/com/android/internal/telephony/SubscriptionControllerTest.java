@@ -251,6 +251,24 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 captorIntent.getValue().getAction());
     }
 
+    @Test @SmallTest
+    public void testSetGetCarrierId() {
+        testInsertSim();
+        int carrierId = 1234;
+        mSubscriptionControllerUT.setCarrierId(carrierId, 1);
+
+        SubscriptionInfo subInfo = mSubscriptionControllerUT
+                .getActiveSubscriptionInfo(1, mCallingPackage);
+        assertNotNull(subInfo);
+        assertEquals(carrierId, subInfo.getCarrierId());
+
+         /* verify broadcast intent */
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
+        assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
+                captorIntent.getValue().getAction());
+    }
+
     @Test
     @SmallTest
     public void testSetDefaultDataSubId() throws Exception {
