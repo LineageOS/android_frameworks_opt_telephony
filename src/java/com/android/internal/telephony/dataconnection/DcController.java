@@ -331,8 +331,8 @@ public class DcController extends StateMachine {
                             apnsToCleanup.addAll(apnContexts);
                             mDct.isCleanupRequired.set(false);
                         } else {
-                            DataFailCause failCause = DataFailCause.fromInt(newState.getStatus());
-                            if (failCause.isRadioRestartFailure(mPhone.getContext(),
+                            int failCause = DataFailCause.getFailCause(newState.getStatus());
+                            if (DataFailCause.isRadioRestartFailure(mPhone.getContext(), failCause,
                                         mPhone.getSubId())) {
                                 if (DBG) {
                                     log("onDataStateChanged: X restart radio, failCause="
