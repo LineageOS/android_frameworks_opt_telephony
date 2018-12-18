@@ -386,11 +386,13 @@ public class PhoneFactory {
     /**
      * Request a refresh of the embedded subscription list.
      *
+     * @param cardId the card ID of the eUICC.
      * @param callback Optional callback to execute after the refresh completes. Must terminate
      *     quickly as it will be called from SubscriptionInfoUpdater's handler thread.
      */
-    public static void requestEmbeddedSubscriptionInfoListRefresh(@Nullable Runnable callback) {
-        sSubInfoRecordUpdater.requestEmbeddedSubscriptionInfoListRefresh(callback);
+    public static void requestEmbeddedSubscriptionInfoListRefresh(
+            int cardId, @Nullable Runnable callback) {
+        sSubInfoRecordUpdater.requestEmbeddedSubscriptionInfoListRefresh(cardId, callback);
     }
 
     /**

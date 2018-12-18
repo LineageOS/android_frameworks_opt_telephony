@@ -100,7 +100,8 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + SubscriptionManager.IS_OPPORTUNISTIC + " INTEGER DEFAULT 0,"
                     + SubscriptionManager.GROUP_UUID + " TEXT,"
                     + SubscriptionManager.IS_METERED + " INTEGER DEFAULT 1,"
-                    + SubscriptionManager.ISO_COUNTRY_CODE + " TEXT"
+                    + SubscriptionManager.ISO_COUNTRY_CODE + " TEXT,"
+                    + SubscriptionManager.CARRIER_ID + " INTEGER DEFAULT -1"
                     + ");";
         }
 
