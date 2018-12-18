@@ -303,10 +303,13 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.MCC_STRING));
         String mnc = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.MNC_STRING));
+        // cardId is the private ICCID/EID string, also known as the card string
         String cardId = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.CARD_ID));
         String countryIso = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.ISO_COUNTRY_CODE));
+        // publicCardId is the publicly exposed int card ID
+        int publicCardId = UiccController.getInstance().convertToPublicCardId(cardId);
         boolean isEmbedded = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_EMBEDDED)) == 1;
         int carrierId = cursor.getInt(cursor.getColumnIndexOrThrow(
@@ -334,8 +337,9 @@ public class SubscriptionController extends ISub.Stub {
                     + " dataRoaming:" + dataRoaming + " mcc:" + mcc + " mnc:" + mnc
                     + " countIso:" + countryIso + " isEmbedded:"
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
-                    + " cardId:" + cardIdToPrint + " isOpportunistic:" + isOpportunistic
-                    + " groupUUID:" + groupUUID + " isMetered:" + isMetered);
+                    + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
+                    + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
+                    + " isMetered:" + isMetered);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -345,7 +349,8 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                isEmbedded, accessRules, cardId, isOpportunistic, groupUUID, isMetered, carrierId);
+                isEmbedded, accessRules, cardId, publicCardId, isOpportunistic, groupUUID,
+                isMetered, false /* isGroupDisabled */, carrierId);
     }
 
     /**

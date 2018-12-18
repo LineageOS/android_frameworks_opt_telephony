@@ -697,7 +697,7 @@ public class SubscriptionInfoUpdater extends Handler {
             UiccController uiccController = UiccController.getInstance();
             subInfos.stream()
                     .filter(subInfo -> subInfo.isEmbedded())
-                    .mapToInt(subInfo -> uiccController.convertToPublicCardId(subInfo.getCardId()))
+                    .mapToInt(subInfo -> subInfo.getCardId())
                     .mapToObj(cardId -> cardId)
                     .collect(Collectors.toSet())
                     .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
