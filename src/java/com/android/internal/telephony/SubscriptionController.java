@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 import android.Manifest;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
@@ -1917,20 +1918,14 @@ public class SubscriptionController extends ISub.Stub {
      * @return the list of subId's that are active, is never null but the length maybe 0.
      */
     @Override
-    public int[] getActiveSubIdList() {
-        Set<Entry<Integer, Integer>> simInfoSet = new HashSet<>(sSlotIndexToSubId.entrySet());
-
-        int[] subIdArr = new int[simInfoSet.size()];
-        int i = 0;
-        for (Entry<Integer, Integer> entry: simInfoSet) {
-            int sub = entry.getValue();
-            subIdArr[i] = sub;
-            i++;
-        }
+    public @NonNull int[] getActiveSubIdList() {
+        int[] subIdArr = sSlotIndexToSubId.keySet().stream()
+                .sorted()
+                .mapToInt(slotId -> sSlotIndexToSubId.get(slotId))
+                .toArray();
 
         if (VDBG) {
-            logdl("[getActiveSubIdList] simInfoSet=" + simInfoSet + " subIdArr.length="
-                    + subIdArr.length);
+            logdl("[getActiveSubIdList] subIdArr=" + Arrays.toString(subIdArr));
         }
         return subIdArr;
     }
