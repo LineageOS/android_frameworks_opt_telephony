@@ -66,6 +66,8 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
 
+    private static final boolean DBG = true;
+
     private static final int EVENT_INVALID = -1;
     private static final int EVENT_GET_NETWORK_SELECTION_MODE_DONE = 2;
     private static final int EVENT_SIM_LOADED = 3;
@@ -703,6 +705,7 @@ public class SubscriptionInfoUpdater extends Handler {
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public boolean updateEmbeddedSubscriptions() {
+        if (DBG) logd("updateEmbeddedSubscriptions");
         // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but they
         // are filtered out of list calls as long as EuiccManager.isEnabled returns false).
         if (!mEuiccManager.isEnabled()) {
@@ -738,6 +741,8 @@ public class SubscriptionInfoUpdater extends Handler {
             embeddedIccids[i] = embeddedProfiles[i].getIccid();
         }
 
+        if (DBG) logd("Get eUICC profile list of size " + embeddedProfiles.length);
+
         // Note that this only tracks whether we make any writes to the DB. It's possible this will
         // be set to true for an update even when the row contents remain exactly unchanged from
         // before, since we don't compare against the previous value. Since this is only intended to
@@ -761,6 +766,12 @@ public class SubscriptionInfoUpdater extends Handler {
             } else {
                 existingSubscriptions.remove(index);
             }
+
+            if (DBG) {
+                logd("embeddedProfile " + embeddedProfile + " existing record "
+                        + (index < 0 ? "not found" : "found"));
+            }
+
             ContentValues values = new ContentValues();
             values.put(SubscriptionManager.IS_EMBEDDED, 1);
             List<UiccAccessRule> ruleList = embeddedProfile.getUiccAccessRules();
@@ -787,10 +798,15 @@ public class SubscriptionInfoUpdater extends Handler {
         // around in case the subscription is added back later, which is equivalent to a removable
         // SIM being removed and reinserted).
         if (!existingSubscriptions.isEmpty()) {
+            if (DBG) {
+                logd("Removing existing embedded subscriptions of size"
+                        + existingSubscriptions.size());
+            }
             List<String> iccidsToRemove = new ArrayList<>();
             for (int i = 0; i < existingSubscriptions.size(); i++) {
                 SubscriptionInfo info = existingSubscriptions.get(i);
                 if (info.isEmbedded()) {
+                    if (DBG) logd("Removing embedded subscription of IccId " + info.getIccId());
                     iccidsToRemove.add("\"" + info.getIccId() + "\"");
                 }
             }
@@ -805,6 +821,7 @@ public class SubscriptionInfoUpdater extends Handler {
             SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
 
+        if (DBG) logd("updateEmbeddedSubscriptions done hasChanges=" + hasChanges);
         return hasChanges;
     }
 
