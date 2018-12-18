@@ -501,7 +501,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
 
         // Ensure that the correct key was queried from the shared prefs.
-        assertEquals("clir_key0", mStringCaptor.getValue());
+        assertEquals("clir_sub_key0", mStringCaptor.getValue());
     }
 
     /**
