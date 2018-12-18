@@ -53,11 +53,13 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.UiccController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  *@hide
@@ -282,7 +284,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 // intentional fall through
 
             case EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS:
-                if (updateEmbeddedSubscriptions()) {
+                if (updateEmbeddedSubscriptions(msg.arg1)) {
                     SubscriptionController.getInstance().notifySubscriptionInfoChanged();
                 }
                 if (msg.obj != null) {
@@ -295,8 +297,9 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    void requestEmbeddedSubscriptionInfoListRefresh(@Nullable Runnable callback) {
-        sendMessage(obtainMessage(EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS, callback));
+    void requestEmbeddedSubscriptionInfoListRefresh(int cardId, @Nullable Runnable callback) {
+        sendMessage(obtainMessage(
+                EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS, cardId, 0 /* arg2 */, callback));
     }
 
     private void handleSimLocked(int slotId, String reason) {
@@ -690,21 +693,30 @@ public class SubscriptionInfoUpdater extends Handler {
                 mSubscriptionManager.getDefaultDataSubscriptionId());
 
         // No need to check return value here as we notify for the above changes anyway.
-        updateEmbeddedSubscriptions();
+        if (subInfos != null) {
+            UiccController uiccController = UiccController.getInstance();
+            subInfos.stream()
+                    .filter(subInfo -> subInfo.isEmbedded())
+                    .mapToInt(subInfo -> uiccController.convertToPublicCardId(subInfo.getCardId()))
+                    .mapToObj(cardId -> cardId)
+                    .collect(Collectors.toSet())
+                    .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
+        }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SubscriptionInfo update complete");
     }
 
     /**
-     * Update the cached list of embedded subscriptions.
+     * Update the cached list of embedded subscription for the eUICC with the given card ID
+     * {@code cardId}.
      *
      * @return true if changes may have been made. This is not a guarantee that changes were made,
      * but notifications about subscription changes may be skipped if this returns false as an
      * optimization to avoid spurious notifications.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public boolean updateEmbeddedSubscriptions() {
+    public boolean updateEmbeddedSubscriptions(int cardId) {
         if (DBG) logd("updateEmbeddedSubscriptions");
         // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but they
         // are filtered out of list calls as long as EuiccManager.isEnabled returns false).
@@ -713,7 +725,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         GetEuiccProfileInfoListResult result =
-                EuiccController.get().blockingGetEuiccProfileInfoList();
+                EuiccController.get().blockingGetEuiccProfileInfoList(cardId);
         if (result == null) {
             // IPC to the eUICC controller failed.
             return false;
