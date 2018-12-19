@@ -84,12 +84,13 @@ public class NetworkRegistrationManager {
 
     private final Map<NetworkRegStateCallback, Message> mCallbackTable = new Hashtable();
 
-    public void getNetworkRegistrationState(int domain, Message onCompleteMessage) {
+    public void getNetworkRegistrationState(@NetworkRegistrationState.Domain int domain,
+                                            Message onCompleteMessage) {
         if (onCompleteMessage == null) return;
 
-        logd("getNetworkRegistrationState domain " + domain);
         if (!isServiceConnected()) {
-            logd("service not connected.");
+            loge("service not connected. Domain = "
+                    + ((domain == NetworkRegistrationState.DOMAIN_CS) ? "CS" : "PS"));
             onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, null,
                     new IllegalStateException("Service not connected."));
             onCompleteMessage.sendToTarget();

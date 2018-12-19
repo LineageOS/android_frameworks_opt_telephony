@@ -47,6 +47,7 @@ import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Access network manager manages the qualified/available networks for mobile data connection.
@@ -80,6 +81,7 @@ public class AccessNetworksManager {
 
     private QualifiedNetworksServiceConnection mServiceConnection;
 
+    // Available networks. Key is the APN type.
     private final SparseArray<int[]> mAvailableNetworks = new SparseArray<>();
 
     private final RegistrantList mQualifiedNetworksChangedRegistrants = new RegistrantList();
@@ -119,7 +121,9 @@ public class AccessNetworksManager {
             return "[QualifiedNetworks: apnType="
                     + ApnSetting.getApnTypeString(apnType)
                     + ", networks="
-                    + TextUtils.join(", ", accessNetworkStrings)
+                    + Arrays.stream(qualifiedNetworks)
+                    .mapToObj(type -> AccessNetworkType.toString(type))
+                    .collect(Collectors.joining(","))
                     + "]";
         }
     }
@@ -160,9 +164,11 @@ public class AccessNetworksManager {
             IQualifiedNetworksServiceCallback.Stub {
         @Override
         public void onQualifiedNetworkTypesChanged(int apnTypes, int[] qualifiedNetworkTypes) {
-            log("onQualifiedNetworkTypesChanged. apnTypes = "
+            log("onQualifiedNetworkTypesChanged. apnTypes = ["
                     + ApnSetting.getApnTypesStringFromBitmask(apnTypes)
-                    + ", networks = " + Arrays.toString(qualifiedNetworkTypes));
+                    + "], networks = [" + Arrays.stream(qualifiedNetworkTypes)
+                    .mapToObj(i -> AccessNetworkType.toString(i)).collect(Collectors.joining(","))
+                    + "]");
             List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
             for (int supportedApnType : SUPPORTED_APN_TYPES) {
                 if ((apnTypes & supportedApnType) == supportedApnType) {
@@ -316,13 +322,10 @@ public class AccessNetworksManager {
         pw.increaseIndent();
 
         for (int i = 0; i < mAvailableNetworks.size(); i++) {
-            pw.print("APN type "
-                    + ApnSetting.getApnTypeString(mAvailableNetworks.keyAt(i)) + ": ");
-            List<String> networksStrings = new ArrayList<>();
-            for (int network : mAvailableNetworks.valueAt(i)) {
-                networksStrings.add(AccessNetworkType.toString(network));
-            }
-            pw.println("[" + TextUtils.join(",", networksStrings) + "]");
+            pw.println("APN type " + ApnSetting.getApnTypeString(mAvailableNetworks.keyAt(i))
+                    + ": [" + Arrays.stream(mAvailableNetworks.valueAt(i))
+                    .mapToObj(type -> AccessNetworkType.toString(type))
+                    .collect(Collectors.joining(",")) + "]");
         }
         pw.decreaseIndent();
         pw.decreaseIndent();
