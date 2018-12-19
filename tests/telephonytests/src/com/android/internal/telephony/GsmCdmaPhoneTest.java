@@ -397,6 +397,13 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // no resource or sharedPreference set -- should be null
         assertEquals(null, mPhoneUT.getVoiceMailNumber());
 
+        // config_telephony_use_own_number_for_voicemail
+        mContextFixture.getCarrierConfigBundle()
+                .putBoolean(CarrierConfigManager
+                        .KEY_CONFIG_TELEPHONY_USE_OWN_NUMBER_FOR_VOICEMAIL_BOOL, true);
+        doReturn(voiceMailNumber).when(mSimRecords).getMsisdnNumber();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
         // voicemail number from config
         mContextFixture.getCarrierConfigBundle().
                 putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING, voiceMailNumber);
@@ -432,9 +439,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void testVoiceMailNumberCdma() {
         switchToCdma();
         String voiceMailNumber = "1234567890";
-
-        // no resource or sharedPreference set -- should be *86
-        assertEquals("*86", mPhoneUT.getVoiceMailNumber());
 
         // config_telephony_use_own_number_for_voicemail
         mContextFixture.getCarrierConfigBundle()
