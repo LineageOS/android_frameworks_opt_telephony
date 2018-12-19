@@ -1463,7 +1463,7 @@ public class GsmCdmaPhone extends Phone {
             }
         }
 
-        if (!isPhoneTypeGsm() && TextUtils.isEmpty(number)) {
+        if (TextUtils.isEmpty(number)) {
             // Read platform settings for dynamic voicemail number
             CarrierConfigManager configManager = (CarrierConfigManager)
                     getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -1471,8 +1471,6 @@ public class GsmCdmaPhone extends Phone {
             if (b != null && b.getBoolean(
                     CarrierConfigManager.KEY_CONFIG_TELEPHONY_USE_OWN_NUMBER_FOR_VOICEMAIL_BOOL)) {
                 number = getLine1Number();
-            } else {
-                number = "*86";
             }
         }
 
