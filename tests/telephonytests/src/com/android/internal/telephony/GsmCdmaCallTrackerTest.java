@@ -21,7 +21,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -120,9 +119,9 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(GsmCdmaCall.State.DIALING, mCTUT.mForegroundCall.getState());
         assertEquals(1, mCTUT.mForegroundCall.getConnections().size());
         /* verify the command is sent out to RIL */
-        verify(mSimulatedCommandsVerifier).dial(eq(PhoneNumberUtils.
-                        extractNetworkPortionAlt(mDialString)), anyBoolean(), anyInt(),
-                anyInt(), eq((UUSInfo) null), isA(Message.class));
+        verify(mSimulatedCommandsVerifier).dial(
+                eq(PhoneNumberUtils.extractNetworkPortionAlt(mDialString)), eq(false),
+                eq(null), anyInt(), eq((UUSInfo) null), isA(Message.class));
     }
 
     @Test

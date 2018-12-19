@@ -3861,6 +3861,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return mDcTrackers.get(transportType);
     }
 
+    /**
+     * Get the HAL version.
+     *
+     * @return the current HalVersion
+     */
+    public HalVersion getHalVersion() {
+        if (mCi != null && mCi instanceof RIL) {
+            return ((RIL) mCi).getHalVersion();
+        }
+        return RIL.RADIO_HAL_VERSION_UNKNOWN;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
