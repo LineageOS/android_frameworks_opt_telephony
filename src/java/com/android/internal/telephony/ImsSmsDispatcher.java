@@ -179,7 +179,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 int mappedResult;
                 switch (result) {
                     case Intents.RESULT_SMS_HANDLED:
-                        mappedResult = ImsSmsImplBase.STATUS_REPORT_STATUS_OK;
+                        mappedResult = ImsSmsImplBase.DELIVER_STATUS_OK;
                         break;
                     case Intents.RESULT_SMS_OUT_OF_MEMORY:
                         mappedResult = ImsSmsImplBase.DELIVER_STATUS_ERROR_NO_MEMORY;
@@ -199,11 +199,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         Rlog.w(TAG, "SMS Received with a PDU that could not be parsed.");
                         getImsManager().acknowledgeSms(token, 0, mappedResult);
                     }
+                    mMetrics.writeImsServiceNewSms(mPhone.getPhoneId(), format, mappedResult);
                 } catch (ImsException e) {
                     Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
+                    mMetrics.writeImsServiceNewSms(mPhone.getPhoneId(), format,
+                            ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC);
                 }
             }, true);
-            mMetrics.writeImsServiceNewSms(mPhone.getPhoneId(), format);
         }
     };
 
@@ -366,10 +368,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     smsc != null ? new String(smsc) : null,
                     isRetry,
                     pdu);
-            mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format);
+            mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
+                    ImsSmsImplBase.SEND_STATUS_OK);
         } catch (ImsException e) {
             Rlog.e(TAG, "sendSms failed. Falling back to PSTN. Error: " + e.getMessage());
             fallbackToPstn(token, tracker);
+            mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
+                    ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK);
         }
     }
 
