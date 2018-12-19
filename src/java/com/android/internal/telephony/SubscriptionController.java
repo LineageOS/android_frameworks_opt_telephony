@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 import android.Manifest;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
@@ -302,10 +303,13 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.MCC_STRING));
         String mnc = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.MNC_STRING));
+        // cardId is the private ICCID/EID string, also known as the card string
         String cardId = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.CARD_ID));
         String countryIso = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.ISO_COUNTRY_CODE));
+        // publicCardId is the publicly exposed int card ID
+        int publicCardId = UiccController.getInstance().convertToPublicCardId(cardId);
         boolean isEmbedded = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_EMBEDDED)) == 1;
         int carrierId = cursor.getInt(cursor.getColumnIndexOrThrow(
@@ -333,8 +337,9 @@ public class SubscriptionController extends ISub.Stub {
                     + " dataRoaming:" + dataRoaming + " mcc:" + mcc + " mnc:" + mnc
                     + " countIso:" + countryIso + " isEmbedded:"
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
-                    + " cardId:" + cardIdToPrint + " isOpportunistic:" + isOpportunistic
-                    + " groupUUID:" + groupUUID + " isMetered:" + isMetered);
+                    + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
+                    + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
+                    + " isMetered:" + isMetered);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -344,7 +349,8 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                isEmbedded, accessRules, cardId, isOpportunistic, groupUUID, isMetered, carrierId);
+                isEmbedded, accessRules, cardId, publicCardId, isOpportunistic, groupUUID,
+                isMetered, false /* isGroupDisabled */, carrierId);
     }
 
     /**
@@ -1968,20 +1974,14 @@ public class SubscriptionController extends ISub.Stub {
      * @return the list of subId's that are active, is never null but the length maybe 0.
      */
     @Override
-    public int[] getActiveSubIdList() {
-        Set<Entry<Integer, Integer>> simInfoSet = new HashSet<>(sSlotIndexToSubId.entrySet());
-
-        int[] subIdArr = new int[simInfoSet.size()];
-        int i = 0;
-        for (Entry<Integer, Integer> entry: simInfoSet) {
-            int sub = entry.getValue();
-            subIdArr[i] = sub;
-            i++;
-        }
+    public @NonNull int[] getActiveSubIdList() {
+        int[] subIdArr = sSlotIndexToSubId.keySet().stream()
+                .sorted()
+                .mapToInt(slotId -> sSlotIndexToSubId.get(slotId))
+                .toArray();
 
         if (VDBG) {
-            logdl("[getActiveSubIdList] simInfoSet=" + simInfoSet + " subIdArr.length="
-                    + subIdArr.length);
+            logdl("[getActiveSubIdList] subIdArr=" + Arrays.toString(subIdArr));
         }
         return subIdArr;
     }

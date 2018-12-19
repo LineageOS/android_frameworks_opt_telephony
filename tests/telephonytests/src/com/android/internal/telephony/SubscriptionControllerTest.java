@@ -46,6 +46,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class SubscriptionControllerTest extends TelephonyTest {
@@ -584,5 +585,16 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mServiceManagerMockedServices.put("telephony.registry", mTelephonyRegisteryMock);
         doReturn(mTelephonyRegisteryMock).when(mTelephonyRegisteryMock)
                 .queryLocalInterface(anyString());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetActiveSubIdList() throws Exception {
+        mSubscriptionControllerUT.addSubInfoRecord("123", 1);   // sub 1
+        mSubscriptionControllerUT.addSubInfoRecord("456", 0);   // sub 2
+
+        // Make sure the return sub ids are sorted by slot index
+        assertTrue("active sub ids = " + mSubscriptionControllerUT.getActiveSubIdList(),
+                Arrays.equals(mSubscriptionControllerUT.getActiveSubIdList(), new int[]{2, 1}));
     }
 }

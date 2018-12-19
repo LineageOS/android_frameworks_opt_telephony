@@ -578,11 +578,11 @@ enum ImsServiceErrno {
   IMS_E_UNKNOWN = 0;
   // The operation has succeeded
   IMS_E_SUCCESS = 1;
-  // Sending an SMS over IMS has failed. Do not retry over IMS again or fallback to CS.
+  // Sending SMS over IMS failed. Do not retry over IMS again or fallback to CS.
   IMS_E_SMS_SEND_STATUS_ERROR = 2;
-  // Sending an SMS over IMS has failed. Retry over IMS again.
+  // Sending SMS over IMS failed. Retry over IMS again.
   IMS_E_SMS_SEND_STATUS_ERROR_RETRY = 3;
-  // Sending an SMS over IMS has failed. Fallback to sending the SMS over CS.
+  // Sending SMS over IMS failed. Fallback to sending the SMS over CS.
   IMS_E_SMS_SEND_STATUS_ERROR_FALLBACK = 4;
 }
 
@@ -1389,16 +1389,6 @@ message SmsSession {
 
       // CB message received
       CB_SMS_RECEIVED = 9;
-
-      // Send an SMS message over ImsService
-      SMS_SEND_IMS_SERVICE = 10;
-
-      // Receive an SMS message result over ImsService
-      SMS_SEND_RESULT_IMS_SERVICE = 11;
-
-      // Receive an SMS message over ImsService
-      SMS_RECEIVED_IMS_SERVICE = 12;
-
     }
 
     // Formats used to encode SMS messages
@@ -1504,8 +1494,9 @@ message SmsSession {
 
     // See 3GPP 27.005, 3.2.5 for GSM/UMTS,
     // 3GPP2 N.S0005 (IS-41C) Table 171 for CDMA,
-    // or ImsService for IMS specific error codes (using ImsService specific Event.Type)
-    // -1 if unknown or not applicable
+    // Will map to a SmsManager.RESULT_* code if ims_error is populated
+    // SmsManager can be accessed from
+    // frameworks/base/telephony/java/android/telephony/SmsManager.java
     optional int32 error_code = 10;
 
     // RIL error code
@@ -1518,7 +1509,7 @@ message SmsSession {
     optional CBMessage cell_broadcast_message = 13;
 
     // ImsService error code.
-    optional ImsServiceErrno imsError = 14;
+    optional ImsServiceErrno ims_error = 14;
   }
 
   // Time when session has started, in minutes since epoch,
