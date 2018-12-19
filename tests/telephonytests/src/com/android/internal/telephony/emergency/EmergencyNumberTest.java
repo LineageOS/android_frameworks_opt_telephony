@@ -31,7 +31,8 @@ public class EmergencyNumberTest extends TestCase {
                 "us",
                 "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
-                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING);
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
         assertEquals(number.getNumber(), "911");
         assertEquals(number.getCountryIso(), "us");
         assertEquals(number.getMnc(), "30");
@@ -69,6 +70,9 @@ public class EmergencyNumberTest extends TestCase {
         assertEquals(1, sources.size());
         assertEquals(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 (int) sources.get(0));
+
+        assertEquals(EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL,
+                number.getEmergencyCallRouting());
     }
 
     public void testEmergencyNumberSpecificService() throws Exception {
@@ -78,7 +82,8 @@ public class EmergencyNumberTest extends TestCase {
                 "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD,
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
-                        | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG);
+                        | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
         assertEquals(number.getNumber(), "911");
         assertEquals(number.getCountryIso(), "us");
         assertEquals(number.getMnc(), "30");
@@ -121,6 +126,9 @@ public class EmergencyNumberTest extends TestCase {
         sourcesToVerify.add(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG);
         Collections.sort(sourcesToVerify);
         assertTrue(sourcesToVerify.equals(sources));
+
+        assertEquals(EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL,
+                number.getEmergencyCallRouting());
     }
 
     public void testEmergencyNumberMultipleServices() throws Exception {
@@ -133,7 +141,8 @@ public class EmergencyNumberTest extends TestCase {
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
                         | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM
-                        | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT);
+                        | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
         assertEquals(number.getNumber(), "110");
         assertEquals(number.getCountryIso(), "jp");
         assertEquals(number.getMnc(), "30");
@@ -186,6 +195,9 @@ public class EmergencyNumberTest extends TestCase {
         sourcesToVerify.add(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT);
         Collections.sort(sourcesToVerify);
         assertTrue(sourcesToVerify.equals(sources));
+
+        assertEquals(EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL,
+                number.getEmergencyCallRouting());
     }
 
     public void testEmergencyNumberDisplayPriority() throws Exception {
@@ -194,7 +206,8 @@ public class EmergencyNumberTest extends TestCase {
                 "us",
                 "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
-                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING);
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
         EmergencyNumber numberHigherDisplayPriority = new EmergencyNumber(
                 "922",
@@ -203,7 +216,8 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
-                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM);
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
         EmergencyNumber numberLowestDisplayPriority = new EmergencyNumber(
                 "110",
@@ -213,7 +227,8 @@ public class EmergencyNumberTest extends TestCase {
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG
-                        | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT);
+                        | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
         assertTrue(numberHighestDisplayPriority.compareTo(
                 numberHigherDisplayPriority) < 0);
