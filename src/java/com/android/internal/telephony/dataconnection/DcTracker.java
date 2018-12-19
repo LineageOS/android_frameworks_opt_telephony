@@ -211,6 +211,9 @@ public class DcTracker extends Handler {
     /* The Url passed as object parameter in CMD_ENABLE_MOBILE_PROVISIONING */
     private String mProvisioningUrl = null;
 
+    /* Indicating data service is bound or not */
+    private boolean mDataServiceBound = false;
+
     /* Intent for the provisioning apn alarm */
     private static final String INTENT_PROVISIONING_APN_ALARM =
             "com.android.internal.telephony.provisioning_apn_alarm";
@@ -3845,6 +3848,7 @@ public class DcTracker extends Handler {
         pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
+        pw.println(" mDataServiceBound=" + mDataServiceBound);
         pw.println(" mDataRoamingLeakageLog= ");
         mDataRoamingLeakageLog.dump(fd, pw, args);
         pw.println(" mApnSettingsInitializationLog= ");
@@ -3853,7 +3857,11 @@ public class DcTracker extends Handler {
         pw.println(" ***************************************");
         DcController dcc = mDcc;
         if (dcc != null) {
-            dcc.dump(fd, pw, args);
+            if (mDataServiceBound) {
+                dcc.dump(fd, pw, args);
+            } else {
+                pw.println(" Can't dump mDcc because data service is not bound.");
+            }
         } else {
             pw.println(" mDcc=null");
         }
@@ -4629,5 +4637,6 @@ public class DcTracker extends Handler {
         } else {
             mDcc.dispose();
         }
+        mDataServiceBound = bound;
     }
 }
