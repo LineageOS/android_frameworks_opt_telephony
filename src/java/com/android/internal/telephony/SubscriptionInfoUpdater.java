@@ -59,8 +59,8 @@ import com.android.internal.telephony.uicc.UiccSlot;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  *@hide
@@ -702,14 +702,14 @@ public class SubscriptionInfoUpdater extends Handler {
                 mSubscriptionManager.getDefaultDataSubscriptionId());
 
         // No need to check return value here as we notify for the above changes anyway.
-        if (subInfos != null) {
-            UiccController uiccController = UiccController.getInstance();
-            subInfos.stream()
-                    .filter(subInfo -> subInfo.isEmbedded())
-                    .mapToInt(subInfo -> subInfo.getCardId())
-                    .mapToObj(cardId -> cardId)
-                    .collect(Collectors.toSet())
-                    .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
+        UiccController uiccController = UiccController.getInstance();
+        UiccSlot[] uiccSlots = uiccController.getUiccSlots();
+        if (uiccSlots != null) {
+            Arrays.stream(uiccSlots)
+                .filter(uiccSlot -> uiccSlot.isEuicc())
+                .map(uiccSlot -> uiccController.convertToPublicCardId(
+                            uiccSlot.getUiccCard().getCardId()))
+                .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
         }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
