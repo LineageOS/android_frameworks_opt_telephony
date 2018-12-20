@@ -31,9 +31,10 @@ import android.net.StringNetworkSpecifier;
 import android.os.Binder;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.support.test.filters.FlakyTest;
 import android.telephony.Rlog;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.RadioConfig;

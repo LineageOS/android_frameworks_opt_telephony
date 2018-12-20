@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;
-import android.support.test.runner.AndroidJUnit4;
 import android.telephony.ims.aidl.IImsMmTelFeature;
 import android.telephony.ims.aidl.IImsServiceController;
 import android.telephony.ims.feature.ImsFeature;
@@ -37,6 +36,8 @@ import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.SparseArray;
+
+import androidx.test.runner.AndroidJUnit4;
 
 import com.android.ims.ImsManager;
 import com.android.ims.internal.IImsFeatureStatusCallback;
