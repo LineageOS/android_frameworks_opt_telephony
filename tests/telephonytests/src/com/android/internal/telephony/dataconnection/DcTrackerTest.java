@@ -210,7 +210,7 @@ public class DcTrackerTest extends TelephonyTest {
                     || uri.toString().startsWith(Uri.withAppendedPath(
                             Telephony.Carriers.CONTENT_URI, "filtered").toString())
                     || uri.toString().startsWith(Uri.withAppendedPath(
-                            Telephony.Carriers.SIM_APN_LIST, "filtered").toString())) {
+                            Telephony.Carriers.SIM_APN_URI, "filtered").toString())) {
                 if (projection == null) {
 
                     logd("Query '" + FAKE_PLMN + "' APN settings");
