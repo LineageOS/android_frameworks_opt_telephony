@@ -62,12 +62,12 @@ public class DcTesterFailBringUpAll {
                 // Counter is MAX, bringUp/retry will always fail
                 log("simulate detaching");
                 mFailBringUp.saveParameters(Integer.MAX_VALUE,
-                        DataFailCause.LOST_CONNECTION.getErrorCode(),
+                        DataFailCause.LOST_CONNECTION,
                         DcFailBringUp.DEFAULT_SUGGESTED_RETRY_TIME);
             } else if (action.equals(mPhone.getActionAttached())) {
                 // Counter is 0 next bringUp/retry will succeed
                 log("simulate attaching");
-                mFailBringUp.saveParameters(0, DataFailCause.NONE.getErrorCode(),
+                mFailBringUp.saveParameters(0, DataFailCause.NONE,
                         DcFailBringUp.DEFAULT_SUGGESTED_RETRY_TIME);
             } else {
                 if (DBG) log("onReceive: unknown action=" + action);
