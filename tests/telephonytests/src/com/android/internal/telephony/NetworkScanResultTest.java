@@ -19,7 +19,6 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertEquals;
 
 import android.os.Parcel;
-import android.support.test.filters.SmallTest;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
@@ -28,12 +27,13 @@ import android.telephony.CellInfoLte;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
 
+import androidx.test.filters.SmallTest;
+
 import org.junit.Test;
 
 import java.util.ArrayList;
 
 /** Unit tests for {@link NetworkScanResult}. */
-
 public class NetworkScanResultTest {
 
     @Test

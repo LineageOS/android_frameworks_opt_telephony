@@ -19,15 +19,15 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertEquals;
 
 import android.os.Parcel;
-import android.support.test.filters.SmallTest;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.GeranBand;
 import android.telephony.RadioAccessSpecifier;
 
+import androidx.test.filters.SmallTest;
+
 import org.junit.Test;
 
 /** Unit tests for {@link RadioAccessSpecifier}. */
-
 public class RadioAccessSpecifierTest {
 
     @Test

@@ -25,7 +25,8 @@ import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_STANDARD_S
 import static org.junit.Assert.assertEquals;
 
 import android.os.Looper;
-import android.support.test.filters.FlakyTest;
+
+import androidx.test.filters.FlakyTest;
 
 import org.junit.Ignore;
 

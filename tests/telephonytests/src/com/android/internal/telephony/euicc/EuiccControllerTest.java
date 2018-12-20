@@ -49,13 +49,14 @@ import android.provider.Settings;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
-import android.support.test.runner.AndroidJUnit4;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
+
+import androidx.test.runner.AndroidJUnit4;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.euicc.EuiccConnector.GetOtaStatusCommandCallback;
