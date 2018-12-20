@@ -861,11 +861,15 @@ public class DcTracker extends Handler {
         if (apnContext != null) apnContext.requestNetwork(networkRequest, log);
     }
 
-    public void releaseNetwork(NetworkRequest networkRequest, LocalLog log) {
+    public void releaseNetwork(NetworkRequest networkRequest, LocalLog log,
+            boolean cleanUpConnection) {
         final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsByType.get(apnType);
         log.log("DcTracker.releaseNetwork for " + networkRequest + " found " + apnContext);
-        if (apnContext != null) apnContext.releaseNetwork(networkRequest, log);
+        if (apnContext != null) {
+            apnContext.releaseNetwork(networkRequest, log);
+            if (cleanUpConnection) cleanUpConnectionInternal(true, apnContext);
+        }
     }
 
     // Turn telephony radio on or off.
