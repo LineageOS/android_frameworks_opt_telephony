@@ -19,7 +19,8 @@ package com.android.internal.telephony.ims;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.test.InstrumentationRegistry;
+
+import androidx.test.InstrumentationRegistry;
 
 import org.mockito.MockitoAnnotations;
 

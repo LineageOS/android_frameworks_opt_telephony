@@ -40,9 +40,10 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
-import android.support.test.filters.FlakyTest;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;

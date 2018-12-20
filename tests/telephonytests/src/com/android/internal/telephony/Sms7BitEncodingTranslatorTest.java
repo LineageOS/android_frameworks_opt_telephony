@@ -21,8 +21,9 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 
-import android.support.test.filters.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.FlakyTest;
 
 import org.junit.After;
 import org.junit.Before;

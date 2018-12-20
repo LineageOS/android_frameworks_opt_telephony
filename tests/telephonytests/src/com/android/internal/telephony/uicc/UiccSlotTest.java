@@ -28,7 +28,8 @@ import static org.mockito.Mockito.verify;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.support.test.filters.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.TelephonyTest;

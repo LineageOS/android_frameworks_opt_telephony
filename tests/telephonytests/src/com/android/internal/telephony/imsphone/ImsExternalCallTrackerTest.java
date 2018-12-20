@@ -21,10 +21,11 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.verify;
 
 import android.net.Uri;
-import android.support.test.filters.FlakyTest;
-
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsExternalCallState;
+
+import androidx.test.filters.FlakyTest;
+
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 

@@ -27,9 +27,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.support.test.runner.AndroidJUnit4;
 import android.telephony.TelephonyManager;
 import android.telephony.euicc.EuiccManager;
+
+import androidx.test.runner.AndroidJUnit4;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.UiccController;
