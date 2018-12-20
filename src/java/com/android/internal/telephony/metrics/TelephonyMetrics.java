@@ -165,6 +165,11 @@ public class TelephonyMetrics {
      */
     private final SparseArray<TelephonySettings> mLastSettings = new SparseArray<>();
 
+    /**
+     * Last carrier id matching.
+     */
+    private final SparseArray<CarrierIdMatching> mLastCarrierId = new SparseArray<>();
+
     /** The start system time of the TelephonyLog in milliseconds*/
     private long mStartSystemTimeMs;
 
@@ -514,6 +519,13 @@ public class TelephonyMetrics {
 
             TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
                     .setImsConnectionState(mLastImsConnectionState.get(key)).build();
+            addTelephonyEvent(event);
+        }
+
+        for (int i = 0; i < mLastCarrierId.size(); i++) {
+            final int key = mLastCarrierId.keyAt(i);
+            TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
+                    .setCarrierIdMatching(mLastCarrierId.get(key)).build();
             addTelephonyEvent(event);
         }
     }
@@ -2006,6 +2018,7 @@ public class TelephonyMetrics {
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setCarrierIdMatching(
                 carrierIdMatching).build();
+        mLastCarrierId.put(phoneId, carrierIdMatching);
         addTelephonyEvent(event);
     }
 
