@@ -1804,9 +1804,10 @@ public class DcTracker extends Handler {
         }
     }
 
-    boolean isPermanentFailure(DataFailCause dcFailCause) {
-        return (dcFailCause.isPermanentFailure(mPhone.getContext(), mPhone.getSubId()) &&
-                (mAttached.get() == false || dcFailCause != DataFailCause.SIGNAL_LOST));
+    boolean isPermanentFailure(@DataFailCause.FailCause int dcFailCause) {
+        return (DataFailCause.isPermanentFailure(mPhone.getContext(), dcFailCause,
+                mPhone.getSubId())
+                && (mAttached.get() == false || dcFailCause != DataFailCause.SIGNAL_LOST));
     }
 
     private DataConnection findFreeDataConnection() {
@@ -2146,7 +2147,7 @@ public class DcTracker extends Handler {
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
     }
 
-    private void notifyNoData(DataFailCause lastFailCauseCode,
+    private void notifyNoData(@DataFailCause.FailCause int lastFailCauseCode,
                               ApnContext apnContext) {
         if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
         if (isPermanentFailure(lastFailCauseCode)
@@ -2727,7 +2728,7 @@ public class DcTracker extends Handler {
      */
     private void onDataSetupComplete(AsyncResult ar) {
 
-        DataFailCause cause = DataFailCause.UNKNOWN;
+        int cause = DataFailCause.UNKNOWN;
         boolean handleError = false;
         ApnContext apnContext = getValidApnContext(ar, "onDataSetupComplete");
 
@@ -2868,32 +2869,32 @@ public class DcTracker extends Handler {
                 }
             }
         } else {
-            cause = (DataFailCause) (ar.result);
+            cause = (int) (ar.result);
             if (DBG) {
                 ApnSetting apn = apnContext.getApnSetting();
                 log(String.format("onDataSetupComplete: error apn=%s cause=%s",
                         (apn == null ? "unknown" : apn.getApnName()), cause));
             }
-            if (cause.isEventLoggable()) {
+            if (DataFailCause.isEventLoggable(cause)) {
                 // Log this failure to the Event Logs.
                 int cid = getCellLocationId();
                 EventLog.writeEvent(EventLogTags.PDP_SETUP_FAIL,
-                        cause.ordinal(), cid, mTelephonyManager.getNetworkType());
+                        cause, cid, mTelephonyManager.getNetworkType());
             }
             ApnSetting apn = apnContext.getApnSetting();
             mPhone.notifyPreciseDataConnectionFailed(apnContext.getReason(),
                     apnContext.getApnType(), apn != null ? apn.getApnName()
-                    : "unknown", cause.toString());
+                    : "unknown", cause + "");
 
             // Compose broadcast intent send to the specific carrier signaling receivers
             Intent intent = new Intent(TelephonyIntents
                     .ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED);
-            intent.putExtra(TelephonyIntents.EXTRA_ERROR_CODE_KEY, cause.getErrorCode());
+            intent.putExtra(TelephonyIntents.EXTRA_ERROR_CODE_KEY, cause);
             intent.putExtra(TelephonyIntents.EXTRA_APN_TYPE_KEY, apnContext.getApnType());
             mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
 
-            if (cause.isRadioRestartFailure(mPhone.getContext(), mPhone.getSubId())
-                    || apnContext.restartOnError(cause.getErrorCode())) {
+            if (DataFailCause.isRadioRestartFailure(mPhone.getContext(), cause, mPhone.getSubId())
+                    || apnContext.restartOnError(cause)) {
                 if (DBG) log("Modem restarted.");
                 sendRestartRadio();
             }
