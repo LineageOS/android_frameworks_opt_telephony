@@ -35,8 +35,9 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.support.test.filters.SmallTest;
 import android.telephony.CarrierConfigManager;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.TelephonyTest;

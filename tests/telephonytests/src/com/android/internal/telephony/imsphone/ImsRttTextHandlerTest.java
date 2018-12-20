@@ -18,8 +18,9 @@ package com.android.internal.telephony.imsphone;
 
 import android.os.HandlerThread;
 import android.os.ParcelFileDescriptor;
-import android.support.test.filters.FlakyTest;
 import android.telecom.Connection;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.TelephonyTest;
 

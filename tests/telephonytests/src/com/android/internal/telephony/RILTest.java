@@ -110,7 +110,6 @@ import android.os.IPowerManager;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.WorkSource;
-import android.support.test.filters.FlakyTest;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
@@ -132,6 +131,8 @@ import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
+
+import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.RIL.RilHandler;
 import com.android.internal.telephony.dataconnection.DcTracker;

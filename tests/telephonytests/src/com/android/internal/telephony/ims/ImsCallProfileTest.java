@@ -24,11 +24,11 @@ import static junit.framework.Assert.assertNotNull;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.test.runner.AndroidJUnit4;
 import android.telecom.DisconnectCause;
+import android.telephony.ims.ImsCallProfile;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import android.telephony.ims.ImsCallProfile;
+import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
-import android.support.test.filters.FlakyTest;
+import androidx.test.filters.FlakyTest;
 
 import junit.framework.TestCase;
 

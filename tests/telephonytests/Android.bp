@@ -11,7 +11,7 @@ android_test {
     ],
 
     static_libs: [
-        "android-support-test",
+        "androidx.test.rules",
         "frameworks-base-testutils",
         "guava",
         "mockito-target-minus-junit4",
