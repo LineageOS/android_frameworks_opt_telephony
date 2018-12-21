@@ -28,7 +28,6 @@ import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DisconnectCause;
@@ -173,9 +172,8 @@ public class GsmCdmaCallTracker extends CallTracker {
             mCi.unregisterForCallWaitingInfo(this);
             // Prior to phone switch to GSM, if CDMA has any emergency call
             // data will be in disabled state, after switching to GSM enable data.
-            if (mIsInEmergencyCall && mPhone.getDcTracker(TransportType.WWAN) != null) {
-                mPhone.getDcTracker(TransportType.WWAN).setInternalDataEnabled(true);
-
+            if (mIsInEmergencyCall) {
+                mPhone.getDataEnabledSettings().setInternalDataEnabled(true);
             }
         } else {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_CDMA];
@@ -374,9 +372,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     //CDMA
     public void setIsInEmergencyCall() {
         mIsInEmergencyCall = true;
-        if (mPhone.getDcTracker(TransportType.WWAN) != null) {
-            mPhone.getDcTracker(TransportType.WWAN).setInternalDataEnabled(false);
-        }
+        mPhone.getDataEnabledSettings().setInternalDataEnabled(false);
         mPhone.notifyEmergencyCallRegistrants(true);
         mPhone.sendEmergencyCallStateChange(true);
     }
@@ -1632,9 +1628,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             }
             if (!inEcm) {
                 // Re-initiate data connection
-                if (mPhone.getDcTracker(TransportType.WWAN) != null) {
-                    mPhone.getDcTracker(TransportType.WWAN).setInternalDataEnabled(true);
-                }
+                mPhone.getDataEnabledSettings().setInternalDataEnabled(true);
                 mPhone.notifyEmergencyCallRegistrants(false);
             }
             mPhone.sendEmergencyCallStateChange(false);
