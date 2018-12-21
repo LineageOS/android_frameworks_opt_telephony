@@ -46,6 +46,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
+import android.telephony.DataFailCause;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
@@ -3103,7 +3104,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void notifyPreciseDataConnectionFailed(String apnType, String apn,
-            String failCause) {
+            @DataFailCause.FailCause int failCause) {
         mNotifier.notifyPreciseDataConnectionFailed(this, apnType, apn, failCause);
     }
 
