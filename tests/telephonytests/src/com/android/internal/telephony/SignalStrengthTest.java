@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.os.Parcel;
 import android.telephony.CellInfo;
+import android.telephony.CellSignalStrength;
 import android.telephony.CellSignalStrengthCdma;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
@@ -33,6 +34,8 @@ import androidx.test.filters.SmallTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.util.List;
 
 /** Unit tests for {@link IpSecConfig}. */
 @SmallTest
@@ -60,15 +63,10 @@ public class SignalStrengthTest {
         assertParcelingIsLossless(new SignalStrength());
 
         SignalStrength s = new SignalStrength(
-                // Accepts HAL inputs (neg of actual) directly and -1 as invalid
-                new CellSignalStrengthCdma(40, 5, 45, 3, 5),
-                // Accepts ASU values or UNAVAILABLE
-                new CellSignalStrengthGsm(2, 4, 68),
-                // Accepts ASU or UNAVAILABLE
-                new CellSignalStrengthWcdma(12, 4, 22, 18),
-                // Accepts ASU values or UNAVAILABLE
-                new CellSignalStrengthTdscdma(13, 2, 34),
-                // Accepts actual values (HAL values must be converted, except RSSI) or UNAVAILABLE
+                new CellSignalStrengthCdma(-93, -132, -89, -125, 5),
+                new CellSignalStrengthGsm(-79, 2, 5),
+                new CellSignalStrengthWcdma(-94, 4, -102, -5),
+                new CellSignalStrengthTdscdma(-95, 2, -103),
                 new CellSignalStrengthLte(-85, -91, -6, -10, 12, 1));
         assertParcelingIsLossless(s);
     }
@@ -79,6 +77,40 @@ public class SignalStrengthTest {
         p.setDataPosition(0);
         SignalStrength sso = SignalStrength.CREATOR.createFromParcel(p);
         assertTrue(sso.equals(ssi));
+    }
+
+    @Test
+    public void testGetCellSignalStrengths() throws Exception {
+        CellSignalStrengthLte lte = new CellSignalStrengthLte(-85, -91, -6, -10, 12, 1);
+        CellSignalStrengthGsm gsm = new CellSignalStrengthGsm(-79, 2, 5);
+        CellSignalStrengthCdma cdma = new CellSignalStrengthCdma(-93, -132, -89, -125, 5);
+        CellSignalStrengthWcdma wcdma = new CellSignalStrengthWcdma(-94, 4, -102, -5);
+        CellSignalStrengthTdscdma tdscdma = new CellSignalStrengthTdscdma(-95, 2, -103);
+
+        // Test that a single object is properly stored and returned by getCellSignalStrengths()
+        SignalStrength s = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                gsm,
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte());
+
+        List<CellSignalStrength> css = s.getCellSignalStrengths();
+        assertEquals(1, css.size());
+        assertTrue(gsm.equals(css.get(0)));
+
+        // Test that a multiple objects are properly stored and returned by getCellSignalStrengths()
+        s = new SignalStrength(
+                cdma,
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                lte);
+
+        css = s.getCellSignalStrengths();
+        assertEquals(2, css.size());
+        assertTrue(css.contains(cdma));
+        assertTrue(css.contains(lte));
     }
 }
 
