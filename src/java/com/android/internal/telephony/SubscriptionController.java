@@ -2338,27 +2338,129 @@ public class SubscriptionController extends ISub.Stub {
      * Being in the same group means they might be activated or deactivated
      * together, some of them may be invisible to the users, etc.
      *
-     * Caller will either have {@link android.Manifest.permission.MODIFY_PHONE_STATE}
-     * permission or can manage all subscriptions in the list, according to their
-     * access rules.
+     * Caller will either have {@link android.Manifest.permission#MODIFY_PHONE_STATE}
+     * permission or had carrier privilege permission on the subscriptions:
+     * {@link TelephonyManager#hasCarrierPrivileges(int)} or
+     * {@link SubscriptionManager#canManageSubscription(SubscriptionInfo)}
      *
+     * @throws SecurityException if the caller doesn't meet the requirements
+     *             outlined above.
+     *
+     * @param subIdList list of subId that will be in the same group
      * @return groupUUID a UUID assigned to the subscription group. It returns
      * null if fails.
      *
      */
     @Override
     public String setSubscriptionGroup(int[] subIdList, String callingPackage) {
-        boolean hasModifyPermission = mContext.checkCallingOrSelfPermission(
-                android.Manifest.permission.MODIFY_PHONE_STATE) == PERMISSION_GRANTED;
+        if (subIdList == null || subIdList.length == 0) {
+            return null;
+        }
+        // If it doesn't have modify phone state permission, or carrier privilege permission,
+        // a SecurityException will be thrown. If it's due to invalid parameter or internal state,
+        // it will return null.
+        if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
+                != PERMISSION_GRANTED && !checkCarrierPrivilegeOnSubList(
+                        subIdList, callingPackage)) {
+            return null;
+        }
 
-        // If caller doesn't have modify permission or carrier privilege permission on certain
-        // subscriptions, maybe because the they are not active. So we keep them in a hashset and
-        // later check access rules in our database to know whether they can manage them.
-        Set<Integer> subIdCheckList = new HashSet<>();
+        long identity = Binder.clearCallingIdentity();
+
+        try {
+            // Generate a UUID.
+            String groupUUID = UUID.randomUUID().toString();
+
+            ContentValues value = new ContentValues();
+            value.put(SubscriptionManager.GROUP_UUID, groupUUID);
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, getSelectionForSubIdList(subIdList), null);
+
+            if (DBG) logdl("setSubscriptionGroup update DB result: " + result);
+
+            refreshCachedActiveSubscriptionInfoList();
+
+            return groupUUID;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     * Remove a list of subscriptions from their subscription group.
+     * See {@link #setSubscriptionGroup(int[], String)} for more details.
+     *
+     * Caller will either have {@link android.Manifest.permission#MODIFY_PHONE_STATE}
+     * permission or had carrier privilege permission on the subscriptions:
+     * {@link TelephonyManager#hasCarrierPrivileges(int)} or
+     * {@link SubscriptionManager#canManageSubscription(SubscriptionInfo)}
+     *
+     * @throws SecurityException if the caller doesn't meet the requirements
+     *             outlined above.
+     *
+     * @param subIdList list of subId that need removing from their groups.
+     * @return whether the operation succeeds.
+     *
+     */
+    public boolean removeSubscriptionsFromGroup(int[] subIdList, String callingPackage) {
+        if (subIdList == null || subIdList.length == 0) {
+            return false;
+        }
+        // If it doesn't have modify phone state permission, or carrier privilege permission,
+        // a SecurityException will be thrown. If it's due to invalid parameter or internal state,
+        // it will return null.
+        if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
+                != PERMISSION_GRANTED && !checkCarrierPrivilegeOnSubList(
+                subIdList, callingPackage)) {
+            return false;
+        }
+
+        long identity = Binder.clearCallingIdentity();
+
+        try {
+            ContentValues value = new ContentValues();
+            value.put(SubscriptionManager.GROUP_UUID, (String) null);
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, getSelectionForSubIdList(subIdList), null);
+
+            if (DBG) logdl("setSubscriptionGroup update DB result: " + result);
+
+            refreshCachedActiveSubscriptionInfoList();
+
+            return result != 0;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     *  Helper function to check if the caller has carrier privilege permissions on a list of subId.
+     *  The check can either be processed against access rules on currently active SIM cards, or
+     *  the access rules we keep in our database for currently inactive eSIMs.
+     *
+     *  Throws {@link SecurityException} if it fails.
+     *
+     *  @return true if checking passes on all subId. false if subId is invalid or doesn't exist,
+     *  or sub controller is not ready yet.
+     */
+    private boolean checkCarrierPrivilegeOnSubList(int[] subIdList, String callingPackage) {
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
+        // Check carrier privilege permission on active subscriptions first.
+        // If it fails, they could be inactive. So keep them in a HashSet and later check
+        // access rules in our database.
+        Set<Integer> checkSubList = new HashSet<>();
         for (int subId : subIdList) {
-            if (!mTelephonyManager.hasCarrierPrivileges(subId)) {
-                subIdCheckList.add(subId);
+            if (isActiveSubId(subId)) {
+                if (!mTelephonyManager.hasCarrierPrivileges(subId)) {
+                    throw new SecurityException("Need carrier privilege on subId " + subId);
+                }
+            } else {
+                checkSubList.add(subId);
             }
+        }
+
+        if (checkSubList.isEmpty()) {
+            return true;
         }
 
         long identity = Binder.clearCallingIdentity();
@@ -2366,67 +2468,90 @@ public class SubscriptionController extends ISub.Stub {
         try {
             if (!isSubInfoReady()) {
                 if (DBG) logdl("[getSubscriptionInfoList] Sub Controller not ready");
-                return null;
+                return false;
             }
 
+            // Check access rules for each sub info.
             SubscriptionManager subscriptionManager = (SubscriptionManager)
                     mContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
-            List<SubscriptionInfo> subList = getSubInfo(null, null);
-
+            List<SubscriptionInfo> subList = getSubInfo(getSelectionForSubIdList(subIdList), null);
             for (SubscriptionInfo subInfo : subList) {
-                if (subIdCheckList.contains(subInfo.getSubscriptionId())) {
-                    // If caller doesn't have modify permission or privilege access to
-                    // the subscription, operation is invalid and returns null.
-                    if (hasModifyPermission || (subInfo.isEmbedded()
-                            && subscriptionManager.canManageSubscription(
-                                    subInfo, callingPackage))) {
-                        subIdCheckList.remove(subInfo.getSubscriptionId());
+                if (checkSubList.contains(subInfo.getSubscriptionId())) {
+                    if (subInfo.isEmbedded() && subscriptionManager.canManageSubscription(
+                            subInfo, callingPackage)) {
+                        checkSubList.remove(subInfo.getSubscriptionId());
                     } else {
-                        if (DBG) {
-                            logdl("setSubscriptionGroup doesn't have permission on"
-                                    + " subInfo " + subInfo);
-                        }
-                        return null;
+                        throw new SecurityException("Need carrier privilege on subId "
+                                + subInfo.getSubscriptionId());
                     }
                 }
             }
 
-            if (!subIdCheckList.isEmpty()) {
-                // Some SubId not found.
-                StringBuilder subIdNotFound = new StringBuilder();
-                for (int subId : subIdCheckList) {
-                    subIdNotFound.append(subId + " ");
-                }
-                if (DBG) {
-                    logdl("setSubscriptionGroup subId not existed: "
-                            + subIdNotFound.toString());
-                }
+            return checkSubList.isEmpty();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
 
+    /**
+     * Helper function to create selection argument of a list of subId.
+     * The result should be: "in (subId1, subId2, ...)".
+     */
+    private String getSelectionForSubIdList(int[] subId) {
+        StringBuilder selection = new StringBuilder();
+        selection.append(SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID);
+        selection.append(" IN (");
+        for (int i = 0; i < subId.length - 1; i++) {
+            selection.append(subId[i] + ", ");
+        }
+        selection.append(subId[subId.length - 1]);
+        selection.append(")");
+
+        return selection.toString();
+    }
+
+    /**
+     * Get subscriptionInfo list of subscriptions that are in the same group of given subId.
+     * See {@link #setSubscriptionGroup(int[], String)} for more details.
+     *
+     * Caller will either have {@link android.Manifest.permission#READ_PHONE_STATE}
+     * permission or had carrier privilege permission on the subscription.
+     * {@link TelephonyManager#hasCarrierPrivileges(int)}
+     *
+     * @throws SecurityException if the caller doesn't meet the requirements
+     *             outlined above.
+     *
+     * @param subId of which list of subInfo from the same group will be returned.
+     * @return list of subscriptionInfo that belong to the same group, including the given
+     * subscription itself. It will return null if the subscription doesn't exist or it
+     * doesn't belong to any group.
+     *
+     */
+    public List<SubscriptionInfo> getSubscriptionsInGroup(int subId, String callingPackage) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, subId, callingPackage, "getSubscriptionsInGroup")) {
+            return null;
+        }
+
+        long identity = Binder.clearCallingIdentity();
+
+        try {
+            SubscriptionInfo info = getActiveSubscriptionInfo(subId, callingPackage);
+            if (info == null || TextUtils.isEmpty(info.getGroupUuid())) {
                 return null;
             }
 
-            // Generate a UUID.
-            String groupUUID = UUID.randomUUID().toString();
+            String groupUuid = info.getGroupUuid();
+            List<SubscriptionInfo> infoList = getAvailableSubscriptionInfoList(callingPackage);
 
-            // Selection should be: "in (subId1, subId2, ...)".
-            StringBuilder selection = new StringBuilder();
-            selection.append(SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID);
-            selection.append(" IN (");
-            for (int i = 0; i < subIdList.length - 1; i++) {
-                selection.append(subIdList[i] + ", ");
+            // Shouldn't happen because we've verified the subId belongs to an active subscription.
+            if (infoList == null) {
+                return null;
             }
-            selection.append(subIdList[subIdList.length - 1]);
-            selection.append(")");
-            ContentValues value = new ContentValues();
-            value.put(SubscriptionManager.GROUP_UUID, groupUUID);
-            int result = mContext.getContentResolver().update(
-                    SubscriptionManager.CONTENT_URI, value, selection.toString(), null);
 
-            if (DBG) logdl("setSubscriptionGroup update DB result: " + result);
-
-            refreshCachedActiveSubscriptionInfoList();
-
-            return groupUUID;
+            return infoList.stream().filter(
+                    subscriptionInfo -> groupUuid.equals(subscriptionInfo.getGroupUuid()))
+                    .collect(Collectors.toList());
         } finally {
             Binder.restoreCallingIdentity(identity);
         }

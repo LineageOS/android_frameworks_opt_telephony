@@ -590,6 +590,8 @@ public class ContextFixture implements TestFixture<Context> {
         //doReturn(mBundle).when(mCarrierConfigManager).getConfig(anyInt());
         doReturn(mBundle).when(mCarrierConfigManager).getConfig();
 
+        doReturn(true).when(mEuiccManager).isEnabled();
+
         mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
