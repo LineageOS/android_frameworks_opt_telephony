@@ -384,7 +384,10 @@ public class CarrierResolver extends Handler {
             cv.put(CarrierId.CARRIER_NAME, mCarrierName);
             mContext.getContentResolver().update(
                     Telephony.CarrierId.getUriForSubscriptionId(mPhone.getSubId()), cv, null, null);
-            SubscriptionController.getInstance().setCarrierId(mCarrierId, mPhone.getSubId());
+            if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
+                // only persist carrier id to simInfo db when subId is valid.
+                SubscriptionController.getInstance().setCarrierId(mCarrierId, mPhone.getSubId());
+            }
         }
 
         update = false;
