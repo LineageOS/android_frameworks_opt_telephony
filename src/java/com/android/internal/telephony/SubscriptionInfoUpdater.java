@@ -706,7 +706,7 @@ public class SubscriptionInfoUpdater extends Handler {
         UiccSlot[] uiccSlots = uiccController.getUiccSlots();
         if (uiccSlots != null) {
             Arrays.stream(uiccSlots)
-                .filter(uiccSlot -> uiccSlot.isEuicc())
+                .filter(uiccSlot -> uiccSlot.isEuicc() && uiccSlot.getUiccCard() != null)
                 .map(uiccSlot -> uiccController.convertToPublicCardId(
                             uiccSlot.getUiccCard().getCardId()))
                 .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
