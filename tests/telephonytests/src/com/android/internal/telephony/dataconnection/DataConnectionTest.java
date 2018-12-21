@@ -201,7 +201,6 @@ public class DataConnectionTest extends TelephonyTest {
                 ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         doReturn(mApn1).when(mApnContext).getApnSetting();
         doReturn(PhoneConstants.APN_TYPE_DEFAULT).when(mApnContext).getApnType();
-        doReturn(true).when(mDcTracker).isDataEnabled();
 
         mDcFailBringUp.saveParameters(0, 0, -2);
         doReturn(mDcFailBringUp).when(mDcTesterFailBringUpAll).getDcFailBringUp();
