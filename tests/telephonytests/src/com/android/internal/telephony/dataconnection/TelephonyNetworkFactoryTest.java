@@ -149,9 +149,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
 
         mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(mSubscriptionMonitorMock, mLooper,
                 mPhone);
-
-        replaceInstance(TelephonyNetworkFactory.class, "mDcTracker",
-                mTelephonyNetworkFactoryUT, mDcTracker);
     }
 
     /**
