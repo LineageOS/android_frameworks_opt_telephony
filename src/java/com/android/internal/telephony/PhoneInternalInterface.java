@@ -123,7 +123,7 @@ public interface PhoneInternalInterface {
      */
     static final String REASON_ROAMING_ON = "roamingOn";
     static final String REASON_ROAMING_OFF = "roamingOff";
-    static final String REASON_DATA_DISABLED = "dataDisabled";
+    static final String REASON_DATA_DISABLED_INTERNAL = "dataDisabledInternal";
     static final String REASON_DATA_ENABLED = "dataEnabled";
     static final String REASON_DATA_ATTACHED = "dataAttached";
     static final String REASON_DATA_DETACHED = "dataDetached";
@@ -768,16 +768,6 @@ public interface PhoneInternalInterface {
      * @return true if user has enabled data
      */
     boolean isUserDataEnabled();
-
-    /**
-     * @return true if data is enabled considering all factors
-     */
-    boolean isDataEnabled();
-
-    /**
-     * @param @enable set {@code true} if enable data connection
-     */
-    void setUserDataEnabled(boolean enable);
 
     /**
      * Retrieves the unique device ID, e.g., IMEI for GSM phones and MEID for CDMA phones.

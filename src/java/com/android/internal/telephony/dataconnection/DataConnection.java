@@ -957,7 +957,7 @@ public class DataConnection extends StateMachine {
 
         // If the data is disabled, then we need to restrict the network so only privileged apps can
         // use the restricted network while data is disabled.
-        if (!mDct.isDataEnabled()) {
+        if (!mPhone.getDataEnabledSettings().isDataEnabled()) {
             return true;
         }
 

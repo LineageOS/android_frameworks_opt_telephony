@@ -96,6 +96,7 @@ import com.android.internal.telephony.PhoneInternalInterface;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
@@ -721,7 +722,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
         cacheCarrierConfiguration(mPhone.getSubId());
 
-        mPhone.getDefaultPhone().registerForDataEnabledChanged(
+        mPhone.getDefaultPhone().getDataEnabledSettings().registerForDataEnabledChanged(
                 this, EVENT_DATA_ENABLED_CHANGED, null);
 
         final TelecomManager telecomManager =
@@ -858,7 +859,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mUtInterface.unregisterForSuppServiceIndication(this);
         }
         mPhone.getContext().unregisterReceiver(mReceiver);
-        mPhone.getDefaultPhone().unregisterForDataEnabledChanged(this);
+        mPhone.getDefaultPhone().getDataEnabledSettings().unregisterForDataEnabledChanged(this);
         mImsManagerConnector.disconnect();
     }
 
@@ -2803,11 +2804,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             // Check with the DCTracker to see if data is enabled; there may be a case when
             // ImsPhoneCallTracker isn't being informed of the right data enabled state via its
             // registration, so we'll refresh now.
-            boolean isDataEnabled = false;
-            if (mPhone.getDefaultPhone().getDcTracker(TransportType.WWAN) != null) {
-                isDataEnabled = mPhone.getDefaultPhone().getDcTracker(TransportType.WWAN)
-                        .isDataEnabled();
-            }
+            boolean isDataEnabled = mPhone.getDefaultPhone().getDataEnabledSettings()
+                    .isDataEnabled();
 
             if (DBG) {
                 log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech="
@@ -3847,10 +3845,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     /**
      * Handler of data enabled changed event
      * @param enabled True if data is enabled, otherwise disabled.
-     * @param reason Reason for data enabled/disabled (see {@code REASON_*} in
-     *      {@link DataEnabledSettings}.
+     * @param reason Reason for data enabled/disabled. See {@link DataEnabledChangedReason}.
      */
-    private void onDataEnabledChanged(boolean enabled, int reason) {
+    private void onDataEnabledChanged(boolean enabled, @DataEnabledChangedReason int reason) {
 
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
 

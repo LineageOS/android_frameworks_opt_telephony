@@ -1287,14 +1287,6 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public boolean isDataEnabled() {
-        throw new RuntimeException("not implemented");
-    }
-
-    public void setUserDataEnabled(boolean enable) {
-        throw new RuntimeException("not implemented");
-    }
-
     public String getDeviceId() {
         throw new RuntimeException("not implemented");
     }
