@@ -18,9 +18,11 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.RADIO_NOT_AVAILABLE;
 import static com.android.internal.telephony.RILConstants.REQUEST_NOT_SUPPORTED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PHONE_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_STATUS;
 import static com.android.internal.telephony.RILConstants
         .RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
 
 import android.content.Context;
 import android.hardware.radio.V1_0.RadioResponseInfo;
@@ -298,8 +300,50 @@ public class RadioConfig extends Handler {
                         CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                 result.sendToTarget();
             }
+            return;
         }
-        // TODO: call radioConfigProxy.setPreferredDataModem when it's ready.
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_SET_PREFERRED_DATA_MODEM,
+                result, mDefaultWorkSource);
+
+        if (DBG) {
+            logd(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+
+        try {
+            ((android.hardware.radio.config.V1_1.IRadioConfig) mRadioConfigProxy)
+                    .setPreferredDataModem(rr.mSerial, (byte) modemId);
+        } catch (RemoteException | RuntimeException e) {
+            resetProxyAndRequestList("setPreferredDataModem", e);
+        }
+    }
+
+    /**
+     * Wrapper function for IRadioConfig.getPhoneCapability().
+     */
+    public void getPhoneCapability(Message result) {
+        IRadioConfig radioConfigProxy = getRadioConfigProxy(result);
+        if (radioConfigProxy == null || mRadioConfigVersion.less(RADIO_CONFIG_HAL_VERSION_1_1)) {
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+            return;
+        }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_GET_PHONE_CAPABILITY, result, mDefaultWorkSource);
+
+        if (DBG) {
+            logd(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+
+        try {
+            ((android.hardware.radio.config.V1_1.IRadioConfig) mRadioConfigProxy)
+                    .getPhoneCapability(rr.mSerial);
+        } catch (RemoteException | RuntimeException e) {
+            resetProxyAndRequestList("getPhoneCapability", e);
+        }
     }
 
     /**
@@ -309,8 +353,9 @@ public class RadioConfig extends Handler {
      * See PhoneSwitcher for more details.
      */
     public boolean isSetPreferredDataCommandSupported() {
-        // TODO: call radioConfigProxy.isSetPreferredDataCommandSupported when it's ready.
-        return false;
+        IRadioConfig radioConfigProxy = getRadioConfigProxy(null);
+        return radioConfigProxy != null && mRadioConfigVersion
+                .greaterOrEqual(RADIO_CONFIG_HAL_VERSION_1_1);
     }
 
     /**
