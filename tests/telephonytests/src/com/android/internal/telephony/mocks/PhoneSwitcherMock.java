@@ -27,14 +27,12 @@ import com.android.internal.telephony.PhoneSwitcher;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PhoneSwitcherMock extends PhoneSwitcher {
-    private final int mNumPhones;
     private final RegistrantList mActivePhoneRegistrants;
     private final AtomicBoolean mIsActive[];
 
     public PhoneSwitcherMock(int numPhones, Looper looper) {
-        super(looper);
+        super(numPhones, looper);
 
-        mNumPhones = numPhones;
         mActivePhoneRegistrants = new RegistrantList();
         mIsActive = new AtomicBoolean[numPhones];
         for(int i = 0; i < numPhones; i++) {
@@ -48,13 +46,8 @@ public class PhoneSwitcherMock extends PhoneSwitcher {
     }
 
     @Override
-    public boolean shouldApplySpecifiedRequests(int phoneId) {
+    protected boolean isPhoneActive(int phoneId) {
         return mIsActive[phoneId].get();
-    }
-
-    @Override
-    public boolean shouldApplyUnspecifiedRequests(int phoneId) {
-        return mIsActive[phoneId].get() && phoneId == mPreferredDataPhoneId;
     }
 
     @Override
@@ -67,12 +60,6 @@ public class PhoneSwitcherMock extends PhoneSwitcher {
     @Override
     public void unregisterForActivePhoneSwitch(Handler h) {
         mActivePhoneRegistrants.remove(h);
-    }
-
-    private void validatePhoneId(int phoneId) {
-        if (phoneId < 0 || phoneId >= mNumPhones) {
-            throw new IllegalArgumentException("Invalid PhoneId");
-        }
     }
 
     @VisibleForTesting
