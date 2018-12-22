@@ -58,7 +58,6 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.WorkSource;
-import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
@@ -66,6 +65,12 @@ import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
+import android.telephony.CellSignalStrength;
+import android.telephony.CellSignalStrengthCdma;
+import android.telephony.CellSignalStrengthGsm;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthTdscdma;
+import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.INetworkService;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
@@ -521,71 +526,56 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         verify(mPhone, times(1)).notifyServiceStateChanged(any(ServiceState.class));
     }
 
-    @Test
-    @MediumTest
-    public void testSignalStrength() {
-        SignalStrength ss = new SignalStrength(
-                30, // gsmSignalStrength
-                0,  // gsmBitErrorRate
-                -1, // cdmaDbm
-                -1, // cdmaEcio
-                -1, // evdoDbm
-                -1, // evdoEcio
-                -1, // evdoSnr
-                99, // lteSignalStrength
-                SignalStrength.INVALID,     // lteRsrp
-                SignalStrength.INVALID,     // lteRsrq
-                SignalStrength.INVALID,     // lteRssnr
-                SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID      // tdScdmaRscp
-        );
-
+    private void sendSignalStrength(SignalStrength ss) {
         mSimulatedCommands.setSignalStrength(ss);
         mSimulatedCommands.notifySignalStrength();
         waitForMs(300);
+    }
+
+    @Test
+    @MediumTest
+    public void testSignalStrength() {
+        // Send in GSM Signal Strength Info and expect isGsm == true
+        SignalStrength ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(-53, 0, SignalStrength.INVALID),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte());
+
+        sendSignalStrength(ss);
         assertEquals(sst.getSignalStrength(), ss);
         assertEquals(sst.getSignalStrength().isGsm(), true);
 
-        // switch to CDMA
-        doReturn(false).when(mPhone).isPhoneTypeGsm();
-        doReturn(true).when(mPhone).isPhoneTypeCdmaLte();
-        sst.updatePhoneType();
-        sst.mSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        // Send in CDMA+LTE Signal Strength Info and expect isGsm == true
+        ss = new SignalStrength(
+                new CellSignalStrengthCdma(-90, -12,
+                        SignalStrength.INVALID, SignalStrength.INVALID, SignalStrength.INVALID),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(
+                        -110, -114, -5, 0, SignalStrength.INVALID, SignalStrength.INVALID));
 
-        mSimulatedCommands.notifySignalStrength();
-        waitForMs(300);
+        sendSignalStrength(ss);
         assertEquals(sst.getSignalStrength(), ss);
         assertEquals(sst.getSignalStrength().isGsm(), true);
 
-        // notify signal strength again, but this time data RAT is not LTE
-        sst.mSS.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
-        sst.mSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD);
-        mSimulatedCommands.notifySignalStrength();
-        waitForMs(300);
+        // Send in CDMA-only Signal Strength Info and expect isGsm == false
+        ss = new SignalStrength(
+                new CellSignalStrengthCdma(-90, -12,
+                        SignalStrength.INVALID, SignalStrength.INVALID, SignalStrength.INVALID),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte());
+
+        sendSignalStrength(ss);
         assertEquals(sst.getSignalStrength(), ss);
         assertEquals(sst.getSignalStrength().isGsm(), false);
     }
 
-    @Test
-    public void testSetsNewSignalStrengthReportingCriteria() {
-        int[] wcdmaThresholds = {
-                -110, /* SIGNAL_STRENGTH_POOR */
-                -100, /* SIGNAL_STRENGTH_MODERATE */
-                -90, /* SIGNAL_STRENGTH_GOOD */
-                -80  /* SIGNAL_STRENGTH_GREAT */
-        };
-        mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY,
-                wcdmaThresholds);
-
-        int[] lteThresholds = {
-                -130, /* SIGNAL_STRENGTH_POOR */
-                -120, /* SIGNAL_STRENGTH_MODERATE */
-                -110, /* SIGNAL_STRENGTH_GOOD */
-                -100,  /* SIGNAL_STRENGTH_GREAT */
-        };
-        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
-                lteThresholds);
-
+    private void sendCarrierConfigUpdate() {
         CarrierConfigManager mockConfigManager = Mockito.mock(CarrierConfigManager.class);
         when(mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE))
                 .thenReturn(mockConfigManager);
@@ -594,153 +584,88 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mContext.sendBroadcast(intent);
         waitForMs(300);
-
-        verify(mPhone).setSignalStrengthReportingCriteria(eq(wcdmaThresholds),
-                eq(AccessNetworkType.UTRAN));
-        verify(mPhone).setSignalStrengthReportingCriteria(eq(lteThresholds),
-                eq(AccessNetworkType.EUTRAN));
     }
 
     @Test
-    @MediumTest
-    public void testSignalLevelWithWcdmaRscpThresholds() {
+    public void testLteSignalStrengthReportingCriteria() {
+        SignalStrength ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(
+                        -110, /* rssi */
+                        -114, /* rsrp */
+                        -5, /* rsrq */
+                        0, /* rssnr */
+                        SignalStrength.INVALID, /* cqi */
+                        SignalStrength.INVALID /* ta */));
+
+        mBundle.putBoolean(CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL,
+                true);
+
+        sendCarrierConfigUpdate();
+
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForMs(300);
+        // Default thresholds are POOR=-115 MODERATE=-105 GOOD=-95 GREAT=-85
+        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_POOR, sst.getSignalStrength().getLevel());
+
+        int[] lteThresholds = {
+                -130, // SIGNAL_STRENGTH_POOR
+                -120, // SIGNAL_STRENGTH_MODERATE
+                -110, // SIGNAL_STRENGTH_GOOD
+                -100,  // SIGNAL_STRENGTH_GREAT
+        };
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
+                lteThresholds);
+        sendCarrierConfigUpdate();
+
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForMs(300);
+        assertEquals(sst.getSignalStrength().getLevel(),
+                CellSignalStrength.SIGNAL_STRENGTH_MODERATE);
+    }
+
+    @Test
+    public void testWcdmaSignalStrengthReportingCriteria() {
+        SignalStrength ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(-79, 0, -85, -5),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte());
+
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForMs(300);
+        assertEquals(sst.getSignalStrength().getLevel(), CellSignalStrength.SIGNAL_STRENGTH_GOOD);
+
+        int[] wcdmaThresholds = {
+                -110, // SIGNAL_STRENGTH_POOR
+                -100, // SIGNAL_STRENGTH_MODERATE
+                -90, // SIGNAL_STRENGTH_GOOD
+                -80  // SIGNAL_STRENGTH_GREAT
+        };
         mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY,
-                new int[] {
-                        -110, /* SIGNAL_STRENGTH_POOR */
-                        -100, /* SIGNAL_STRENGTH_MODERATE */
-                        -90, /* SIGNAL_STRENGTH_GOOD */
-                        -80  /* SIGNAL_STRENGTH_GREAT */
-                });
+                wcdmaThresholds);
+        sendCarrierConfigUpdate();
+
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForMs(300);
+        assertEquals(sst.getSignalStrength().getLevel(), CellSignalStrength.SIGNAL_STRENGTH_GREAT);
+
         mBundle.putString(
                 CarrierConfigManager.KEY_WCDMA_DEFAULT_SIGNAL_STRENGTH_MEASUREMENT_STRING,
                 "rscp");
-
-        SignalStrength ss = new SignalStrength(
-                30, // gsmSignalStrength
-                0,  // gsmBitErrorRate
-                -1, // cdmaDbm
-                -1, // cdmaEcio
-                -1, // evdoDbm
-                -1, // evdoEcio
-                -1, // evdoSnr
-                99, // lteSignalStrength
-                SignalStrength.INVALID,     // lteRsrp
-                SignalStrength.INVALID,     // lteRsrq
-                SignalStrength.INVALID,     // lteRssnr
-                SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID,     // tdScdmaRscp
-                99,                         // wcdmaSignalStrength
-                45                         // wcdmaRscpAsu
-        );
+        sendCarrierConfigUpdate();
         mSimulatedCommands.setSignalStrength(ss);
         mSimulatedCommands.notifySignalStrength();
         waitForMs(300);
-        assertEquals(sst.getSignalStrength(), ss);
-        assertEquals(sst.getSignalStrength().getWcdmaLevel(), SignalStrength.SIGNAL_STRENGTH_GREAT);
-        assertEquals(sst.getSignalStrength().getWcdmaAsuLevel(), 45);
-        assertEquals(sst.getSignalStrength().getWcdmaDbm(), -75);
-
-        ss = new SignalStrength(
-                30, // gsmSignalStrength
-                0,  // gsmBitErrorRate
-                -1, // cdmaDbm
-                -1, // cdmaEcio
-                -1, // evdoDbm
-                -1, // evdoEcio
-                -1, // evdoSnr
-                99, // lteSignalStrength
-                SignalStrength.INVALID,     // lteRsrp
-                SignalStrength.INVALID,     // lteRsrq
-                SignalStrength.INVALID,     // lteRssnr
-                SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID,     // tdScdmaRscp
-                99,                         // wcdmaSignalStrength
-                35                          // wcdmaRscpAsu
-        );
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForMs(300);
-        assertEquals(sst.getSignalStrength(), ss);
-        assertEquals(sst.getSignalStrength().getWcdmaLevel(), SignalStrength.SIGNAL_STRENGTH_GOOD);
-        assertEquals(sst.getSignalStrength().getWcdmaAsuLevel(), 35);
-        assertEquals(sst.getSignalStrength().getWcdmaDbm(), -85);
-
-        ss = new SignalStrength(
-                30, // gsmSignalStrength
-                0,  // gsmBitErrorRate
-                -1, // cdmaDbm
-                -1, // cdmaEcio
-                -1, // evdoDbm
-                -1, // evdoEcio
-                -1, // evdoSnr
-                99, // lteSignalStrength
-                SignalStrength.INVALID,     // lteRsrp
-                SignalStrength.INVALID,     // lteRsrq
-                SignalStrength.INVALID,     // lteRssnr
-                SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID,     // tdScdmaRscp
-                99,                         // wcdmaSignalStrength
-                25                          // wcdmaRscpAsu
-        );
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForMs(300);
-        assertEquals(sst.getSignalStrength(), ss);
-        assertEquals(sst.getSignalStrength().getWcdmaLevel(),
-                SignalStrength.SIGNAL_STRENGTH_MODERATE);
-        assertEquals(sst.getSignalStrength().getWcdmaAsuLevel(), 25);
-        assertEquals(sst.getSignalStrength().getWcdmaDbm(), -95);
-
-        ss = new SignalStrength(
-                30, // gsmSignalStrength
-                0,  // gsmBitErrorRate
-                -1, // cdmaDbm
-                -1, // cdmaEcio
-                -1, // evdoDbm
-                -1, // evdoEcio
-                -1, // evdoSnr
-                99, // lteSignalStrength
-                SignalStrength.INVALID,     // lteRsrp
-                SignalStrength.INVALID,     // lteRsrq
-                SignalStrength.INVALID,     // lteRssnr
-                SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID,     // tdScdmaRscp
-                99,                         // wcdmaSignalStrength
-                15                          // wcdmaRscpAsu
-        );
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForMs(300);
-        assertEquals(sst.getSignalStrength(), ss);
-        assertEquals(sst.getSignalStrength().getWcdmaLevel(), SignalStrength.SIGNAL_STRENGTH_POOR);
-        assertEquals(sst.getSignalStrength().getWcdmaAsuLevel(), 15);
-        assertEquals(sst.getSignalStrength().getWcdmaDbm(), -105);
-
-        ss = new SignalStrength(
-                30, // gsmSignalStrength
-                0,  // gsmBitErrorRate
-                -1, // cdmaDbm
-                -1, // cdmaEcio
-                -1, // evdoDbm
-                -1, // evdoEcio
-                -1, // evdoSnr
-                99, // lteSignalStrength
-                SignalStrength.INVALID,     // lteRsrp
-                SignalStrength.INVALID,     // lteRsrq
-                SignalStrength.INVALID,     // lteRssnr
-                SignalStrength.INVALID,     // lteCqi
-                SignalStrength.INVALID,     // tdScdmaRscp
-                99,                         // wcdmaSignalStrength
-                5                           // wcdmaRscpAsu
-        );
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForMs(300);
-        assertEquals(sst.getSignalStrength(), ss);
-        assertEquals(sst.getSignalStrength().getWcdmaLevel(),
-                SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN);
-        assertEquals(sst.getSignalStrength().getWcdmaAsuLevel(), 5);
-        assertEquals(sst.getSignalStrength().getWcdmaDbm(), -115);
+        assertEquals(sst.getSignalStrength().getLevel(), CellSignalStrength.SIGNAL_STRENGTH_GOOD);
     }
 
     @Test
