@@ -1749,7 +1749,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = RIL.convertHalSignalStrength(signalStrength);
+            SignalStrength ret = new SignalStrength(signalStrength);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
@@ -1763,7 +1763,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = RIL.convertHalSignalStrength_1_2(signalStrength);
+            SignalStrength ret = new SignalStrength(signalStrength);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
