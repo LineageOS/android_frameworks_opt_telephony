@@ -98,6 +98,7 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
+import com.android.internal.telephony.util.QtiImsUtils;
 import com.android.internal.util.ArrayUtils;
 
 import java.io.FileDescriptor;
@@ -106,8 +107,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.codeaurora.ims.QtiCallConstants;
 
 /**
  * {@hide}
@@ -1168,8 +1167,8 @@ public class GsmCdmaPhone extends Phone {
 
     /* Validate the given extras if the call is for CS domain or not */
     protected boolean shallDialOnCircuitSwitch(Bundle extras) {
-        return (extras != null && extras.getInt(QtiCallConstants.EXTRA_CALL_DOMAIN,
-                QtiCallConstants.DOMAIN_AUTOMATIC) == QtiCallConstants.DOMAIN_CS);
+        return (extras != null && extras.getInt(QtiImsUtils.EXTRA_CALL_DOMAIN,
+                QtiImsUtils.DOMAIN_AUTOMATIC) == QtiImsUtils.DOMAIN_CS);
     }
 
     @Override
