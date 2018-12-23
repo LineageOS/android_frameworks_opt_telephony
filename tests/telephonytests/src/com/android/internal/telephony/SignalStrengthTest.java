@@ -20,6 +20,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.os.Parcel;
+import android.telephony.CellInfo;
+import android.telephony.CellSignalStrengthCdma;
+import android.telephony.CellSignalStrengthGsm;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthTdscdma;
+import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.SignalStrength;
 
 import androidx.test.filters.SmallTest;
@@ -36,12 +42,15 @@ public class SignalStrengthTest {
     @Test
     public void testDefaults() throws Exception {
         SignalStrength s = new SignalStrength();
-        assertEquals(SignalStrength.INVALID, s.getCdmaDbm());
-        assertEquals(-1, s.getCdmaEcio());
-        assertEquals(SignalStrength.INVALID, s.getEvdoDbm());
-        assertEquals(-1, s.getEvdoEcio());
-        assertEquals(-1, s.getEvdoSnr());
-        assertEquals(-1, s.getGsmBitErrorRate());
+        assertEquals(CellInfo.UNAVAILABLE, s.getCdmaDbm());
+        assertEquals(CellInfo.UNAVAILABLE, s.getCdmaEcio());
+        assertEquals(CellInfo.UNAVAILABLE, s.getEvdoDbm());
+        assertEquals(CellInfo.UNAVAILABLE, s.getEvdoEcio());
+        assertEquals(CellInfo.UNAVAILABLE, s.getEvdoSnr());
+        assertEquals(CellInfo.UNAVAILABLE, s.getGsmBitErrorRate());
+        // getGsmSignalStrength is an oddball because internally it actually returns an AsuLevel
+        // rather than a dBm value. For backwards compatibility reasons, this is left as the
+        // RSSI ASU value [0-31], 99.
         assertEquals(99, s.getGsmSignalStrength());
         assertEquals(true, s.isGsm());
     }
@@ -51,25 +60,16 @@ public class SignalStrengthTest {
         assertParcelingIsLossless(new SignalStrength());
 
         SignalStrength s = new SignalStrength(
-                20,      // gsmSignalStrength
-                5,       // gsmBitErrorRate
-                -95,     // cdmaDbm
-                10,      // cdmaEcio
-                -98,     // evdoDbm
-                -5,      // evdoEcio
-                -2,      // evdoSnr
-                45,      // lteSignalStrength
-                -105,    // lteRsrp
-                -110,    // lteRsrq
-                -115,    // lteRssnr
-                13,      // lteCqi
-                -90,     // tdscdmaRscp
-                45,      // wcdmaSignalStrength
-                20,      // wcdmaRscpAsu
-                2,       // lteRsrpBoost
-                false,   // gsmFlag
-                true,    // lteLevelBaseOnRsrp
-                "rscp"); // wcdmaDefaultMeasurement
+                // Accepts HAL inputs (neg of actual) directly and -1 as invalid
+                new CellSignalStrengthCdma(40, 5, 45, 3, 5),
+                // Accepts ASU values or UNAVAILABLE
+                new CellSignalStrengthGsm(2, 4, 68),
+                // Accepts ASU or UNAVAILABLE
+                new CellSignalStrengthWcdma(12, 4, 22, 18),
+                // Accepts ASU values or UNAVAILABLE
+                new CellSignalStrengthTdscdma(13, 2, 34),
+                // Accepts actual values (HAL values must be converted, except RSSI) or UNAVAILABLE
+                new CellSignalStrengthLte(-85, -91, -6, -10, 12, 1));
         assertParcelingIsLossless(s);
     }
 

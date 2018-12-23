@@ -76,7 +76,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         Rlog.d(LOG_TAG + " " + mTestName, str);
     }
 
-    private NetworkRequest makeSubSpecificDefaultRequest(int subId) {
+    private NetworkRequest makeSubSpecificInternetRequest(int subId) {
         NetworkCapabilities netCap = (new NetworkCapabilities()).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).
@@ -149,9 +149,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
 
         mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(mSubscriptionMonitorMock, mLooper,
                 mPhone);
-
-        replaceInstance(TelephonyNetworkFactory.class, "mDcTracker",
-                mTelephonyNetworkFactoryUT, mDcTracker);
     }
 
     /**
@@ -183,8 +180,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         waitForMs(250);
         assertEquals(1, mNetworkRequestList.size());
 
-        log("makeSubSpecificDefaultRequest: subId = " + subId);
-        NetworkRequest subSpecificDefault = makeSubSpecificDefaultRequest(subId);
+        log("makeSubSpecificInternetRequest: subId = " + subId);
+        NetworkRequest subSpecificDefault = makeSubSpecificInternetRequest(subId);
         waitForMs(250);
         assertEquals(2, mNetworkRequestList.size());
 
@@ -193,7 +190,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         waitForMs(250);
         assertEquals(0, mNetworkRequestList.size());
 
-        log("makeSubSpecificDefaultRequest: subId = " + subId);
+        log("makeSubSpecificInternetRequest: subId = " + subId);
         NetworkRequest subSpecificMms = makeSubSpecificMmsRequest(subId);
         waitForMs(250);
         assertEquals(0, mNetworkRequestList.size());
@@ -276,14 +273,16 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         waitForMs(250);
         assertEquals(0, mNetworkRequestList.size());
 
-        makeSubSpecificDefaultRequest(subId);
+        makeSubSpecificInternetRequest(subId);
         waitForMs(250);
         assertEquals(0, mNetworkRequestList.size());
 
         mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
         mSubscriptionMonitorMock.notifySubscriptionChanged(phoneId);
         waitForMs(250);
-        assertEquals(2, mNetworkRequestList.size());
+        // Although specified a subId, Internet request is only handled by
+        // preferred data phone.
+        assertEquals(1, mNetworkRequestList.size());
 
         mSubscriptionControllerMock.setDefaultDataSubId(subId);
         mPhoneSwitcherMock.setPreferredDataPhoneId(phoneId);

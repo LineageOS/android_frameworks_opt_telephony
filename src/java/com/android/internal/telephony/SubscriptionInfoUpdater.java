@@ -54,12 +54,13 @@ import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccSlot;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  *@hide
@@ -671,21 +672,29 @@ public class SubscriptionInfoUpdater extends Handler {
         List<SubscriptionInfo> subInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
         int nSubCount = (subInfos == null) ? 0 : subInfos.size();
         logd("updateSubscriptionInfoByIccId: nSubCount = " + nSubCount);
+        boolean changed = false;
         for (int i=0; i < nSubCount; i++) {
             SubscriptionInfo temp = subInfos.get(i);
+            ContentValues value = new ContentValues(1);
 
             String msisdn = TelephonyManager.getDefault().getLine1Number(
                     temp.getSubscriptionId());
 
-            if (msisdn != null) {
-                ContentValues value = new ContentValues(1);
+            UiccSlot uiccSlot = UiccController.getInstance()
+                    .getUiccSlotForPhone(temp.getSimSlotIndex());
+            boolean isEuicc = (uiccSlot != null && uiccSlot.isEuicc());
+
+            if (isEuicc != temp.isEmbedded() || !TextUtils.equals(msisdn, temp.getNumber())) {
+                value.put(SubscriptionManager.IS_EMBEDDED, isEuicc);
                 value.put(SubscriptionManager.NUMBER, msisdn);
                 contentResolver.update(SubscriptionManager.getUriForSubscriptionId(
                         temp.getSubscriptionId()), value, null, null);
-
-                // refresh Cached Active Subscription Info List
-                SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
+                changed = true;
             }
+        }
+        if (changed) {
+            // refresh Cached Active Subscription Info List
+            SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
         }
 
         // Ensure the modems are mapped correctly
@@ -693,14 +702,14 @@ public class SubscriptionInfoUpdater extends Handler {
                 mSubscriptionManager.getDefaultDataSubscriptionId());
 
         // No need to check return value here as we notify for the above changes anyway.
-        if (subInfos != null) {
-            UiccController uiccController = UiccController.getInstance();
-            subInfos.stream()
-                    .filter(subInfo -> subInfo.isEmbedded())
-                    .mapToInt(subInfo -> subInfo.getCardId())
-                    .mapToObj(cardId -> cardId)
-                    .collect(Collectors.toSet())
-                    .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
+        UiccController uiccController = UiccController.getInstance();
+        UiccSlot[] uiccSlots = uiccController.getUiccSlots();
+        if (uiccSlots != null) {
+            Arrays.stream(uiccSlots)
+                .filter(uiccSlot -> uiccSlot.isEuicc() && uiccSlot.getUiccCard() != null)
+                .map(uiccSlot -> uiccController.convertToPublicCardId(
+                            uiccSlot.getUiccCard().getCardId()))
+                .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
         }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
@@ -726,6 +735,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
         GetEuiccProfileInfoListResult result =
                 EuiccController.get().blockingGetEuiccProfileInfoList(cardId);
+        if (DBG) logd("blockingGetEuiccProfileInfoList cardId " + cardId);
         if (result == null) {
             // IPC to the eUICC controller failed.
             return false;
@@ -736,6 +746,7 @@ public class SubscriptionInfoUpdater extends Handler {
             List<EuiccProfileInfo> list = result.getProfiles();
             if (list == null || list.size() == 0) {
                 embeddedProfiles = new EuiccProfileInfo[0];
+                if (DBG) logd("blockingGetEuiccProfileInfoList list is empty.");
             } else {
                 embeddedProfiles = list.toArray(new EuiccProfileInfo[list.size()]);
             }

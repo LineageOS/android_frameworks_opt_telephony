@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANGE;
+import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
@@ -137,18 +138,18 @@ public class PhoneSwitcher extends Handler {
     }
 
     @VisibleForTesting
-    public PhoneSwitcher(Looper looper) {
+    public PhoneSwitcher(int numPhones, Looper looper) {
         super(looper);
         mMaxActivePhones = 0;
         mSubscriptionController = null;
-        mPhoneSubscriptions = null;
         mCommandsInterfaces = null;
         mContext = null;
         mPhoneStates = null;
         mPhones = null;
         mLocalLog = null;
         mActivePhoneRegistrants = null;
-        mNumPhones = 0;
+        mNumPhones = numPhones;
+        mPhoneSubscriptions = new int[numPhones];
         mRadioConfig = RadioConfig.getInstance(mContext);
         mPhoneStateListener = new PhoneStateListener(looper) {
             public void onPhoneCapabilityChanged(PhoneCapability capability) {
@@ -385,6 +386,11 @@ public class PhoneSwitcher extends Handler {
         if (diffDetected) {
             log("evaluating due to " + sb.toString());
             if (mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA) {
+                // With HAL_COMMAND_PREFERRED_DATA, all phones are assumed to allow PS attach.
+                // So marking all phone as active.
+                for (int phoneId = 0; phoneId < mNumPhones; phoneId++) {
+                    activate(phoneId);
+                }
                 if (SubscriptionManager.isUsableSubIdValue(mPreferredDataPhoneId)) {
                     mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, null);
                 }
@@ -485,7 +491,7 @@ public class PhoneSwitcher extends Handler {
         if (mHalCommandToUse == HAL_COMMAND_ALLOW_DATA || mHalCommandToUse == HAL_COMMAND_UNKNOWN) {
             // Skip ALLOW_DATA for single SIM device
             if (mNumPhones > 1) {
-                mCommandsInterfaces[phoneId].setDataAllowed(mPhoneStates[phoneId].active, null);
+                mCommandsInterfaces[phoneId].setDataAllowed(isPhoneActive(phoneId), null);
             }
         } else {
             mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, null);
@@ -503,9 +509,38 @@ public class PhoneSwitcher extends Handler {
     }
 
     private int phoneIdForRequest(NetworkRequest netRequest) {
-        NetworkSpecifier specifier = netRequest.networkCapabilities.getNetworkSpecifier();
+        int subId = getSubIdFromNetworkRequest(netRequest);
+
+        if (subId == DEFAULT_SUBSCRIPTION_ID) return mPreferredDataPhoneId;
+        if (subId == INVALID_SUBSCRIPTION_ID) return INVALID_PHONE_INDEX;
+
+        int preferredDataSubId = SubscriptionManager.isValidPhoneId(mPreferredDataPhoneId)
+                ? mPhoneSubscriptions[mPreferredDataPhoneId] : INVALID_SUBSCRIPTION_ID;
+        // Currently we assume multi-SIM devices will only support one Internet PDN connection. So
+        // if Internet PDN is established on the non-preferred phone, it will interrupt
+        // Internet connection on the preferred phone. So we only accept Internet request with
+        // preferred data subscription or no specified subscription.
+        if (netRequest.networkCapabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET) && subId != preferredDataSubId) {
+            // Returning INVALID_PHONE_INDEX will result in netRequest not being handled.
+            return INVALID_PHONE_INDEX;
+        }
+
+        // Try to find matching phone ID. If it doesn't exist, we'll end up returning INVALID.
+        int phoneId = INVALID_PHONE_INDEX;
+        for (int i = 0; i < mNumPhones; i++) {
+            if (mPhoneSubscriptions[i] == subId) {
+                phoneId = i;
+                break;
+            }
+        }
+        return phoneId;
+    }
+
+    private int getSubIdFromNetworkRequest(NetworkRequest networkRequest) {
+        NetworkSpecifier specifier = networkRequest.networkCapabilities.getNetworkSpecifier();
         if (specifier == null) {
-            return mPreferredDataPhoneId;
+            return DEFAULT_SUBSCRIPTION_ID;
         }
 
         int subId;
@@ -516,22 +551,13 @@ public class PhoneSwitcher extends Handler {
             } catch (NumberFormatException e) {
                 Rlog.e(LOG_TAG, "NumberFormatException on "
                         + ((StringNetworkSpecifier) specifier).specifier);
-                subId = INVALID_SUBSCRIPTION_ID;
+                return INVALID_SUBSCRIPTION_ID;
             }
         } else {
-            subId = INVALID_SUBSCRIPTION_ID;
+            return INVALID_SUBSCRIPTION_ID;
         }
 
-        int phoneId = INVALID_PHONE_INDEX;
-        if (subId == INVALID_SUBSCRIPTION_ID) return phoneId;
-
-        for (int i = 0 ; i < mNumPhones; i++) {
-            if (mPhoneSubscriptions[i] == subId) {
-                phoneId = i;
-                break;
-            }
-        }
-        return phoneId;
+        return subId;
     }
 
     private int getSubIdForDefaultNetworkRequests() {
@@ -560,28 +586,20 @@ public class PhoneSwitcher extends Handler {
         mPreferredDataPhoneId = phoneId;
     }
 
-    /**
-     * Returns whether phone should handle network requests
-     * that don't specify a subId.
-     */
-    public boolean shouldApplyUnspecifiedRequests(int phoneId) {
+    public boolean shouldApplyNetworkRequest(NetworkRequest networkRequest, int phoneId) {
         validatePhoneId(phoneId);
-        if (mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA) {
-            return phoneId == mPreferredDataPhoneId;
-        } else {
-            return mPhoneStates[phoneId].active && phoneId == mPreferredDataPhoneId;
-        }
+
+        // In any case, if phone state is inactive, don't apply the network request.
+        if (!isPhoneActive(phoneId)) return false;
+
+        int phoneIdToHandle = phoneIdForRequest(networkRequest);
+
+        return phoneId == phoneIdToHandle;
     }
 
-    /**
-     * Returns whether phone should handle network requests
-     * that specify a subId.
-     */
-    public boolean shouldApplySpecifiedRequests(int phoneId) {
-        validatePhoneId(phoneId);
-        // If we use SET_PREFERRED_DATA, always apply specified network requests. Otherwise,
-        // only apply network requests if the phone is active (dataAllowed).
-        return mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA || mPhoneStates[phoneId].active;
+    @VisibleForTesting
+    protected boolean isPhoneActive(int phoneId) {
+        return mPhoneStates[phoneId].active;
     }
 
     /**
@@ -598,7 +616,8 @@ public class PhoneSwitcher extends Handler {
         mActivePhoneRegistrants.remove(h);
     }
 
-    private void validatePhoneId(int phoneId) {
+    @VisibleForTesting
+    protected void validatePhoneId(int phoneId) {
         if (phoneId < 0 || phoneId >= mNumPhones) {
             throw new IllegalArgumentException("Invalid PhoneId");
         }

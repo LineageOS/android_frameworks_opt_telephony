@@ -40,8 +40,9 @@ public class DcFailBringUp {
 
     // failCause with its --ei option name and default value
     static final String FAIL_CAUSE = "fail_cause";
-    static final DataFailCause DEFAULT_FAIL_CAUSE = DataFailCause.ERROR_UNSPECIFIED;
-    DataFailCause mFailCause;
+    static final int DEFAULT_FAIL_CAUSE = DataFailCause.ERROR_UNSPECIFIED;
+    @DataFailCause.FailCause
+    int mFailCause;
 
     // suggestedRetryTime with its --ei option name and default value
     static final String SUGGESTED_RETRY_TIME = "suggested_retry_time";
@@ -52,8 +53,8 @@ public class DcFailBringUp {
     void saveParameters(Intent intent, String s) {
         if (DBG) log(s + ".saveParameters: action=" + intent.getAction());
         mCounter = intent.getIntExtra(COUNTER, DEFAULT_COUNTER);
-        mFailCause = DataFailCause.fromInt(
-                intent.getIntExtra(FAIL_CAUSE, DEFAULT_FAIL_CAUSE.getErrorCode()));
+        mFailCause = DataFailCause.getFailCause(
+                intent.getIntExtra(FAIL_CAUSE, DEFAULT_FAIL_CAUSE));
         mSuggestedRetryTime =
                 intent.getIntExtra(SUGGESTED_RETRY_TIME, DEFAULT_SUGGESTED_RETRY_TIME);
         if (DBG) {
@@ -61,9 +62,10 @@ public class DcFailBringUp {
         }
     }
 
-    public void saveParameters(int counter, int failCause, int suggestedRetryTime) {
+    public void saveParameters(int counter, @DataFailCause.FailCause int failCause,
+                               int suggestedRetryTime) {
         mCounter = counter;
-        mFailCause = DataFailCause.fromInt(failCause);
+        mFailCause = DataFailCause.getFailCause(failCause);
         mSuggestedRetryTime = suggestedRetryTime;
     }
 
