@@ -111,7 +111,7 @@ public class ApnContextTest extends TelephonyTest {
         mApnContext.setDependencyMet(true);
         assertFalse(mApnContext.isConnectable());
 
-        mApnContext.setState(DctConstants.State.SCANNING);
+        mApnContext.setState(DctConstants.State.RETRYING);
         assertTrue(mApnContext.isConnectable());
         assertTrue(mApnContext.isConnectedOrConnecting());
 
