@@ -30,6 +30,7 @@ import android.preference.PreferenceManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccCardInfo;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
@@ -588,6 +589,30 @@ public class UiccController extends Handler {
         } else {
             return id;
         }
+    }
+
+    /**
+     * Returns the UiccCardInfo of all currently inserted UICCs and embedded eUICCs.
+     */
+    public ArrayList<UiccCardInfo> getAllUiccCardInfos() {
+        ArrayList<UiccCardInfo> infos = new ArrayList<>();
+        for (int slotIndex = 0; slotIndex < mUiccSlots.length; slotIndex++) {
+            final UiccSlot slot = mUiccSlots[slotIndex];
+            boolean isEuicc = slot.isEuicc();
+            String eid = null;
+            String iccid = slot.getUiccCard().getIccId();
+            int cardId = INVALID_CARD_ID;
+            if (isEuicc) {
+                eid = slot.getUiccCard().getCardId();
+                cardId = convertToPublicCardId(eid);
+            } else {
+                // leave eid null if the UICC is not embedded
+                cardId = convertToPublicCardId(iccid);
+            }
+            UiccCardInfo info = new UiccCardInfo(isEuicc, cardId, eid, iccid, slotIndex);
+            infos.add(info);
+        }
+        return infos;
     }
 
     /**
