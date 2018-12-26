@@ -31,6 +31,7 @@ import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.CellIdentityGsm;
+import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -83,8 +84,10 @@ public class LocaleTrackerTest extends TelephonyTest {
         mWifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
 
         mCellInfo = new CellInfoGsm();
-        mCellInfo.setCellIdentity(new CellIdentityGsm(Integer.parseInt(US_MCC),
-                Integer.parseInt(FAKE_MNC), 0, 0));
+        mCellInfo.setCellIdentity(new CellIdentityGsm(
+                    CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE,
+                    CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE,
+                    US_MCC, FAKE_MNC, null, null));
         doAnswer(invocation -> {
             Message m = invocation.getArgument(1);
             AsyncResult.forMessage(m, Arrays.asList(mCellInfo), null);
