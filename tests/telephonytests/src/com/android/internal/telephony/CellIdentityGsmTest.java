@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import android.os.Parcel;
 import android.telephony.CellIdentityGsm;
-import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -127,24 +126,6 @@ public class CellIdentityGsmTest extends AndroidTestCase {
     }
 
     @SmallTest
-    public void testFormerConstructor() {
-        CellIdentityGsm ci =
-                new CellIdentityGsm(MCC, MNC, LAC, CID);
-
-        assertEquals(LAC, ci.getLac());
-        assertEquals(CID, ci.getCid());
-        assertEquals(Integer.MAX_VALUE, ci.getArfcn());
-        assertEquals(Integer.MAX_VALUE, ci.getBsic());
-        assertEquals(MCC, ci.getMcc());
-        assertEquals(MNC, ci.getMnc());
-        assertEquals(MCC_STR, ci.getMccString());
-        assertEquals(MNC_STR, ci.getMncString());
-        assertEquals(MCC_STR + MNC_STR, ci.getMobileNetworkOperator());
-        assertNull(ci.getOperatorAlphaLong());
-        assertNull(ci.getOperatorAlphaShort());
-    }
-
-    @SmallTest
     public void testEquals() {
         CellIdentityGsm ciA = new CellIdentityGsm(
                 LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
@@ -185,15 +166,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellInfo.TYPE_GSM);
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
-        p.writeString(String.valueOf(Integer.MAX_VALUE));
-        p.writeString(ALPHA_LONG);
-        p.writeString(ALPHA_SHORT);
-        p.writeInt(LAC);
-        p.writeInt(CID);
-        p.writeInt(ARFCN);
-        p.writeInt(BSIC);
+        ci.writeToParcel(p, 0);
         p.setDataPosition(0);
 
         CellIdentityGsm newCi = CellIdentityGsm.CREATOR.createFromParcel(p);
@@ -208,15 +181,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
 
         Parcel p = Parcel.obtain();
-        p.writeInt(CellInfo.TYPE_GSM);
-        p.writeString(invalidMcc);
-        p.writeString(invalidMnc);
-        p.writeString(ALPHA_LONG);
-        p.writeString(ALPHA_SHORT);
-        p.writeInt(LAC);
-        p.writeInt(CID);
-        p.writeInt(ARFCN);
-        p.writeInt(BSIC);
+        ci.writeToParcel(p, 0);
         p.setDataPosition(0);
 
         CellIdentityGsm newCi = CellIdentityGsm.CREATOR.createFromParcel(p);
