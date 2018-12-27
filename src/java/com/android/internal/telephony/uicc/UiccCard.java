@@ -510,6 +510,8 @@ public class UiccCard {
         pw.println("UiccCard:");
         pw.println(" mCi=" + mCi);
         pw.println(" mCardState=" + mCardState);
+        pw.println(" mCardId=" + mCardId);
+        pw.println(" mPhoneId=" + mPhoneId);
         pw.println();
         if (mUiccProfile != null) {
             mUiccProfile.dump(fd, pw, args);
