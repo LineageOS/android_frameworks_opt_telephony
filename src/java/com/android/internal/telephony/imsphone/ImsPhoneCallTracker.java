@@ -55,6 +55,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
@@ -969,8 +970,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         // Always unmute when initiating a new call
         setMute(false);
-        int serviceType = mPhoneNumberUtilsProxy.isEmergencyNumber(conn.getAddress()) ?
-                ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
+        boolean isEmergencyCall = mPhoneNumberUtilsProxy.isEmergencyNumber(conn.getAddress());
+        int serviceType = isEmergencyCall
+                ? ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
         int callType = ImsCallProfile.getCallTypeFromVideoState(videoState);
         //TODO(vt): Is this sufficient?  At what point do we know the video state of the call?
         conn.setVideoState(videoState);
@@ -979,6 +981,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             String[] callees = new String[] { conn.getAddress() };
             ImsCallProfile profile = mImsManager.createCallProfile(serviceType, callType);
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
+
+            if (isEmergencyCall) {
+                // Set emergency service categories in ImsCallProfile
+                int emergencyServiceCategories =
+                        EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED;
+                TelephonyManager tm = (TelephonyManager) mPhone.getContext().getSystemService(
+                        Context.TELEPHONY_SERVICE);
+                if (tm.getCurrentEmergencyNumberList() != null) {
+                    for (List<EmergencyNumber> emergencyNumberList :
+                            tm.getCurrentEmergencyNumberList().values()) {
+                        if (emergencyNumberList != null) {
+                            for (EmergencyNumber num : emergencyNumberList) {
+                                if (num.getNumber().equals(conn.getAddress())) {
+                                    emergencyServiceCategories =
+                                            num.getEmergencyServiceCategoryBitmask();
+                                }
+                            }
+                        }
+                    }
+                }
+                profile.setEmergencyServiceCategories(emergencyServiceCategories);
+            }
 
             // Translate call subject intent-extra from Telecom-specific extra key to the
             // ImsCallProfile key.
