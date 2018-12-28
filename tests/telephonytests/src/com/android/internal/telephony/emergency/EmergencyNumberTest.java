@@ -29,10 +29,12 @@ public class EmergencyNumberTest extends TestCase {
         EmergencyNumber number = new EmergencyNumber(
                 "911",
                 "us",
+                "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING);
         assertEquals(number.getNumber(), "911");
         assertEquals(number.getCountryIso(), "us");
+        assertEquals(number.getMnc(), "30");
         assertTrue(number.isInEmergencyServiceCategories(
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED));
         assertTrue(number.isInEmergencyServiceCategories(
@@ -73,11 +75,13 @@ public class EmergencyNumberTest extends TestCase {
         EmergencyNumber number = new EmergencyNumber(
                 "911",
                 "us",
+                "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD,
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
                         | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG);
         assertEquals(number.getNumber(), "911");
         assertEquals(number.getCountryIso(), "us");
+        assertEquals(number.getMnc(), "30");
         assertFalse(number.isInEmergencyServiceCategories(
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED));
         assertFalse(number.isInEmergencyServiceCategories(
@@ -123,6 +127,7 @@ public class EmergencyNumberTest extends TestCase {
         EmergencyNumber number = new EmergencyNumber(
                 "110",
                 "jp",
+                "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
@@ -131,6 +136,7 @@ public class EmergencyNumberTest extends TestCase {
                         | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT);
         assertEquals(number.getNumber(), "110");
         assertEquals(number.getCountryIso(), "jp");
+        assertEquals(number.getMnc(), "30");
         assertFalse(number.isInEmergencyServiceCategories(
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED));
         assertTrue(number.isInEmergencyServiceCategories(
@@ -186,12 +192,14 @@ public class EmergencyNumberTest extends TestCase {
         EmergencyNumber numberHighestDisplayPriority = new EmergencyNumber(
                 "911",
                 "us",
+                "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING);
 
         EmergencyNumber numberHigherDisplayPriority = new EmergencyNumber(
                 "922",
                 "us",
+                "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
@@ -200,6 +208,7 @@ public class EmergencyNumberTest extends TestCase {
         EmergencyNumber numberLowestDisplayPriority = new EmergencyNumber(
                 "110",
                 "us",
+                "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
