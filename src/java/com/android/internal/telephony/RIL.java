@@ -851,12 +851,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void dial(String address, int clirMode, Message result) {
-        dial(address, clirMode, null, result);
+    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+                     int clirMode, Message result) {
+        dial(address, isEmergencyCall, emergencyServiceCategories, clirMode, null, result);
     }
 
     @Override
-    public void dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
+    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+                     int clirMode, UUSInfo uusInfo, Message result) {
+        if (isEmergencyCall && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+            emergencyDial(address, emergencyServiceCategories, clirMode, uusInfo,
+                    result);
+            return;
+        }
+
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_DIAL, result,
@@ -882,6 +890,39 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 radioProxy.dial(rr.mSerial, dialInfo);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "dial", e);
+            }
+        }
+    }
+
+    private void emergencyDial(String address, int emergencyServiceCategories, int clirMode,
+                              UUSInfo uusInfo, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        // IRadio V1.4
+        android.hardware.radio.V1_4.IRadio radioProxy14 =
+                (android.hardware.radio.V1_4.IRadio) radioProxy;
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_EMERGENCY_DIAL, result,
+                    mRILDefaultWorkSource);
+            Dial dialInfo = new Dial();
+            dialInfo.address = convertNullToEmptyString(address);
+            dialInfo.clir = clirMode;
+            if (uusInfo != null) {
+                UusInfo info = new UusInfo();
+                info.uusType = uusInfo.getType();
+                info.uusDcs = uusInfo.getDcs();
+                info.uusData = new String(uusInfo.getUserData());
+                dialInfo.uusInfo.add(info);
+            }
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                radioProxy14.emergencyDial(rr.mSerial, dialInfo, emergencyServiceCategories);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
             }
         }
     }

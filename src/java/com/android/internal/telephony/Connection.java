@@ -23,6 +23,8 @@ import android.telecom.ConferenceParticipant;
 import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.emergency.EmergencyNumber;
+import android.telephony.emergency.EmergencyNumber.EmergencyServiceCategories;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -225,6 +227,29 @@ public abstract class Connection {
     private int mPhoneType;
     private boolean mAnsweringDisconnectsActiveCall;
     private boolean mAllowAddCallDuringVideoCall;
+
+    private boolean mIsEmergencyCall;
+
+    /**
+     * The emergency service categories, only valid if {@link #isEmergencyCall()} returns
+     * {@code true}
+     *
+     * If valid, the value is the bitwise-OR combination of the following constants:
+     * <ol>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_POLICE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_AMBULANCE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MIEC} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_AIEC} </li>
+     * </ol>
+     *
+     * Reference: 3gpp 23.167, Section 6 - Functional description;
+     *            3gpp 22.101, Section 10 - Emergency Calls.
+     */
+    private int mEmergencyServiceCategories;
 
     /**
      * When {@code true}, the network has indicated that this is an emergency call.
@@ -430,6 +455,76 @@ public abstract class Connection {
      */
     public void setIsIncoming(boolean isIncoming) {
         mIsIncoming = isIncoming;
+    }
+
+    /**
+     * Checks if the connection is for an emergency call.
+     *
+     * @return {@code true} if the call is an emergency call
+     *         or {@code false} otherwise.
+     */
+    public boolean isEmergencyCall() {
+        return mIsEmergencyCall;
+    }
+
+    /**
+     * Sets whether this call is an emergency call or not.
+     *
+     * @param isEmergencyCall {@code true} if the call is an emergency call,
+     *                        or {@code false} otherwise.
+     */
+    public void setEmergencyCall(boolean isEmergencyCall) {
+        mIsEmergencyCall = isEmergencyCall;
+    }
+
+
+    /**
+     * Set the emergency service categories. The set value is valid only if
+     * {@link #getEmergencyServiceCategories()} returns {@code true}
+     *
+     * @return the emergency service categories,
+     *
+     * If valid, the value is the bitwise-OR combination of the following constants:
+     * <ol>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_POLICE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_AMBULANCE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MIEC} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_AIEC} </li>
+     * </ol>
+     *
+     * Reference: 3gpp 23.167, Section 6 - Functional description;
+     *            3gpp 22.101, Section 10 - Emergency Calls.
+     */
+    public @EmergencyServiceCategories int getEmergencyServiceCategories() {
+        return mEmergencyServiceCategories;
+    }
+
+    /**
+     * Set the emergency service categories. The set value is valid only if
+     * {@link #getEmergencyServiceCategories()} returns {@code true}
+     *
+     * If valid, the value is the bitwise-OR combination of the following constants:
+     * <ol>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_POLICE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_AMBULANCE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_MIEC} </li>
+     * <li>{@link EmergencyNumber#EMERGENCY_SERVICE_CATEGORY_AIEC} </li>
+     * </ol>
+     *
+     * Reference: 3gpp 23.167, Section 6 - Functional description;
+     *            3gpp 22.101, Section 10 - Emergency Calls.
+     */
+    public void setEmergencyServiceCategories(
+            @EmergencyServiceCategories int emergencyServiceCategories) {
+        mEmergencyServiceCategories = emergencyServiceCategories;
     }
 
     /**
