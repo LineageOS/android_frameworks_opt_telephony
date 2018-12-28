@@ -175,4 +175,21 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             Rlog.e(TAG, "setPreferredDataModemResponse: Error " + responseInfo.toString());
         }
     }
+
+    /**
+     * Response function for IRadioConfig.setModemsConfigResponse()
+     *
+     */
+    public void setModemsConfigResponse(RadioResponseInfo info) {
+
+    }
+
+    /**
+     * Response function for IRadioConfig.getModemsConfigResponse()
+     *
+     */
+    public void getModemsConfigResponse(RadioResponseInfo info,
+            android.hardware.radio.config.V1_1.ModemsConfig modemsConfig) {
+
+    }
 }
