@@ -29,6 +29,9 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
+import android.telephony.emergency.EmergencyNumber.EmergencyServiceCategories;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
@@ -36,6 +39,10 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccCardApplication;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@hide}
@@ -72,8 +79,6 @@ public class GsmCdmaConnection extends Connection {
     Handler mHandler;
 
     private PowerManager.WakeLock mPartialWakeLock;
-
-    private boolean mIsEmergencyCall = false;
 
     // The cached delay to be used between DTMF tones fetched from carrier config.
     private int mDtmfToneDelay = 0;
@@ -135,7 +140,9 @@ public class GsmCdmaConnection extends Connection {
         mHandler = new MyHandler(mOwner.getLooper());
 
         mAddress = dc.number;
-        mIsEmergencyCall = PhoneNumberUtils.isLocalEmergencyNumber(phone.getContext(), mAddress);
+        setEmergencyCall(TelephonyManager.getDefault().isCurrentEmergencyNumber(mAddress));
+        setEmergencyServiceCategories(fetchEmergencyServiceCategories());
+
         mIsIncoming = dc.isMT;
         mCreateTime = System.currentTimeMillis();
         mCnapName = dc.name;
@@ -176,7 +183,9 @@ public class GsmCdmaConnection extends Connection {
         }
 
         mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
-        mIsEmergencyCall = isEmergencyCall;
+        setEmergencyCall(isEmergencyCall);
+        setEmergencyServiceCategories(fetchEmergencyServiceCategories());
+
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
         mIndex = -1;
@@ -540,7 +549,7 @@ public class GsmCdmaConnection extends Connection {
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
                 }
-                if (!mIsEmergencyCall) {
+                if (!isEmergencyCall()) {
                     // Only send OUT_OF_SERVICE if it is not an emergency call. We can still
                     // technically be in STATE_OUT_OF_SERVICE or STATE_EMERGENCY_ONLY during
                     // an emergency call and when it ends, we do not want to mistakenly generate
@@ -1120,6 +1129,31 @@ public class GsmCdmaConnection extends Connection {
         if (b != null) {
             mDtmfToneDelay = b.getInt(phone.getDtmfToneDelayKey());
         }
+    }
+
+    private @EmergencyServiceCategories int fetchEmergencyServiceCategories() {
+        Map<Integer, List<EmergencyNumber>> emergencyNumberListInternal = new HashMap<>();
+        for (Phone phone: PhoneFactory.getPhones()) {
+            if (phone.getEmergencyNumberTracker() != null
+                    && phone.getEmergencyNumberTracker().getEmergencyNumberList() != null) {
+                emergencyNumberListInternal.put(
+                        phone.getSubId(),
+                        phone.getEmergencyNumberTracker().getEmergencyNumberList());
+            }
+        }
+        if (emergencyNumberListInternal != null) {
+            for (List<EmergencyNumber> emergencyNumberList
+                    : emergencyNumberListInternal.values()) {
+                if (emergencyNumberList != null) {
+                    for (EmergencyNumber num : emergencyNumberList) {
+                        if (num.getNumber().equals(mAddress)) {
+                            return num.getEmergencyServiceCategoryBitmask();
+                        }
+                    }
+                }
+            }
+        }
+        return EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED;
     }
 
     private boolean isPhoneTypeGsm() {
