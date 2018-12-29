@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8f77e933_e2b9180a",
+        "filename": "src/java/com/android/internal/telephony/LocaleTracker.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-12-29T23:26:30Z",
+      "side": 1,
+      "message": "Why the change here? I see the usual way of accessing WifiManager is by asking for Context.WIFI_SERVICE.",
+      "range": {
+        "startLine": 411,
+        "startChar": 75,
+        "endLine": 411,
+        "endChar": 92
+      },
+      "revId": "46faa7e085796304ff9416292ea3a829297ef0d4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
