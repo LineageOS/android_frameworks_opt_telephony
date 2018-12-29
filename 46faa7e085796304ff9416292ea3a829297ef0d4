@@ -22,6 +22,30 @@
       "revId": "46faa7e085796304ff9416292ea3a829297ef0d4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e7bf15c7_b7398d20",
+        "filename": "src/java/com/android/internal/telephony/LocaleTracker.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2018-12-29T23:38:43Z",
+      "side": 1,
+      "message": "You need to touch that line anyway. That\u0027s why I suggested to switch to the new way of getting the system service.",
+      "parentUuid": "8f77e933_e2b9180a",
+      "range": {
+        "startLine": 411,
+        "startChar": 75,
+        "endLine": 411,
+        "endChar": 92
+      },
+      "revId": "46faa7e085796304ff9416292ea3a829297ef0d4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
     }
   ]
 }
