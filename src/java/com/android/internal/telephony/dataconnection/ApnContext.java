@@ -344,7 +344,6 @@ public class ApnContext {
      */
     public boolean isConnectable() {
         return isReady() && ((mState == DctConstants.State.IDLE)
-                                || (mState == DctConstants.State.SCANNING)
                                 || (mState == DctConstants.State.RETRYING)
                                 || (mState == DctConstants.State.FAILED));
     }
@@ -364,7 +363,6 @@ public class ApnContext {
     public boolean isConnectedOrConnecting() {
         return isReady() && ((mState == DctConstants.State.CONNECTED)
                                 || (mState == DctConstants.State.CONNECTING)
-                                || (mState == DctConstants.State.SCANNING)
                                 || (mState == DctConstants.State.RETRYING));
     }
 
