@@ -46,6 +46,30 @@
       "revId": "46faa7e085796304ff9416292ea3a829297ef0d4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5dfdd276_9143b88d",
+        "filename": "src/java/com/android/internal/telephony/LocaleTracker.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-12-30T04:21:56Z",
+      "side": 1,
+      "message": "Usually it\u0027s better to keep specific changes focused on the one thing the patch is supposed to do.\n\nI haven\u0027t seen this pattern before though, when did this become the norm for accessing system services?",
+      "parentUuid": "e7bf15c7_b7398d20",
+      "range": {
+        "startLine": 411,
+        "startChar": 75,
+        "endLine": 411,
+        "endChar": 92
+      },
+      "revId": "46faa7e085796304ff9416292ea3a829297ef0d4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
     }
   ]
 }
