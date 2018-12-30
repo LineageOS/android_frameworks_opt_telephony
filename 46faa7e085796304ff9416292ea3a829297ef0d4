@@ -70,6 +70,23 @@
       "revId": "46faa7e085796304ff9416292ea3a829297ef0d4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6142d85a_16ed51cc",
+        "filename": "src/java/com/android/internal/telephony/LocaleTracker.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 6334
+      },
+      "writtenOn": "2018-12-30T05:42:13Z",
+      "side": 1,
+      "message": "Probably safer to assert mPhone instance or at very least the context returned from it before using it query for a service.",
+      "revId": "46faa7e085796304ff9416292ea3a829297ef0d4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
     }
   ]
 }
