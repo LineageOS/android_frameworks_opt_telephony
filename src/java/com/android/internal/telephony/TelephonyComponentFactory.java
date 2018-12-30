@@ -225,8 +225,18 @@ public class TelephonyComponentFactory {
         return SubscriptionController.init(c, ci);
     }
 
+    public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context, Phone[] phones,
+            CommandsInterface[] ci) {
+        Rlog.d(LOG_TAG, "makeSubscriptionInfoUpdater - compat");
+        return null;
+    }
+
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Looper looper, Context context,
             Phone[] phones, CommandsInterface[] ci) {
+        SubscriptionInfoUpdater subInfoUpdater = makeSubscriptionInfoUpdater(context, phones, ci);
+        if (subInfoUpdater != null)
+            return subInfoUpdater;
+
         Rlog.d(LOG_TAG, "makeSubscriptionInfoUpdater");
         return new SubscriptionInfoUpdater(looper, context, phones, ci);
     }
