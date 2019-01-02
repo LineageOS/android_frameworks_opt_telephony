@@ -671,10 +671,12 @@ public class UiccController extends Handler {
 
                 // sanity check: logicalSlotIndex should be valid for an active slot
                 if (!isValidPhoneIndex(iss.logicalSlotIndex)) {
-                    throw new RuntimeException("Logical slot index " + iss.logicalSlotIndex
-                            + " invalid for physical slot " + i);
+                    Rlog.e(LOG_TAG, "Skipping slot " + i + " as phone " + iss.logicalSlotIndex
+                               + " is not available to communicate with this slot");
+
+                } else {
+                    mPhoneIdToSlotId[iss.logicalSlotIndex] = i;
                 }
-                mPhoneIdToSlotId[iss.logicalSlotIndex] = i;
             }
 
             if (mUiccSlots[i] == null) {
@@ -684,7 +686,11 @@ public class UiccController extends Handler {
                 mUiccSlots[i] = new UiccSlot(mContext, isActive);
             }
 
-            mUiccSlots[i].update(isActive ? mCis[iss.logicalSlotIndex] : null, iss);
+            if (!isValidPhoneIndex(iss.logicalSlotIndex)) {
+                mUiccSlots[i].update(null, iss);
+            } else {
+                mUiccSlots[i].update(isActive ? mCis[iss.logicalSlotIndex] : null, iss);
+            }
 
             if (mUiccSlots[i].isEuicc()) {
                 String eid = iss.eid;
@@ -702,8 +708,8 @@ public class UiccController extends Handler {
 
         // sanity check: number of active slots should be valid
         if (numActiveSlots != mPhoneIdToSlotId.length) {
-            throw new RuntimeException("Number of active slots " + numActiveSlots
-                    + " does not match the expected value " + mPhoneIdToSlotId.length);
+            Rlog.e(LOG_TAG, "Number of active slots " + numActiveSlots
+                       + " does not match the number of Phones" + mPhoneIdToSlotId.length);
         }
 
         // sanity check: slotIds should be unique in mPhoneIdToSlotId
