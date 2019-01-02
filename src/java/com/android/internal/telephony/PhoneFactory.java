@@ -270,8 +270,7 @@ public class PhoneFactory {
                 int maxActivePhones = sPhoneConfigurationManager
                         .getNumberOfModemsWithSimultaneousDataConnections();
 
-                sPhoneSwitcher = telephonyComponentFactory.
-                        makePhoneSwitcher(maxActivePhones, numPhones,
+                sPhoneSwitcher = PhoneSwitcher.make(maxActivePhones, numPhones,
                         sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
                         sPhones);
 
