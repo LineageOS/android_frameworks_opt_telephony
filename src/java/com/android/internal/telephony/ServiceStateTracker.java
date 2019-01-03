@@ -622,6 +622,7 @@ public class ServiceStateTracker extends Handler {
         mNitzState.handleNetworkCountryCodeUnavailable();
         mCellIdentity = null;
         mNewCellIdentity = null;
+        mRuimRecordsLoaded = false;
 
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
