@@ -29,10 +29,10 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -81,7 +81,6 @@ import androidx.test.filters.FlakyTest;
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.ISub;
-import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.server.pm.PackageManagerService;
@@ -537,7 +536,7 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     private void verifyDataConnected(final String apnSetting) {
-        verify(mPhone, times(1)).notifyDataConnection(eq(Phone.REASON_CONNECTED),
+        verify(mPhone, atLeastOnce()).notifyDataConnection(
                 eq(PhoneConstants.APN_TYPE_DEFAULT));
 
         verify(mAlarmManager, times(1)).set(eq(AlarmManager.ELAPSED_REALTIME), anyLong(),
@@ -584,30 +583,9 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
         waitForMs(200);
 
-        ArgumentCaptor<String> apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
-                eq(Phone.REASON_SIM_LOADED), apnTypeArgumentCaptor.capture(),
-                eq(PhoneConstants.DataState.DISCONNECTED));
-
-        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
-
         logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
         waitForMs(200);
-
-        apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
-                eq(Phone.REASON_DATA_ATTACHED), apnTypeArgumentCaptor.capture(),
-                eq(PhoneConstants.DataState.DISCONNECTED));
-
-        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
-
-        apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
-                eq(Phone.REASON_DATA_ENABLED), apnTypeArgumentCaptor.capture(),
-                eq(PhoneConstants.DataState.DISCONNECTED));
-
-        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
 
         logd("Sending EVENT_ENABLE_NEW_APN");
         // APN id 0 is APN_TYPE_DEFAULT
@@ -634,8 +612,6 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testDataRetry() throws Exception {
-
-        //mDct.setUserDataEnabled(true);
         AsyncResult ar = new AsyncResult(null,
                 new Pair<>(true, DataEnabledSettings.REASON_USER_DATA_ENABLED), null);
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_ENABLED_CHANGED, ar));
@@ -656,36 +632,14 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
         waitForMs(200);
 
-        ArgumentCaptor<String> apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
-                eq(Phone.REASON_SIM_LOADED), apnTypeArgumentCaptor.capture(),
-                eq(PhoneConstants.DataState.DISCONNECTED));
-
-        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
-
         logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
         waitForMs(200);
-
-        apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
-                eq(Phone.REASON_DATA_ATTACHED), apnTypeArgumentCaptor.capture(),
-                eq(PhoneConstants.DataState.DISCONNECTED));
-
-        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
-
-        apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
-                eq(Phone.REASON_DATA_ENABLED), apnTypeArgumentCaptor.capture(),
-                eq(PhoneConstants.DataState.DISCONNECTED));
-
-        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
 
         logd("Sending EVENT_ENABLE_NEW_APN");
         // APN id 0 is APN_TYPE_DEFAULT
         mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
         waitForMs(200);
-
 
         dataConnectionReasons = new DataConnectionReasons();
         allowed = isDataAllowed(dataConnectionReasons);
@@ -699,10 +653,6 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
         verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
-
-        // Make sure we never notify connected because the data call setup is supposed to fail.
-        verify(mPhone, never()).notifyDataConnection(eq(Phone.REASON_CONNECTED),
-                eq(PhoneConstants.APN_TYPE_DEFAULT));
 
         // Verify the retry manger schedule another data call setup.
         verify(mAlarmManager, times(1)).setExact(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP),
