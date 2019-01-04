@@ -103,7 +103,6 @@ import com.android.internal.telephony.cdma.SmsMessageConverter;
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
 
@@ -159,9 +158,6 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         byte[] pduArray = RIL.arrayListToPrimitiveArray(pdu);
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
-
-        mRil.writeMetricsNewSms(SmsSession.Event.Tech.SMS_GSM,
-                SmsSession.Event.Format.SMS_FORMAT_3GPP);
 
         SmsMessage sms = SmsMessage.newFromCMT(pduArray);
         if (mRil.mGsmSmsRegistrant != null) {
@@ -453,9 +449,6 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.processIndication(indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
-
-        mRil.writeMetricsNewSms(SmsSession.Event.Tech.SMS_CDMA,
-                SmsSession.Event.Format.SMS_FORMAT_3GPP2);
 
         // todo: conversion from CdmaSmsMessage to SmsMessage should be contained in this class so
         // that usage of auto-generated HAL classes is limited to this file

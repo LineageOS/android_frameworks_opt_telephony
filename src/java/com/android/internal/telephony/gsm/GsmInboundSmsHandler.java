@@ -48,7 +48,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         super("GsmInboundSmsHandler", context, storageMonitor, phone,
                 GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context, phone));
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
-        mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi);
+        mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi, phone.getPhoneId());
     }
 
     /**
@@ -108,6 +108,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
             // As per 3GPP TS 23.040 9.2.3.9, Type Zero messages should not be
             // Displayed/Stored/Notified. They should only be acknowledged.
             log("Received short message type 0, Don't display or store it. Send Ack");
+            addSmsTypeZeroToMetrics();
             return Intents.RESULT_SMS_HANDLED;
         }
 
@@ -128,6 +129,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
             if (DBG) log("Received voice mail indicator clear SMS shouldStore=" + !handled);
         }
         if (handled) {
+            addVoicemailSmsToMetrics();
             return Intents.RESULT_SMS_HANDLED;
         }
 
@@ -182,5 +184,21 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
             default:
                 return CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR;
         }
+    }
+
+    /**
+     * Add SMS of type 0 to metrics.
+     */
+    private void addSmsTypeZeroToMetrics() {
+        mMetrics.writeIncomingSmsTypeZero(mPhone.getPhoneId(),
+                android.telephony.SmsMessage.FORMAT_3GPP);
+    }
+
+    /**
+     * Add voicemail indication SMS 0 to metrics.
+     */
+    private void addVoicemailSmsToMetrics() {
+        mMetrics.writeIncomingVoiceMailSms(mPhone.getPhoneId(),
+                android.telephony.SmsMessage.FORMAT_3GPP);
     }
 }
