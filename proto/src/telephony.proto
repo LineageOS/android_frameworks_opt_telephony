@@ -1389,6 +1389,9 @@ message SmsSession {
 
       // CB message received
       CB_SMS_RECEIVED = 9;
+
+      // Incomplete multipart message received
+      INCOMPLETE_SMS_RECEIVED = 10;
     }
 
     // Formats used to encode SMS messages
@@ -1465,6 +1468,33 @@ message SmsSession {
       EMERGENCY = 4;
     }
 
+    // Types of SMS messages
+    enum SmsType {
+
+      // Normal type
+      SMS_TYPE_NORMAL = 0;
+
+      // SMS-PP.
+      SMS_TYPE_SMS_PP = 1;
+
+      // Voicemail indication
+      SMS_TYPE_VOICEMAIL_INDICATION = 2;
+
+      // Type 0 message (3GPP TS 23.040 9.2.3.9)
+      SMS_TYPE_ZERO = 3;
+
+      // WAP-PUSH message
+      SMS_TYPE_WAP_PUSH = 4;
+    }
+
+    message IncompleteSms {
+      // Number of received parts
+      optional int32 received_parts = 1;
+
+      // Number of expected parts
+      optional int32 total_parts = 2;
+    }
+
     // Event type
     optional Type type = 1;
 
@@ -1492,24 +1522,35 @@ message SmsSession {
     // Technology used to send/receive SMS
     optional Tech tech = 9;
 
-    // See 3GPP 27.005, 3.2.5 for GSM/UMTS,
-    // 3GPP2 N.S0005 (IS-41C) Table 171 for CDMA,
-    // Will map to a SmsManager.RESULT_* code if ims_error is populated
+    // For outgoing SMS:
+    //  - See 3GPP 27.005, 3.2.5 for GSM/UMTS,
+    //  - 3GPP2 N.S0005 (IS-41C) Table 171 for CDMA,
+    // For incoming SMS of any type:
+    //  - it is mapped to a SmsManager.RESULT_* code
     // SmsManager can be accessed from
     // frameworks/base/telephony/java/android/telephony/SmsManager.java
     optional int32 error_code = 10;
 
-    // RIL error code
+    // RIL error code - Not used.
     optional RilErrno error = 11;
 
-    // Numeric ID
+    // Numeric ID - Used only for outgoing SMS
     optional int32 ril_request_id = 12;
 
     // Cellbroadcast message content
     optional CBMessage cell_broadcast_message = 13;
 
-    // ImsService error code.
+    // ImsService error code. Used only for outgoing SMS
     optional ImsServiceErrno ims_error = 14;
+
+    // Details of incoming incomplete multipart SMS
+    optional IncompleteSms incomplete_sms = 15;
+
+    // Indicate the type of incoming SMS
+    optional SmsType sms_type = 16;
+
+    // Indicates if the incoming SMS was blocked
+    optional bool blocked = 17;
   }
 
   // Time when session has started, in minutes since epoch,
