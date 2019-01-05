@@ -629,13 +629,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         };
         mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY,
                 wcdmaThresholds);
-        sendCarrierConfigUpdate();
-
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForMs(300);
-        assertEquals(sst.getSignalStrength().getLevel(), CellSignalStrength.SIGNAL_STRENGTH_GREAT);
-
         mBundle.putString(
                 CarrierConfigManager.KEY_WCDMA_DEFAULT_SIGNAL_STRENGTH_MEASUREMENT_STRING,
                 "rscp");
