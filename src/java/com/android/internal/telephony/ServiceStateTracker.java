@@ -3062,7 +3062,7 @@ public class ServiceStateTracker extends Handler {
             }
 
             if (hasCssIndicatorChanged) {
-                mPhone.notifyDataConnection(Phone.REASON_CSS_INDICATOR_CHANGED);
+                mPhone.notifyDataConnection();
             }
 
             mReasonDataDenied = mNewReasonDataDenied;
@@ -3199,13 +3199,7 @@ public class ServiceStateTracker extends Handler {
 
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
-
-            if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                    == mSS.getRilDataRadioTechnology()) {
-                mPhone.notifyDataConnection(Phone.REASON_IWLAN_AVAILABLE);
-            } else {
-                mPhone.notifyDataConnection(null);
-            }
+            mPhone.notifyDataConnection();
         }
 
         if (hasVoiceRoamingOn || hasVoiceRoamingOff || hasDataRoamingOn || hasDataRoamingOff) {

@@ -168,21 +168,15 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testNotifyDataConnectionFailed() throws Exception {
-        mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "BUSY", "APN_0");
-        verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(0, "BUSY", "APN_0");
+        mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "APN_0");
+        verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(0, "APN_0");
 
-        mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "LOCAL", "APN_0");
-        verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(0, "LOCAL",
-                "APN_0");
-
-        mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "LOCAL", "APN_1");
-        verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(0, "LOCAL",
-                "APN_1");
+        mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "APN_1");
+        verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(0, "APN_1");
 
         doReturn(1).when(mPhone).getSubId();
-        mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "LOCAL", "APN_1");
-        verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(1, "LOCAL",
-                "APN_1");
+        mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "APN_1");
+        verify(mTelephonyRegisteryMock).notifyDataConnectionFailedForSubscriber(1, "APN_1");
     }
 
     @Test @SmallTest
