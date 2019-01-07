@@ -1040,22 +1040,21 @@ public class DcTracker extends Handler {
             if (apnContext.isEnabled()) {
                 isAnyEnabled = true;
                 switch (apnContext.getState()) {
-                case CONNECTED:
-                case DISCONNECTING:
-                    if (VDBG) log("overall state is CONNECTED");
-                    return DctConstants.State.CONNECTED;
-                case RETRYING:
-                case CONNECTING:
-                    isConnecting = true;
-                    isFailed = false;
-                    break;
-                case IDLE:
-                case SCANNING:
-                    isFailed = false;
-                    break;
-                default:
-                    isAnyEnabled = true;
-                    break;
+                    case CONNECTED:
+                    case DISCONNECTING:
+                        if (VDBG) log("overall state is CONNECTED");
+                        return DctConstants.State.CONNECTED;
+                    case CONNECTING:
+                        isConnecting = true;
+                        isFailed = false;
+                        break;
+                    case IDLE:
+                    case RETRYING:
+                        isFailed = false;
+                        break;
+                    default:
+                        isAnyEnabled = true;
+                        break;
                 }
             }
         }
@@ -1313,7 +1312,7 @@ public class DcTracker extends Handler {
             if (VDBG) log("setupDataOnConnectableApns: apnContext " + apnContext);
 
             if (apnContext.getState() == DctConstants.State.FAILED
-                    || apnContext.getState() == DctConstants.State.SCANNING) {
+                    || apnContext.getState() == DctConstants.State.RETRYING) {
                 if (retryFailures == RetryFailures.ALWAYS) {
                     apnContext.releaseDataConnection(reason);
                 } else if (apnContext.isConcurrentVoiceAndDataAllowed() == false &&
@@ -1407,8 +1406,8 @@ public class DcTracker extends Handler {
             }
 
             // If this is a data retry, we should set the APN state to FAILED so it won't stay
-            // in SCANNING forever.
-            if (apnContext.getState() == DctConstants.State.SCANNING) {
+            // in RETRYING forever.
+            if (apnContext.getState() == DctConstants.State.RETRYING) {
                 apnContext.setState(DctConstants.State.FAILED);
                 str.append(" Stop retrying.");
             }
@@ -2148,14 +2147,12 @@ public class DcTracker extends Handler {
                     case IDLE:
                         // fall through: this is unexpected but if it happens cleanup and try setup
                     case FAILED:
-                    case SCANNING:
-                    case RETRYING: {
+                    case RETRYING:
                         // We're "READY" but not active so disconnect (cleanup = true) and
                         // connect (trySetup = true) to be sure we retry the connection.
                         trySetup = true;
                         apnContext.setReason(Phone.REASON_DATA_ENABLED);
                         break;
-                    }
                 }
             } else if (met) {
                 apnContext.setReason(Phone.REASON_DATA_DISABLED_INTERNAL);
@@ -2232,7 +2229,6 @@ public class DcTracker extends Handler {
                                                 + " curApnCtx=" + curApnCtx);
                                     }
                                     return curDc;
-                                case RETRYING:
                                 case CONNECTING:
                                     potentialDc = curDc;
                                     potentialApnCtx = curApnCtx;
@@ -2252,7 +2248,6 @@ public class DcTracker extends Handler {
                                         + " curApnCtx=" + curApnCtx);
                             }
                             return curDc;
-                        case RETRYING:
                         case CONNECTING:
                             potentialDc = curDc;
                             potentialApnCtx = curApnCtx;
@@ -2826,7 +2821,7 @@ public class DcTracker extends Handler {
         // Check if we need to retry or not.
         if (delay >= 0) {
             if (DBG) log("onDataSetupCompleteError: Try next APN. delay = " + delay);
-            apnContext.setState(DctConstants.State.SCANNING);
+            apnContext.setState(DctConstants.State.RETRYING);
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
             startAlarmForReconnect(delay, apnContext);
@@ -2929,20 +2924,6 @@ public class DcTracker extends Handler {
             notifyAllDataDisconnected();
         }
 
-    }
-
-    /**
-     * Called when EVENT_DISCONNECT_DC_RETRYING is received.
-     */
-    private void onDisconnectDcRetrying(AsyncResult ar) {
-        // We could just do this in DC!!!
-        ApnContext apnContext = getValidApnContext(ar, "onDisconnectDcRetrying");
-        if (apnContext == null) return;
-
-        apnContext.setState(DctConstants.State.RETRYING);
-        if(DBG) log("onDisconnectDcRetrying: apnContext=" + apnContext);
-
-        mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
     }
 
     private void onVoiceCallStarted() {
@@ -3528,11 +3509,6 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_DISCONNECT_DONE:
                 log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DONE msg=" + msg);
                 onDisconnectDone((AsyncResult) msg.obj);
-                break;
-
-            case DctConstants.EVENT_DISCONNECT_DC_RETRYING:
-                log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DC_RETRYING msg=" + msg);
-                onDisconnectDcRetrying((AsyncResult) msg.obj);
                 break;
 
             case DctConstants.EVENT_VOICE_CALL_STARTED:

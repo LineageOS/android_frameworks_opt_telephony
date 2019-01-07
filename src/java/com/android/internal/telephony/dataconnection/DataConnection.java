@@ -610,9 +610,6 @@ public class DataConnection extends StateMachine {
         notifyAllWithEvent(null, DctConstants.EVENT_DATA_SETUP_COMPLETE, reason);
     }
 
-    private void notifyAllOfDisconnectDcRetrying(String reason) {
-        notifyAllWithEvent(null, DctConstants.EVENT_DISCONNECT_DC_RETRYING, reason);
-    }
     private void notifyAllDisconnectCompleted(@DataFailCause.FailCause int cause) {
         notifyAllWithEvent(null, DctConstants.EVENT_DISCONNECT_DONE,
                 DataFailCause.toString(cause));
