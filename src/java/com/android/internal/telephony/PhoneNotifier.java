@@ -29,40 +29,38 @@ import java.util.List;
  */
 public interface PhoneNotifier {
 
-    public void notifyPhoneState(Phone sender);
+    void notifyPhoneState(Phone sender);
 
-    public void notifyServiceState(Phone sender);
+    void notifyServiceState(Phone sender);
 
     /** Notify registrants of the current CellLocation */
     void notifyCellLocation(Phone sender, CellLocation cl);
 
-    public void notifySignalStrength(Phone sender);
+    void notifySignalStrength(Phone sender);
 
-    public void notifyMessageWaitingChanged(Phone sender);
+    void notifyMessageWaitingChanged(Phone sender);
 
-    public void notifyCallForwardingChanged(Phone sender);
+    void notifyCallForwardingChanged(Phone sender);
 
-    /** TODO - reason should never be null */
-    public void notifyDataConnection(Phone sender, String reason, String apnType,
-            PhoneConstants.DataState state);
+    void notifyDataConnection(Phone sender, String apnType, PhoneConstants.DataState state);
 
-    public void notifyDataConnectionFailed(Phone sender, String reason, String apnType);
+    void notifyDataConnectionFailed(Phone sender, String apnType);
 
-    public void notifyDataActivity(Phone sender);
+    void notifyDataActivity(Phone sender);
 
-    public void notifyOtaspChanged(Phone sender, int otaspMode);
+    void notifyOtaspChanged(Phone sender, int otaspMode);
 
-    public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
+    void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
 
     /** Notify of change to PhysicalChannelConfiguration. */
     void notifyPhysicalChannelConfiguration(Phone sender, List<PhysicalChannelConfig> configs);
 
-    public void notifyPreciseCallState(Phone sender);
+    void notifyPreciseCallState(Phone sender);
 
-    public void notifyDisconnectCause(int cause, int preciseCause);
+    void notifyDisconnectCause(int cause, int preciseCause);
 
-    public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
-            String apn, String failCause);
+    void notifyPreciseDataConnectionFailed(Phone sender, String apnType, String apn,
+                                                  String failCause);
 
     /** send a notification that the SRVCC state has changed.*/
     void notifySrvccStateChanged(Phone sender, @TelephonyManager.SrvccState int state);

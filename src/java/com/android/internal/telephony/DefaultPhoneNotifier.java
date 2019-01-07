@@ -153,13 +153,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyDataConnection(Phone sender, String reason, String apnType,
-            PhoneConstants.DataState state) {
-        doNotifyDataConnection(sender, reason, apnType, state);
+    public void notifyDataConnection(Phone sender, String apnType,
+                                     PhoneConstants.DataState state) {
+        doNotifyDataConnection(sender, apnType, state);
     }
 
-    private void doNotifyDataConnection(Phone sender, String reason, String apnType,
-            PhoneConstants.DataState state) {
+    private void doNotifyDataConnection(Phone sender, String apnType,
+                                        PhoneConstants.DataState state) {
         int subId = sender.getSubId();
         long dds = SubscriptionManager.getDefaultDataSubscriptionId();
         if (DBG) log("subId = " + subId + ", DDS = " + dds);
@@ -184,7 +184,6 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                 mRegistry.notifyDataConnectionForSubscriber(subId,
                     PhoneConstantConversions.convertDataState(state),
                         sender.isDataAllowed(ApnSetting.getApnTypesBitmaskFromString(apnType)),
-                        reason,
                         sender.getActiveApnHost(apnType),
                         apnType,
                         linkProperties,
@@ -198,11 +197,11 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyDataConnectionFailed(Phone sender, String reason, String apnType) {
+    public void notifyDataConnectionFailed(Phone sender, String apnType) {
         int subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyDataConnectionFailedForSubscriber(subId, reason, apnType);
+                mRegistry.notifyDataConnectionFailedForSubscriber(subId, apnType);
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -286,11 +285,11 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
-    public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
+    public void notifyPreciseDataConnectionFailed(Phone sender, String apnType,
             String apn, String failCause) {
         // FIXME: subId?
         try {
-            mRegistry.notifyPreciseDataConnectionFailed(reason, apnType, apn, failCause);
+            mRegistry.notifyPreciseDataConnectionFailed(apnType, apn, failCause);
         } catch (RemoteException ex) {
             // system process is dead
         }
