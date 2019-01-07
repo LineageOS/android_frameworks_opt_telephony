@@ -2207,20 +2207,19 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyMessageWaitingChanged(this);
     }
 
-    public void notifyDataConnection(String reason, String apnType,
-            PhoneConstants.DataState state) {
-        mNotifier.notifyDataConnection(this, reason, apnType, state);
+    public void notifyDataConnection(String apnType, PhoneConstants.DataState state) {
+        mNotifier.notifyDataConnection(this, apnType, state);
     }
 
-    public void notifyDataConnection(String reason, String apnType) {
-        mNotifier.notifyDataConnection(this, reason, apnType, getDataConnectionState(apnType));
+    public void notifyDataConnection(String apnType) {
+        mNotifier.notifyDataConnection(this, apnType, getDataConnectionState(apnType));
     }
 
-    public void notifyDataConnection(String reason) {
+    public void notifyDataConnection() {
         String types[] = getActiveApnTypes();
         if (types != null) {
             for (String apnType : types) {
-                mNotifier.notifyDataConnection(this, reason, apnType,
+                mNotifier.notifyDataConnection(this, apnType,
                         getDataConnectionState(apnType));
             }
         }
@@ -3092,13 +3091,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void notifyCallForwardingIndicator() {
     }
 
-    public void notifyDataConnectionFailed(String reason, String apnType) {
-        mNotifier.notifyDataConnectionFailed(this, reason, apnType);
+    public void notifyDataConnectionFailed(String apnType) {
+        mNotifier.notifyDataConnectionFailed(this, apnType);
     }
 
-    public void notifyPreciseDataConnectionFailed(String reason, String apnType, String apn,
+    public void notifyPreciseDataConnectionFailed(String apnType, String apn,
             String failCause) {
-        mNotifier.notifyPreciseDataConnectionFailed(this, reason, apnType, apn, failCause);
+        mNotifier.notifyPreciseDataConnectionFailed(this, apnType, apn, failCause);
     }
 
     /**

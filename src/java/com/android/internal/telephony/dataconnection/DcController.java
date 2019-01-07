@@ -35,7 +35,6 @@ import android.telephony.data.DataCallResponse;
 
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -395,9 +394,7 @@ public class DcController extends StateMachine {
                                         if (DBG) log("onDataStateChanged: simple change");
 
                                         for (ApnContext apnContext : apnContexts) {
-                                             mPhone.notifyDataConnection(
-                                                 PhoneConstants.REASON_LINK_PROPERTIES_CHANGED,
-                                                 apnContext.getApnType());
+                                            mPhone.notifyDataConnection(apnContext.getApnType());
                                         }
                                     }
                                 } else {
