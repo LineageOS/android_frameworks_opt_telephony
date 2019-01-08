@@ -600,10 +600,14 @@ public class UiccController extends Handler {
             final UiccSlot slot = mUiccSlots[slotIndex];
             boolean isEuicc = slot.isEuicc();
             String eid = null;
-            String iccid = slot.getUiccCard().getIccId();
+            UiccCard card = slot.getUiccCard();
+            if (card == null) {
+                continue;
+            }
+            String iccid = card.getIccId();
             int cardId = INVALID_CARD_ID;
             if (isEuicc) {
-                eid = slot.getUiccCard().getCardId();
+                eid = card.getCardId();
                 cardId = convertToPublicCardId(eid);
             } else {
                 // leave eid null if the UICC is not embedded
