@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.telephony.CallQuality;
 import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -131,6 +132,10 @@ abstract class ImsPhoneBase extends Phone {
     public void onTtyModeReceived(int mode) {
         AsyncResult result = new AsyncResult(null, Integer.valueOf(mode), null);
         mTtyModeReceivedRegistrants.notifyRegistrants(result);
+    }
+
+    public void onCallQualityChanged(CallQuality callQuality) {
+        mNotifier.notifyCallQualityChanged(this, callQuality);
     }
 
     @Override
