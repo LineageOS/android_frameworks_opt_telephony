@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,10 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.ServiceManager;
+import android.provider.BaseColumns;
+import android.provider.Telephony;
 import android.telephony.Rlog;
 import android.telephony.ims.Rcs1To1Thread;
 import android.telephony.ims.RcsMessageStore;
@@ -114,7 +117,6 @@ public class RcsMessageStoreController extends IRcs.Stub {
     @Override
     public Rcs1To1Thread createRcs1To1Thread(RcsParticipant recipient) {
         // TODO - use recipient to add a thread
-
         ContentValues contentValues = new ContentValues(0);
         mContentResolver.insert(RcsThreadQueryHelper.THREADS_URI, contentValues);
 
@@ -123,12 +125,78 @@ public class RcsMessageStoreController extends IRcs.Stub {
 
     @Override
     public RcsParticipant createRcsParticipant(String canonicalAddress) {
-        // TODO - refine implementation to disallow duplicate participants
-        ContentValues contentValues = new ContentValues();
-        contentValues.put(PARTICIPANT_ADDRESS_KEY, canonicalAddress);
-        mContentResolver.insert(RcsThreadQueryHelper.PARTICIPANTS_URI, contentValues);
+        // Lookup the participant in RcsProvider to get the canonical row id in MmsSmsProvider
+        int rowInCanonicalAddressesTable = Integer.MIN_VALUE;
+        try (Cursor cursor = mContentResolver.query(
+                RcsParticipantQueryHelper.CANONICAL_ADDRESSES_URI,
+                new String[]{BaseColumns._ID}, Telephony.CanonicalAddressesColumns.ADDRESS + "=?",
+                new String[] {canonicalAddress}, null)) {
+            if (cursor != null && cursor.getCount() == 1 && cursor.moveToNext()) {
+                rowInCanonicalAddressesTable = cursor.getInt(0);
+            }
+        }
 
-        // TODO - return the newly created participant
-        return null;
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(Telephony.CanonicalAddressesColumns.ADDRESS, canonicalAddress);
+
+        if (rowInCanonicalAddressesTable == Integer.MIN_VALUE) {
+            // We couldn't find any existing canonical addresses. Add a new one.
+            Uri newCanonicalAddress = mContentResolver.insert(
+                    RcsParticipantQueryHelper.CANONICAL_ADDRESSES_URI, contentValues);
+            if (newCanonicalAddress != null) {
+                try {
+                    rowInCanonicalAddressesTable = Integer.parseInt(
+                            newCanonicalAddress.getLastPathSegment());
+                } catch (NumberFormatException e) {
+                    Rlog.e(TAG, "Uri returned after canonical address insertion is malformed: "
+                            + newCanonicalAddress, e);
+                    return null;
+                }
+            }
+        }
+
+        // Now we have a row in canonical_addresses table, and its value is in
+        // rowInCanonicalAddressesTable. Put this row id in RCS participants table.
+        contentValues.clear();
+        contentValues.put(RcsParticipantQueryHelper.RCS_CANONICAL_ADDRESS_ID,
+                rowInCanonicalAddressesTable);
+
+        Uri newParticipantUri = mContentResolver.insert(RcsParticipantQueryHelper.PARTICIPANTS_URI,
+                contentValues);
+        int newParticipantRowId;
+
+        try {
+            if (newParticipantUri != null) {
+                newParticipantRowId = Integer.parseInt(newParticipantUri.getLastPathSegment());
+            } else {
+                Rlog.e(TAG, "Error inserting new participant into RcsProvider");
+                return null;
+            }
+        } catch (NumberFormatException e) {
+            Rlog.e(TAG,
+                    "Uri returned after creating a participant is malformed: " + newParticipantUri);
+            return null;
+        }
+
+        return new RcsParticipant(newParticipantRowId, canonicalAddress);
+    }
+
+    /**
+     * TODO(sahinc) Instead of sending the update query directly to RcsProvider, this function
+     * orchestrates between RcsProvider and MmsSmsProvider. This is because we are not fully decided
+     * on whether we should have RCS storage in a separate database file.
+     */
+    @Override
+    public void updateRcsParticipantCanonicalAddress(int id, String canonicalAddress) {
+        // TODO - implement
+    }
+
+    @Override
+    public void updateRcsParticipantAlias(int id, String alias) {
+        ContentValues contentValues = new ContentValues(1);
+        contentValues.put(RcsParticipantQueryHelper.RCS_ALIAS_COLUMN, alias);
+
+        mContentResolver.update(RcsParticipantQueryHelper.PARTICIPANTS_URI, contentValues,
+                BaseColumns._ID + "=?", new String[] {Integer.toString(id)});
     }
 }
