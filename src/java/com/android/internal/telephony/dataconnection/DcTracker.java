@@ -1111,7 +1111,7 @@ public class DcTracker extends Handler {
         if (mAutoAttachOnCreationConfig) {
             mAutoAttachOnCreation.set(true);
         }
-        setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED);
+        setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED, RetryFailures.ALWAYS);
     }
 
     /**
@@ -1290,10 +1290,6 @@ public class DcTracker extends Handler {
         // 2) our apn list has change
         ONLY_ON_CHANGE
     };
-
-    private void setupDataOnConnectableApns(String reason) {
-        setupDataOnConnectableApns(reason, RetryFailures.ALWAYS);
-    }
 
     private void setupDataOnConnectableApns(String reason, RetryFailures retryFailures) {
         if (VDBG) log("setupDataOnConnectableApns: " + reason);
@@ -1951,7 +1947,7 @@ public class DcTracker extends Handler {
 
         // FIXME: See bug 17426028 maybe no conditional is needed.
         if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubscriptionId()) {
-            setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
+            setupDataOnConnectableApns(Phone.REASON_APN_CHANGED, RetryFailures.ALWAYS);
         }
     }
 
@@ -2106,7 +2102,7 @@ public class DcTracker extends Handler {
             if (DBG) log("onRecordsLoadedOrSubIdChanged: notifying data availability");
             notifyOffApnsOfAvailability();
         }
-        setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
+        setupDataOnConnectableApns(Phone.REASON_SIM_LOADED, RetryFailures.ALWAYS);
     }
 
     private void onSimNotReady() {
@@ -2300,20 +2296,8 @@ public class DcTracker extends Handler {
             if(DBG) log("onEnableApn: isOnlySingleDcAllowed true & higher priority APN disabled");
             // If the highest priority APN is disabled and only single
             // data call is allowed, try to setup data call on other connectable APN.
-            setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+            setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION, RetryFailures.ALWAYS);
         }
-    }
-
-    // TODO: We shouldnt need this.
-    private boolean onTrySetupData(String reason) {
-        if (DBG) log("onTrySetupData: reason=" + reason);
-        setupDataOnConnectableApns(reason);
-        return true;
-    }
-
-    private boolean onTrySetupData(ApnContext apnContext) {
-        if (DBG) log("onTrySetupData: apnContext=" + apnContext);
-        return trySetupData(apnContext);
     }
 
     /**
@@ -2456,7 +2440,7 @@ public class DcTracker extends Handler {
             // non-roaming, we should try to reestablish the data connection.
 
             notifyOffApnsOfAvailability();
-            setupDataOnConnectableApns(Phone.REASON_ROAMING_OFF);
+            setupDataOnConnectableApns(Phone.REASON_ROAMING_OFF, RetryFailures.ALWAYS);
         } else {
             notifyDataConnection();
         }
@@ -2488,7 +2472,7 @@ public class DcTracker extends Handler {
 
             if (DBG) log("onDataRoamingOnOrSettingsChanged: setup data on roaming");
 
-            setupDataOnConnectableApns(Phone.REASON_ROAMING_ON);
+            setupDataOnConnectableApns(Phone.REASON_ROAMING_ON, RetryFailures.ALWAYS);
             notifyDataConnection();
         } else {
             // If the user does not turn on data roaming, when we transit from non-roaming to
@@ -2909,7 +2893,8 @@ public class DcTracker extends Handler {
             apnContext.setDataConnection(null);
             if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())) {
                 if(DBG) log("onDisconnectDone: isOnlySigneDcAllowed true so setup single apn");
-                setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+                setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION,
+                        RetryFailures.ALWAYS);
             } else {
                 if(DBG) log("onDisconnectDone: not retrying");
             }
@@ -2951,7 +2936,7 @@ public class DcTracker extends Handler {
             }
         }
         // reset reconnect timer
-        setupDataOnConnectableApns(Phone.REASON_VOICE_CALL_ENDED);
+        setupDataOnConnectableApns(Phone.REASON_VOICE_CALL_ENDED, RetryFailures.ALWAYS);
     }
 
     private boolean isConnected() {
@@ -3416,9 +3401,7 @@ public class DcTracker extends Handler {
 
             case DctConstants.EVENT_TRY_SETUP_DATA:
                 if (msg.obj instanceof ApnContext) {
-                    onTrySetupData((ApnContext)msg.obj);
-                } else if (msg.obj instanceof String) {
-                    onTrySetupData((String)msg.obj);
+                    trySetupData((ApnContext) msg.obj);
                 } else {
                     loge("EVENT_TRY_SETUP request w/o apnContext or String");
                 }
@@ -3758,7 +3741,7 @@ public class DcTracker extends Handler {
 
         if (enable) {
             reevaluateDataConnections();
-            onTrySetupData(Phone.REASON_DATA_ENABLED);
+            setupDataOnConnectableApns(Phone.REASON_DATA_ENABLED, RetryFailures.ALWAYS);
         } else {
             String cleanupReason;
             switch (enabledChangedReason) {
