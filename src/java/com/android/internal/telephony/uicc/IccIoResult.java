@@ -192,9 +192,7 @@ IccIoResult {
                 + " sw2:0x"
                 + Integer.toHexString(sw2)
                 + " Payload: "
-                + ((Build.IS_DEBUGGABLE && Build.IS_ENG)
-                        ? IccUtils.bytesToHexString(payload)
-                        : "*******")
+                + (Build.IS_DEBUGGABLE ? IccUtils.bytesToHexString(payload) : "*******")
                 + ((!success()) ? " Error: " + getErrorString() : "");
     }
 
