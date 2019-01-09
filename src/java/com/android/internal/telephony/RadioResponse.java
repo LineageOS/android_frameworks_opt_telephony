@@ -349,6 +349,24 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dataRegResponse Current Data registration response as defined by DataRegStateResult in
+     *        1.4/types.hal
+     */
+    public void getDataRegistrationStateResponse_1_4(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_4.DataRegStateResult dataRegResponse) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dataRegResponse);
+            }
+            mRil.processResponseDone(rr, responseInfo, dataRegResponse);
+        }
+    }
+
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param longName is long alpha ONS or EONS or empty string if unregistered
      * @param shortName is short alpha ONS or EONS or empty string if unregistered
      * @param numeric is 5 or 6 digit numeric code (MCC + MNC) or empty string if unregistered
