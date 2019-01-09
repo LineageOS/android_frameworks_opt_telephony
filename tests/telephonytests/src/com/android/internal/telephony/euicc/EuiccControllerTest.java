@@ -711,18 +711,24 @@ public class EuiccControllerTest extends TelephonyTest {
                 EuiccOperation.ACTION_SWITCH_NO_PRIVILEGES);
     }
 
-    @Test(expected = SecurityException.class)
+    @Test
     public void testUpdateSubscriptionNickname_noPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(false);
         callUpdateSubscriptionNickname(
-                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, 0 /* result */);
+                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, 0 /* result */,
+                PACKAGE_NAME);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).updateSubscriptionNickname(anyString(), anyString(), any());
     }
 
     @Test
     public void testUpdateSubscriptionNickname_noSuchSubscription() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callUpdateSubscriptionNickname(
-                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, 0 /* result */);
+                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, 0 /* result */,
+                PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).updateSubscriptionNickname(anyString(), anyString(), any());
@@ -733,7 +739,8 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         prepareOperationSubscription(false /* hasPrivileges */);
         callUpdateSubscriptionNickname(
-                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, 0 /* result */);
+                SUBSCRIPTION_ID, ICC_ID, "nickname", false /* complete */, 0 /* result */,
+                PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector).updateSubscriptionNickname(anyString(), anyString(), any());
@@ -744,7 +751,8 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         prepareOperationSubscription(false /* hasPrivileges */);
         callUpdateSubscriptionNickname(
-                SUBSCRIPTION_ID, ICC_ID, "nickname", true /* complete */, 42 /* result */);
+                SUBSCRIPTION_ID, ICC_ID, "nickname", true /* complete */, 42 /* result */,
+                PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 42 /* detailedCode */);
     }
@@ -754,7 +762,8 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(true);
         prepareOperationSubscription(false /* hasPrivileges */);
         callUpdateSubscriptionNickname(
-                SUBSCRIPTION_ID, ICC_ID, "nickname", true /* complete */, EuiccService.RESULT_OK);
+                SUBSCRIPTION_ID, ICC_ID, "nickname", true /* complete */, EuiccService.RESULT_OK,
+                PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
     }
 
@@ -1032,7 +1041,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     private void callUpdateSubscriptionNickname(int subscriptionId, String iccid, String nickname,
-            final boolean complete, final int result) {
+            final boolean complete, final int result, String callingPackage) {
         PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
         doAnswer(new Answer<Void>() {
             @Override
@@ -1046,7 +1055,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 return null;
             }
         }).when(mMockConnector).updateSubscriptionNickname(eq(iccid), eq(nickname), any());
-        mController.updateSubscriptionNickname(subscriptionId, nickname, resultCallback);
+        mController.updateSubscriptionNickname(subscriptionId, nickname, callingPackage,
+                resultCallback);
     }
 
     private void callEraseSubscriptions(final boolean complete, final int result) {
