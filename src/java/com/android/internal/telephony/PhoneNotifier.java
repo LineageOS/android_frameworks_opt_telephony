@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
+import android.telephony.DataFailCause;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.TelephonyManager;
@@ -59,8 +60,8 @@ public interface PhoneNotifier {
 
     void notifyDisconnectCause(int cause, int preciseCause);
 
-    void notifyPreciseDataConnectionFailed(Phone sender, String apnType, String apn,
-                                                  String failCause);
+    public void notifyPreciseDataConnectionFailed(Phone sender, String apnType, String apn,
+                                                  @DataFailCause.FailCause int failCause);
 
     /** send a notification that the SRVCC state has changed.*/
     void notifySrvccStateChanged(Phone sender, @TelephonyManager.SrvccState int state);
