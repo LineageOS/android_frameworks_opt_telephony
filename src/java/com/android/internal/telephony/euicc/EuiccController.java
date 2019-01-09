@@ -642,7 +642,7 @@ public class EuiccController extends IEuiccController.Stub {
             }
 
             if (!callerCanWriteEmbeddedSubscriptions
-                    && !sub.canManageSubscription(mContext, callingPackage)) {
+                    && !mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
                 Log.e(TAG, "No permissions: " + subscriptionId);
                 sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                 return;
@@ -809,11 +809,10 @@ public class EuiccController extends IEuiccController.Stub {
 
     @Override
     public void updateSubscriptionNickname(int subscriptionId, String nickname,
-            PendingIntent callbackIntent) {
-        if (!callerCanWriteEmbeddedSubscriptions()) {
-            throw new SecurityException(
-                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to update nickname");
-        }
+            String callingPackage, PendingIntent callbackIntent) {
+        boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+
         long token = Binder.clearCallingIdentity();
         try {
             SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
@@ -822,6 +821,14 @@ public class EuiccController extends IEuiccController.Stub {
                 sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                 return;
             }
+
+            if (!callerCanWriteEmbeddedSubscriptions
+                    && !mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
+                Log.e(TAG, "No permissions: " + subscriptionId);
+                sendResult(callbackIntent, ERROR, null /* extrasIntent */);
+                return;
+            }
+
             mConnector.updateSubscriptionNickname(
                     sub.getIccId(), nickname,
                     new EuiccConnector.UpdateNicknameCommandCallback() {
@@ -832,7 +839,9 @@ public class EuiccController extends IEuiccController.Stub {
                             switch (result) {
                                 case EuiccService.RESULT_OK:
                                     resultCode = OK;
-                                    break;
+                                    refreshSubscriptionsAndSendResult(
+                                            callbackIntent, resultCode, extrasIntent);
+                                    return;
                                 default:
                                     resultCode = ERROR;
                                     extrasIntent.putExtra(
