@@ -319,4 +319,29 @@ public class UiccControllerTest extends TelephonyTest {
                 0);        // slotIndex
         assertEquals(uiccCardInfo, mUiccControllerUT.getAllUiccCardInfos().get(0));
     }
+
+    @Test
+    public void testGetAllUiccCardInfosNullCard() {
+        // Give UiccController a real context so it can use shared preferences
+        mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
+
+        // Mock out UiccSlots
+        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        doReturn(true).when(mMockSlot).isEuicc();
+        doReturn(null).when(mMockSlot).getUiccCard();
+
+        // simulate card status loaded so that the UiccController sets the card ID
+        IccCardStatus ics = new IccCardStatus();
+        ics.setCardState(1 /* present */);
+        ics.setUniversalPinState(3 /* disabled */);
+        ics.atr = "abcdef0123456789abcdef";
+        ics.iccid = "123451234567890";
+        ics.eid = "A1B2C3D4";
+        AsyncResult ar = new AsyncResult(null, ics, null);
+        Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
+        mUiccControllerUT.handleMessage(msg);
+
+        // assert that the getAllUiccCardInfos returns an empty list without crashing
+        assertEquals(0, mUiccControllerUT.getAllUiccCardInfos().size());
+    }
 }
