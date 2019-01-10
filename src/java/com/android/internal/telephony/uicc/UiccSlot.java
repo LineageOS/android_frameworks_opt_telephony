@@ -201,7 +201,14 @@ public class UiccSlot extends Handler {
     }
 
     public boolean isStateUnknown() {
-        return (mCardState == null || mCardState == CardState.CARDSTATE_ABSENT) && mStateIsUnknown;
+        if (mCardState == null || mCardState == CardState.CARDSTATE_ABSENT) {
+            // mStateIsUnknown is valid only in this scenario.
+            return mStateIsUnknown;
+        }
+        // if mUiccCard is null, assume the state to be UNKNOWN for now.
+        // The state may be known but since the actual card object is not available,
+        // it is safer to return UNKNOWN.
+        return mUiccCard == null;
     }
 
     private void checkIsEuiccSupported() {
