@@ -31,6 +31,7 @@ public class EmergencyNumberTest extends TestCase {
                 "us",
                 "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
         assertEquals(number.getNumber(), "911");
@@ -81,6 +82,7 @@ public class EmergencyNumberTest extends TestCase {
                 "us",
                 "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD,
+                new ArrayList<String>(),
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
                         | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
@@ -139,6 +141,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
+                new ArrayList<String>(),
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
                         | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM
                         | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT,
@@ -206,6 +209,7 @@ public class EmergencyNumberTest extends TestCase {
                 "us",
                 "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
@@ -216,6 +220,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
+                new ArrayList<String>(),
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
@@ -226,6 +231,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
                         | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
+                new ArrayList<String>(),
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG
                         | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DEFAULT,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);

@@ -75,6 +75,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private void initializeEmergencyNumberListTestSamples() {
         EmergencyNumber emergencyNumberForTest = new EmergencyNumber("119", "jp", "30",
                 EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                new ArrayList<String>(),
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
         mEmergencyNumberListTestSample.add(emergencyNumberForTest);
