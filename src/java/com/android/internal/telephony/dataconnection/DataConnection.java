@@ -598,23 +598,12 @@ public class DataConnection extends StateMachine {
             ApnContext apnContext = cp.mApnContext;
             if (apnContext == alreadySent) continue;
             if (reason != null) apnContext.setReason(reason);
-            Pair<ApnContext, Integer> pair =
-                    new Pair<ApnContext, Integer>(apnContext, cp.mConnectionGeneration);
+            Pair<ApnContext, Integer> pair = new Pair<>(apnContext, cp.mConnectionGeneration);
             Message msg = mDct.obtainMessage(event, pair);
             AsyncResult.forMessage(msg);
             msg.sendToTarget();
         }
     }
-
-    private void notifyAllOfConnected(String reason) {
-        notifyAllWithEvent(null, DctConstants.EVENT_DATA_SETUP_COMPLETE, reason);
-    }
-
-    private void notifyAllDisconnectCompleted(@DataFailCause.FailCause int cause) {
-        notifyAllWithEvent(null, DctConstants.EVENT_DISCONNECT_DONE,
-                DataFailCause.toString(cause));
-    }
-
 
     /**
      * Send the connectionCompletedMsg.
@@ -1507,7 +1496,8 @@ public class DataConnection extends StateMachine {
                     log("DcInactiveState: enter notifyAllDisconnectCompleted failCause="
                             + mDcFailCause);
                 }
-                notifyAllDisconnectCompleted(mDcFailCause);
+                notifyAllWithEvent(null, DctConstants.EVENT_DISCONNECT_DONE,
+                        DataFailCause.toString(mDcFailCause));
             }
 
             // Remove ourselves from cid mapping, before clearSettings
@@ -1705,7 +1695,8 @@ public class DataConnection extends StateMachine {
             updateNetworkInfo();
 
             // If we were retrying there maybe more than one, otherwise they'll only be one.
-            notifyAllOfConnected(Phone.REASON_CONNECTED);
+            notifyAllWithEvent(null, DctConstants.EVENT_DATA_SETUP_COMPLETE,
+                    Phone.REASON_CONNECTED);
 
             mPhone.getCallTracker().registerForVoiceCallStarted(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED, null);
