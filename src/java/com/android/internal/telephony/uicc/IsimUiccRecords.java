@@ -362,6 +362,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     private void broadcastRefresh() {
         Intent intent = new Intent(INTENT_ISIM_REFRESH);
         log("send ISim REFRESH: " + INTENT_ISIM_REFRESH);
+        intent.putExtra("PHONE_ID", mParentApp.getPhoneId());
         mContext.sendBroadcast(intent);
     }
 
