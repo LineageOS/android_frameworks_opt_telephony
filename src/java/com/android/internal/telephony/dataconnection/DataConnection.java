@@ -1184,6 +1184,26 @@ public class DataConnection extends StateMachine {
                     throw new UnknownHostException("Empty dns response and no system default dns");
                 }
 
+                // set pcscf
+                if (response.getPcscfs().size() > 0) {
+                    for (String pcscf : response.getPcscfs()) {
+                        if (pcscf == null) continue;
+                        pcscf = pcscf.trim();
+                        if (pcscf.isEmpty()) continue;
+                        InetAddress ia;
+                        try {
+                            ia = NetworkUtils.numericToInetAddress(pcscf);
+                        } catch (IllegalArgumentException e) {
+                            throw new UnknownHostException("Non-numeric pcscf addr=" + pcscf);
+                        }
+                        if (!ia.isAnyLocalAddress()) {
+                            linkProperties.addPcscfServer(ia);
+                        } else {
+                            log("bad address in PCSCF");
+                        }
+                    }
+                }
+
                 for (InetAddress gateway : response.getGateways()) {
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
