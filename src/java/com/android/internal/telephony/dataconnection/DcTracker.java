@@ -2577,15 +2577,8 @@ public class DcTracker extends Handler {
      * A SETUP (aka bringUp) has completed, possibly with an error. If
      * there is an error this method will call {@link #onDataSetupCompleteError}.
      */
-    private void onDataSetupComplete(AsyncResult ar) {
-
-        int cause = DataFailCause.UNKNOWN;
-        boolean handleError = false;
-        ApnContext apnContext = getValidApnContext(ar, "onDataSetupComplete");
-
-        if (apnContext == null) return;
-
-        if (ar.exception == null) {
+    private void onDataSetupComplete(ApnContext apnContext, boolean success, int cause) {
+        if (success) {
             DataConnection dataConnection = apnContext.getDataConnection();
 
             if (RADIO_TESTS) {
@@ -2608,8 +2601,7 @@ public class DcTracker extends Handler {
             }
             if (dataConnection == null) {
                 log("onDataSetupComplete: no connection to DC, handle as error");
-                cause = DataFailCause.CONNECTION_TO_DATACONNECTIONAC_BROKEN;
-                handleError = true;
+                onDataSetupCompleteError(apnContext);
             } else {
                 ApnSetting apn = apnContext.getApnSetting();
                 if (DBG) {
@@ -2720,7 +2712,6 @@ public class DcTracker extends Handler {
                 }
             }
         } else {
-            cause = (int) (ar.result);
             if (DBG) {
                 ApnSetting apn = apnContext.getApnSetting();
                 log(String.format("onDataSetupComplete: error apn=%s cause=%s",
@@ -2755,37 +2746,8 @@ public class DcTracker extends Handler {
                 log("cause = " + cause + ", mark apn as permanent failed. apn = " + apn);
                 apnContext.markApnPermanentFailed(apn);
             }
-
-            handleError = true;
+            onDataSetupCompleteError(apnContext);
         }
-
-        if (handleError) {
-            onDataSetupCompleteError(ar);
-        }
-    }
-
-    /**
-     * check for obsolete messages.  Return ApnContext if valid, null if not
-     */
-    private ApnContext getValidApnContext(AsyncResult ar, String logString) {
-        if (ar != null && ar.userObj instanceof Pair) {
-            Pair<ApnContext, Integer>pair = (Pair<ApnContext, Integer>)ar.userObj;
-            ApnContext apnContext = pair.first;
-            if (apnContext != null) {
-                final int generation = apnContext.getConnectionGeneration();
-                if (DBG) {
-                    log("getValidApnContext (" + logString + ") on " + apnContext + " got " +
-                            generation + " vs " + pair.second);
-                }
-                if (generation == pair.second) {
-                    return apnContext;
-                } else {
-                    log("ignoring obsolete " + logString);
-                    return null;
-                }
-            }
-        }
-        throw new RuntimeException(logString + ": No apnContext");
     }
 
     /**
@@ -2794,12 +2756,7 @@ public class DcTracker extends Handler {
      * beginning if the list is empty. Between each SETUP request there will
      * be a delay defined by {@link #getApnDelay()}.
      */
-    private void onDataSetupCompleteError(AsyncResult ar) {
-
-        ApnContext apnContext = getValidApnContext(ar, "onDataSetupCompleteError");
-
-        if (apnContext == null) return;
-
+    private void onDataSetupCompleteError(ApnContext apnContext) {
         long delay = apnContext.getDelayForNextApn(mFailFast);
 
         // Check if we need to retry or not.
@@ -2834,10 +2791,7 @@ public class DcTracker extends Handler {
     /**
      * Called when EVENT_DISCONNECT_DONE is received.
      */
-    private void onDisconnectDone(AsyncResult ar) {
-        ApnContext apnContext = getValidApnContext(ar, "onDisconnectDone");
-        if (apnContext == null) return;
-
+    private void onDisconnectDone(ApnContext apnContext) {
         if(DBG) log("onDisconnectDone: EVENT_DISCONNECT_DONE apnContext=" + apnContext);
         apnContext.setState(DctConstants.State.IDLE);
 
@@ -3329,6 +3283,10 @@ public class DcTracker extends Handler {
     public void handleMessage (Message msg) {
         if (VDBG) log("handleMessage msg=" + msg);
 
+        AsyncResult ar;
+        Pair<ApnContext, Integer> pair;
+        ApnContext apnContext;
+        int generation;
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
                 // If onRecordsLoadedOrSubIdChanged() is not called here, it should be called on
@@ -3386,7 +3344,7 @@ public class DcTracker extends Handler {
                         cleanUpAllConnectionsInternal(false, Phone.REASON_PS_RESTRICT_ENABLED);
                         mReregisterOnReconnectFailure = false;
                     }
-                    ApnContext apnContext = mApnContextsByType.get(ApnSetting.TYPE_DEFAULT);
+                    apnContext = mApnContextsByType.get(ApnSetting.TYPE_DEFAULT);
                     if (apnContext != null) {
                         apnContext.setReason(Phone.REASON_PS_RESTRICT_ENABLED);
                         trySetupData(apnContext);
@@ -3471,16 +3429,49 @@ public class DcTracker extends Handler {
                 break;
 
             case DctConstants.EVENT_DATA_SETUP_COMPLETE:
-                onDataSetupComplete((AsyncResult) msg.obj);
+                ar = (AsyncResult) msg.obj;
+                pair = (Pair<ApnContext, Integer>) ar.userObj;
+                apnContext = pair.first;
+                generation = pair.second;
+                if (apnContext.getConnectionGeneration() == generation) {
+                    boolean success = true;
+                    int cause = DataFailCause.UNKNOWN;
+                    if (ar.exception != null) {
+                        success = false;
+                        cause = (int) ar.result;
+                    }
+                    onDataSetupComplete(apnContext, success, cause);
+                } else {
+                    loge("EVENT_DATA_SETUP_COMPLETE: Dropped the event because generation "
+                            + "did not match.");
+                }
                 break;
 
             case DctConstants.EVENT_DATA_SETUP_COMPLETE_ERROR:
-                onDataSetupCompleteError((AsyncResult) msg.obj);
+                ar = (AsyncResult) msg.obj;
+                pair = (Pair<ApnContext, Integer>) ar.userObj;
+                apnContext = pair.first;
+                generation = pair.second;
+                if (apnContext.getConnectionGeneration() == generation) {
+                    onDataSetupCompleteError(apnContext);
+                } else {
+                    loge("EVENT_DATA_SETUP_COMPLETE_ERROR: Dropped the event because generation "
+                            + "did not match.");
+                }
                 break;
 
             case DctConstants.EVENT_DISCONNECT_DONE:
-                log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DONE msg=" + msg);
-                onDisconnectDone((AsyncResult) msg.obj);
+                log("EVENT_DISCONNECT_DONE msg=" + msg);
+                ar = (AsyncResult) msg.obj;
+                pair = (Pair<ApnContext, Integer>) ar.userObj;
+                apnContext = pair.first;
+                generation = pair.second;
+                if (apnContext.getConnectionGeneration() == generation) {
+                    onDisconnectDone(apnContext);
+                } else {
+                    loge("EVENT_DISCONNECT_DONE: Dropped the event because generation "
+                            + "did not match.");
+                }
                 break;
 
             case DctConstants.EVENT_VOICE_CALL_STARTED:
@@ -3621,7 +3612,7 @@ public class DcTracker extends Handler {
                 onDataServiceBindingChanged((Boolean) ((AsyncResult) msg.obj).result);
                 break;
             case DctConstants.EVENT_DATA_ENABLED_CHANGED:
-                AsyncResult ar = (AsyncResult) msg.obj;
+                ar = (AsyncResult) msg.obj;
                 if (ar.result instanceof Pair) {
                     Pair<Boolean, Integer> p = (Pair<Boolean, Integer>) ar.result;
                     boolean enabled = p.first;
