@@ -46,11 +46,9 @@ import android.provider.Settings;
 import android.telecom.ConferenceParticipant;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.PreciseDisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -2342,7 +2340,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         dialPendingMO();
                     }
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
-                } else if (mPendingMO.isEmergency()) {
+                } else if (mPendingMO != null && mPendingMO.isEmergency()) {
                     // If mPendingMO is an emergency call, disconnect the call that we tried to
                     // hold.
                     mBackgroundCall.getImsCall().terminate(ImsReasonInfo.CODE_UNSPECIFIED);
