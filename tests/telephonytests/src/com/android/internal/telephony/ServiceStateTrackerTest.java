@@ -71,6 +71,7 @@ import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.INetworkService;
+import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
 import android.telephony.PhysicalChannelConfig;
@@ -484,8 +485,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // The service state of GsmCdmaPhone is STATE_OUT_OF_SERVICE, and IMS is unregistered.
         ServiceState ss = new ServiceState();
         ss.setVoiceRegState(ServiceState.STATE_OUT_OF_SERVICE);
-        sst.mSS = ss;
 
+        sst.mSS = ss;
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_IMS_SERVICE_STATE_CHANGED));
         waitForMs(200);
 
@@ -1570,8 +1571,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     private void changeRegState(int state, CellIdentity cid, int voiceRat, int dataRat) {
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                    LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                0, 0, state, dataRat, 0, false, null, cid, 1, false, false, false);
+                0, 0, state, dataRat, 0, false, null, cid, 1, false, false, false,
+                lteVopsSupportInfo);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
@@ -1661,9 +1666,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     private void sendRegStateUpdateForLteCellId(CellIdentityLte cellId) {
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                    LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
                 2, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1,
-                false, false, false);
+                false, false, false, lteVopsSupportInfo);
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
                 1, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId,
                 false, 0, 0, 0);
@@ -1725,9 +1733,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     public void testPhyChanBandwidthResetsOnOos() throws Exception {
         testPhyChanBandwidthRatchetedOnPhyChanBandwidth();
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                    LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
                 2, 1, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, 1, false,
-                false, false);
+                false, false, lteVopsSupportInfo);
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
                 1, 1, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null,
                 false, 0, 0, 0);
@@ -1784,5 +1795,56 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // if ruim is provisioned, and mdn is non null, sst should also return the correct value
         doReturn(true).when(mRuimRecords).isProvisioned();
         assertEquals(mockMdn, sst.getMdnNumber());
+    }
+
+    @Test
+    @SmallTest
+    public void testOnVopsInfoChanged() {
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        sst.mSS = ss;
+
+        CellIdentityLte cellId =
+                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst");
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
+                    LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED);
+
+        NetworkRegistrationState dataResult = new NetworkRegistrationState(
+                2, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1,
+                false, false, false, lteVopsSupportInfo);
+        sst.mPollingContext[0] = 2;
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        NetworkRegistrationState voiceResult = new NetworkRegistrationState(
+                1, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, false, 0, 0, 0);
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceResult, null)));
+
+        waitForMs(200);
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
+        NetworkRegistrationState sSnetworkRegistrationState =
+                sst.mSS.getNetworkRegistrationState(2, 1);
+        assertEquals(lteVopsSupportInfo,
+                sSnetworkRegistrationState.getDataSpecificStates().lteVopsSupportInfo);
+
+        lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                    LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED);
+        dataResult = new NetworkRegistrationState(
+                2, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1,
+                false, false, false, lteVopsSupportInfo);
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForMs(200);
+
+        sSnetworkRegistrationState =
+                sst.mSS.getNetworkRegistrationState(2, 1);
+        assertEquals(lteVopsSupportInfo,
+                sSnetworkRegistrationState.getDataSpecificStates().lteVopsSupportInfo);
+
     }
 }
