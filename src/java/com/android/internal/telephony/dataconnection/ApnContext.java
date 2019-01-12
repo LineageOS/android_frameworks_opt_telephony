@@ -32,12 +32,13 @@ import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RetryManager;
+import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
+import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -412,19 +413,21 @@ public class ApnContext {
         }
     }
 
-    public void requestNetwork(NetworkRequest networkRequest, LocalLog log) {
+    public void requestNetwork(NetworkRequest networkRequest,
+                               @RequestNetworkType int type, LocalLog log) {
         synchronized (mRefCountLock) {
             if (mLocalLogs.contains(log) || mNetworkRequests.contains(networkRequest)) {
                 log.log("ApnContext.requestNetwork has duplicate add - " + mNetworkRequests.size());
             } else {
                 mLocalLogs.add(log);
                 mNetworkRequests.add(networkRequest);
-                mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType));
+                mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type);
             }
         }
     }
 
-    public void releaseNetwork(NetworkRequest networkRequest, LocalLog log) {
+    public void releaseNetwork(NetworkRequest networkRequest, @ReleaseNetworkType int type,
+                               LocalLog log) {
         synchronized (mRefCountLock) {
             if (mLocalLogs.contains(log) == false) {
                 log.log("ApnContext.releaseNetwork can't find this log");
@@ -438,16 +441,12 @@ public class ApnContext {
                 mNetworkRequests.remove(networkRequest);
                 log.log("ApnContext.releaseNetwork left with " + mNetworkRequests.size() +
                         " requests.");
-                if (mNetworkRequests.size() == 0) {
-                    mDcTracker.disableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType));
+                if (mNetworkRequests.size() == 0
+                        || type == DcTracker.RELEASE_TYPE_DETACH
+                        || type == DcTracker.RELEASE_TYPE_HANDOVER) {
+                    mDcTracker.disableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type);
                 }
             }
-        }
-    }
-
-    public List<NetworkRequest> getNetworkRequests() {
-        synchronized (mRefCountLock) {
-            return new ArrayList<NetworkRequest>(mNetworkRequests);
         }
     }
 

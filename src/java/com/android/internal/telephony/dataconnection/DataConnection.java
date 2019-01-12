@@ -129,14 +129,16 @@ public class DataConnection extends StateMachine {
         int mRilRat;
         Message mOnCompletedMsg;
         final int mConnectionGeneration;
+        final boolean mIsHandover;
 
         ConnectionParams(ApnContext apnContext, int profileId, int rilRadioTechnology,
-                         Message onCompletedMsg, int connectionGeneration) {
+                         Message onCompletedMsg, int connectionGeneration, boolean isHandover) {
             mApnContext = apnContext;
             mProfileId = profileId;
             mRilRat = rilRadioTechnology;
             mOnCompletedMsg = onCompletedMsg;
             mConnectionGeneration = connectionGeneration;
+            mIsHandover = isHandover;
         }
 
         @Override
@@ -144,7 +146,9 @@ public class DataConnection extends StateMachine {
             return "{mTag=" + mTag + " mApnContext=" + mApnContext
                     + " mProfileId=" + mProfileId
                     + " mRat=" + mRilRat
-                    + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg) + "}";
+                    + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg)
+                    + " mIsHandover=" + mIsHandover
+                    + "}";
         }
     }
 
@@ -155,11 +159,14 @@ public class DataConnection extends StateMachine {
         int mTag;
         public ApnContext mApnContext;
         String mReason;
+        final boolean mIsHandover;
         Message mOnCompletedMsg;
 
-        DisconnectParams(ApnContext apnContext, String reason, Message onCompletedMsg) {
+        DisconnectParams(ApnContext apnContext, String reason, boolean isHandover,
+                         Message onCompletedMsg) {
             mApnContext = apnContext;
             mReason = reason;
+            mIsHandover = isHandover;
             mOnCompletedMsg = onCompletedMsg;
         }
 
@@ -167,6 +174,7 @@ public class DataConnection extends StateMachine {
         public String toString() {
             return "{mTag=" + mTag + " mApnContext=" + mApnContext
                     + " mReason=" + mReason
+                    + " mIsHandover=" + mIsHandover
                     + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg) + "}";
         }
     }
@@ -286,9 +294,12 @@ public class DataConnection extends StateMachine {
                                                     DataServiceManager dataServiceManager,
                                                     DcTesterFailBringUpAll failBringUpAll,
                                                     DcController dcc) {
+        String transportType = (dataServiceManager.getTransportType() == TransportType.WWAN)
+                ? "C"   // Cellular
+                : "I";  // IWLAN
         DataConnection dc = new DataConnection(phone,
-                "DC-" + mInstanceNumber.incrementAndGet(), id, dct, dataServiceManager,
-                failBringUpAll, dcc);
+                "DC-" + transportType + "-" + mInstanceNumber.incrementAndGet(), id, dct,
+                dataServiceManager, failBringUpAll, dcc);
         dc.start();
         if (DBG) dc.log("Made " + dc.getName());
         return dc;
@@ -499,20 +510,34 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     * Get the DcTracker for handover. There are multiple DcTrackers for different transports (e.g.
+     * WWAN, WLAN). For data handover, we need to handover the existing data connection from current
+     * DcTracker to the DcTracker on another transport.
+     */
+    private DcTracker getHandoverDcTracker() {
+        int transportType = mDataServiceManager.getTransportType();
+        // Get the DcTracker from the other transport.
+        return mPhone.getDcTracker(transportType == TransportType.WWAN
+                ? TransportType.WLAN : TransportType.WWAN);
+    }
+
+    /**
      * Begin setting up a data connection, calls setupDataCall
      * and the ConnectionParams will be returned with the
      * EVENT_SETUP_DATA_CONNECTION_DONE
      *
      * @param cp is the connection parameters
+     *
+     * @return Fail cause if failed to setup data connection. {@link DataFailCause#NONE} if success.
      */
-    private void onConnect(ConnectionParams cp) {
+    private @DataFailCause.FailCause int connect(ConnectionParams cp) {
         if (DBG) {
-            log("onConnect: carrier='" + mApnSetting.getEntryName()
+            log("connect: carrier='" + mApnSetting.getEntryName()
                     + "' APN='" + mApnSetting.getApnName()
                     + "' proxy='" + mApnSetting.getProxyAddressAsString()
                     + "' port='" + mApnSetting.getProxyPort() + "'");
         }
-        if (cp.mApnContext != null) cp.mApnContext.requestLog("DataConnection.onConnect");
+        if (cp.mApnContext != null) cp.mApnContext.requestLog("DataConnection.connect");
 
         // Check if we should fake an error.
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
@@ -525,11 +550,11 @@ public class DataConnection extends StateMachine {
             AsyncResult.forMessage(msg, response, null);
             sendMessage(msg);
             if (DBG) {
-                log("onConnect: FailBringUpAll=" + mDcTesterFailBringUpAll.getDcFailBringUp()
+                log("connect: FailBringUpAll=" + mDcTesterFailBringUpAll.getDcFailBringUp()
                         + " send error response=" + response);
             }
             mDcTesterFailBringUpAll.getDcFailBringUp().mCounter -= 1;
-            return;
+            return DataFailCause.NONE;
         }
 
         mCreateTime = -1;
@@ -553,11 +578,46 @@ public class DataConnection extends StateMachine {
         boolean allowRoaming = mPhone.getDataRoamingEnabled()
                 || (isModemRoaming && !mPhone.getServiceState().getDataRoaming());
 
+        // Check if this data setup is a handover.
+        LinkProperties linkProperties = null;
+        int reason = DataService.REQUEST_REASON_NORMAL;
+        if (cp.mIsHandover) {
+            // If this is a data setup for handover, we need to pass the link properties
+            // of the existing data connection to the modem.
+            DcTracker dcTracker = getHandoverDcTracker();
+            if (dcTracker == null || cp.mApnContext == null) {
+                loge("connect: Handover failed. dcTracker=" + dcTracker + ", apnContext="
+                        + cp.mApnContext);
+                return DataFailCause.HANDOVER_FAILED;
+            }
+
+            DataConnection dc = dcTracker.getDataConnectionByApnType(cp.mApnContext.getApnType());
+            if (dc == null) {
+                loge("connect: Can't find data connection for handover.");
+                return DataFailCause.HANDOVER_FAILED;
+            }
+
+            linkProperties = dc.getLinkProperties();
+            if (linkProperties == null) {
+                loge("connect: Can't find link properties of handover data connection. dc="
+                        + dc);
+                return DataFailCause.HANDOVER_FAILED;
+            }
+
+            reason = DataService.REQUEST_REASON_HANDOVER;
+        }
+
         mDataServiceManager.setupDataCall(
-                ServiceState.rilRadioTechnologyToAccessNetworkType(cp.mRilRat), dp, isModemRoaming,
-                allowRoaming, DataService.REQUEST_REASON_NORMAL, null, msg);
+                ServiceState.rilRadioTechnologyToAccessNetworkType(cp.mRilRat),
+                dp,
+                isModemRoaming,
+                allowRoaming,
+                reason,
+                linkProperties,
+                msg);
         TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
                 dp.getProfileId(), dp.getApn(), dp.getProtocol());
+        return DataFailCause.NONE;
     }
 
     public void onSubscriptionOverride(int overrideMask, int overrideValue) {
@@ -581,6 +641,8 @@ public class DataConnection extends StateMachine {
             if (TextUtils.equals(dp.mReason, Phone.REASON_RADIO_TURNED_OFF)
                     || TextUtils.equals(dp.mReason, Phone.REASON_PDP_RESET)) {
                 discReason = DataService.REQUEST_REASON_SHUTDOWN;
+            } else if (dp.mIsHandover) {
+                discReason = DataService.REQUEST_REASON_HANDOVER;
             }
         }
 
@@ -599,7 +661,7 @@ public class DataConnection extends StateMachine {
             if (apnContext == alreadySent) continue;
             if (reason != null) apnContext.setReason(reason);
             Pair<ApnContext, Integer> pair = new Pair<>(apnContext, cp.mConnectionGeneration);
-            Message msg = mDct.obtainMessage(event, pair);
+            Message msg = mDct.obtainMessage(event, mCid, cp.mIsHandover ? 1 : 0, pair);
             AsyncResult.forMessage(msg);
             msg.sendToTarget();
         }
@@ -624,6 +686,7 @@ public class DataConnection extends StateMachine {
 
             long timeStamp = System.currentTimeMillis();
             connectionCompletedMsg.arg1 = mCid;
+            connectionCompletedMsg.arg2 = cp.mIsHandover ? 1 : 0;
 
             if (cause == DataFailCause.NONE) {
                 mCreateTime = timeStamp;
@@ -746,6 +809,7 @@ public class DataConnection extends StateMachine {
                                                    ConnectionParams cp) {
         SetupResult result;
 
+        log("onSetupConnectionCompleted: resultCode=" + resultCode + ", response=" + response);
         if (cp.mTag != mTag) {
             if (DBG) {
                 log("onSetupConnectionCompleted stale cp.tag=" + cp.mTag + ", mtag=" + mTag);
@@ -1512,8 +1576,6 @@ public class DataConnection extends StateMachine {
 
         @Override
         public boolean processMessage(Message msg) {
-            boolean retVal;
-
             switch (msg.what) {
                 case EVENT_RESET:
                 case EVENT_REEVALUATE_RESTRICTED_STATE:
@@ -1521,45 +1583,43 @@ public class DataConnection extends StateMachine {
                         log("DcInactiveState: msg.what=" + getWhatToString(msg.what)
                                 + ", ignore we're already done");
                     }
-                    retVal = HANDLED;
-                    break;
-
+                    return HANDLED;
                 case EVENT_CONNECT:
                     if (DBG) log("DcInactiveState: mag.what=EVENT_CONNECT");
                     ConnectionParams cp = (ConnectionParams) msg.obj;
-                    if (initConnection(cp)) {
-                        onConnect(mConnectionParams);
-                        transitionTo(mActivatingState);
-                    } else {
-                        if (DBG) {
-                            log("DcInactiveState: msg.what=EVENT_CONNECT initConnection failed");
-                        }
+
+                    if (!initConnection(cp)) {
+                        log("DcInactiveState: msg.what=EVENT_CONNECT initConnection failed");
                         notifyConnectCompleted(cp, DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER,
                                 false);
+                        transitionTo(mInactiveState);
+                        return HANDLED;
                     }
-                    retVal = HANDLED;
-                    break;
 
+                    int cause = connect(cp);
+                    if (cause != DataFailCause.NONE) {
+                        log("DcInactiveState: msg.what=EVENT_CONNECT connect failed");
+                        notifyConnectCompleted(cp, cause, false);
+                        transitionTo(mInactiveState);
+                        return HANDLED;
+                    }
+
+                    transitionTo(mActivatingState);
+                    return HANDLED;
                 case EVENT_DISCONNECT:
                     if (DBG) log("DcInactiveState: msg.what=EVENT_DISCONNECT");
                     notifyDisconnectCompleted((DisconnectParams)msg.obj, false);
-                    retVal = HANDLED;
-                    break;
-
+                    return HANDLED;
                 case EVENT_DISCONNECT_ALL:
                     if (DBG) log("DcInactiveState: msg.what=EVENT_DISCONNECT_ALL");
                     notifyDisconnectCompleted((DisconnectParams)msg.obj, false);
-                    retVal = HANDLED;
-                    break;
-
+                    return HANDLED;
                 default:
                     if (VDBG) {
-                        log("DcInactiveState nothandled msg.what=" + getWhatToString(msg.what));
+                        log("DcInactiveState not handled msg.what=" + getWhatToString(msg.what));
                     }
-                    retVal = NOT_HANDLED;
-                    break;
+                    return NOT_HANDLED;
             }
-            return retVal;
         }
     }
     private DcInactiveState mInactiveState = new DcInactiveState();
@@ -1728,9 +1788,30 @@ public class DataConnection extends StateMachine {
                 log("mRestrictedNetworkOverride = " + mRestrictedNetworkOverride
                         + ", mUnmeteredUseOnly = " + mUnmeteredUseOnly);
             }
-            mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
-                    "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
-                    50, misc);
+
+            if (mConnectionParams != null && mConnectionParams.mIsHandover) {
+                // If this is a data setup for handover, we need to reuse the existing network agent
+                // instead of creating a new one. This should be transparent to connectivity
+                // service.
+                DcTracker dcTracker = getHandoverDcTracker();
+                DataConnection dc = dcTracker.getDataConnectionByApnType(
+                        mConnectionParams.mApnContext.getApnType());
+                if (dc != null) {
+                    mNetworkAgent = dc.getNetworkAgent();
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
+                        mNetworkAgent.sendLinkProperties(mLinkProperties);
+                    } else {
+                        loge("Failed to get network agent from original data connection " + dc);
+                    }
+                } else {
+                    loge("Cannot find the data connection for handover.");
+                }
+            } else {
+                mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
+                        "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
+                        50, misc);
+            }
             if (mDataServiceManager.getTransportType() == TransportType.WWAN) {
                 mPhone.mCi.registerForNattKeepaliveStatus(
                         getHandler(), DataConnection.EVENT_KEEPALIVE_STATUS, null);
@@ -1761,7 +1842,13 @@ public class DataConnection extends StateMachine {
                 mPhone.mCi.unregisterForLceInfo(getHandler());
             }
             if (mNetworkAgent != null) {
-                mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                // We do not want to update the network info if this is a handover. For all other
+                // cases we need to update connectivity service with the latest network info.
+                //
+                // For handover, the network agent is transferred to the other data connection.
+                if (mDisconnectParams == null || !mDisconnectParams.mIsHandover) {
+                    mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                }
                 mNetworkAgent = null;
             }
         }
@@ -2183,7 +2270,8 @@ public class DataConnection extends StateMachine {
                         new Pair<ApnContext, Integer>(apnContext, cp.mConnectionGeneration);
                 log("DcNetworkAgent: [unwanted]: disconnect apnContext=" + apnContext);
                 Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, pair);
-                DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(), msg);
+                DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(),
+                        false, msg);
                 DataConnection.this.sendMessage(DataConnection.this.
                         obtainMessage(EVENT_DISCONNECT, dp));
             }
@@ -2370,30 +2458,33 @@ public class DataConnection extends StateMachine {
      *                       AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      * @param connectionGeneration used to track a single connection request so disconnects can get
      *                             ignored if obsolete.
+     * @param isHandover {@code true} if this request is for handover.
      */
     public void bringUp(ApnContext apnContext, int profileId, int rilRadioTechnology,
-                        Message onCompletedMsg, int connectionGeneration) {
+                        Message onCompletedMsg, int connectionGeneration, boolean isHandover) {
         if (DBG) {
             log("bringUp: apnContext=" + apnContext + " onCompletedMsg=" + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_CONNECT,
                 new ConnectionParams(apnContext, profileId, rilRadioTechnology, onCompletedMsg,
-                        connectionGeneration));
+                        connectionGeneration, isHandover));
     }
 
     /**
      * Tear down the connection through the apn on the network.
      *
+     * @param apnContext APN context
+     * @param reason reason to tear down
      * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
      *        With AsyncResult.userObj set to the original msg.obj.
      */
     public void tearDown(ApnContext apnContext, String reason, Message onCompletedMsg) {
         if (DBG) {
-            log("tearDown: apnContext=" + apnContext
-                    + " reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+            log("tearDown: apnContext=" + apnContext + " reason=" + reason + " onCompletedMsg="
+                    + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_DISCONNECT,
-                new DisconnectParams(apnContext, reason, onCompletedMsg));
+                new DisconnectParams(apnContext, reason, false, onCompletedMsg));
     }
 
     // ******* "public" interface
@@ -2410,13 +2501,14 @@ public class DataConnection extends StateMachine {
      * Tear down the connection through the apn on the network.  Ignores reference count and
      * and always tears down.
      *
+     * @param isHandover {@code true} if this is for handover
      * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
      *        With AsyncResult.userObj set to the original msg.obj.
      */
-    public void tearDownAll(String reason, Message onCompletedMsg) {
+    public void tearDownAll(String reason, boolean isHandover, Message onCompletedMsg) {
         if (DBG) log("tearDownAll: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
         sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
-                new DisconnectParams(null, reason, onCompletedMsg));
+                new DisconnectParams(null, reason, isHandover, onCompletedMsg));
     }
 
     /**
@@ -2482,6 +2574,10 @@ public class DataConnection extends StateMachine {
 
     public List<ApnContext> getApnContexts() {
         return new ArrayList<>(mApnContexts.keySet());
+    }
+
+    public DcNetworkAgent getNetworkAgent() {
+        return mNetworkAgent;
     }
 
     /**
