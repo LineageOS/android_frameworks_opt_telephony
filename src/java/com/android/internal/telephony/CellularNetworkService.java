@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
@@ -30,6 +31,7 @@ import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
+import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
@@ -271,11 +273,14 @@ public class CellularNetworkService extends NetworkService {
                 int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.cellIdentity);
-
+                LteVopsSupportInfo lteVopsSupportInfo =
+                        new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
                 return new NetworkRegistrationState(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
-                        false /* isNrAvailable */, false /* isEnDcAvailable */);
+                        false /* isNrAvailable */, false /* isEnDcAvailable */, lteVopsSupportInfo);
+
             } else if (result instanceof android.hardware.radio.V1_2.DataRegStateResult) {
                 android.hardware.radio.V1_2.DataRegStateResult dataRegState =
                         (android.hardware.radio.V1_2.DataRegStateResult) result;
@@ -287,17 +292,20 @@ public class CellularNetworkService extends NetworkService {
                 int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.cellIdentity);
-
+                LteVopsSupportInfo lteVopsSupportInfo =
+                        new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
                 return new NetworkRegistrationState(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
-                        false /* isNrAvailable */, false /* isEnDcAvailable */);
+                        false /* isNrAvailable */, false /* isEnDcAvailable */, lteVopsSupportInfo);
             } else if (result instanceof android.hardware.radio.V1_4.DataRegStateResult) {
                 android.hardware.radio.V1_4.DataRegStateResult dataRegState =
                         (android.hardware.radio.V1_4.DataRegStateResult) result;
                 int regState = getRegStateFromHalRegState(dataRegState.base.regState);
                 int accessNetworkTechnology =
                         getAccessNetworkTechnologyFromRat(dataRegState.base.rat);
+                LteVopsSupportInfo lteVopsSupportInfo = null;
                 int reasonForDenial = dataRegState.base.reasonDataDenied;
                 boolean emergencyOnly = isEmergencyOnly(dataRegState.base.regState);
                 int maxDataCalls = dataRegState.base.maxDataCalls;
@@ -305,13 +313,38 @@ public class CellularNetworkService extends NetworkService {
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.base.cellIdentity);
                 android.hardware.radio.V1_4.NrIndicators nrIndicators = dataRegState.nrIndicators;
+                if (AccessNetworkType.EUTRAN == accessNetworkTechnology) {
+                    android.hardware.radio.V1_4.LteVopsInfo vopsSupport =
+                            dataRegState.vopsInfo.lteVopsInfo();
+                    lteVopsSupportInfo = convertHalLteVopsSupportInfo(vopsSupport.isVopsSupported,
+                        vopsSupport.isEmcBearerSupported);
+                } else {
+                    lteVopsSupportInfo =
+                        new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+                }
 
                 return new NetworkRegistrationState(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, nrIndicators.isDcNrRestricted,
-                        nrIndicators.isNrAvailable, nrIndicators.isEndcAvailable);
+                        nrIndicators.isNrAvailable, nrIndicators.isEndcAvailable,
+                        lteVopsSupportInfo);
             }
             return null;
+        }
+
+        private LteVopsSupportInfo convertHalLteVopsSupportInfo(
+                boolean vopsSupport, boolean emcBearerSupport) {
+            int vops = LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED;
+            int emergency = LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED;
+
+            if (vopsSupport) {
+                vops = LteVopsSupportInfo.LTE_STATUS_SUPPORTED;
+            }
+            if (emcBearerSupport) {
+                emergency = LteVopsSupportInfo.LTE_STATUS_SUPPORTED;
+            }
+            return new LteVopsSupportInfo(vops, emergency);
         }
 
         private CellIdentity convertHalCellIdentityToCellIdentity(

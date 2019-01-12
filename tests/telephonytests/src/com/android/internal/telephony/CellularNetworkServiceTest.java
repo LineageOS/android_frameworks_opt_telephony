@@ -30,6 +30,7 @@ import android.os.RemoteException;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.INetworkService;
 import android.telephony.INetworkServiceCallback;
+import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
@@ -154,10 +155,15 @@ public class CellularNetworkServiceTest extends TelephonyTest {
 
         waitForMs(1000);
 
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+
         expectedState = new NetworkRegistrationState(
                 domain, AccessNetworkConstants.TransportType.WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
-                false, availableServices, null, maxDataCalls, false, false, false);
+                false, availableServices, null, maxDataCalls, false, false, false,
+                lteVopsSupportInfo);
 
         try {
             verify(mCallback, times(1)).onGetNetworkRegistrationStateComplete(

@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -288,10 +289,13 @@ public class ServiceStateTest extends TestCase {
                 0, 0, 0, false,
                 null, null, true, 0, 0, 0);
 
-
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState wwanDataRegState = new NetworkRegistrationState(
                 NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
-                0, 0, 0, false, null, null, 0, false, false, false);
+                0, 0, 0, false, null, null, 0, false, false, false,
+                lteVopsSupportInfo);
 
         NetworkRegistrationState wlanRegState = new NetworkRegistrationState(
                 NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WLAN,
@@ -313,7 +317,7 @@ public class ServiceStateTest extends TestCase {
 
         wwanDataRegState = new NetworkRegistrationState(
                 NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
-                0, 0, 0, true, null, null, 0, false, false, false);
+                0, 0, 0, true, null, null, 0, false, false, false, lteVopsSupportInfo);
         ss.addNetworkRegistrationState(wwanDataRegState);
         assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
                 AccessNetworkConstants.TransportType.WWAN), wwanDataRegState);
