@@ -29,9 +29,6 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyManager;
-import android.telephony.emergency.EmergencyNumber;
-import android.telephony.emergency.EmergencyNumber.EmergencyServiceCategories;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
@@ -39,10 +36,6 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccCardApplication;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * {@hide}
@@ -140,8 +133,7 @@ public class GsmCdmaConnection extends Connection {
         mHandler = new MyHandler(mOwner.getLooper());
 
         mAddress = dc.number;
-        setEmergencyCall(TelephonyManager.getDefault().isCurrentEmergencyNumber(mAddress));
-        setEmergencyServiceCategories(fetchEmergencyServiceCategories());
+        setEmergencyCallInfo();
 
         mIsIncoming = dc.isMT;
         mCreateTime = System.currentTimeMillis();
@@ -183,8 +175,9 @@ public class GsmCdmaConnection extends Connection {
         }
 
         mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
-        setEmergencyCall(isEmergencyCall);
-        setEmergencyServiceCategories(fetchEmergencyServiceCategories());
+        if (isEmergencyCall) {
+            setEmergencyCallInfo();
+        }
 
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
@@ -1129,31 +1122,6 @@ public class GsmCdmaConnection extends Connection {
         if (b != null) {
             mDtmfToneDelay = b.getInt(phone.getDtmfToneDelayKey());
         }
-    }
-
-    private @EmergencyServiceCategories int fetchEmergencyServiceCategories() {
-        Map<Integer, List<EmergencyNumber>> emergencyNumberListInternal = new HashMap<>();
-        for (Phone phone: PhoneFactory.getPhones()) {
-            if (phone.getEmergencyNumberTracker() != null
-                    && phone.getEmergencyNumberTracker().getEmergencyNumberList() != null) {
-                emergencyNumberListInternal.put(
-                        phone.getSubId(),
-                        phone.getEmergencyNumberTracker().getEmergencyNumberList());
-            }
-        }
-        if (emergencyNumberListInternal != null) {
-            for (List<EmergencyNumber> emergencyNumberList
-                    : emergencyNumberListInternal.values()) {
-                if (emergencyNumberList != null) {
-                    for (EmergencyNumber num : emergencyNumberList) {
-                        if (num.getNumber().equals(mAddress)) {
-                            return num.getEmergencyServiceCategoryBitmask();
-                        }
-                    }
-                }
-            }
-        }
-        return EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED;
     }
 
     private boolean isPhoneTypeGsm() {

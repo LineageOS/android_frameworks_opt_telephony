@@ -598,23 +598,12 @@ public class DataConnection extends StateMachine {
             ApnContext apnContext = cp.mApnContext;
             if (apnContext == alreadySent) continue;
             if (reason != null) apnContext.setReason(reason);
-            Pair<ApnContext, Integer> pair =
-                    new Pair<ApnContext, Integer>(apnContext, cp.mConnectionGeneration);
+            Pair<ApnContext, Integer> pair = new Pair<>(apnContext, cp.mConnectionGeneration);
             Message msg = mDct.obtainMessage(event, pair);
             AsyncResult.forMessage(msg);
             msg.sendToTarget();
         }
     }
-
-    private void notifyAllOfConnected(String reason) {
-        notifyAllWithEvent(null, DctConstants.EVENT_DATA_SETUP_COMPLETE, reason);
-    }
-
-    private void notifyAllDisconnectCompleted(@DataFailCause.FailCause int cause) {
-        notifyAllWithEvent(null, DctConstants.EVENT_DISCONNECT_DONE,
-                DataFailCause.toString(cause));
-    }
-
 
     /**
      * Send the connectionCompletedMsg.
@@ -1184,6 +1173,26 @@ public class DataConnection extends StateMachine {
                     throw new UnknownHostException("Empty dns response and no system default dns");
                 }
 
+                // set pcscf
+                if (response.getPcscfs().size() > 0) {
+                    for (String pcscf : response.getPcscfs()) {
+                        if (pcscf == null) continue;
+                        pcscf = pcscf.trim();
+                        if (pcscf.isEmpty()) continue;
+                        InetAddress ia;
+                        try {
+                            ia = NetworkUtils.numericToInetAddress(pcscf);
+                        } catch (IllegalArgumentException e) {
+                            throw new UnknownHostException("Non-numeric pcscf addr=" + pcscf);
+                        }
+                        if (!ia.isAnyLocalAddress()) {
+                            linkProperties.addPcscfServer(ia);
+                        } else {
+                            log("bad address in PCSCF");
+                        }
+                    }
+                }
+
                 for (InetAddress gateway : response.getGateways()) {
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
@@ -1487,7 +1496,8 @@ public class DataConnection extends StateMachine {
                     log("DcInactiveState: enter notifyAllDisconnectCompleted failCause="
                             + mDcFailCause);
                 }
-                notifyAllDisconnectCompleted(mDcFailCause);
+                notifyAllWithEvent(null, DctConstants.EVENT_DISCONNECT_DONE,
+                        DataFailCause.toString(mDcFailCause));
             }
 
             // Remove ourselves from cid mapping, before clearSettings
@@ -1685,7 +1695,8 @@ public class DataConnection extends StateMachine {
             updateNetworkInfo();
 
             // If we were retrying there maybe more than one, otherwise they'll only be one.
-            notifyAllOfConnected(Phone.REASON_CONNECTED);
+            notifyAllWithEvent(null, DctConstants.EVENT_DATA_SETUP_COMPLETE,
+                    Phone.REASON_CONNECTED);
 
             mPhone.getCallTracker().registerForVoiceCallStarted(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED, null);

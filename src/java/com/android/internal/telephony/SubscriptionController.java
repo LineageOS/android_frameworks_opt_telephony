@@ -327,6 +327,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.GROUP_UUID));
         boolean isMetered = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_METERED)) == 1;
+        int profileClass = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.PROFILE_CLASS));
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -339,7 +341,7 @@ public class SubscriptionController extends ISub.Stub {
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
                     + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
-                    + " isMetered:" + isMetered);
+                    + " isMetered:" + isMetered + " profileClass:" + profileClass);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -348,9 +350,9 @@ public class SubscriptionController extends ISub.Stub {
             number = line1Number;
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
-                nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                isEmbedded, accessRules, cardId, publicCardId, isOpportunistic, groupUUID,
-                isMetered, false /* isGroupDisabled */, carrierId);
+            nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
+            isEmbedded, accessRules, cardId, publicCardId, isOpportunistic, groupUUID,
+            isMetered, false /* isGroupDisabled */, carrierId, profileClass);
     }
 
     /**

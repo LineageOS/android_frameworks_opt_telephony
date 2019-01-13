@@ -97,7 +97,6 @@ import org.mockito.stubbing.Answer;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class DcTrackerTest extends TelephonyTest {
 
@@ -108,8 +107,6 @@ public class DcTrackerTest extends TelephonyTest {
             "mobile_ims,11,0,2,60000,true", "mobile_cbs,12,0,2,60000,true",
             "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true"};
 
-    private final static List<String> sApnTypes = Arrays.asList(
-            "default", "mms", "cbs", "fota", "supl", "ia", "emergency", "dun", "hipri", "ims");
     private static final int LTE_BEARER_BITMASK = 1 << (ServiceState.RIL_RADIO_TECHNOLOGY_LTE - 1);
     private static final int EHRPD_BEARER_BITMASK =
             1 << (ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD - 1);
@@ -137,13 +134,9 @@ public class DcTrackerTest extends TelephonyTest {
     @Mock
     IBinder mBinder;
     @Mock
-    NetworkRequest mNetworkRequest;
-    @Mock
     SubscriptionInfo mSubscriptionInfo;
     @Mock
     ApnContext mApnContext;
-    @Mock
-    ApnSetting mApnSetting;
     @Mock
     DataConnection mDataConnection;
     @Mock
@@ -367,7 +360,7 @@ public class DcTrackerTest extends TelephonyTest {
                     });
 
                     mc.addRow(new Object[]{
-                            2166,                   // id
+                            2167,                   // id
                             FAKE_PLMN,              // numeric
                             "b-mobile for Nexus",   // name
                             FAKE_APN5,              // apn
@@ -622,7 +615,7 @@ public class DcTrackerTest extends TelephonyTest {
         result.status = 0x10004;
 
         // Simulate RIL fails the data call setup
-        mSimulatedCommands.setDataCallResult(false, result);
+        mSimulatedCommands.setDataCallResult(true, result);
 
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
         boolean allowed = isDataAllowed(dataConnectionReasons);
