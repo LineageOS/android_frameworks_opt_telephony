@@ -3933,7 +3933,10 @@ public class DcTracker extends Handler {
 
             // If all of the APN settings cannot handle emergency, we add the emergency APN to the
             // list explicitly.
-            mAllApnSettings.add(mEmergencyApn);
+            if (!mAllApnSettings.contains(mEmergencyApn)) {
+                mAllApnSettings.add(mEmergencyApn);
+                log("Adding emergency APN : " + mEmergencyApn);
+            }
         }
     }
 
