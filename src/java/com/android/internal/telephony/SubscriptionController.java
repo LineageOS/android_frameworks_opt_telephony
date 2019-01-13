@@ -1074,6 +1074,35 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Clear an subscriptionInfo to subinfo database if needed by updating slot index to invalid.
+     * @param slotIndex the slot which the SIM is removed
+     */
+    public void clearSubInfoRecord(int slotIndex) {
+        if (DBG) logdl("[clearSubInfoRecord]+ iccId:" + " slotIndex:" + slotIndex);
+
+        // update simInfo db with invalid slot index
+        List<SubscriptionInfo> oldSubInfo = getSubInfoUsingSlotIndexPrivileged(slotIndex,
+                false);
+        ContentResolver resolver = mContext.getContentResolver();
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.SIM_SLOT_INDEX,
+                SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+        if (oldSubInfo != null) {
+            for (int i = 0; i < oldSubInfo.size(); i++) {
+                resolver.update(SubscriptionManager.getUriForSubscriptionId(
+                        oldSubInfo.get(i).getSubscriptionId()), value, null, null);
+            }
+        }
+        // Refresh the Cache of Active Subscription Info List
+        refreshCachedActiveSubscriptionInfoList();
+
+        sSlotIndexToSubId.remove(slotIndex);
+
+        // update default subId
+        clearDefaultsForInactiveSubIds();
+    }
+
+    /**
      * Insert an empty SubInfo record into the database.
      *
      * <p>NOTE: This is not accessible to external processes, so it does not need a permission
