@@ -23,7 +23,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
 import android.os.IBinder;
-import android.os.RemoteException;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -72,10 +71,11 @@ public class ImsMmTelManagerTests extends TelephonyTest {
      */
     @SmallTest
     @Test
-    public void testCallbackValues() throws RemoteException {
+    public void testCallbackValues() throws Exception {
         LocalCallback cb = new LocalCallback();
         ImsMmTelManager managerUT = new ImsMmTelManager(0);
         managerUT.registerImsRegistrationCallback(Runnable::run, cb);
+
         // Capture the RegistrationCallback that was registered.
         ArgumentCaptor<IImsRegistrationCallback> callbackCaptor =
                 ArgumentCaptor.forClass(IImsRegistrationCallback.class);
