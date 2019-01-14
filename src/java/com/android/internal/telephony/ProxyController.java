@@ -163,6 +163,18 @@ public class ProxyController {
         }
     }
 
+
+    public boolean areAllDataDisconnected(int subId) {
+        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+
+        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
+            return mPhones[phoneId].areAllDataDisconnected();
+        } else {
+            // if we can't find a phone for the given subId, it is disconnected.
+            return true;
+        }
+    }
+
     /**
      * Get phone radio type and access technology.
      *

@@ -244,18 +244,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
-    public void testSetRadioPowerOffUnderDataConnected() {
-        sst.setRadioPower(true);
-        waitForMs(100);
-        doReturn(false).when(mPhone).areAllDataDisconnected();
-        sst.setRadioPower(false);
-        waitForMs(200);
-        verify(this.mProxyController, times(1)).registerForAllDataDisconnected(anyInt(),
-                 eq(sst), anyInt());
-    }
-
-    @Test
-    @MediumTest
     public void testSetRadioPowerFromCarrier() {
         // Carrier disable radio power
         sst.setRadioPowerFromCarrier(false);

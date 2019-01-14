@@ -4155,10 +4155,20 @@ public class ServiceStateTracker extends Handler {
     public void powerOffRadioSafely() {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
+                int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 // To minimize race conditions we call cleanUpAllConnections on
                 // both if else paths instead of before this isDisconnected test.
-                if (mPhone.areAllDataDisconnected()) {
+                if (mPhone.areAllDataDisconnected()
+                        && (dds == mPhone.getSubId()
+                        || (dds != mPhone.getSubId()
+                        && ProxyController.getInstance().areAllDataDisconnected(dds)))) {
                     // To minimize race conditions we do this after isDisconnected
+                    for (int transport : mTransportManager.getAvailableTransports()) {
+                        if (mPhone.getDcTracker(transport) != null) {
+                            mPhone.getDcTracker(transport).cleanUpAllConnections(
+                                    Phone.REASON_RADIO_TURNED_OFF);
+                        }
+                    }
                     if (DBG) log("Data disconnected, turn off radio right away.");
                     hangupAndPowerOff();
                 } else {
@@ -4168,12 +4178,6 @@ public class ServiceStateTracker extends Handler {
                         mPhone.mCT.mBackgroundCall.hangupIfAlive();
                         mPhone.mCT.mForegroundCall.hangupIfAlive();
                     }
-                    if (DBG) log("Wait for all data disconnect");
-                    // Data is not disconnected. Wait for the data disconnect complete
-                    // before sending the RADIO_POWER off.
-                    ProxyController.getInstance().registerForAllDataDisconnected(
-                            mPhone.getSubId(), this, EVENT_ALL_DATA_DISCONNECTED);
-                    mPendingRadioPowerOffAfterDataOff = true;
                     for (int transport : mTransportManager.getAvailableTransports()) {
                         if (mPhone.getDcTracker(transport) != null) {
                             mPhone.getDcTracker(transport).cleanUpAllConnections(
@@ -4181,6 +4185,15 @@ public class ServiceStateTracker extends Handler {
                         }
                     }
 
+                    if (dds != mPhone.getSubId()
+                            && !ProxyController.getInstance().areAllDataDisconnected(dds)) {
+                        if (DBG) log("Data is active on DDS.  Wait for all data disconnect");
+                        // Data is not disconnected on DDS. Wait for the data disconnect complete
+                        // before sending the RADIO_POWER off.
+                        ProxyController.getInstance().registerForAllDataDisconnected(dds, this,
+                                EVENT_ALL_DATA_DISCONNECTED);
+                        mPendingRadioPowerOffAfterDataOff = true;
+                    }
                     Message msg = Message.obtain(this);
                     msg.what = EVENT_SET_RADIO_POWER_OFF;
                     msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
