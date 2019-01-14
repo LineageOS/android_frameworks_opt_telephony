@@ -31,6 +31,7 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.ServiceManager;
 import android.provider.Settings;
+import android.service.euicc.DownloadSubscriptionResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
@@ -274,6 +275,7 @@ public class EuiccController extends IEuiccController.Stub {
                     addResolutionIntent(extrasIntent,
                             EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                             mCallingPackage,
+                            0 /* resolvableErrors */,
                             false /* confirmationCodeRetried */,
                             getOperationForDeactivateSim());
                     break;
@@ -301,14 +303,15 @@ public class EuiccController extends IEuiccController.Stub {
 
     @Override
     public void downloadSubscription(DownloadableSubscription subscription,
-            boolean switchAfterDownload, String callingPackage, PendingIntent callbackIntent) {
+            boolean switchAfterDownload, String callingPackage, Bundle resolvedBundle,
+            PendingIntent callbackIntent) {
         downloadSubscription(subscription, switchAfterDownload, callingPackage,
-                false /* forceDeactivateSim */, callbackIntent);
+                false /* forceDeactivateSim */, resolvedBundle, callbackIntent);
     }
 
     void downloadSubscription(DownloadableSubscription subscription,
             boolean switchAfterDownload, String callingPackage, boolean forceDeactivateSim,
-            PendingIntent callbackIntent) {
+            Bundle resolvedBundle, PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
 
@@ -318,7 +321,7 @@ public class EuiccController extends IEuiccController.Stub {
                 // With WRITE_EMBEDDED_SUBSCRIPTIONS, we can skip profile-specific permission checks
                 // and move straight to the profile download.
                 downloadSubscriptionPrivileged(token, subscription, switchAfterDownload,
-                        forceDeactivateSim, callingPackage, callbackIntent);
+                        forceDeactivateSim, callingPackage, resolvedBundle, callbackIntent);
                 return;
             }
             // Without WRITE_EMBEDDED_SUBSCRIPTIONS, the caller *must* be whitelisted per the
@@ -354,11 +357,12 @@ public class EuiccController extends IEuiccController.Stub {
                 // require that the user resolve the stronger permission dialog.
                 Intent extrasIntent = new Intent();
                 addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
-                        mCallingPackage,
-                        false /* confirmationCodeRetried */,
-                        EuiccOperation.forDownloadNoPrivileges(
-                                mCallingToken, mSubscription, mSwitchAfterDownload,
-                                mCallingPackage));
+                            mCallingPackage,
+                            0 /* resolvableErrors */,
+                            false /* confirmationCodeRetried */,
+                            EuiccOperation.forDownloadNoPrivileges(
+                                    mCallingToken, mSubscription, mSwitchAfterDownload,
+                                    mCallingPackage));
                 sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
                 return;
             }
@@ -400,7 +404,8 @@ public class EuiccController extends IEuiccController.Stub {
                     if (canManageActiveSubscription(mCallingPackage)) {
                         downloadSubscriptionPrivileged(
                                 mCallingToken, subscription, mSwitchAfterDownload,
-                                mForceDeactivateSim, mCallingPackage, mCallbackIntent);
+                                mForceDeactivateSim, mCallingPackage, null /* resolvedBundle */,
+                                mCallbackIntent);
                         return;
                     }
 
@@ -408,6 +413,7 @@ public class EuiccController extends IEuiccController.Stub {
                     Intent extrasIntent = new Intent();
                     addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                             mCallingPackage,
+                            0 /* resolvableErrors */,
                             false /* confirmationCodeRetried */,
                             EuiccOperation.forDownloadNoPrivileges(
                                     mCallingToken, subscription, mSwitchAfterDownload,
@@ -429,18 +435,19 @@ public class EuiccController extends IEuiccController.Stub {
 
     void downloadSubscriptionPrivileged(final long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
-            boolean forceDeactivateSim, final String callingPackage,
+            boolean forceDeactivateSim, final String callingPackage, Bundle resolvedBundle,
             final PendingIntent callbackIntent) {
         mConnector.downloadSubscription(
                 subscription,
                 switchAfterDownload,
                 forceDeactivateSim,
+                resolvedBundle,
                 new EuiccConnector.DownloadCommandCallback() {
                     @Override
-                    public void onDownloadComplete(int result) {
+                    public void onDownloadComplete(DownloadSubscriptionResult result) {
                         Intent extrasIntent = new Intent();
                         final int resultCode;
-                        switch (result) {
+                        switch (result.getResult()) {
                             case EuiccService.RESULT_OK:
                                 resultCode = OK;
                                 // Now that a profile has been successfully downloaded, mark the
@@ -465,30 +472,47 @@ public class EuiccController extends IEuiccController.Stub {
                                 addResolutionIntent(extrasIntent,
                                         EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                                         callingPackage,
+                                        0 /* resolvableErrors */,
                                         false /* confirmationCodeRetried */,
                                         EuiccOperation.forDownloadDeactivateSim(
                                                 callingToken, subscription, switchAfterDownload,
                                                 callingPackage));
                                 break;
-                            case EuiccService.RESULT_NEED_CONFIRMATION_CODE:
+                            case EuiccService.RESULT_RESOLVABLE_ERRORS:
+                                // Same value as the deprecated
+                                // {@link EuiccService#RESULT_NEED_CONFIRMATION_CODE}. For the
+                                // deprecated case, the resolvableErrors is set as 0 in
+                                // EuiccService.
                                 resultCode = RESOLVABLE_ERROR;
                                 boolean retried = false;
                                 if (!TextUtils.isEmpty(subscription.getConfirmationCode())) {
                                     retried = true;
                                 }
-                                addResolutionIntent(extrasIntent,
-                                        EuiccService.ACTION_RESOLVE_CONFIRMATION_CODE,
-                                        callingPackage,
-                                        retried /* confirmationCodeRetried */,
-                                        EuiccOperation.forDownloadConfirmationCode(
+                                if (result.getResolvableErrors() != 0) {
+                                    addResolutionIntent(extrasIntent,
+                                            EuiccService.ACTION_RESOLVE_RESOLVABLE_ERRORS,
+                                            callingPackage,
+                                            result.getResolvableErrors(),
+                                            retried,
+                                            EuiccOperation.forDownloadResolvableErrors(
+                                                callingToken, subscription, switchAfterDownload,
+                                                callingPackage, result.getResolvableErrors()));
+                                }  else { // Deprecated case
+                                    addResolutionIntent(extrasIntent,
+                                            EuiccService.ACTION_RESOLVE_CONFIRMATION_CODE,
+                                            callingPackage,
+                                            0 /* resolvableErrors */,
+                                            retried /* confirmationCodeRetried */,
+                                            EuiccOperation.forDownloadConfirmationCode(
                                                 callingToken, subscription, switchAfterDownload,
                                                 callingPackage));
+                                }
                                 break;
                             default:
                                 resultCode = ERROR;
                                 extrasIntent.putExtra(
                                         EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                        result);
+                                        result.getResult());
                                 break;
                         }
 
@@ -587,6 +611,7 @@ public class EuiccController extends IEuiccController.Stub {
                     addResolutionIntent(extrasIntent,
                             EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                             mCallingPackage,
+                            0 /* resolvableErrors */,
                             false /* confirmationCodeRetried */,
                             EuiccOperation.forGetDefaultListDeactivateSim(
                                     mCallingToken, mCallingPackage));
@@ -739,6 +764,7 @@ public class EuiccController extends IEuiccController.Stub {
                 addResolutionIntent(extrasIntent,
                         EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                         callingPackage,
+                        0 /* resolvableErrors */,
                         false /* confirmationCodeRetried */,
                         EuiccOperation.forSwitchNoPrivileges(
                                 token, subscriptionId, callingPackage));
@@ -785,6 +811,7 @@ public class EuiccController extends IEuiccController.Stub {
                                 addResolutionIntent(extrasIntent,
                                         EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                                         callingPackage,
+                                        0 /* resolvableErrors */,
                                         false /* confirmationCodeRetried */,
                                         EuiccOperation.forSwitchDeactivateSim(
                                                 callingToken, subscriptionId, callingPackage));
@@ -953,11 +980,14 @@ public class EuiccController extends IEuiccController.Stub {
     /** Add a resolution intent to the given extras intent. */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void addResolutionIntent(Intent extrasIntent, String resolutionAction,
-            String callingPackage, boolean confirmationCodeRetried, EuiccOperation op) {
+            String callingPackage, int resolvableErrors, boolean confirmationCodeRetried,
+            EuiccOperation op) {
         Intent intent = new Intent(EuiccManager.ACTION_RESOLVE_ERROR);
         intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_ACTION,
                 resolutionAction);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CALLING_PACKAGE, callingPackage);
+        // TODO(jiuyu): Also pass cardId in the intent.
+        intent.putExtra(EuiccService.EXTRA_RESOLVABLE_ERRORS, resolvableErrors);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE_RETRIED,
                 confirmationCodeRetried);
         intent.putExtra(EXTRA_OPERATION, op);

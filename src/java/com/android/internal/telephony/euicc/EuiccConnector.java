@@ -30,10 +30,12 @@ import android.content.pm.ComponentInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
+import android.service.euicc.DownloadSubscriptionResult;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
@@ -225,13 +227,14 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         boolean mSwitchAfterDownload;
         boolean mForceDeactivateSim;
         DownloadCommandCallback mCallback;
+        Bundle mResolvedBundle;
     }
 
     /** Callback class for {@link #downloadSubscription}. */
     @VisibleForTesting(visibility = PACKAGE)
     public interface DownloadCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the download has completed (though it may have failed). */
-        void onDownloadComplete(int result);
+        void onDownloadComplete(DownloadSubscriptionResult result);
     }
 
     interface GetEuiccProfileInfoListCommandCallback extends BaseEuiccCommandCallback {
@@ -423,11 +426,12 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public void downloadSubscription(DownloadableSubscription subscription,
             boolean switchAfterDownload, boolean forceDeactivateSim,
-            DownloadCommandCallback callback) {
+            Bundle resolvedBundle, DownloadCommandCallback callback) {
         DownloadRequest request = new DownloadRequest();
         request.mSubscription = subscription;
         request.mSwitchAfterDownload = switchAfterDownload;
         request.mForceDeactivateSim = forceDeactivateSim;
+        request.mResolvedBundle = resolvedBundle;
         request.mCallback = callback;
         sendMessage(CMD_DOWNLOAD_SUBSCRIPTION, request);
     }
@@ -709,12 +713,13 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     request.mSubscription,
                                     request.mSwitchAfterDownload,
                                     request.mForceDeactivateSim,
+                                    request.mResolvedBundle,
                                     new IDownloadSubscriptionCallback.Stub() {
                                         @Override
-                                        public void onComplete(int result) {
+                                        public void onComplete(DownloadSubscriptionResult result) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((DownloadCommandCallback) callback)
-                                                        .onDownloadComplete(result);
+                                                    .onDownloadComplete(result);
                                                 onCommandEnd(callback);
                                             });
                                         }
