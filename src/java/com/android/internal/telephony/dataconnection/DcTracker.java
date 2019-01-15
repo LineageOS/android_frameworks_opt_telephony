@@ -864,6 +864,14 @@ public class DcTracker extends Handler {
         } else {
             onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
         }
+        // Update sharedPreference to false when exits new device provisioning, indicating no users
+        // modifications on the settings for new devices. Thus carrier specific
+        // default roaming settings can be applied for new devices till user modification.
+        final SharedPreferences sp = PreferenceManager
+                .getDefaultSharedPreferences(mPhone.getContext());
+        if (!sp.contains(Phone.DATA_ROAMING_IS_USER_SETTING_KEY)) {
+            sp.edit().putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, false).commit();
+        }
     }
 
 
