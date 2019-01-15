@@ -129,7 +129,8 @@ public class UiccController extends Handler {
     // considered sensetive information.
     private ArrayList<String> mCardStrings;
 
-    // This is the card ID of the default eUICC. It is set to the first ever seen eUICC
+    // This is the card ID of the default eUICC. Whenever we receive slot status, we set it to the
+    // eUICC with the lowest slot index
     private int mDefaultEuiccCardId;
 
     private static final int INVALID_CARD_ID = TelephonyManager.INVALID_CARD_ID;
@@ -208,7 +209,7 @@ public class UiccController extends Handler {
 
         mLauncher = new UiccStateChangedLauncher(c, this);
         mCardStrings = loadCardStrings();
-        mDefaultEuiccCardId = loadDefaultEuiccCardId();
+        mDefaultEuiccCardId = INVALID_CARD_ID;
     }
 
     private int getSlotIdFromPhoneId(int phoneId) {
@@ -642,19 +643,6 @@ public class UiccController extends Handler {
         editor.commit();
     }
 
-    private int loadDefaultEuiccCardId() {
-        return PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getInt(DEFAULT_CARD, INVALID_CARD_ID);
-    }
-
-    private void setDefaultEuiccCardId(int cardId) {
-        mDefaultEuiccCardId = cardId;
-        SharedPreferences.Editor editor =
-                PreferenceManager.getDefaultSharedPreferences(mContext).edit();
-        editor.putInt(DEFAULT_CARD, mDefaultEuiccCardId);
-        editor.commit();
-    }
-
     private synchronized void onGetSlotStatusDone(AsyncResult ar) {
         if (!mIsSlotStatusSupported) {
             if (VDBG) log("onGetSlotStatusDone: ignoring since mIsSlotStatusSupported is false");
@@ -691,6 +679,7 @@ public class UiccController extends Handler {
         sLastSlotStatus = status;
 
         int numActiveSlots = 0;
+        mDefaultEuiccCardId = INVALID_CARD_ID;
         for (int i = 0; i < status.size(); i++) {
             IccSlotStatus iss = status.get(i);
             boolean isActive = (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_ACTIVE);
@@ -724,10 +713,10 @@ public class UiccController extends Handler {
                 String eid = iss.eid;
                 addCardId(eid);
 
-                // If default eUICC card ID is unset, set it to the card ID of the eUICC with the
+                // whenever slot status is received, set default card to the eUICC with the
                 // lowest slot index.
                 if (mDefaultEuiccCardId == INVALID_CARD_ID) {
-                    setDefaultEuiccCardId(convertToPublicCardId(eid));
+                    mDefaultEuiccCardId = convertToPublicCardId(eid);
                 }
             }
         }
