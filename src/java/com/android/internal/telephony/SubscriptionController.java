@@ -2349,8 +2349,12 @@ public class SubscriptionController extends ISub.Stub {
 
         long token = Binder.clearCallingIdentity();
         try {
-            return setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
+            int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
                     String.valueOf(opportunistic ? 1 : 0));
+
+            if (ret != 0) notifySubscriptionInfoChanged();
+
+            return ret;
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -2380,8 +2384,12 @@ public class SubscriptionController extends ISub.Stub {
 
         long token = Binder.clearCallingIdentity();
         try {
-            return setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
+            int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
                     String.valueOf(isMetered ? 1 : 0));
+
+            if (ret != 0) notifySubscriptionInfoChanged();
+
+            return ret;
         } finally {
             Binder.restoreCallingIdentity(token);
         }
