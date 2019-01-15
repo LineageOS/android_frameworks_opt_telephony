@@ -274,7 +274,7 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
             case EVENT_PREFERRED_SUBSCRIPTION_CHANGED: {
-                onEvaluate(REQUESTS_UNCHANGED, "preferredDataSubIdChanged");
+                onEvaluate(REQUESTS_UNCHANGED, "preferredDataSubscriptionIdChanged");
                 break;
             }
             case EVENT_RADIO_AVAILABLE: {
@@ -477,7 +477,7 @@ public class PhoneSwitcher extends Handler {
 
     /**
      * Used when the modem may have been rebooted and we
-     * want to resend setDataAllowed or setPreferredData
+     * want to resend setDataAllowed or setPreferredDataSubscriptionId
      */
     public void onRadioCapChanged(int phoneId) {
         validatePhoneId(phoneId);
@@ -625,11 +625,11 @@ public class PhoneSwitcher extends Handler {
 
     /**
      * Set a subscription as preferred data subscription.
-     * See {@link SubscriptionManager#setPreferredData(int)} for more details.
+     * See {@link SubscriptionManager#setPreferredDataSubscriptionId(int)} for more details.
      */
-    public void setPreferredData(int subId) {
+    public void setPreferredDataSubscriptionId(int subId) {
         if (mPreferredDataSubId != subId) {
-            log("setPreferredData subId changed to " + subId);
+            log("setPreferredDataSubscriptionId subId changed to " + subId);
             mPreferredDataSubId = subId;
             Message msg = PhoneSwitcher.this.obtainMessage(EVENT_PREFERRED_SUBSCRIPTION_CHANGED);
             msg.sendToTarget();
