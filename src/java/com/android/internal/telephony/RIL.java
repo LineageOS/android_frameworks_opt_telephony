@@ -5486,6 +5486,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
+     * Convert CellInfo defined in 1.4/types.hal to CellInfo type.
+     * @param records List of CellInfo defined in 1.4/types.hal.
+     * @return List of converted CellInfo object.
+     */
+    @VisibleForTesting
+    public static ArrayList<CellInfo> convertHalCellInfoList_1_4(
+            ArrayList<android.hardware.radio.V1_4.CellInfo> records) {
+        ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
+
+        for (android.hardware.radio.V1_4.CellInfo record : records) {
+            response.add(CellInfo.create(record));
+        }
+        return response;
+    }
+
+    /**
      * @return The {@link IwlanOperationMode IWLAN operation mode}
      */
     public @IwlanOperationMode int getIwlanOperationMode() {
