@@ -566,14 +566,16 @@ public class EuiccCard extends UiccCard {
                     int size = nodes.size();
                     for (int i = 0; i < size; i++) {
                         Asn1Node node = nodes.get(i);
-                        List<Asn1Node> opIdNodes = node.getChild(Tags.TAG_CTX_COMP_1).getChildren();
+                        List<Asn1Node> opIdNodes =
+                                node.getChild(Tags.TAG_SEQUENCE, Tags.TAG_CTX_COMP_1).getChildren();
                         int opIdSize = opIdNodes.size();
                         CarrierIdentifier[] opIds = new CarrierIdentifier[opIdSize];
                         for (int j = 0; j < opIdSize; j++) {
                             opIds[j] = buildCarrierIdentifier(opIdNodes.get(j));
                         }
-                        builder.add(node.getChild(Tags.TAG_CTX_0).asBits(), Arrays.asList(opIds),
-                                node.getChild(Tags.TAG_CTX_2).asBits());
+                        builder.add(node.getChild(Tags.TAG_SEQUENCE, Tags.TAG_CTX_0).asBits(),
+                                Arrays.asList(opIds), node.getChild(Tags.TAG_SEQUENCE,
+                                Tags.TAG_CTX_2).asBits());
                     }
                     return builder.build();
                 },

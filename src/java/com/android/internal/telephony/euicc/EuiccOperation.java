@@ -61,7 +61,10 @@ public class EuiccOperation implements Parcelable {
             ACTION_GET_METADATA_DEACTIVATE_SIM,
             ACTION_DOWNLOAD_DEACTIVATE_SIM,
             ACTION_DOWNLOAD_NO_PRIVILEGES,
-            ACTION_DOWNLOAD_CONFIRMATION_CODE,
+            ACTION_GET_DEFAULT_LIST_DEACTIVATE_SIM,
+            ACTION_SWITCH_DEACTIVATE_SIM,
+            ACTION_SWITCH_NO_PRIVILEGES,
+            ACTION_DOWNLOAD_RESOLVABLE_ERRORS,
     })
     @interface Action {}
 
@@ -78,7 +81,13 @@ public class EuiccOperation implements Parcelable {
     @VisibleForTesting
     static final int ACTION_SWITCH_NO_PRIVILEGES = 6;
     @VisibleForTesting
-    static final int ACTION_DOWNLOAD_CONFIRMATION_CODE = 7;
+    static final int ACTION_DOWNLOAD_RESOLVABLE_ERRORS = 7;
+    /**
+     * @deprecated Use ACTION_DOWNLOAD_RESOLVABLE_ERRORS and pass the resolvable errors in bit map.
+     */
+    @VisibleForTesting
+    @Deprecated
+    static final int ACTION_DOWNLOAD_CONFIRMATION_CODE = 8;
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public final @Action int mAction;
@@ -91,6 +100,8 @@ public class EuiccOperation implements Parcelable {
     private final boolean mSwitchAfterDownload;
     @Nullable
     private final String mCallingPackage;
+    @Nullable
+    private final int mResolvableErrors;
 
     /**
      * {@link EuiccManager#getDownloadableSubscriptionMetadata} failed with
@@ -130,12 +141,29 @@ public class EuiccOperation implements Parcelable {
     /**
      * {@link EuiccManager#downloadSubscription} failed with
      * {@link EuiccService#RESULT_NEED_CONFIRMATION_CODE} error.
+     *
+     * @deprecated Use
+     * {@link #forDownloadResolvableErrors(long, DownloadableSubscription, boolean, String, int)}
+     * instead.
      */
+    @Deprecated
     public static EuiccOperation forDownloadConfirmationCode(long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
             String callingPackage) {
         return new EuiccOperation(ACTION_DOWNLOAD_CONFIRMATION_CODE, callingToken,
-                subscription, 0 /* subscriptionId */, switchAfterDownload, callingPackage);
+            subscription, 0 /* subscriptionId */, switchAfterDownload, callingPackage);
+    }
+
+    /**
+     * {@link EuiccManager#downloadSubscription} failed with
+     * {@link EuiccService#RESULT_RESOLVABLE_ERRORS} error.
+     */
+    public static EuiccOperation forDownloadResolvableErrors(long callingToken,
+            DownloadableSubscription subscription, boolean switchAfterDownload,
+            String callingPackage, int resolvableErrors) {
+        return new EuiccOperation(ACTION_DOWNLOAD_RESOLVABLE_ERRORS, callingToken,
+                subscription, 0 /* subscriptionId */, switchAfterDownload,
+                callingPackage, resolvableErrors);
     }
 
     static EuiccOperation forGetDefaultListDeactivateSim(long callingToken, String callingPackage) {
@@ -163,6 +191,22 @@ public class EuiccOperation implements Parcelable {
             @Nullable DownloadableSubscription downloadableSubscription,
             int subscriptionId,
             boolean switchAfterDownload,
+            String callingPackage,
+            int resolvableErrors) {
+        mAction = action;
+        mCallingToken = callingToken;
+        mDownloadableSubscription = downloadableSubscription;
+        mSubscriptionId = subscriptionId;
+        mSwitchAfterDownload = switchAfterDownload;
+        mCallingPackage = callingPackage;
+        mResolvableErrors = resolvableErrors;
+    }
+
+    EuiccOperation(@Action int action,
+            long callingToken,
+            @Nullable DownloadableSubscription downloadableSubscription,
+            int subscriptionId,
+            boolean switchAfterDownload,
             String callingPackage) {
         mAction = action;
         mCallingToken = callingToken;
@@ -170,6 +214,7 @@ public class EuiccOperation implements Parcelable {
         mSubscriptionId = subscriptionId;
         mSwitchAfterDownload = switchAfterDownload;
         mCallingPackage = callingPackage;
+        mResolvableErrors = 0;
     }
 
     EuiccOperation(Parcel in) {
@@ -179,6 +224,7 @@ public class EuiccOperation implements Parcelable {
         mSubscriptionId = in.readInt();
         mSwitchAfterDownload = in.readBoolean();
         mCallingPackage = in.readString();
+        mResolvableErrors = in.readInt();
     }
 
     @Override
@@ -189,6 +235,7 @@ public class EuiccOperation implements Parcelable {
         dest.writeInt(mSubscriptionId);
         dest.writeBoolean(mSwitchAfterDownload);
         dest.writeString(mCallingPackage);
+        dest.writeInt(mResolvableErrors);
     }
 
     /**
@@ -220,10 +267,13 @@ public class EuiccOperation implements Parcelable {
                         resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
-            case ACTION_DOWNLOAD_CONFIRMATION_CODE:
+            case ACTION_DOWNLOAD_CONFIRMATION_CODE: // Deprecated case
                 resolvedDownloadConfirmationCode(
                         resolutionExtras.getString(EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE),
                         callbackIntent);
+                break;
+            case ACTION_DOWNLOAD_RESOLVABLE_ERRORS:
+                resolvedDownloadResolvableErrors(resolutionExtras, callbackIntent);
                 break;
             case ACTION_GET_DEFAULT_LIST_DEACTIVATE_SIM:
                 resolvedGetDefaultListDeactivateSim(
@@ -272,6 +322,7 @@ public class EuiccOperation implements Parcelable {
                     mSwitchAfterDownload,
                     mCallingPackage,
                     true /* forceDeactivateSim */,
+                    null /* resolvedBundle */,
                     callbackIntent);
         } else {
             // User has not consented; fail the operation.
@@ -294,6 +345,7 @@ public class EuiccOperation implements Parcelable {
                         mSwitchAfterDownload,
                         true /* forceDeactivateSim */,
                         mCallingPackage,
+                        null /* resolvedBundle */,
                         callbackIntent);
             } finally {
                 Binder.restoreCallingIdentity(token);
@@ -304,19 +356,57 @@ public class EuiccOperation implements Parcelable {
         }
     }
 
+    /**
+     * @deprecated The resolvable errors in download step are solved by
+     * {@link #resolvedDownloadResolvableErrors(Bundle, PendingIntent)} from Q.
+     */
+    @Deprecated
     private void resolvedDownloadConfirmationCode(String confirmationCode,
             PendingIntent callbackIntent) {
         if (TextUtils.isEmpty(confirmationCode)) {
             fail(callbackIntent);
         } else {
             mDownloadableSubscription.setConfirmationCode(confirmationCode);
-            EuiccController.get()
-                    .downloadSubscription(
-                            mDownloadableSubscription,
-                            mSwitchAfterDownload,
-                            mCallingPackage,
-                            true /* forceDeactivateSim */,
-                            callbackIntent);
+            EuiccController.get().downloadSubscription(
+                    mDownloadableSubscription,
+                    mSwitchAfterDownload,
+                    mCallingPackage,
+                    true /* forceDeactivateSim */,
+                    null,
+                    callbackIntent);
+        }
+    }
+
+    private void resolvedDownloadResolvableErrors(Bundle resolvedBundle,
+            PendingIntent callbackIntent) {
+        boolean pass = true;
+        String confirmationCode = null;
+        if ((mResolvableErrors & EuiccService.RESOLVABLE_ERROR_POLICY_RULES) != 0) {
+            if (!resolvedBundle.getBoolean(EuiccService.EXTRA_RESOLUTION_ALLOW_POLICY_RULES)) {
+                pass = false;
+            }
+        }
+        if ((mResolvableErrors & EuiccService.RESOLVABLE_ERROR_CONFIRMATION_CODE) != 0) {
+            confirmationCode = resolvedBundle.getString(
+                EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE);
+            // The check here just makes sure the entered confirmation code is non-empty. The actual
+            // check to valid the confirmation code is done by LPA on the ensuing download attemp.
+            if (TextUtils.isEmpty(confirmationCode)) {
+                pass = false;
+            }
+        }
+
+        if (!pass) {
+            fail(callbackIntent);
+        } else {
+            mDownloadableSubscription.setConfirmationCode(confirmationCode);
+            EuiccController.get().downloadSubscription(
+                    mDownloadableSubscription,
+                    mSwitchAfterDownload,
+                    mCallingPackage,
+                    true /* forceDeactivateSim */,
+                    resolvedBundle,
+                    callbackIntent);
         }
     }
 
