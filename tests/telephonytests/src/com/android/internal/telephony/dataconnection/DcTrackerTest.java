@@ -108,9 +108,6 @@ public class DcTrackerTest extends TelephonyTest {
             "mobile_ims,11,0,2,60000,true", "mobile_cbs,12,0,2,60000,true",
             "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true"};
 
-    private static final int LTE_BEARER_BITMASK = 1 << (ServiceState.RIL_RADIO_TECHNOLOGY_LTE - 1);
-    private static final int EHRPD_BEARER_BITMASK =
-            1 << (ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD - 1);
     public static final String FAKE_APN1 = "FAKE APN 1";
     public static final String FAKE_APN2 = "FAKE APN 2";
     public static final String FAKE_APN3 = "FAKE APN 3";
@@ -514,7 +511,7 @@ public class DcTrackerTest extends TelephonyTest {
                                    int supportedApnTypesBitmap, int type, int bearerBitmask) {
         assertEquals(profileId, dp.getProfileId());
         assertEquals(apn, dp.getApn());
-        assertEquals("IP", dp.getProtocol());
+        assertEquals(ApnSetting.PROTOCOL_IP, dp.getProtocol());
         assertEquals(0, dp.getAuthType());
         assertEquals("", dp.getUserName());
         assertEquals("", dp.getPassword());
@@ -522,7 +519,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(0, dp.getWaitTime());
         assertTrue(dp.isEnabled());
         assertEquals(supportedApnTypesBitmap, dp.getSupportedApnTypesBitmap());
-        assertEquals("IP", dp.getRoamingProtocol());
+        assertEquals(ApnSetting.PROTOCOL_IP, dp.getRoamingProtocol());
         assertEquals(bearerBitmask, dp.getBearerBitmap());
         assertEquals(0, dp.getMtu());
         assertTrue(dp.isPersistent());
@@ -597,7 +594,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         verifyDataConnected(FAKE_APN1);
     }
@@ -646,7 +643,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         // Verify the retry manger schedule another data call setup.
         verify(mAlarmManager, times(1)).setExact(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP),
@@ -671,7 +668,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN2, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN2, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         // Verify connected with APN2 setting.
         verifyDataConnected(FAKE_APN2);
@@ -703,7 +700,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending DATA_DISABLED_CMD");
         doReturn(false).when(mDataEnabledSettings).isDataEnabled();
@@ -752,7 +749,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         //user is in roaming
         doReturn(true).when(mServiceState).getDataRoaming();
@@ -916,7 +913,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 5, 1, NETWORK_TYPE_LTE_BITMASK);
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
 
         AsyncResult ar = new AsyncResult(null,
@@ -1206,7 +1203,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN4, 0, 21, 2, EHRPD_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN4, 0, 21, 2, NETWORK_TYPE_EHRPD_BITMASK);
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
 
         //data rat change from ehrpd to lte
@@ -1239,7 +1236,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
     }
 
@@ -1326,7 +1323,7 @@ public class DcTrackerTest extends TelephonyTest {
                         mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN4, 0, 21, 2, EHRPD_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN4, 0, 21, 2, NETWORK_TYPE_EHRPD_BITMASK);
         assertEquals(DctConstants.State.CONNECTED, mDct.getOverallState());
 
         // Data rat change from ehrpd to unknown due to OOS
@@ -1452,7 +1449,7 @@ public class DcTrackerTest extends TelephonyTest {
                 mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
@@ -1494,7 +1491,7 @@ public class DcTrackerTest extends TelephonyTest {
                 mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
@@ -1541,7 +1538,7 @@ public class DcTrackerTest extends TelephonyTest {
                 mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED false");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
@@ -1586,7 +1583,7 @@ public class DcTrackerTest extends TelephonyTest {
                 mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED false");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
@@ -1627,7 +1624,7 @@ public class DcTrackerTest extends TelephonyTest {
                 mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, LTE_BEARER_BITMASK);
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED false");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
