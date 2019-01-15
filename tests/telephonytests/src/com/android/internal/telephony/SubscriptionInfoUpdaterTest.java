@@ -71,6 +71,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     private static final int FAKE_SUB_ID_1 = 0;
     private static final int FAKE_SUB_ID_2 = 1;
+    private static final int FAKE_CARD_ID = 0;
     private static final String FAKE_MCC_MNC_1 = "123456";
     private static final String FAKE_MCC_MNC_2 = "456789";
 
@@ -448,7 +449,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 new EuiccProfileInfo("1", null /* accessRules */, null /* nickname */),
                 new EuiccProfileInfo("3", null /* accessRules */, null /* nickname */),
         };
-        when(mEuiccController.blockingGetEuiccProfileInfoList()).thenReturn(
+        when(mEuiccController.blockingGetEuiccProfileInfoList(FAKE_CARD_ID)).thenReturn(
                 new GetEuiccProfileInfoListResult(
                         EuiccService.RESULT_OK, euiccProfiles, false /* removable */));
 
@@ -465,7 +466,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
                 new String[] { "1", "3"}, false /* removable */)).thenReturn(subInfoList);
 
-        assertTrue(mUpdater.updateEmbeddedSubscriptions());
+        assertTrue(mUpdater.updateEmbeddedSubscriptions(FAKE_CARD_ID));
 
         // 3 is new and so a new entry should have been created.
         verify(mSubscriptionController).insertEmptySubInfoRecord(
@@ -499,7 +500,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testUpdateEmbeddedSubscriptions_listFailure() throws Exception {
         when(mEuiccManager.isEnabled()).thenReturn(true);
-        when(mEuiccController.blockingGetEuiccProfileInfoList())
+        when(mEuiccController.blockingGetEuiccProfileInfoList(FAKE_CARD_ID))
                 .thenReturn(new GetEuiccProfileInfoListResult(
                         42, null /* subscriptions */, false /* removable */));
 
@@ -516,7 +517,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
                 new String[0], false /* removable */)).thenReturn(subInfoList);
 
-        assertTrue(mUpdater.updateEmbeddedSubscriptions());
+        assertTrue(mUpdater.updateEmbeddedSubscriptions(FAKE_CARD_ID));
 
         // No new entries should be created.
         verify(mSubscriptionController, times(0)).clearSubInfo();
@@ -541,7 +542,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testUpdateEmbeddedSubscriptions_emptyToEmpty() throws Exception {
         when(mEuiccManager.isEnabled()).thenReturn(true);
-        when(mEuiccController.blockingGetEuiccProfileInfoList())
+        when(mEuiccController.blockingGetEuiccProfileInfoList(FAKE_CARD_ID))
                 .thenReturn(new GetEuiccProfileInfoListResult(
                         42, null /* subscriptions */, true /* removable */));
 
@@ -554,7 +555,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
                 new String[0], false /* removable */)).thenReturn(subInfoList);
 
-        assertFalse(mUpdater.updateEmbeddedSubscriptions());
+        assertFalse(mUpdater.updateEmbeddedSubscriptions(FAKE_CARD_ID));
 
         // No new entries should be created.
         verify(mSubscriptionController, never()).insertEmptySubInfoRecord(anyString(), anyInt());
