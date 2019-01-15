@@ -436,8 +436,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         sendMessage(CMD_DOWNLOAD_SUBSCRIPTION, request);
     }
 
-    void getEuiccProfileInfoList(GetEuiccProfileInfoListCommandCallback callback) {
-        sendMessage(CMD_GET_EUICC_PROFILE_INFO_LIST, callback);
+    void getEuiccProfileInfoList(int cardId, GetEuiccProfileInfoListCommandCallback callback) {
+        sendMessage(CMD_GET_EUICC_PROFILE_INFO_LIST, cardId, 0 /* arg2 */, callback);
     }
 
     /** Asynchronously fetch the default downloadable subscription list. */
