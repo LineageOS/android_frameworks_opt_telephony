@@ -3268,7 +3268,7 @@ public class DcTracker extends Handler {
                     if (DBG) {
                         log("buildWaitingApns: networkTypeBitmask:"
                                 + apn.getNetworkTypeBitmask()
-                                + "do not include radioTech:" + radioTech);
+                                + " does not include radioTech:" + radioTech);
                     }
                 }
             } else if (DBG) {
@@ -4675,23 +4675,21 @@ public class DcTracker extends Handler {
                                                 boolean isPreferred) {
         int profileType;
 
-        int bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
-                apn.getNetworkTypeBitmask());
+        int networkTypeBitmask = apn.getNetworkTypeBitmask();
 
-        if (bearerBitmap == 0) {
+        if (networkTypeBitmask == 0) {
             profileType = DataProfile.TYPE_COMMON;
-        } else if (ServiceState.bearerBitmapHasCdma(bearerBitmap)) {
+        } else if (ServiceState.bearerBitmapHasCdma(networkTypeBitmask)) {
             profileType = DataProfile.TYPE_3GPP2;
         } else {
             profileType = DataProfile.TYPE_3GPP;
         }
 
-        return new DataProfile(profileId, apn.getApnName(),
-                ApnSetting.getProtocolStringFromInt(apn.getProtocol()), apn.getAuthType(),
+        return new DataProfile(profileId, apn.getApnName(), apn.getProtocol(), apn.getAuthType(),
                 apn.getUser(), apn.getPassword(), profileType, apn.getMaxConnsTime(),
                 apn.getMaxConns(),  apn.getWaitTime(), apn.isEnabled(), apn.getApnTypeBitmask(),
-                ApnSetting.getProtocolStringFromInt(apn.getRoamingProtocol()), bearerBitmap,
-                apn.getMtu(), apn.isPersistent(), isPreferred);
+                apn.getRoamingProtocol(), networkTypeBitmask, apn.getMtu(), apn.isPersistent(),
+                isPreferred);
     }
 
     private void onDataServiceBindingChanged(boolean bound) {
