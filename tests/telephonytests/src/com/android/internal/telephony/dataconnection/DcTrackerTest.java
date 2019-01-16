@@ -947,7 +947,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(apnSetting).when(mApnContext).getApnSetting();
         doReturn(mDataConnection).when(mApnContext).getDataConnection();
         doReturn(true).when(mApnContext).isEnabled();
-        doReturn(true).when(mApnContext).getDependencyMet();
+        doReturn(true).when(mApnContext).isDependencyMet();
         doReturn(true).when(mApnContext).isReady();
         doReturn(false).when(mApnContext).hasRestrictedRequests(eq(true));
     }
