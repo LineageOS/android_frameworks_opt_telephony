@@ -891,7 +891,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
                      int clirMode, UUSInfo uusInfo, Message result) {
-        if (isEmergencyCall && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+        if (isEmergencyCall && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)
+                && emergencyNumberInfo != null) {
             emergencyDial(address, emergencyNumberInfo, clirMode, uusInfo, result);
             return;
         }
@@ -952,9 +953,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             try {
                 radioProxy14.emergencyDial(rr.mSerial, dialInfo,
-                        emergencyNumberInfo.getEmergencyServiceCategoryBitmask(),
+                        emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
                         (ArrayList) emergencyNumberInfo.getEmergencyUrns(),
-                        emergencyNumberInfo.getEmergencyCallRouting());
+                        emergencyNumberInfo.getEmergencyCallRouting(),
+                        emergencyNumberInfo.getEmergencyNumberSourceBitmask()
+                                == EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
             }
