@@ -119,14 +119,14 @@ public class ApnContextTest extends TelephonyTest {
         NetworkRequest nr = new NetworkRequest.Builder().build();
         mApnContext.requestNetwork(nr, log);
 
-        verify(mDcTracker, times(1)).setEnabled(eq(ApnSetting.TYPE_DEFAULT), eq(true));
+        verify(mDcTracker, times(1)).enableApn(eq(ApnSetting.TYPE_DEFAULT));
         mApnContext.requestNetwork(nr, log);
-        verify(mDcTracker, times(1)).setEnabled(eq(ApnSetting.TYPE_DEFAULT), eq(true));
+        verify(mDcTracker, times(1)).enableApn(eq(ApnSetting.TYPE_DEFAULT));
 
         mApnContext.releaseNetwork(nr, log);
-        verify(mDcTracker, times(1)).setEnabled(eq(ApnSetting.TYPE_DEFAULT), eq(false));
+        verify(mDcTracker, times(1)).disableApn(eq(ApnSetting.TYPE_DEFAULT));
         mApnContext.releaseNetwork(nr, log);
-        verify(mDcTracker, times(1)).setEnabled(eq(ApnSetting.TYPE_DEFAULT), eq(false));
+        verify(mDcTracker, times(1)).disableApn(eq(ApnSetting.TYPE_DEFAULT));
     }
 
     @Test

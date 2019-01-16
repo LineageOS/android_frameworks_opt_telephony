@@ -2116,83 +2116,6 @@ public class DcTracker extends Handler {
         setDataProfilesAsNeeded();
     }
 
-    private void applyNewState(ApnContext apnContext, boolean enabled) {
-        boolean cleanup = false;
-        boolean trySetup = false;
-        boolean met = apnContext.isDependencyMet();
-        String str = "applyNewState(" + apnContext.getApnType() + ", " + enabled
-                + "(" + apnContext.isEnabled() + "), " + met + "("
-                + apnContext.isDependencyMet() + "))";
-        if (DBG) log(str);
-        apnContext.requestLog(str);
-
-        if (apnContext.isReady()) {
-            cleanup = true;
-            if (enabled && met) {
-                DctConstants.State state = apnContext.getState();
-                switch(state) {
-                    case CONNECTING:
-                    case CONNECTED:
-                    case DISCONNECTING:
-                        // We're "READY" and active so just return
-                        if (DBG) log("applyNewState: 'ready' so return");
-                        apnContext.requestLog("applyNewState state=" + state + ", so return");
-                        return;
-                    case IDLE:
-                        // fall through: this is unexpected but if it happens cleanup and try setup
-                    case FAILED:
-                    case RETRYING:
-                        // We're "READY" but not active so disconnect (cleanup = true) and
-                        // connect (trySetup = true) to be sure we retry the connection.
-                        trySetup = true;
-                        apnContext.setReason(Phone.REASON_DATA_ENABLED);
-                        break;
-                }
-            } else if (met) {
-                apnContext.setReason(Phone.REASON_DATA_DISABLED_INTERNAL);
-                // If ConnectivityService has disabled this network, stop trying to bring
-                // it up, but do not tear it down - ConnectivityService will do that
-                // directly by talking with the DataConnection.
-                //
-                // This doesn't apply to DUN, however.  Those connections have special
-                // requirements from carriers and we need stop using them when the dun
-                // request goes away.  This applies to both CDMA and GSM because they both
-                // can declare the DUN APN sharable by default traffic, thus still satisfying
-                // those requests and not torn down organically.
-                if ((apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun())
-                        || apnContext.getState() != DctConstants.State.CONNECTED) {
-                    str = "Clean up the connection. Apn type = " + apnContext.getApnType()
-                            + ", state = " + apnContext.getState();
-                    if (DBG) log(str);
-                    apnContext.requestLog(str);
-                    cleanup = true;
-                } else {
-                    cleanup = false;
-                }
-            } else {
-                apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_UNMET);
-            }
-        } else {
-            if (enabled && met) {
-                if (apnContext.isEnabled()) {
-                    apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_MET);
-                } else {
-                    apnContext.setReason(Phone.REASON_DATA_ENABLED);
-                }
-                if (apnContext.getState() == DctConstants.State.FAILED) {
-                    apnContext.setState(DctConstants.State.IDLE);
-                }
-                trySetup = true;
-            }
-        }
-        apnContext.setEnabled(enabled);
-        if (cleanup) cleanUpConnectionInternal(true, apnContext);
-        if (trySetup) {
-            apnContext.resetErrorCodeRetries();
-            trySetupData(apnContext);
-        }
-    }
-
     private DataConnection checkForCompatibleConnectedApnContext(ApnContext apnContext) {
         int apnType = apnContext.getApnTypeBitmask();
         ArrayList<ApnSetting> dunSettings = null;
@@ -2268,28 +2191,125 @@ public class DcTracker extends Handler {
         return null;
     }
 
-    public void setEnabled(int apnType, boolean enable) {
-        Message msg = obtainMessage(DctConstants.EVENT_ENABLE_NEW_APN);
+    public void enableApn(int apnType) {
+        Message msg = obtainMessage(DctConstants.EVENT_ENABLE_APN);
         msg.arg1 = apnType;
-        msg.arg2 = (enable ? DctConstants.ENABLED : DctConstants.DISABLED);
         sendMessage(msg);
     }
 
-    private void onEnableApn(int apnType, int enabled) {
+    private void onEnableApn(int apnType) {
         ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext == null) {
-            loge("onEnableApn(" + apnType + ", " + enabled + "): NO ApnContext");
+            loge("onEnableApn(" + apnType + "): NO ApnContext");
             return;
         }
-        // TODO change our retry manager to use the appropriate numbers for the new APN
-        if (DBG) log("onEnableApn: apnContext=" + apnContext + " call applyNewState");
-        applyNewState(apnContext, enabled == DctConstants.ENABLED);
 
-        if ((enabled == DctConstants.DISABLED) &&
-            isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology()) &&
-            !isHigherPriorityApnContextActive(apnContext)) {
+        boolean trySetup = false;
+        String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeString(apnType);
+        if (DBG) log(str);
+        apnContext.requestLog(str);
 
-            if(DBG) log("onEnableApn: isOnlySingleDcAllowed true & higher priority APN disabled");
+        if (!apnContext.isDependencyMet()) {
+            apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_UNMET);
+            apnContext.setEnabled(true);
+            str = "onEnableApn: dependency is not met.";
+            if (DBG) log(str);
+            apnContext.requestLog(str);
+            return;
+        }
+
+        if (apnContext.isReady()) {
+            DctConstants.State state = apnContext.getState();
+            switch(state) {
+                case CONNECTING:
+                case CONNECTED:
+                case DISCONNECTING:
+                    // We're "READY" and active so just return
+                    if (DBG) log("onEnableApn: 'ready' so return");
+                    apnContext.requestLog("onEnableApn state=" + state + ", so return");
+                    return;
+                case IDLE:
+                    // fall through: this is unexpected but if it happens cleanup and try setup
+                case FAILED:
+                case RETRYING:
+                    // We're "READY" but not active so disconnect (cleanup = true) and
+                    // connect (trySetup = true) to be sure we retry the connection.
+                    trySetup = true;
+                    apnContext.setReason(Phone.REASON_DATA_ENABLED);
+                    break;
+            }
+        } else {
+            if (apnContext.isEnabled()) {
+                apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_MET);
+            } else {
+                apnContext.setReason(Phone.REASON_DATA_ENABLED);
+            }
+            if (apnContext.getState() == DctConstants.State.FAILED) {
+                apnContext.setState(DctConstants.State.IDLE);
+            }
+            trySetup = true;
+        }
+        apnContext.setEnabled(true);
+        if (trySetup) {
+            apnContext.resetErrorCodeRetries();
+            trySetupData(apnContext);
+        }
+    }
+
+    public void disableApn(int apnType) {
+        Message msg = obtainMessage(DctConstants.EVENT_DISABLE_APN);
+        msg.arg1 = apnType;
+        sendMessage(msg);
+    }
+
+    private void onDisableApn(int apnType) {
+        ApnContext apnContext = mApnContextsByType.get(apnType);
+        if (apnContext == null) {
+            loge("disableApn(" + apnType + "): NO ApnContext");
+            return;
+        }
+
+        boolean cleanup = false;
+        String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeString(apnType);
+        if (DBG) log(str);
+        apnContext.requestLog(str);
+
+        if (apnContext.isReady()) {
+            cleanup = true;
+            if (apnContext.isDependencyMet()) {
+                apnContext.setReason(Phone.REASON_DATA_DISABLED_INTERNAL);
+                // If ConnectivityService has disabled this network, stop trying to bring
+                // it up, but do not tear it down - ConnectivityService will do that
+                // directly by talking with the DataConnection.
+                //
+                // This doesn't apply to DUN, however.  Those connections have special
+                // requirements from carriers and we need stop using them when the dun
+                // request goes away.  This applies to both CDMA and GSM because they both
+                // can declare the DUN APN sharable by default traffic, thus still satisfying
+                // those requests and not torn down organically.
+                if ((PhoneConstants.APN_TYPE_DUN.equals(apnContext.getApnType())
+                        && teardownForDun())
+                        || apnContext.getState() != DctConstants.State.CONNECTED) {
+                    str = "Clean up the connection. Apn type = " + apnContext.getApnType()
+                            + ", state = " + apnContext.getState();
+                    if (DBG) log(str);
+                    apnContext.requestLog(str);
+                } else {
+                    cleanup = false;
+                }
+            } else {
+                apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_UNMET);
+            }
+        }
+
+        apnContext.setEnabled(false);
+        if (cleanup) {
+            cleanUpConnectionInternal(true, apnContext);
+        }
+
+        if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())
+                && !isHigherPriorityApnContextActive(apnContext)) {
+            if (DBG) log("disableApn:isOnlySingleDcAllowed true & higher priority APN disabled");
             // If the highest priority APN is disabled and only single
             // data call is allowed, try to setup data call on other connectable APN.
             setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION, RetryFailures.ALWAYS);
@@ -3393,8 +3413,11 @@ public class DcTracker extends Handler {
                     mProvisioningSpinner = null;
                 }
                 break;
-            case DctConstants.EVENT_ENABLE_NEW_APN:
-                onEnableApn(msg.arg1, msg.arg2);
+            case DctConstants.EVENT_ENABLE_APN:
+                onEnableApn(msg.arg1);
+                break;
+            case DctConstants.EVENT_DISABLE_APN:
+                onDisableApn(msg.arg1);
                 break;
 
             case DctConstants.EVENT_DATA_STALL_ALARM:
