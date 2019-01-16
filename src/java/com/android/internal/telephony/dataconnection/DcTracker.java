@@ -1398,7 +1398,7 @@ public class DcTracker extends Handler {
             str.append("trySetupData failed. apnContext = [type=" + apnContext.getApnType()
                     + ", mState=" + apnContext.getState() + ", apnEnabled="
                     + apnContext.isEnabled() + ", mDependencyMet="
-                    + apnContext.getDependencyMet() + "] ");
+                    + apnContext.isDependencyMet() + "] ");
 
             if (!mDataEnabledSettings.isDataEnabled()) {
                 str.append("isDataEnabled() = false. " + mDataEnabledSettings);
@@ -2120,12 +2120,13 @@ public class DcTracker extends Handler {
         setDataProfilesAsNeeded();
     }
 
-    private void applyNewState(ApnContext apnContext, boolean enabled, boolean met) {
+    private void applyNewState(ApnContext apnContext, boolean enabled) {
         boolean cleanup = false;
         boolean trySetup = false;
-        String str ="applyNewState(" + apnContext.getApnType() + ", " + enabled +
-                "(" + apnContext.isEnabled() + "), " + met + "(" +
-                apnContext.getDependencyMet() +"))";
+        boolean met = apnContext.isDependencyMet();
+        String str = "applyNewState(" + apnContext.getApnType() + ", " + enabled
+                + "(" + apnContext.isEnabled() + "), " + met + "("
+                + apnContext.isDependencyMet() + "))";
         if (DBG) log(str);
         apnContext.requestLog(str);
 
@@ -2189,7 +2190,6 @@ public class DcTracker extends Handler {
             }
         }
         apnContext.setEnabled(enabled);
-        apnContext.setDependencyMet(met);
         if (cleanup) cleanUpConnectionInternal(true, apnContext);
         if (trySetup) {
             apnContext.resetErrorCodeRetries();
@@ -2287,7 +2287,7 @@ public class DcTracker extends Handler {
         }
         // TODO change our retry manager to use the appropriate numbers for the new APN
         if (DBG) log("onEnableApn: apnContext=" + apnContext + " call applyNewState");
-        applyNewState(apnContext, enabled == DctConstants.ENABLED, apnContext.getDependencyMet());
+        applyNewState(apnContext, enabled == DctConstants.ENABLED);
 
         if ((enabled == DctConstants.DISABLED) &&
             isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology()) &&
