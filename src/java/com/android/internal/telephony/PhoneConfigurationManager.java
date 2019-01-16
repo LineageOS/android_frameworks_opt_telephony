@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
+import android.os.Message;
 import android.telephony.PhoneCapability;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
@@ -82,23 +83,16 @@ public class PhoneConfigurationManager {
     /**
      * Enable or disable phone
      *
-     * @param phoneId which phone to operate on
+     * @param phone which phone to operate on
      * @param enable true or false
-     *
+     * @param result the message to sent back when it's done.
      */
-    public void enablePhone(int phoneId, boolean enable) {
-        // TODO: send command to modem once interface is ready.
-    }
-
-    /**
-     * Enable or disable phone
-     *
-     * @param phoneId which phone to operate on
-     * @param enable true or false
-     *
-     */
-    public void enablePhone(int[] phoneId, boolean[] enable) {
-        // TODO: send command to modem once interface is ready.
+    public void enablePhone(Phone phone, boolean enable, Message result) {
+        if (phone == null) {
+            log("enablePhone failed phone is null");
+            return;
+        }
+        phone.mCi.enableModem(enable, result);
     }
 
     /**
