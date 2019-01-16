@@ -173,7 +173,7 @@ public class SubscriptionController extends ISub.Stub {
 
     private int[] colorArr;
     private long mLastISubServiceRegTime;
-    private int mPreferredDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    private int mPreferredDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
@@ -245,6 +245,11 @@ public class SubscriptionController extends ISub.Stub {
     private void enforceModifyPhoneState(String message) {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE, message);
+    }
+
+    private void enforceReadPrivilegedPhoneState(String message) {
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
     }
 
     /**
@@ -2344,8 +2349,12 @@ public class SubscriptionController extends ISub.Stub {
 
         long token = Binder.clearCallingIdentity();
         try {
-            return setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
+            int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
                     String.valueOf(opportunistic ? 1 : 0));
+
+            if (ret != 0) notifySubscriptionInfoChanged();
+
+            return ret;
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -2375,8 +2384,12 @@ public class SubscriptionController extends ISub.Stub {
 
         long token = Binder.clearCallingIdentity();
         try {
-            return setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
+            int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
                     String.valueOf(isMetered ? 1 : 0));
+
+            if (ret != 0) notifySubscriptionInfoChanged();
+
+            return ret;
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -2410,14 +2423,14 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public int setPreferredData(int subId) {
-        enforceModifyPhoneState("setPreferredData");
+    public int setPreferredDataSubscriptionId(int subId) {
+        enforceModifyPhoneState("setPreferredDataSubscriptionId");
         final long token = Binder.clearCallingIdentity();
 
         try {
             if (mPreferredDataSubId != subId) {
                 mPreferredDataSubId = subId;
-                PhoneSwitcher.getInstance().setPreferredData(subId);
+                PhoneSwitcher.getInstance().setPreferredDataSubscriptionId(subId);
                 notifyPreferredDataSubIdChanged();
             }
 
@@ -2425,6 +2438,12 @@ public class SubscriptionController extends ISub.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    @Override
+    public int getPreferredDataSubscriptionId() {
+        enforceReadPrivilegedPhoneState("getPreferredDataSubscriptionId");
+        return mPreferredDataSubId;
     }
 
     private void notifyPreferredDataSubIdChanged() {
