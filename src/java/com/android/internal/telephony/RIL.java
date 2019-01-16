@@ -63,6 +63,7 @@ import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
+import android.provider.Settings;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CellInfo;
@@ -213,6 +214,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     /** Telephony metrics instance for logging metrics event */
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
+    /** Radio bug detector instance */
+    private RadioBugDetector mRadioBugDetector = null;
 
     boolean mIsMobileNetworkSupported;
     RadioResponse mRadioResponse;
@@ -276,6 +279,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                     synchronized (mRequestList) {
                         if (msg.arg1 == mWlSequenceNum && clearWakeLock(FOR_WAKELOCK)) {
+                            if (mRadioBugDetector != null) {
+                                mRadioBugDetector.processWakelockTimeout();
+                            }
                             if (RILJ_LOGD) {
                                 int count = mRequestList.size();
                                 Rlog.d(RILJ_LOG_TAG, "WAKE_LOCK_TIMEOUT " +
@@ -327,6 +333,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     break;
             }
         }
+    }
+
+    /** Return RadioBugDetector instance for testing. */
+    @VisibleForTesting
+    public RadioBugDetector getRadioBugDetector() {
+        if (mRadioBugDetector == null) {
+            mRadioBugDetector = new RadioBugDetector(mContext, mPhoneId);
+        }
+        return mRadioBugDetector;
     }
 
     /**
@@ -542,6 +557,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mPreferredNetworkType = preferredNetworkType;
         mPhoneType = RILConstants.NO_PHONE;
         mPhoneId = instanceId == null ? 0 : instanceId;
+        if (isRadioBugDetectionEnabled()) {
+            mRadioBugDetector = new RadioBugDetector(context, mPhoneId);
+        }
 
         ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
                 Context.CONNECTIVITY_SERVICE);
@@ -579,6 +597,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) {
             riljLog("Radio HAL version: " + mRadioVersion);
         }
+    }
+
+    private boolean isRadioBugDetectionEnabled() {
+        return Settings.Global.getInt(
+                mContext.getContentResolver(),
+                Settings.Global.ENABLE_RADIO_BUG_DETECTION,
+                0) != 0;
     }
 
     @Override
@@ -4365,6 +4390,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 Rlog.w(RILJ_LOG_TAG, "Unexpected solicited ack response! sn: " + serial);
             } else {
                 decrementWakeLock(rr);
+                if (mRadioBugDetector != null) {
+                    mRadioBugDetector.detectRadioBug(rr.mRequest, error);
+                }
                 if (RILJ_LOGD) {
                     riljLog(rr.serialString() + " Ack < " + requestToString(rr.mRequest));
                 }
@@ -4381,7 +4409,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         // Time logging for RIL command and storing it in TelephonyHistogram.
         addToRilHistogram(rr);
-
+        if (mRadioBugDetector != null) {
+            mRadioBugDetector.detectRadioBug(rr.mRequest, error);
+        }
         if (type == RadioResponseType.SOLICITED_ACK_EXP) {
             sendAck();
             if (RIL.RILJ_LOGD) {
