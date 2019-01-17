@@ -15,8 +15,9 @@
  */
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+
 import android.telephony.PhoneNumberFormattingTextWatcher;
-import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.Editable;
 import android.text.Selection;
@@ -25,7 +26,7 @@ import android.text.TextWatcher;
 
 import org.junit.Test;
 
-public class PhoneNumberWatcherTest extends AndroidTestCase {
+public class PhoneNumberWatcherTest {
     @Test @SmallTest
     public void testAppendChars() {
         final String multiChars = "65012345";
@@ -300,7 +301,6 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
         assertEquals(expected.length(), Selection.getSelectionEnd(number));
     }
 
-    @Test @SmallTest
     private TextWatcher getTextWatcher() {
         return new PhoneNumberFormattingTextWatcher("US");
     }
