@@ -135,7 +135,7 @@ public class EuiccController extends IEuiccController.Stub {
      * </UL>
      */
     @Override
-    public void continueOperation(Intent resolutionIntent, Bundle resolutionExtras) {
+    public void continueOperation(int cardId, Intent resolutionIntent, Bundle resolutionExtras) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException(
                     "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to continue operation");
@@ -150,7 +150,7 @@ public class EuiccController extends IEuiccController.Stub {
             PendingIntent callbackIntent =
                     resolutionIntent.getParcelableExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_CALLBACK_INTENT);
-            op.continueOperation(resolutionExtras, callbackIntent);
+            op.continueOperation(cardId, resolutionExtras, callbackIntent);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -164,15 +164,16 @@ public class EuiccController extends IEuiccController.Stub {
      * operation.
      */
     @Override
-    public String getEid() {
+    public String getEid(int cardId) {
         if (!callerCanReadPhoneStatePrivileged()
                 && !callerHasCarrierPrivilegesForActiveSubscription()) {
             throw new SecurityException(
-                    "Must have carrier privileges on active subscription to read EID");
+                    "Must have carrier privileges on active subscription to read EID for cardId="
+                    + cardId);
         }
         long token = Binder.clearCallingIdentity();
         try {
-            return blockingGetEidFromEuiccService();
+            return blockingGetEidFromEuiccService(cardId);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -185,27 +186,39 @@ public class EuiccController extends IEuiccController.Stub {
      * that IPC should generally be fast.
      */
     @Override
-    public @OtaStatus int getOtaStatus() {
+    public @OtaStatus int getOtaStatus(int cardId) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException("Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get OTA status");
         }
         long token = Binder.clearCallingIdentity();
         try {
-            return blockingGetOtaStatusFromEuiccService();
+            return blockingGetOtaStatusFromEuiccService(cardId);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-
     /**
-     * Start eUICC OTA update if current eUICC OS is not the latest one. When OTA is started or
-     * finished, the broadcast {@link EuiccManager#ACTION_OTA_STATUS_CHANGED} will be sent.
+     * Start eUICC OTA update on the default eUICC if current eUICC OS is not the latest one. When
+     * OTA is started or finished, the broadcast {@link EuiccManager#ACTION_OTA_STATUS_CHANGED} will
+     * be sent.
      *
      * This function will only be called from phone process and isn't exposed to the other apps.
+     *
+     * (see {@link #startOtaUpdatingIfNecessary(int cardId)}).
      */
     public void startOtaUpdatingIfNecessary() {
-        mConnector.startOtaIfNecessary(
+        // TODO(b/120796772) Eventually, we should use startOtaUpdatingIfNecessary(cardId)
+        TelephonyManager tm =
+                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        startOtaUpdatingIfNecessary(tm.getCardIdForDefaultEuicc());
+    }
+
+    /**
+     * Start eUICC OTA update on the given eUICC if current eUICC OS is not the latest one.
+     */
+    public void startOtaUpdatingIfNecessary(int cardId) {
+        mConnector.startOtaIfNecessary(cardId,
                 new OtaStatusChangedCallback() {
                     @Override
                     public void onOtaStatusChanged(int status) {
@@ -218,13 +231,14 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
-            String callingPackage, PendingIntent callbackIntent) {
-        getDownloadableSubscriptionMetadata(
+    public void getDownloadableSubscriptionMetadata(int cardId,
+            DownloadableSubscription subscription, String callingPackage,
+            PendingIntent callbackIntent) {
+        getDownloadableSubscriptionMetadata(cardId,
                 subscription, false /* forceDeactivateSim */, callingPackage, callbackIntent);
     }
 
-    void getDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
+    void getDownloadableSubscriptionMetadata(int cardId, DownloadableSubscription subscription,
             boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException("Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get metadata");
@@ -232,7 +246,7 @@ public class EuiccController extends IEuiccController.Stub {
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
         long token = Binder.clearCallingIdentity();
         try {
-            mConnector.getDownloadableSubscriptionMetadata(
+            mConnector.getDownloadableSubscriptionMetadata(cardId,
                     subscription, forceDeactivateSim,
                     new GetMetadataCommandCallback(
                             token, subscription, callingPackage, callbackIntent));
@@ -259,7 +273,7 @@ public class EuiccController extends IEuiccController.Stub {
         }
 
         @Override
-        public void onGetMetadataComplete(
+        public void onGetMetadataComplete(int cardId,
                 GetDownloadableSubscriptionMetadataResult result) {
             Intent extrasIntent = new Intent();
             final int resultCode;
@@ -302,14 +316,14 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void downloadSubscription(DownloadableSubscription subscription,
+    public void downloadSubscription(int cardId, DownloadableSubscription subscription,
             boolean switchAfterDownload, String callingPackage, Bundle resolvedBundle,
             PendingIntent callbackIntent) {
-        downloadSubscription(subscription, switchAfterDownload, callingPackage,
+        downloadSubscription(cardId, subscription, switchAfterDownload, callingPackage,
                 false /* forceDeactivateSim */, resolvedBundle, callbackIntent);
     }
 
-    void downloadSubscription(DownloadableSubscription subscription,
+    void downloadSubscription(int cardId, DownloadableSubscription subscription,
             boolean switchAfterDownload, String callingPackage, boolean forceDeactivateSim,
             Bundle resolvedBundle, PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
@@ -320,13 +334,13 @@ public class EuiccController extends IEuiccController.Stub {
             if (callerCanWriteEmbeddedSubscriptions) {
                 // With WRITE_EMBEDDED_SUBSCRIPTIONS, we can skip profile-specific permission checks
                 // and move straight to the profile download.
-                downloadSubscriptionPrivileged(token, subscription, switchAfterDownload,
+                downloadSubscriptionPrivileged(cardId, token, subscription, switchAfterDownload,
                         forceDeactivateSim, callingPackage, resolvedBundle, callbackIntent);
                 return;
             }
             // Without WRITE_EMBEDDED_SUBSCRIPTIONS, the caller *must* be whitelisted per the
             // metadata of the profile to be downloaded, so check the metadata first.
-            mConnector.getDownloadableSubscriptionMetadata(subscription,
+            mConnector.getDownloadableSubscriptionMetadata(cardId, subscription,
                     forceDeactivateSim,
                     new DownloadSubscriptionGetMetadataCommandCallback(token, subscription,
                             switchAfterDownload, callingPackage, forceDeactivateSim,
@@ -350,7 +364,7 @@ public class EuiccController extends IEuiccController.Stub {
         }
 
         @Override
-        public void onGetMetadataComplete(
+        public void onGetMetadataComplete(int cardId,
                 GetDownloadableSubscriptionMetadataResult result) {
             if (result.getResult() == EuiccService.RESULT_MUST_DEACTIVATE_SIM) {
                 // If we need to deactivate the current SIM to even check permissions, go ahead and
@@ -369,7 +383,7 @@ public class EuiccController extends IEuiccController.Stub {
 
             if (result.getResult() != EuiccService.RESULT_OK) {
                 // Just propagate the error as normal.
-                super.onGetMetadataComplete(result);
+                super.onGetMetadataComplete(cardId, result);
                 return;
             }
 
@@ -402,7 +416,7 @@ public class EuiccController extends IEuiccController.Stub {
                     // manage the current profile; if so, we can perform the download silently; if
                     // not, the user must provide consent.
                     if (canManageActiveSubscription(mCallingPackage)) {
-                        downloadSubscriptionPrivileged(
+                        downloadSubscriptionPrivileged(cardId,
                                 mCallingToken, subscription, mSwitchAfterDownload,
                                 mForceDeactivateSim, mCallingPackage, null /* resolvedBundle */,
                                 mCallbackIntent);
@@ -433,11 +447,12 @@ public class EuiccController extends IEuiccController.Stub {
         }
     }
 
-    void downloadSubscriptionPrivileged(final long callingToken,
+    void downloadSubscriptionPrivileged(int cardId, final long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
             boolean forceDeactivateSim, final String callingPackage, Bundle resolvedBundle,
             final PendingIntent callbackIntent) {
         mConnector.downloadSubscription(
+                cardId,
                 subscription,
                 switchAfterDownload,
                 forceDeactivateSim,
@@ -559,13 +574,13 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void getDefaultDownloadableSubscriptionList(
+    public void getDefaultDownloadableSubscriptionList(int cardId,
             String callingPackage, PendingIntent callbackIntent) {
-        getDefaultDownloadableSubscriptionList(
+        getDefaultDownloadableSubscriptionList(cardId,
                 false /* forceDeactivateSim */, callingPackage, callbackIntent);
     }
 
-    void getDefaultDownloadableSubscriptionList(
+    void getDefaultDownloadableSubscriptionList(int cardId,
             boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException(
@@ -574,7 +589,7 @@ public class EuiccController extends IEuiccController.Stub {
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
         long token = Binder.clearCallingIdentity();
         try {
-            mConnector.getDefaultDownloadableSubscriptionList(
+            mConnector.getDefaultDownloadableSubscriptionList(cardId,
                     forceDeactivateSim, new GetDefaultListCommandCallback(
                             token, callingPackage, callbackIntent));
         } finally {
@@ -643,18 +658,18 @@ public class EuiccController extends IEuiccController.Stub {
      * operation.
      */
     @Override
-    public EuiccInfo getEuiccInfo() {
+    public EuiccInfo getEuiccInfo(int cardId) {
         // No permissions required as EuiccInfo is not sensitive.
         long token = Binder.clearCallingIdentity();
         try {
-            return blockingGetEuiccInfoFromEuiccService();
+            return blockingGetEuiccInfoFromEuiccService(cardId);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
     @Override
-    public void deleteSubscription(int subscriptionId, String callingPackage,
+    public void deleteSubscription(int cardId, int subscriptionId, String callingPackage,
             PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
@@ -675,14 +690,16 @@ public class EuiccController extends IEuiccController.Stub {
                 return;
             }
 
-            deleteSubscriptionPrivileged(sub.getIccId(), callbackIntent);
+            deleteSubscriptionPrivileged(cardId, sub.getIccId(), callbackIntent);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    void deleteSubscriptionPrivileged(String iccid, final PendingIntent callbackIntent) {
+    void deleteSubscriptionPrivileged(int cardId, String iccid,
+            final PendingIntent callbackIntent) {
         mConnector.deleteSubscription(
+                cardId,
                 iccid,
                 new EuiccConnector.DeleteCommandCallback() {
                     @Override
@@ -714,14 +731,14 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void switchToSubscription(int subscriptionId, String callingPackage,
+    public void switchToSubscription(int cardId, int subscriptionId, String callingPackage,
             PendingIntent callbackIntent) {
-        switchToSubscription(
+        switchToSubscription(cardId,
                 subscriptionId, false /* forceDeactivateSim */, callingPackage, callbackIntent);
     }
 
-    void switchToSubscription(int subscriptionId, boolean forceDeactivateSim, String callingPackage,
-            PendingIntent callbackIntent) {
+    void switchToSubscription(int cardId, int subscriptionId, boolean forceDeactivateSim,
+            String callingPackage, PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
 
@@ -774,14 +791,14 @@ public class EuiccController extends IEuiccController.Stub {
                 return;
             }
 
-            switchToSubscriptionPrivileged(token, subscriptionId, iccid, forceDeactivateSim,
+            switchToSubscriptionPrivileged(cardId, token, subscriptionId, iccid, forceDeactivateSim,
                     callingPackage, callbackIntent);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    void switchToSubscriptionPrivileged(final long callingToken, int subscriptionId,
+    void switchToSubscriptionPrivileged(int cardId, final long callingToken, int subscriptionId,
             boolean forceDeactivateSim, final String callingPackage,
             final PendingIntent callbackIntent) {
         String iccid = null;
@@ -789,14 +806,15 @@ public class EuiccController extends IEuiccController.Stub {
         if (sub != null) {
             iccid = sub.getIccId();
         }
-        switchToSubscriptionPrivileged(callingToken, subscriptionId, iccid, forceDeactivateSim,
-                callingPackage, callbackIntent);
+        switchToSubscriptionPrivileged(cardId, callingToken, subscriptionId, iccid,
+                forceDeactivateSim, callingPackage, callbackIntent);
     }
 
-    void switchToSubscriptionPrivileged(final long callingToken, int subscriptionId,
+    void switchToSubscriptionPrivileged(int cardId, final long callingToken, int subscriptionId,
             @Nullable String iccid, boolean forceDeactivateSim, final String callingPackage,
             final PendingIntent callbackIntent) {
         mConnector.switchToSubscription(
+                cardId,
                 iccid,
                 forceDeactivateSim,
                 new EuiccConnector.SwitchCommandCallback() {
@@ -837,7 +855,7 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void updateSubscriptionNickname(int subscriptionId, String nickname,
+    public void updateSubscriptionNickname(int cardId, int subscriptionId, String nickname,
             String callingPackage, PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
@@ -858,7 +876,7 @@ public class EuiccController extends IEuiccController.Stub {
                 return;
             }
 
-            mConnector.updateSubscriptionNickname(
+            mConnector.updateSubscriptionNickname(cardId,
                     sub.getIccId(), nickname,
                     new EuiccConnector.UpdateNicknameCommandCallback() {
                         @Override
@@ -893,14 +911,14 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void eraseSubscriptions(PendingIntent callbackIntent) {
+    public void eraseSubscriptions(int cardId, PendingIntent callbackIntent) {
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException(
                     "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to erase subscriptions");
         }
         long token = Binder.clearCallingIdentity();
         try {
-            mConnector.eraseSubscriptions(new EuiccConnector.EraseCommandCallback() {
+            mConnector.eraseSubscriptions(cardId, new EuiccConnector.EraseCommandCallback() {
                 @Override
                 public void onEraseComplete(int result) {
                     Intent extrasIntent = new Intent();
@@ -933,12 +951,12 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Override
-    public void retainSubscriptionsForFactoryReset(PendingIntent callbackIntent) {
+    public void retainSubscriptionsForFactoryReset(int cardId, PendingIntent callbackIntent) {
         mContext.enforceCallingPermission(Manifest.permission.MASTER_CLEAR,
                 "Must have MASTER_CLEAR to retain subscriptions for factory reset");
         long token = Binder.clearCallingIdentity();
         try {
-            mConnector.retainSubscriptions(
+            mConnector.retainSubscriptions(cardId,
                     new EuiccConnector.RetainSubscriptionsCommandCallback() {
                         @Override
                         public void onRetainSubscriptionsComplete(int result) {
@@ -1047,10 +1065,10 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Nullable
-    private String blockingGetEidFromEuiccService() {
+    private String blockingGetEidFromEuiccService(int cardId) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<String> eidRef = new AtomicReference<>();
-        mConnector.getEid(new EuiccConnector.GetEidCommandCallback() {
+        mConnector.getEid(cardId, new EuiccConnector.GetEidCommandCallback() {
             @Override
             public void onGetEidComplete(String eid) {
                 eidRef.set(eid);
@@ -1065,11 +1083,11 @@ public class EuiccController extends IEuiccController.Stub {
         return awaitResult(latch, eidRef);
     }
 
-    private @OtaStatus int blockingGetOtaStatusFromEuiccService() {
+    private @OtaStatus int blockingGetOtaStatusFromEuiccService(int cardId) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<Integer> statusRef =
                 new AtomicReference<>(EUICC_OTA_STATUS_UNAVAILABLE);
-        mConnector.getOtaStatus(new EuiccConnector.GetOtaStatusCommandCallback() {
+        mConnector.getOtaStatus(cardId, new EuiccConnector.GetOtaStatusCommandCallback() {
             @Override
             public void onGetOtaStatusComplete(@OtaStatus int status) {
                 statusRef.set(status);
@@ -1085,10 +1103,10 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     @Nullable
-    private EuiccInfo blockingGetEuiccInfoFromEuiccService() {
+    private EuiccInfo blockingGetEuiccInfoFromEuiccService(int cardId) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<EuiccInfo> euiccInfoRef = new AtomicReference<>();
-        mConnector.getEuiccInfo(new EuiccConnector.GetEuiccInfoCommandCallback() {
+        mConnector.getEuiccInfo(cardId, new EuiccConnector.GetEuiccInfoCommandCallback() {
             @Override
             public void onGetEuiccInfoComplete(EuiccInfo euiccInfo) {
                 euiccInfoRef.set(euiccInfo);
