@@ -135,6 +135,9 @@ public class UiccController extends Handler {
 
     private static final int INVALID_CARD_ID = TelephonyManager.INVALID_CARD_ID;
 
+    // GSM SGP.02 section 2.2.2 states that the EID is always 32 digits long
+    private static final int EID_LENGTH = 32;
+
     // SharedPreference key for saving the known card strings (ICCIDs and EIDs) ordered by card ID
     private static final String CARD_STRINGS = "card_strings";
 
@@ -560,17 +563,24 @@ public class UiccController extends Handler {
 
         UiccCard card = mUiccSlots[slotId].getUiccCard();
         if (card != null && (card.getCardState() == CardState.CARDSTATE_PRESENT)) {
-            // getCardString() uses the raw ICCID, so we strip it manually
-            addCardId(IccUtils.stripTrailingFs(card.getCardId()));
+            String cardString = card.getCardId();
+            addCardId(cardString);
         }
 
         if (DBG) log("Notifying IccChangedRegistrants");
         mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
     }
 
+    /**
+     * Add a cardString to mCardStrings. If this is an ICCID, trailing Fs will be automatically
+     * stripped.
+     */
     private void addCardId(String cardString) {
         if (TextUtils.isEmpty(cardString)) {
             return;
+        }
+        if (cardString.length() < EID_LENGTH) {
+            cardString = IccUtils.stripTrailingFs(cardString);
         }
         if (!mCardStrings.contains(cardString)) {
             mCardStrings.add(cardString);
@@ -580,9 +590,15 @@ public class UiccController extends Handler {
 
     /**
      * Converts the card string (the ICCID/EID, formerly named card ID) to the public int cardId.
-     * Returns INVALID_CARD_ID if the card string does not map to a cardId.
+     * If the given cardString is an ICCID, trailing Fs will be automatically stripped before trying
+     * to match to a card ID.
+     *
+     * @return the matching cardId, or INVALID_CARD_ID if the card string does not map to a cardId
      */
     public int convertToPublicCardId(String cardString) {
+        if (cardString.length() < EID_LENGTH) {
+            cardString = IccUtils.stripTrailingFs(cardString);
+        }
         int id = mCardStrings.indexOf(cardString);
         if (id == -1) {
             return INVALID_CARD_ID;
