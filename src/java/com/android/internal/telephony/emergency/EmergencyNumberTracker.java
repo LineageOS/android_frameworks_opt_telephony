@@ -23,6 +23,8 @@ import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.emergency.EmergencyNumber;
+import android.telephony.emergency.EmergencyNumber.EmergencyCallRouting;
+import android.telephony.emergency.EmergencyNumber.EmergencyServiceCategories;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
@@ -45,9 +47,7 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 import libcore.io.IoUtils;
@@ -184,7 +184,8 @@ public class EmergencyNumberTracker extends Handler {
             }
         }
         return new EmergencyNumber(phoneNumber, countryIso, "", emergencyServiceCategoryBitmask,
-                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE);
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
     }
 
     private void cacheEmergencyDatabaseByCountry(String countryIso) {
@@ -306,7 +307,7 @@ public class EmergencyNumberTracker extends Handler {
      */
     public List<EmergencyNumber> getEmergencyNumberList() {
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
-            return new ArrayList<>(mEmergencyNumberList);
+            return Collections.unmodifiableList(mEmergencyNumberList);
         } else {
             return getEmergencyNumberListFromEccList();
         }
@@ -323,11 +324,13 @@ public class EmergencyNumberTracker extends Handler {
                 // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
                 // these countries, if extra digits are added to an emergency number,
                 // it no longer connects to the emergency service.
-                Set<String> countriesRequiredForExactMatch = new HashSet<>();
-                countriesRequiredForExactMatch.add("br");
-                countriesRequiredForExactMatch.add("cl");
-                countriesRequiredForExactMatch.add("ni");
-                if (exactMatch || countriesRequiredForExactMatch.contains(mCountryIso)) {
+                if (mCountryIso.equals("br") || mCountryIso.equals("cl")
+                        || mCountryIso.equals("ni")) {
+                    exactMatch = true;
+                } else {
+                    exactMatch = false;
+                }
+                if (exactMatch) {
                     if (num.getNumber().equals(number)) {
                         return true;
                     }
@@ -341,6 +344,60 @@ public class EmergencyNumberTracker extends Handler {
         } else {
             return isEmergencyNumberFromEccList(number, exactMatch);
         }
+    }
+
+    /**
+     * Get the {@link EmergencyNumber} for the corresponding emergency number address.
+     *
+     * @param emergencyNumber - the supplied emergency number.
+     * @return the {@link EmergencyNumber} for the corresponding emergency number address.
+     */
+    public EmergencyNumber getEmergencyNumber(String emergencyNumber) {
+        for (EmergencyNumber num : getEmergencyNumberList()) {
+            if (num.getNumber().equals(emergencyNumber)) {
+                return num;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the emergency service categories for the corresponding emergency number. The only
+     * trusted sources for the categories are the
+     * {@link EmergencyNumber#EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING} and
+     * {@link EmergencyNumber#EMERGENCY_NUMBER_SOURCE_SIM}.
+     *
+     * @param emergencyNumber - the supplied emergency number.
+     * @return the emergency service categories for the corresponding emergency number.
+     */
+    public @EmergencyServiceCategories int getEmergencyServiceCategories(String emergencyNumber) {
+        for (EmergencyNumber num : getEmergencyNumberList()) {
+            if (num.getNumber().equals(emergencyNumber)) {
+                if (num.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING)
+                        || num.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM)) {
+                    return num.getEmergencyServiceCategoryBitmask();
+                }
+            }
+        }
+        return EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED;
+    }
+
+    /**
+     * Get the emergency call routing for the corresponding emergency number. The only trusted
+     * source for the routing is {@link EmergencyNumber#EMERGENCY_NUMBER_SOURCE_DATABASE}.
+     *
+     * @param emergencyNumber - the supplied emergency number.
+     * @return the emergency call routing for the corresponding emergency number.
+     */
+    public @EmergencyCallRouting int getEmergencyCallRouting(String emergencyNumber) {
+        for (EmergencyNumber num : getEmergencyNumberList()) {
+            if (num.getNumber().equals(emergencyNumber)) {
+                if (num.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
+                    return num.getEmergencyCallRouting();
+                }
+            }
+        }
+        return EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN;
     }
 
     /**
@@ -363,13 +420,15 @@ public class EmergencyNumberTracker extends Handler {
             // return true if one is found.
             for (String emergencyNum : emergencyNumbers.split(",")) {
                 emergencyNumberList.add(new EmergencyNumber(emergencyNum, "", "",
-                        EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED, 0));
+                        EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED, 0,
+                        EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN));
             }
         }
         emergencyNumbers = ((slotId < 0) ? "112,911,000,08,110,118,119,999" : "112,911");
         for (String emergencyNum : emergencyNumbers.split(",")) {
             emergencyNumberList.add(new EmergencyNumber(emergencyNum, "", "",
-                    EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED, 0));
+                    EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED, 0,
+                    EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN));
         }
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberList);
         return emergencyNumberList;

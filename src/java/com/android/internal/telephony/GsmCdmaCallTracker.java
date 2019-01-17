@@ -331,7 +331,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             setMute(false);
 
             mCi.dial(mPendingMO.getAddress(), mPendingMO.isEmergencyCall(),
-                    mPendingMO.getEmergencyServiceCategories(), clirMode, uusInfo,
+                    mPendingMO.getEmergencyNumberInfo(), clirMode, uusInfo,
                     obtainCompleteMessage());
         }
 
@@ -448,7 +448,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             // In Ecm mode, if another emergency call is dialed, Ecm mode will not exit.
             if(!isPhoneInEcmMode || (isPhoneInEcmMode && isEmergencyCall)) {
                 mCi.dial(mPendingMO.getAddress(), mPendingMO.isEmergencyCall(),
-                        mPendingMO.getEmergencyServiceCategories(), clirMode,
+                        mPendingMO.getEmergencyNumberInfo(), clirMode,
                         obtainCompleteMessage());
             } else {
                 mPhone.exitEmergencyCallbackMode();
@@ -1534,8 +1534,8 @@ public class GsmCdmaCallTracker extends CallTracker {
                     // no matter the result, we still do the same here
                     if (mPendingCallInEcm) {
                         mCi.dial(mPendingMO.getAddress(), mPendingMO.isEmergencyCall(),
-                                mPendingMO.getEmergencyServiceCategories(), mPendingCallClirMode,
-                                obtainCompleteMessage());
+                                mPendingMO.getEmergencyNumberInfo(),
+                                mPendingCallClirMode, obtainCompleteMessage());
                         mPendingCallInEcm = false;
                     }
                     mPhone.unsetOnEcbModeExitResponse(this);

@@ -82,6 +82,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
+import android.telephony.emergency.EmergencyNumber;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
@@ -146,17 +147,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public static final int FOR_ACK_WAKELOCK = 1;
     private final ClientWakelockTracker mClientWakelockTracker = new ClientWakelockTracker();
 
-    private static final HalVersion RADIO_HAL_VERSION_UNKNOWN = new HalVersion(-1, -1);
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_UNKNOWN = new HalVersion(-1, -1);
 
-    private static final HalVersion RADIO_HAL_VERSION_1_0 = new HalVersion(1, 0);
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_1_0 = new HalVersion(1, 0);
 
-    private static final HalVersion RADIO_HAL_VERSION_1_1 = new HalVersion(1, 1);
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_1_1 = new HalVersion(1, 1);
 
-    private static final HalVersion RADIO_HAL_VERSION_1_2 = new HalVersion(1, 2);
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_1_2 = new HalVersion(1, 2);
 
-    private static final HalVersion RADIO_HAL_VERSION_1_3 = new HalVersion(1, 3);
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_1_3 = new HalVersion(1, 3);
 
-    private static final HalVersion RADIO_HAL_VERSION_1_4 = new HalVersion(1, 4);
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_1_4 = new HalVersion(1, 4);
 
     // IRadio version
     private HalVersion mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
@@ -851,17 +858,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+    public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
                      int clirMode, Message result) {
-        dial(address, isEmergencyCall, emergencyServiceCategories, clirMode, null, result);
+        dial(address, isEmergencyCall, emergencyNumberInfo, clirMode, null, result);
     }
 
     @Override
-    public void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+    public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
                      int clirMode, UUSInfo uusInfo, Message result) {
         if (isEmergencyCall && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
-            emergencyDial(address, emergencyServiceCategories, clirMode, uusInfo,
-                    result);
+            emergencyDial(address, emergencyNumberInfo, clirMode, uusInfo, result);
             return;
         }
 
@@ -894,8 +900,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    private void emergencyDial(String address, int emergencyServiceCategories, int clirMode,
-                              UUSInfo uusInfo, Message result) {
+    private void emergencyDial(String address, EmergencyNumber emergencyNumberInfo,
+                               int clirMode, UUSInfo uusInfo, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         // IRadio V1.4
         android.hardware.radio.V1_4.IRadio radioProxy14 =
@@ -920,7 +926,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy14.emergencyDial(rr.mSerial, dialInfo, emergencyServiceCategories);
+                radioProxy14.emergencyDial(rr.mSerial, dialInfo,
+                        emergencyNumberInfo.getEmergencyServiceCategoryBitmask(),
+                        emergencyNumberInfo.getEmergencyCallRouting());
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
             }
@@ -5522,5 +5530,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         return mode;
+    }
+
+    /**
+     * Get the HAL version.
+     *
+     * @return the current HalVersion
+     */
+    public HalVersion getHalVersion() {
+        return mRadioVersion;
     }
 }

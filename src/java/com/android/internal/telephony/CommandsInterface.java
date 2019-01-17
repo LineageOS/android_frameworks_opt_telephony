@@ -27,6 +27,7 @@ import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataProfile;
+import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.TransportManager;
@@ -825,8 +826,8 @@ public interface CommandsInterface {
      * CLIR_SUPPRESSION == on "CLIR suppression" (allow CLI presentation)
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
-    void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
-               int clirMode, Message result);
+    void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
+              int clirMode, Message result);
 
     /**
      *  returned message
@@ -839,7 +840,7 @@ public interface CommandsInterface {
      * CLIR_SUPPRESSION == on "CLIR suppression" (allow CLI presentation)
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
-    void dial(String address, boolean isEmergencyCall, int emergencyServiceCategories,
+    void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
               int clirMode, UUSInfo uusInfo, Message result);
 
     /**
