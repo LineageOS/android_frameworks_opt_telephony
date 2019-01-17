@@ -580,9 +580,9 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
         waitForMs(200);
 
-        logd("Sending EVENT_ENABLE_NEW_APN");
+        logd("Sending EVENT_ENABLE_APN");
         // APN id 0 is APN_TYPE_DEFAULT
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
         waitForMs(200);
 
         dataConnectionReasons = new DataConnectionReasons();
@@ -629,9 +629,9 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
         waitForMs(200);
 
-        logd("Sending EVENT_ENABLE_NEW_APN");
+        logd("Sending EVENT_ENABLE_APN");
         // APN id 0 is APN_TYPE_DEFAULT
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
         waitForMs(200);
 
         dataConnectionReasons = new DataConnectionReasons();
@@ -685,8 +685,8 @@ public class DcTrackerTest extends TelephonyTest {
         //set Default and MMS to be metered in the CarrierConfigManager
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
-        mDct.setEnabled(ApnSetting.TYPE_IMS, true);
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_IMS);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -734,8 +734,8 @@ public class DcTrackerTest extends TelephonyTest {
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
 
-        mDct.setEnabled(ApnSetting.TYPE_IMS, true);
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_IMS);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -786,8 +786,8 @@ public class DcTrackerTest extends TelephonyTest {
         //set Default and MMS to be metered in the CarrierConfigManager
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
-        mDct.setEnabled(ApnSetting.TYPE_IMS, true);
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_IMS);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
 
         logd("Sending DISABLE_ROAMING_CMD");
         mDct.setDataRoamingEnabledByUser(false);
@@ -898,8 +898,8 @@ public class DcTrackerTest extends TelephonyTest {
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
 
-        mDct.setEnabled(ApnSetting.TYPE_IMS, true);
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_IMS);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -940,7 +940,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(apnSetting).when(mApnContext).getApnSetting();
         doReturn(mDataConnection).when(mApnContext).getDataConnection();
         doReturn(true).when(mApnContext).isEnabled();
-        doReturn(true).when(mApnContext).getDependencyMet();
+        doReturn(true).when(mApnContext).isDependencyMet();
         doReturn(true).when(mApnContext).isReady();
         doReturn(false).when(mApnContext).hasRestrictedRequests(eq(true));
     }
@@ -1187,7 +1187,7 @@ public class DcTrackerTest extends TelephonyTest {
                 .getRilDataRadioTechnology();
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT});
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
 
         logd("Sending EVENT_RECORDS_LOADED");
@@ -1307,7 +1307,7 @@ public class DcTrackerTest extends TelephonyTest {
                 .getRilDataRadioTechnology();
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT});
-        mDct.setEnabled(ApnSetting.TYPE_DEFAULT, true);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT);
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
 
         logd("Sending EVENT_RECORDS_LOADED");

@@ -135,12 +135,11 @@ public class CarrierResolver extends Handler {
         logd("[resolveSubscriptionCarrierId] simState: " + simState);
         switch (simState) {
             case IccCardConstants.INTENT_VALUE_ICC_ABSENT:
+            case IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR:
                 // only clear carrier id on absent to avoid transition to unknown carrier id during
                 // intermediate states of sim refresh
                 handleSimAbsent();
                 break;
-            case IccCardConstants.INTENT_VALUE_ICC_LOCKED:
-                // intentional fall through from above case, treat locked same as loaded
             case IccCardConstants.INTENT_VALUE_ICC_LOADED:
                 handleSimLoaded();
                 break;
