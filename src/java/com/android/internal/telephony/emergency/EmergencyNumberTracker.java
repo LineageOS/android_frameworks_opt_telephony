@@ -61,6 +61,12 @@ public class EmergencyNumberTracker extends Handler {
 
     /** @hide */
     public static boolean DBG = false;
+    /** @hide */
+    public static final int ADD_EMERGENCY_NUMBER_TEST_MODE = 1;
+    /** @hide */
+    public static final int REMOVE_EMERGENCY_NUMBER_TEST_MODE = 2;
+    /** @hide */
+    public static final int RESET_EMERGENCY_NUMBER_TEST_MODE = 3;
 
     private final CommandsInterface mCi;
     private final Phone mPhone;
@@ -70,10 +76,12 @@ public class EmergencyNumberTracker extends Handler {
 
     private List<EmergencyNumber> mEmergencyNumberListFromDatabase = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberListFromRadio = new ArrayList<>();
+    private List<EmergencyNumber> mEmergencyNumberListFromTestMode = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberList = new ArrayList<>();
 
     private final LocalLog mEmergencyNumberListDatabaseLocalLog = new LocalLog(20);
     private final LocalLog mEmergencyNumberListRadioLocalLog = new LocalLog(20);
+    private final LocalLog mEmergencyNumberListTestModeLocalLog = new LocalLog(20);
     private final LocalLog mEmergencyNumberListLocalLog = new LocalLog(20);
 
     /** Event indicating the update for the emergency number list from the radio. */
@@ -83,6 +91,8 @@ public class EmergencyNumberTracker extends Handler {
      * change of country code.
      **/
     private static final int EVENT_UPDATE_DB_COUNTRY_ISO_CHANGED = 2;
+    /** Event indicating the update for the emergency number list in the testing mode. */
+    private static final int EVENT_UPDATE_EMERGENCY_NUMBER_TEST_MODE = 3;
 
     public EmergencyNumberTracker(Phone phone, CommandsInterface ci) {
         mPhone = phone;
@@ -118,6 +128,15 @@ public class EmergencyNumberTracker extends Handler {
                             + " null.");
                 } else {
                     updateEmergencyNumberListDatabaseAndNotify((String) msg.obj);
+                }
+                break;
+            case EVENT_UPDATE_EMERGENCY_NUMBER_TEST_MODE:
+                if (msg.obj == null) {
+                    loge("EVENT_UPDATE_EMERGENCY_NUMBER_TEST_MODE: Result from"
+                            + " executeEmergencyNumberTestModeCommand is null.");
+                } else {
+                    updateEmergencyNumberListTestModeAndNotify(
+                            msg.arg1, (EmergencyNumber) msg.obj);
                 }
                 break;
         }
@@ -243,7 +262,7 @@ public class EmergencyNumberTracker extends Handler {
                     mEmergencyNumberListRadioLocalLog.log("updateRadioEmergencyNumberList:"
                             + emergencyNumberListRadio);
                 }
-                mergeRadioAndDatabaseList();
+                updateEmergencyNumberList();
                 if (!DBG) {
                     mEmergencyNumberListLocalLog.log("updateRadioEmergencyNumberListAndNotify:"
                             + mEmergencyNumberList);
@@ -267,7 +286,7 @@ public class EmergencyNumberTracker extends Handler {
                     "updateEmergencyNumberListDatabaseAndNotify:"
                             + mEmergencyNumberListFromDatabase);
         }
-        mergeRadioAndDatabaseList();
+        updateEmergencyNumberList();
         if (!DBG) {
             mEmergencyNumberListLocalLog.log("updateEmergencyNumberListDatabaseAndNotify:"
                     + mEmergencyNumberList);
@@ -287,15 +306,15 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     /**
-     * Merge emergency numbers from the radio and database list, if they are the same emergency
-     * numbers.
+     * Update emergency numbers based on the radio, database, and test mode, if they are the same
+     * emergency numbers.
      */
-    private void mergeRadioAndDatabaseList() {
+    private void updateEmergencyNumberList() {
         List<EmergencyNumber> mergedEmergencyNumberList =
                 new ArrayList<>(mEmergencyNumberListFromDatabase);
         mergedEmergencyNumberList.addAll(mEmergencyNumberListFromRadio);
+        mergedEmergencyNumberList.addAll(mEmergencyNumberListFromTestMode);
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
-        Collections.sort(mergedEmergencyNumberList);
         mEmergencyNumberList = mergedEmergencyNumberList;
     }
 
@@ -309,7 +328,7 @@ public class EmergencyNumberTracker extends Handler {
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
             return Collections.unmodifiableList(mEmergencyNumberList);
         } else {
-            return getEmergencyNumberListFromEccList();
+            return getEmergencyNumberListFromEccListAndTest();
         }
     }
 
@@ -342,7 +361,8 @@ public class EmergencyNumberTracker extends Handler {
             }
             return false;
         } else {
-            return isEmergencyNumberFromEccList(number, exactMatch);
+            return isEmergencyNumberFromEccList(number, exactMatch)
+                    || isEmergencyNumberForTest(number);
         }
     }
 
@@ -434,6 +454,15 @@ public class EmergencyNumberTracker extends Handler {
         }
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberList);
         return emergencyNumberList;
+    }
+
+    private boolean isEmergencyNumberForTest(String number) {
+        for (EmergencyNumber num : mEmergencyNumberListFromTestMode) {
+            if (num.getNumber().equals(number)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -529,6 +558,55 @@ public class EmergencyNumberTracker extends Handler {
         return false;
     }
 
+    /**
+     * Execute command for updating emergency number for test mode.
+     */
+    public void executeEmergencyNumberTestModeCommand(int action, EmergencyNumber num) {
+        this.obtainMessage(EVENT_UPDATE_EMERGENCY_NUMBER_TEST_MODE, action, 0, num).sendToTarget();
+    }
+
+    /**
+     * Update emergency number list for test mode.
+     */
+    private void updateEmergencyNumberListTestModeAndNotify(int action, EmergencyNumber num) {
+        if (action == ADD_EMERGENCY_NUMBER_TEST_MODE) {
+            if (!isEmergencyNumber(num.getNumber(), true)) {
+                mEmergencyNumberListFromTestMode.add(num);
+            }
+        } else if (action == RESET_EMERGENCY_NUMBER_TEST_MODE) {
+            mEmergencyNumberListFromTestMode.clear();
+        } else if (action == REMOVE_EMERGENCY_NUMBER_TEST_MODE) {
+            mEmergencyNumberListFromTestMode.remove(num);
+        } else {
+            loge("updateEmergencyNumberListTestModeAndNotify: Unexpected action in test mode.");
+            return;
+        }
+        if (!DBG) {
+            mEmergencyNumberListTestModeLocalLog.log(
+                    "updateEmergencyNumberListTestModeAndNotify:"
+                            + mEmergencyNumberListFromTestMode);
+        }
+        updateEmergencyNumberList();
+        if (!DBG) {
+            mEmergencyNumberListLocalLog.log(
+                    "updateEmergencyNumberListTestModeAndNotify:"
+                            + mEmergencyNumberList);
+        }
+        notifyEmergencyNumberList();
+    }
+
+    private List<EmergencyNumber> getEmergencyNumberListFromEccListAndTest() {
+        List<EmergencyNumber> mergedEmergencyNumberList = getEmergencyNumberListFromEccList();
+        mergedEmergencyNumberList.addAll(getEmergencyNumberListTestMode());
+        return mergedEmergencyNumberList;
+    }
+
+    /**
+     * Get emergency number list for test.
+     */
+    public List<EmergencyNumber> getEmergencyNumberListTestMode() {
+        return Collections.unmodifiableList(mEmergencyNumberListFromTestMode);
+    }
 
     @VisibleForTesting
     public List<EmergencyNumber> getRadioEmergencyNumberList() {
@@ -561,6 +639,12 @@ public class EmergencyNumberTracker extends Handler {
         ipw.println("mEmergencyNumberListRadioLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListRadioLocalLog.dump(fd, pw, args);
+        ipw.decreaseIndent();
+        ipw.println("   -   -   -   -   -   -   -   -");
+
+        ipw.println("mEmergencyNumberListTestModeLocalLog:");
+        ipw.increaseIndent();
+        mEmergencyNumberListTestModeLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
         ipw.println("   -   -   -   -   -   -   -   -");
 
