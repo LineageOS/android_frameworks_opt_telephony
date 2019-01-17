@@ -53,6 +53,7 @@ import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.UiccAccessRule;
+import android.telephony.UiccCardInfo;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
@@ -75,6 +76,7 @@ import org.mockito.stubbing.Stubber;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -193,31 +195,31 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test(expected = SecurityException.class)
-    public void testGetEid_noPrivileges() {
+    public void testGetEid_noPrivileges() throws Exception {
         setGetEidPermissions(false /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
         callGetEid(true /* success */, "ABCDE" /* eid */);
     }
 
     @Test
-    public void testGetEid_withPhoneStatePrivileged() {
+    public void testGetEid_withPhoneStatePrivileged() throws Exception {
         setGetEidPermissions(true /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
         assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */));
     }
 
     @Test
-    public void testGetEid_withCarrierPrivileges() {
+    public void testGetEid_withCarrierPrivileges() throws Exception {
         setGetEidPermissions(false /* hasPhoneStatePrivileged */, true /* hasCarrierPrivileges */);
         assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */));
     }
 
     @Test
-    public void testGetEid_failure() {
+    public void testGetEid_failure() throws Exception {
         setGetEidPermissions(true /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
         assertNull(callGetEid(false /* success */, null /* eid */));
     }
 
     @Test
-    public void testGetEid_nullReturnValue() {
+    public void testGetEid_nullReturnValue() throws Exception {
         setGetEidPermissions(true /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
         assertNull(callGetEid(true /* success */, null /* eid */));
     }
@@ -502,7 +504,25 @@ public class EuiccControllerTest extends TelephonyTest {
                 new GetDownloadableSubscriptionMetadataResult(
                         EuiccService.RESULT_OK, SUBSCRIPTION_WITH_METADATA);
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(1);
         setHasCarrierPrivilegesOnActiveSubscription(true);
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                EuiccService.RESULT_OK, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        // switchAfterDownload = true so no refresh should occur.
+        assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test
+    public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_multiSim()
+            throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(
+                    EuiccService.RESULT_OK, SUBSCRIPTION_WITH_METADATA);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(2);
+        setCanManageSubscriptionOnTargetSim(true /* isTargetEuicc */, true /* hasPrivileges */);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 EuiccService.RESULT_OK, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
@@ -518,7 +538,48 @@ public class EuiccControllerTest extends TelephonyTest {
                 new GetDownloadableSubscriptionMetadataResult(
                         EuiccService.RESULT_OK, SUBSCRIPTION_WITH_METADATA);
         prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(1);
         setHasCarrierPrivilegesOnActiveSubscription(false);
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).downloadSubscription(anyInt(),
+                any(), anyBoolean(), anyBoolean(), any(), any());
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                EuiccOperation.ACTION_DOWNLOAD_NO_PRIVILEGES);
+    }
+
+    @Test
+    public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_needsConsent_multiSim()
+            throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(
+                    EuiccService.RESULT_OK, SUBSCRIPTION_WITH_METADATA);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(2);
+        setCanManageSubscriptionOnTargetSim(true /* isTargetEuicc */, false /* hasPrivileges */);
+        callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
+                12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).downloadSubscription(anyInt(),
+                any(), anyBoolean(), anyBoolean(), any(), any());
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                EuiccOperation.ACTION_DOWNLOAD_NO_PRIVILEGES);
+    }
+
+    @Test
+    public void testDownloadSubscription_noPriv_hasCarrierPrivi_needsConsent_multiSim_targetPsim()
+            throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(
+                    EuiccService.RESULT_OK, SUBSCRIPTION_WITH_METADATA);
+        prepareGetDownloadableSubscriptionMetadataCall(true /* complete */, result);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(2);
+        setCanManageSubscriptionOnTargetSim(false /* isTargetEuicc */, true /* hasPrivileges */);
         callDownloadSubscription(SUBSCRIPTION, true /* switchAfterDownload */, true /* complete */,
                 12345, 0 /* resolvableError */, PACKAGE_NAME /* callingPackage */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
@@ -698,7 +759,19 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testSwitchToSubscription_hasCarrierPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
         prepareOperationSubscription(true /* hasPrivileges */);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(1);
         setHasCarrierPrivilegesOnActiveSubscription(true);
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, true /* complete */, EuiccService.RESULT_OK, PACKAGE_NAME);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+    }
+
+    @Test
+    public void testSwitchToSubscription_hasCarrierPrivileges_multiSim() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(true /* hasPrivileges */);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(2);
+        setCanManageSubscriptionOnTargetSim(true /* isTargetEuicc */, true /* hasPrivileges */);
         callSwitchToSubscription(
                 SUBSCRIPTION_ID, ICC_ID, true /* complete */, EuiccService.RESULT_OK, PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
@@ -709,6 +782,41 @@ public class EuiccControllerTest extends TelephonyTest {
         setHasWriteEmbeddedPermission(false);
         prepareOperationSubscription(true /* hasPrivileges */);
         setHasCarrierPrivilegesOnActiveSubscription(false);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(1);
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */, 0 /* result */, PACKAGE_NAME);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).switchToSubscription(anyInt(), anyString(), anyBoolean(),
+                any());
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                EuiccOperation.ACTION_SWITCH_NO_PRIVILEGES);
+    }
+
+    @Test
+    public void testSwitchToSubscription_hasCarrierPrivileges_needsConsent_multiSim()
+            throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(true /* hasPrivileges */);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(2);
+        setCanManageSubscriptionOnTargetSim(true /* isTargetEuicc */, false /* hasPrivileges */);
+        callSwitchToSubscription(
+                SUBSCRIPTION_ID, ICC_ID, false /* complete */, 0 /* result */, PACKAGE_NAME);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).switchToSubscription(anyInt(), anyString(), anyBoolean(),
+                any());
+        verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                EuiccOperation.ACTION_SWITCH_NO_PRIVILEGES);
+    }
+
+    @Test
+    public void testSwitchToSubscription_hasCarrierPrivileges_needsConsent_multiSim_targetPsim()
+            throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        prepareOperationSubscription(true /* hasPrivileges */);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(2);
+        setCanManageSubscriptionOnTargetSim(false /* isTargetEuicc */, true /* hasPrivileges */);
         callSwitchToSubscription(
                 SUBSCRIPTION_ID, ICC_ID, false /* complete */, 0 /* result */, PACKAGE_NAME);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
@@ -838,12 +946,13 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     private void setGetEidPermissions(
-            boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges) {
+            boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges) throws Exception {
         doReturn(hasPhoneStatePrivileged
                 ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED)
                 .when(mContext)
                 .checkCallingPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
-        when(mTelephonyManager.hasCarrierPrivileges()).thenReturn(hasCarrierPrivileges);
+        when(mTelephonyManager.getPhoneCount()).thenReturn(1);
+        setHasCarrierPrivilegesOnActiveSubscription(hasCarrierPrivileges);
     }
 
     private void setHasWriteEmbeddedPermission(boolean hasPermission) {
@@ -862,12 +971,39 @@ public class EuiccControllerTest extends TelephonyTest {
     private void setHasCarrierPrivilegesOnActiveSubscription(boolean hasPrivileges)
             throws Exception {
         SubscriptionInfo subInfo = new SubscriptionInfo(
-                0, "", 0, "", "", 0, 0, "", 0, null, "0", "0", "", true /* isEmbedded */,
-                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, null);
+                0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "", CARD_ID,
+                false, "", false, false, 0, 0, 0);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
                 Collections.singletonList(subInfo));
+    }
+
+    private void setCanManageSubscriptionOnTargetSim(boolean isTargetEuicc, boolean hasPrivileges)
+            throws Exception {
+        UiccCardInfo cardInfo1 = new UiccCardInfo(isTargetEuicc, CARD_ID, "", "", 0);
+        UiccCardInfo cardInfo2 = new UiccCardInfo(true /* isEuicc */, 1 /* cardId */,
+                "", "", 0);
+        ArrayList<UiccCardInfo> cardInfos = new ArrayList<>();
+        cardInfos.add(cardInfo1);
+        cardInfos.add(cardInfo2);
+        when(mTelephonyManager.getUiccCardsInfo()).thenReturn(cardInfos);
+
+        SubscriptionInfo subInfo1 = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "", CARD_ID,
+                false, "", false, false, 0, 0, 0);
+        SubscriptionInfo subInfo2 = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "",
+                1 /* cardId */, false, "", false, false, 0, 0, 0);
+        when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
+                hasPrivileges);
+        when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
+                hasPrivileges);
+        ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1, subInfo2));
+        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(subInfos);
     }
 
     private void prepareOperationSubscription(boolean hasPrivileges) throws Exception {
@@ -896,7 +1032,7 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).getEid(anyInt(),
                 Mockito.<EuiccConnector.GetEidCommandCallback>any());
-        return mController.getEid(CARD_ID);
+        return mController.getEid(CARD_ID, PACKAGE_NAME);
     }
 
     private int callGetOtaStatus(final boolean success, final int status) {
