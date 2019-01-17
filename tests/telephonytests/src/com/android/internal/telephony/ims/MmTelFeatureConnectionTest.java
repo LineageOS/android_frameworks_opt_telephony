@@ -64,8 +64,8 @@ public class MmTelFeatureConnectionTest extends TelephonyTest {
 
         // A callback has been registered. Register that callback with the MmTelFeature.
         @Override
-        public boolean registerCallback(TestCallback localCallback) {
-            return mCallbacks.add(localCallback);
+        public void registerCallback(TestCallback localCallback) {
+            mCallbacks.add(localCallback);
         }
 
         // A callback has been removed, unregister that callback with the MmTelFeature.
