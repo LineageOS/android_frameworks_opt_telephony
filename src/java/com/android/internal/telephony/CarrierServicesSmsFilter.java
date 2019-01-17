@@ -30,6 +30,7 @@ import android.service.carrier.ICarrierMessagingService;
 import android.service.carrier.MessagePdu;
 import android.telephony.CarrierMessagingServiceManager;
 import android.telephony.Rlog;
+import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -62,8 +63,8 @@ public class CarrierServicesSmsFilter {
     private final CarrierServicesSmsFilterCallbackInterface mCarrierServicesSmsFilterCallback;
     private final String mLogTag;
     private final CallbackTimeoutHandler mCallbackTimeoutHandler;
+    private final LocalLog mLocalLog;
     private FilterAggregator mFilterAggregator;
-
 
     @VisibleForTesting
     public CarrierServicesSmsFilter(
@@ -73,7 +74,8 @@ public class CarrierServicesSmsFilter {
             int destPort,
             String pduFormat,
             CarrierServicesSmsFilterCallbackInterface carrierServicesSmsFilterCallback,
-            String logTag) {
+            String logTag,
+            LocalLog localLog) {
         mContext = context;
         mPhone = phone;
         mPdus = pdus;
@@ -82,6 +84,7 @@ public class CarrierServicesSmsFilter {
         mCarrierServicesSmsFilterCallback = carrierServicesSmsFilterCallback;
         mLogTag = logTag;
         mCallbackTimeoutHandler = new CallbackTimeoutHandler();
+        mLocalLog = localLog;
     }
 
     /**
@@ -325,6 +328,7 @@ public class CarrierServicesSmsFilter {
                     }
                     //all onFilterCompletes called before timeout has triggered
                     //remove the pending message
+                    log("onFilterComplete called successfully with result = " + result);
                     mCallbackTimeoutHandler.removeMessages(EVENT_ON_FILTER_COMPLETE_NOT_CALLED);
                 }
             }
@@ -352,6 +356,8 @@ public class CarrierServicesSmsFilter {
 
             switch(msg.what) {
                 case EVENT_ON_FILTER_COMPLETE_NOT_CALLED:
+                    mLocalLog.log("CarrierServicesSmsFilter: onFilterComplete timeout: not"
+                            + " called before " + FILTER_COMPLETE_TIMEOUT_MS + " milliseconds.");
                     handleFilterCallbacksTimeout();
                     break;
             }
