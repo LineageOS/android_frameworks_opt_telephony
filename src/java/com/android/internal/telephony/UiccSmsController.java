@@ -396,6 +396,13 @@ public class UiccSmsController extends ISmsImplBase {
     }
 
     @Override
+    public String createAppSpecificSmsTokenWithPackageInfo(
+            int subId, String callingPkg, String prefixes, PendingIntent intent) {
+        return getPhone(subId).getAppSmsManager().createAppSpecificSmsTokenWithPackageInfo(
+                subId, callingPkg, prefixes, intent);
+    }
+
+    @Override
     public String createAppSpecificSmsToken(int subId, String callingPkg, PendingIntent intent) {
         return getPhone(subId).getAppSmsManager().createAppSpecificSmsToken(callingPkg, intent);
     }
