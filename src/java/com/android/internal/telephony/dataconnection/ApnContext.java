@@ -385,14 +385,7 @@ public class ApnContext {
         return mDataEnabled.get();
     }
 
-    public void setDependencyMet(boolean met) {
-        if (DBG) {
-            log("set mDependencyMet as " + met + " current state is " + mDependencyMet.get());
-        }
-        mDependencyMet.set(met);
-    }
-
-    public boolean getDependencyMet() {
+    public boolean isDependencyMet() {
        return mDependencyMet.get();
     }
 

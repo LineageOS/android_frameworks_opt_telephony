@@ -87,14 +87,6 @@ public class ApnContextTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testDependencyMet() throws Exception {
-        assertTrue(mApnContext.getDependencyMet());
-        mApnContext.setDependencyMet(false);
-        assertFalse(mApnContext.getDependencyMet());
-    }
-
-    @Test
-    @SmallTest
     public void testReason() throws Exception {
         mApnContext.setReason("dataEnabled");
         assertEquals("dataEnabled", mApnContext.getReason());
@@ -108,7 +100,6 @@ public class ApnContextTest extends TelephonyTest {
         mApnContext.setState(DctConstants.State.DISCONNECTING);
         assertEquals(DctConstants.State.DISCONNECTING, mApnContext.getState());
         mApnContext.setEnabled(true);
-        mApnContext.setDependencyMet(true);
         assertFalse(mApnContext.isConnectable());
 
         mApnContext.setState(DctConstants.State.RETRYING);
@@ -198,16 +189,9 @@ public class ApnContextTest extends TelephonyTest {
     @SmallTest
     public void testIsReady() throws Exception {
         mApnContext.setEnabled(true);
-        mApnContext.setDependencyMet(true);
         assertTrue(mApnContext.isReady());
 
         mApnContext.setEnabled(false);
-        assertFalse(mApnContext.isReady());
-
-        mApnContext.setDependencyMet(false);
-        assertFalse(mApnContext.isReady());
-
-        mApnContext.setEnabled(true);
         assertFalse(mApnContext.isReady());
     }
 
