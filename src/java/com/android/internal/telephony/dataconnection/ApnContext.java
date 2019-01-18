@@ -385,14 +385,7 @@ public class ApnContext {
         return mDataEnabled.get();
     }
 
-    public void setDependencyMet(boolean met) {
-        if (DBG) {
-            log("set mDependencyMet as " + met + " current state is " + mDependencyMet.get());
-        }
-        mDependencyMet.set(met);
-    }
-
-    public boolean getDependencyMet() {
+    public boolean isDependencyMet() {
        return mDependencyMet.get();
     }
 
@@ -426,7 +419,7 @@ public class ApnContext {
             } else {
                 mLocalLogs.add(log);
                 mNetworkRequests.add(networkRequest);
-                mDcTracker.setEnabled(ApnSetting.getApnTypesBitmaskFromString(mApnType), true);
+                mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType));
             }
         }
     }
@@ -446,7 +439,7 @@ public class ApnContext {
                 log.log("ApnContext.releaseNetwork left with " + mNetworkRequests.size() +
                         " requests.");
                 if (mNetworkRequests.size() == 0) {
-                    mDcTracker.setEnabled(ApnSetting.getApnTypesBitmaskFromString(mApnType), false);
+                    mDcTracker.disableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType));
                 }
             }
         }
