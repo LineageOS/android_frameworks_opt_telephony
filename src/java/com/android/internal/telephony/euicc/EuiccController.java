@@ -291,7 +291,8 @@ public class EuiccController extends IEuiccController.Stub {
                             mCallingPackage,
                             0 /* resolvableErrors */,
                             false /* confirmationCodeRetried */,
-                            getOperationForDeactivateSim());
+                            getOperationForDeactivateSim(),
+                            cardId);
                     break;
                 default:
                     resultCode = ERROR;
@@ -376,7 +377,8 @@ public class EuiccController extends IEuiccController.Stub {
                             false /* confirmationCodeRetried */,
                             EuiccOperation.forDownloadNoPrivileges(
                                     mCallingToken, mSubscription, mSwitchAfterDownload,
-                                    mCallingPackage));
+                                    mCallingPackage),
+                            cardId);
                 sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
                 return;
             }
@@ -431,7 +433,8 @@ public class EuiccController extends IEuiccController.Stub {
                             false /* confirmationCodeRetried */,
                             EuiccOperation.forDownloadNoPrivileges(
                                     mCallingToken, subscription, mSwitchAfterDownload,
-                                    mCallingPackage));
+                                    mCallingPackage),
+                            cardId);
                     sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
                     return;
                 }
@@ -491,7 +494,8 @@ public class EuiccController extends IEuiccController.Stub {
                                         false /* confirmationCodeRetried */,
                                         EuiccOperation.forDownloadDeactivateSim(
                                                 callingToken, subscription, switchAfterDownload,
-                                                callingPackage));
+                                                callingPackage),
+                                        cardId);
                                 break;
                             case EuiccService.RESULT_RESOLVABLE_ERRORS:
                                 // Same value as the deprecated
@@ -511,7 +515,8 @@ public class EuiccController extends IEuiccController.Stub {
                                             retried,
                                             EuiccOperation.forDownloadResolvableErrors(
                                                 callingToken, subscription, switchAfterDownload,
-                                                callingPackage, result.getResolvableErrors()));
+                                                callingPackage, result.getResolvableErrors()),
+                                            cardId);
                                 }  else { // Deprecated case
                                     addResolutionIntent(extrasIntent,
                                             EuiccService.ACTION_RESOLVE_CONFIRMATION_CODE,
@@ -520,7 +525,8 @@ public class EuiccController extends IEuiccController.Stub {
                                             retried /* confirmationCodeRetried */,
                                             EuiccOperation.forDownloadConfirmationCode(
                                                 callingToken, subscription, switchAfterDownload,
-                                                callingPackage));
+                                                callingPackage),
+                                            cardId);
                                 }
                                 break;
                             default:
@@ -610,7 +616,8 @@ public class EuiccController extends IEuiccController.Stub {
         }
 
         @Override
-        public void onGetDefaultListComplete(GetDefaultDownloadableSubscriptionListResult result) {
+        public void onGetDefaultListComplete(int cardId,
+                GetDefaultDownloadableSubscriptionListResult result) {
             Intent extrasIntent = new Intent();
             final int resultCode;
             switch (result.getResult()) {
@@ -631,7 +638,8 @@ public class EuiccController extends IEuiccController.Stub {
                             0 /* resolvableErrors */,
                             false /* confirmationCodeRetried */,
                             EuiccOperation.forGetDefaultListDeactivateSim(
-                                    mCallingToken, mCallingPackage));
+                                    mCallingToken, mCallingPackage),
+                            cardId);
                     break;
                 default:
                     resultCode = ERROR;
@@ -786,7 +794,8 @@ public class EuiccController extends IEuiccController.Stub {
                         0 /* resolvableErrors */,
                         false /* confirmationCodeRetried */,
                         EuiccOperation.forSwitchNoPrivileges(
-                                token, subscriptionId, callingPackage));
+                                token, subscriptionId, callingPackage),
+                        cardId);
                 sendResult(callbackIntent, RESOLVABLE_ERROR, extrasIntent);
                 return;
             }
@@ -834,7 +843,8 @@ public class EuiccController extends IEuiccController.Stub {
                                         0 /* resolvableErrors */,
                                         false /* confirmationCodeRetried */,
                                         EuiccOperation.forSwitchDeactivateSim(
-                                                callingToken, subscriptionId, callingPackage));
+                                                callingToken, subscriptionId, callingPackage),
+                                        cardId);
                                 break;
                             default:
                                 resultCode = ERROR;
@@ -1010,13 +1020,13 @@ public class EuiccController extends IEuiccController.Stub {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void addResolutionIntent(Intent extrasIntent, String resolutionAction,
             String callingPackage, int resolvableErrors, boolean confirmationCodeRetried,
-            EuiccOperation op) {
+            EuiccOperation op, int cardId) {
         Intent intent = new Intent(EuiccManager.ACTION_RESOLVE_ERROR);
         intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_ACTION,
                 resolutionAction);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CALLING_PACKAGE, callingPackage);
-        // TODO(jiuyu): Also pass cardId in the intent.
         intent.putExtra(EuiccService.EXTRA_RESOLVABLE_ERRORS, resolvableErrors);
+        intent.putExtra(EuiccService.EXTRA_RESOLUTION_CARD_ID, cardId);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE_RETRIED,
                 confirmationCodeRetried);
         intent.putExtra(EXTRA_OPERATION, op);
