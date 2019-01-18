@@ -276,6 +276,9 @@ message TelephonyServiceState {
 
   // Current data radio technology
   optional RadioAccessTechnology data_rat = 6 [default = UNKNOWN];
+
+  // All the active subscription information.
+  repeated ActiveSubscriptionInfo active_subscription_info = 7;
 }
 
 // Radio access families
@@ -616,6 +619,9 @@ message RilDataCall {
 
   // The network interface name e.g. wlan0, rmnet_data0.
   optional string iframe = 3;
+
+  // All the active subscription information.
+  repeated ActiveSubscriptionInfo active_subscription_info = 4;
 }
 
 message TelephonyEvent {
@@ -668,6 +674,9 @@ message TelephonyEvent {
 
     // Carrier Key Change event.
     CARRIER_KEY_CHANGED = 14;
+
+    // Phone status change event.
+    PHONE_STATUS_CHANGED = 15;
   }
 
   // Setup a packet data connection
@@ -1462,6 +1471,17 @@ message TelephonyEvent {
     optional string mccmnc = 3;
   }
 
+  message PhoneStatus {
+      /** The sim state of each active slot. */
+      repeated SimState sim_state = 1;
+
+      /**
+       * The modem state represent by a bitmap, the i-th bit(LSB) indicates the i-th modem
+       * state(0 - disabled, 1 - enabled).
+       */
+      optional int32 enabled_modem_bitmap = 2;
+  }
+
   // Time when event happened on device, in milliseconds since epoch
   optional int64 timestamp_millis = 1;
 
@@ -1512,7 +1532,35 @@ message TelephonyEvent {
 
   // Carrier key change
   optional CarrierKeyChange carrier_key_change = 17;
+
+  // Phone status
+  optional PhoneStatus phone_status = 18;
 }
+
+message ActiveSubscriptionInfo {
+    /** The slot index which this subscription associated with. */
+    optional int32 slot_index = 1;
+
+    /** The Carrier id of this subscription. */
+    optional int32 carrier_id = 2;
+
+    /** whether subscription is opportunistic. */
+    optional bool is_opportunistic = 3;
+};
+
+enum SimState {
+    /**
+     * SIM card is inserted, but the state is unknown. Typically happened when the SIM is inserted
+     * but not loaded.
+     */
+    SIM_STATE_UNKNOWN = 0;
+
+    /** No SIM card is inserted in the slot. */
+    SIM_STATE_ABSENT = 1;
+
+    /** SIM card applications have been loaded. */
+    SIM_STATE_LOADED = 2;
+};
 
 enum TimeInterval {
   TI_UNKNOWN = 0;
@@ -1879,6 +1927,12 @@ message TelephonyCallSession {
 
   // Indicating some call events are dropped
   optional bool events_dropped = 4;
+
+  // SIM state of the active slots
+  repeated SimState sim_states = 5;
+
+  // All the active subscription information.
+  repeated ActiveSubscriptionInfo active_subscription_info = 6;
 }
 
 message SmsSession {
@@ -2093,6 +2147,12 @@ message SmsSession {
 
   // Indicating some sms session events are dropped
   optional bool events_dropped = 4;
+
+  // SIM state of the active slots.
+  repeated SimState sim_state = 5;
+
+  // All the active subscription information.
+  repeated ActiveSubscriptionInfo active_subscription_info = 6;
 }
 
 // Power stats for modem
