@@ -2269,4 +2269,11 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
         mRil.processResponseDone(rr, responseInfo, ret);
     }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void enableModemResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
 }
