@@ -3409,6 +3409,16 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_ROAMING_SETTING_CHANGE:
                 onDataRoamingOnOrSettingsChanged(msg.what);
                 break;
+            case DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE:
+                // Update sharedPreference to false when exits new device provisioning, indicating
+                // no users modifications on the settings for new devices. Thus carrier specific
+                // default roaming settings can be applied for new devices till user modification.
+                final SharedPreferences sp = PreferenceManager
+                        .getDefaultSharedPreferences(mPhone.getContext());
+                if (!sp.contains(Phone.DATA_ROAMING_IS_USER_SETTING_KEY)) {
+                    sp.edit().putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, false).commit();
+                }
+                break;
             case DctConstants.EVENT_REDIRECTION_DETECTED:
                 String url = (String) msg.obj;
                 log("dataConnectionTracker.handleMessage: EVENT_REDIRECTION_DETECTED=" + url);
