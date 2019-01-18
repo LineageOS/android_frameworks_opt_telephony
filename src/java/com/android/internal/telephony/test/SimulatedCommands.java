@@ -29,7 +29,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.SystemClock;
 import android.os.WorkSource;
-import android.service.carrier.CarrierIdentifier;
+import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellSignalStrengthCdma;
@@ -2059,8 +2059,8 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result,
-            WorkSource workSource) {
+    public void setAllowedCarriers(CarrierRestrictionRules carrierRestrictionRules,
+            Message result, WorkSource workSource) {
         unimplemented(result);
     }
 
