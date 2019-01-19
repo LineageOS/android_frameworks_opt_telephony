@@ -38,6 +38,7 @@ import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
+import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
 import android.net.NetworkRequest;
@@ -103,6 +104,8 @@ import com.android.internal.util.AsyncChannel;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
