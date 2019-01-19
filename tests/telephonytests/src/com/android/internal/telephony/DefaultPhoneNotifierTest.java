@@ -189,45 +189,49 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
 
         mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
         verify(mTelephonyRegisteryMock, times(0)).notifyPreciseCallState(anyInt(), anyInt(),
-                anyInt());
+                anyInt(), anyInt());
 
         doReturn(mForeGroundCall).when(mPhone).getForegroundCall();
         mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
         verify(mTelephonyRegisteryMock, times(0)).notifyPreciseCallState(anyInt(), anyInt(),
-                anyInt());
+                anyInt(), anyInt());
 
         doReturn(mBackGroundCall).when(mPhone).getBackgroundCall();
         mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
         verify(mTelephonyRegisteryMock, times(0)).notifyPreciseCallState(anyInt(), anyInt(),
-                anyInt());
+                anyInt(), anyInt());
 
         doReturn(mRingingCall).when(mPhone).getRingingCall();
         mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
         verify(mTelephonyRegisteryMock, times(1)).notifyPreciseCallState(
                 PreciseCallState.PRECISE_CALL_STATE_IDLE,
                 PreciseCallState.PRECISE_CALL_STATE_IDLE,
-                PreciseCallState.PRECISE_CALL_STATE_IDLE);
+                PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                mPhone.getPhoneId());
 
         doReturn(Call.State.ACTIVE).when(mForeGroundCall).getState();
         mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
         verify(mTelephonyRegisteryMock, times(1)).notifyPreciseCallState(
                 PreciseCallState.PRECISE_CALL_STATE_IDLE,
                 PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
-                PreciseCallState.PRECISE_CALL_STATE_IDLE);
+                PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                mPhone.getPhoneId());
 
         doReturn(Call.State.HOLDING).when(mBackGroundCall).getState();
         mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
         verify(mTelephonyRegisteryMock, times(1)).notifyPreciseCallState(
                 PreciseCallState.PRECISE_CALL_STATE_IDLE,
                 PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
-                PreciseCallState.PRECISE_CALL_STATE_HOLDING);
+                PreciseCallState.PRECISE_CALL_STATE_HOLDING,
+                mPhone.getPhoneId());
 
         doReturn(Call.State.ALERTING).when(mRingingCall).getState();
         mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
         verify(mTelephonyRegisteryMock, times(1)).notifyPreciseCallState(
                 PreciseCallState.PRECISE_CALL_STATE_ALERTING,
                 PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
-                PreciseCallState.PRECISE_CALL_STATE_HOLDING);
+                PreciseCallState.PRECISE_CALL_STATE_HOLDING,
+                mPhone.getPhoneId());
     }
 
     @Test @SmallTest
