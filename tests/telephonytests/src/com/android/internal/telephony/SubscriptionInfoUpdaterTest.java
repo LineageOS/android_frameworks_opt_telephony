@@ -511,25 +511,15 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         when(mSubscriptionController.getSubscriptionInfoListForEmbeddedSubscriptionUpdate(
                 new String[0], false /* removable */)).thenReturn(subInfoList);
 
-        assertTrue(mUpdater.updateEmbeddedSubscriptions(FAKE_CARD_ID));
+        assertFalse(mUpdater.updateEmbeddedSubscriptions(FAKE_CARD_ID));
 
         // No new entries should be created.
         verify(mSubscriptionController, times(0)).clearSubInfo();
         verify(mSubscriptionController, never()).insertEmptySubInfoRecord(anyString(), anyInt());
 
-        // 1 should not have been touched.
+        // No existing entries should have been updated.
         verify(mContentProvider, never()).update(eq(SubscriptionManager.CONTENT_URI), any(),
-                eq(SubscriptionManager.ICC_ID + "=\"1\""), isNull());
-        verify(mContentProvider, never()).update(eq(SubscriptionManager.CONTENT_URI), any(),
-                eq(SubscriptionManager.ICC_ID + "IN (\"1\")"), isNull());
-
-        // 2 should have been removed since it was returned from the cache but the LPA had an
-        // error when listing.
-        ArgumentCaptor<ContentValues> iccid2Values = ArgumentCaptor.forClass(ContentValues.class);
-        verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid2Values.capture(),
-                eq(SubscriptionManager.ICC_ID + " IN (\"2\")"), isNull());
-        assertEquals(0,
-                iccid2Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
+                any(), isNull());
     }
 
     @Test
