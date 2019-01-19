@@ -610,21 +610,25 @@ public class SubscriptionInfoUpdater extends Handler {
             return false;
         }
 
+        // If the returned result is not RESULT_OK or the profile list is null, don't update cache.
+        // Otherwise, update the cache.
         final EuiccProfileInfo[] embeddedProfiles;
-        if (result.getResult() == EuiccService.RESULT_OK) {
-            List<EuiccProfileInfo> list = result.getProfiles();
-            if (list == null || list.size() == 0) {
-                embeddedProfiles = new EuiccProfileInfo[0];
-            } else {
-                embeddedProfiles = list.toArray(new EuiccProfileInfo[list.size()]);
+        List<EuiccProfileInfo> list = result.getProfiles();
+        if (result.getResult() == EuiccService.RESULT_OK && list != null) {
+            embeddedProfiles = list.toArray(new EuiccProfileInfo[list.size()]);
+            if (DBG) {
+                logd("blockingGetEuiccProfileInfoList: got " + result.getProfiles().size()
+                        + " profiles");
             }
         } else {
-            logd("updatedEmbeddedSubscriptions: error " + result.getResult() + " listing profiles");
-            // If there's an error listing profiles, treat it equivalently to a successful
-            // listing which returned no profiles under the assumption that none are currently
-            // accessible.
-            embeddedProfiles = new EuiccProfileInfo[0];
+            if (DBG) {
+                logd("blockingGetEuiccProfileInfoList returns an error. "
+                        + "Result code=" + result.getResult()
+                        + ". Null profile list=" + (result.getProfiles() == null));
+            }
+            return false;
         }
+
         final boolean isRemovable = result.getIsRemovable();
 
         final String[] embeddedIccids = new String[embeddedProfiles.length];
