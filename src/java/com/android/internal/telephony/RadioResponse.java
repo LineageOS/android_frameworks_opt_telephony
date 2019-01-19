@@ -20,6 +20,7 @@ import android.content.Context;
 import android.hardware.radio.V1_0.ActivityStatsInfo;
 import android.hardware.radio.V1_0.AppStatus;
 import android.hardware.radio.V1_0.CardStatus;
+import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CarrierRestrictions;
 import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
 import android.hardware.radio.V1_0.DataRegStateResult;
@@ -34,10 +35,13 @@ import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.hardware.radio.V1_2.IRadioResponse;
+import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
+import android.hardware.radio.V1_4.SimLockMultiSimPolicy;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
@@ -1299,19 +1303,74 @@ public class RadioResponse extends IRadioResponse.Stub {
      *        if Length of allowed carriers list is 0, numAllowed = 0.
      */
     public void setAllowedCarriersResponse(RadioResponseInfo responseInfo, int numAllowed) {
-        responseInts(responseInfo, numAllowed);
+        // The number of allowed carriers set correctly is not really useful. Even if one is
+        // missing, the operation has failed, as the list should be treated as a single
+        // configuration item. So, ignoring the value of numAllowed and considering only the
+        // value of the responseInfo.error.
+        int ret = TelephonyManager.SET_CARRIER_RESTRICTION_ERROR;
+        RILRequest rr = mRil.processResponse(responseInfo);
+        if (rr != null) {
+            mRil.riljLog("setAllowedCarriersResponse - error = " + responseInfo.error);
+
+            if (responseInfo.error == RadioError.NONE) {
+                ret = TelephonyManager.SET_CARRIER_RESTRICTION_SUCCESS;
+                sendMessageResponse(rr.mResult, ret);
+            } else if (responseInfo.error == RadioError.REQUEST_NOT_SUPPORTED) {
+                // Handle the case REQUEST_NOT_SUPPORTED as a valid response
+                responseInfo.error = RadioError.NONE;
+                ret = TelephonyManager.SET_CARRIER_RESTRICTION_NOT_SUPPORTED;
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
     }
 
     /**
      *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setAllowedCarriersResponse_1_4(RadioResponseInfo responseInfo) {
+        int ret = TelephonyManager.SET_CARRIER_RESTRICTION_ERROR;
+        RILRequest rr = mRil.processResponse(responseInfo);
+        if (rr != null) {
+            mRil.riljLog("setAllowedCarriersResponse_1_4 - error = " + responseInfo.error);
+
+            if (responseInfo.error == RadioError.NONE) {
+                ret = TelephonyManager.SET_CARRIER_RESTRICTION_SUCCESS;
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param allAllowed true only when all carriers are allowed. Ignore "carriers" struct.
      *                   If false, consider "carriers" struct
      * @param carriers Carrier restriction information.
      */
     public void getAllowedCarriersResponse(RadioResponseInfo responseInfo, boolean allAllowed,
-                                           CarrierRestrictions carriers) {
-        responseCarrierIdentifiers(responseInfo, allAllowed, carriers);
+            CarrierRestrictions carriers) {
+        CarrierRestrictionsWithPriority carrierRestrictions = new CarrierRestrictionsWithPriority();
+        carrierRestrictions.allowedCarriers = carriers.allowedCarriers;
+        carrierRestrictions.excludedCarriers = carriers.excludedCarriers;
+        carrierRestrictions.allowedCarriersPrioritized = true;
+
+        responseCarrierRestrictions(responseInfo, allAllowed, carrierRestrictions,
+                SimLockMultiSimPolicy.NO_MULTISIM_POLICY);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param carrierRestrictions Carrier restriction information.
+     * @param multiSimPolicy Policy for multi-sim devices.
+     */
+    public void getAllowedCarriersResponse_1_4(RadioResponseInfo responseInfo,
+            CarrierRestrictionsWithPriority carrierRestrictions,
+            int multiSimPolicy) {
+        // The API in IRadio 1.4 does not support the flag allAllowed, so setting it to false, so
+        // that values in carrierRestrictions are used.
+        responseCarrierRestrictions(responseInfo, false, carrierRestrictions, multiSimPolicy);
     }
 
     /**
@@ -2151,34 +2210,63 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
-    private void responseCarrierIdentifiers(RadioResponseInfo responseInfo, boolean allAllowed,
-                                            CarrierRestrictions carriers) {
-        RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            List<CarrierIdentifier> ret = new ArrayList<CarrierIdentifier>();
-            for (int i = 0; i < carriers.allowedCarriers.size(); i++) {
-                String mcc = carriers.allowedCarriers.get(i).mcc;
-                String mnc = carriers.allowedCarriers.get(i).mnc;
-                String spn = null, imsi = null, gid1 = null, gid2 = null;
-                int matchType = carriers.allowedCarriers.get(i).matchType;
-                String matchData = carriers.allowedCarriers.get(i).matchData;
-                if (matchType == CarrierIdentifier.MatchType.SPN) {
-                    spn = matchData;
-                } else if (matchType == CarrierIdentifier.MatchType.IMSI_PREFIX) {
-                    imsi = matchData;
-                } else if (matchType == CarrierIdentifier.MatchType.GID1) {
-                    gid1 = matchData;
-                } else if (matchType == CarrierIdentifier.MatchType.GID2) {
-                    gid2 = matchData;
-                }
-                ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
+    private static List<CarrierIdentifier> convertCarrierList(List<Carrier> carrierList) {
+        List<CarrierIdentifier> ret = new ArrayList<>();
+        for (int i = 0; i < carrierList.size(); i++) {
+            String mcc = carrierList.get(i).mcc;
+            String mnc = carrierList.get(i).mnc;
+            String spn = null, imsi = null, gid1 = null, gid2 = null;
+            int matchType = carrierList.get(i).matchType;
+            String matchData = carrierList.get(i).matchData;
+            if (matchType == CarrierIdentifier.MatchType.SPN) {
+                spn = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.IMSI_PREFIX) {
+                imsi = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.GID1) {
+                gid1 = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.GID2) {
+                gid2 = matchData;
             }
-            if (responseInfo.error == RadioError.NONE) {
-                /* TODO: Handle excluded carriers */
-                sendMessageResponse(rr.mResult, ret);
-            }
-            mRil.processResponseDone(rr, responseInfo, ret);
+            ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
         }
+        return ret;
+    }
+
+    private void responseCarrierRestrictions(RadioResponseInfo responseInfo, boolean allAllowed,
+                                            CarrierRestrictionsWithPriority carriers,
+                                            int multiSimPolicy) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+        if (rr == null) {
+            return;
+        }
+        CarrierRestrictionRules ret;
+
+        if (allAllowed) {
+            ret = CarrierRestrictionRules.newBuilder().setAllCarriersAllowed().build();
+        } else {
+            int policy = CarrierRestrictionRules.MULTISIM_POLICY_NONE;
+            if (multiSimPolicy == SimLockMultiSimPolicy.ONE_VALID_SIM_MUST_BE_PRESENT) {
+                policy = CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT;
+            }
+
+            int carrierRestrictionDefault =
+                    CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED;
+            if (!carriers.allowedCarriersPrioritized) {
+                carrierRestrictionDefault =
+                        CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_ALLOWED;
+            }
+
+            ret = CarrierRestrictionRules.newBuilder()
+                    .setAllowedCarriers(convertCarrierList(carriers.allowedCarriers))
+                    .setExcludedCarriers(convertCarrierList(carriers.excludedCarriers))
+                    .setDefaultCarrierRestriction(carrierRestrictionDefault)
+                    .setMultiSimPolicy(policy)
+                    .build();
+        }
+
+        if (responseInfo.error == RadioError.NONE) {
+            sendMessageResponse(rr.mResult, ret);
+        }
+        mRil.processResponseDone(rr, responseInfo, ret);
     }
 }
