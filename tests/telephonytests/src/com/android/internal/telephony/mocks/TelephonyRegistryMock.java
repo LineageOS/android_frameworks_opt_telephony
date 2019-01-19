@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.DataFailCause;
 import android.telephony.PhoneCapability;
@@ -367,8 +368,13 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
+    public void notifyCallQualityChanged(CallQuality callQuality, int phoneId) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    @Override
     public void notifyPreciseCallState(int ringingCallState, int foregroundCallState,
-            int backgroundCallState) {
+            int backgroundCallState, int phoneId) {
         throw new RuntimeException("Not implemented");
     }
 
