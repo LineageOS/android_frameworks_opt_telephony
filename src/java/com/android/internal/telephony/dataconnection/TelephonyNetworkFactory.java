@@ -159,15 +159,19 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private void requestNetworkInternal(NetworkRequest networkRequest) {
         int transportType = getTransportTypeFromNetworkRequest(networkRequest);
         if (mPhone.getDcTracker(transportType) != null) {
-            mPhone.getDcTracker(transportType).requestNetwork(networkRequest, mLocalLog);
+            // TODO: Handover logic will be added later. For now always normal request.
+            mPhone.getDcTracker(transportType).requestNetwork(networkRequest,
+                    DcTracker.REQUEST_TYPE_NORMAL, mLocalLog);
         }
     }
 
     private void releaseNetworkInternal(NetworkRequest networkRequest, boolean cleanUpOnRelease) {
         int transportType = getTransportTypeFromNetworkRequest(networkRequest);
         if (mPhone.getDcTracker(transportType) != null) {
-            mPhone.getDcTracker(transportType).releaseNetwork(networkRequest, mLocalLog,
-                    cleanUpOnRelease);
+            // TODO: Handover logic will be added later. For now always normal or detach request.
+            mPhone.getDcTracker(transportType).releaseNetwork(networkRequest,
+                    cleanUpOnRelease ? DcTracker.RELEASE_TYPE_DETACH
+                            : DcTracker.RELEASE_TYPE_NORMAL, mLocalLog);
         }
     }
 
