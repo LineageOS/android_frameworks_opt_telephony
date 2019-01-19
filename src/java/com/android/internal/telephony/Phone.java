@@ -39,10 +39,10 @@ import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.service.carrier.CarrierIdentifier;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
@@ -3665,9 +3665,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Set allowed carriers
      */
-    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response,
-            WorkSource workSource) {
-        mCi.setAllowedCarriers(carriers, response, workSource);
+    public void setAllowedCarriers(CarrierRestrictionRules carrierRestrictionRules,
+            Message response, WorkSource workSource) {
+        mCi.setAllowedCarriers(carrierRestrictionRules, response, workSource);
     }
 
     /** Sets the SignalStrength reporting criteria. */
