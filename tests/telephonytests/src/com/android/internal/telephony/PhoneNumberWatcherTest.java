@@ -24,6 +24,7 @@ import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class PhoneNumberWatcherTest {
@@ -267,6 +268,7 @@ public class PhoneNumberWatcherTest {
      * case the replacement text should be formatted by the PhoneNumberFormattingTextWatcher.
      */
     @Test @SmallTest
+    @Ignore("b/122886015")
     public void testAutoCompleteUnformattedWithUnformattedNumber() {
         String init = "650";
         String replacement = "6501234567";

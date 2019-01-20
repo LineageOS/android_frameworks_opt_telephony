@@ -93,6 +93,7 @@ import static org.mockito.Mockito.verify;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
+import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.hardware.radio.V1_0.DataProfileInfo;
 import android.hardware.radio.V1_0.GsmSmsMessage;
@@ -111,6 +112,7 @@ import android.os.IPowerManager;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.WorkSource;
+import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
@@ -1757,5 +1759,51 @@ public class RILTest extends TelephonyTest {
         assertEquals(ROAMING_PROTOCOL, dpi.protocol);
         assertEquals(BEARER_BITMAP, dpi.bearerBitmap);
         assertEquals(MTU, dpi.mtu);
+    }
+
+    @Test
+    public void testCreateCarrierRestrictionList() {
+        ArrayList<CarrierIdentifier> carriers = new ArrayList<>();
+        carriers.add(new CarrierIdentifier("110", "120", null, null, null, null));
+        carriers.add(new CarrierIdentifier("210", "220", "SPN", null, null, null));
+        carriers.add(new CarrierIdentifier("310", "320", null, "012345", null, null));
+        carriers.add(new CarrierIdentifier("410", "420", null, null, "GID1", null));
+        carriers.add(new CarrierIdentifier("510", "520", null, null, null, "GID2"));
+
+        Carrier c1 = new Carrier();
+        c1.mcc = "110";
+        c1.mnc = "120";
+        c1.matchType = CarrierIdentifier.MatchType.ALL;
+        Carrier c2 = new Carrier();
+        c2.mcc = "210";
+        c2.mnc = "220";
+        c2.matchType = CarrierIdentifier.MatchType.SPN;
+        c2.matchData = "SPN";
+        Carrier c3 = new Carrier();
+        c3.mcc = "310";
+        c3.mnc = "320";
+        c3.matchType = CarrierIdentifier.MatchType.IMSI_PREFIX;
+        c3.matchData = "012345";
+        Carrier c4 = new Carrier();
+        c4.mcc = "410";
+        c4.mnc = "420";
+        c4.matchType = CarrierIdentifier.MatchType.GID1;
+        c4.matchData = "GID1";
+        Carrier c5 = new Carrier();
+        c5.mcc = "510";
+        c5.mnc = "520";
+        c5.matchType = CarrierIdentifier.MatchType.GID2;
+        c5.matchData = "GID2";
+
+        ArrayList<Carrier> expected = new ArrayList<>();
+        expected.add(c1);
+        expected.add(c2);
+        expected.add(c3);
+        expected.add(c4);
+        expected.add(c5);
+
+        ArrayList<Carrier> result = RIL.createCarrierRestrictionList(carriers);
+
+        assertTrue(result.equals(expected));
     }
 }

@@ -29,7 +29,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.SystemClock;
 import android.os.WorkSource;
-import android.service.carrier.CarrierIdentifier;
+import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellSignalStrengthCdma;
@@ -45,7 +45,6 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -540,7 +539,12 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getDataCallList(Message result) {
-        resultSuccess(result, new ArrayList<DataCallResponse>(0));
+        ArrayList<SetupDataCallResult> dcCallList = new ArrayList<SetupDataCallResult>(0);
+        SimulatedCommandsVerifier.getInstance().getDataCallList(result);
+        if (mSetupDataCallResult != null) {
+            dcCallList.add(mSetupDataCallResult);
+        }
+        resultSuccess(result, dcCallList);
     }
 
     /**
@@ -2059,8 +2063,8 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message result,
-            WorkSource workSource) {
+    public void setAllowedCarriers(CarrierRestrictionRules carrierRestrictionRules,
+            Message result, WorkSource workSource) {
         unimplemented(result);
     }
 
