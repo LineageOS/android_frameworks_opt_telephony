@@ -83,7 +83,7 @@ import android.hardware.radio.V1_0.SsInfoData;
 import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_2.CellConnectionStatus;
-import android.hardware.radio.V1_2.IRadioIndication;
+import android.hardware.radio.V1_3.IRadioIndication;
 import android.hardware.radio.V1_4.RadioFrequencyInfo.hidl_discriminator;
 import android.os.AsyncResult;
 import android.os.SystemProperties;
