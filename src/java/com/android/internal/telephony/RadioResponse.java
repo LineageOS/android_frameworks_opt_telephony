@@ -33,7 +33,7 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
-import android.hardware.radio.V1_2.IRadioResponse;
+import android.hardware.radio.V1_3.IRadioResponse;
 import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
 import android.hardware.radio.V1_4.SimLockMultiSimPolicy;
 import android.os.AsyncResult;
@@ -2304,9 +2304,31 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param responseInfo Response info struct containing response type, serial number and error.
      */
     public void enableModemResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param isEnabled whether the modem stack is enabled.
+     */
+    public void getModemStackStatusResponse(RadioResponseInfo responseInfo, boolean isEnabled) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, isEnabled);
+            }
+            mRil.processResponseDone(rr, responseInfo, isEnabled);
+        }
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial number and error.
+     */
+    public void setSystemSelectionChannelsResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
 }
