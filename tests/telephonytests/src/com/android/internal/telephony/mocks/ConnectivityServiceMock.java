@@ -988,4 +988,14 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     public NetworkRequest getDefaultRequest() {
         throw new RuntimeException("not implemented");
     }
+
+    @Override
+    public boolean isCallerCurrentAlwaysOnVpnApp() {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public boolean isCallerCurrentAlwaysOnVpnLockdownApp() {
+        throw new RuntimeException("not implemented");
+    }
 }
