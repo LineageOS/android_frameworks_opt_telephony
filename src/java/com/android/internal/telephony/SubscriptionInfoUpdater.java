@@ -549,20 +549,27 @@ public class SubscriptionInfoUpdater extends Handler {
         List<SubscriptionInfo> subInfos = SubscriptionController.getInstance()
                 .getSubInfoUsingSlotIndexPrivileged(slotIndex, false);
         if (subInfos != null) {
+            boolean changed = false;
             for (int i = 0; i < subInfos.size(); i++) {
                 SubscriptionInfo temp = subInfos.get(i);
                 ContentValues value = new ContentValues(1);
 
                 String msisdn = TelephonyManager.getDefault().getLine1Number(
                         temp.getSubscriptionId());
-                if (msisdn != null) {
+
+                UiccSlot uiccSlot = UiccController.getInstance().getUiccSlotForPhone(slotIndex);
+                boolean isEuicc = (uiccSlot != null && uiccSlot.isEuicc());
+                if (isEuicc != temp.isEmbedded() || !TextUtils.equals(msisdn, temp.getNumber())) {
+                    value.put(SubscriptionManager.IS_EMBEDDED, isEuicc);
                     value.put(SubscriptionManager.NUMBER, msisdn);
                     mContext.getContentResolver().update(SubscriptionManager.getUriForSubscriptionId(
                             temp.getSubscriptionId()), value, null, null);
-
-                    // refresh Cached Active Subscription Info List
-                    SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
+                    changed = true;
                 }
+            }
+            if (changed) {
+                // refresh Cached Active Subscription Info List
+                SubscriptionController.getInstance().refreshCachedActiveSubscriptionInfoList();
             }
         }
 
