@@ -32,7 +32,6 @@ import android.hardware.radio.V1_0.NeighboringCell;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.SendSmsResult;
-import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.hardware.radio.V1_2.IRadioResponse;
 import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
@@ -50,6 +49,7 @@ import android.telephony.RadioAccessFamily;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataCallResponse;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
@@ -421,7 +421,17 @@ public class RadioResponse extends IRadioResponse.Stub {
      *                            types.hal
      */
     public void setupDataCallResponse(RadioResponseInfo responseInfo,
-                                      SetupDataCallResult setupDataCallResult) {
+            android.hardware.radio.V1_0.SetupDataCallResult setupDataCallResult) {
+        responseSetupDataCall(responseInfo, setupDataCallResult);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param setupDataCallResult Response to data call setup as defined by setupDataCallResult in
+     *                            1.4/types.hal
+     */
+    public void setupDataCallResponse_1_4(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_4.SetupDataCallResult setupDataCallResult) {
         responseSetupDataCall(responseInfo, setupDataCallResult);
     }
 
@@ -665,7 +675,17 @@ public class RadioResponse extends IRadioResponse.Stub {
      *                           types.hal
      */
     public void getDataCallListResponse(RadioResponseInfo responseInfo,
-                                        ArrayList<SetupDataCallResult> dataCallResultList) {
+            ArrayList<android.hardware.radio.V1_0.SetupDataCallResult> dataCallResultList) {
+        responseDataCallList(responseInfo, dataCallResultList);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dataCallResultList Response to get data call list as defined by setupDataCallResult in
+     *                           1.4/types.hal
+     */
+    public void getDataCallListResponse_1_4(RadioResponseInfo responseInfo,
+            ArrayList<android.hardware.radio.V1_4.SetupDataCallResult> dataCallResultList) {
         responseDataCallList(responseInfo, dataCallResultList);
     }
 
@@ -1871,14 +1891,15 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     private void responseSetupDataCall(RadioResponseInfo responseInfo,
-                                       SetupDataCallResult setupDataCallResult) {
+                                       Object setupDataCallResult) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
+            DataCallResponse response = RIL.convertDataCallResult(setupDataCallResult);
             if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, setupDataCallResult);
+                sendMessageResponse(rr.mResult, response);
             }
-            mRil.processResponseDone(rr, responseInfo, setupDataCallResult);
+            mRil.processResponseDone(rr, responseInfo, response);
         }
     }
 
@@ -1965,14 +1986,16 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     private void responseDataCallList(RadioResponseInfo responseInfo,
-                                      ArrayList<SetupDataCallResult> dataCallResultList) {
+                                      List<? extends Object> dataCallResultList) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
+            ArrayList<DataCallResponse> response =
+                    RIL.convertDataCallResultList(dataCallResultList);
             if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, dataCallResultList);
+                sendMessageResponse(rr.mResult, response);
             }
-            mRil.processResponseDone(rr, responseInfo, dataCallResultList);
+            mRil.processResponseDone(rr, responseInfo, response);
         }
     }
 

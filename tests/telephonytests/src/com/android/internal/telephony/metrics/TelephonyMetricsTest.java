@@ -35,9 +35,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
-import android.hardware.radio.V1_0.SetupDataCallResult;
+import android.net.LinkAddress;
+import android.net.NetworkUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataCallResponse;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.feature.MmTelFeature;
@@ -70,6 +72,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 public class TelephonyMetricsTest extends TelephonyTest {
 
@@ -390,21 +393,22 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteOnSetupDataCallResponse() throws Exception {
-        SetupDataCallResult result = new SetupDataCallResult();
-        result.status = 5;
-        result.suggestedRetryTime = 6;
-        result.cid = 7;
-        result.active = 8;
-        result.type = "IPV4V6";
-        result.ifname = FAKE_IFNAME;
-        result.addresses = FAKE_ADDRESS;
-        result.dnses = FAKE_DNS;
-        result.gateways = FAKE_GATEWAY;
-        result.pcscf = FAKE_PCSCF_ADDRESS;
-        result.mtu = 1440;
+        DataCallResponse response = new DataCallResponse(
+                5, /* status */
+                6, /* suggestedRetryTime */
+                7, /* cid */
+                8, /* active */
+                "IPV4V6", /* type */
+                FAKE_IFNAME, /* ifname */
+                Arrays.asList(new LinkAddress(
+                       NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)), /* addresses */
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)), /* dnses */
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)), /* gateways */
+                Arrays.asList(FAKE_PCSCF_ADDRESS), /* pcscfs */
+                1440 /* mtu */);
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,
-                RIL_REQUEST_SETUP_DATA_CALL, result);
+                RIL_REQUEST_SETUP_DATA_CALL, response);
         TelephonyLog log = buildProto();
 
         assertEquals(1, log.events.length);

@@ -45,6 +45,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -56,6 +57,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.LastCallFailCause;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
@@ -1168,11 +1170,11 @@ public class SimulatedCommands extends BaseCommands
             }
         }
 
+        DataCallResponse response = RIL.convertDataCallResult(mSetupDataCallResult);
         if (mDcSuccess) {
-            resultSuccess(result, mSetupDataCallResult);
+            resultSuccess(result, response);
         } else {
-            resultFail(result, mSetupDataCallResult,
-                    new RuntimeException("Setup data call failed!"));
+            resultFail(result, response, new RuntimeException("Setup data call failed!"));
         }
     }
 
