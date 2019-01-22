@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyComponentFactory;
@@ -489,7 +490,7 @@ public class UiccCard {
      * card or the EID of the card for an eUICC card.
      */
     public String getCardId() {
-        if (mCardId != null) {
+        if (!TextUtils.isEmpty(mCardId)) {
             return mCardId;
         } else if (mUiccProfile != null) {
             return mUiccProfile.getIccId();
