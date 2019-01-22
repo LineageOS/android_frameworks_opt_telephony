@@ -84,11 +84,13 @@ import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_2.CellConnectionStatus;
 import android.hardware.radio.V1_2.IRadioIndication;
+import android.hardware.radio.V1_4.RadioFrequencyInfo.hidl_discriminator;
 import android.os.AsyncResult;
 import android.os.SystemProperties;
 import android.telephony.CellInfo;
 import android.telephony.PcoData;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
@@ -275,37 +277,19 @@ public class RadioIndication extends IRadioIndication.Stub {
     /**
      * Indicates current physical channel configuration.
      */
+    public void currentPhysicalChannelConfigs_1_4(int indicationType,
+            ArrayList<android.hardware.radio.V1_4.PhysicalChannelConfig> configs) {
+        mRil.processIndication(indicationType);
+        physicalChannelConfigsIndication(configs);
+    }
+
+    /**
+     * Indicates current physical channel configuration.
+     */
     public void currentPhysicalChannelConfigs(int indicationType,
             ArrayList<android.hardware.radio.V1_2.PhysicalChannelConfig> configs) {
-        List<PhysicalChannelConfig> response = new ArrayList<>(configs.size());
-
-        for (android.hardware.radio.V1_2.PhysicalChannelConfig config : configs) {
-            int status;
-            switch (config.status) {
-                case CellConnectionStatus.PRIMARY_SERVING:
-                    status = PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
-                    break;
-                case CellConnectionStatus.SECONDARY_SERVING:
-                    status = PhysicalChannelConfig.CONNECTION_SECONDARY_SERVING;
-                    break;
-                default:
-                    // only PRIMARY_SERVING and SECONDARY_SERVING are supported.
-                    mRil.riljLoge("Unsupported CellConnectionStatus in PhysicalChannelConfig: "
-                            + config.status);
-                    status = PhysicalChannelConfig.CONNECTION_UNKNOWN;
-                    break;
-            }
-
-            response.add(new PhysicalChannelConfig.Builder()
-                    .setCellConnectionStatus(status)
-                    .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlink)
-                    .build());
-        }
-
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
-
-        mRil.mPhysicalChannelConfigurationRegistrants.notifyRegistrants(
-                new AsyncResult(null, response, null));
+        mRil.processIndication(indicationType);
+        physicalChannelConfigsIndication(configs);
     }
 
     /**
@@ -979,6 +963,77 @@ public class RadioIndication extends IRadioIndication.Stub {
                 throw new RuntimeException("Unrecognized RadioState: " + stateInt);
         }
         return state;
+    }
+
+
+    /**
+     * Set the frequency range or channel number from the physical channel config. Only one of them
+     * is valid, we should set the other to the unknown value.
+     * @param builder the builder of {@link PhysicalChannelConfig}.
+     * @param config physical channel config from ril.
+     */
+    private void setFrequencyRangeOrChannelNumber(PhysicalChannelConfig.Builder builder,
+            android.hardware.radio.V1_4.PhysicalChannelConfig config) {
+
+        switch (config.rfInfo.getDiscriminator()) {
+            case hidl_discriminator.range:
+                builder.setFrequencyRange(config.rfInfo.range());
+                break;
+            case hidl_discriminator.channelNumber:
+                builder.setChannelNumber(config.rfInfo.channelNumber());
+                break;
+            default:
+                mRil.riljLoge("Unsupported frequency type " + config.rfInfo.getDiscriminator());
+        }
+    }
+
+    private int convertConnectionStatusFromCellConnectionStatus(int status) {
+        switch (status) {
+            case CellConnectionStatus.PRIMARY_SERVING:
+                return PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
+            case CellConnectionStatus.SECONDARY_SERVING:
+                return PhysicalChannelConfig.CONNECTION_SECONDARY_SERVING;
+            default:
+                // only PRIMARY_SERVING and SECONDARY_SERVING are supported.
+                mRil.riljLoge("Unsupported CellConnectionStatus in PhysicalChannelConfig: "
+                        + status);
+                return PhysicalChannelConfig.CONNECTION_UNKNOWN;
+        }
+    }
+
+    private void physicalChannelConfigsIndication(List<? extends Object> configs) {
+        List<PhysicalChannelConfig> response = new ArrayList<>(configs.size());
+        for (Object obj : configs) {
+            if (obj instanceof android.hardware.radio.V1_2.PhysicalChannelConfig) {
+                android.hardware.radio.V1_2.PhysicalChannelConfig config =
+                        (android.hardware.radio.V1_2.PhysicalChannelConfig) obj;
+
+                response.add(new PhysicalChannelConfig.Builder()
+                        .setCellConnectionStatus(
+                                convertConnectionStatusFromCellConnectionStatus(config.status))
+                        .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlink)
+                        .build());
+            } else if (obj instanceof android.hardware.radio.V1_4.PhysicalChannelConfig) {
+                android.hardware.radio.V1_4.PhysicalChannelConfig config =
+                        (android.hardware.radio.V1_4.PhysicalChannelConfig) obj;
+                PhysicalChannelConfig.Builder builder = new PhysicalChannelConfig.Builder();
+                setFrequencyRangeOrChannelNumber(builder, config);
+                response.add(builder.setCellConnectionStatus(
+                        convertConnectionStatusFromCellConnectionStatus(config.base.status))
+                        .setCellBandwidthDownlinkKhz(config.base.cellBandwidthDownlink)
+                        .setRat(ServiceState.rilRadioTechnologyToNetworkType(config.rat))
+                        .setPhysicalCellId(config.physicalCellId)
+                        .setContextIds(config.contextIds.stream().mapToInt(x -> x).toArray())
+                        .build());
+            } else {
+                mRil.riljLoge("Unsupported PhysicalChannelConfig " + obj);
+            }
+        }
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
+
+        mRil.mPhysicalChannelConfigurationRegistrants.notifyRegistrants(
+                new AsyncResult(null, response, null));
     }
 
     private void responseCellInfos(int indicationType,
