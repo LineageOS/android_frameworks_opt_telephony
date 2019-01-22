@@ -63,6 +63,7 @@ public class UiccSlot extends Handler {
     private String mIccId;
     private AnswerToReset mAtr;
     private int mPhoneId = INVALID_PHONE_ID;
+    private boolean mIsRemovable;
 
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
@@ -77,7 +78,7 @@ public class UiccSlot extends Handler {
     /**
      * Update slot. The main trigger for this is a change in the ICC Card status.
      */
-    public void update(CommandsInterface ci, IccCardStatus ics, int phoneId) {
+    public void update(CommandsInterface ci, IccCardStatus ics, int phoneId, int slotIndex) {
         if (DBG) log("cardStatus update: " + ics.toString());
         synchronized (mLock) {
             CardState oldState = mCardState;
@@ -86,6 +87,7 @@ public class UiccSlot extends Handler {
             mPhoneId = phoneId;
             parseAtr(ics.atr);
             mCi = ci;
+            mIsRemovable = isSlotRemovable(slotIndex);
 
             int radioState = mCi.getRadioState();
             if (DBG) {
@@ -135,7 +137,7 @@ public class UiccSlot extends Handler {
     /**
      * Update slot based on IccSlotStatus.
      */
-    public void update(CommandsInterface ci, IccSlotStatus iss) {
+    public void update(CommandsInterface ci, IccSlotStatus iss, int slotIndex) {
         if (DBG) log("slotStatus update: " + iss.toString());
         synchronized (mLock) {
             CardState oldState = mCardState;
@@ -143,6 +145,7 @@ public class UiccSlot extends Handler {
             parseAtr(iss.atr);
             mCardState = iss.cardState;
             mIccId = iss.iccid;
+            mIsRemovable = isSlotRemovable(slotIndex);
             if (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_INACTIVE) {
                 // TODO: (b/79432584) evaluate whether should broadcast card state change
                 // even if it's inactive.
@@ -211,6 +214,22 @@ public class UiccSlot extends Handler {
         return mUiccCard == null;
     }
 
+    // Return true if a slot index is for removable UICCs or eUICCs
+    private boolean isSlotRemovable(int slotIndex) {
+        int[] euiccSlots = mContext.getResources()
+                .getIntArray(com.android.internal.R.array.non_removable_euicc_slots);
+        if (euiccSlots == null) {
+            return true;
+        }
+        for (int euiccSlot : euiccSlots) {
+            if (euiccSlot == slotIndex) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private void checkIsEuiccSupported() {
         if (mAtr != null && mAtr.isEuiccSupported()) {
             mIsEuicc = true;
@@ -234,6 +253,10 @@ public class UiccSlot extends Handler {
 
     public int getPhoneId() {
         return mPhoneId;
+    }
+
+    public boolean isRemovable() {
+        return mIsRemovable;
     }
 
     public String getIccId() {

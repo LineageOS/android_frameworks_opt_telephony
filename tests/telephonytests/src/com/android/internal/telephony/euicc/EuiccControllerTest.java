@@ -990,9 +990,10 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private void setCanManageSubscriptionOnTargetSim(boolean isTargetEuicc, boolean hasPrivileges)
             throws Exception {
-        UiccCardInfo cardInfo1 = new UiccCardInfo(isTargetEuicc, CARD_ID, "", "", 0);
+        UiccCardInfo cardInfo1 = new UiccCardInfo(isTargetEuicc, CARD_ID, "", "", 0,
+                false /* isRemovable */);
         UiccCardInfo cardInfo2 = new UiccCardInfo(true /* isEuicc */, 1 /* cardId */,
-                "", "", 0);
+                "", "", 0, false /* isRemovable */);
         ArrayList<UiccCardInfo> cardInfos = new ArrayList<>();
         cardInfos.add(cardInfo1);
         cardInfos.add(cardInfo2);
