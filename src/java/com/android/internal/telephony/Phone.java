@@ -590,8 +590,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             if (imsManager != null && !imsManager.isDynamicBinding()) {
                 filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
                 filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+                mContext.registerReceiver(mImsIntentReceiver, filter);
             }
-            mContext.registerReceiver(mImsIntentReceiver, filter);
 
             // Monitor IMS service - but first poll to see if already up (could miss
             // intent). Also, when using new ImsResolver APIs, the service will be available soon,

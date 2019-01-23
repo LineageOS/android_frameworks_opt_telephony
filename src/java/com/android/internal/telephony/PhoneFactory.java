@@ -143,18 +143,6 @@ public class PhoneFactory {
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
                 int numPhones = TelephonyManager.getDefault().getPhoneCount();
-                // Return whether or not the device should use dynamic binding or the static
-                // implementation (deprecated)
-                boolean isDynamicBinding = sContext.getResources().getBoolean(
-                        com.android.internal.R.bool.config_dynamic_bind_ims);
-                // Get the package name of the default IMS implementation.
-                String defaultImsPackage = sContext.getResources().getString(
-                        com.android.internal.R.string.config_ims_package);
-                // Start ImsResolver and bind to ImsServices.
-                Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
-                sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones,
-                        isDynamicBinding);
-                sImsResolver.initPopulateCacheAndStartBind();
 
                 int[] networkModes = new int[numPhones];
                 sPhones = new Phone[numPhones];
@@ -228,12 +216,31 @@ public class PhoneFactory {
                         BackgroundThread.get().getLooper(), context, sPhones, sCommandsInterfaces);
                 SubscriptionController.getInstance().updatePhonesAvailability(sPhones);
 
-                // Start monitoring after defaults have been made.
-                // Default phone must be ready before ImsPhone is created because ImsService might
-                // need it when it is being opened. This should initialize multiple ImsPhones for
-                // ImsResolver implementations of ImsService.
-                for (int i = 0; i < numPhones; i++) {
-                    sPhones[i].startMonitoringImsService();
+
+                // Only bring up IMS if the device supports having an IMS stack.
+                if (context.getPackageManager().hasSystemFeature(
+                        PackageManager.FEATURE_TELEPHONY_IMS)) {
+                    // Return whether or not the device should use dynamic binding or the static
+                    // implementation (deprecated)
+                    boolean isDynamicBinding = sContext.getResources().getBoolean(
+                            com.android.internal.R.bool.config_dynamic_bind_ims);
+                    // Get the package name of the default IMS implementation.
+                    String defaultImsPackage = sContext.getResources().getString(
+                            com.android.internal.R.string.config_ims_package);
+                    // Start ImsResolver and bind to ImsServices.
+                    Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
+                    sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones,
+                            isDynamicBinding);
+                    sImsResolver.initPopulateCacheAndStartBind();
+                    // Start monitoring after defaults have been made.
+                    // Default phone must be ready before ImsPhone is created because ImsService
+                    // might need it when it is being opened. This should initialize multiple
+                    // ImsPhones for ImsResolver implementations of ImsService.
+                    for (int i = 0; i < numPhones; i++) {
+                        sPhones[i].startMonitoringImsService();
+                    }
+                } else {
+                    Rlog.i(LOG_TAG, "IMS is not supported on this device, skipping ImsResolver.");
                 }
 
                 ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
@@ -316,7 +323,11 @@ public class PhoneFactory {
         return sSubInfoRecordUpdater;
     }
 
-    public static ImsResolver getImsResolver() {
+    /**
+     * @return The ImsResolver instance or null if IMS is not supported
+     * (FEATURE_TELEPHONY_IMS is not defined).
+     */
+    public static @Nullable ImsResolver getImsResolver() {
         return sImsResolver;
     }
 
