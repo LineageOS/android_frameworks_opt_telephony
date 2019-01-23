@@ -78,7 +78,6 @@ import android.hardware.radio.V1_0.CdmaT53AudioControlInfoRecord;
 import android.hardware.radio.V1_0.CfData;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.PcoDataInfo;
-import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.SimRefreshResult;
 import android.hardware.radio.V1_0.SsInfoData;
 import android.hardware.radio.V1_0.StkCcUnsolSsResult;
@@ -95,6 +94,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataCallResponse;
 import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
@@ -314,13 +314,28 @@ public class RadioIndication extends IRadioIndication.Stub {
                 new AsyncResult(null, response, null));
     }
 
-    public void dataCallListChanged(int indicationType, ArrayList<SetupDataCallResult> dcList) {
+    /** Indicates current data call list. */
+    public void dataCallListChanged(int indicationType,
+            ArrayList<android.hardware.radio.V1_0.SetupDataCallResult> dcList) {
         mRil.processIndication(indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
 
+        ArrayList<DataCallResponse> response = RIL.convertDataCallResultList(dcList);
         mRil.mDataCallListChangedRegistrants.notifyRegistrants(
-                new AsyncResult(null, dcList, null));
+                new AsyncResult(null, response, null));
+    }
+
+    /** Indicates current data call list with radio HAL 1.4. */
+    public void dataCallListChanged_1_4(int indicationType,
+            ArrayList<android.hardware.radio.V1_4.SetupDataCallResult> dcList) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
+
+        ArrayList<DataCallResponse> response = RIL.convertDataCallResultList(dcList);
+        mRil.mDataCallListChangedRegistrants.notifyRegistrants(
+                new AsyncResult(null, response, null));
     }
 
     public void suppSvcNotify(int indicationType, SuppSvcNotification suppSvcNotification) {

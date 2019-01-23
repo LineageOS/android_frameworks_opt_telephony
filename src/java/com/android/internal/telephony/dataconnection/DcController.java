@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.Context;
+import android.hardware.radio.V1_4.DataConnActiveStatus;
 import android.net.INetworkPolicyListener;
 import android.net.LinkAddress;
 import android.net.LinkProperties.CompareResult;
@@ -64,17 +65,6 @@ public class DcController extends StateMachine {
     final ArrayList<DataConnection> mDcListAll = new ArrayList<>();
     // @GuardedBy("mDcListAll")
     private final HashMap<Integer, DataConnection> mDcListActiveByCid = new HashMap<>();
-
-    /**
-     * Constants for the data connection activity:
-     * physical link down/up
-     *
-     * TODO: Move to RILConstants.java
-     */
-    static final int DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE = 0;
-    static final int DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT = 1;
-    static final int DATA_CONNECTION_ACTIVE_PH_LINK_UP = 2;
-    static final int DATA_CONNECTION_ACTIVE_UNKNOWN = Integer.MAX_VALUE;
 
     private DccDefaultState mDccDefaultState = new DccDefaultState();
 
@@ -325,7 +315,7 @@ public class DcController extends StateMachine {
                         log("onDataStateChanged: Found ConnId=" + newState.getCallId()
                                 + " newState=" + newState.toString());
                     }
-                    if (newState.getActive() == DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE) {
+                    if (newState.getActive() == DataConnActiveStatus.INACTIVE) {
                         if (mDct.isCleanupRequired.get()) {
                             apnsToCleanup.addAll(apnContexts);
                             mDct.isCleanupRequired.set(false);
@@ -413,10 +403,10 @@ public class DcController extends StateMachine {
                     }
                 }
 
-                if (newState.getActive() == DATA_CONNECTION_ACTIVE_PH_LINK_UP) {
+                if (newState.getActive() == DataConnActiveStatus.ACTIVE) {
                     isAnyDataCallActive = true;
                 }
-                if (newState.getActive() == DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT) {
+                if (newState.getActive() == DataConnActiveStatus.DORMANT) {
                     isAnyDataCallDormant = true;
                 }
             }
