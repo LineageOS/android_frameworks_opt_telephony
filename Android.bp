@@ -40,6 +40,8 @@ java_library {
         "src/java/**/*.logtags",
     ],
 
+    jarjar_rules: ":framework-hidl-jarjar",
+
     libs: [
         "voip-common",
         "ims-common",
