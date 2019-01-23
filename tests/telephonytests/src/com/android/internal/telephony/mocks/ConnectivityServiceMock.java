@@ -998,4 +998,9 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     public boolean isCallerCurrentAlwaysOnVpnLockdownApp() {
         throw new RuntimeException("not implemented");
     }
+
+    @Override
+    public boolean getAvoidBadWifi() {
+        return true;
+    }
 }
