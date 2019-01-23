@@ -27,6 +27,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.pm.PackageManager;
 import android.os.IBinder;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -95,6 +96,7 @@ public class ImsManagerTest extends TelephonyTest {
         mServiceManagerMockedServices.put("isub", mBinder);
 
         doReturn(true).when(mMmTelFeatureConnection).isBinderAlive();
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_IMS);
 
         mImsManagerInstances.remove(mPhoneId);
 
