@@ -2258,6 +2258,14 @@ public interface CommandsInterface {
      */
     void stopNattKeepalive(int sessionHandle, Message result);
 
+    /**
+     * Enable or disable the logical modem.
+     *
+     * @param enable whether to enable or disable the modem
+     * @param result a Message to return to the requester
+     */
+    default void enableModem(boolean enable, Message result) {};
+
     default List<ClientRequestStats> getClientRequestStats() {
         return null;
     }
