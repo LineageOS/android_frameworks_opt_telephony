@@ -1,6 +1,0 @@
-# Re-list all owners appearing in the root OWNERS file for this project
-# This allows adding new owners for specific files using the per-file rule.
-per-file * = amitmahajan@google.com,breadley@google.com,fionaxu@google.com
-per-file * = jackyu@google.com,rgreenwalt@google.com,tgunn@google.com
-
-per-file ConnectivityServiceMock.java=ek@google.com,jchalard@google.com,lorenzo@google.com,reminv@google.com
