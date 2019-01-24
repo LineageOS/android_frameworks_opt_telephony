@@ -946,6 +946,13 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
+    public void startNattKeepaliveWithFd(Network network, FileDescriptor fd, int resourceId,
+            int intervalSeconds, Messenger messenger,
+            IBinder binder, String srcAddr, String dstAddr) {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
     public void stopKeepalive(Network network, int slot) {
         throw new RuntimeException("not implemented");
     }
