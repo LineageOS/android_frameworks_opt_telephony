@@ -144,6 +144,15 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
+    public int addSubInfo(String uniqueId, String displayName, int slotIndex,
+            int subscriptionType) {
+        throw new RuntimeException("not implemented");
+    }
+    @Override
+    public int removeSubInfo(String uniqueId, int subscriptionType) {
+        throw new RuntimeException("not implemented");
+    }
+    @Override
     public boolean setPlmnSpn(int slotIndex, boolean showPlmn, String plmn, boolean showSpn,
             String spn) {
         throw new RuntimeException("not implemented");
