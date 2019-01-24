@@ -607,6 +607,16 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
+     * The same method as startNetworkScanResponse, except disallowing error codes
+     * OPERATION_NOT_ALLOWED and REQUEST_NOT_SUPPORTED.
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void startNetworkScanResponse_1_4(RadioResponseInfo responseInfo) {
+        responseScanStatus(responseInfo);
+    }
+
+    /**
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
