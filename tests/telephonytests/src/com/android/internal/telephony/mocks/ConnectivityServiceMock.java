@@ -59,6 +59,7 @@ import com.android.server.connectivity.NetworkAgentInfo;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * @hide
@@ -656,12 +657,23 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
     }
 
     @Override
-    public boolean setAlwaysOnVpnPackage(int userId, String packageName, boolean lockdownEnabled) {
+    public boolean setAlwaysOnVpnPackage(int userId, String packageName, boolean lockdownEnabled,
+            List<String> lockdownWhitelist) {
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public String getAlwaysOnVpnPackage(int userId) {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public boolean isVpnLockdownEnabled(int userId) {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public List<String> getVpnLockdownWhitelist(int userId) {
         throw new RuntimeException("not implemented");
     }
 
