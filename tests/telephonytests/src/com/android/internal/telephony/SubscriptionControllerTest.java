@@ -46,8 +46,11 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 public class SubscriptionControllerTest extends TelephonyTest {
     private static final int SINGLE_SIM = 1;
@@ -58,13 +61,19 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Mock
     private ITelephonyRegistry.Stub mTelephonyRegisteryMock;
 
+    private static final String MAC_ADDRESS_PREFIX = "mac_";
+    private static final String DISPLAY_NAME_PREFIX = "my_phone_";
+
     @Before
     public void setUp() throws Exception {
         super.setUp("SubscriptionControllerTest");
 
         doReturn(SINGLE_SIM).when(mTelephonyManager).getSimCount();
         doReturn(SINGLE_SIM).when(mTelephonyManager).getPhoneCount();
-
+        mMockContentResolver = (MockContentResolver) mContext.getContentResolver();
+        mFakeTelephonyProvider = new FakeTelephonyProvider();
+        mMockContentResolver.addProvider(SubscriptionManager.CONTENT_URI.getAuthority(),
+                mFakeTelephonyProvider);
         replaceInstance(SubscriptionController.class, "sInstance", null, null);
 
         SubscriptionController.init(mContext, null);
@@ -75,11 +84,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[]{5});
 
         mSubscriptionControllerUT.getInstance().updatePhonesAvailability(new Phone[]{mPhone});
-        mMockContentResolver = (MockContentResolver) mContext.getContentResolver();
-        mFakeTelephonyProvider = new FakeTelephonyProvider();
-        mMockContentResolver.addProvider(SubscriptionManager.CONTENT_URI.getAuthority(),
-                mFakeTelephonyProvider);
-
     }
 
     @After
@@ -91,6 +95,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         /*clear sub info in mSubscriptionControllerUT since they will otherwise be persistent
          * between each test case. */
         mSubscriptionControllerUT.clearSubInfo();
+        mSubscriptionControllerUT.resetStaticMembers();
 
         /* clear settings for default voice/data/sms sub ID */
         Settings.Global.putInt(mContext.getContentResolver(),
@@ -215,7 +220,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testDefaultSubID() {
+    public void testDefaultSubIdOnSingleSimDevice() {
         assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                 mSubscriptionControllerUT.getDefaultDataSubId());
         assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
@@ -225,12 +230,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
         /* insert one sim */
         testInsertSim();
         // if support single sim, sms/data/voice default sub should be the same
-        assertNotSame(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
-                mSubscriptionControllerUT.getDefaultSubId());
-        assertEquals(mSubscriptionControllerUT.getDefaultDataSubId(),
-                mSubscriptionControllerUT.getDefaultSmsSubId());
-        assertEquals(mSubscriptionControllerUT.getDefaultDataSubId(),
-                mSubscriptionControllerUT.getDefaultVoiceSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultDataSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultSmsSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultVoiceSubId());
     }
 
     @Test @SmallTest
@@ -409,6 +412,168 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 .notifyOpportunisticSubscriptionInfoChanged();
     }
 
+    @Test @SmallTest
+    public void testInsertRemoteSim() {
+        makeThisDeviceMultiSimCapable();
+
+        // verify there are no sim's in the system.
+        assertEquals(0, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
+
+        addAndVerifyRemoteSimAddition(1, 0);
+    }
+
+    private void addAndVerifyRemoteSimAddition(int num, int numOfCurrentSubs) {
+        // Verify the number of current subs in the system
+        assertEquals(numOfCurrentSubs,
+                mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
+
+        // if there are current subs in the system, get that info
+        List<SubscriptionInfo> mSubList;
+        ArrayList<String> macAddresses = new ArrayList<>();
+        ArrayList<String> displayNames = new ArrayList<>();
+        if (numOfCurrentSubs > 0) {
+            mSubList = mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage);
+            assertNotNull(mSubList);
+            assertEquals(numOfCurrentSubs, mSubList.size());
+            for (SubscriptionInfo info : mSubList) {
+                assertNotNull(info.getIccId());
+                assertNotNull(info.getDisplayName());
+                macAddresses.add(info.getIccId());
+                displayNames.add(info.getDisplayName().toString());
+            }
+        }
+
+        // To add more subs, we need to create macAddresses + displaynames.
+        for (int i = 0; i < num; i++) {
+            macAddresses.add(MAC_ADDRESS_PREFIX + (numOfCurrentSubs + i));
+            displayNames.add(DISPLAY_NAME_PREFIX + (numOfCurrentSubs + i));
+        }
+
+        // Add subs - one at a time and verify the contents in subscription info data structs
+        for (int i = 0; i < num; i++) {
+            int index = numOfCurrentSubs + i;
+            mSubscriptionControllerUT.addSubInfo(macAddresses.get(index), displayNames.get(index),
+                    SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB,
+                    SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+
+            // make sure the subscription is added in SubscriptionController data structs
+            Map<Integer, ArrayList<Integer>> slotIndexToSubsMap =
+                    mSubscriptionControllerUT.getSlotIndexToSubIdsMap();
+            assertNotNull(slotIndexToSubsMap);
+            // Since All remote sim's go to the same slot index, there should only be one entry
+            assertEquals(1, slotIndexToSubsMap.size());
+
+            // get all the subscriptions available. should be what is just added in this method
+            // PLUS the number of subs that already existed before
+            int expectedNumOfSubs = numOfCurrentSubs + i + 1;
+            ArrayList<Integer> subIdsList =
+                    slotIndexToSubsMap.get(SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB);
+            assertNotNull(subIdsList);
+            assertEquals(expectedNumOfSubs, subIdsList.size());
+
+            // validate slot index, sub id etc
+            mSubList = mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage);
+            assertNotNull(mSubList);
+            assertEquals(expectedNumOfSubs, mSubList.size());
+
+            // sort on subscription-id which will make sure the previously existing subscriptions
+            // are in earlier slots in the array
+            mSubList.sort(SUBSCRIPTION_INFO_COMPARATOR);
+
+            // Verify the subscription data. Skip the verification for the existing subs.
+            for (int j = numOfCurrentSubs; j < mSubList.size(); j++) {
+                SubscriptionInfo info = mSubList.get(j);
+                assertTrue(SubscriptionManager.isValidSubscriptionId(info.getSubscriptionId()));
+                assertEquals(SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB,
+                        info.getSimSlotIndex());
+                assertEquals(SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM,
+                        info.getSubscriptionType());
+                assertEquals(macAddresses.get(j), info.getIccId());
+                assertEquals(displayNames.get(j), info.getDisplayName());
+            }
+        }
+    }
+
+    private static final Comparator<SubscriptionInfo> SUBSCRIPTION_INFO_COMPARATOR =
+            Comparator.comparingInt(o -> o.getSubscriptionId());
+
+    @Test @SmallTest
+    public void testInsertMultipleRemoteSims() {
+        makeThisDeviceMultiSimCapable();
+
+        // verify that there are no subscription info records
+        assertEquals(0, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage));
+        Map<Integer, ArrayList<Integer>> slotIndexToSubsMap =
+                mSubscriptionControllerUT.getSlotIndexToSubIdsMap();
+        assertNotNull(slotIndexToSubsMap);
+        assertTrue(slotIndexToSubsMap.isEmpty());
+
+        // Add a few subscriptions
+        addAndVerifyRemoteSimAddition(4, 0);
+    }
+
+
+    @Test @SmallTest
+    public void testDefaultSubIdOnMultiSimDevice() {
+        makeThisDeviceMultiSimCapable();
+
+        // Initially, defaults should be -1
+        assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                mSubscriptionControllerUT.getDefaultDataSubId());
+        assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                mSubscriptionControllerUT.getDefaultSmsSubId());
+        assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                mSubscriptionControllerUT.getDefaultSmsSubId());
+
+        // Insert one Remote-Sim.
+        testInsertRemoteSim();
+
+        // defaults should be set to this newly-inserted subscription
+        assertEquals(1, mSubscriptionControllerUT.getDefaultSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultDataSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultSmsSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultVoiceSubId());
+
+        // Add a few subscriptions
+        addAndVerifyRemoteSimAddition(4, 1);
+
+        // defaults should be still be set to the first sub - and unchanged by the addition of
+        // the above multiple sims.
+        assertEquals(1, mSubscriptionControllerUT.getDefaultSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultDataSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultSmsSubId());
+        assertEquals(1, mSubscriptionControllerUT.getDefaultVoiceSubId());
+    }
+
+    @Test @SmallTest
+    public void testRemoveSubscription() {
+        makeThisDeviceMultiSimCapable();
+
+        /* insert some sims */
+        testInsertMultipleRemoteSims();
+        assertEquals(1, mSubscriptionControllerUT.getDefaultSubId());
+        int[] subIdsArray = mSubscriptionControllerUT.getActiveSubIdList();
+        assertTrue(subIdsArray.length > 0);
+        int len = subIdsArray.length;
+
+        // remove the first sim - which also is the default sim.
+        int result = mSubscriptionControllerUT.removeSubInfo(MAC_ADDRESS_PREFIX + 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+
+        assertTrue(result > 0);
+        // now check the number of subs left. should be one less than earlier
+        int[] newSubIdsArray = mSubscriptionControllerUT.getActiveSubIdList();
+        assertTrue(newSubIdsArray.length > 0);
+        assertEquals(len - 1, newSubIdsArray.length);
+
+        // now check that there is a new default
+        assertNotSame(1, mSubscriptionControllerUT.getDefaultSubId());
+    }
+
+    private void makeThisDeviceMultiSimCapable() {
+        doReturn(10).when(mTelephonyManager).getSimCount();
+    }
+
     @Test
     @SmallTest
     public void testSetSubscriptionGroupWithModifyPermission() throws Exception {
@@ -444,6 +609,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testSetSubscriptionGroupWithCarrierPrivilegePermission() throws Exception {
         testInsertSim();
         // Adding a second profile and mark as embedded.
+        // TODO b/123300875 slot index 1 is not expected to be valid
         mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
         ContentValues values = new ContentValues();
         values.put(SubscriptionManager.IS_EMBEDDED, 1);
@@ -484,6 +650,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         // Put sub3 into slot 1 to make sub2 inactive.
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE);
+        // TODO b/123300875 slot index 1 is not expected to be valid
         mSubscriptionControllerUT.addSubInfoRecord("test3", 1);
         mContextFixture.removeCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE);
@@ -590,6 +757,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetActiveSubIdList() throws Exception {
+        // TODO b/123300875 slot index 1 is not expected to be valid
         mSubscriptionControllerUT.addSubInfoRecord("123", 1);   // sub 1
         mSubscriptionControllerUT.addSubInfoRecord("456", 0);   // sub 2
 
