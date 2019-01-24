@@ -1969,8 +1969,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
-                android.hardware.radio.V1_2.IRadio radioProxy12 =
-                        (android.hardware.radio.V1_2.IRadio) radioProxy;
 
                 android.hardware.radio.V1_2.NetworkScanRequest request =
                         new android.hardware.radio.V1_2.NetworkScanRequest();
@@ -2000,7 +1998,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 }
 
                 try {
-                    radioProxy12.startNetworkScan_1_2(rr.mSerial, request);
+                    if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+                        android.hardware.radio.V1_4.IRadio radioProxy14 =
+                                (android.hardware.radio.V1_4.IRadio) radioProxy;
+                        radioProxy14.startNetworkScan_1_4(rr.mSerial, request);
+                    } else {
+                        android.hardware.radio.V1_2.IRadio radioProxy12 =
+                                (android.hardware.radio.V1_2.IRadio) radioProxy;
+                        radioProxy12.startNetworkScan_1_2(rr.mSerial, request);
+                    }
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "startNetworkScan", e);
                 }
