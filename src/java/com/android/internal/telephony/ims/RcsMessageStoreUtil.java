@@ -41,7 +41,7 @@ public class RcsMessageStoreUtil {
             int idValue) throws RemoteException {
         try (Cursor cursor = getValueFromTableRow(tableUri, valueColumn, idColumn, idValue)) {
             if (cursor != null && cursor.moveToFirst()) {
-                return cursor.getInt(0);
+                return cursor.getInt(cursor.getColumnIndex(valueColumn));
             } else {
                 throw new RemoteException("The row with (" + idColumn + " = " + idValue
                         + ") could not be found in " + tableUri);
@@ -53,7 +53,7 @@ public class RcsMessageStoreUtil {
             int idValue) throws RemoteException {
         try (Cursor cursor = getValueFromTableRow(tableUri, valueColumn, idColumn, idValue)) {
             if (cursor != null && cursor.moveToFirst()) {
-                return cursor.getLong(0);
+                return cursor.getLong(cursor.getColumnIndex(valueColumn));
             } else {
                 throw new RemoteException("The row with (" + idColumn + " = " + idValue
                         + ") could not be found in " + tableUri);
@@ -65,7 +65,7 @@ public class RcsMessageStoreUtil {
             int idValue) throws RemoteException {
         try (Cursor cursor = getValueFromTableRow(tableUri, valueColumn, idColumn, idValue)) {
             if (cursor != null && cursor.moveToFirst()) {
-                return cursor.getDouble(0);
+                return cursor.getDouble(cursor.getColumnIndex(valueColumn));
             } else {
                 throw new RemoteException("The row with (" + idColumn + " = " + idValue
                         + ") could not be found in " + tableUri);
@@ -77,7 +77,7 @@ public class RcsMessageStoreUtil {
             int idValue) throws RemoteException {
         try (Cursor cursor = getValueFromTableRow(tableUri, valueColumn, idColumn, idValue)) {
             if (cursor != null && cursor.moveToFirst()) {
-                return cursor.getString(0);
+                return cursor.getString(cursor.getColumnIndex(valueColumn));
             } else {
                 throw new RemoteException("The row with (" + idColumn + " = " + idValue
                         + ") could not be found in " + tableUri);
@@ -89,7 +89,7 @@ public class RcsMessageStoreUtil {
             int idValue) throws RemoteException {
         try (Cursor cursor = getValueFromTableRow(tableUri, valueColumn, idColumn, idValue)) {
             if (cursor != null && cursor.moveToFirst()) {
-                String uriAsString = cursor.getString(0);
+                String uriAsString = cursor.getString(cursor.getColumnIndex(valueColumn));
 
                 if (!TextUtils.isEmpty(uriAsString)) {
                     return Uri.parse(uriAsString);
