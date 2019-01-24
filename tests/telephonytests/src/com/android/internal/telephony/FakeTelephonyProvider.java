@@ -103,7 +103,8 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + SubscriptionManager.ISO_COUNTRY_CODE + " TEXT,"
                     + SubscriptionManager.CARRIER_ID + " INTEGER DEFAULT -1,"
                     + SubscriptionManager.PROFILE_CLASS
-                    + " INTEGER DEFAULT " + SubscriptionManager.PROFILE_CLASS_DEFAULT
+                    + " INTEGER DEFAULT " + SubscriptionManager.PROFILE_CLASS_DEFAULT + ","
+                    + SubscriptionManager.SUBSCRIPTION_TYPE + " INTEGER DEFAULT 0"
                     + ");";
         }
 
