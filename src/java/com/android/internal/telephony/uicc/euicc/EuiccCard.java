@@ -157,7 +157,7 @@ public class EuiccCard extends UiccCard {
         }
     }
 
-    // For RadioConfig<1.1 we don't know the EID when constructing the EuiccCard, so callers may
+    // For RadioConfig<1.2 we don't know the EID when constructing the EuiccCard, so callers may
     // need to register to be notified when we have the EID
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected void loadEidAndNotifyRegistrants() {
