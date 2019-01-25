@@ -240,6 +240,20 @@ public class UiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testConvertNullCardId() {
+        // trying to convert a null string should return -1
+        assertEquals(TelephonyManager.INVALID_CARD_ID,
+                mUiccControllerUT.convertToPublicCardId(null));
+    }
+
+    @Test
+    public void testConvertEmptyCardId() {
+        // trying to convert an empty string should return -1
+        assertEquals(TelephonyManager.INVALID_CARD_ID,
+                mUiccControllerUT.convertToPublicCardId(""));
+    }
+
+    @Test
     public void testCardIdFromSlotStatus() {
         // Give UiccController a real context so it can use shared preferences
         mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
