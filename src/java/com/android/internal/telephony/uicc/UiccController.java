@@ -596,6 +596,9 @@ public class UiccController extends Handler {
      * @return the matching cardId, or INVALID_CARD_ID if the card string does not map to a cardId
      */
     public int convertToPublicCardId(String cardString) {
+        if (TextUtils.isEmpty(cardString)) {
+            return INVALID_CARD_ID;
+        }
         if (cardString.length() < EID_LENGTH) {
             cardString = IccUtils.stripTrailingFs(cardString);
         }
