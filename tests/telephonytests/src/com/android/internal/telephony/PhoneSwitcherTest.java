@@ -40,6 +40,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.Messenger;
+import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -88,6 +89,9 @@ public class PhoneSwitcherTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+
+        PhoneCapability phoneCapability = new PhoneCapability(1, 1, 0, null, false);
+        doReturn(phoneCapability).when(mPhoneConfigurationManager).getCurrentPhoneCapability();
     }
 
     @After
@@ -382,13 +386,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
         assertTrue(mDataAllowed[0]);
 
         // Set sub 2 as preferred sub should make phone 1 activated and phone 0 deactivated.
-        mPhoneSwitcher.setPreferredDataSubscriptionId(2);
+        mPhoneSwitcher.setOpportunisticDataSubscription(2);
         waitABit();
         assertFalse(mDataAllowed[0]);
         assertTrue(mDataAllowed[1]);
 
         // Unset preferred sub should make default data sub (phone 0 / sub 1) activated again.
-        mPhoneSwitcher.setPreferredDataSubscriptionId(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+        mPhoneSwitcher.unsetOpportunisticDataSubscription();
         waitABit();
         assertTrue(mDataAllowed[0]);
         assertFalse(mDataAllowed[1]);
@@ -437,7 +441,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(mmsRequest, 1));
 
         // Set sub 2 as preferred sub should make phone 1 preferredDataModem
-        mPhoneSwitcher.setPreferredDataSubscriptionId(2);
+        mPhoneSwitcher.setOpportunisticDataSubscription(2);
         waitABit();
         verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
         verify(mActivePhoneSwitchHandler, times(2)).sendMessageAtTime(any(), anyLong());
@@ -450,7 +454,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         clearInvocations(mActivePhoneSwitchHandler);
 
         // Unset preferred sub should make phone0 preferredDataModem again.
-        mPhoneSwitcher.setPreferredDataSubscriptionId(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+        mPhoneSwitcher.unsetOpportunisticDataSubscription();
         waitABit();
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         verify(mActivePhoneSwitchHandler, times(2)).sendMessageAtTime(any(), anyLong());

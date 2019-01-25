@@ -80,7 +80,10 @@ public class PhoneSwitcher extends Handler {
     private final LocalLog mLocalLog;
     @VisibleForTesting
     public final PhoneStateListener mPhoneStateListener;
-
+    private final CellularNetworkValidator mValidator;
+    private final CellularNetworkValidator.ValidationCallback mValidationCallback =
+            (validated, subId) -> Message.obtain(PhoneSwitcher.this,
+                    EVENT_NETWORK_VALIDATION_DONE, subId, validated ? 1 : 0).sendToTarget();
     private int mMaxActivePhones;
     private static PhoneSwitcher sPhoneSwitcher = null;
 
@@ -95,7 +98,7 @@ public class PhoneSwitcher extends Handler {
     private int mPreferredDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 
     @VisibleForTesting
-    // Corresponding phoneId after considerting mPreferredDataSubId and mDefaultDataSubId above.
+    // Corresponding phoneId after considering mPreferredDataSubId and mDefaultDataSubId above.
     protected int mPreferredDataPhoneId = SubscriptionManager.INVALID_PHONE_INDEX;
 
     private int mPhoneIdInCall = SubscriptionManager.INVALID_PHONE_INDEX;
@@ -109,6 +112,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_PREFERRED_SUBSCRIPTION_CHANGED = 107;
     private static final int EVENT_RADIO_AVAILABLE                = 108;
     private static final int EVENT_PHONE_IN_CALL_CHANGED          = 109;
+    private static final int EVENT_NETWORK_VALIDATION_DONE        = 110;
 
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
@@ -121,6 +125,9 @@ public class PhoneSwitcher extends Handler {
     private RadioConfig mRadioConfig;
 
     private final static int MAX_LOCAL_LOG_LINES = 30;
+
+    // Default timeout value of network validation in millisecond.
+    private final static int DEFAULT_VALIDATION_EXPIRATION_TIME = 2000;
 
     /**
      * Method to get singleton instance.
@@ -162,6 +169,7 @@ public class PhoneSwitcher extends Handler {
                 onPhoneCapabilityChangedInternal(capability);
             }
         };
+        mValidator = CellularNetworkValidator.getInstance();
     }
 
     @VisibleForTesting
@@ -207,6 +215,8 @@ public class PhoneSwitcher extends Handler {
                 }
             }
         };
+
+        mValidator = CellularNetworkValidator.getInstance();
 
         TelephonyManager telephonyManager =
                 (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
@@ -314,6 +324,12 @@ public class PhoneSwitcher extends Handler {
             }
             case EVENT_PHONE_IN_CALL_CHANGED: {
                 onEvaluate(REQUESTS_UNCHANGED, "EVENT_PHONE_IN_CALL_CHANGED");
+                break;
+            }
+            case EVENT_NETWORK_VALIDATION_DONE: {
+                int subId = msg.arg1;
+                boolean passed = (msg.arg2 == 1);
+                onValidationDone(subId, passed);
                 break;
             }
         }
@@ -555,7 +571,8 @@ public class PhoneSwitcher extends Handler {
         // Internet connection on the preferred phone. So we only accept Internet request with
         // preferred data subscription or no specified subscription.
         if (netRequest.networkCapabilities.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET) && subId != preferredDataSubId) {
+                NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && subId != preferredDataSubId && subId != mValidator.getSubIdInValidation()) {
             // Returning INVALID_PHONE_INDEX will result in netRequest not being handled.
             return INVALID_PHONE_INDEX;
         }
@@ -667,10 +684,50 @@ public class PhoneSwitcher extends Handler {
     }
 
     /**
-     * Set a subscription as preferred data subscription.
-     * See {@link SubscriptionManager#setPreferredDataSubscriptionId(int)} for more details.
+     * Set opportunistic data subscription. It's an indication to switch Internet data to this
+     * subscription. It has to be an active subscription, and PhoneSwitcher will try to validate
+     * it first if needed.
      */
-    public void setPreferredDataSubscriptionId(int subId) {
+    public void setOpportunisticDataSubscription(int subId) {
+        if (!mSubscriptionController.isActiveSubId(subId)) {
+            log("Can't switch data to inactive subId " + subId);
+            return;
+        }
+
+        // If validation feature is not supported, set it directly. Otherwise,
+        // start validation on the subscription first.
+        if (!CellularNetworkValidator.isValidationFeatureSupported()) {
+            setPreferredDataSubscriptionId(subId);
+        } else {
+            mValidator.validate(subId, DEFAULT_VALIDATION_EXPIRATION_TIME,
+                    false, mValidationCallback);
+        }
+    }
+
+    /**
+     * Unset opportunistic data subscription. It's an indication to switch Internet data back
+     * from opportunistic subscription to primary subscription.
+     */
+    public void unsetOpportunisticDataSubscription() {
+        if (CellularNetworkValidator.isValidationFeatureSupported()
+                && mValidator.isValidating()) {
+            mValidator.stopValidation();
+        }
+
+        // Set mPreferredDataSubId back to DEFAULT_SUBSCRIPTION_ID. This will trigger
+        // data switch to mDefaultDataSubId.
+        setPreferredDataSubscriptionId(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+    }
+
+    private void onValidationDone(int subId, boolean passed) {
+        log("Network validation " + (passed ? "passed" : "failed")
+                + " on subId " + subId);
+        mValidator.stopValidation();
+        if (passed) setPreferredDataSubscriptionId(subId);
+    }
+
+    // TODO b/123598154: rename preferredDataSub to opportunisticSubId.
+    private void setPreferredDataSubscriptionId(int subId) {
         if (mPreferredDataSubId != subId) {
             log("setPreferredDataSubscriptionId subId changed to " + subId);
             mPreferredDataSubId = subId;

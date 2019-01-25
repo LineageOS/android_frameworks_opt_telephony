@@ -87,6 +87,7 @@ public class PhoneFactory {
     static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
     static private ImsResolver sImsResolver;
     static private NotificationChannelController sNotificationChannelController;
+    static private CellularNetworkValidator sCellularNetworkValidator;
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
 
@@ -241,6 +242,8 @@ public class PhoneFactory {
                 sSubscriptionMonitor = new SubscriptionMonitor(tr, sContext, sc, numPhones);
 
                 sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext);
+
+                sCellularNetworkValidator = CellularNetworkValidator.make(sContext);
 
                 int maxActivePhones = sPhoneConfigurationManager
                         .getNumberOfModemsWithSimultaneousDataConnections();
