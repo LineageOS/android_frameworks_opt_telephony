@@ -2675,18 +2675,16 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public int setPreferredDataSubscriptionId(int subId) {
+    public void setPreferredDataSubscriptionId(int subId) {
         enforceModifyPhoneState("setPreferredDataSubscriptionId");
         final long token = Binder.clearCallingIdentity();
 
         try {
-            if (mPreferredDataSubId != subId) {
-                mPreferredDataSubId = subId;
-                PhoneSwitcher.getInstance().setPreferredDataSubscriptionId(subId);
-                notifyPreferredDataSubIdChanged();
+            if (SubscriptionManager.isUsableSubscriptionId(subId)) {
+                PhoneSwitcher.getInstance().setOpportunisticDataSubscription(subId);
+            } else {
+                PhoneSwitcher.getInstance().unsetOpportunisticDataSubscription();
             }
-
-            return 0;
         } finally {
             Binder.restoreCallingIdentity(token);
         }
