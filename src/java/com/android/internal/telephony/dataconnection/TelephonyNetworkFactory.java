@@ -32,6 +32,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.SubscriptionMonitor;
+import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -165,18 +166,17 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         }
     }
 
-    private void releaseNetworkInternal(NetworkRequest networkRequest, boolean cleanUpOnRelease) {
+    private void releaseNetworkInternal(NetworkRequest networkRequest,
+                                        @ReleaseNetworkType int releaseType) {
         int transportType = getTransportTypeFromNetworkRequest(networkRequest);
         if (mPhone.getDcTracker(transportType) != null) {
             // TODO: Handover logic will be added later. For now always normal or detach request.
-            mPhone.getDcTracker(transportType).releaseNetwork(networkRequest,
-                    cleanUpOnRelease ? DcTracker.RELEASE_TYPE_DETACH
-                            : DcTracker.RELEASE_TYPE_NORMAL, mLocalLog);
+            mPhone.getDcTracker(transportType).releaseNetwork(networkRequest, releaseType,
+                    mLocalLog);
         }
     }
 
-    private void applyRequestsOnActivePhoneSwitch(NetworkRequest networkRequest,
-            boolean cleanUpOnRelease, int action) {
+    private void applyRequestsOnActivePhoneSwitch(NetworkRequest networkRequest, int action) {
         if (action == ACTION_NO_OP) return;
 
         String logStr = "onActivePhoneSwitch: " + ((action == ACTION_REQUEST)
@@ -185,7 +185,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         if (action == ACTION_REQUEST) {
             requestNetworkInternal(networkRequest);
         } else if (action == ACTION_RELEASE) {
-            releaseNetworkInternal(networkRequest, cleanUpOnRelease);
+            releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_DETACH);
         }
     }
 
@@ -208,8 +208,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
             boolean shouldApply = mPhoneSwitcher.shouldApplyNetworkRequest(
                     networkRequest, mPhone.getPhoneId());
 
-            applyRequestsOnActivePhoneSwitch(networkRequest, true,
-                    getAction(applied, shouldApply));
+            applyRequestsOnActivePhoneSwitch(networkRequest, getAction(applied, shouldApply));
             mNetworkRequests.put(networkRequest, shouldApply);
         }
     }
@@ -267,7 +266,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         mLocalLog.log(s);
 
         if (applied) {
-            releaseNetworkInternal(networkRequest, false);
+            releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_NORMAL);
         }
     }
 
