@@ -2182,6 +2182,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             mMetrics.writeOnImsCallTerminated(mPhone.getPhoneId(), imsCall.getCallSession(),
                     reasonInfo);
+            mPhone.notifyImsReason(reasonInfo);
 
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
                     && mAutoRetryFailedWifiEmergencyCall) {
@@ -2942,6 +2943,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         int cause = getDisconnectCauseFromReasonInfo(reasonInfo, callState);
 
         processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
+        mPhone.notifyImsReason(reasonInfo);
     }
 
     public ImsUtInterface getUtInterface() throws ImsException {
