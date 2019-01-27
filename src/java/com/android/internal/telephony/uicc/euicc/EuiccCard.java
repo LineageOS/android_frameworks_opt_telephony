@@ -52,6 +52,8 @@ import com.android.internal.telephony.uicc.euicc.apdu.RequestProvider;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultHelper;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
 
@@ -155,7 +157,7 @@ public class EuiccCard extends UiccCard {
         }
     }
 
-    // For RadioConfig<1.1 we don't know the EID when constructing the EuiccCard, so callers may
+    // For RadioConfig<1.2 we don't know the EID when constructing the EuiccCard, so callers may
     // need to register to be notified when we have the EID
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected void loadEidAndNotifyRegistrants() {
@@ -1351,5 +1353,12 @@ public class EuiccCard extends UiccCard {
         if (DBG) {
             Rlog.d(LOG_TAG, message);
         }
+    }
+
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        super.dump(fd, pw, args);
+        pw.println("EuiccCard:");
+        pw.println(" mEid=" + mEid);
     }
 }
