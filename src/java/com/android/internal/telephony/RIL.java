@@ -1308,8 +1308,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         dpi.profileId = dp.getProfileId();
         dpi.apn = dp.getApn();
-        dpi.protocol = dp.getProtocol();
-        dpi.roamingProtocol = dp.getRoamingProtocol();
+        dpi.protocol = ApnSetting.getProtocolStringFromInt(dp.getProtocol());
+        dpi.roamingProtocol = ApnSetting.getProtocolStringFromInt(dp.getRoamingProtocol());
         dpi.authType = dp.getAuthType();
         dpi.user = dp.getUserName();
         dpi.password = dp.getPassword();
@@ -1319,7 +1319,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
         dpi.waitTime = dp.getWaitTime();
         dpi.enabled = dp.isEnabled();
         dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
-        dpi.bearerBitmap = dp.getBearerBitmap();
+        // Shift by 1 bit due to the discrepancy between
+        // android.hardware.radio.V1_0.RadioAccessFamily and the bitmask version of
+        // ServiceState.RIL_RADIO_TECHNOLOGY_XXXX.
+        dpi.bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
+                dp.getBearerBitmap()) << 1;
         dpi.mtu = dp.getMtu();
         dpi.mvnoType = MvnoType.NONE;
         dpi.mvnoMatchData = "";
@@ -1338,8 +1342,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 new android.hardware.radio.V1_4.DataProfileInfo();
 
         dpi.apn = dp.getApn();
-        dpi.protocol = ApnSetting.getProtocolIntFromString(dp.getProtocol());
-        dpi.roamingProtocol = ApnSetting.getProtocolIntFromString(dp.getRoamingProtocol());
+        dpi.protocol = dp.getProtocol();
+        dpi.roamingProtocol = dp.getRoamingProtocol();
         dpi.authType = dp.getAuthType();
         dpi.user = dp.getUserName();
         dpi.password = dp.getPassword();
@@ -1349,7 +1353,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
         dpi.waitTime = dp.getWaitTime();
         dpi.enabled = dp.isEnabled();
         dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
-        dpi.bearerBitmap = dp.getBearerBitmap();
+        // Shift by 1 bit due to the discrepancy between
+        // android.hardware.radio.V1_0.RadioAccessFamily and the bitmask version of
+        // ServiceState.RIL_RADIO_TECHNOLOGY_XXXX.
+        dpi.bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
+                dp.getBearerBitmap()) << 1;
         dpi.mtu = dp.getMtu();
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
@@ -5645,7 +5653,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (dcResult == null) return null;
 
         int status, suggestedRetryTime, cid, active, mtu;
-        String type, ifname;
+        String ifname;
+        int protocolType;
         String[] addresses = null;
         String[] dnses = null;
         String[] gateways = null;
@@ -5657,7 +5666,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             suggestedRetryTime = result.suggestedRetryTime;
             cid = result.cid;
             active = result.active;
-            type = result.type;
+            protocolType = ApnSetting.getProtocolIntFromString(result.type);
             ifname = result.ifname;
             if (!TextUtils.isEmpty(result.addresses)) {
                 addresses = result.addresses.split("\\s+");
@@ -5677,7 +5686,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             suggestedRetryTime = result.suggestedRetryTime;
             cid = result.cid;
             active = result.active;
-            type = ApnSetting.getProtocolStringFromInt(result.type);
+            protocolType = result.type;
             ifname = result.ifname;
             addresses = result.addresses.stream().toArray(String[]::new);
             dnses = result.dnses.stream().toArray(String[]::new);
@@ -5744,8 +5753,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
         }
 
-        return new DataCallResponse(status, suggestedRetryTime, cid, active, type, ifname, laList,
-                dnsList, gatewayList, pcscfs, mtu);
+        return new DataCallResponse(status, suggestedRetryTime, cid, active, protocolType, ifname,
+                laList, dnsList, gatewayList, pcscfs, mtu);
     }
 
     /**

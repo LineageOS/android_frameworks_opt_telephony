@@ -223,7 +223,7 @@ public class RILTest extends TelephonyTest {
 
     private static final int PROFILE_ID = 0;
     private static final String APN = "apn";
-    private static final String PROTOCOL = "IPV6";
+    private static final int PROTOCOL = ApnSetting.PROTOCOL_IPV6;
     private static final int AUTH_TYPE = 0;
     private static final String USER_NAME = "username";
     private static final String PASSWORD = "password";
@@ -233,11 +233,9 @@ public class RILTest extends TelephonyTest {
     private static final int WAIT_TIME = 10;
     private static final boolean APN_ENABLED = true;
     private static final int SUPPORTED_APNT_YPES_BITMAP = 123456;
-    private static final String ROAMING_PROTOCOL = "IPV6";
+    private static final int ROAMING_PROTOCOL = ApnSetting.PROTOCOL_IPV6;
     private static final int BEARER_BITMAP = 123123;
     private static final int MTU = 1234;
-    private static final String MVNO_TYPE = "";
-    private static final String MVNO_MATCH_DATA = "";
     private static final boolean PERSISTENT = true;
 
     private class RILTestHandler extends HandlerThread {
@@ -1547,7 +1545,7 @@ public class RILTest extends TelephonyTest {
         result10.pcscf = "fd00:976a:c206:20::6   fd00:976a:c206:20::9    fd00:976a:c202:1d::9";
         result10.mtu = 1500;
 
-        DataCallResponse response = new DataCallResponse(0, -1, 0, 2, "IPV4V6",
+        DataCallResponse response = new DataCallResponse(0, -1, 0, 2, ApnSetting.PROTOCOL_IPV4V6,
                 "ifname",
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress("10.0.2.15"), 32),
                         new LinkAddress("2607:fb90:a620:651d:eabe:f8da:c107:44be/64")),
@@ -1742,7 +1740,7 @@ public class RILTest extends TelephonyTest {
         DataProfileInfo dpi = dpiCaptor.getValue();
         assertEquals(PROFILE_ID, dpi.profileId);
         assertEquals(APN, dpi.apn);
-        assertEquals(PROTOCOL, dpi.protocol);
+        assertEquals(PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
         assertEquals(AUTH_TYPE, dpi.authType);
         assertEquals(USER_NAME, dpi.user);
         assertEquals(PASSWORD, dpi.password);
@@ -1752,7 +1750,7 @@ public class RILTest extends TelephonyTest {
         assertEquals(WAIT_TIME, dpi.waitTime);
         assertEquals(APN_ENABLED, dpi.enabled);
         assertEquals(SUPPORTED_APNT_YPES_BITMAP, dpi.supportedApnTypesBitmap);
-        assertEquals(ROAMING_PROTOCOL, dpi.protocol);
+        assertEquals(ROAMING_PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
         assertEquals(BEARER_BITMAP, dpi.bearerBitmap);
         assertEquals(MTU, dpi.mtu);
     }

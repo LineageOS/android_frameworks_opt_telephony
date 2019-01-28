@@ -543,7 +543,7 @@ public class DataConnection extends StateMachine {
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
             DataCallResponse response = new DataCallResponse(
                     mDcTesterFailBringUpAll.getDcFailBringUp().mFailCause,
-                    mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime, 0, 0, "", "",
+                    mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime, 0, 0, 0, "",
                     null, null, null, null, PhoneConstants.UNSET_MTU);
 
             Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
