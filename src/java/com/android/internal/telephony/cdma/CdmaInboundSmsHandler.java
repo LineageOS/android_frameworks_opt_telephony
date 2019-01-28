@@ -22,6 +22,7 @@ import android.content.res.Resources;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsCbMessage;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CellBroadcastHandler;
 import com.android.internal.telephony.CommandsInterface;
@@ -110,7 +111,9 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         // Handle CMAS emergency broadcast messages.
         if (isBroadcastType) {
             log("Broadcast type message");
-            SmsCbMessage cbMessage = sms.parseBroadcastSms();
+            String plmn =
+                    TelephonyManager.from(mContext).getNetworkOperatorForPhone(mPhone.getPhoneId());
+            SmsCbMessage cbMessage = sms.parseBroadcastSms(plmn);
             if (cbMessage != null) {
                 mCellBroadcastHandler.dispatchSmsMessage(cbMessage);
             } else {
