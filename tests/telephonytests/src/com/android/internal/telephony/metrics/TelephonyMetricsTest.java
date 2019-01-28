@@ -39,6 +39,7 @@ import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
@@ -398,7 +399,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
                 6, /* suggestedRetryTime */
                 7, /* cid */
                 8, /* active */
-                "IPV4V6", /* type */
+                ApnSetting.PROTOCOL_IPV4V6, /* protocolType */
                 FAKE_IFNAME, /* ifname */
                 Arrays.asList(new LinkAddress(
                        NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)), /* addresses */
@@ -546,7 +547,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteRilSetupDataCall() throws Exception {
         mMetrics.writeSetupDataCall(
-                mPhone.getPhoneId(), 14, 3, "apn", "IPV4V6");
+                mPhone.getPhoneId(), 14, 3, "apn", ApnSetting.PROTOCOL_IPV4V6);
 
         TelephonyLog log = buildProto();
 
