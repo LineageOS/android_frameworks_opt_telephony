@@ -965,10 +965,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
+                // TODO: populate fromEmergencyDialer correctly
                 radioProxy14.emergencyDial(rr.mSerial, dialInfo,
                         emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
                         (ArrayList) emergencyNumberInfo.getEmergencyUrns(),
                         emergencyNumberInfo.getEmergencyCallRouting(),
+                        false,
                         emergencyNumberInfo.getEmergencyNumberSourceBitmask()
                                 == EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST);
             } catch (RemoteException | RuntimeException e) {
