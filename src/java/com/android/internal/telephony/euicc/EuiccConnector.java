@@ -956,8 +956,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private int getSlotIdFromCardId(int cardId) {
         TelephonyManager tm = (TelephonyManager)
                 mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        UiccCardInfo[] infos = tm.getUiccCardsInfo();
-        if (infos == null) {
+        List<UiccCardInfo> infos = tm.getUiccCardsInfo();
+        if (infos == null || infos.size() == 0) {
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
         int slotId = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
