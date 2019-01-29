@@ -47,6 +47,18 @@ public abstract class Call {
         }
     }
 
+    public enum HoldingRequestState {
+        NONE, STARTED, ENDED;
+
+        public boolean isStarted() {
+            return this == STARTED;
+        }
+
+        public boolean isFinished() {
+            return this == ENDED;
+        }
+    }
+
     public static State
     stateFromDCState (DriverCall.State dcState) {
         switch (dcState) {
@@ -69,6 +81,8 @@ public abstract class Call {
     public State mState = State.IDLE;
 
     public ArrayList<Connection> mConnections = new ArrayList<Connection>();
+
+    public HoldingRequestState mHoldingRequestState = HoldingRequestState.NONE;
 
     /* Instance Methods */
 
@@ -276,5 +290,9 @@ public abstract class Call {
 
     protected void setState(State newState) {
         mState = newState;
+    }
+
+    public void updateHoldingRequestState(HoldingRequestState state) {
+        mHoldingRequestState = state;
     }
 }
