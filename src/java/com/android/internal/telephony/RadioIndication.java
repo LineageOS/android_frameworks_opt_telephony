@@ -303,8 +303,8 @@ public class RadioIndication extends IRadioIndication.Stub {
                 : emergencyNumberList) {
             EmergencyNumber emergencyNumber = new EmergencyNumber(emergencyNumberHal.number,
                     MccTable.countryCodeForMcc(emergencyNumberHal.mcc), emergencyNumberHal.mnc,
-                    emergencyNumberHal.categories, emergencyNumberHal.sources,
-                    EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+                    emergencyNumberHal.categories, emergencyNumberHal.urns,
+                    emergencyNumberHal.sources, EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
             response.add(emergencyNumber);
         }
 
