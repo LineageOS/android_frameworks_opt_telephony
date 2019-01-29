@@ -321,7 +321,8 @@ public class DataConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testModemSuggestRetry() throws Exception {
-        DataCallResponse response = new DataCallResponse(0, 0, 1, 2, "IP", FAKE_IFNAME,
+        DataCallResponse response = new DataCallResponse(0, 0, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -330,7 +331,8 @@ public class DataConnectionTest extends TelephonyTest {
 
         assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(response));
 
-        response = new DataCallResponse(0, 1000, 1, 2, "IP", FAKE_IFNAME,
+        response = new DataCallResponse(0, 1000, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -338,7 +340,8 @@ public class DataConnectionTest extends TelephonyTest {
                 1440);
         assertEquals(response.getSuggestedRetryTime(), getSuggestedRetryDelay(response));
 
-        response = new DataCallResponse(0, 9999, 1, 2, "IP", FAKE_IFNAME,
+        response = new DataCallResponse(0, 9999, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -350,7 +353,8 @@ public class DataConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testModemNotSuggestRetry() throws Exception {
-        DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
+        DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -359,7 +363,8 @@ public class DataConnectionTest extends TelephonyTest {
 
         assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(response));
 
-        response = new DataCallResponse(0, -5, 1, 2, "IP", FAKE_IFNAME,
+        response = new DataCallResponse(0, -5, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -367,7 +372,8 @@ public class DataConnectionTest extends TelephonyTest {
                 1440);
         assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY, getSuggestedRetryDelay(response));
 
-        response = new DataCallResponse(0, Integer.MIN_VALUE, 1, 2, "IP", FAKE_IFNAME,
+        response = new DataCallResponse(0, Integer.MIN_VALUE, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -379,8 +385,8 @@ public class DataConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testModemSuggestNoRetry() throws Exception {
-        DataCallResponse response = new DataCallResponse(0, Integer.MAX_VALUE, 1, 2, "IP",
-                FAKE_IFNAME,
+        DataCallResponse response = new DataCallResponse(0, Integer.MAX_VALUE, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -518,7 +524,8 @@ public class DataConnectionTest extends TelephonyTest {
     @SmallTest
     public void testSetLinkProperties() throws Exception {
 
-        DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
+        DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -557,7 +564,8 @@ public class DataConnectionTest extends TelephonyTest {
     public void testSetLinkPropertiesEmptyAddress() throws Exception {
 
         // 224.224.224.224 is an invalid address.
-        DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
+        DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 null,
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
@@ -574,7 +582,8 @@ public class DataConnectionTest extends TelephonyTest {
     public void testSetLinkPropertiesEmptyDns() throws Exception {
 
         // Empty dns entry.
-        DataCallResponse response = new DataCallResponse(0, -1, 1, 2, "IP", FAKE_IFNAME,
+        DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
+                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
                 Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
                 null,
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
