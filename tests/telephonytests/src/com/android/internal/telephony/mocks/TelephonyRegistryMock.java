@@ -30,6 +30,7 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.telephony.IOnSubscriptionsChangedListener;
 import com.android.internal.telephony.IPhoneStateListener;
@@ -431,6 +432,11 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
 
     @Override
     public void notifyRadioPowerStateChanged(int subId) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    @Override
+    public void notifyImsDisconnectCause(int subId, ImsReasonInfo imsReasonInfo)  {
         throw new RuntimeException("Not implemented");
     }
 }
