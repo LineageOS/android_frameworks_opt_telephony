@@ -184,7 +184,7 @@ public class EmergencyNumberTracker extends Handler {
             }
         }
         return new EmergencyNumber(phoneNumber, countryIso, "", emergencyServiceCategoryBitmask,
-                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                new ArrayList<String>(), EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
     }
 
@@ -420,14 +420,16 @@ public class EmergencyNumberTracker extends Handler {
             // return true if one is found.
             for (String emergencyNum : emergencyNumbers.split(",")) {
                 emergencyNumberList.add(new EmergencyNumber(emergencyNum, "", "",
-                        EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED, 0,
+                        EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                        new ArrayList<String>(), 0,
                         EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN));
             }
         }
         emergencyNumbers = ((slotId < 0) ? "112,911,000,08,110,118,119,999" : "112,911");
         for (String emergencyNum : emergencyNumbers.split(",")) {
             emergencyNumberList.add(new EmergencyNumber(emergencyNum, "", "",
-                    EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED, 0,
+                    EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                    new ArrayList<String>(), 0,
                     EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN));
         }
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberList);

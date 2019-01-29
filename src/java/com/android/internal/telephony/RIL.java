@@ -966,6 +966,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy14.emergencyDial(rr.mSerial, dialInfo,
                         emergencyNumberInfo.getEmergencyServiceCategoryBitmask(),
+                        (ArrayList) emergencyNumberInfo.getEmergencyUrns(),
                         emergencyNumberInfo.getEmergencyCallRouting());
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
