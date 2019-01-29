@@ -770,19 +770,17 @@ public class SubscriptionController extends ISub.Stub {
         // Now that all security checks pass, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
         try {
+            String selection = SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
+                    + SubscriptionManager.SUBSCRIPTION_TYPE + "="
+                    + SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM;
+
             EuiccManager euiccManager =
                     (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
-            if (!euiccManager.isEnabled()) {
-                if (DBG) logdl("[getAvailableSubInfoList] Embedded subscriptions are disabled");
-                return null;
+            if (euiccManager.isEnabled()) {
+                selection += " OR " + SubscriptionManager.IS_EMBEDDED + "=1";
             }
 
-            List<SubscriptionInfo> subList = getSubInfo(
-                    SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
-                            + SubscriptionManager.IS_EMBEDDED + "=1 OR "
-                            + SubscriptionManager.SUBSCRIPTION_TYPE + "="
-                            + SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM,
-                    null);
+            List<SubscriptionInfo> subList = getSubInfo(selection, null /* queryKey */);
 
             if (subList != null) {
                 subList.sort(SUBSCRIPTION_INFO_COMPARATOR);
