@@ -1124,7 +1124,7 @@ public class TelephonyMetrics {
      * @param protocol Data connection protocol
      */
     public void writeSetupDataCall(int phoneId, int radioTechnology, int profileId, String apn,
-                                   String protocol) {
+                                   int protocol) {
 
         RilSetupDataCall setupDataCall = new RilSetupDataCall();
         setupDataCall.rat = radioTechnology;
@@ -1132,9 +1132,8 @@ public class TelephonyMetrics {
         if (apn != null) {
             setupDataCall.apn = apn;
         }
-        if (protocol != null) {
-            setupDataCall.type = toPdpType(protocol);
-        }
+
+        setupDataCall.type = protocol + 1;
 
         addTelephonyEvent(new TelephonyEventBuilder(phoneId).setSetupDataCall(
                 setupDataCall).build());
@@ -1186,9 +1185,8 @@ public class TelephonyMetrics {
             if (!TextUtils.isEmpty(dcsList.get(i).getIfname())) {
                 dataCalls[i].iframe = dcsList.get(i).getIfname();
             }
-            if (!TextUtils.isEmpty(dcsList.get(i).getType())) {
-                dataCalls[i].type = toPdpType(dcsList.get(i).getType());
-            }
+
+            dataCalls[i].type = dcsList.get(i).getProtocolType() + 1;
         }
 
         addTelephonyEvent(new TelephonyEventBuilder(phoneId).setDataCalls(dataCalls).build());
@@ -1435,9 +1433,7 @@ public class TelephonyMetrics {
             setupDataCallResponse.suggestedRetryTimeMillis = response.getSuggestedRetryTime();
 
             dataCall.cid = response.getCallId();
-            if (!TextUtils.isEmpty(response.getType())) {
-                dataCall.type = toPdpType(response.getType());
-            }
+            dataCall.type = response.getProtocolType() + 1;
 
             if (!TextUtils.isEmpty(response.getIfname())) {
                 dataCall.iframe = response.getIfname();

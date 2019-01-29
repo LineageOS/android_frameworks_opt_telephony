@@ -38,6 +38,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.uicc.euicc.EuiccCard;
 
 import org.junit.After;
 import org.junit.Before;
@@ -62,6 +63,8 @@ public class UiccControllerTest extends TelephonyTest {
     private UiccSlot mMockSlot;
     @Mock
     private UiccCard mMockCard;
+    @Mock
+    private EuiccCard mMockEuiccCard;
 
     private class UiccControllerHandlerThread extends HandlerThread {
 
@@ -221,6 +224,7 @@ public class UiccControllerTest extends TelephonyTest {
         // Mock out UiccSlots
         mUiccControllerUT.mUiccSlots[0] = mMockSlot;
         doReturn(mMockCard).when(mMockSlot).getUiccCard();
+        doReturn("A1B2C3D4").when(mMockCard).getIccId();
         doReturn("A1B2C3D4").when(mMockCard).getCardId();
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mMockCard).getCardState();
 
@@ -308,10 +312,11 @@ public class UiccControllerTest extends TelephonyTest {
         // Mock out UiccSlots
         mUiccControllerUT.mUiccSlots[0] = mMockSlot;
         doReturn(true).when(mMockSlot).isEuicc();
-        doReturn(mMockCard).when(mMockSlot).getUiccCard();
-        doReturn("A1B2C3D4").when(mMockCard).getCardId();
-        doReturn("123451234567890").when(mMockCard).getIccId();
-        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mMockCard).getCardState();
+        doReturn(mMockEuiccCard).when(mMockSlot).getUiccCard();
+        doReturn("A1B2C3D4").when(mMockEuiccCard).getCardId();
+        doReturn("A1B2C3D4").when(mMockEuiccCard).getEid();
+        doReturn("123451234567890").when(mMockEuiccCard).getIccId();
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mMockEuiccCard).getCardState();
 
         // simulate card status loaded so that the UiccController sets the card ID
         IccCardStatus ics = new IccCardStatus();
