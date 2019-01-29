@@ -1791,7 +1791,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @return The remapped code.
      */
     @VisibleForTesting
-    public int maybeRemapReasonCode(ImsReasonInfo reasonInfo) {
+    public @ImsReasonInfo.ImsCode int maybeRemapReasonCode(ImsReasonInfo reasonInfo) {
         int code = reasonInfo.getCode();
         String reason = reasonInfo.getExtraMessage();
         if (reason == null) {
