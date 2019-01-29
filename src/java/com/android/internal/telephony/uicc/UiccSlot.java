@@ -399,6 +399,7 @@ public class UiccSlot extends Handler {
         pw.println("UiccSlot:");
         pw.println(" mCi=" + mCi);
         pw.println(" mActive=" + mActive);
+        pw.println(" mIsEuicc=" + mIsEuicc);
         pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mIccId=" + mIccId);
         pw.println(" mCardState=" + mCardState);
@@ -409,7 +410,6 @@ public class UiccSlot extends Handler {
             pw.println(" mUiccCard=null");
         }
         pw.println();
-        pw.flush();
         pw.flush();
     }
 }
