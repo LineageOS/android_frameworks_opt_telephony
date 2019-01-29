@@ -21,16 +21,19 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
+import android.net.IConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.StringNetworkSpecifier;
 import android.os.Binder;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.Messenger;
 import android.telephony.Rlog;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -58,6 +61,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
 
     @Mock
     private RadioConfig mMockRadioConfig;
+    @Mock
+    private IConnectivityManager mIConnectivityManager;
 
     private String mTestName = "";
 
@@ -119,6 +124,19 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
             mNetworkRequestList.remove((NetworkRequest) invocation.getArguments()[0]);
             return null;
         }).when(mDcTracker).releaseNetwork(any(), anyInt(), any());
+
+        doAnswer(invocation -> {
+            mConnectivityServiceMock.registerNetworkFactory(
+                    (Messenger) invocation.getArguments()[0],
+                    (String) invocation.getArguments()[1]);
+            return null;
+        }).when(mIConnectivityManager).registerNetworkFactory(any(), anyString());
+
+        doAnswer(invocation -> {
+            mConnectivityServiceMock.unregisterNetworkFactory(
+                    (Messenger) invocation.getArguments()[0]);
+            return null;
+        }).when(mIConnectivityManager).unregisterNetworkFactory(any());
     }
 
     @After
@@ -132,7 +150,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private void createMockedTelephonyComponents(int numberOfPhones) throws Exception {
         mConnectivityServiceMock = new ConnectivityServiceMock(mContext);
         mContextFixture.setSystemService(Context.CONNECTIVITY_SERVICE,
-                new ConnectivityManager(mContext, mConnectivityServiceMock));
+                new ConnectivityManager(mContext, mIConnectivityManager));
         mTelephonyRegistryMock = new TelephonyRegistryMock();
         mPhoneSwitcherMock = new PhoneSwitcherMock(numberOfPhones, mLooper);
         mSubscriptionControllerMock = new SubscriptionControllerMock(mContext,
