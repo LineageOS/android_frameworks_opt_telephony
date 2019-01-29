@@ -199,11 +199,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         Rlog.w(TAG, "SMS Received with a PDU that could not be parsed.");
                         getImsManager().acknowledgeSms(token, 0, mappedResult);
                     }
-                    mMetrics.writeImsServiceNewSms(mPhone.getPhoneId(), format, mappedResult);
                 } catch (ImsException e) {
                     Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
-                    mMetrics.writeImsServiceNewSms(mPhone.getPhoneId(), format,
-                            ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC);
                 }
             }, true);
         }
