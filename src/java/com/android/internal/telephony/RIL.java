@@ -4950,10 +4950,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return s;
     }
 
-    void writeMetricsNewSms(int tech, int format) {
-        mMetrics.writeRilNewSms(mPhoneId, tech, format);
-    }
-
     void writeMetricsCallRing(char[] response) {
         mMetrics.writeRilCallRing(mPhoneId, response);
     }

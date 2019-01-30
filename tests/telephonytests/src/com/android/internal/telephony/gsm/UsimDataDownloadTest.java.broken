@@ -39,7 +39,7 @@ public class UsimDataDownloadTest extends AndroidTestCase {
         @Override
         protected void onLooperPrepared() {
             synchronized (this) {
-                mHandler = new UsimDataDownloadHandler(mCi);
+                mHandler = new UsimDataDownloadHandler(mCi, 0);
                 notifyAll();
             }
         }

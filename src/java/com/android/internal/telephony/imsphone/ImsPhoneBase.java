@@ -28,6 +28,7 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.ims.ImsReasonInfo;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -212,6 +213,11 @@ abstract class ImsPhoneBase extends Phone {
 
     public void notifyDisconnect(Connection cn) {
         mDisconnectRegistrants.notifyResult(cn);
+
+    }
+
+    public void notifyImsReason(ImsReasonInfo imsReasonInfo) {
+        mNotifier.notifyImsDisconnectCause(this, imsReasonInfo);
     }
 
     void notifyUnknownConnection() {
