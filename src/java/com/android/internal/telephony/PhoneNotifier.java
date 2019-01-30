@@ -23,6 +23,7 @@ import android.telephony.DataFailCause;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.ImsReasonInfo;
 
 import java.util.List;
 
@@ -60,6 +61,8 @@ public interface PhoneNotifier {
     void notifyPreciseCallState(Phone sender);
 
     void notifyDisconnectCause(int cause, int preciseCause);
+
+    void notifyImsDisconnectCause(Phone sender, ImsReasonInfo imsReasonInfo);
 
     public void notifyPreciseDataConnectionFailed(Phone sender, String apnType, String apn,
                                                   @DataFailCause.FailCause int failCause);
