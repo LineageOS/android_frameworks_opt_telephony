@@ -198,6 +198,16 @@ public class PhoneConfigurationManager {
     }
 
     /**
+     * Get whether reboot is required or not after making changes to modem configurations.
+     * Return value defaults to false
+     */
+    public boolean isRebootRequiredForModemConfigChange() {
+        String rebootRequired = SystemProperties.get(
+                TelephonyProperties.PROPERTY_REBOOT_REQUIRED_ON_MODEM_CHANGE);
+        return rebootRequired.equals("true");
+    }
+
+    /**
      * Helper method to set system properties for setting multi sim configs,
      * as well as doing the phone reboot
      * NOTE: In order to support more than 3 sims, we need to change this method.
@@ -217,10 +227,12 @@ public class PhoneConfigurationManager {
         }
 
         SystemProperties.set(TelephonyProperties.PROPERTY_MULTI_SIM_CONFIG, finalMultiSimConfig);
-        log("setMultiSimProperties: Rebooting due to switching multi-sim config to "
-                + finalMultiSimConfig);
-        PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-        pm.reboot("Switching to " + finalMultiSimConfig);
+        if (isRebootRequiredForModemConfigChange()) {
+            log("setMultiSimProperties: Rebooting due to switching multi-sim config to "
+                    + finalMultiSimConfig);
+            PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+            pm.reboot("Switching to " + finalMultiSimConfig);
+        }
     }
 
     private static void log(String s) {
