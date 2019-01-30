@@ -212,6 +212,10 @@ public abstract class TelephonyTest {
     protected RestrictedState mRestrictedState;
     @Mock
     protected DataEnabledSettings mDataEnabledSettings;
+    @Mock
+    protected PhoneConfigurationManager mPhoneConfigurationManager;
+    @Mock
+    protected CellularNetworkValidator mCellularNetworkValidator;
 
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
@@ -500,6 +504,10 @@ public abstract class TelephonyTest {
         Settings.Global.putInt(resolver,
                 Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED, 1);
 
+        // CellularNetworkValidator
+        doReturn(SubscriptionManager.INVALID_PHONE_INDEX)
+                .when(mCellularNetworkValidator).getSubIdInValidation();
+
         //Use reflection to mock singletons
         replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);
         replaceInstance(TelephonyComponentFactory.class, "sInstance", null,
@@ -526,6 +534,10 @@ public abstract class TelephonyTest {
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
         replaceInstance(PhoneFactory.class, "sSubInfoRecordUpdater", null, mSubInfoRecordUpdater);
         replaceInstance(RadioConfig.class, "sRadioConfig", null, mMockRadioConfig);
+        replaceInstance(PhoneConfigurationManager.class, "sInstance", null,
+                mPhoneConfigurationManager);
+        replaceInstance(CellularNetworkValidator.class, "sInstance", null,
+                mCellularNetworkValidator);
 
         assertNotNull("Failed to set up SubscriptionController singleton",
                 SubscriptionController.getInstance());
