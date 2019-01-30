@@ -47,11 +47,16 @@ public class ImsServiceControllerStaticCompat extends ImsServiceControllerCompat
 
     @Override
     public boolean startBindToService(Intent intent, ImsServiceConnection connection, int flags) {
-        IBinder binder = ServiceManager.checkService(IMS_SERVICE_NAME);
+        IBinder binder = ServiceManager.getService(IMS_SERVICE_NAME);
 
-        if (binder == null) {
-            return false;
+        while(binder == null) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+            }
+            binder = ServiceManager.getService(IMS_SERVICE_NAME);
         }
+
         // This is a little hacky, but we are going to call the onServiceConnected to "pretend" like
         // bindService has completed here, which will pass the binder to setServiceController and
         // set up all supporting structures.
