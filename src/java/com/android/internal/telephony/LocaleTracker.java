@@ -36,6 +36,7 @@ import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -434,6 +435,12 @@ public class LocaleTracker extends Handler {
             // broadcast on forbidden channels.
             ((WifiManager) mPhone.getContext().getSystemService(Context.WIFI_SERVICE))
                     .setCountryCode(countryIso);
+
+            Intent intent = new Intent(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
+            intent.putExtra(TelephonyManager.EXTRA_NETWORK_COUNTRY, countryIso);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
+            mPhone.getContext().sendBroadcast(intent);
+
             countryChanged = true;
         }
 
