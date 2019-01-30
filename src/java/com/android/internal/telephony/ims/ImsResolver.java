@@ -445,7 +445,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         mDeviceService = defaultImsPackageName;
         mNumSlots = numSlots;
         mIsDynamicBinding = isDynamicBinding;
-        mStaticComponent = new ComponentName(mContext, ImsResolver.class);
+        mStaticComponent = new ComponentName(defaultImsPackageName, getClass().getName());
         if (!mIsDynamicBinding) {
             Log.i(TAG, "ImsResolver initialized with static binding.");
             mDeviceService = mStaticComponent.getPackageName();
