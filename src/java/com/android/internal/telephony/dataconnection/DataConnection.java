@@ -30,6 +30,7 @@ import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkMisc;
+import android.net.NetworkRequest;
 import android.net.NetworkUtils;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
@@ -104,6 +105,18 @@ public class DataConnection extends StateMachine {
     private static final boolean VDBG = true;
 
     private static final String NETWORK_TYPE = "MOBILE";
+
+    // The data connection providing default Internet connection will have a higher score of 50.
+    // Other connections will have a slightly lower score of 45. The intention is other connections
+    // will not cause ConnectivityService to tear down default internet connection. For example,
+    // to validate Internet connection on non-default data SIM, we'll set up a temporary Internet
+    // connection on that data SIM. In this case, score of 45 is assigned so ConnectivityService
+    // will not replace the default Internet connection with it.
+    private static final int DEFAULT_INTERNET_CONNECTION_SCORE = 50;
+    private static final int OTHER_CONNECTION_SCORE = 45;
+
+    // The score we report to connectivity service
+    private int mScore;
 
     // The data connection controller
     private DcController mDcController;
@@ -234,8 +247,10 @@ public class DataConnection extends StateMachine {
     static final int EVENT_LINK_CAPACITY_CHANGED = BASE + 23;
     static final int EVENT_RESET = BASE + 24;
     static final int EVENT_REEVALUATE_RESTRICTED_STATE = BASE + 25;
+    static final int EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES = BASE + 26;
 
-    private static final int CMD_TO_STRING_COUNT = EVENT_REEVALUATE_RESTRICTED_STATE - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT =
+            EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -269,6 +284,8 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_RESET - BASE] = "EVENT_RESET";
         sCmdToString[EVENT_REEVALUATE_RESTRICTED_STATE - BASE] =
                 "EVENT_REEVALUATE_RESTRICTED_STATE";
+        sCmdToString[EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES - BASE] =
+                "EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -1808,9 +1825,10 @@ public class DataConnection extends StateMachine {
                     loge("Cannot find the data connection for handover.");
                 }
             } else {
+                mScore = calculateScore();
                 mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
                         "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
-                        50, misc);
+                        mScore, misc);
             }
             if (mDataServiceManager.getTransportType() == TransportType.WWAN) {
                 mPhone.mCi.registerForNattKeepaliveStatus(
@@ -2114,6 +2132,12 @@ public class DataConnection extends StateMachine {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                     }
 
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES: {
+                    // Update other properties like link properties if needed in future.
+                    updateScore();
                     retVal = HANDLED;
                     break;
                 }
@@ -2524,6 +2548,15 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     * Re-evaluate the data connection properties. For example, it will recalculate data connection
+     * score and update through network agent it if changed.
+     */
+    void reevaluateDataConnectionProperties() {
+        sendMessage(EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES);
+        if (DBG) log("reevaluate data connection properties");
+    }
+
+    /**
      * @return The parameters used for initiating a data connection.
      */
     public ConnectionParams getConnectionParams() {
@@ -2731,6 +2764,38 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     *  Re-calculate score and update through network agent if it changes.
+     */
+    private void updateScore() {
+        int oldScore = mScore;
+        mScore = calculateScore();
+        if (oldScore != mScore) {
+            log("Updating score from " + oldScore + " to " + mScore);
+            mNetworkAgent.sendNetworkScore(mScore);
+        }
+    }
+
+    private int calculateScore() {
+        int score = OTHER_CONNECTION_SCORE;
+
+        // If it's serving a network request that asks NET_CAPABILITY_INTERNET and doesn't have
+        // specify a subId, this dataConnection is considered to be default Internet data
+        // connection. In this case we assign a slightly higher score of 50. The intention is
+        // it will not be replaced by other data connections accidentally in DSDS usecase.
+        for (ApnContext apnContext : mApnContexts.keySet()) {
+            for (NetworkRequest networkRequest : apnContext.getNetworkRequests()) {
+                if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        && networkRequest.networkCapabilities.getNetworkSpecifier() == null) {
+                    score = DEFAULT_INTERNET_CONNECTION_SCORE;
+                    break;
+                }
+            }
+        }
+
+        return score;
+    }
+
+    /**
      * Dump the current state.
      *
      * @param fd
@@ -2768,6 +2833,7 @@ public class DataConnection extends StateMachine {
         pw.println("mUnmeteredUseOnly=" + mUnmeteredUseOnly);
         pw.println("mInstanceNumber=" + mInstanceNumber);
         pw.println("mAc=" + mAc);
+        pw.println("mScore=" + mScore);
         pw.println("Network capabilities changed history:");
         pw.increaseIndent();
         mNetCapsLocalLog.dump(fd, pw, args);
