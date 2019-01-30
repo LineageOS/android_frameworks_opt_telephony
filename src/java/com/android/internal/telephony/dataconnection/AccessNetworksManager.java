@@ -211,7 +211,11 @@ public class AccessNetworksManager {
         phone.getContext().registerReceiverAsUser(mConfigChangedReceiver, UserHandle.ALL,
                 intentFilter, null, null);
 
-        bindQualifiedNetworksService();
+        // Only binds to qualified network service in AP-assisted mode. For legacy mode,
+        // qualified networks service is not needed.
+        if (phone.getTransportManager() != null && !phone.getTransportManager().isInLegacyMode()) {
+            bindQualifiedNetworksService();
+        }
     }
 
     /**
