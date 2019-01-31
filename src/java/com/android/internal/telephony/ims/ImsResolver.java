@@ -382,9 +382,12 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     maybeRebindService(slotId, packageName);
                 } else {
                     Log.i(TAG, "overriding device ImsService -  packageName=" + packageName);
-                    if (packageName == null || packageName.isEmpty()) {
-                        unbindImsService(getImsServiceInfoFromCache(mDeviceService));
+                    if (TextUtils.equals(mDeviceService, packageName)) {
+                        // No change in device service.
+                        break;
                     }
+                    // Unbind from the previous ImsService before binding to the new one.
+                    unbindImsService(getImsServiceInfoFromCache(mDeviceService));
                     mDeviceService = packageName;
                     ImsServiceInfo deviceInfo = getImsServiceInfoFromCache(mDeviceService);
                     if (deviceInfo == null) {
