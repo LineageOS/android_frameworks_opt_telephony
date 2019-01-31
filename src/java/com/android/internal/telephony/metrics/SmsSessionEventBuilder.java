@@ -98,4 +98,22 @@ public class SmsSessionEventBuilder {
         mEvent.cellBroadcastMessage = msg;
         return this;
     }
+
+    /** Set details on incomplete SMS */
+    public SmsSessionEventBuilder setIncompleteSms(SmsSession.Event.IncompleteSms msg) {
+        mEvent.incompleteSms = msg;
+        return this;
+    }
+
+    /** Set indication if SMS was blocked */
+    public SmsSessionEventBuilder setBlocked(boolean blocked) {
+        mEvent.blocked = blocked;
+        return this;
+    }
+
+    /** Set SMS type */
+    public SmsSessionEventBuilder setSmsType(int type) {
+        mEvent.smsType = type;
+        return this;
+    }
 }

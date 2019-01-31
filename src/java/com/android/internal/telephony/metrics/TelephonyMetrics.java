@@ -40,6 +40,7 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNK
 import android.os.Build;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
@@ -218,6 +219,12 @@ public class TelephonyMetrics {
         }
     }
 
+    private void logv(String log) {
+        if (VDBG) {
+            Rlog.v(TAG, log);
+        }
+    }
+
     /**
      * Convert the telephony event to string
      *
@@ -252,6 +259,8 @@ public class TelephonyMetrics {
                 return "MODEM_RESTART";
             case TelephonyEvent.Type.CARRIER_ID_MATCHING:
                 return "CARRIER_ID_MATCHING";
+            case TelephonyEvent.Type.NITZ_TIME:
+                return "NITZ_TIME";
             default:
                 return Integer.toString(event);
         }
@@ -341,6 +350,8 @@ public class TelephonyMetrics {
                 return "SMS_SEND_RESULT";
             case SmsSession.Event.Type.SMS_RECEIVED:
                 return "SMS_RECEIVED";
+            case SmsSession.Event.Type.INCOMPLETE_SMS_RECEIVED:
+                return "INCOMPLETE_SMS_RECEIVED";
             default:
                 return Integer.toString(event);
         }
@@ -380,8 +391,11 @@ public class TelephonyMetrics {
         pw.increaseIndent();
 
         for (TelephonyCallSession callSession : mCompletedCallSessions) {
-            pw.println("Start time in minutes: " + callSession.startTimeMinutes);
-            pw.println("Events dropped: " + callSession.eventsDropped);
+            pw.print("Start time in minutes: " + callSession.startTimeMinutes);
+            pw.print(", phone: " + callSession.phoneId);
+            if (callSession.eventsDropped) {
+                pw.println("Events dropped: " + callSession.eventsDropped);
+            }
 
             pw.println("Events: ");
             pw.increaseIndent();
@@ -419,9 +433,11 @@ public class TelephonyMetrics {
             count++;
             pw.print("[" + count + "] Start time in minutes: "
                     + smsSession.startTimeMinutes);
-
+            pw.print(", phone: " + smsSession.phoneId);
             if (smsSession.eventsDropped) {
                 pw.println(", events dropped: " + smsSession.eventsDropped);
+            } else {
+                pw.println("");
             }
             pw.println("Events: ");
             pw.increaseIndent();
@@ -430,17 +446,41 @@ public class TelephonyMetrics {
                 pw.print(" T=");
                 pw.println(smsSessionEventToString(event.type));
                 // Only show more info for tx/rx sms
-                if (event.type == SmsSession.Event.Type.SMS_SEND
-                        || event.type == SmsSession.Event.Type.SMS_RECEIVED
+                if (event.type == SmsSession.Event.Type.SMS_RECEIVED) {
+                    pw.increaseIndent();
+                    switch (event.smsType) {
+                        case SmsSession.Event.SmsType.SMS_TYPE_SMS_PP:
+                            pw.println("Type: SMS-PP");
+                            break;
+                        case SmsSession.Event.SmsType.SMS_TYPE_VOICEMAIL_INDICATION:
+                            pw.println("Type: Voicemail indication");
+                            break;
+                        case SmsSession.Event.SmsType.SMS_TYPE_ZERO:
+                            pw.println("Type: zero");
+                            break;
+                        case SmsSession.Event.SmsType.SMS_TYPE_WAP_PUSH:
+                            pw.println("Type: WAP PUSH");
+                            break;
+                        default:
+                            break;
+                    }
+                    if (event.errorCode != SmsManager.RESULT_ERROR_NONE) {
+                        pw.println("E=" + event.errorCode);
+                    }
+                    pw.decreaseIndent();
+                } else if (event.type == SmsSession.Event.Type.SMS_SEND
                         || event.type == SmsSession.Event.Type.SMS_SEND_RESULT) {
-                    pw.print(" ReqId=");
-                    pw.println(event.rilRequestId);
-                    pw.print(" E=");
-                    pw.println(event.errorCode);
-                    pw.print(" RilE=");
-                    pw.println(event.error);
-                    pw.print(" ImsE=");
-                    pw.println(event.imsError);
+                    pw.increaseIndent();
+                    pw.println("ReqId=" + event.rilRequestId);
+                    pw.println("E=" + event.errorCode);
+                    pw.println("RilE=" + event.error);
+                    pw.println("ImsE=" + event.imsError);
+                    pw.decreaseIndent();
+                } else if (event.type == SmsSession.Event.Type.INCOMPLETE_SMS_RECEIVED) {
+                    pw.increaseIndent();
+                    pw.println("Received: " + event.incompleteSms.receivedParts + "/"
+                            + event.incompleteSms.totalParts);
+                    pw.decreaseIndent();
                 }
             }
             pw.decreaseIndent();
@@ -752,7 +792,7 @@ public class TelephonyMetrics {
     private synchronized InProgressCallSession startNewCallSessionIfNeeded(int phoneId) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
-            if (VDBG) Rlog.v(TAG, "Starting a new call session on phone " + phoneId);
+            logv("Starting a new call session on phone " + phoneId);
             callSession = new InProgressCallSession(phoneId);
             mInProgressCallSessions.append(phoneId, callSession);
 
@@ -791,32 +831,43 @@ public class TelephonyMetrics {
     private synchronized InProgressSmsSession startNewSmsSessionIfNeeded(int phoneId) {
         InProgressSmsSession smsSession = mInProgressSmsSessions.get(phoneId);
         if (smsSession == null) {
-            if (VDBG) Rlog.v(TAG, "Starting a new sms session on phone " + phoneId);
-            smsSession = new InProgressSmsSession(phoneId);
+            logv("Starting a new sms session on phone " + phoneId);
+            smsSession = startNewSmsSession(phoneId);
             mInProgressSmsSessions.append(phoneId, smsSession);
+        }
+        return smsSession;
+    }
 
-            // Insert the latest service state, ims capabilities, and ims connection state as the
-            // base.
-            TelephonyServiceState serviceState = mLastServiceState.get(phoneId);
-            if (serviceState != null) {
-                smsSession.addEvent(smsSession.startElapsedTimeMs, new SmsSessionEventBuilder(
-                        TelephonyCallSession.Event.Type.RIL_SERVICE_STATE_CHANGED)
-                        .setServiceState(serviceState));
-            }
+    /**
+     * Create a new SMS session
+     *
+     * @param phoneId Phone id
+     * @return The SMS session
+     */
+    private InProgressSmsSession startNewSmsSession(int phoneId) {
+        InProgressSmsSession smsSession = new InProgressSmsSession(phoneId);
 
-            ImsCapabilities imsCapabilities = mLastImsCapabilities.get(phoneId);
-            if (imsCapabilities != null) {
-                smsSession.addEvent(smsSession.startElapsedTimeMs, new SmsSessionEventBuilder(
-                        SmsSession.Event.Type.IMS_CAPABILITIES_CHANGED)
-                        .setImsCapabilities(imsCapabilities));
-            }
+        // Insert the latest service state, ims capabilities, and ims connection state as the
+        // base.
+        TelephonyServiceState serviceState = mLastServiceState.get(phoneId);
+        if (serviceState != null) {
+            smsSession.addEvent(smsSession.startElapsedTimeMs, new SmsSessionEventBuilder(
+                    TelephonyCallSession.Event.Type.RIL_SERVICE_STATE_CHANGED)
+                    .setServiceState(serviceState));
+        }
 
-            ImsConnectionState imsConnectionState = mLastImsConnectionState.get(phoneId);
-            if (imsConnectionState != null) {
-                smsSession.addEvent(smsSession.startElapsedTimeMs, new SmsSessionEventBuilder(
-                        SmsSession.Event.Type.IMS_CONNECTION_STATE_CHANGED)
-                        .setImsConnectionState(imsConnectionState));
-            }
+        ImsCapabilities imsCapabilities = mLastImsCapabilities.get(phoneId);
+        if (imsCapabilities != null) {
+            smsSession.addEvent(smsSession.startElapsedTimeMs, new SmsSessionEventBuilder(
+                    SmsSession.Event.Type.IMS_CAPABILITIES_CHANGED)
+                    .setImsCapabilities(imsCapabilities));
+        }
+
+        ImsConnectionState imsConnectionState = mLastImsConnectionState.get(phoneId);
+        if (imsConnectionState != null) {
+            smsSession.addEvent(smsSession.startElapsedTimeMs, new SmsSessionEventBuilder(
+                    SmsSession.Event.Type.IMS_CONNECTION_STATE_CHANGED)
+                    .setImsConnectionState(imsConnectionState));
         }
         return smsSession;
     }
@@ -838,7 +889,7 @@ public class TelephonyMetrics {
         }
         mCompletedCallSessions.add(callSession);
         mInProgressCallSessions.remove(inProgressCallSession.phoneId);
-        if (VDBG) Rlog.v(TAG, "Call session finished");
+        logv("Call session finished");
     }
 
     /**
@@ -848,19 +899,26 @@ public class TelephonyMetrics {
      */
     private synchronized void finishSmsSessionIfNeeded(InProgressSmsSession inProgressSmsSession) {
         if (inProgressSmsSession.getNumExpectedResponses() == 0) {
-            SmsSession smsSession = new SmsSession();
-            smsSession.events = new SmsSession.Event[inProgressSmsSession.events.size()];
-            inProgressSmsSession.events.toArray(smsSession.events);
-            smsSession.startTimeMinutes = inProgressSmsSession.startSystemTimeMin;
-            smsSession.phoneId = inProgressSmsSession.phoneId;
-            smsSession.eventsDropped = inProgressSmsSession.isEventsDropped();
-            if (mCompletedSmsSessions.size() >= MAX_COMPLETED_SMS_SESSIONS) {
-                mCompletedSmsSessions.removeFirst();
-            }
-            mCompletedSmsSessions.add(smsSession);
+            SmsSession smsSession = finishSmsSession(inProgressSmsSession);
+
             mInProgressSmsSessions.remove(inProgressSmsSession.phoneId);
-            if (VDBG) Rlog.v(TAG, "SMS session finished");
+            logv("SMS session finished");
         }
+    }
+
+    private SmsSession finishSmsSession(InProgressSmsSession inProgressSmsSession) {
+        SmsSession smsSession = new SmsSession();
+        smsSession.events = new SmsSession.Event[inProgressSmsSession.events.size()];
+        inProgressSmsSession.events.toArray(smsSession.events);
+        smsSession.startTimeMinutes = inProgressSmsSession.startSystemTimeMin;
+        smsSession.phoneId = inProgressSmsSession.phoneId;
+        smsSession.eventsDropped = inProgressSmsSession.isEventsDropped();
+
+        if (mCompletedSmsSessions.size() >= MAX_COMPLETED_SMS_SESSIONS) {
+            mCompletedSmsSessions.removeFirst();
+        }
+        mCompletedSmsSessions.add(smsSession);
+        return smsSession;
     }
 
     /**
@@ -1199,9 +1257,7 @@ public class TelephonyMetrics {
      * @param connections Array of GsmCdmaConnection objects
      */
     public void writeRilCallList(int phoneId, ArrayList<GsmCdmaConnection> connections) {
-        if (VDBG) {
-            Rlog.v(TAG, "Logging CallList Changed Connections Size = " + connections.size());
-        }
+        logv("Logging CallList Changed Connections Size = " + connections.size());
         InProgressCallSession callSession = startNewCallSessionIfNeeded(phoneId);
         if (callSession == null) {
             Rlog.e(TAG, "writeRilCallList: Call session is missing");
@@ -1212,7 +1268,7 @@ public class TelephonyMetrics {
                             TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED)
                             .setRilCalls(calls)
             );
-            if (VDBG) Rlog.v(TAG, "Logged Call list changed");
+            logv("Logged Call list changed");
             if (callSession.isPhoneIdle() && disconnectReasonsKnown(calls)) {
                 finishCallSession(callSession);
             }
@@ -1289,7 +1345,7 @@ public class TelephonyMetrics {
     public void writeRilDial(int phoneId, GsmCdmaConnection conn, int clirMode, UUSInfo uusInfo) {
 
         InProgressCallSession callSession = startNewCallSessionIfNeeded(phoneId);
-        if (VDBG) Rlog.v(TAG, "Logging Dial Connection = " + conn);
+        logv("Logging Dial Connection = " + conn);
         if (callSession == null) {
             Rlog.e(TAG, "writeRilDial: Call session is missing");
         } else {
@@ -1301,7 +1357,7 @@ public class TelephonyMetrics {
                     new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
                             .setRilRequest(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_DIAL)
                             .setRilCalls(calls));
-            if (VDBG) Rlog.v(TAG, "Logged Dial event");
+            logv("Logged Dial event");
         }
     }
 
@@ -1338,7 +1394,7 @@ public class TelephonyMetrics {
                     new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
                             .setRilRequest(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_HANGUP)
                             .setRilCalls(calls));
-            if (VDBG) Rlog.v(TAG, "Logged Hangup event");
+            logv("Logged Hangup event");
         }
     }
 
@@ -1822,94 +1878,13 @@ public class TelephonyMetrics {
     public synchronized void writeImsServiceSendSms(int phoneId, String format,
             @ImsSmsImplBase.SendStatusResult int resultCode) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
-        int formatCode = SmsSession.Event.Format.SMS_FORMAT_UNKNOWN;
-        switch (format) {
-            case SmsMessage.FORMAT_3GPP : {
-                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP;
-                break;
-            }
-            case SmsMessage.FORMAT_3GPP2: {
-                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP2;
-                break;
-            }
-        }
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_SEND)
                 .setTech(SmsSession.Event.Tech.SMS_IMS)
                 .setImsServiceErrno(resultCode)
-                .setFormat(formatCode)
+                .setFormat(convertSmsFormat(format))
         );
 
         smsSession.increaseExpectedResponse();
-    }
-
-    /**
-     * Write incoming SMS event
-     *
-     * @param phoneId Phone id
-     * @param tech SMS RAT
-     * @param format SMS format. Either 3GPP or 3GPP2.
-     */
-    public synchronized void writeRilNewSms(int phoneId, int tech, int format) {
-        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
-
-        smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
-                .setTech(tech)
-                .setFormat(format)
-        );
-
-        finishSmsSessionIfNeeded(smsSession);
-    }
-
-    /**
-     * Write incoming SMS event
-     *
-     * @param phoneId Phone id
-     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
-     * {@link SmsMessage#FORMAT_3GPP2}.
-     * @param result The result of processing the the newly received SMS message.
-     */
-    public synchronized void writeImsServiceNewSms(int phoneId, String format,
-            @ImsSmsImplBase.DeliverStatusResult int result) {
-        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
-        int formatCode = SmsSession.Event.Format.SMS_FORMAT_UNKNOWN;
-        switch (format) {
-            case SmsMessage.FORMAT_3GPP : {
-                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP;
-                break;
-            }
-            case SmsMessage.FORMAT_3GPP2: {
-                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP2;
-                break;
-            }
-        }
-        int smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
-        switch (result) {
-            case ImsSmsImplBase.DELIVER_STATUS_OK: {
-                smsError = SmsManager.RESULT_ERROR_NONE;
-                break;
-            }
-            case ImsSmsImplBase.DELIVER_STATUS_ERROR_NO_MEMORY: {
-                smsError = SmsManager.RESULT_NO_MEMORY;
-                break;
-            }
-            case ImsSmsImplBase.DELIVER_STATUS_ERROR_REQUEST_NOT_SUPPORTED: {
-                smsError = SmsManager.RESULT_REQUEST_NOT_SUPPORTED;
-                break;
-            }
-            case ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC: {
-                smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
-                break;
-            }
-        }
-        smsSession.addEvent(new SmsSessionEventBuilder(
-                SmsSession.Event.Type.SMS_RECEIVED)
-                .setTech(SmsSession.Event.Tech.SMS_IMS)
-                .setFormat(formatCode)
-                .setErrorCode(smsError)
-                .setImsServiceErrno(TelephonyProto.ImsServiceErrno.IMS_E_SUCCESS)
-        );
-
-        finishSmsSessionIfNeeded(smsSession);
     }
 
     /**
@@ -1951,6 +1926,189 @@ public class TelephonyMetrics {
         );
 
         finishSmsSessionIfNeeded(smsSession);
+    }
+
+    /**
+     * Write an incoming multi-part SMS that was discarded because some parts were missing
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param receivedCount Number of received parts.
+     * @param totalCount Total number of parts of the SMS.
+     */
+    public void writeDroppedIncomingMultipartSms(int phoneId, String format,
+            int receivedCount, int totalCount) {
+        logv("Logged dropped multipart SMS: received " + receivedCount
+                + " out of " + totalCount);
+
+        SmsSession.Event.IncompleteSms details = new SmsSession.Event.IncompleteSms();
+        details.receivedParts = receivedCount;
+        details.totalParts = totalCount;
+
+        InProgressSmsSession smsSession = startNewSmsSession(phoneId);
+        smsSession.addEvent(
+                new SmsSessionEventBuilder(SmsSession.Event.Type.INCOMPLETE_SMS_RECEIVED)
+                    .setFormat(convertSmsFormat(format))
+                    .setIncompleteSms(details));
+
+        finishSmsSession(smsSession);
+    }
+
+    /**
+     * Write a generic SMS of any type
+     *
+     * @param phoneId Phone id
+     * @param type Type of the SMS.
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     */
+    private void writeIncomingSmsWithType(int phoneId, int type, String format, boolean success) {
+        InProgressSmsSession smsSession = startNewSmsSession(phoneId);
+        smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
+                .setFormat(convertSmsFormat(format))
+                .setSmsType(type)
+                .setErrorCode(success ? SmsManager.RESULT_ERROR_NONE :
+                    SmsManager.RESULT_ERROR_GENERIC_FAILURE));
+        finishSmsSession(smsSession);
+    }
+
+    /**
+     * Write an incoming SMS-PP for the USIM
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     */
+    public void writeIncomingSMSPP(int phoneId, String format, boolean success) {
+        logv("Logged SMS-PP session. Result = " + success);
+        writeIncomingSmsWithType(phoneId,
+                SmsSession.Event.SmsType.SMS_TYPE_SMS_PP, format, success);
+    }
+
+    /**
+     * Write an incoming SMS to update voicemail indicator
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     */
+    public void writeIncomingVoiceMailSms(int phoneId, String format) {
+        logv("Logged VoiceMail message.");
+        writeIncomingSmsWithType(phoneId,
+                SmsSession.Event.SmsType.SMS_TYPE_VOICEMAIL_INDICATION, format, true);
+    }
+
+    /**
+     * Write an incoming SMS of type 0
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     */
+    public void writeIncomingSmsTypeZero(int phoneId, String format) {
+        logv("Logged Type-0 SMS message.");
+        writeIncomingSmsWithType(phoneId,
+                SmsSession.Event.SmsType.SMS_TYPE_ZERO, format, true);
+    }
+
+    /**
+     * Write a successful incoming SMS session
+     *
+     * @param phoneId Phone id
+     * @param type Type of the SMS.
+     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param timestamps array with timestamps of each incoming SMS part. It contains a single
+     * @param blocked indicates if the message was blocked or not.
+     * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     */
+    private void writeIncomingSmsSessionWithType(int phoneId, int type, boolean smsOverIms,
+            String format, long[] timestamps, boolean blocked, boolean success) {
+        logv("Logged SMS session consisting of " + timestamps.length
+                + " parts, over IMS = " + smsOverIms
+                + " blocked = " + blocked
+                + " type = " + type);
+
+        InProgressSmsSession smsSession = startNewSmsSession(phoneId);
+        for (long time : timestamps) {
+            SmsSessionEventBuilder eventBuilder =
+                    new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
+                        .setFormat(convertSmsFormat(format))
+                        .setTech(smsOverIms ? SmsSession.Event.Tech.SMS_IMS :
+                            SmsSession.Event.Tech.SMS_GSM)
+                        .setErrorCode(success ? SmsManager.RESULT_ERROR_NONE :
+                            SmsManager.RESULT_ERROR_GENERIC_FAILURE)
+                        .setSmsType(type)
+                        .setBlocked(blocked);
+            smsSession.addEvent(time, eventBuilder);
+        }
+        finishSmsSession(smsSession);
+    }
+
+    /**
+     * Write an incoming WAP-PUSH message.
+     *
+     * @param phoneId Phone id
+     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param timestamps array with timestamps of each incoming SMS part. It contains a single
+     * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     */
+    public void writeIncomingWapPush(int phoneId, boolean smsOverIms, String format,
+            long[] timestamps, boolean success) {
+        writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_WAP_PUSH,
+                smsOverIms, format, timestamps, false, success);
+    }
+
+    /**
+     * Write a successful incoming SMS session
+     *
+     * @param phoneId Phone id
+     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param timestamps array with timestamps of each incoming SMS part. It contains a single
+     * @param blocked indicates if the message was blocked or not.
+     */
+    public void writeIncomingSmsSession(int phoneId, boolean smsOverIms, String format,
+            long[] timestamps, boolean blocked) {
+        writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_NORMAL,
+                smsOverIms, format, timestamps, blocked, true);
+    }
+
+    /**
+     * Write an error incoming SMS
+     *
+     * @param phoneId Phone id
+     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param result Indicates the reason of the failure.
+     */
+    public void writeIncomingSmsError(int phoneId, boolean smsOverIms, int result) {
+        logv("Incoming SMS error = " + result);
+
+        int smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+        switch (result) {
+            case Intents.RESULT_SMS_HANDLED:
+                // This should not happen.
+                return;
+            case Intents.RESULT_SMS_OUT_OF_MEMORY:
+                smsError = SmsManager.RESULT_NO_MEMORY;
+                break;
+            case Intents.RESULT_SMS_UNSUPPORTED:
+                smsError = SmsManager.RESULT_REQUEST_NOT_SUPPORTED;
+                break;
+            case Intents.RESULT_SMS_GENERIC_ERROR:
+            default:
+                smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+                break;
+        }
+
+        InProgressSmsSession smsSession = startNewSmsSession(phoneId);
+
+        SmsSessionEventBuilder eventBuilder =
+                new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
+                    .setErrorCode(smsError)
+                    .setTech(smsOverIms ? SmsSession.Event.Tech.SMS_IMS :
+                        SmsSession.Event.Tech.SMS_GSM);
+        smsSession.addEvent(eventBuilder);
+        finishSmsSession(smsSession);
     }
 
     /**
@@ -2021,6 +2179,24 @@ public class TelephonyMetrics {
                 carrierIdMatching).build();
         mLastCarrierId.put(phoneId, carrierIdMatching);
         addTelephonyEvent(event);
+    }
+
+    /**
+     * Convert SMS format
+     */
+    private int convertSmsFormat(String format) {
+        int formatCode = SmsSession.Event.Format.SMS_FORMAT_UNKNOWN;
+        switch (format) {
+            case SmsMessage.FORMAT_3GPP : {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP;
+                break;
+            }
+            case SmsMessage.FORMAT_3GPP2: {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP2;
+                break;
+            }
+        }
+        return formatCode;
     }
 
     /**
@@ -2128,7 +2304,7 @@ public class TelephonyMetrics {
                     .setCallIndex(getCallId(session))
                     .setAudioCodec(codec));
 
-            if (VDBG) Rlog.v(TAG, "Logged Audio Codec event. Value: " + codec);
+            logv("Logged Audio Codec event. Value: " + codec);
         }
     }
 
@@ -2150,7 +2326,7 @@ public class TelephonyMetrics {
                 TelephonyCallSession.Event.Type.AUDIO_CODEC)
                 .setAudioCodec(codec));
 
-        if (VDBG) Rlog.v(TAG, "Logged Audio Codec event. Value: " + codec);
+        logv("Logged Audio Codec event. Value: " + codec);
     }
 
     //TODO: Expand the proto in the future
