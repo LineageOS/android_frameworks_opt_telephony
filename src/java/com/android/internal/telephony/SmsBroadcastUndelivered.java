@@ -31,6 +31,7 @@ import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -201,6 +202,9 @@ public class SmsBroadcastUndelivered {
                     }
                 }
             }
+            // Retrieve the phone id, required for metrics
+            int phoneId = getPhoneId(gsmInboundSmsHandler, cdmaInboundSmsHandler);
+
             // Delete old incomplete message segments
             for (SmsReferenceKey message : oldMultiPartMessages) {
                 // delete permanently
@@ -212,6 +216,12 @@ public class SmsBroadcastUndelivered {
                     Rlog.d(TAG, "Deleted " + rows + " rows from raw table for incomplete "
                             + message.mMessageCount + " part message");
                 }
+                // Update metrics with dropped SMS
+                if (rows > 0) {
+                    TelephonyMetrics metrics = TelephonyMetrics.getInstance();
+                    metrics.writeDroppedIncomingMultipartSms(phoneId, message.mFormat, rows,
+                            message.mMessageCount);
+                }
             }
         } catch (SQLException e) {
             Rlog.e(TAG, "error reading pending SMS messages", e);
@@ -222,6 +232,20 @@ public class SmsBroadcastUndelivered {
             if (DBG) Rlog.d(TAG, "finished scanning raw table in "
                     + ((System.nanoTime() - startTime) / 1000000) + " ms");
         }
+    }
+
+    /**
+     * Retrieve the phone id for the GSM or CDMA Inbound SMS handler
+     */
+    private static int getPhoneId(GsmInboundSmsHandler gsmInboundSmsHandler,
+            CdmaInboundSmsHandler cdmaInboundSmsHandler) {
+        int phoneId = SubscriptionManager.INVALID_PHONE_INDEX;
+        if (gsmInboundSmsHandler != null) {
+            phoneId = gsmInboundSmsHandler.getPhone().getPhoneId();
+        } else if (cdmaInboundSmsHandler != null) {
+            phoneId = cdmaInboundSmsHandler.getPhone().getPhoneId();
+        }
+        return phoneId;
     }
 
     /**
@@ -265,13 +289,14 @@ public class SmsBroadcastUndelivered {
         final int mReferenceNumber;
         final int mMessageCount;
         final String mQuery;
+        final String mFormat;
 
         SmsReferenceKey(InboundSmsTracker tracker) {
             mAddress = tracker.getAddress();
             mReferenceNumber = tracker.getReferenceNumber();
             mMessageCount = tracker.getMessageCount();
             mQuery = tracker.getQueryForSegments();
-
+            mFormat = tracker.getFormat();
         }
 
         String[] getDeleteWhereArgs() {
