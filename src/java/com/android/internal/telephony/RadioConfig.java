@@ -23,11 +23,13 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_S
 import static com.android.internal.telephony.RILConstants
         .RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG;
 
 import android.content.Context;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.config.V1_0.IRadioConfig;
+import android.hardware.radio.config.V1_1.ModemsConfig;
 import android.net.ConnectivityManager;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -395,10 +397,43 @@ public class RadioConfig extends Handler {
                 return "GET_SLOT_STATUS";
             case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
                 return "SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING";
+            case RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG:
+                return "RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG";
             default:
                 return "<unknown request>";
         }
     }
+
+    /**
+     * Wrapper function for using IRadioConfig.setModemsConfig(int32_t serial,
+     * ModemsConfig modemsConfig) to switch between single-sim and multi-sim.
+     */
+    public void setModemsConfig(int numOfLiveModems, Message result) {
+        IRadioConfig radioConfigProxy = getRadioConfigProxy(result);
+        if (radioConfigProxy != null
+                && mRadioConfigVersion.greaterOrEqual(RADIO_CONFIG_HAL_VERSION_1_1)) {
+            android.hardware.radio.config.V1_1.IRadioConfig radioConfigProxy11 =
+                    (android.hardware.radio.config.V1_1.IRadioConfig) radioConfigProxy;
+            RILRequest rr = obtainRequest(RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG,
+                    result, mDefaultWorkSource);
+
+            if (DBG) {
+                logd(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + "numOfLiveModems = " + numOfLiveModems);
+            }
+
+            try {
+                ModemsConfig modemsConfig = new ModemsConfig();
+                modemsConfig.numOfLiveModems = (byte) numOfLiveModems;
+                radioConfigProxy11.setModemsConfig(rr.mSerial, modemsConfig);
+            } catch (RemoteException | RuntimeException e) {
+                resetProxyAndRequestList("setModemsConfig", e);
+            }
+        }
+    }
+
+    // TODO: not needed for now, but if we don't want to use System Properties any more,
+    // we need to implement a wrapper function for getModemsConfig as well
 
     /**
      * Register a handler to get SIM slot status changed notifications.
