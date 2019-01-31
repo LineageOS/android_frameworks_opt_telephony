@@ -1318,9 +1318,6 @@ public class SubscriptionController extends ISub.Stub {
         refreshCachedActiveSubscriptionInfoList();
 
         sSlotIndexToSubIds.remove(slotIndex);
-
-        // update default subId
-        clearDefaultsForInactiveSubIds();
     }
 
     /**
