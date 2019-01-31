@@ -118,6 +118,9 @@ public class GsmCdmaCall extends Call {
         newState = stateFromDCState(dc.state);
 
         if (newState != mState) {
+            if (mState == State.HOLDING) {
+                updateHoldingRequestState(HoldingRequestState.ENDED);
+            }
             mState = newState;
             changed = true;
         }
