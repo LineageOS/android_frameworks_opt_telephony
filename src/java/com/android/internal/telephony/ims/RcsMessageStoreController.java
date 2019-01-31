@@ -57,7 +57,6 @@ import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.CANONI
 import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_ALIAS_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_PARTICIPANT_ID_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_PARTICIPANT_URI;
-import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_PARTICIPANT_URI_PART;
 import static android.provider.Telephony.RcsColumns.RcsParticipantEventColumns.NEW_ALIAS_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsThreadColumns.RCS_THREAD_ID_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.DESTINATION_PARTICIPANT_ID_COLUMN;
@@ -98,7 +97,6 @@ import android.telephony.ims.RcsMessageQueryResult;
 import android.telephony.ims.RcsMessageSnippet;
 import android.telephony.ims.RcsMessageStore;
 import android.telephony.ims.RcsOutgoingMessageCreationParams;
-import android.telephony.ims.RcsParticipant;
 import android.telephony.ims.RcsParticipantQueryParams;
 import android.telephony.ims.RcsParticipantQueryResult;
 import android.telephony.ims.RcsQueryContinuationToken;
@@ -243,35 +241,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
 
     @Override
     public int createRcs1To1Thread(int recipientId) throws RemoteException {
-        // Look up if a similar thread exists. Fail the call if it does
-        RcsParticipant participant = mParticipantQueryHelper.getParticipantFromId(recipientId);
-        if (participant == null) {
-            throw new RemoteException(
-                    "RcsParticipant with id: " + recipientId + " does not exist.");
-        }
-
-        RcsThreadQueryParams queryParameters = new RcsThreadQueryParams.Builder()
-                .setThreadType(RcsThreadQueryParams.THREAD_TYPE_1_TO_1).setParticipant(
-                        participant).build();
-        RcsThreadQueryResult queryResult = getRcsThreads(queryParameters);
-        if (queryResult.getThreads().size() > 0) {
-            throw new RemoteException(
-                    "Rcs1To1Thread with recipient " + recipientId + " already exists.");
-        }
-
-        int rcs1To1ThreadId = mThreadQueryHelper.create1To1Thread();
-        // add the recipient
-        Uri recipientUri = RCS_1_TO_1_THREAD_URI.buildUpon().appendPath(
-                Integer.toString(rcs1To1ThreadId)).appendPath(
-                RCS_PARTICIPANT_URI_PART).appendPath(Integer.toString(recipientId)).build();
-        Uri insertionResult = mContentResolver.insert(recipientUri, null);
-
-        if (insertionResult.equals(recipientUri)) {
-            // insertion successful, return the created thread
-            return rcs1To1ThreadId;
-        }
-
-        throw new RemoteException("Creating Rcs1To1Thread failed");
+        return mThreadQueryHelper.create1To1Thread(recipientId);
     }
 
     @Override
