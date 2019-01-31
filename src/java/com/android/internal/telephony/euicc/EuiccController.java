@@ -40,6 +40,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
+import android.telephony.UiccCardInfo;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
@@ -79,6 +80,7 @@ public class EuiccController extends IEuiccController.Stub {
     private final Context mContext;
     private final EuiccConnector mConnector;
     private final SubscriptionManager mSubscriptionManager;
+    private final TelephonyManager mTelephonyManager;
     private final AppOpsManager mAppOpsManager;
     private final PackageManager mPackageManager;
 
@@ -117,6 +119,8 @@ public class EuiccController extends IEuiccController.Stub {
         mConnector = connector;
         mSubscriptionManager = (SubscriptionManager)
                 context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        mTelephonyManager = (TelephonyManager)
+                context.getSystemService(Context.TELEPHONY_SERVICE);
         mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mPackageManager = context.getPackageManager();
     }
@@ -164,9 +168,9 @@ public class EuiccController extends IEuiccController.Stub {
      * operation.
      */
     @Override
-    public String getEid(int cardId) {
+    public String getEid(int cardId, String callingPackage) {
         if (!callerCanReadPhoneStatePrivileged()
-                && !callerHasCarrierPrivilegesForActiveSubscription()) {
+                && !canManageActiveSubscriptionOnTargetSim(cardId, callingPackage)) {
             throw new SecurityException(
                     "Must have carrier privileges on active subscription to read EID for cardId="
                     + cardId);
@@ -209,9 +213,7 @@ public class EuiccController extends IEuiccController.Stub {
      */
     public void startOtaUpdatingIfNecessary() {
         // TODO(b/120796772) Eventually, we should use startOtaUpdatingIfNecessary(cardId)
-        TelephonyManager tm =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        startOtaUpdatingIfNecessary(tm.getCardIdForDefaultEuicc());
+        startOtaUpdatingIfNecessary(mTelephonyManager.getCardIdForDefaultEuicc());
     }
 
     /**
@@ -414,10 +416,15 @@ public class EuiccController extends IEuiccController.Stub {
             for (int i = 0; i < rules.length; i++) {
                 if (rules[i].getCarrierPrivilegeStatus(info)
                         == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                    // Caller can download this profile. Now, determine whether the caller can also
-                    // manage the current profile; if so, we can perform the download silently; if
-                    // not, the user must provide consent.
-                    if (canManageActiveSubscription(mCallingPackage)) {
+                    // Caller can download this profile.
+                    // On a multi-active SIM device, if the caller can manage the active
+                    // subscription on the target SIM, or there is no active subscription on the
+                    // target SIM and the caller can manage any active subscription on other SIMs,
+                    // we perform the download silently. Otherwise, the user must provide consent.
+                    // If it's a single-active SIM device, determine whether the caller can manage
+                    // the current profile; if so, we can perform the download silently; if not,
+                    // the user must provide consent.
+                    if (canManageSubscriptionOnTargetSim(cardId, mCallingPackage)) {
                         downloadSubscriptionPrivileged(cardId,
                                 mCallingToken, subscription, mSwitchAfterDownload,
                                 mForceDeactivateSim, mCallingPackage, null /* resolvedBundle */,
@@ -691,6 +698,9 @@ public class EuiccController extends IEuiccController.Stub {
                 return;
             }
 
+            // For both single active SIM device and multi-active SIM device, if the caller is
+            // system or the caller manage the target subscription, we let it continue. This is
+            // because deleting subscription won't change status of any other subscriptions.
             if (!callerCanWriteEmbeddedSubscriptions
                     && !mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
                 Log.e(TAG, "No permissions: " + subscriptionId);
@@ -760,9 +770,12 @@ public class EuiccController extends IEuiccController.Stub {
             }
 
             final String iccid;
+            boolean passConsent = false;
             if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                // Switch to "no" subscription. Only the system can do this.
-                if (!callerCanWriteEmbeddedSubscriptions) {
+                if (callerCanWriteEmbeddedSubscriptions
+                        || canManageActiveSubscriptionOnTargetSim(cardId, callingPackage)) {
+                    passConsent = true;
+                } else {
                     Log.e(TAG, "Not permitted to switch to empty subscription");
                     sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
@@ -771,21 +784,27 @@ public class EuiccController extends IEuiccController.Stub {
             } else {
                 SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
                 if (sub == null) {
-                    Log.e(TAG, "Cannot switch to nonexistent subscription: " + subscriptionId);
+                    Log.e(TAG, "Cannot switch to nonexistent sub: " + subscriptionId);
                     sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
                 }
-                if (!callerCanWriteEmbeddedSubscriptions
-                        && !mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
-                    Log.e(TAG, "Not permitted to switch to subscription: " + subscriptionId);
-                    sendResult(callbackIntent, ERROR, null /* extrasIntent */);
-                    return;
+                if (callerCanWriteEmbeddedSubscriptions) {
+                    passConsent = true;
+                } else {
+                    if (!mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
+                        Log.e(TAG, "Not permitted to switch to sub: " + subscriptionId);
+                        sendResult(callbackIntent, ERROR, null /* extrasIntent */);
+                        return;
+                    }
+
+                    if (canManageSubscriptionOnTargetSim(cardId, callingPackage)) {
+                        passConsent = true;
+                    }
                 }
                 iccid = sub.getIccId();
             }
 
-            if (!callerCanWriteEmbeddedSubscriptions
-                    && !canManageActiveSubscription(callingPackage)) {
+            if (!passConsent) {
                 // Switch needs consent.
                 Intent extrasIntent = new Intent();
                 addResolutionIntent(extrasIntent,
@@ -874,11 +893,14 @@ public class EuiccController extends IEuiccController.Stub {
         try {
             SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
             if (sub == null) {
-                Log.e(TAG, "Cannot update nickname to nonexistent subscription: " + subscriptionId);
+                Log.e(TAG, "Cannot update nickname to nonexistent sub: " + subscriptionId);
                 sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                 return;
             }
 
+            // For both single active SIM device and multi-active SIM device, if the caller is
+            // system or the caller can manage the target subscription, we let it continue. This is
+            // because updating subscription nickname won't affect any other subscriptions.
             if (!callerCanWriteEmbeddedSubscriptions
                     && !mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
                 Log.e(TAG, "No permissions: " + subscriptionId);
@@ -1140,22 +1162,85 @@ public class EuiccController extends IEuiccController.Stub {
         return resultRef.get();
     }
 
-    private boolean canManageActiveSubscription(String callingPackage) {
-        // TODO(b/36260308): We should plumb a slot ID through here for multi-SIM devices.
+    private boolean supportMultiActiveSlots() {
+        return mTelephonyManager.getPhoneCount() > 1;
+    }
+
+    // Checks whether the caller can manage the active embedded subscription on the SIM with the
+    // given cardId.
+    private boolean canManageActiveSubscriptionOnTargetSim(int cardId, String callingPackage) {
         List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (subInfoList == null) {
+        if (subInfoList == null || subInfoList.size() == 0) {
+            // No active subscription on any SIM.
             return false;
         }
-        int size = subInfoList.size();
-        for (int subIndex = 0; subIndex < size; subIndex++) {
-            SubscriptionInfo subInfo = subInfoList.get(subIndex);
-
-            if (subInfo.isEmbedded()
+        for (SubscriptionInfo subInfo : subInfoList) {
+            if (subInfo.getCardId() == cardId && subInfo.isEmbedded()
                     && mSubscriptionManager.canManageSubscription(subInfo, callingPackage)) {
                 return true;
             }
         }
         return false;
+    }
+
+    // For a multi-active subscriptions phone, checks whether the caller can manage subscription on
+    // the target SIM with the given cardId. The caller can only manage subscription on the target
+    // SIM if it can manage the active subscription on the target SIM or there is no active
+    // subscription on the target SIM, and the caller can manage any active subscription on any
+    // other SIM. The target SIM should be an eUICC.
+    // For a single-active subscription phone, checks whether the caller can manage any active
+    // embedded subscription.
+    private boolean canManageSubscriptionOnTargetSim(int cardId, String callingPackage) {
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        // No active subscription on any SIM.
+        if (subInfoList == null || subInfoList.size() == 0) {
+            return false;
+        }
+        if (supportMultiActiveSlots()) {
+            // The target card should be an eUICC.
+            List<UiccCardInfo> cardInfos = mTelephonyManager.getUiccCardsInfo();
+            if (cardInfos == null || cardInfos.isEmpty()) {
+                return false;
+            }
+            boolean isEuicc = false;
+            for (UiccCardInfo info : cardInfos) {
+                if (info != null && info.getCardId() == cardId && info.isEuicc()) {
+                    isEuicc = true;
+                    break;
+                }
+            }
+            if (!isEuicc) {
+                return false;
+            }
+
+            // If the caller can't manage the active embedded subscription on the target SIM, return
+            // false. If the caller can manage the active embedded subscription on the target SIM,
+            // return true directly.
+            for (SubscriptionInfo subInfo : subInfoList) {
+                // subInfo.isEmbedded() can only be true for the target SIM.
+                if (subInfo.getCardId() == cardId) {
+                    return mSubscriptionManager.canManageSubscription(subInfo, callingPackage);
+                }
+            }
+
+            // There is no active subscription on the target SIM, checks whether the caller can
+            // manage any active subscription on any other SIM.
+            for (SubscriptionInfo subInfo : subInfoList) {
+                if (subInfo.getCardId() != cardId
+                        && mSubscriptionManager.canManageSubscription(subInfo, callingPackage)) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            for (SubscriptionInfo subInfo : subInfoList) {
+                if (subInfo.isEmbedded()
+                        && mSubscriptionManager.canManageSubscription(subInfo, callingPackage)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private boolean callerCanReadPhoneStatePrivileged() {
@@ -1166,15 +1251,5 @@ public class EuiccController extends IEuiccController.Stub {
     private boolean callerCanWriteEmbeddedSubscriptions() {
         return mContext.checkCallingPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS)
                 == PackageManager.PERMISSION_GRANTED;
-    }
-
-    /**
-     * Returns whether the caller has carrier privileges for the active mSubscription on this eUICC.
-     */
-    private boolean callerHasCarrierPrivilegesForActiveSubscription() {
-        // TODO(b/36260308): We should plumb a slot ID through here for multi-SIM devices.
-        TelephonyManager tm =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        return tm.hasCarrierPrivileges();
     }
 }
