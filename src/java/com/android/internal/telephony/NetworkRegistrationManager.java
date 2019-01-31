@@ -55,7 +55,7 @@ public class NetworkRegistrationManager {
     // Registrants who listens registration state change callback from this class.
     private final RegistrantList mRegStateChangeRegistrants = new RegistrantList();
 
-    private INetworkService.Stub mServiceBinder;
+    private INetworkService mINetworkService;
 
     private RegManagerDeathRecipient mDeathRecipient;
 
@@ -69,7 +69,7 @@ public class NetworkRegistrationManager {
     }
 
     public boolean isServiceConnected() {
-        return (mServiceBinder != null) && (mServiceBinder.isBinderAlive());
+        return (mINetworkService != null) && (mINetworkService.asBinder().isBinderAlive());
     }
 
     public void unregisterForNetworkRegistrationStateChanged(Handler h) {
@@ -100,7 +100,7 @@ public class NetworkRegistrationManager {
         NetworkRegStateCallback callback = new NetworkRegStateCallback();
         try {
             mCallbackTable.put(callback, onCompleteMessage);
-            mServiceBinder.getNetworkRegistrationState(mPhone.getPhoneId(), domain, callback);
+            mINetworkService.getNetworkRegistrationState(mPhone.getPhoneId(), domain, callback);
         } catch (RemoteException e) {
             Rlog.e(TAG, "getNetworkRegistrationState RemoteException " + e);
             mCallbackTable.remove(callback);
@@ -130,12 +130,12 @@ public class NetworkRegistrationManager {
         public void onServiceConnected(ComponentName name, IBinder service) {
             logd("service " + name + " for transport "
                     + TransportType.toString(mTransportType) + " is now connected.");
-            mServiceBinder = (INetworkService.Stub) service;
+            mINetworkService = INetworkService.Stub.asInterface(service);
             mDeathRecipient = new RegManagerDeathRecipient(name);
             try {
-                mServiceBinder.linkToDeath(mDeathRecipient, 0);
-                mServiceBinder.createNetworkServiceProvider(mPhone.getPhoneId());
-                mServiceBinder.registerForNetworkRegistrationStateChanged(mPhone.getPhoneId(),
+                service.linkToDeath(mDeathRecipient, 0);
+                mINetworkService.createNetworkServiceProvider(mPhone.getPhoneId());
+                mINetworkService.registerForNetworkRegistrationStateChanged(mPhone.getPhoneId(),
                         new NetworkRegStateCallback());
             } catch (RemoteException exception) {
                 // Remote exception means that the binder already died.
@@ -148,8 +148,8 @@ public class NetworkRegistrationManager {
         public void onServiceDisconnected(ComponentName name) {
             logd("service " + name + " for transport "
                     + TransportType.toString(mTransportType) + " is now disconnected.");
-            if (mServiceBinder != null) {
-                mServiceBinder.unlinkToDeath(mDeathRecipient, 0);
+            if (mINetworkService != null) {
+                mINetworkService.asBinder().unlinkToDeath(mDeathRecipient, 0);
             }
         }
     }
