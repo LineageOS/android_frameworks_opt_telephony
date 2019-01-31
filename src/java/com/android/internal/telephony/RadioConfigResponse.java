@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
+import android.hardware.radio.config.V1_1.ModemsConfig;
 import android.hardware.radio.config.V1_2.IRadioConfigResponse;
 import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
@@ -32,8 +33,9 @@ import java.util.List;
  * This class is the implementation of IRadioConfigResponse interface.
  */
 public class RadioConfigResponse extends IRadioConfigResponse.Stub {
-    private final RadioConfig mRadioConfig;
     private static final String TAG = "RadioConfigResponse";
+
+    private final RadioConfig mRadioConfig;
 
     public RadioConfigResponse(RadioConfig radioConfig) {
         mRadioConfig = radioConfig;
@@ -178,18 +180,48 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
 
     /**
      * Response function for IRadioConfig.setModemsConfigResponse()
-     *
+     * Currently this is being used as the callback for RadioConfig.setModemsConfig() method
      */
-    public void setModemsConfigResponse(RadioResponseInfo info) {
+    public void setModemsConfigResponse(RadioResponseInfo responseInfo) {
+        RILRequest rr = mRadioConfig.processResponse(responseInfo);
 
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                // send response
+                RadioResponse.sendMessageResponse(rr.mResult, rr.mRequest);
+                Rlog.d(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest));
+            } else {
+                rr.onError(responseInfo.error, null);
+                Rlog.e(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " error "
+                        + responseInfo.error);
+            }
+        } else {
+            Rlog.e(TAG, "setModemsConfigResponse: Error " + responseInfo.toString());
+        }
     }
 
     /**
      * Response function for IRadioConfig.getModemsConfigResponse()
-     *
      */
-    public void getModemsConfigResponse(RadioResponseInfo info,
-            android.hardware.radio.config.V1_1.ModemsConfig modemsConfig) {
+    public void getModemsConfigResponse(RadioResponseInfo responseInfo, ModemsConfig modemsConfig) {
+        RILRequest rr = mRadioConfig.processResponse(responseInfo);
 
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                // send response
+                RadioResponse.sendMessageResponse(rr.mResult, modemsConfig);
+                Rlog.d(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest));
+            } else {
+                rr.onError(responseInfo.error, modemsConfig);
+                Rlog.e(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " error "
+                        + responseInfo.error);
+            }
+        } else {
+            Rlog.e(TAG, "getModemsConfigResponse: Error " + responseInfo.toString());
+        }
     }
 }
