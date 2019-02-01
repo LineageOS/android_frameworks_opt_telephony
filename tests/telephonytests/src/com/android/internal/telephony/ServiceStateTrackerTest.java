@@ -68,6 +68,7 @@ import android.telephony.CellSignalStrength;
 import android.telephony.CellSignalStrengthCdma;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.INetworkService;
@@ -508,7 +509,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new CellSignalStrengthGsm(-53, 0, SignalStrength.INVALID),
                 new CellSignalStrengthWcdma(),
                 new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte());
+                new CellSignalStrengthLte(),
+                new CellSignalStrengthNr());
 
         sendSignalStrength(ss);
         assertEquals(sst.getSignalStrength(), ss);
@@ -522,7 +524,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new CellSignalStrengthWcdma(),
                 new CellSignalStrengthTdscdma(),
                 new CellSignalStrengthLte(
-                        -110, -114, -5, 0, SignalStrength.INVALID, SignalStrength.INVALID));
+                        -110, -114, -5, 0, SignalStrength.INVALID, SignalStrength.INVALID),
+                new CellSignalStrengthNr());
 
         sendSignalStrength(ss);
         assertEquals(sst.getSignalStrength(), ss);
@@ -535,7 +538,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new CellSignalStrengthGsm(),
                 new CellSignalStrengthWcdma(),
                 new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte());
+                new CellSignalStrengthLte(),
+                new CellSignalStrengthNr());
 
         sendSignalStrength(ss);
         assertEquals(sst.getSignalStrength(), ss);
@@ -566,7 +570,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                         -5, /* rsrq */
                         0, /* rssnr */
                         SignalStrength.INVALID, /* cqi */
-                        SignalStrength.INVALID /* ta */));
+                        SignalStrength.INVALID /* ta */),
+                new CellSignalStrengthNr());
 
         mBundle.putBoolean(CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL,
                 true);
@@ -603,7 +608,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new CellSignalStrengthGsm(),
                 new CellSignalStrengthWcdma(-79, 0, -85, -5),
                 new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte());
+                new CellSignalStrengthLte(),
+                new CellSignalStrengthNr());
 
         mSimulatedCommands.setSignalStrength(ss);
         mSimulatedCommands.notifySignalStrength();
