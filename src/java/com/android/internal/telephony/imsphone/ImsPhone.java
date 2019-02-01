@@ -2106,6 +2106,17 @@ public class ImsPhone extends ImsPhoneBase {
             case QtiImsUtils.RTT_UPGRADE_REJECT:
                 sendRttModifyResponse(false);
                 break;
+            case QtiImsUtils.SHOW_RTT_KEYBOARD:
+                ImsCall imsCall = getForegroundCall().getImsCall();
+                if (imsCall != null && isRttSupported() &&
+                    QtiImsUtils.shallShowRttVisibilitySetting(mPhoneId, mContext) &&
+                    !imsCall.isRttCall()) {
+                    packRttModifyRequestToProfile(ImsStreamMediaProfile.RTT_MODE_FULL);
+                }
+                break;
+             case QtiImsUtils.HIDE_RTT_KEYBOARD:
+                //no-op
+                break;
         }
     }
 

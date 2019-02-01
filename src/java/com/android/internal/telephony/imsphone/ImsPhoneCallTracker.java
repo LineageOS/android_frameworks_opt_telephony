@@ -1102,8 +1102,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (DBG) log("RTT: setRttModeBasedOnOperator mode = " + mode);
 
             if (mPhone.isRttSupported() && mPhone.isRttOn()) {
-                if (!profile.isVideoCall() || QtiImsUtils.isRttSupportedOnVtCalls(
-                        mPhone.getPhoneId(),mPhone.getContext())) {
+                boolean isStartRttCall = true;
+                if (intentExtras != null) {
+                    isStartRttCall = intentExtras.getBoolean(
+                        android.telecom.TelecomManager.EXTRA_START_CALL_WITH_RTT, true);
+                }
+                if (isStartRttCall &&
+                        (!profile.isVideoCall() || QtiImsUtils.isRttSupportedOnVtCalls(
+                        mPhone.getPhoneId(),mPhone.getContext()))) {
                     profile.getMediaProfile().setRttMode(mode);
                 }
             }
