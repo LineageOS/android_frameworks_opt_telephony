@@ -35,6 +35,7 @@ import android.telephony.CellInfoGsm;
 import android.telephony.CellSignalStrengthCdma;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.IccOpenLogicalChannelResponse;
@@ -880,7 +881,8 @@ public class SimulatedCommands extends BaseCommands
                     new CellSignalStrengthGsm(20, 0, CellInfo.UNAVAILABLE),
                     new CellSignalStrengthWcdma(),
                     new CellSignalStrengthTdscdma(),
-                    new CellSignalStrengthLte());
+                    new CellSignalStrengthLte(),
+                    new CellSignalStrengthNr());
         }
         resultSuccess(result, mSignalStrength);
     }
@@ -2160,7 +2162,8 @@ public class SimulatedCommands extends BaseCommands
                     new CellSignalStrengthGsm(20, 0, CellInfo.UNAVAILABLE),
                     new CellSignalStrengthWcdma(),
                     new CellSignalStrengthTdscdma(),
-                    new CellSignalStrengthLte());
+                    new CellSignalStrengthLte(),
+                    new CellSignalStrengthNr());
         }
 
         if (mSignalStrengthRegistrant != null) {

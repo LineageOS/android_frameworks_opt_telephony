@@ -25,6 +25,7 @@ import android.telephony.CellSignalStrength;
 import android.telephony.CellSignalStrengthCdma;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.SignalStrength;
@@ -67,7 +68,8 @@ public class SignalStrengthTest {
                 new CellSignalStrengthGsm(-79, 2, 5),
                 new CellSignalStrengthWcdma(-94, 4, -102, -5),
                 new CellSignalStrengthTdscdma(-95, 2, -103),
-                new CellSignalStrengthLte(-85, -91, -6, -10, 12, 1));
+                new CellSignalStrengthLte(-85, -91, -6, -10, 12, 1),
+                new CellSignalStrengthNr(-91, -6, 3, -80, -7, 4));
         assertParcelingIsLossless(s);
     }
 
@@ -93,7 +95,8 @@ public class SignalStrengthTest {
                 gsm,
                 new CellSignalStrengthWcdma(),
                 new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte());
+                new CellSignalStrengthLte(),
+                new CellSignalStrengthNr());
 
         List<CellSignalStrength> css = s.getCellSignalStrengths();
         assertEquals(1, css.size());
@@ -105,7 +108,8 @@ public class SignalStrengthTest {
                 new CellSignalStrengthGsm(),
                 new CellSignalStrengthWcdma(),
                 new CellSignalStrengthTdscdma(),
-                lte);
+                lte,
+                new CellSignalStrengthNr());
 
         css = s.getCellSignalStrengths();
         assertEquals(2, css.size());
