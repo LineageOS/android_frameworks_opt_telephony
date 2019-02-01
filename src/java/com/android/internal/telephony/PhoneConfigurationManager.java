@@ -165,7 +165,7 @@ public class PhoneConfigurationManager {
                     + numOfSims + " sims, exiting!");
             return;
         }
-        if (getNumOfActiveSims() != numOfSims) {
+        if (getPhoneCount() != numOfSims) {
             Message callback = Message.obtain(
                     mHandler, EVENT_SWITCH_DSDS_CONFIG_DONE, numOfSims);
             mRadioConfig.setModemsConfig(numOfSims, callback);
@@ -173,28 +173,6 @@ public class PhoneConfigurationManager {
             log("switchMultiSimConfig: No need to switch. getNumOfActiveSims is already "
                     + numOfSims);
         }
-    }
-
-    /**
-     * Get how many sims have been activated on the phone
-     * NOTE: In order to support more than 3 sims, we need to change this method.
-     */
-    public int getNumOfActiveSims() {
-        String mSimConfig =
-                SystemProperties.get(TelephonyProperties.PROPERTY_MULTI_SIM_CONFIG);
-        int numOfSims;
-        switch (mSimConfig) {
-            case TSTS:
-                numOfSims = 3;
-                break;
-            case DSDA:
-            case DSDS:
-                numOfSims = 2;
-                break;
-            default:
-                numOfSims = 1;
-        }
-        return numOfSims;
     }
 
     /**
