@@ -271,6 +271,23 @@ public class RadioIndication extends IRadioIndication.Stub {
     }
 
     /**
+     * Indicates the current signal strength of the camped or primary serving cell.
+     */
+    public void currentSignalStrength_1_4(int indicationType,
+            android.hardware.radio.V1_4.SignalStrength signalStrength) {
+
+        mRil.processIndication(indicationType);
+
+        SignalStrength ss = new SignalStrength(signalStrength);
+
+        if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
+
+        if (mRil.mSignalStrengthRegistrant != null) {
+            mRil.mSignalStrengthRegistrant.notifyRegistrant(new AsyncResult(null, ss, null));
+        }
+    }
+
+    /**
      * Indicates current physical channel configuration.
      */
     public void currentPhysicalChannelConfigs_1_4(int indicationType,
