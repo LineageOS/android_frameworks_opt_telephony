@@ -102,6 +102,12 @@ public class QtiImsUtils {
     public static final String KEY_CARRIER_RTT_SUPPORTED_ON_VTCALLS =
             "carrier_rtt_supported_on_vtcalls";
 
+    /* Config to determine if Carrier supports RTT Visibility Setting
+     * true - if supported else false
+     */
+    public static final String KEY_SHOW_RTT_VISIBILITY_SETTING =
+            "show_rtt_visibility_setting_bool";
+
     // RTT Operation Type can be one of the following
     // To request upgrade of regular call to RTT call
     public static final int RTT_UPGRADE_INITIATE = 1;
@@ -111,6 +117,10 @@ public class QtiImsUtils {
     public static final int RTT_UPGRADE_REJECT = 3;
     // To request downgrade of RTT call to regular call
     public static final int RTT_DOWNGRADE_INITIATE = 4;
+    // To request showing the RTT Keyboard
+    public static final int SHOW_RTT_KEYBOARD = 5;
+    // To request hiding the RTT Keyboard
+    public static final int HIDE_RTT_KEYBOARD = 6;
 
     // Returns true if global setting has stored value as true
     public static boolean isRttOn(Context context) {
@@ -131,6 +141,16 @@ public class QtiImsUtils {
             isRttSupportedOnVtCall = b.getBoolean(KEY_CARRIER_RTT_SUPPORTED_ON_VTCALLS);
         }
         return isRttSupportedOnVtCall;
+    }
+
+    // Returns true if Carrier supports RTT Visibility Setting
+    public static boolean shallShowRttVisibilitySetting(int phoneId, Context context) {
+        boolean showRttVisibilitySetting = false;
+        PersistableBundle b = getConfigForPhoneId(context, phoneId);
+        if (b != null) {
+            showRttVisibilitySetting = b.getBoolean(KEY_SHOW_RTT_VISIBILITY_SETTING);
+        }
+        return showRttVisibilitySetting;
     }
 
     // Returns true if Carrier supports RTT
