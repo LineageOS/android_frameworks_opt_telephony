@@ -44,6 +44,7 @@ import android.content.pm.ServiceInfo;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
+import android.net.NattKeepalivePacketData;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkUtils;
@@ -610,7 +611,7 @@ public class DataConnectionTest extends TelephonyTest {
         final int interval = 10; // seconds
         // Construct a new KeepalivePacketData request as we would receive from a Network Agent,
         // and check that the packet is sent to the RIL.
-        KeepalivePacketData kd = KeepalivePacketData.nattKeepalivePacket(
+        KeepalivePacketData kd = NattKeepalivePacketData.nattKeepalivePacket(
                 NetworkUtils.numericToInetAddress("1.2.3.4"),
                 1234,
                 NetworkUtils.numericToInetAddress("8.8.8.8"),
@@ -634,7 +635,7 @@ public class DataConnectionTest extends TelephonyTest {
         final int interval = 10; // seconds
         // Construct a new KeepalivePacketData request as we would receive from a Network Agent,
         // and check that the packet is sent to the RIL.
-        KeepalivePacketData kd = KeepalivePacketData.nattKeepalivePacket(
+        KeepalivePacketData kd = NattKeepalivePacketData.nattKeepalivePacket(
                 NetworkUtils.numericToInetAddress("1.2.3.4"),
                 1234,
                 NetworkUtils.numericToInetAddress("8.8.8.8"),
@@ -713,7 +714,7 @@ public class DataConnectionTest extends TelephonyTest {
         final int interval = 10; // seconds
         // Construct a new KeepalivePacketData request as we would receive from a Network Agent,
         // and check that the packet is sent to the RIL.
-        KeepalivePacketData kd = KeepalivePacketData.nattKeepalivePacket(
+        KeepalivePacketData kd = NattKeepalivePacketData.nattKeepalivePacket(
                 NetworkUtils.numericToInetAddress("1.2.3.4"),
                 1234,
                 NetworkUtils.numericToInetAddress("8.8.8.8"),
