@@ -85,6 +85,7 @@ public class CallManager {
     // FIXME Taken from klp-sprout-dev but setAudioMode was removed in L.
     //private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 121;
     private static final int EVENT_TTY_MODE_RECEIVED = 122;
+    private static final int EVENT_SUPP_SERVICE_NOTIFY = 123;
 
     // Singleton instance
     private static final CallManager INSTANCE = new CallManager();
@@ -172,6 +173,9 @@ public class CallManager {
     = new RegistrantList();
 
     protected final RegistrantList mSubscriptionInfoReadyRegistrants
+    = new RegistrantList();
+
+    protected final RegistrantList mSuppServiceNotifyRegistrants
     = new RegistrantList();
 
     protected final RegistrantList mSuppServiceFailedRegistrants
@@ -599,6 +603,8 @@ public class CallManager {
                 mRegistrantidentifier);
         phone.registerForMmiComplete(handler, EVENT_MMI_COMPLETE,
                 mRegistrantidentifier);
+        phone.registerForSuppServiceNotification(handler, EVENT_SUPP_SERVICE_NOTIFY,
+                mRegistrantidentifier);
         phone.registerForSuppServiceFailed(handler, EVENT_SUPP_SERVICE_FAILED,
                 mRegistrantidentifier);
         phone.registerForServiceStateChanged(handler, EVENT_SERVICE_STATE_CHANGED,
@@ -645,6 +651,7 @@ public class CallManager {
         phone.unregisterForResendIncallMute(handler);
         phone.unregisterForMmiInitiate(handler);
         phone.unregisterForMmiComplete(handler);
+        phone.unregisterForSuppServiceNotification(handler);
         phone.unregisterForSuppServiceFailed(handler);
         phone.unregisterForServiceStateChanged(handler);
         phone.unregisterForTtyModeReceived(handler);
@@ -1545,6 +1552,28 @@ public class CallManager {
     }
 
     /**
+     * Register for supplementary service notifications.
+     * Message.obj will contain an AsyncResult.
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
+        mSuppServiceNotifyRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregister for supplementary service notifications.
+     * Extraneous calls are tolerated silently
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSuppServiceNotification(Handler h) {
+        mSuppServiceNotifyRegistrants.remove(h);
+    }
+
+    /**
      * Register for notifications when a supplementary service attempt fails.
      * Message.obj will contain an AsyncResult.
      *
@@ -2332,6 +2361,10 @@ public class CallManager {
                 case EVENT_SUBSCRIPTION_INFO_READY:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_SUBSCRIPTION_INFO_READY)");
                     mSubscriptionInfoReadyRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                    break;
+                case EVENT_SUPP_SERVICE_NOTIFY:
+                    if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_SUPP_SERVICE_NOTIFY)");
+                    mSuppServiceNotifyRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                     break;
                 case EVENT_SUPP_SERVICE_FAILED:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_SUPP_SERVICE_FAILED)");
