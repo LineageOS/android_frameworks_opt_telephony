@@ -27,6 +27,7 @@ import android.os.ServiceManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.DebugEventReporter;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -546,6 +547,16 @@ public class PhoneFactory {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        pw.decreaseIndent();
+        pw.println("++++++++++++++++++++++++++++++++");
+        pw.println("DebugEvents:");
+        pw.increaseIndent();
+        try {
+            DebugEventReporter.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         pw.flush();
         pw.decreaseIndent();
     }
