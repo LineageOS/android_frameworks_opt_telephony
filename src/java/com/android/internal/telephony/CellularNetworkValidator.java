@@ -30,7 +30,7 @@ import android.util.Log;
  * validation process. It listens request on a specific subId, sends a network request
  * to Connectivity and listens to its callback or timeout.
  */
-public class CellularNetworkValidator extends ConnectivityManager.NetworkCallback  {
+public class CellularNetworkValidator {
     private static final String LOG_TAG = "NetworkValidator";
 
     // States of validator. Only one validation can happen at once.
@@ -56,6 +56,7 @@ public class CellularNetworkValidator extends ConnectivityManager.NetworkCallbac
     private Context mContext;
     private ConnectivityManager mConnectivityManager;
     private Handler mHandler = new Handler();
+    private ConnectivityNetworkCallback mNetworkCallback;
 
     /**
      * Callback to pass in when starting validation.
@@ -109,17 +110,15 @@ public class CellularNetworkValidator extends ConnectivityManager.NetworkCallbac
         // If it's already validating the same subscription, do nothing.
         if (subId == mSubId) return;
 
-        if (isValidating()) {
-            logd("Failed to start validation. Already validating sub " + mSubId);
-            callback.onValidationResult(false, subId);
-            return;
-        }
-
         Phone phone = PhoneFactory.getPhone(SubscriptionManager.getPhoneId(subId));
         if (phone == null) {
             logd("Failed to start validation. Inactive subId " + subId);
             callback.onValidationResult(false, subId);
             return;
+        }
+
+        if (isValidating()) {
+            stopValidation();
         }
 
         mState = STATE_VALIDATING;
@@ -132,7 +131,10 @@ public class CellularNetworkValidator extends ConnectivityManager.NetworkCallbac
         logd("Start validating subId " + mSubId + " mTimeoutInMs " + mTimeoutInMs
                 + " mReleaseAfterValidation " + mReleaseAfterValidation);
 
-        mConnectivityManager.requestNetwork(mNetworkRequest, this, mHandler, mTimeoutInMs);
+        mNetworkCallback = new ConnectivityNetworkCallback(subId);
+
+        mConnectivityManager.requestNetwork(
+                mNetworkRequest, mNetworkCallback, mHandler, mTimeoutInMs);
     }
 
     /**
@@ -142,7 +144,7 @@ public class CellularNetworkValidator extends ConnectivityManager.NetworkCallbac
         if (!isValidating()) {
             logd("No need to stop validation.");
         } else {
-            mConnectivityManager.unregisterNetworkCallback(this);
+            mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
             mState = STATE_IDLE;
         }
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
@@ -170,7 +172,10 @@ public class CellularNetworkValidator extends ConnectivityManager.NetworkCallbac
                 .build();
     }
 
-    private synchronized void reportValidationResult(boolean passed) {
+    private synchronized void reportValidationResult(boolean passed, int subId) {
+        // If the validation result is not for current subId, do nothing.
+        if (mSubId != subId) return;
+
         // Deal with the result only when state is still VALIDATING. This is to avoid
         // receiving multiple callbacks in queue.
         if (mState == STATE_VALIDATING) {
@@ -178,44 +183,53 @@ public class CellularNetworkValidator extends ConnectivityManager.NetworkCallbac
             if (!mReleaseAfterValidation && passed) {
                 mState = STATE_VALIDATED;
             } else {
-                mConnectivityManager.unregisterNetworkCallback(this);
+                mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
                 mState = STATE_IDLE;
             }
         }
+
+        mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
-    /**
-     * ConnectivityManager.NetworkCallback implementation
-     */
-    @Override
-    public void onAvailable(Network network) {
-        logd("network onAvailable " + network);
-    }
+    class ConnectivityNetworkCallback extends ConnectivityManager.NetworkCallback {
+        private final int mSubId;
 
-    @Override
-    public void onLosing(Network network, int maxMsToLive) {
-        logd("network onLosing " + network + " maxMsToLive " + maxMsToLive);
-        reportValidationResult(false);
-    }
+        ConnectivityNetworkCallback(int subId) {
+            mSubId = subId;
+        }
+        /**
+         * ConnectivityManager.NetworkCallback implementation
+         */
+        @Override
+        public void onAvailable(Network network) {
+            logd("network onAvailable " + network);
+        }
 
-    @Override
-    public void onLost(Network network) {
-        logd("network onLost " + network);
-        reportValidationResult(false);
-    }
+        @Override
+        public void onLosing(Network network, int maxMsToLive) {
+            logd("network onLosing " + network + " maxMsToLive " + maxMsToLive);
+            reportValidationResult(false, ConnectivityNetworkCallback.this.mSubId);
+        }
 
-    @Override
-    public void onUnavailable() {
-        logd("onUnavailable");
-        reportValidationResult(false);
-    }
+        @Override
+        public void onLost(Network network) {
+            logd("network onLost " + network);
+            reportValidationResult(false, ConnectivityNetworkCallback.this.mSubId);
+        }
 
-    @Override
-    public void onCapabilitiesChanged(Network network,
-            NetworkCapabilities networkCapabilities) {
-        if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-            logd("onValidated");
-            reportValidationResult(true);
+        @Override
+        public void onUnavailable() {
+            logd("onUnavailable");
+            reportValidationResult(false, ConnectivityNetworkCallback.this.mSubId);
+        }
+
+        @Override
+        public void onCapabilitiesChanged(Network network,
+                NetworkCapabilities networkCapabilities) {
+            if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                logd("onValidated");
+                reportValidationResult(true, ConnectivityNetworkCallback.this.mSubId);
+            }
         }
     }
 
