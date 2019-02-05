@@ -33,6 +33,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -126,6 +127,7 @@ public class DcTrackerTest extends TelephonyTest {
             Telephony.Carriers.CONTENT_URI + "/preferapn");
     private static final int DATA_ENABLED_CHANGED = 0;
     private static final String FAKE_PLMN = "44010";
+    private static final long TEST_TIMEOUT = 1000;
 
     @Mock
     ISub mIsub;
@@ -1483,10 +1485,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
-        waitForMs(200);
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
-        verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
+        verify(mSimulatedCommandsVerifier, timeout(TEST_TIMEOUT).times(2)).setupDataCall(
                 eq(ServiceState.rilRadioTechnologyToAccessNetworkType(
                 mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
@@ -1530,10 +1531,9 @@ public class DcTrackerTest extends TelephonyTest {
 
         logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
-        waitForMs(200);
 
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
-        verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
+        verify(mSimulatedCommandsVerifier, timeout(TEST_TIMEOUT).times(2)).setupDataCall(
                 eq(ServiceState.rilRadioTechnologyToAccessNetworkType(
                 mServiceState.getRilDataRadioTechnology())), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
