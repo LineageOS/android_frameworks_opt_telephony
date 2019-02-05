@@ -68,6 +68,8 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
+import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.IndentingPrintWriter;
@@ -142,16 +144,18 @@ public class DataConnection extends StateMachine {
         int mRilRat;
         Message mOnCompletedMsg;
         final int mConnectionGeneration;
-        final boolean mIsHandover;
+        @RequestNetworkType
+        final int mRequestType;
 
         ConnectionParams(ApnContext apnContext, int profileId, int rilRadioTechnology,
-                         Message onCompletedMsg, int connectionGeneration, boolean isHandover) {
+                         Message onCompletedMsg, int connectionGeneration,
+                         @RequestNetworkType int requestType) {
             mApnContext = apnContext;
             mProfileId = profileId;
             mRilRat = rilRadioTechnology;
             mOnCompletedMsg = onCompletedMsg;
             mConnectionGeneration = connectionGeneration;
-            mIsHandover = isHandover;
+            mRequestType = requestType;
         }
 
         @Override
@@ -160,7 +164,7 @@ public class DataConnection extends StateMachine {
                     + " mProfileId=" + mProfileId
                     + " mRat=" + mRilRat
                     + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg)
-                    + " mIsHandover=" + mIsHandover
+                    + " mRequestType=" + DcTracker.requestTypeToString(mRequestType)
                     + "}";
         }
     }
@@ -172,14 +176,15 @@ public class DataConnection extends StateMachine {
         int mTag;
         public ApnContext mApnContext;
         String mReason;
-        final boolean mIsHandover;
+        @ReleaseNetworkType
+        final int mReleaseType;
         Message mOnCompletedMsg;
 
-        DisconnectParams(ApnContext apnContext, String reason, boolean isHandover,
+        DisconnectParams(ApnContext apnContext, String reason, @ReleaseNetworkType int releaseType,
                          Message onCompletedMsg) {
             mApnContext = apnContext;
             mReason = reason;
-            mIsHandover = isHandover;
+            mReleaseType = releaseType;
             mOnCompletedMsg = onCompletedMsg;
         }
 
@@ -187,7 +192,7 @@ public class DataConnection extends StateMachine {
         public String toString() {
             return "{mTag=" + mTag + " mApnContext=" + mApnContext
                     + " mReason=" + mReason
-                    + " mIsHandover=" + mIsHandover
+                    + " mReleaseType=" + DcTracker.releaseTypeToString(mReleaseType)
                     + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg) + "}";
         }
     }
@@ -598,7 +603,7 @@ public class DataConnection extends StateMachine {
         // Check if this data setup is a handover.
         LinkProperties linkProperties = null;
         int reason = DataService.REQUEST_REASON_NORMAL;
-        if (cp.mIsHandover) {
+        if (cp.mRequestType == DcTracker.REQUEST_TYPE_HANDOVER) {
             // If this is a data setup for handover, we need to pass the link properties
             // of the existing data connection to the modem.
             DcTracker dcTracker = getHandoverDcTracker();
@@ -658,7 +663,7 @@ public class DataConnection extends StateMachine {
             if (TextUtils.equals(dp.mReason, Phone.REASON_RADIO_TURNED_OFF)
                     || TextUtils.equals(dp.mReason, Phone.REASON_PDP_RESET)) {
                 discReason = DataService.REQUEST_REASON_SHUTDOWN;
-            } else if (dp.mIsHandover) {
+            } else if (dp.mReleaseType == DcTracker.RELEASE_TYPE_HANDOVER) {
                 discReason = DataService.REQUEST_REASON_HANDOVER;
             }
         }
@@ -678,7 +683,7 @@ public class DataConnection extends StateMachine {
             if (apnContext == alreadySent) continue;
             if (reason != null) apnContext.setReason(reason);
             Pair<ApnContext, Integer> pair = new Pair<>(apnContext, cp.mConnectionGeneration);
-            Message msg = mDct.obtainMessage(event, mCid, cp.mIsHandover ? 1 : 0, pair);
+            Message msg = mDct.obtainMessage(event, mCid, cp.mRequestType, pair);
             AsyncResult.forMessage(msg);
             msg.sendToTarget();
         }
@@ -703,7 +708,7 @@ public class DataConnection extends StateMachine {
 
             long timeStamp = System.currentTimeMillis();
             connectionCompletedMsg.arg1 = mCid;
-            connectionCompletedMsg.arg2 = cp.mIsHandover ? 1 : 0;
+            connectionCompletedMsg.arg2 = cp.mRequestType;
 
             if (cause == DataFailCause.NONE) {
                 mCreateTime = timeStamp;
@@ -1806,7 +1811,8 @@ public class DataConnection extends StateMachine {
                         + ", mUnmeteredUseOnly = " + mUnmeteredUseOnly);
             }
 
-            if (mConnectionParams != null && mConnectionParams.mIsHandover) {
+            if (mConnectionParams != null
+                    && mConnectionParams.mRequestType == DcTracker.REQUEST_TYPE_HANDOVER) {
                 // If this is a data setup for handover, we need to reuse the existing network agent
                 // instead of creating a new one. This should be transparent to connectivity
                 // service.
@@ -1864,7 +1870,8 @@ public class DataConnection extends StateMachine {
                 // cases we need to update connectivity service with the latest network info.
                 //
                 // For handover, the network agent is transferred to the other data connection.
-                if (mDisconnectParams == null || !mDisconnectParams.mIsHandover) {
+                if (mDisconnectParams == null
+                        || mDisconnectParams.mReleaseType != DcTracker.RELEASE_TYPE_HANDOVER) {
                     mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                 }
                 mNetworkAgent = null;
@@ -2295,7 +2302,7 @@ public class DataConnection extends StateMachine {
                 log("DcNetworkAgent: [unwanted]: disconnect apnContext=" + apnContext);
                 Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, pair);
                 DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(),
-                        false, msg);
+                        DcTracker.RELEASE_TYPE_DETACH, msg);
                 DataConnection.this.sendMessage(DataConnection.this.
                         obtainMessage(EVENT_DISCONNECT, dp));
             }
@@ -2477,16 +2484,17 @@ public class DataConnection extends StateMachine {
      *                       AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      * @param connectionGeneration used to track a single connection request so disconnects can get
      *                             ignored if obsolete.
-     * @param isHandover {@code true} if this request is for handover.
+     * @param requestType Data request type
      */
     public void bringUp(ApnContext apnContext, int profileId, int rilRadioTechnology,
-                        Message onCompletedMsg, int connectionGeneration, boolean isHandover) {
+                        Message onCompletedMsg, int connectionGeneration,
+                        @RequestNetworkType int requestType) {
         if (DBG) {
             log("bringUp: apnContext=" + apnContext + " onCompletedMsg=" + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_CONNECT,
                 new ConnectionParams(apnContext, profileId, rilRadioTechnology, onCompletedMsg,
-                        connectionGeneration, isHandover));
+                        connectionGeneration, requestType));
     }
 
     /**
@@ -2503,7 +2511,8 @@ public class DataConnection extends StateMachine {
                     + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_DISCONNECT,
-                new DisconnectParams(apnContext, reason, false, onCompletedMsg));
+                new DisconnectParams(apnContext, reason, DcTracker.RELEASE_TYPE_DETACH,
+                        onCompletedMsg));
     }
 
     // ******* "public" interface
@@ -2520,14 +2529,15 @@ public class DataConnection extends StateMachine {
      * Tear down the connection through the apn on the network.  Ignores reference count and
      * and always tears down.
      *
-     * @param isHandover {@code true} if this is for handover
+     * @param releaseType Data release type
      * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
      *        With AsyncResult.userObj set to the original msg.obj.
      */
-    public void tearDownAll(String reason, boolean isHandover, Message onCompletedMsg) {
+    public void tearDownAll(String reason, @ReleaseNetworkType int releaseType,
+                            Message onCompletedMsg) {
         if (DBG) log("tearDownAll: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
         sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
-                new DisconnectParams(null, reason, isHandover, onCompletedMsg));
+                new DisconnectParams(null, reason, releaseType, onCompletedMsg));
     }
 
     /**
