@@ -22,10 +22,10 @@ import static android.net.NetworkPolicyManager.OVERRIDE_UNMETERED;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.net.ConnectivityManager.PacketKeepalive;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
+import android.net.NattKeepalivePacketData;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
@@ -34,6 +34,7 @@ import android.net.NetworkRequest;
 import android.net.NetworkUtils;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
+import android.net.SocketKeepalive;
 import android.net.StringNetworkSpecifier;
 import android.os.AsyncResult;
 import android.os.Looper;
@@ -1466,9 +1467,8 @@ public class DataConnection extends StateMachine {
                 case EVENT_KEEPALIVE_START_REQUEST:
                 case EVENT_KEEPALIVE_STOP_REQUEST:
                     if (mNetworkAgent != null) {
-                        mNetworkAgent.onPacketKeepaliveEvent(
-                                msg.arg1,
-                                ConnectivityManager.PacketKeepalive.ERROR_INVALID_NETWORK);
+                        mNetworkAgent.onSocketKeepaliveEvent(
+                                msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
                     }
                     break;
                 default:
@@ -2008,9 +2008,8 @@ public class DataConnection extends StateMachine {
                         // so that keepalive requests can be handled (if supported) by the
                         // underlying transport.
                         if (mNetworkAgent != null) {
-                            mNetworkAgent.onPacketKeepaliveEvent(
-                                    msg.arg1,
-                                    ConnectivityManager.PacketKeepalive.ERROR_INVALID_NETWORK);
+                            mNetworkAgent.onSocketKeepaliveEvent(
+                                    msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
                         }
                     }
                     retVal = HANDLED;
@@ -2020,7 +2019,7 @@ public class DataConnection extends StateMachine {
                     int slotId = msg.arg1;
                     int handle = mNetworkAgent.keepaliveTracker.getHandleForSlot(slotId);
                     if (handle < 0) {
-                        loge("No slot found for stopPacketKeepalive! " + slotId);
+                        loge("No slot found for stopSocketKeepalive! " + slotId);
                         retVal = HANDLED;
                         break;
                     } else {
@@ -2039,8 +2038,8 @@ public class DataConnection extends StateMachine {
                     if (ar.exception != null || ar.result == null) {
                         loge("EVENT_KEEPALIVE_STARTED: error starting keepalive, e="
                                 + ar.exception);
-                        mNetworkAgent.onPacketKeepaliveEvent(
-                                slot, ConnectivityManager.PacketKeepalive.ERROR_HARDWARE_ERROR);
+                        mNetworkAgent.onSocketKeepaliveEvent(
+                                slot, SocketKeepalive.ERROR_HARDWARE_ERROR);
                     } else {
                         KeepaliveStatus ks = (KeepaliveStatus) ar.result;
                         if (ks == null) {
@@ -2333,13 +2332,17 @@ public class DataConnection extends StateMachine {
         }
 
         @Override
-        protected void startPacketKeepalive(Message msg) {
-            DataConnection.this.obtainMessage(EVENT_KEEPALIVE_START_REQUEST,
-                    msg.arg1, msg.arg2, msg.obj).sendToTarget();
+        protected void startSocketKeepalive(Message msg) {
+            if (msg.obj instanceof NattKeepalivePacketData) {
+                DataConnection.this.obtainMessage(EVENT_KEEPALIVE_START_REQUEST,
+                        msg.arg1, msg.arg2, msg.obj).sendToTarget();
+            } else {
+                onSocketKeepaliveEvent(msg.arg1, SocketKeepalive.ERROR_HARDWARE_UNSUPPORTED);
+            }
         }
 
         @Override
-        protected void stopPacketKeepalive(Message msg) {
+        protected void stopSocketKeepalive(Message msg) {
             DataConnection.this.obtainMessage(EVENT_KEEPALIVE_STOP_REQUEST,
                     msg.arg1, msg.arg2, msg.obj).sendToTarget();
         }
@@ -2368,25 +2371,25 @@ public class DataConnection extends StateMachine {
             int keepaliveStatusErrorToPacketKeepaliveError(int error) {
                 switch(error) {
                     case KeepaliveStatus.ERROR_NONE:
-                        return PacketKeepalive.SUCCESS;
+                        return SocketKeepalive.SUCCESS;
                     case KeepaliveStatus.ERROR_UNSUPPORTED:
-                        return PacketKeepalive.ERROR_HARDWARE_UNSUPPORTED;
+                        return SocketKeepalive.ERROR_HARDWARE_UNSUPPORTED;
                     case KeepaliveStatus.ERROR_NO_RESOURCES:
                     case KeepaliveStatus.ERROR_UNKNOWN:
                     default:
-                        return PacketKeepalive.ERROR_HARDWARE_ERROR;
+                        return SocketKeepalive.ERROR_HARDWARE_ERROR;
                 }
             }
 
             void handleKeepaliveStarted(final int slot, KeepaliveStatus ks) {
                 switch (ks.statusCode) {
                     case KeepaliveStatus.STATUS_INACTIVE:
-                        DcNetworkAgent.this.onPacketKeepaliveEvent(slot,
+                        DcNetworkAgent.this.onSocketKeepaliveEvent(slot,
                                 keepaliveStatusErrorToPacketKeepaliveError(ks.errorCode));
                         break;
                     case KeepaliveStatus.STATUS_ACTIVE:
-                        DcNetworkAgent.this.onPacketKeepaliveEvent(
-                                slot, PacketKeepalive.SUCCESS);
+                        DcNetworkAgent.this.onSocketKeepaliveEvent(
+                                slot, SocketKeepalive.SUCCESS);
                         // fall through to add record
                     case KeepaliveStatus.STATUS_PENDING:
                         log("Adding keepalive handle="
@@ -2416,13 +2419,13 @@ public class DataConnection extends StateMachine {
                 switch (kr.currentStatus) {
                     case KeepaliveStatus.STATUS_INACTIVE:
                         loge("Inactive Keepalive received status!");
-                        DcNetworkAgent.this.onPacketKeepaliveEvent(
-                                kr.slotId, PacketKeepalive.ERROR_HARDWARE_ERROR);
+                        DcNetworkAgent.this.onSocketKeepaliveEvent(
+                                kr.slotId, SocketKeepalive.ERROR_HARDWARE_ERROR);
                         break;
                     case KeepaliveStatus.STATUS_PENDING:
                         switch (ks.statusCode) {
                             case KeepaliveStatus.STATUS_INACTIVE:
-                                DcNetworkAgent.this.onPacketKeepaliveEvent(kr.slotId,
+                                DcNetworkAgent.this.onSocketKeepaliveEvent(kr.slotId,
                                         keepaliveStatusErrorToPacketKeepaliveError(ks.errorCode));
                                 kr.currentStatus = KeepaliveStatus.STATUS_INACTIVE;
                                 mKeepalives.remove(ks.sessionHandle);
@@ -2430,8 +2433,8 @@ public class DataConnection extends StateMachine {
                             case KeepaliveStatus.STATUS_ACTIVE:
                                 log("Pending Keepalive received active status!");
                                 kr.currentStatus = KeepaliveStatus.STATUS_ACTIVE;
-                                DcNetworkAgent.this.onPacketKeepaliveEvent(
-                                        kr.slotId, PacketKeepalive.SUCCESS);
+                                DcNetworkAgent.this.onSocketKeepaliveEvent(
+                                        kr.slotId, SocketKeepalive.SUCCESS);
                                 break;
                             case KeepaliveStatus.STATUS_PENDING:
                                 loge("Invalid unsolicied Keepalive Pending Status!");
@@ -2444,8 +2447,8 @@ public class DataConnection extends StateMachine {
                         switch (ks.statusCode) {
                             case KeepaliveStatus.STATUS_INACTIVE:
                                 loge("Keepalive received stopped status!");
-                                DcNetworkAgent.this.onPacketKeepaliveEvent(
-                                        kr.slotId, PacketKeepalive.SUCCESS);
+                                DcNetworkAgent.this.onSocketKeepaliveEvent(
+                                        kr.slotId, SocketKeepalive.SUCCESS);
                                 kr.currentStatus = KeepaliveStatus.STATUS_INACTIVE;
                                 mKeepalives.remove(ks.sessionHandle);
                                 break;
