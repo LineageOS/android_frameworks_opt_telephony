@@ -323,6 +323,7 @@ public class RILTest extends TelephonyTest {
         assertTrue(1 == detector.getWakelockTimoutCount());
     }
 
+    @FlakyTest
     @Test
     public void testRadioErrorWithContinuousSystemErr() throws Exception {
         RadioBugDetector detector = mRILUnderTest.getRadioBugDetector();
