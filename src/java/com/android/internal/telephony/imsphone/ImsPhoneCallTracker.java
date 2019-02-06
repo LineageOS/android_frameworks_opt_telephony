@@ -2654,9 +2654,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallHandover(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
             ImsReasonInfo reasonInfo) {
+            // Check with the DCTracker to see if data is enabled; there may be a case when
+            // ImsPhoneCallTracker isn't being informed of the right data enabled state via its
+            // registration, so we'll refresh now.
+            boolean isDataEnabled = mPhone.getDefaultPhone().mDcTracker.isDataEnabled();
             if (DBG) {
-                log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech=" +
-                        targetAccessTech + ", reasonInfo=" + reasonInfo);
+                log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech="
+                        + targetAccessTech + ", reasonInfo=" + reasonInfo + ", dataEnabled="
+                        + mIsDataEnabled + "/" + isDataEnabled + ", dataMetered="
+                        + mIsViLteDataMetered);
+            }
+            if (mIsDataEnabled != isDataEnabled) {
+                loge("onCallHandover: data enabled state doesn't match! (was=" + mIsDataEnabled
+                        + ", actually=" + isDataEnabled);
+                mIsDataEnabled = isDataEnabled;
             }
 
             // Only consider it a valid handover to WIFI if the source radio tech is known.
@@ -2693,7 +2704,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
 
                 if (isHandoverFromWifi && imsCall.isVideoCall()) {
-                    if (mNotifyHandoverVideoFromWifiToLTE &&    mIsDataEnabled) {
+                    if (mNotifyHandoverVideoFromWifiToLTE && mIsDataEnabled) {
                         if (conn.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                             log("onCallHandover :: notifying of WIFI to LTE handover.");
                             conn.onConnectionEvent(
@@ -2710,6 +2721,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (!mIsDataEnabled && mIsViLteDataMetered) {
                         // Call was downgraded from WIFI to LTE and data is metered; downgrade the
                         // call now.
+                        log("onCallHandover :: data is not enabled; attempt to downgrade.");
                         downgradeVideoCall(ImsReasonInfo.CODE_WIFI_LOST, conn);
                     }
                 }
@@ -3746,16 +3758,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (conn.hasCapabilities(
                     Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL |
                             Connection.Capability.SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE)) {
-
+                log("downgradeVideoCall :: callId=" + conn.getTelecomCallId()
+                        + " Downgrade to audio");
                 // If the carrier supports downgrading to voice, then we can simply issue a
                 // downgrade to voice instead of terminating the call.
                 modifyVideoCall(imsCall, VideoProfile.STATE_AUDIO_ONLY);
             } else if (mSupportPauseVideo && reasonCode != ImsReasonInfo.CODE_WIFI_LOST) {
                 // The carrier supports video pause signalling, so pause the video if we didn't just
                 // lose wifi; in that case just disconnect.
+                log("downgradeVideoCall :: callId=" + conn.getTelecomCallId()
+                        + " Pause audio");
                 mShouldUpdateImsConfigOnDisconnect = true;
                 conn.pauseVideo(VideoPauseTracker.SOURCE_DATA_ENABLED);
             } else {
+                log("downgradeVideoCall :: callId=" + conn.getTelecomCallId()
+                        + " Disconnect call.");
                 // At this point the only choice we have is to terminate the call.
                 try {
                     imsCall.terminate(ImsReasonInfo.CODE_USER_TERMINATED, reasonCode);
