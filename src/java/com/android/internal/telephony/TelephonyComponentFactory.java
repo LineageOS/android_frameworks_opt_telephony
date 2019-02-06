@@ -481,6 +481,15 @@ public class TelephonyComponentFactory {
         return new LinkBandwidthEstimator(phone, mTelephonyFacade);
     }
 
+    public RIL makeRIL(Context context, int preferredNetworkType,
+            int cdmaSubscription, Integer instanceId) {
+        return new RIL(context, preferredNetworkType, cdmaSubscription, instanceId);
+    }
+
+    public void makeExtTelephonyClasses(Context context,
+            Phone[] phones, CommandsInterface[] commandsInterfaces) {
+    }
+
     /**
      * Create a new data network controller instance. The instance is per-SIM. On multi-sim devices,
      * there will be multiple {@link DataNetworkController} instances.
