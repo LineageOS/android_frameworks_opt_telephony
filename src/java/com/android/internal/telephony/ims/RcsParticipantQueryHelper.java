@@ -15,15 +15,69 @@
  */
 package com.android.internal.telephony.ims;
 
+import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_PARTICIPANT_ID_COLUMN;
+import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_PARTICIPANT_URI;
+import static android.telephony.ims.RcsQueryContinuationToken.QUERY_CONTINUATION_TOKEN;
+
+import android.content.ContentResolver;
+import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
+import android.os.RemoteException;
+import android.telephony.ims.RcsParticipant;
+import android.telephony.ims.RcsParticipantQueryResult;
+import android.telephony.ims.RcsQueryContinuationToken;
+
+import java.util.ArrayList;
+import java.util.List;
 
 class RcsParticipantQueryHelper {
-    // Note: row Id needs to be appended to this URI to modify the canonical address
-    static final String INDIVIDUAL_CANONICAL_ADDRESS_URI_AS_STRING =
-            "content://mms-sms/canonical-address/";
     static final Uri CANONICAL_ADDRESSES_URI = Uri.parse("content://mms-sms/canonical-addresses");
+    private final ContentResolver mContentResolver;
 
-    static final Uri PARTICIPANTS_URI = Uri.parse("content://rcs/participant");
-    static final String RCS_ALIAS_COLUMN = "rcs_alias";
-    static final String RCS_CANONICAL_ADDRESS_ID = "canonical_address_id";
+    RcsParticipantQueryHelper(ContentResolver contentResolver) {
+        mContentResolver = contentResolver;
+    }
+
+    RcsParticipant getParticipantFromId(int participantId) throws RemoteException {
+        RcsParticipant participant = null;
+        try (Cursor cursor = mContentResolver.query(
+                Uri.withAppendedPath(RCS_PARTICIPANT_URI, Integer.toString(participantId)),
+                null, null, null)) {
+            if (cursor == null && !cursor.moveToNext()) {
+                throw new RemoteException("Could not find participant with id: " + participantId);
+            }
+
+            participant = new RcsParticipant(
+                    cursor.getInt(cursor.getColumnIndex(RCS_PARTICIPANT_ID_COLUMN)));
+        }
+        return participant;
+    }
+
+    RcsParticipantQueryResult performParticipantQuery(Bundle bundle) throws RemoteException {
+        RcsQueryContinuationToken continuationToken = null;
+        List<Integer> participantList = new ArrayList<>();
+
+        try (Cursor cursor = mContentResolver.query(RCS_PARTICIPANT_URI, null, bundle, null)) {
+            if (cursor == null) {
+                throw new RemoteException("Could not perform participant query, bundle: " + bundle);
+            }
+
+            while (cursor.moveToNext()) {
+                participantList.add(
+                        cursor.getInt(cursor.getColumnIndex(RCS_PARTICIPANT_ID_COLUMN)));
+            }
+
+            Bundle cursorExtras = cursor.getExtras();
+            if (cursorExtras != null) {
+                continuationToken = cursorExtras.getParcelable(QUERY_CONTINUATION_TOKEN);
+            }
+        }
+
+        return new RcsParticipantQueryResult(continuationToken, participantList);
+    }
+
+    static Uri getUriForParticipant(int participantId) {
+        return Uri.withAppendedPath(RCS_PARTICIPANT_URI, Integer.toString(participantId));
+    }
 }
