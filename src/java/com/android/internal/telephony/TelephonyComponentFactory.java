@@ -227,35 +227,7 @@ public class TelephonyComponentFactory {
 
     public static TelephonyComponentFactory getInstance() {
         if (sInstance == null) {
-            String fullClsName = "com.qualcomm.qti.internal.telephony.QtiTelephonyComponentFactory";
-            String libPath = "/system/framework/qti-telephony-common.jar"
-                    + ":/system/framework/android.hidl.manager-V1.0-java.jar";
-
-            PathClassLoader classLoader = new PathClassLoader(libPath,
-                    ClassLoader.getSystemClassLoader());
-            Rlog.d(LOG_TAG, "classLoader = " + classLoader);
-
-            if (fullClsName == null || fullClsName.length() == 0) {
-                Rlog.d(LOG_TAG, "no customized TelephonyPlugin available, fallback to default");
-                fullClsName = "com.android.internal.telephony.TelephonyComponentFactory";
-            }
-
-            Class<?> cls = null;
-            try {
-                cls = Class.forName(fullClsName, false, classLoader);
-                Rlog.d(LOG_TAG, "cls = " + cls);
-                Constructor custMethod = cls.getConstructor();
-                Rlog.d(LOG_TAG, "constructor method = " + custMethod);
-                sInstance = (TelephonyComponentFactory) custMethod.newInstance();
-            } catch (NoClassDefFoundError e) {
-                e.printStackTrace();
-                Rlog.e(LOG_TAG, "error loading TelephonyComponentFactory");
-                sInstance = new TelephonyComponentFactory();
-            } catch (Exception e) {
-                e.printStackTrace();
-                Rlog.e(LOG_TAG, "Error loading TelephonyComponentFactory");
-                sInstance = new TelephonyComponentFactory();
-            }
+            sInstance = new TelephonyComponentFactory();
         }
         return sInstance;
     }
@@ -473,31 +445,26 @@ public class TelephonyComponentFactory {
     public Phone makePhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
             int phoneId, int precisePhoneType,
             TelephonyComponentFactory telephonyComponentFactory) {
-        Rlog.d(LOG_TAG, "makePhone");
+        Rlog.i(TAG, "makePhone");
         return new GsmCdmaPhone(context, ci, notifier, phoneId, precisePhoneType,
                 telephonyComponentFactory);
     }
 
     public SubscriptionController initSubscriptionController(Context c, CommandsInterface[] ci) {
-        Rlog.d(LOG_TAG, "initSubscriptionController");
+        Rlog.i(TAG, "initSubscriptionController");
         return SubscriptionController.init(c, ci);
     }
 
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Looper looper, Context context,
             Phone[] phones, CommandsInterface[] ci) {
-        Rlog.d(LOG_TAG, "makeSubscriptionInfoUpdater");
+        Rlog.i(TAG, "makeSubscriptionInfoUpdater");
         return new SubscriptionInfoUpdater(looper, context, phones, ci);
-    }
-
-    public void makeExtTelephonyClasses(Context context,
-            Phone[] phones, CommandsInterface[] commandsInterfaces) {
-        Rlog.d(LOG_TAG, "makeExtTelephonyClasses");
     }
 
     public PhoneSwitcher makePhoneSwitcher(int maxActivePhones, int numPhones, Context context,
             SubscriptionController subscriptionController, Looper looper, ITelephonyRegistry tr,
             CommandsInterface[] cis, Phone[] phones) {
-        Rlog.d(LOG_TAG, "makePhoneSwitcher");
+        Rlog.i(TAG, "makePhoneSwitcher");
         return new PhoneSwitcher(maxActivePhones,numPhones,
                 context, subscriptionController, looper, tr, cis,
                 phones);
@@ -507,5 +474,10 @@ public class TelephonyComponentFactory {
             int cdmaSubscription, Integer instanceId) {
         Rlog.d(LOG_TAG, "makeRIL");
         return new RIL(context, preferredNetworkType, cdmaSubscription, instanceId);
+    }
+
+    public void makeExtTelephonyClasses(Context context,
+            Phone[] phones, CommandsInterface[] commandsInterfaces) {
+        Rlog.d(LOG_TAG, "makeExtTelephonyClasses");
     }
 }

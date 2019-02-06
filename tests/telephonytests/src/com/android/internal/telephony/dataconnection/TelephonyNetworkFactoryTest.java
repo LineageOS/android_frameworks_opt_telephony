@@ -173,7 +173,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcherMock);
 
         mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(mSubscriptionMonitorMock, mLooper,
-                mPhone);
+                mPhone, mPhoneSwitcherMock);
     }
 
     /**
