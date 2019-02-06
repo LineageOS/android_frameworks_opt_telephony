@@ -24,12 +24,14 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.Pair;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.SubscriptionController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -126,13 +128,28 @@ public class DataEnabledSettings {
     }
 
     public synchronized void setUserDataEnabled(boolean enabled) {
+        // Can't disable data for opportunistic subscription.
+        if (isSubOpportunistic() && !enabled) return;
+        // Can't enable data for non-default data subscription.
+        if (!isDefaultDataSub() && enabled) return;
+
         localLog("UserDataEnabled", enabled);
-        Settings.Global.putInt(mResolver, getMobileDataSettingName(), enabled ? 1 : 0);
-        mPhone.notifyUserMobileDataStateChanged(enabled);
-        updateDataEnabledAndNotify(REASON_USER_DATA_ENABLED);
+        // Make sure if value is not initialized, it gets overwritten by the target value.
+        int uninitializedValue = -1;
+        int currentValue = Settings.Global.getInt(
+                mResolver, getMobileDataSettingName(), uninitializedValue);
+        int targetValue = (enabled ? 1 : 0);
+        if (currentValue != targetValue) {
+            Settings.Global.putInt(mResolver, getMobileDataSettingName(), targetValue);
+            mPhone.notifyUserMobileDataStateChanged(enabled);
+            updateDataEnabledAndNotify(REASON_USER_DATA_ENABLED);
+        }
     }
 
     public synchronized boolean isUserDataEnabled() {
+        // User data should always be true for opportunistic subscription.
+        if (isSubOpportunistic()) return true;
+
         boolean defaultVal = "true".equalsIgnoreCase(SystemProperties.get(
                 "ro.com.android.mobiledata", "true"));
 
@@ -242,6 +259,16 @@ public class DataEnabledSettings {
 
     public void unregisterForDataEnabledChanged(Handler h) {
         mOverallDataEnabledChangedRegistrants.remove(h);
+    }
+
+    private boolean isSubOpportunistic() {
+        SubscriptionInfo info = SubscriptionController.getInstance().getActiveSubscriptionInfo(
+                mPhone.getSubId(), mPhone.getContext().getOpPackageName());
+        return (info != null) && info.isOpportunistic();
+    }
+
+    private boolean isDefaultDataSub() {
+        return SubscriptionController.getInstance().getDefaultDataSubId() == mPhone.getSubId();
     }
 
     private void log(String s) {
