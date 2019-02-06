@@ -618,15 +618,18 @@ public class TelephonyMetricsTest extends TelephonyTest {
     public void testReset() throws Exception {
         mMetrics.writeServiceStateChanged(mPhone.getPhoneId(), mServiceState);
         reset();
+
         TelephonyLog log = buildProto();
 
-        assertEquals(1, log.events.length);
-        assertEquals(0, log.callSessions.length);
-        assertEquals(0, log.smsSessions.length);
+        Object[] serviceStateEvents = Arrays.stream(log.events)
+                .filter(event -> event.type == TelephonyEvent.Type.RIL_SERVICE_STATE_CHANGED)
+                .toArray();
+
+        assertEquals(1, serviceStateEvents.length);
 
         assertFalse(log.eventsDropped);
 
-        TelephonyEvent event = log.events[0];
+        TelephonyEvent event = (TelephonyEvent) serviceStateEvents[0];
 
         assertEquals(TelephonyEvent.Type.RIL_SERVICE_STATE_CHANGED, event.type);
 
