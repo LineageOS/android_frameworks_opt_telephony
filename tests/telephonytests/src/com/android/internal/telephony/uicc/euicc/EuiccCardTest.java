@@ -984,6 +984,22 @@ public class EuiccCardTest extends TelephonyTest {
         assertFalse(node.hasChild(Tags.TAG_CTX_0));
     }
 
+    @Test
+    public void testGetDeviceId() {
+        // Unclear v2.0 definition
+        assertArrayEquals(
+                new byte[] {0x21, 0x43, 0x65, (byte) 0x87, 0x09, 0x21, 0x43, 0x05},
+                EuiccCard.getDeviceId("123456789012345", new EuiccSpecVersion(2, 0, 0)));
+        // Clarified v2.1+ definition
+        assertArrayEquals(
+                new byte[] {0x21, 0x43, 0x65, (byte) 0x87, 0x09, 0x21, 0x43, 0x5F},
+                EuiccCard.getDeviceId("123456789012345", new EuiccSpecVersion(2, 1, 0)));
+        // Same definition on v2.2
+        assertArrayEquals(
+                new byte[] {0x21, 0x43, 0x65, (byte) 0x87, 0x09, 0x21, 0x43, 0x5F},
+                EuiccCard.getDeviceId("123456789012345", new EuiccSpecVersion(2, 2, 0)));
+    }
+
     private void verifyStoreData(int channel, String command) {
         verify(mMockCi, times(1))
                 .iccTransmitApduLogicalChannel(eq(channel), eq(0x80 | channel), eq(0xE2), eq(0x91),

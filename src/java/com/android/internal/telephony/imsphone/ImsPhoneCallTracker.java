@@ -2019,9 +2019,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.SERVER_ERROR;
 
             case ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE:
-            case ImsReasonInfo.CODE_SIP_NOT_FOUND:
             case ImsReasonInfo.CODE_SIP_SERVER_ERROR:
                 return DisconnectCause.SERVER_UNREACHABLE;
+
+            case ImsReasonInfo.CODE_SIP_NOT_FOUND:
+                return DisconnectCause.INVALID_NUMBER;
 
             case ImsReasonInfo.CODE_LOCAL_NETWORK_ROAMING:
             case ImsReasonInfo.CODE_LOCAL_NETWORK_IP_CHANGED:
