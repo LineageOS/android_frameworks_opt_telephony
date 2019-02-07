@@ -587,10 +587,10 @@ public class SubscriptionInfoUpdater extends Handler {
                                 uiccSlot.getUiccCard().getCardId()))
                         .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
             }
+            // update default subId
+            SubscriptionController.getInstance().clearDefaultsForInactiveSubIds();
+            SubscriptionController.getInstance().updateDataEnabledSettings();
         }
-
-        // update default subId
-        SubscriptionController.getInstance().clearDefaultsForInactiveSubIds();
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SubscriptionInfo update complete");

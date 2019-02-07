@@ -2037,6 +2037,7 @@ public class SubscriptionController extends ISub.Stub {
 
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+        updateDataEnabledSettings();
         broadcastDefaultDataSubIdChanged(subId);
     }
 
@@ -2157,6 +2158,23 @@ public class SubscriptionController extends ISub.Stub {
         }
         if (DBG) logdl("[shouldDefaultBeCleared] return true not active subId=" + subId);
         return true;
+    }
+
+    /**
+     * Make sure in multi SIM scenarios, user data is enabled or disabled correctly.
+     */
+    public void updateDataEnabledSettings() {
+        Phone[] phones = PhoneFactory.getPhones();
+        if (phones == null || phones.length < 2) return;
+
+        for (Phone phone : phones) {
+            if (isActiveSubId(phone.getSubId())) {
+                // Only enable it if it was enabled and it's the default data subscription.
+                // Otherwise it should be disabled.
+                phone.getDataEnabledSettings().setUserDataEnabled(
+                        phone.isUserDataEnabled() && phone.getSubId() == getDefaultDataSubId());
+            }
+        }
     }
 
     // FIXME: We need we should not be assuming phoneId == slotIndex as it will not be true
