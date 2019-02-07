@@ -66,11 +66,11 @@ import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.NEW_NA
 import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.TIMESTAMP_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsUnifiedThreadColumns.THREAD_TYPE_GROUP;
 import static android.provider.Telephony.RcsColumns.TRANSACTION_FAILED;
-import static android.telephony.ims.RcsEventQueryParameters.EVENT_QUERY_PARAMETERS_KEY;
-import static android.telephony.ims.RcsMessageQueryParameters.MESSAGE_QUERY_PARAMETERS_KEY;
-import static android.telephony.ims.RcsParticipantQueryParameters.PARTICIPANT_QUERY_PARAMETERS_KEY;
+import static android.telephony.ims.RcsEventQueryParams.EVENT_QUERY_PARAMETERS_KEY;
+import static android.telephony.ims.RcsMessageQueryParams.MESSAGE_QUERY_PARAMETERS_KEY;
+import static android.telephony.ims.RcsParticipantQueryParams.PARTICIPANT_QUERY_PARAMETERS_KEY;
 import static android.telephony.ims.RcsQueryContinuationToken.QUERY_CONTINUATION_TOKEN;
-import static android.telephony.ims.RcsThreadQueryParameters.THREAD_QUERY_PARAMETERS_KEY;
+import static android.telephony.ims.RcsThreadQueryParams.THREAD_QUERY_PARAMETERS_KEY;
 
 import static com.android.internal.telephony.ims.RcsMessageStoreUtil.getMessageTableUri;
 import static com.android.internal.telephony.ims.RcsParticipantQueryHelper.getUriForParticipant;
@@ -90,20 +90,20 @@ import android.os.ServiceManager;
 import android.provider.BaseColumns;
 import android.provider.Telephony;
 import android.telephony.Rlog;
-import android.telephony.ims.RcsEventQueryParameters;
+import android.telephony.ims.RcsEventQueryParams;
 import android.telephony.ims.RcsEventQueryResult;
-import android.telephony.ims.RcsFileTransferCreationParameters;
-import android.telephony.ims.RcsIncomingMessageCreationParameters;
-import android.telephony.ims.RcsMessageCreationParameters;
-import android.telephony.ims.RcsMessageQueryParameters;
+import android.telephony.ims.RcsFileTransferCreationParams;
+import android.telephony.ims.RcsIncomingMessageCreationParams;
+import android.telephony.ims.RcsMessageQueryParams;
 import android.telephony.ims.RcsMessageQueryResult;
 import android.telephony.ims.RcsMessageSnippet;
 import android.telephony.ims.RcsMessageStore;
+import android.telephony.ims.RcsOutgoingMessageCreationParams;
 import android.telephony.ims.RcsParticipant;
-import android.telephony.ims.RcsParticipantQueryParameters;
+import android.telephony.ims.RcsParticipantQueryParams;
 import android.telephony.ims.RcsParticipantQueryResult;
 import android.telephony.ims.RcsQueryContinuationToken;
-import android.telephony.ims.RcsThreadQueryParameters;
+import android.telephony.ims.RcsThreadQueryParams;
 import android.telephony.ims.RcsThreadQueryResult;
 import android.telephony.ims.aidl.IRcs;
 
@@ -179,7 +179,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsThreadQueryResult getRcsThreads(RcsThreadQueryParameters queryParameters)
+    public RcsThreadQueryResult getRcsThreads(RcsThreadQueryParams queryParameters)
             throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(THREAD_QUERY_PARAMETERS_KEY, queryParameters);
@@ -196,7 +196,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
 
     @Override
     public RcsParticipantQueryResult getParticipants(
-            RcsParticipantQueryParameters queryParameters) throws RemoteException {
+            RcsParticipantQueryParams queryParameters) throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(PARTICIPANT_QUERY_PARAMETERS_KEY, queryParameters);
         return mParticipantQueryHelper.performParticipantQuery(bundle);
@@ -211,7 +211,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsMessageQueryResult getMessages(RcsMessageQueryParameters queryParameters)
+    public RcsMessageQueryResult getMessages(RcsMessageQueryParams queryParameters)
             throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(MESSAGE_QUERY_PARAMETERS_KEY, queryParameters);
@@ -227,7 +227,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsEventQueryResult getEvents(RcsEventQueryParameters queryParameters)
+    public RcsEventQueryResult getEvents(RcsEventQueryParams queryParameters)
             throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(EVENT_QUERY_PARAMETERS_KEY, queryParameters);
@@ -251,8 +251,8 @@ public class RcsMessageStoreController extends IRcs.Stub {
                     "RcsParticipant with id: " + recipientId + " does not exist.");
         }
 
-        RcsThreadQueryParameters queryParameters = new RcsThreadQueryParameters.Builder()
-                .setThreadType(RcsThreadQueryParameters.THREAD_TYPE_1_TO_1).setParticipant(
+        RcsThreadQueryParams queryParameters = new RcsThreadQueryParams.Builder()
+                .setThreadType(RcsThreadQueryParams.THREAD_TYPE_1_TO_1).setParticipant(
                         participant).build();
         RcsThreadQueryResult queryResult = getRcsThreads(queryParameters);
         if (queryResult.getThreads().size() > 0) {
@@ -479,26 +479,26 @@ public class RcsMessageStoreController extends IRcs.Stub {
 
     @Override
     public int addIncomingMessage(int rcsThreadId,
-            RcsIncomingMessageCreationParameters rcsIncomingMessageCreationParameters)
+            RcsIncomingMessageCreationParams rcsIncomingMessageCreationParams)
             throws RemoteException {
         ContentValues contentValues = new ContentValues();
 
         contentValues.put(ARRIVAL_TIMESTAMP_COLUMN,
-                rcsIncomingMessageCreationParameters.getArrivalTimestamp());
+                rcsIncomingMessageCreationParams.getArrivalTimestamp());
         contentValues.put(SEEN_TIMESTAMP_COLUMN,
-                rcsIncomingMessageCreationParameters.getSeenTimestamp());
+                rcsIncomingMessageCreationParams.getSeenTimestamp());
         contentValues.put(SENDER_PARTICIPANT_ID_COLUMN,
-                rcsIncomingMessageCreationParameters.getSenderParticipantId());
+                rcsIncomingMessageCreationParams.getSenderParticipantId());
 
         mMessageQueryHelper.createContentValuesForGenericMessage(contentValues, rcsThreadId,
-                rcsIncomingMessageCreationParameters);
+                rcsIncomingMessageCreationParams);
 
         return addMessage(rcsThreadId, true, contentValues);
     }
 
     @Override
     public int addOutgoingMessage(int rcsThreadId,
-            RcsMessageCreationParameters rcsOutgoingMessageCreationParameters)
+            RcsOutgoingMessageCreationParams rcsOutgoingMessageCreationParameters)
             throws RemoteException {
         ContentValues contentValues = new ContentValues();
 
@@ -729,7 +729,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
 
     @Override
     public int storeFileTransfer(int messageId, boolean isIncoming,
-            RcsFileTransferCreationParameters fileTransferCreationParameters) {
+            RcsFileTransferCreationParams fileTransferCreationParameters) {
         ContentValues contentValues = mMessageQueryHelper.getContentValuesForFileTransfer(
                 fileTransferCreationParameters);
         Uri uri = mContentResolver.insert(
