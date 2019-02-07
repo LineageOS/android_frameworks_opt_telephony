@@ -707,26 +707,32 @@ message TelephonyEvent {
   }
 
   enum NetworkValidationState {
+      /** The network validation state is unknown. */
+      UNKOWN = 0;
+
       /** The network under validation is initial established. */
-      AVAILABLE = 0;
+      AVAILABLE = 1;
 
       /** The validation is failed. */
-      FAILED = 1;
+      FAILED = 2;
 
       /** The validation is passed. */
-      PASSED = 2;
+      PASSED = 3;
   }
 
   message DataSwitch {
       enum Reason {
+          /** Data switch caused by unkown reason. */
+          UNKONWN = 0;
+
           /** Data switch caused by user's manual switch. */
-          MANUAL = 0;
+          MANUAL = 1;
 
           /** Data switch caused by incoming/outgoing call. */
-          IN_CALL = 1;
+          IN_CALL = 2;
 
           /** Data switch caused by CBRS switch. */
-          CBRS = 2;
+          CBRS = 3;
       }
 
       /** The reason for data switch. */

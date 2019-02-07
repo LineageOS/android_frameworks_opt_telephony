@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANGE;
 import static android.telephony.PhoneStateListener.LISTEN_PRECISE_CALL_STATE;
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
@@ -26,7 +27,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.ConnectivityManager.NetworkCallback;
 import android.net.MatchAllNetworkSpecifier;
+import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
 import android.net.NetworkRequest;
@@ -48,6 +52,10 @@ import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.dataconnection.DcRequest;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -65,8 +73,10 @@ import java.util.List;
  * the active phones.  Note we don't wait for data attach (which may not happen anyway).
  */
 public class PhoneSwitcher extends Handler {
-    private final static String LOG_TAG = "PhoneSwitcher";
-    private final static boolean VDBG = false;
+    private static final String LOG_TAG = "PhoneSwitcher";
+    private static final boolean VDBG = false;
+
+    private static final int DEFAULT_NETWORK_CHANGE_TIMEOUT_MS = 5000;
 
     private final List<DcRequest> mPrioritizedDcRequests = new ArrayList<DcRequest>();
     private final RegistrantList mActivePhoneRegistrants;
@@ -113,6 +123,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_RADIO_AVAILABLE                = 108;
     private static final int EVENT_PHONE_IN_CALL_CHANGED          = 109;
     private static final int EVENT_NETWORK_VALIDATION_DONE        = 110;
+    private static final int EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK = 111;
 
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
@@ -128,6 +139,24 @@ public class PhoneSwitcher extends Handler {
 
     // Default timeout value of network validation in millisecond.
     private final static int DEFAULT_VALIDATION_EXPIRATION_TIME = 2000;
+
+    private Boolean mHasRegisteredDefaultNetworkChangeCallback = false;
+
+    private ConnectivityManager mConnectivityManager;
+
+    private final ConnectivityManager.NetworkCallback mDefaultNetworkCallback =
+            new NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    if (mConnectivityManager.getNetworkCapabilities(network)
+                            .hasTransport(TRANSPORT_CELLULAR)) {
+                        logDataSwitchEvent(
+                                TelephonyEvent.EventState.END,
+                                TelephonyEvent.DataSwitch.Reason.UNKONWN);
+                    }
+                    removeDefaultNetworkChangeCallback();
+                }
+            };
 
     /**
      * Method to get singleton instance.
@@ -150,6 +179,7 @@ public class PhoneSwitcher extends Handler {
         return sPhoneSwitcher;
     }
 
+    /** This constructor is only used for testing purpose. */
     @VisibleForTesting
     public PhoneSwitcher(int numPhones, Looper looper) {
         super(looper);
@@ -241,11 +271,14 @@ public class PhoneSwitcher extends Handler {
         } catch (RemoteException e) {
         }
 
+        mConnectivityManager =
+            (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+
         mContext.registerReceiver(mDefaultDataChangedReceiver,
                 new IntentFilter(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED));
 
         NetworkCapabilities netCap = new NetworkCapabilities();
-        netCap.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        netCap.addTransportType(TRANSPORT_CELLULAR);
         netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
         netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
         netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
@@ -294,7 +327,9 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
             case EVENT_DEFAULT_SUBSCRIPTION_CHANGED: {
+                logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.MANUAL);
                 onEvaluate(REQUESTS_UNCHANGED, "defaultChanged");
+                registerDefaultNetworkChangeCallback();
                 break;
             }
             case EVENT_REQUEST_NETWORK: {
@@ -315,6 +350,7 @@ public class PhoneSwitcher extends Handler {
             }
             case EVENT_PREFERRED_SUBSCRIPTION_CHANGED: {
                 onEvaluate(REQUESTS_UNCHANGED, "preferredDataSubscriptionIdChanged");
+                registerDefaultNetworkChangeCallback();
                 break;
             }
             case EVENT_RADIO_AVAILABLE: {
@@ -323,13 +359,19 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
             case EVENT_PHONE_IN_CALL_CHANGED: {
+                logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.IN_CALL);
                 onEvaluate(REQUESTS_UNCHANGED, "EVENT_PHONE_IN_CALL_CHANGED");
+                registerDefaultNetworkChangeCallback();
                 break;
             }
             case EVENT_NETWORK_VALIDATION_DONE: {
                 int subId = msg.arg1;
                 boolean passed = (msg.arg2 == 1);
                 onValidationDone(subId, passed);
+                break;
+            }
+            case EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK: {
+                removeDefaultNetworkChangeCallback();
                 break;
             }
         }
@@ -370,7 +412,8 @@ public class PhoneSwitcher extends Handler {
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
         final DcRequest dcRequest = new DcRequest(networkRequest, mContext);
-        if (mPrioritizedDcRequests.contains(dcRequest) == false) {
+        if (!mPrioritizedDcRequests.contains(dcRequest)) {
+            collectRequestNetworkMetrics(networkRequest);
             mPrioritizedDcRequests.add(dcRequest);
             Collections.sort(mPrioritizedDcRequests);
             onEvaluate(REQUESTS_CHANGED, "netRequest");
@@ -382,6 +425,53 @@ public class PhoneSwitcher extends Handler {
 
         if (mPrioritizedDcRequests.remove(dcRequest)) {
             onEvaluate(REQUESTS_CHANGED, "netReleased");
+            collectReleaseNetworkMetrics(networkRequest);
+        }
+    }
+
+    private void removeDefaultNetworkChangeCallback() {
+        synchronized (mHasRegisteredDefaultNetworkChangeCallback) {
+            if (mHasRegisteredDefaultNetworkChangeCallback) {
+                mHasRegisteredDefaultNetworkChangeCallback = false;
+                removeMessages(EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK);
+                mConnectivityManager.unregisterNetworkCallback(mDefaultNetworkCallback);
+            }
+        }
+    }
+
+    private void registerDefaultNetworkChangeCallback() {
+        removeDefaultNetworkChangeCallback();
+
+        synchronized (mHasRegisteredDefaultNetworkChangeCallback) {
+            mHasRegisteredDefaultNetworkChangeCallback = true;
+            mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback);
+            sendMessageDelayed(
+                    obtainMessage(EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK),
+                    DEFAULT_NETWORK_CHANGE_TIMEOUT_MS);
+        }
+    }
+
+    private void collectRequestNetworkMetrics(NetworkRequest networkRequest) {
+        // Request network for MMS will temporary disable the network on default data subscription,
+        // this only happen on multi-sim device.
+        if (mNumPhones > 1 && networkRequest.networkCapabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMS)) {
+            OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
+            onDemandDataSwitch.apn = TelephonyEvent.ApnType.MMS;
+            onDemandDataSwitch.state = TelephonyEvent.EventState.START;
+            TelephonyMetrics.getInstance().writeOnDemandDataSwitch(onDemandDataSwitch);
+        }
+    }
+
+    private void collectReleaseNetworkMetrics(NetworkRequest networkRequest) {
+        // Release network for MMS will recover the network on default data subscription, this only
+        // happen on multi-sim device.
+        if (mNumPhones > 1 && networkRequest.networkCapabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMS)) {
+            OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
+            onDemandDataSwitch.apn = TelephonyEvent.ApnType.MMS;
+            onDemandDataSwitch.state = TelephonyEvent.EventState.END;
+            TelephonyMetrics.getInstance().writeOnDemandDataSwitch(onDemandDataSwitch);
         }
     }
 
@@ -694,6 +784,7 @@ public class PhoneSwitcher extends Handler {
             return;
         }
 
+        logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.CBRS);
         // If validation feature is not supported, set it directly. Otherwise,
         // start validation on the subscription first.
         if (!CellularNetworkValidator.isValidationFeatureSupported()) {
@@ -709,6 +800,7 @@ public class PhoneSwitcher extends Handler {
      * from opportunistic subscription to primary subscription.
      */
     public void unsetOpportunisticDataSubscription() {
+        logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.CBRS);
         if (CellularNetworkValidator.isValidationFeatureSupported()
                 && mValidator.isValidating()) {
             mValidator.stopValidation();
@@ -754,6 +846,13 @@ public class PhoneSwitcher extends Handler {
     private void log(String l) {
         Rlog.d(LOG_TAG, l);
         mLocalLog.log(l);
+    }
+
+    private void logDataSwitchEvent(int state, int reason) {
+        DataSwitch dataSwitch = new DataSwitch();
+        dataSwitch.state = state;
+        dataSwitch.reason = reason;
+        TelephonyMetrics.getInstance().writeDataSwitch(dataSwitch);
     }
 
     public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
