@@ -742,8 +742,7 @@ public class PhoneSwitcher extends Handler {
         }
 
         return (phone.getForegroundCall().getState() == Call.State.ACTIVE
-                || phone.getBackgroundCall().getState() == Call.State.ACTIVE
-                || phone.getRingingCall().getState() == Call.State.ACTIVE);
+                || phone.getForegroundCall().getState() == Call.State.ALERTING);
     }
 
     private void updateHalCommandToUse() {
