@@ -21,6 +21,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
 import android.net.NetworkRequest;
+import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
@@ -413,20 +414,17 @@ public class ApnContext {
         }
     }
 
-    public void requestNetwork(NetworkRequest networkRequest,
-                               @RequestNetworkType int type, LocalLog log) {
+    public void requestNetwork(NetworkRequest networkRequest, @RequestNetworkType int type,
+                               Message onCompleteMsg, LocalLog log) {
         synchronized (mRefCountLock) {
-            if (mLocalLogs.contains(log) || mNetworkRequests.contains(networkRequest)) {
-                log.log("ApnContext.requestNetwork has duplicate add - " + mNetworkRequests.size());
-            } else {
-                mLocalLogs.add(log);
-                mNetworkRequests.add(networkRequest);
-                mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type);
-                if (mDataConnection != null) {
-                    // New network request added. Should re-evaluate properties of
-                    // the data connection. For example, the score may change.
-                    mDataConnection.reevaluateDataConnectionProperties();
-                }
+            mLocalLogs.add(log);
+            mNetworkRequests.add(networkRequest);
+            mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type,
+                    onCompleteMsg);
+            if (mDataConnection != null) {
+                // New network request added. Should re-evaluate properties of
+                // the data connection. For example, the score may change.
+                mDataConnection.reevaluateDataConnectionProperties();
             }
         }
     }

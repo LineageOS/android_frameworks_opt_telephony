@@ -111,6 +111,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -179,6 +180,12 @@ public class DcTracker extends Handler {
      * normal data release).
      */
     public static final int RELEASE_TYPE_HANDOVER = 3;
+
+    /** The extras for request network completion message */
+    static final String DATA_COMPLETE_MSG_EXTRA_NETWORK_REQUEST = "extra_network_request";
+    static final String DATA_COMPLETE_MSG_EXTRA_TRANSPORT_TYPE = "extra_transport_type";
+    static final String DATA_COMPLETE_MSG_EXTRA_REQUEST_TYPE = "extra_request_type";
+    static final String DATA_COMPLETE_MSG_EXTRA_SUCCESS = "extra_success";
 
     private final String mLogTag;
 
@@ -627,6 +634,13 @@ public class DcTracker extends Handler {
 
     private DataStallRecoveryHandler mDsRecoveryHandler;
 
+    /**
+     * Request network completion message map. Key is the APN type, value is the list of completion
+     * messages to be sent. Using a list because there might be multiple network requests for
+     * the same APN type.
+     */
+    private final Map<Integer, List<Message>> mRequestNetworkCompletionMsgs = new HashMap<>();
+
     //***** Constructor
     public DcTracker(Phone phone, int transportType) {
         super();
@@ -852,13 +866,13 @@ public class DcTracker extends Handler {
     }
 
     public void requestNetwork(NetworkRequest networkRequest, @RequestNetworkType int type,
-                               LocalLog log) {
+                               Message onCompleteMsg, LocalLog log) {
         final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsByType.get(apnType);
         log.log("DcTracker.requestNetwork for " + networkRequest + " found " + apnContext
                 + ", type=" + requestTypeToString(type));
         if (apnContext != null) {
-            apnContext.requestNetwork(networkRequest, type, log);
+            apnContext.requestNetwork(networkRequest, type, onCompleteMsg, log);
         }
     }
 
@@ -2268,20 +2282,44 @@ public class DcTracker extends Handler {
         return null;
     }
 
-    public void enableApn(@ApnSetting.ApnType int apnType, @RequestNetworkType int requestType) {
-        sendMessage(obtainMessage(DctConstants.EVENT_ENABLE_APN, apnType, requestType));
+    private void addRequestNetworkCompleteMsg(Message onCompleteMsg,
+                                              @ApnSetting.ApnType int apnType) {
+        if (onCompleteMsg != null) {
+            List<Message> messageList = mRequestNetworkCompletionMsgs.get(apnType);
+            if (messageList == null) messageList = new ArrayList<>();
+            messageList.add(onCompleteMsg);
+            mRequestNetworkCompletionMsgs.put(apnType, messageList);
+        }
     }
 
-    private void onEnableApn(@ApnSetting.ApnType int apnType, @RequestNetworkType int requestType) {
+    private void sendRequestNetworkCompleteMsg(Message message, boolean success, int transport,
+                                               @RequestNetworkType int requestType) {
+        if (message == null) return;
+
+        Bundle b = message.getData();
+        b.putBoolean(DATA_COMPLETE_MSG_EXTRA_SUCCESS, success);
+        b.putInt(DATA_COMPLETE_MSG_EXTRA_REQUEST_TYPE, requestType);
+        b.putInt(DATA_COMPLETE_MSG_EXTRA_TRANSPORT_TYPE, transport);
+        message.sendToTarget();
+    }
+
+    public void enableApn(@ApnSetting.ApnType int apnType, @RequestNetworkType int requestType,
+                          Message onCompleteMsg) {
+        sendMessage(obtainMessage(DctConstants.EVENT_ENABLE_APN, apnType, requestType,
+                onCompleteMsg));
+    }
+
+    private void onEnableApn(@ApnSetting.ApnType int apnType, @RequestNetworkType int requestType,
+                             Message onCompleteMsg) {
         ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext == null) {
             loge("onEnableApn(" + apnType + "): NO ApnContext");
+            sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType, requestType);
             return;
         }
 
-        boolean trySetup = false;
         String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
-                + ", request type=" + requestType;
+                + ", request type=" + requestTypeToString(requestType);
         if (DBG) log(str);
         apnContext.requestLog(str);
 
@@ -2291,6 +2329,7 @@ public class DcTracker extends Handler {
             str = "onEnableApn: dependency is not met.";
             if (DBG) log(str);
             apnContext.requestLog(str);
+            sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType, requestType);
             return;
         }
 
@@ -2298,11 +2337,22 @@ public class DcTracker extends Handler {
             DctConstants.State state = apnContext.getState();
             switch(state) {
                 case CONNECTING:
+                    if (DBG) log("onEnableApn: 'CONNECTING' so return");
+                    apnContext.requestLog("onEnableApn state=CONNECTING, so return");
+                    addRequestNetworkCompleteMsg(onCompleteMsg, apnType);
+                    return;
                 case CONNECTED:
+                    if (DBG) log("onEnableApn: 'CONNECTED' so return");
+                    apnContext.requestLog("onEnableApn state=CONNECTED, so return");
+
+                    sendRequestNetworkCompleteMsg(onCompleteMsg, true, mTransportType,
+                            requestType);
+                    return;
                 case DISCONNECTING:
-                    // We're "READY" and active so just return
-                    if (DBG) log("onEnableApn: 'ready' so return");
-                    apnContext.requestLog("onEnableApn state=" + state + ", so return");
+                    if (DBG) log("onEnableApn: 'DISCONNECTING' so return");
+                    apnContext.requestLog("onEnableApn state=DISCONNECTING, so return");
+                    sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType,
+                            requestType);
                     return;
                 case IDLE:
                     // fall through: this is unexpected but if it happens cleanup and try setup
@@ -2310,7 +2360,6 @@ public class DcTracker extends Handler {
                 case RETRYING:
                     // We're "READY" but not active so disconnect (cleanup = true) and
                     // connect (trySetup = true) to be sure we retry the connection.
-                    trySetup = true;
                     apnContext.setReason(Phone.REASON_DATA_ENABLED);
                     break;
             }
@@ -2323,12 +2372,14 @@ public class DcTracker extends Handler {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 apnContext.setState(DctConstants.State.IDLE);
             }
-            trySetup = true;
         }
         apnContext.setEnabled(true);
-        if (trySetup) {
-            apnContext.resetErrorCodeRetries();
-            trySetupData(apnContext, requestType);
+        apnContext.resetErrorCodeRetries();
+        if (trySetupData(apnContext, requestType)) {
+            addRequestNetworkCompleteMsg(onCompleteMsg, apnType);
+        } else {
+            sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType,
+                    requestType);
         }
     }
 
@@ -2346,7 +2397,7 @@ public class DcTracker extends Handler {
 
         boolean cleanup = false;
         String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
-                + ", release type=" + releaseType;
+                + ", release type=" + releaseTypeToString(releaseType);
         if (DBG) log(str);
         apnContext.requestLog(str);
 
@@ -2669,6 +2720,15 @@ public class DcTracker extends Handler {
      */
     private void onDataSetupComplete(ApnContext apnContext, boolean success, int cause,
                                      @RequestNetworkType int requestType) {
+        int apnType = ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType());
+        List<Message> messageList = mRequestNetworkCompletionMsgs.get(apnType);
+        if (messageList != null) {
+            for (Message msg : messageList) {
+                sendRequestNetworkCompleteMsg(msg, success, mTransportType, requestType);
+            }
+            messageList.clear();
+        }
+
         if (success) {
             DataConnection dataConnection = apnContext.getDataConnection();
 
@@ -3509,7 +3569,7 @@ public class DcTracker extends Handler {
                 break;
 
             case DctConstants.EVENT_ENABLE_APN:
-                onEnableApn(msg.arg1, msg.arg2);
+                onEnableApn(msg.arg1, msg.arg2, (Message) msg.obj);
                 break;
 
             case DctConstants.EVENT_DISABLE_APN:

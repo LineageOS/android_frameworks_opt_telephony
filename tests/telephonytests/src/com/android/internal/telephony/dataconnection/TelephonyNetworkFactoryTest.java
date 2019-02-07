@@ -118,7 +118,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         doAnswer(invocation -> {
             mNetworkRequestList.add((NetworkRequest) invocation.getArguments()[0]);
             return null;
-        }).when(mDcTracker).requestNetwork(any(), anyInt(), any());
+        }).when(mDcTracker).requestNetwork(any(), anyInt(), any(), any());
 
         doAnswer(invocation -> {
             mNetworkRequestList.remove((NetworkRequest) invocation.getArguments()[0]);
