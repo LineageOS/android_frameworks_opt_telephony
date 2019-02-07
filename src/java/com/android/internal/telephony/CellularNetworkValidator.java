@@ -25,6 +25,9 @@ import android.os.Handler;
 import android.telephony.SubscriptionManager;
 import android.util.Log;
 
+import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
+
 /**
  * This class will validate whether cellular network verified by Connectivity's
  * validation process. It listens request on a specific subId, sends a network request
@@ -186,6 +189,10 @@ public class CellularNetworkValidator {
                 mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
                 mState = STATE_IDLE;
             }
+
+            TelephonyMetrics.getInstance().writeNetworkValidate(
+                    passed ? TelephonyEvent.NetworkValidationState.PASSED
+                            : TelephonyEvent.NetworkValidationState.FAILED);
         }
 
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
@@ -203,6 +210,10 @@ public class CellularNetworkValidator {
         @Override
         public void onAvailable(Network network) {
             logd("network onAvailable " + network);
+            if (ConnectivityNetworkCallback.this.mSubId == CellularNetworkValidator.this.mSubId) {
+                TelephonyMetrics.getInstance().writeNetworkValidate(
+                        TelephonyEvent.NetworkValidationState.AVAILABLE);
+            }
         }
 
         @Override
