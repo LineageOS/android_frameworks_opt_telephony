@@ -16,13 +16,19 @@
 
 package com.android.internal.telephony.ims;
 
+import static android.provider.Telephony.RcsColumns.Rcs1To1ThreadColumns.FALLBACK_THREAD_ID_COLUMN;
+import static android.provider.Telephony.RcsColumns.RcsGroupThreadColumns.GROUP_ICON_COLUMN;
+import static android.provider.Telephony.RcsColumns.RcsGroupThreadColumns.GROUP_NAME_COLUMN;
+import static android.provider.Telephony.RcsColumns.RcsGroupThreadColumns.OWNER_PARTICIPANT_COLUMN;
+import static android.telephony.ims.RcsThreadQueryParameters.THREAD_TYPE_GROUP;
+
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.doReturn;
 
 import android.content.ContentValues;
 import android.net.Uri;
+import android.os.RemoteException;
 import android.telephony.ims.RcsParticipant;
 import android.telephony.ims.RcsThreadQueryParameters;
 import android.test.mock.MockContentResolver;
@@ -68,16 +74,22 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     public void testGetRcsThreads() {
         doReturn(123).when(mMockParticipant).getId();
         RcsThreadQueryParameters queryParameters =
-                RcsThreadQueryParameters.builder().withParticipant(mMockParticipant).isGroupThread(
-                        true).limitResultsTo(30).sort(true).build();
+                new RcsThreadQueryParameters.Builder().setParticipant(mMockParticipant)
+                        .setThreadType(THREAD_TYPE_GROUP).setResultLimit(30).build();
 
-        mFakeRcsProvider.setExpectedQueryParameters(Uri.parse("content://rcs/thread"),
-                new String[]{"_id"}, null, null, "ASCENDING");
-        mRcsMessageStoreController.getRcsThreads(queryParameters);
+        // TODO - limit the query as per queryParameters. This will change how the query is executed
+        mFakeRcsProvider.setExpectedQueryParameters(Uri.parse("content://rcs/thread"), null, null,
+                null, null);
+
+        try {
+            mRcsMessageStoreController.getRcsThreads(queryParameters);
+        } catch (RemoteException e) {
+            // eat the exception as there is no provider - we care about the expected update assert
+        }
     }
 
     @Test
-    public void testCreateRcsParticipant() {
+    public void testCreateRcsParticipant() throws RemoteException {
         // verify the first query to existing canonical addresses
         mFakeMmsSmsProvider.setExpectedQueryParameters(
                 Uri.parse("content://mms-sms/canonical-addresses"), new String[]{"_id"},
@@ -98,27 +110,79 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
         mFakeRcsProvider.setExpectedInsertParameters(Uri.parse("content://rcs/participant"),
                 expectedRcsValues);
 
-        RcsParticipant participant = mRcsMessageStoreController.createRcsParticipant("+5551234567");
+        int participantId = mRcsMessageStoreController.createRcsParticipant("+5551234567", "alias");
 
-        assertThat(participant.getId()).isEqualTo(1001);
-        assertThat(participant.getCanonicalAddress()).isEqualTo("+5551234567");
+        assertThat(participantId).isEqualTo(1001);
     }
 
     @Test
     public void testUpdateRcsParticipantAlias() {
         ContentValues contentValues = new ContentValues(1);
         contentValues.put("rcs_alias", "New Alias");
-        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/participant"),
-                contentValues, "_id=?", new String[]{"551"});
+        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/participant/551"),
+                contentValues, null, null);
 
-        mRcsMessageStoreController.updateRcsParticipantAlias(551, "New Alias");
+        try {
+            mRcsMessageStoreController.setRcsParticipantAlias(551, "New Alias");
+        } catch (RemoteException e) {
+            // eat the exception as there is no provider - we care about the expected update assert
+        }
     }
 
-    /**
-     * TODO(sahinc): fix the test once there is an implementation in place
-     */
     @Test
-    public void testGetMessageCount() {
-        assertEquals(1018, mRcsMessageStoreController.getMessageCount(0));
+    public void testSet1To1ThreadFallbackThreadId() {
+        ContentValues contentValues = new ContentValues(1);
+        contentValues.put(FALLBACK_THREAD_ID_COLUMN, 456L);
+        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/p2p_thread/123"),
+                contentValues, null, null);
+        try {
+            mRcsMessageStoreController.set1To1ThreadFallbackThreadId(123, 456L);
+        } catch (RemoteException e) {
+            // eat the exception as there is no provider - we care about the expected update assert
+        }
+    }
+
+    @Test
+    public void testSetGroupThreadName() {
+        ContentValues contentValues = new ContentValues(1);
+        contentValues.put(GROUP_NAME_COLUMN, "new name");
+        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/group_thread/345"),
+                contentValues, null, null);
+
+        try {
+            mRcsMessageStoreController.setGroupThreadName(345, "new name");
+        } catch (RemoteException e) {
+            // eat the exception as there is no provider - we care about the expected update assert
+        }
+    }
+
+    @Test
+    public void testSetGroupThreadIcon() {
+        ContentValues contentValues = new ContentValues(1);
+        contentValues.put(GROUP_ICON_COLUMN, "newIcon");
+        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/group_thread/345"),
+                contentValues, null, null);
+
+        try {
+            mRcsMessageStoreController.setGroupThreadIcon(345, Uri.parse("newIcon"));
+        } catch (RemoteException e) {
+            // eat the exception as there is no provider - we care about the expected update assert
+        }
+    }
+
+    @Test
+    public void testSetGroupThreadOwner() {
+        ContentValues contentValues = new ContentValues(1);
+        contentValues.put(OWNER_PARTICIPANT_COLUMN, 9);
+        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/group_thread/454"),
+                contentValues, null, null);
+
+        RcsParticipant participant = new RcsParticipant(9);
+
+        try {
+            mRcsMessageStoreController.setGroupThreadOwner(454, participant.getId());
+        } catch (RemoteException e) {
+            // eat the exception as there is no provider - we care about the expected update assert
+        }
     }
 }
