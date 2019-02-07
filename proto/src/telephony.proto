@@ -677,6 +677,71 @@ message TelephonyEvent {
 
     // Phone status change event.
     PHONE_STATUS_CHANGED = 15;
+
+    // Data switch event.
+    DATA_SWITCH = 16;
+
+    // Network validate event.
+    NETWORK_VALIDATE = 17;
+
+    // On deman data switch event.
+    ON_DEMAND_DATA_SWITCH = 18;
+  }
+
+  enum ApnType {
+      DEFAULT = 0;
+      MMS = 1;
+      SUPL = 2;
+      DUN = 3;
+      HIPRI = 4;
+      FOTA = 5;
+      IMS = 6;
+      CBS = 7;
+      IA = 8;
+      EMERGENCY = 9;
+  }
+
+  enum EventState {
+      START = 0;
+      END = 1;
+  }
+
+  enum NetworkValidationState {
+      /** The network under validation is initial established. */
+      AVAILABLE = 0;
+
+      /** The validation is failed. */
+      FAILED = 1;
+
+      /** The validation is passed. */
+      PASSED = 2;
+  }
+
+  message DataSwitch {
+      enum Reason {
+          /** Data switch caused by user's manual switch. */
+          MANUAL = 0;
+
+          /** Data switch caused by incoming/outgoing call. */
+          IN_CALL = 1;
+
+          /** Data switch caused by CBRS switch. */
+          CBRS = 2;
+      }
+
+      /** The reason for data switch. */
+      optional Reason reason = 1;
+
+      /** Current state of the data switch event. */
+      optional EventState state = 2;
+  }
+
+  message OnDemandDataSwitch {
+      /** The apn associated with this event. */
+      optional ApnType apn = 1;
+
+      /** Current state of the on demand data switch event. */
+      optional EventState state = 2;
   }
 
   // Setup a packet data connection
@@ -1535,6 +1600,15 @@ message TelephonyEvent {
 
   // Phone status
   optional PhoneStatus phone_status = 18;
+
+  // Data switch event
+  optional DataSwitch data_switch = 19;
+
+  // For network validate event
+  optional NetworkValidationState network_validation_state = 20;
+
+  // On demand data switch event
+  optional OnDemandDataSwitch on_demand_data_switch = 21;
 }
 
 message ActiveSubscriptionInfo {
