@@ -1682,8 +1682,13 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (ACTION_OPEN_SMS_APP.equals(intent.getAction())) {
-                context.startActivity(context.getPackageManager().getLaunchIntentForPackage(
-                    Telephony.Sms.getDefaultSmsPackage(context)));
+                // do nothing if the user had not unlocked the device yet
+                UserManager userManager =
+                        (UserManager) context.getSystemService(Context.USER_SERVICE);
+                if (!userManager.isUserUnlocked()) {
+                    context.startActivity(context.getPackageManager().getLaunchIntentForPackage(
+                            Telephony.Sms.getDefaultSmsPackage(context)));
+                }
             }
         }
     }
