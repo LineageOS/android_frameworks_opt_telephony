@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony.emergency;
 
+import android.content.Context;
+import android.location.Country;
+import android.location.CountryDetector;
+import android.location.CountryListener;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -70,6 +74,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private final CommandsInterface mCi;
     private final Phone mPhone;
+    private CountryDetector mCountryDetector;
     private String mCountryIso;
 
     private static final String EMERGENCY_NUMBER_DB_ASSETS_FILE = "eccdata";
@@ -97,6 +102,17 @@ public class EmergencyNumberTracker extends Handler {
     public EmergencyNumberTracker(Phone phone, CommandsInterface ci) {
         mPhone = phone;
         mCi = ci;
+        if (mPhone != null) {
+            mCountryDetector = (CountryDetector) mPhone.getContext().getSystemService(
+                    Context.COUNTRY_DETECTOR);
+            if (mCountryDetector != null) {
+                mCountryDetector.addCountryListener(new CountryListener() {
+                    public void onCountryDetected(Country country) {
+                        updateEmergencyNumberDatabaseCountryChange(country.getCountryIso());
+                    }
+                }, getLooper());
+            }
+        }
         initializeDatabaseEmergencyNumberList();
         mCi.registerForEmergencyNumberList(this, EVENT_UNSOL_EMERGENCY_NUMBER_LIST, null);
     }
@@ -143,11 +159,23 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     private void initializeDatabaseEmergencyNumberList() {
-        mCountryIso = getInitialCountryIso().toLowerCase();
-        cacheEmergencyDatabaseByCountry(mCountryIso);
+        // If country iso has been cached when listener is set, don't need to cache the initial
+        // country iso and initial database.
+        if (mCountryIso == null) {
+            mCountryIso = getInitialCountryIso().toLowerCase();
+            cacheEmergencyDatabaseByCountry(mCountryIso);
+        }
     }
 
     private String getInitialCountryIso() {
+        Country country = null;
+        if (mCountryDetector != null) {
+            country = mCountryDetector.detectCountry();
+            if (country != null) {
+                return country.getCountryIso();
+            }
+        }
+        // Fallback to Telephony's country detector if there are issues with CountryDetector
         if (mPhone != null) {
             ServiceStateTracker sst = mPhone.getServiceStateTracker();
             if (sst != null) {
@@ -216,7 +244,7 @@ public class EmergencyNumberTracker extends Handler {
                     mPhone.getContext().getAssets().open(EMERGENCY_NUMBER_DB_ASSETS_FILE));
             allEccMessages = ProtobufEccData.AllInfo.parseFrom(readInputStreamToByteArray(
                     new GZIPInputStream(inputStream)));
-            logd("Emergency database is loaded. ");
+            logd(countryIso + " emergency database is loaded. ");
             for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
                 if (countryEccInfo.isoCode.equals(countryIso.toUpperCase())) {
                     for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
