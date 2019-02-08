@@ -91,7 +91,7 @@ import android.os.ServiceManager;
 import android.provider.Telephony;
 import android.telephony.Rlog;
 import android.telephony.ims.RcsEventQueryParams;
-import android.telephony.ims.RcsEventQueryResult;
+import android.telephony.ims.RcsEventQueryResultDescriptor;
 import android.telephony.ims.RcsFileTransferCreationParams;
 import android.telephony.ims.RcsIncomingMessageCreationParams;
 import android.telephony.ims.RcsMessageQueryParams;
@@ -227,7 +227,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsEventQueryResult getEvents(RcsEventQueryParams queryParameters)
+    public RcsEventQueryResultDescriptor getEvents(RcsEventQueryParams queryParameters)
             throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(EVENT_QUERY_PARAMETERS_KEY, queryParameters);
@@ -235,7 +235,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsEventQueryResult getEventsWithToken(
+    public RcsEventQueryResultDescriptor getEventsWithToken(
             RcsQueryContinuationToken continuationToken) throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(QUERY_CONTINUATION_TOKEN, continuationToken);
