@@ -440,6 +440,15 @@ public class GsmCdmaPhone extends Phone {
         mSST.updatePhoneType();
         setPhoneName(precisePhoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA");
         onUpdateIccAvailability();
+        // if is possible that onUpdateIccAvailability() does not unregister and re-register for
+        // ICC events, for example if mUiccApplication does not change which can happen if phone
+        // type is transitioning from CDMA to GSM but 3gpp2 application was not available.
+        // To handle such cases, unregister and re-register here. They still need to be called in
+        // onUpdateIccAvailability(), since in normal cases register/unregister calls can be on
+        // different IccRecords objects. Here they are on the same IccRecords object.
+        unregisterForIccRecordEvents();
+        registerForIccRecordEvents();
+
         mCT.updatePhoneType();
 
         int radioState = mCi.getRadioState();
