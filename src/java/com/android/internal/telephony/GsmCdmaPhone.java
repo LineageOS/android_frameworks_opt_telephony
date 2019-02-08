@@ -1296,9 +1296,9 @@ public class GsmCdmaPhone extends Phone {
             if (DBG) logd("dialInternal: dialing w/ mmi '" + mmi + "'...");
 
             if (mmi == null) {
-                return mCT.dial(newDialString, dialArgs.uusInfo, dialArgs.intentExtras);
+                return mCT.dialGsm(newDialString, dialArgs.uusInfo, dialArgs.intentExtras);
             } else if (mmi.isTemporaryModeCLIR()) {
-                return mCT.dial(mmi.mDialingNumber, mmi.getCLIRMode(), dialArgs.uusInfo,
+                return mCT.dialGsm(mmi.mDialingNumber, mmi.getCLIRMode(), dialArgs.uusInfo,
                         dialArgs.intentExtras);
             } else {
                 mPendingMMIs.add(mmi);
@@ -1307,7 +1307,7 @@ public class GsmCdmaPhone extends Phone {
                 return null;
             }
         } else {
-            return mCT.dial(newDialString);
+            return mCT.dial(newDialString, dialArgs.intentExtras);
         }
     }
 

@@ -563,9 +563,9 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-                     int clirMode, Message result) {
+                     boolean hasKnownUserIntentEmergency, int clirMode, Message result) {
         SimulatedCommandsVerifier.getInstance().dial(address, isEmergencyCall,
-                emergencyNumberInfo, clirMode, result);
+                emergencyNumberInfo, hasKnownUserIntentEmergency, clirMode, result);
         simulatedCallState.onDial(address);
 
         resultSuccess(result, null);
@@ -584,9 +584,10 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-                     int clirMode, UUSInfo uusInfo, Message result) {
+                     boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo,
+                     Message result) {
         SimulatedCommandsVerifier.getInstance().dial(address, isEmergencyCall,
-                emergencyNumberInfo, clirMode, uusInfo, result);
+                emergencyNumberInfo, hasKnownUserIntentEmergency, clirMode, uusInfo, result);
         simulatedCallState.onDial(address);
 
         resultSuccess(result, null);
