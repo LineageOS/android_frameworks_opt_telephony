@@ -31,6 +31,9 @@ import static com.android.internal.telephony.nano.TelephonyProto.TelephonySettin
 
 import android.os.SystemClock;
 
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.PhoneStatus;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Type;
+
 public class TelephonyEventBuilder {
     private final TelephonyEvent mEvent = new TelephonyEvent();
 
@@ -131,6 +134,15 @@ public class TelephonyEventBuilder {
     public TelephonyEventBuilder setCarrierKeyChange(CarrierKeyChange carrierKeyChange) {
         mEvent.type = TelephonyEvent.Type.CARRIER_KEY_CHANGED;
         mEvent.carrierKeyChange = carrierKeyChange;
+        return this;
+    }
+
+    /**
+     * Set and build phone status changed event.
+     */
+    public TelephonyEventBuilder setPhoneStatusChange(PhoneStatus phoneStatus) {
+        mEvent.type = Type.PHONE_STATUS_CHANGED;
+        mEvent.phoneStatus = phoneStatus;
         return this;
     }
 }

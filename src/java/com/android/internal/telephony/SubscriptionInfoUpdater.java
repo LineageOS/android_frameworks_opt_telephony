@@ -51,6 +51,7 @@ import android.text.TextUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
@@ -781,6 +782,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
                     + " for phone: " + phoneId);
             mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+            TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
     }
 
@@ -800,6 +802,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED " + simStateString(state)
                     + " for phone: " + phoneId);
             mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+            TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
     }
 

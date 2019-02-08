@@ -48,6 +48,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
@@ -279,19 +280,25 @@ public class SubscriptionController extends ISub.Stub {
         mContext.sendBroadcast(intent);
      }
 
-     public void notifySubscriptionInfoChanged() {
-         ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                 "telephony.registry"));
-         try {
-             if (DBG) logd("notifySubscriptionInfoChanged:");
-             tr.notifySubscriptionInfoChanged();
-         } catch (RemoteException ex) {
-             // Should never happen because its always available.
-         }
+    /**
+     * Notify the changed of subscription info.
+     */
+    public void notifySubscriptionInfoChanged() {
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
+                "telephony.registry"));
+        try {
+            if (DBG) logd("notifySubscriptionInfoChanged:");
+            tr.notifySubscriptionInfoChanged();
+        } catch (RemoteException ex) {
+            // Should never happen because its always available.
+        }
 
-         // FIXME: Remove if listener technique accepted.
-         broadcastSimInfoContentChanged();
-     }
+        // FIXME: Remove if listener technique accepted.
+        broadcastSimInfoContentChanged();
+
+        TelephonyMetrics metrics = TelephonyMetrics.getInstance();
+        metrics.updateActiveSubscriptionInfoList(mCacheActiveSubInfoList);
+    }
 
     /**
      * New SubInfoRecord instance and fill in detail info
