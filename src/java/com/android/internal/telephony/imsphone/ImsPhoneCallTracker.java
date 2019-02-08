@@ -791,6 +791,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mPendingMO = new ImsPhoneConnection(mPhone,
                     checkForTestEmergencyNumber(dialString), this, mForegroundCall,
                     isEmergencyNumber);
+            if (isEmergencyNumber && dialArgs != null && dialArgs.intentExtras != null) {
+                Rlog.i(LOG_TAG, "dial ims emergency dialer: " + dialArgs.intentExtras.getBoolean(
+                        TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
+                mPendingMO.setHasKnownUserIntentEmergency(dialArgs.intentExtras.getBoolean(
+                        TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
+            }
             mPendingMO.setVideoState(videoState);
             if (dialArgs.rttTextStream != null) {
                 log("dial: setting RTT stream on mPendingMO");
@@ -1134,7 +1140,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private void setEmergencyCallInfo(ImsCallProfile profile, Connection conn) {
         EmergencyNumber num = conn.getEmergencyNumberInfo();
         if (num != null) {
-            profile.setEmergencyCallInfo(num);
+            profile.setEmergencyCallInfo(num, conn.hasKnownUserIntentEmergency());
         }
     }
 
