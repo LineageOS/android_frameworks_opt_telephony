@@ -42,7 +42,6 @@ import java.util.List;
 /**
  * Unit tests for the {@link ImsExternalCallTracker}.
  */
-@Ignore
 public class ImsExternalCallTrackerTest {
     private static final Uri TEST_ADDRESS = Uri.parse("tel:6505551212");
     private static final int CALL_ID = 1;
@@ -64,6 +63,7 @@ public class ImsExternalCallTrackerTest {
 
     @FlakyTest
     @Test
+    @Ignore
     public void testAddExternalCall() {
         List<ImsExternalCallState> dep = new ArrayList<>();
         dep.add(
@@ -87,6 +87,7 @@ public class ImsExternalCallTrackerTest {
 
     @FlakyTest
     @Test
+    @Ignore
     public void testRemoveExternalCall() {
         testAddExternalCall();
 
