@@ -26,14 +26,11 @@ import static org.junit.Assert.assertEquals;
 
 import android.os.Looper;
 
-import androidx.test.filters.FlakyTest;
-
 import org.junit.Ignore;
 
 /**
  * Test cases for SMS short code pattern matching in SmsUsageMonitor.
  */
-@Ignore
 public class SmsUsageMonitorShortCodeTest {
 
     private static final class ShortCodeTest {
@@ -461,7 +458,7 @@ public class SmsUsageMonitorShortCodeTest {
             new ShortCodeTest(null, "112", CATEGORY_NOT_SHORT_CODE),
     };
 
-    @FlakyTest
+    @Ignore
     public void testSmsUsageMonitor() {
         // InstrumentationTestRunner prepares a looper, but AndroidJUnitRunner does not.
         // http://b/25897652 .
