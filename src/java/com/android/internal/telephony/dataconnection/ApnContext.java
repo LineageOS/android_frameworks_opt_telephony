@@ -21,6 +21,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
 import android.net.NetworkRequest;
+import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
@@ -39,6 +40,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -145,7 +147,6 @@ public class ApnContext {
     public synchronized DataConnection getDataConnection() {
         return mDataConnection;
     }
-
 
     /**
      * Set the associated data connection.
@@ -413,15 +414,17 @@ public class ApnContext {
         }
     }
 
-    public void requestNetwork(NetworkRequest networkRequest,
-                               @RequestNetworkType int type, LocalLog log) {
+    public void requestNetwork(NetworkRequest networkRequest, @RequestNetworkType int type,
+                               Message onCompleteMsg, LocalLog log) {
         synchronized (mRefCountLock) {
-            if (mLocalLogs.contains(log) || mNetworkRequests.contains(networkRequest)) {
-                log.log("ApnContext.requestNetwork has duplicate add - " + mNetworkRequests.size());
-            } else {
-                mLocalLogs.add(log);
-                mNetworkRequests.add(networkRequest);
-                mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type);
+            mLocalLogs.add(log);
+            mNetworkRequests.add(networkRequest);
+            mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type,
+                    onCompleteMsg);
+            if (mDataConnection != null) {
+                // New network request added. Should re-evaluate properties of
+                // the data connection. For example, the score may change.
+                mDataConnection.reevaluateDataConnectionProperties();
             }
         }
     }
@@ -439,6 +442,11 @@ public class ApnContext {
                         + networkRequest + ")");
             } else {
                 mNetworkRequests.remove(networkRequest);
+                if (mDataConnection != null) {
+                    // New network request added. Should re-evaluate properties of
+                    // the data connection. For example, the score may change.
+                    mDataConnection.reevaluateDataConnectionProperties();
+                }
                 log.log("ApnContext.releaseNetwork left with " + mNetworkRequests.size() +
                         " requests.");
                 if (mNetworkRequests.size() == 0
@@ -628,6 +636,12 @@ public class ApnContext {
             Rlog.d(SLOG_TAG, "Unsupported NetworkRequest in Telephony: nr=" + nr);
         }
         return apnType;
+    }
+
+    public List<NetworkRequest> getNetworkRequests() {
+        synchronized (mRefCountLock) {
+            return new ArrayList<NetworkRequest>(mNetworkRequests);
+        }
     }
 
     @Override
