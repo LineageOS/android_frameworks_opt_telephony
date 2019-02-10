@@ -327,7 +327,7 @@ public class DataServiceManager {
 
         PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
 
-        if (b != null) {
+        if (b != null && !TextUtils.isEmpty(b.getString(carrierConfig))) {
             // If carrier config overrides it, use the one from carrier config
             packageName = b.getString(carrierConfig, packageName);
         }

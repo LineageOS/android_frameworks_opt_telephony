@@ -35,6 +35,7 @@ import android.telephony.INetworkServiceCallback;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.NetworkService;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import java.util.Hashtable;
 import java.util.Map;
@@ -219,7 +220,7 @@ public class NetworkRegistrationManager {
 
         PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
 
-        if (b != null) {
+        if (b != null && !TextUtils.isEmpty(b.getString(carrierConfig))) {
             // If carrier config overrides it, use the one from carrier config
             packageName = b.getString(carrierConfig, packageName);
         }
