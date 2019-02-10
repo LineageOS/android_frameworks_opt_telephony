@@ -55,8 +55,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.telephony.ims.RcsFileTransferCreationParameters;
-import android.telephony.ims.RcsMessageCreationParameters;
+import android.telephony.ims.RcsFileTransferCreationParams;
+import android.telephony.ims.RcsMessageCreationParams;
 import android.telephony.ims.RcsMessageQueryResult;
 import android.telephony.ims.RcsQueryContinuationToken;
 
@@ -108,12 +108,12 @@ class RcsMessageQueryHelper {
     }
 
     void createContentValuesForGenericMessage(ContentValues contentValues, int threadId,
-            RcsMessageCreationParameters rcsMessageCreationParameters) {
-        contentValues.put(GLOBAL_ID_COLUMN, rcsMessageCreationParameters.getRcsMessageGlobalId());
-        contentValues.put(SUB_ID_COLUMN, rcsMessageCreationParameters.getSubId());
-        contentValues.put(STATUS_COLUMN, rcsMessageCreationParameters.getMessageStatus());
+            RcsMessageCreationParams rcsMessageCreationParams) {
+        contentValues.put(GLOBAL_ID_COLUMN, rcsMessageCreationParams.getRcsMessageGlobalId());
+        contentValues.put(SUB_ID_COLUMN, rcsMessageCreationParams.getSubId());
+        contentValues.put(STATUS_COLUMN, rcsMessageCreationParams.getMessageStatus());
         contentValues.put(ORIGINATION_TIMESTAMP_COLUMN,
-                rcsMessageCreationParameters.getOriginationTimestamp());
+                rcsMessageCreationParams.getOriginationTimestamp());
         contentValues.put(RCS_THREAD_ID_COLUMN, threadId);
     }
 
@@ -179,7 +179,7 @@ class RcsMessageQueryHelper {
     }
 
     ContentValues getContentValuesForFileTransfer(
-            RcsFileTransferCreationParameters fileTransferCreationParameters) {
+            RcsFileTransferCreationParams fileTransferCreationParameters) {
         ContentValues contentValues = new ContentValues();
         contentValues.put(SESSION_ID_COLUMN,
                 fileTransferCreationParameters.getRcsFileTransferSessionId());

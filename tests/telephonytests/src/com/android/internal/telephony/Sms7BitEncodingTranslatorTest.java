@@ -23,8 +23,6 @@ import static org.mockito.Mockito.doReturn;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
-import androidx.test.filters.FlakyTest;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -33,7 +31,6 @@ import org.mockito.Mock;
 
 import java.io.UnsupportedEncodingException;
 
-@Ignore
 public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
 
     @Mock
@@ -53,14 +50,14 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
         super.tearDown();
     }
 
-    @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testNoTranslate() {
         assertEquals("123", Sms7BitEncodingTranslator.translate("123"));
     }
 
-    @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testCommonTranslate() {
@@ -74,7 +71,7 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
         assertEquals("OIA", Sms7BitEncodingTranslator.translate(s));
     }
 
-    @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testGsmTranslate() {
@@ -88,7 +85,7 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
         assertEquals("??Ç", Sms7BitEncodingTranslator.translate(s));
     }
 
-    @FlakyTest
+    @Ignore
     @Test
     @SmallTest
     public void testCdmaTranslate() {

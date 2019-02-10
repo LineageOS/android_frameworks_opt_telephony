@@ -17,6 +17,7 @@
 package com.android.internal.telephony.emergency;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
 
 import android.os.AsyncResult;
 import android.os.HandlerThread;
@@ -58,6 +59,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("EmergencyNumberTrackerTest +Setup!");
         super.setUp("EmergencyNumberTrackerTest");
+        doReturn(mContext).when(mPhone).getContext();
         initializeEmergencyNumberListTestSamples();
         mHandlerThread = new EmergencyNumberTrackerTestHandler("EmergencyNumberTrackerTestHandler");
         mHandlerThread.start();

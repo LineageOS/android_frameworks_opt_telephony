@@ -45,6 +45,8 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
@@ -69,10 +71,12 @@ import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
+import com.android.internal.telephony.nano.TelephonyProto.ActiveSubscriptionInfo;
 import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
+import com.android.internal.telephony.nano.TelephonyProto.SimState;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.CallState;
@@ -82,7 +86,10 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatchingResult;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.PhoneStatus;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall.DeactivateReason;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCall;
@@ -168,6 +175,25 @@ public class TelephonyMetrics {
     private final SparseArray<TelephonySettings> mLastSettings = new SparseArray<>();
 
     /**
+     * Last sim state, indexed by phone id.
+     */
+    private final SparseArray<Integer> mLastSimState = new SparseArray<>();
+
+    /**
+     * Last active subscription information, indexed by phone id.
+     */
+    private final SparseArray<ActiveSubscriptionInfo> mLastActiveSubscriptionInfos =
+            new SparseArray<>();
+
+    /**
+     * The last modem state represent by a bitmap, the i-th bit(LSB) indicates the i-th modem
+     * state(0 - disabled, 1 - enabled).
+     *
+     * TODO: initialize the enabled modem bitmap when it's possible to get the modem state.
+     */
+    private int mLastEnabledModemBitmap = (1 << TelephonyManager.getDefault().getPhoneCount()) - 1;
+
+    /**
      * Last carrier id matching.
      */
     private final SparseArray<CarrierIdMatching> mLastCarrierId = new SparseArray<>();
@@ -182,7 +208,8 @@ public class TelephonyMetrics {
     private boolean mTelephonyEventsDropped = false;
 
     public TelephonyMetrics() {
-        reset();
+        mStartSystemTimeMs = System.currentTimeMillis();
+        mStartElapsedTimeMs = SystemClock.elapsedRealtime();
     }
 
     /**
@@ -569,6 +596,8 @@ public class TelephonyMetrics {
                     .setCarrierIdMatching(mLastCarrierId.get(key)).build();
             addTelephonyEvent(event);
         }
+
+        writePhoneStatusChangedEvent();
     }
 
     /**
@@ -626,6 +655,56 @@ public class TelephonyMetrics {
         log.endTime.systemTimestampMillis = System.currentTimeMillis();
         log.endTime.elapsedTimestampMillis = SystemClock.elapsedRealtime();
         return log;
+    }
+
+    /** Update the sim state. */
+    public void updateSimState(int phoneId, int simState) {
+        int state = mapSimStateToProto(simState);
+        Integer lastSimState = mLastSimState.get(phoneId);
+        if (lastSimState == null || !lastSimState.equals(state)) {
+            mLastSimState.put(phoneId, state);
+            writePhoneStatusChangedEvent();
+        }
+    }
+
+    /** Update active subscription info list. */
+    public void updateActiveSubscriptionInfoList(List<SubscriptionInfo> subInfos) {
+        mLastActiveSubscriptionInfos.clear();
+        for (SubscriptionInfo info : subInfos) {
+            int phoneId = SubscriptionManager.getPhoneId(info.getSubscriptionId());
+            ActiveSubscriptionInfo activeSubscriptionInfo = new ActiveSubscriptionInfo();
+            activeSubscriptionInfo.isOpportunistic = info.isOpportunistic();
+            activeSubscriptionInfo.carrierId = info.getCarrierId();
+            mLastActiveSubscriptionInfos.put(phoneId, activeSubscriptionInfo);
+        }
+    }
+
+    /** Update the enabled modem bitmap. */
+    public void updateEnabledModemBitmap(int enabledModemBitmap) {
+        if (mLastEnabledModemBitmap == enabledModemBitmap) return;
+        mLastEnabledModemBitmap = enabledModemBitmap;
+        writePhoneStatusChangedEvent();
+    }
+
+    /** Write the event of phone status changed. */
+    public void writePhoneStatusChangedEvent() {
+        int phoneCount = TelephonyManager.getDefault().getPhoneCount();
+        PhoneStatus phoneStatus = new PhoneStatus();
+        phoneStatus.enabledModemBitmap = mLastEnabledModemBitmap;
+        phoneStatus.simState = new int[phoneCount];
+        Arrays.fill(phoneStatus.simState, SimState.SIM_STATE_ABSENT);
+        for (int i = 0; i < mLastSimState.size(); i++) {
+            int phoneId = mLastSimState.keyAt(i);
+            if (SubscriptionManager.isValidPhoneId(phoneId)) {
+                phoneStatus.simState[phoneId] = mLastSimState.get(phoneId);
+            }
+        }
+
+        // Phone status is not associated with any phone id, so set the phone id to -1 for the phone
+        // status changed event.
+        addTelephonyEvent(new TelephonyEventBuilder(-1 /* phoneId */)
+                .setPhoneStatusChange(phoneStatus)
+                .build());
     }
 
     /**
@@ -1629,6 +1708,32 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write network validation event.
+     * @param networkValidationState the network validation state.
+     */
+    public void writeNetworkValidate(int networkValidationState) {
+        addTelephonyEvent(
+                new TelephonyEventBuilder().setNetworkValidate(networkValidationState).build());
+    }
+
+    /**
+     * Write data switch event.
+     * @param dataSwitch the reason and state of data switch.
+     */
+    public void writeDataSwitch(DataSwitch dataSwitch) {
+        addTelephonyEvent(new TelephonyEventBuilder().setDataSwitch(dataSwitch).build());
+    }
+
+    /**
+     * Write on demand data switch event.
+     * @param onDemandDataSwitch the apn and state of on demand data switch.
+     */
+    public void writeOnDemandDataSwitch(OnDemandDataSwitch onDemandDataSwitch) {
+        addTelephonyEvent(
+                new TelephonyEventBuilder().setOnDemandDataSwitch(onDemandDataSwitch).build());
+    }
+
+    /**
      * Write phone state changed event
      *
      * @param phoneId Phone id
@@ -2343,4 +2448,15 @@ public class TelephonyMetrics {
     public void writeOnImsCallResumeFailed(int phoneId, ImsCallSession session,
                                            ImsReasonInfo reasonInfo) {}
     public void writeOnRilTimeoutResponse(int phoneId, int rilSerial, int rilRequest) {}
+
+    private static int mapSimStateToProto(int simState) {
+        switch (simState) {
+            case TelephonyManager.SIM_STATE_ABSENT:
+                return SimState.SIM_STATE_ABSENT;
+            case TelephonyManager.SIM_STATE_LOADED:
+                return SimState.SIM_STATE_LOADED;
+            default:
+                return SimState.SIM_STATE_UNKNOWN;
+        }
+    }
 }

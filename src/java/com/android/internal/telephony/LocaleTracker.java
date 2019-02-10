@@ -417,16 +417,6 @@ public class LocaleTracker extends Handler {
             mLocalLog.log(msg);
             mCurrentCountryIso = countryIso;
 
-            // Inform EmergencyNumberTrack with the change of current Country ISO
-            if (mPhone != null && mPhone.getEmergencyNumberTracker() != null) {
-                mPhone.getEmergencyNumberTracker().updateEmergencyNumberDatabaseCountryChange(
-                        getCurrentCountry());
-                log("Notified EmergencyNumberTracker");
-            } else {
-                loge("Cannot notify EmergencyNumberTracker. Phone is null? "
-                        + Boolean.toString(mPhone == null));
-            }
-
             TelephonyManager.setTelephonyProperty(mPhone.getPhoneId(),
                     TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, mCurrentCountryIso);
 

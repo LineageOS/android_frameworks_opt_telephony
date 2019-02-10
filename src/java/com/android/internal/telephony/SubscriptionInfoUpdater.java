@@ -51,6 +51,7 @@ import android.text.TextUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
@@ -557,10 +558,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 String msisdn = TelephonyManager.getDefault().getLine1Number(
                         temp.getSubscriptionId());
 
-                UiccSlot uiccSlot = UiccController.getInstance().getUiccSlotForPhone(slotIndex);
-                boolean isEuicc = (uiccSlot != null && uiccSlot.isEuicc());
-                if (isEuicc != temp.isEmbedded() || !TextUtils.equals(msisdn, temp.getNumber())) {
-                    value.put(SubscriptionManager.IS_EMBEDDED, isEuicc);
+                if (!TextUtils.equals(msisdn, temp.getNumber())) {
                     value.put(SubscriptionManager.NUMBER, msisdn);
                     mContext.getContentResolver().update(SubscriptionManager.getUriForSubscriptionId(
                             temp.getSubscriptionId()), value, null, null);
@@ -587,10 +585,10 @@ public class SubscriptionInfoUpdater extends Handler {
                                 uiccSlot.getUiccCard().getCardId()))
                         .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
             }
+            // update default subId
+            SubscriptionController.getInstance().clearDefaultsForInactiveSubIds();
+            SubscriptionController.getInstance().updateDataEnabledSettings();
         }
-
-        // update default subId
-        SubscriptionController.getInstance().clearDefaultsForInactiveSubIds();
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SubscriptionInfo update complete");
@@ -785,6 +783,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
                     + " for phone: " + phoneId);
             mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+            TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
     }
 
@@ -804,6 +803,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED " + simStateString(state)
                     + " for phone: " + phoneId);
             mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+            TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
     }
 

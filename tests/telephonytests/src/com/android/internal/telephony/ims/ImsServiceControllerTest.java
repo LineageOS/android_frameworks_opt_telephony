@@ -39,7 +39,6 @@ import android.os.RemoteException;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 
-import androidx.test.filters.FlakyTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import com.android.ims.internal.IImsServiceFeatureCallback;
@@ -59,7 +58,6 @@ import java.util.HashSet;
  * Unit tests for ImsServiceController
  */
 @RunWith(AndroidJUnit4.class)
-@Ignore
 public class ImsServiceControllerTest extends ImsTestBase {
 
     private static final ImsServiceController.RebindRetry REBIND_RETRY =
@@ -105,7 +103,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Tests that Context.bindService is called with the correct parameters when we call bind.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindService() {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -129,7 +127,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Verify that if bind is called multiple times, we only call bindService once.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindFailureWhenBound() {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -147,7 +145,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests ImsServiceController callbacks are properly called when an ImsService is bound and
      * connected.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindServiceAndConnected() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -176,7 +174,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests Emergency MMTEL ImsServiceController callbacks are properly called when an ImsService
      * is bound and connected.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindEmergencyMmTel() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -207,7 +205,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests that if a callback is added after the ImsServiceController is already bound, we get a
      * imsFeatureCreated callback.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testCallbacksHappenWhenAddedAfterBind() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -232,7 +230,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests ImsServiceController callbacks are properly called when an ImsService is bound and
      * connected.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindServiceAndConnectedDisconnected() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -260,7 +258,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests ImsServiceController callbacks are properly called when an ImsService is bound and
      * connected.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindServiceBindUnbind() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -288,7 +286,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures that imsServiceFeatureRemoved is called when the binder dies in another process.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindServiceAndBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -315,7 +313,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures ImsService and ImsResolver are notified when a feature is added.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindServiceAndAddFeature() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -342,7 +340,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures ImsService and ImsResolver are notified when a feature is added.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindServiceAndRemoveFeature() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -375,7 +373,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensures ImsService and ImsResolver are notified when all features are removed.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindServiceAndRemoveAllFeatures() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -409,7 +407,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Verifies that nothing is notified of a feature change if the service is not bound.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindUnbindServiceAndAddFeature() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -435,7 +433,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Verifies that the ImsServiceController automatically tries to bind again after an untimely
      * binder death.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testAutoBindAfterBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -456,7 +454,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensure that bindService has only been called once before automatic rebind occurs.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testNoAutoBindBeforeTimeout() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -475,7 +473,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
     /**
      * Ensure that calling unbind stops automatic rebind of the ImsService from occuring.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testUnbindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
@@ -499,7 +497,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Ensure that calling bind causes the automatic rebinding to be cancelled or not cause another
      * call to bindService.
      */
-    @FlakyTest
+    @Ignore
     @Test
     public void testBindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();

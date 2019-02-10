@@ -20,7 +20,7 @@ import static android.provider.Telephony.RcsColumns.Rcs1To1ThreadColumns.FALLBAC
 import static android.provider.Telephony.RcsColumns.RcsGroupThreadColumns.GROUP_ICON_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsGroupThreadColumns.GROUP_NAME_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsGroupThreadColumns.OWNER_PARTICIPANT_COLUMN;
-import static android.telephony.ims.RcsThreadQueryParameters.THREAD_TYPE_GROUP;
+import static android.telephony.ims.RcsThreadQueryParams.THREAD_TYPE_GROUP;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -30,7 +30,7 @@ import android.content.ContentValues;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.telephony.ims.RcsParticipant;
-import android.telephony.ims.RcsThreadQueryParameters;
+import android.telephony.ims.RcsThreadQueryParams;
 import android.test.mock.MockContentResolver;
 
 import com.android.internal.telephony.TelephonyTest;
@@ -73,8 +73,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     @Test
     public void testGetRcsThreads() {
         doReturn(123).when(mMockParticipant).getId();
-        RcsThreadQueryParameters queryParameters =
-                new RcsThreadQueryParameters.Builder().setParticipant(mMockParticipant)
+        RcsThreadQueryParams queryParameters =
+                new RcsThreadQueryParams.Builder().setParticipant(mMockParticipant)
                         .setThreadType(THREAD_TYPE_GROUP).setResultLimit(30).build();
 
         // TODO - limit the query as per queryParameters. This will change how the query is executed

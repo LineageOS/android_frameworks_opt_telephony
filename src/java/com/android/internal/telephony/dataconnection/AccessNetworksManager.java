@@ -106,6 +106,7 @@ public class AccessNetworksManager {
      */
     public static class QualifiedNetworks {
         public final @ApnType int apnType;
+        // The qualified netowrks in preferred order. Each network is a AccessNetworkType.
         public final int[] qualifiedNetworks;
         public QualifiedNetworks(@ApnType int apnType, int[] qualifiedNetworks) {
             this.apnType = apnType;
