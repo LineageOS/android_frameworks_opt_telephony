@@ -68,6 +68,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
     @Mock
     private Handler mActivePhoneSwitchHandler;
+    @Mock
+    private GsmCdmaCall mActiveCall;
+    @Mock
+    private GsmCdmaCall mInactiveCall;
 
     // The thread that mPhoneSwitcher will handle events in.
     private HandlerThread mHandlerThread;
@@ -463,6 +467,57 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     }
 
+    @Test
+    @SmallTest
+    public void testNonDefaultDataPhoneInCall() throws Exception {
+        final int numPhones = 2;
+        final int maxActivePhones = 1;
+        doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
+        initialize(numPhones, maxActivePhones);
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        waitABit();
+        NetworkRequest internetRequest = addInternetNetworkRequest(null, 50);
+        waitABit();
+        assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+        clearInvocations(mMockRadioConfig);
+
+        doReturn(Call.State.ACTIVE).when(mActiveCall).getState();
+        doReturn(Call.State.IDLE).when(mInactiveCall).getState();
+        doReturn(mInactiveCall).when(mPhone).getForegroundCall();
+        doReturn(mInactiveCall).when(mPhone).getBackgroundCall();
+        doReturn(mInactiveCall).when(mPhone).getRingingCall();
+        doReturn(mInactiveCall).when(mPhone2).getForegroundCall();
+        doReturn(mInactiveCall).when(mPhone2).getBackgroundCall();
+        doReturn(mInactiveCall).when(mPhone2).getRingingCall();
+
+        // Initialization done.
+
+        // Phone2 has active call. So data switch to it.
+        doReturn(mActiveCall).when(mPhone2).getForegroundCall();
+        mPhoneSwitcher.mPhoneStateListener.onPreciseCallStateChanged(null);
+        waitABit();
+        verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
+        assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
+        clearInvocations(mMockRadioConfig);
+
+        // Phone2 call ended. So data switch back to default data sub.
+        doReturn(mInactiveCall).when(mPhone2).getForegroundCall();
+        mPhoneSwitcher.mPhoneStateListener.onPreciseCallStateChanged(null);
+        waitABit();
+        verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
+        assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+
+        mHandlerThread.quit();
+    }
+
     /* Private utility methods start here */
 
     private void sendDefaultDataSubChanged() {
@@ -503,11 +558,14 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private void setNumPhones(int numPhones) {
         mDataAllowed = new boolean[numPhones];
         mSlotIndexToSubId = new int[numPhones][];
+        doReturn(0).when(mPhone).getPhoneId();
+        doReturn(1).when(mPhone2).getPhoneId();
         for (int i = 0; i < numPhones; i++) {
             mSlotIndexToSubId[i] = new int[1];
             mSlotIndexToSubId[i][0] = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         }
 
+        doReturn(numPhones).when(mTelephonyManager).getPhoneCount();
         if (numPhones == 1) {
             mCommandsInterfaces = new CommandsInterface[] {mCommandsInterface0};
             mPhones = new Phone[] {mPhone};
