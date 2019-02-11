@@ -1639,8 +1639,8 @@ public class DataConnection extends StateMachine {
                             String str = "DcActivatingState: ERROR_DATA_SERVICE_SPECIFIC_ERROR "
                                     + " delay=" + delay
                                     + " result=" + result
-                                    + " result.isRestartRadioFail=" +
-                                    result.mFailCause.isRestartRadioFail(mPhone.getContext(),
+                                    + " result.isRadioRestartFailure="
+                                    + result.mFailCause.isRadioRestartFailure(mPhone.getContext(),
                                             mPhone.getSubId())
                                     + " isPermanentFailure=" +
                                     mDct.isPermanentFailure(result.mFailCause);
