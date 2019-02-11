@@ -41,7 +41,7 @@ public class PhoneCapabilityTest {
         logicalModemList.add(modemInfo);
 
         PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G,
-                logicalModemList);
+                logicalModemList, false);
 
         assertEquals(maxActiveVoiceCalls, capability.maxActiveVoiceCalls);
         assertEquals(maxActiveData, capability.maxActiveData);
@@ -49,9 +49,9 @@ public class PhoneCapabilityTest {
         assertEquals(1, capability.logicalModemList.size());
         assertEquals(modemInfo, capability.logicalModemList.get(0));
         PhoneCapability toCompare = new PhoneCapability(
-                maxActiveVoiceCalls + 1, maxActiveData - 1, max5G, logicalModemList);
+                maxActiveVoiceCalls + 1, maxActiveData - 1, max5G, logicalModemList, false);
         assertEquals(capability, new PhoneCapability(
-                maxActiveVoiceCalls, maxActiveData, max5G, logicalModemList));
+                maxActiveVoiceCalls, maxActiveData, max5G, logicalModemList, false));
         assertNotEquals(capability, toCompare);
     }
 
@@ -66,7 +66,7 @@ public class PhoneCapabilityTest {
         logicalModemList.add(modemInfo);
 
         PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G,
-                logicalModemList);
+                logicalModemList, false);
 
         Parcel parcel = Parcel.obtain();
         capability.writeToParcel(parcel, 0);
