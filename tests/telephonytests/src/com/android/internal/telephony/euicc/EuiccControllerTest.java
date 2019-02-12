@@ -983,7 +983,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 false, "", false, false, 0, 0, 0);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
-        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
+        when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(
                 Collections.singletonList(subInfo));
     }
 
@@ -1011,7 +1011,7 @@ public class EuiccControllerTest extends TelephonyTest {
         when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1, subInfo2));
-        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(subInfos);
+        when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(subInfos);
     }
 
     private void prepareOperationSubscription(boolean hasPrivileges) throws Exception {
