@@ -48,9 +48,23 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
 
     private static final int CPID = 12345;
 
-
     @SmallTest
     public void testDefaultConstructor() {
+        CellIdentityTdscdma ci =
+                new CellIdentityTdscdma();
+        assertNull(ci.getMccString());
+        assertNull(ci.getMncString());
+        assertEquals(CellInfo.UNAVAILABLE, ci.getLac());
+        assertEquals(CellInfo.UNAVAILABLE, ci.getCid());
+        assertEquals(CellInfo.UNAVAILABLE, ci.getCpid());
+        assertEquals(CellInfo.UNAVAILABLE, ci.getChannelNumber());
+        assertEquals(CellInfo.UNAVAILABLE, ci.getUarfcn());
+        assertNull(ci.getOperatorAlphaLong());
+        assertNull(ci.getOperatorAlphaShort());
+    }
+
+    @SmallTest
+    public void testConstructor() {
         CellIdentityTdscdma ci =
                 new CellIdentityTdscdma(
                         MCC_STR, MNC_STR, LAC, CID, CPID, UARFCN, ALPHA_LONG, ALPHA_SHORT);
@@ -61,6 +75,7 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
         assertEquals(CID, ci.getCid());
         assertEquals(CPID, ci.getCpid());
         assertEquals(UARFCN, ci.getChannelNumber());
+        assertEquals(UARFCN, ci.getUarfcn());
         assertEquals(ALPHA_LONG, ci.getOperatorAlphaLong());
         assertEquals(ALPHA_SHORT, ci.getOperatorAlphaShort());
     }
