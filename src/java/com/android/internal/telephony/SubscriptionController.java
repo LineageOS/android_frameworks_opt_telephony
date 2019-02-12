@@ -1772,9 +1772,10 @@ public class SubscriptionController extends ISub.Stub {
             if (VDBG) logd("[getSubId] map default slotIndex=" + slotIndex);
         }
 
-        // Check that we have a valid slotIndex
-        // TODO b/123300875 This check should probably be removed once tests are fixed
-        if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
+        // Check that we have a valid slotIndex or the slotIndex is for a remote SIM (remote SIM
+        // uses special slot index that may be invalid otherwise)
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)
+                && slotIndex != SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB) {
             if (DBG) logd("[getSubId]- invalid slotIndex=" + slotIndex);
             return null;
         }
