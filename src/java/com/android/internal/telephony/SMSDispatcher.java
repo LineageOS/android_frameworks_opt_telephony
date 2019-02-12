@@ -52,6 +52,7 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.UserHandle;
@@ -62,6 +63,7 @@ import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.ICarrierMessagingCallback;
 import android.service.carrier.ICarrierMessagingService;
 import android.telephony.CarrierMessagingServiceManager;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -1064,7 +1066,9 @@ public abstract class SMSDispatcher extends Handler {
             uData.payloadStr = message;
             uData.userDataHeader = smsHeader;
             if (encoding == SmsConstants.ENCODING_7BIT) {
-                uData.msgEncoding = UserData.ENCODING_GSM_7BIT_ALPHABET;
+                uData.msgEncoding = isAscii7bitSupportedForLongMessage()
+                        ? UserData.ENCODING_7BIT_ASCII : UserData.ENCODING_GSM_7BIT_ALPHABET;
+                Rlog.d(TAG, "Message encoding for proper 7 bit: " + uData.msgEncoding);
             } else { // assume UTF-16
                 uData.msgEncoding = UserData.ENCODING_UNICODE_16;
             }
@@ -1979,5 +1983,17 @@ public abstract class SMSDispatcher extends Handler {
 
     protected boolean isCdmaMo() {
         return mSmsDispatchersController.isCdmaMo();
+    }
+
+    private boolean isAscii7bitSupportedForLongMessage() {
+        CarrierConfigManager configManager = (CarrierConfigManager)mContext.getSystemService(
+                Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle pb = null;
+        pb = configManager.getConfigForSubId(mPhone.getSubId());
+        if (pb != null) {
+            return pb.getBoolean(CarrierConfigManager
+                    .KEY_ASCII_7_BIT_SUPPORT_FOR_LONG_MESSAGE_BOOL);
+        }
+        return false;
     }
 }
