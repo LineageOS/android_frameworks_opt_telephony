@@ -27,13 +27,19 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.doReturn;
 
 import android.content.ContentValues;
+import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.provider.Telephony;
+import android.provider.Telephony.RcsColumns.RcsParticipantColumns;
 import android.telephony.ims.RcsParticipant;
 import android.telephony.ims.RcsThreadQueryParams;
 import android.test.mock.MockContentResolver;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.ims.FakeProviderWithAsserts.ExpectedInsert;
+import com.android.internal.telephony.ims.FakeProviderWithAsserts.ExpectedQuery;
+import com.android.internal.telephony.ims.FakeProviderWithAsserts.ExpectedUpdate;
 
 import org.junit.After;
 import org.junit.Before;
@@ -46,7 +52,6 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     private RcsMessageStoreController mRcsMessageStoreController;
     private MockContentResolver mContentResolver;
     private FakeProviderWithAsserts mFakeRcsProvider;
-    private FakeProviderWithAsserts mFakeMmsSmsProvider;
 
     @Mock
     RcsParticipant mMockParticipant;
@@ -57,10 +62,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
         MockitoAnnotations.initMocks(this);
 
         mFakeRcsProvider = new FakeProviderWithAsserts();
-        mFakeMmsSmsProvider = new FakeProviderWithAsserts();
         mContentResolver = (MockContentResolver) mContext.getContentResolver();
         mContentResolver.addProvider("rcs", mFakeRcsProvider);
-        mContentResolver.addProvider("mms-sms", mFakeMmsSmsProvider);
 
         mRcsMessageStoreController = new RcsMessageStoreController(mContentResolver, null);
     }
@@ -78,8 +81,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
                         .setThreadType(THREAD_TYPE_GROUP).setResultLimit(30).build();
 
         // TODO - limit the query as per queryParameters. This will change how the query is executed
-        mFakeRcsProvider.setExpectedQueryParameters(Uri.parse("content://rcs/thread"), null, null,
-                null, null);
+        mFakeRcsProvider.addExpectedOperation(new ExpectedQuery(
+                Uri.parse("content://rcs/thread"), null, null, null, null, null));
 
         try {
             mRcsMessageStoreController.getRcsThreads(queryParameters);
@@ -90,27 +93,32 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
 
     @Test
     public void testCreateRcsParticipant() throws RemoteException {
-        // verify the first query to existing canonical addresses
-        mFakeMmsSmsProvider.setExpectedQueryParameters(
-                Uri.parse("content://mms-sms/canonical-addresses"), new String[]{"_id"},
-                "address=?", new String[]{"+5551234567"}, null);
+        String canonicalAddress = "+5551234567";
 
-        // verify the insert on canonical addresses
-        ContentValues expectedMmsSmsValues = new ContentValues(1);
-        expectedMmsSmsValues.put("address", "+5551234567");
-        mFakeMmsSmsProvider.setInsertReturnValue(
-                Uri.parse("content://mms-sms/canonical-address/456"));
-        mFakeMmsSmsProvider.setExpectedInsertParameters(
-                Uri.parse("content://mms-sms/canonical-addresses"), expectedMmsSmsValues);
+        // verify the first query to canonical addresses
+        MatrixCursor canonicalAddressQueryCursor = new MatrixCursor(
+                new String[]{Telephony.CanonicalAddressesColumns._ID});
+        canonicalAddressQueryCursor.addRow(new Object[]{456});
+
+        Uri expectedCanonicalAddressUri = Uri.parse("content://rcs/canonical-address")
+                .buildUpon()
+                .appendQueryParameter("address", canonicalAddress)
+                .build();
+
+        mFakeRcsProvider.addExpectedOperation(new ExpectedQuery(
+                expectedCanonicalAddressUri, null, null, null, null, canonicalAddressQueryCursor));
+
 
         // verify the final insert on rcs participants
         ContentValues expectedRcsValues = new ContentValues(1);
-        expectedRcsValues.put("canonical_address_id", 456);
-        mFakeRcsProvider.setInsertReturnValue(Uri.parse("content://rcs/participant/1001"));
-        mFakeRcsProvider.setExpectedInsertParameters(Uri.parse("content://rcs/participant"),
-                expectedRcsValues);
+        expectedRcsValues.put(RcsParticipantColumns.CANONICAL_ADDRESS_ID_COLUMN, 456);
+        expectedRcsValues.put(RcsParticipantColumns.RCS_ALIAS_COLUMN, "alias");
+        mFakeRcsProvider.addExpectedOperation(new ExpectedInsert(
+                Uri.parse("content://rcs/participant"), expectedRcsValues,
+                Uri.parse("content://rcs/participant/1001")));
 
-        int participantId = mRcsMessageStoreController.createRcsParticipant("+5551234567", "alias");
+        int participantId =
+                mRcsMessageStoreController.createRcsParticipant(canonicalAddress, "alias");
 
         assertThat(participantId).isEqualTo(1001);
     }
@@ -119,8 +127,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     public void testUpdateRcsParticipantAlias() {
         ContentValues contentValues = new ContentValues(1);
         contentValues.put("rcs_alias", "New Alias");
-        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/participant/551"),
-                contentValues, null, null);
+        mFakeRcsProvider.addExpectedOperation(new ExpectedUpdate(
+                Uri.parse("content://rcs/participant/551"), null, null, contentValues, 0));
 
         try {
             mRcsMessageStoreController.setRcsParticipantAlias(551, "New Alias");
@@ -133,8 +141,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     public void testSet1To1ThreadFallbackThreadId() {
         ContentValues contentValues = new ContentValues(1);
         contentValues.put(FALLBACK_THREAD_ID_COLUMN, 456L);
-        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/p2p_thread/123"),
-                contentValues, null, null);
+        mFakeRcsProvider.addExpectedOperation(new ExpectedUpdate(
+                Uri.parse("content://rcs/p2p_thread/123"), null, null, contentValues, 0));
         try {
             mRcsMessageStoreController.set1To1ThreadFallbackThreadId(123, 456L);
         } catch (RemoteException e) {
@@ -146,8 +154,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     public void testSetGroupThreadName() {
         ContentValues contentValues = new ContentValues(1);
         contentValues.put(GROUP_NAME_COLUMN, "new name");
-        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/group_thread/345"),
-                contentValues, null, null);
+        mFakeRcsProvider.addExpectedOperation(new ExpectedUpdate(
+                Uri.parse("content://rcs/group_thread/345"), null, null, contentValues, 0));
 
         try {
             mRcsMessageStoreController.setGroupThreadName(345, "new name");
@@ -160,8 +168,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     public void testSetGroupThreadIcon() {
         ContentValues contentValues = new ContentValues(1);
         contentValues.put(GROUP_ICON_COLUMN, "newIcon");
-        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/group_thread/345"),
-                contentValues, null, null);
+        mFakeRcsProvider.addExpectedOperation(new ExpectedUpdate(
+                Uri.parse("content://rcs/group_thread/345"), null, null, contentValues, 0));
 
         try {
             mRcsMessageStoreController.setGroupThreadIcon(345, Uri.parse("newIcon"));
@@ -174,8 +182,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
     public void testSetGroupThreadOwner() {
         ContentValues contentValues = new ContentValues(1);
         contentValues.put(OWNER_PARTICIPANT_COLUMN, 9);
-        mFakeRcsProvider.setExpectedUpdateParameters(Uri.parse("content://rcs/group_thread/454"),
-                contentValues, null, null);
+        mFakeRcsProvider.addExpectedOperation(new ExpectedUpdate(
+                Uri.parse("content://rcs/group_thread/454"), null, null, contentValues, 0));
 
         RcsParticipant participant = new RcsParticipant(9);
 
