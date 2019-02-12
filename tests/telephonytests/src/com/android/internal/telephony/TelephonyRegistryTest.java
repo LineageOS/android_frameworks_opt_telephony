@@ -103,7 +103,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     public void testPhoneCapabilityChanged() {
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
         setReady(false);
-        PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null);
+        PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         mTelephonyRegistry.listen(mContext.getOpPackageName(),
                 mPhoneStateListener.callback,
@@ -113,7 +113,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
         // notifyPhoneCapabilityChanged with a new capability. Callback should be triggered.
         setReady(false);
-        phoneCapability = new PhoneCapability(3, 2, 2, null);
+        phoneCapability = new PhoneCapability(3, 2, 2, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         waitUntilReady();
         assertEquals(phoneCapability, mPhoneCapability);
