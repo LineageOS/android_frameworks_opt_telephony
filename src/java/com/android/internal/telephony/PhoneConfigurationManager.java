@@ -201,12 +201,12 @@ public class PhoneConfigurationManager {
 
     /**
      * Get whether reboot is required or not after making changes to modem configurations.
-     * Return value defaults to false
+     * Return value defaults to true
      */
     public boolean isRebootRequiredForModemConfigChange() {
         String rebootRequired = SystemProperties.get(
                 TelephonyProperties.PROPERTY_REBOOT_REQUIRED_ON_MODEM_CHANGE);
-        return rebootRequired.equals("true");
+        return !rebootRequired.equals("false");
     }
 
     /**
