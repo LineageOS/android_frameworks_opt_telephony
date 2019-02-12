@@ -17,23 +17,23 @@
 package com.android.internal.telephony;
 
 import android.content.ContentProvider;
-import android.content.UriMatcher;
 import android.content.ContentValues;
+import android.content.UriMatcher;
 import android.database.Cursor;
-import android.database.MergeCursor;
 import android.database.MatrixCursor;
+import android.database.MergeCursor;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
-import android.telephony.Rlog;
-
-import java.util.List;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccConstants;
+
+import java.util.List;
 
 
 /**
@@ -121,7 +121,8 @@ public class IccProvider extends ContentProvider {
 
     private Cursor loadAllSimContacts(int efType) {
         Cursor [] result;
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager
+                .getActiveSubscriptionInfoList(false);
 
         if ((subInfoList == null) || (subInfoList.size() == 0)) {
             result = new Cursor[0];
