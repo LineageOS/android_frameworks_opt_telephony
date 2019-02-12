@@ -34,7 +34,6 @@ import android.content.res.Configuration;
 import android.content.res.Resources.NotFoundException;
 import android.os.AsyncResult;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.LocaleList;
 import android.os.Message;
 import android.os.RemoteException;
@@ -131,7 +130,6 @@ public class CatService extends Handler implements AppInterface {
 
     static final String STK_DEFAULT = "Default Message";
 
-    private HandlerThread mHandlerThread;
     private int mSlotId;
 
     /* For multisim catservice should not be singleton */
@@ -145,8 +143,6 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf = ci;
         mContext = context;
         mSlotId = slotId;
-        mHandlerThread = new HandlerThread("Cat Telephony service" + slotId);
-        mHandlerThread.start();
 
         // Get the RilMessagesDecoder for decoding the messages.
         mMsgDecoder = RilMessageDecoder.getInstance(this, fh, slotId);
@@ -262,8 +258,6 @@ public class CatService extends Handler implements AppInterface {
             }
             mMsgDecoder.dispose();
             mMsgDecoder = null;
-            mHandlerThread.quit();
-            mHandlerThread = null;
             removeCallbacksAndMessages(null);
             if (sInstance != null) {
                 if (SubscriptionManager.isValidSlotIndex(mSlotId)) {
