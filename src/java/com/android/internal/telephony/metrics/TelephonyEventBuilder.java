@@ -30,10 +30,11 @@ import static com.android.internal.telephony.nano.TelephonyProto.TelephonyServic
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 
 import android.os.SystemClock;
+import android.util.SparseArray;
 
+import com.android.internal.telephony.nano.TelephonyProto.ActiveSubscriptionInfo;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.PhoneStatus;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Type;
 
 public class TelephonyEventBuilder {
@@ -144,12 +145,28 @@ public class TelephonyEventBuilder {
         return this;
     }
 
-    /**
-     * Set and build phone status changed event.
-     */
-    public TelephonyEventBuilder setPhoneStatusChange(PhoneStatus phoneStatus) {
-        mEvent.type = Type.PHONE_STATUS_CHANGED;
-        mEvent.phoneStatus = phoneStatus;
+    /** Set and build SIM state change event. */
+    public TelephonyEventBuilder setSimStateChange(SparseArray<Integer> simStates) {
+        mEvent.type = Type.SIM_STATE_CHANGE;
+        mEvent.simState = new int[simStates.size()];
+        for (int i = 0; i < simStates.size(); i++) {
+            int key = simStates.keyAt(i);
+            mEvent.simState[key] = simStates.get(key);
+        }
+        return this;
+    }
+
+    /** Set and build subscription info change event. */
+    public TelephonyEventBuilder setActiveSubscriptionInfoChange(ActiveSubscriptionInfo info) {
+        mEvent.type = Type.ACTIVE_SUBSCRIPTION_INFO_CHANGE;
+        mEvent.activeSubscriptionInfo = info;
+        return this;
+    }
+
+    /** Set and build enabled modem bitmap change event. */
+    public TelephonyEventBuilder setEnabledModemBitmap(int enabledModemBitmap) {
+        mEvent.type = Type.ENABLED_MODEM_CHANGE;
+        mEvent.enabledModemBitmap = enabledModemBitmap;
         return this;
     }
 
