@@ -2778,6 +2778,8 @@ public class SubscriptionController extends ISub.Stub {
 
             refreshCachedActiveSubscriptionInfoList();
 
+            notifySubscriptionInfoChanged();
+
             return groupUUID;
         } finally {
             Binder.restoreCallingIdentity(identity);
@@ -2824,6 +2826,8 @@ public class SubscriptionController extends ISub.Stub {
             if (DBG) logdl("setSubscriptionGroup update DB result: " + result);
 
             refreshCachedActiveSubscriptionInfoList();
+
+            notifySubscriptionInfoChanged();
 
             return result != 0;
         } finally {
