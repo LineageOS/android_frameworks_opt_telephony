@@ -1769,9 +1769,10 @@ public class SubscriptionController extends ISub.Stub {
             if (VDBG) logd("[getSubId] map default slotIndex=" + slotIndex);
         }
 
-        // Check that we have a valid slotIndex
-        // TODO b/123300875 This check should probably be removed once tests are fixed
-        if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
+        // Check that we have a valid slotIndex or the slotIndex is for a remote SIM (remote SIM
+        // uses special slot index that may be invalid otherwise)
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)
+                && slotIndex != SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB) {
             if (DBG) logd("[getSubId]- invalid slotIndex=" + slotIndex);
             return null;
         }
@@ -2689,16 +2690,14 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public void setPreferredDataSubscriptionId(int subId) {
+    public void setPreferredDataSubscriptionId(int subId, boolean needValidation,
+            ISetOpportunisticDataCallback callback) {
         enforceModifyPhoneState("setPreferredDataSubscriptionId");
         final long token = Binder.clearCallingIdentity();
 
         try {
-            if (SubscriptionManager.isUsableSubscriptionId(subId)) {
-                PhoneSwitcher.getInstance().setOpportunisticDataSubscription(subId);
-            } else {
-                PhoneSwitcher.getInstance().unsetOpportunisticDataSubscription();
-            }
+            PhoneSwitcher.getInstance().trySetPreferredSubscription(
+                    subId, needValidation, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -2707,17 +2706,12 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getPreferredDataSubscriptionId() {
         enforceReadPrivilegedPhoneState("getPreferredDataSubscriptionId");
-        return mPreferredDataSubId;
-    }
+        final long token = Binder.clearCallingIdentity();
 
-    private void notifyPreferredDataSubIdChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                "telephony.registry"));
         try {
-            if (DBG) logd("notifyPreferredDataSubIdChanged:");
-            tr.notifyPreferredDataSubIdChanged(mPreferredDataSubId);
-        } catch (RemoteException ex) {
-            // Should never happen because its always available.
+            return PhoneSwitcher.getInstance().getPreferredDataSubscriptionId();
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
     }
 
