@@ -2394,7 +2394,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mPhone.notifyImsReason(reasonInfo);
 
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
-                    && mAutoRetryFailedWifiEmergencyCall) {
+                    && mAutoRetryFailedWifiEmergencyCall
+                    && imsCall.getCallProfile().getEmergencyServiceCategories()
+                    != EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED) {
                 Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
                 mPhone.getDefaultPhone().getServiceStateTracker().registerForNetworkAttached(
                         ImsPhoneCallTracker.this, EVENT_REDIAL_WIFI_E911_CALL, callInfo);
