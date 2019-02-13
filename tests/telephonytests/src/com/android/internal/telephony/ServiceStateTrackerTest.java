@@ -57,6 +57,7 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.WorkSource;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
@@ -641,7 +642,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         CellIdentityGsm cellIdentityGsm = new CellIdentityGsm(
                 2, 3, 900, 5, "001", "01", "test", "tst");
         NetworkRegistrationState result = new NetworkRegistrationState(
-                0, 0, 0, 0, 0, false, null, cellIdentityGsm);
+                NetworkRegistrationState.DOMAIN_CS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_HOME, 0, 0, false, null,
+                cellIdentityGsm);
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_GET_LOC_DONE,
                 new AsyncResult(null, result, null)));
@@ -660,7 +663,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testCdmaCellLocation() {
         CellIdentityCdma cellIdentityCdma = new CellIdentityCdma(1, 2, 3, 4, 5, "test", "tst");
         NetworkRegistrationState result = new NetworkRegistrationState(
-                0, 0, 0, 0, 0, false, null, cellIdentityCdma);
+                NetworkRegistrationState.DOMAIN_CS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_HOME, 0, 0, false, null, cellIdentityCdma);
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_GET_LOC_DONE,
                 new AsyncResult(null, result, null)));
@@ -1569,16 +1573,19 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                     LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                0, 0, state, dataRat, 0, false, null, cid, 1, false, false, false,
-                lteVopsSupportInfo);
+                NetworkRegistrationState.DOMAIN_PS, TransportType.WWAN, state, dataRat, 0, false,
+                null, cid, 1, false, false, false, lteVopsSupportInfo);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataResult, null)));
         waitForMs(200);
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
-                0, 0, state, voiceRat, 0, false, null, cid, false, 0, 0, 0);
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
+                NetworkRegistrationState.DOMAIN_CS, TransportType.WWAN, state, voiceRat, 0, false,
+                null, cid, false, 0, 0, 0);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForMs(200);
     }
@@ -1664,17 +1671,21 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                     LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                2, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1,
-                false, false, false, lteVopsSupportInfo);
+                NetworkRegistrationState.DOMAIN_PS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE, 0,
+                false, null, cellId, 1, false, false, false, lteVopsSupportInfo);
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
-                1, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId,
-                false, 0, 0, 0);
+                NetworkRegistrationState.DOMAIN_CS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE, 0,
+                false, null, cellId, false, 0, 0, 0);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataResult, null)));
         waitForMs(200);
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForMs(200);
     }
@@ -1731,16 +1742,21 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                     LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                2, 1, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, 1, false,
-                false, false, lteVopsSupportInfo);
+                NetworkRegistrationState.DOMAIN_PS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_NOT_REG_NOT_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, 1, false, false,
+                false, lteVopsSupportInfo);
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
-                1, 1, 0, TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null,
-                false, 0, 0, 0);
+                NetworkRegistrationState.DOMAIN_CS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_NOT_REG_NOT_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, false, 0, 0, 0);
         sst.mPollingContext[0] = 2;
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataResult, null)));
         waitForMs(200);
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForMs(200);
         assertTrue(Arrays.equals(new int[0], sst.mSS.getCellBandwidths()));
@@ -1806,32 +1822,40 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED);
 
         NetworkRegistrationState dataResult = new NetworkRegistrationState(
-                2, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1,
-                false, false, false, lteVopsSupportInfo);
+                NetworkRegistrationState.DOMAIN_PS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE, 0,
+                false, null, cellId, 1, false, false, false, lteVopsSupportInfo);
         sst.mPollingContext[0] = 2;
 
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataResult, null)));
         NetworkRegistrationState voiceResult = new NetworkRegistrationState(
-                1, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, false, 0, 0, 0);
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_REGISTRATION,
+                NetworkRegistrationState.DOMAIN_CS, TransportType.WWAN,
+                NetworkRegistrationState.REG_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE, 0,
+                false, null, cellId, false, 0, 0, 0);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
 
         waitForMs(200);
         assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
         NetworkRegistrationState sSnetworkRegistrationState =
-                sst.mSS.getNetworkRegistrationState(2, 1);
+                sst.mSS.getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                        TransportType.WWAN);
         assertEquals(lteVopsSupportInfo,
                 sSnetworkRegistrationState.getDataSpecificStates().lteVopsSupportInfo);
 
         lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
                     LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED);
-        dataResult = new NetworkRegistrationState(
-                2, 1, 1, TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1,
-                false, false, false, lteVopsSupportInfo);
+        dataResult = new NetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                TransportType.WWAN, NetworkRegistrationState.REG_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1, false, false, false,
+                lteVopsSupportInfo);
         sst.mPollingContext[0] = 1;
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_POLL_STATE_GPRS,
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataResult, null)));
         waitForMs(200);
 
@@ -1839,6 +1863,5 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 sst.mSS.getNetworkRegistrationState(2, 1);
         assertEquals(lteVopsSupportInfo,
                 sSnetworkRegistrationState.getDataSpecificStates().lteVopsSupportInfo);
-
     }
 }
