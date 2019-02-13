@@ -2275,4 +2275,7 @@ message ModemPowerStats {
   // Amount of time phone spends in various cellular
   // rx signal strength levels (ms)
   repeated int64 time_in_rx_signal_strength_level_ms = 14;
+
+  // Actual monitored rail energy consumed by modem (mAh)
+  optional double monitored_rail_energy_consumed_mah = 15;
 }

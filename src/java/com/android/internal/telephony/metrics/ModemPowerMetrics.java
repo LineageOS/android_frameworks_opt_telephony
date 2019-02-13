@@ -70,6 +70,8 @@ public class ModemPowerMetrics {
             long[] trx = stats.getTimeInRxSignalStrengthLevelMs();
             m.timeInRxSignalStrengthLevelMs = new long[trx.length];
             System.arraycopy(trx, 0, m.timeInRxSignalStrengthLevelMs, 0, trx.length);
+            m.monitoredRailEnergyConsumedMah = stats.getMonitoredRailChargeConsumedMaMs()
+                / ((double) DateUtils.HOUR_IN_MILLIS);
         }
         return m;
     }
