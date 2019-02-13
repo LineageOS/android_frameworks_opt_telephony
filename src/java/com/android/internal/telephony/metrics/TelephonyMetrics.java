@@ -41,6 +41,8 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
@@ -51,6 +53,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.ims.stub.ImsSmsImplBase;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
@@ -420,6 +423,19 @@ public class TelephonyMetrics {
                 pw.print(event.delay);
                 pw.print(" T=");
                 pw.println(smsSessionEventToString(event.type));
+                // Only show more info for tx/rx sms
+                if (event.type == SmsSession.Event.Type.SMS_SEND
+                        || event.type == SmsSession.Event.Type.SMS_RECEIVED
+                        || event.type == SmsSession.Event.Type.SMS_SEND_RESULT) {
+                    pw.print(" ReqId=");
+                    pw.println(event.rilRequestId);
+                    pw.print(" E=");
+                    pw.println(event.errorCode);
+                    pw.print(" RilE=");
+                    pw.println(event.error);
+                    pw.print(" ImsE=");
+                    pw.println(event.imsError);
+                }
             }
             pw.decreaseIndent();
         }
@@ -1464,6 +1480,31 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write SMS related solicited response event
+     *
+     * @param phoneId Phone id
+     * @param errorReason Defined in {@link SmsManager} RESULT_XXX.
+     */
+    public synchronized void writeOnImsServiceSmsSolicitedResponse(int phoneId,
+            @ImsSmsImplBase.SendStatusResult int resultCode, int errorReason) {
+
+        InProgressSmsSession smsSession = mInProgressSmsSessions.get(phoneId);
+        if (smsSession == null) {
+            Rlog.e(TAG, "SMS session is missing");
+        } else {
+
+            smsSession.addEvent(new SmsSessionEventBuilder(
+                    SmsSession.Event.Type.SMS_SEND_RESULT)
+                    .setImsServiceErrno(resultCode)
+                    .setErrorCode(errorReason)
+            );
+
+            smsSession.decreaseExpectedResponse();
+            finishSmsSessionIfNeeded(smsSession);
+        }
+    }
+
+    /**
      * Write deactivate data call response event
      *
      * @param phoneId Phone id
@@ -1748,6 +1789,39 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write Send SMS event using ImsService. Expecting response from
+     * {@link #writeOnSmsSolicitedResponse}.
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
+     * @param resultCode The result of sending the new SMS to the vendor layer to be sent to the
+     *         carrier network.
+     */
+    public synchronized void writeImsServiceSendSms(int phoneId, String format,
+            @ImsSmsImplBase.SendStatusResult int resultCode) {
+        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
+        int formatCode = SmsSession.Event.Format.SMS_FORMAT_UNKNOWN;
+        switch (format) {
+            case SmsMessage.FORMAT_3GPP : {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP;
+                break;
+            }
+            case SmsMessage.FORMAT_3GPP2: {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP2;
+                break;
+            }
+        }
+        smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_SEND)
+                .setTech(SmsSession.Event.Tech.SMS_IMS)
+                .setImsServiceErrno(resultCode)
+                .setFormat(formatCode)
+        );
+
+        smsSession.increaseExpectedResponse();
+    }
+
+    /**
      * Write incoming SMS event
      *
      * @param phoneId Phone id
@@ -1760,6 +1834,58 @@ public class TelephonyMetrics {
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
                 .setTech(tech)
                 .setFormat(format)
+        );
+
+        finishSmsSessionIfNeeded(smsSession);
+    }
+
+    /**
+     * Write incoming SMS event
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     * {@link SmsMessage#FORMAT_3GPP2}.
+     * @param result The result of processing the the newly received SMS message.
+     */
+    public synchronized void writeImsServiceNewSms(int phoneId, String format,
+            @ImsSmsImplBase.DeliverStatusResult int result) {
+        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
+        int formatCode = SmsSession.Event.Format.SMS_FORMAT_UNKNOWN;
+        switch (format) {
+            case SmsMessage.FORMAT_3GPP : {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP;
+                break;
+            }
+            case SmsMessage.FORMAT_3GPP2: {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP2;
+                break;
+            }
+        }
+        int smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+        switch (result) {
+            case ImsSmsImplBase.DELIVER_STATUS_OK: {
+                smsError = SmsManager.RESULT_ERROR_NONE;
+                break;
+            }
+            case ImsSmsImplBase.DELIVER_STATUS_ERROR_NO_MEMORY: {
+                smsError = SmsManager.RESULT_NO_MEMORY;
+                break;
+            }
+            case ImsSmsImplBase.DELIVER_STATUS_ERROR_REQUEST_NOT_SUPPORTED: {
+                smsError = SmsManager.RESULT_REQUEST_NOT_SUPPORTED;
+                break;
+            }
+            case ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC: {
+                smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+                break;
+            }
+        }
+        smsSession.addEvent(new SmsSessionEventBuilder(
+                SmsSession.Event.Type.SMS_RECEIVED)
+                .setTech(SmsSession.Event.Tech.SMS_IMS)
+                .setFormat(formatCode)
+                .setErrorCode(smsError)
+                .setImsServiceErrno(TelephonyProto.ImsServiceErrno.IMS_E_SUCCESS)
         );
 
         finishSmsSessionIfNeeded(smsSession);

@@ -571,6 +571,21 @@ enum RilErrno {
   RIL_E_INVALID_RESPONSE = 67;
 }
 
+// Errors returned by ImsService
+enum ImsServiceErrno {
+
+  // The operation error is unknown
+  IMS_E_UNKNOWN = 0;
+  // The operation has succeeded
+  IMS_E_SUCCESS = 1;
+  // Sending SMS over IMS failed. Do not retry over IMS again or fallback to CS.
+  IMS_E_SMS_SEND_STATUS_ERROR = 2;
+  // Sending SMS over IMS failed. Retry over IMS again.
+  IMS_E_SMS_SEND_STATUS_ERROR_RETRY = 3;
+  // Sending SMS over IMS failed. Fallback to sending the SMS over CS.
+  IMS_E_SMS_SEND_STATUS_ERROR_FALLBACK = 4;
+}
+
 // PDP_type values in TS 27.007 section 10.1.1.
 enum PdpType {
 
@@ -1363,13 +1378,13 @@ message SmsSession {
       // or old data call has removed.
       DATA_CALL_LIST_CHANGED = 5;
 
-      // Send a SMS message
+      // Send a SMS message over RIL
       SMS_SEND = 6;
 
-      // Message has been sent to network
+      // Message has been sent to network using RIL
       SMS_SEND_RESULT = 7;
 
-      // Notification about received SMS
+      // Notification about received SMS using RIL
       SMS_RECEIVED = 8;
 
       // CB message received
@@ -1479,7 +1494,9 @@ message SmsSession {
 
     // See 3GPP 27.005, 3.2.5 for GSM/UMTS,
     // 3GPP2 N.S0005 (IS-41C) Table 171 for CDMA,
-    // -1 if unknown or not applicable
+    // Will map to a SmsManager.RESULT_* code if ims_error is populated
+    // SmsManager can be accessed from
+    // frameworks/base/telephony/java/android/telephony/SmsManager.java
     optional int32 error_code = 10;
 
     // RIL error code
@@ -1490,6 +1507,9 @@ message SmsSession {
 
     // Cellbroadcast message content
     optional CBMessage cell_broadcast_message = 13;
+
+    // ImsService error code.
+    optional ImsServiceErrno ims_error = 14;
   }
 
   // Time when session has started, in minutes since epoch,
