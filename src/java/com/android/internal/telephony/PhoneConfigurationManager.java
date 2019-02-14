@@ -162,12 +162,14 @@ public class PhoneConfigurationManager {
      * @param numOfSims number of active sims we want to switch to
      */
     public void switchMultiSimConfig(int numOfSims) {
+        log("switchMultiSimConfig: with numOfSims = " + numOfSims);
         if (getStaticPhoneCapability().logicalModemList.size() < numOfSims) {
             log("switchMultiSimConfig: Phone is not capable of enabling "
                     + numOfSims + " sims, exiting!");
             return;
         }
         if (getPhoneCount() != numOfSims) {
+            log("switchMultiSimConfig: sending the request for switching");
             Message callback = Message.obtain(
                     mHandler, EVENT_SWITCH_DSDS_CONFIG_DONE, numOfSims, 0 /**dummy arg*/);
             mRadioConfig.setModemsConfig(numOfSims, callback);
@@ -184,6 +186,7 @@ public class PhoneConfigurationManager {
     public boolean isRebootRequiredForModemConfigChange() {
         String rebootRequired = SystemProperties.get(
                 TelephonyProperties.PROPERTY_REBOOT_REQUIRED_ON_MODEM_CHANGE);
+        log("isRebootRequiredForModemConfigChange: isRebootRequired = " + rebootRequired);
         return !rebootRequired.equals("false");
     }
 
@@ -212,6 +215,9 @@ public class PhoneConfigurationManager {
                     + finalMultiSimConfig);
             PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
             pm.reboot("Switching to " + finalMultiSimConfig);
+        } else {
+            log("setMultiSimProperties: Rebooting is not required to switch multi-sim config to "
+                    + finalMultiSimConfig);
         }
     }
 

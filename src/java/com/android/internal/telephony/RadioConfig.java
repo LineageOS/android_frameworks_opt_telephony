@@ -419,7 +419,7 @@ public class RadioConfig extends Handler {
 
             if (DBG) {
                 logd(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + "numOfLiveModems = " + numOfLiveModems);
+                        + ", numOfLiveModems = " + numOfLiveModems);
             }
 
             try {
