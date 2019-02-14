@@ -58,31 +58,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * listener that the ImsService now supports that feature.
  *
  * When {@link #changeImsServiceFeatures} is called with a set of features that is different from
- * the original set, create and {@link IImsServiceController#removeImsFeature} will be called for
- * each feature that is created/removed.
+ * the original set, create*Feature and {@link IImsServiceController#removeImsFeature} will be
+ * called for each feature that is created/removed.
  */
 public class ImsServiceController {
-
-    class ImsDeathRecipient implements IBinder.DeathRecipient {
-
-        private ComponentName mComponentName;
-
-        ImsDeathRecipient(ComponentName name) {
-            mComponentName = name;
-        }
-
-        @Override
-        public void binderDied() {
-            Log.e(LOG_TAG, "ImsService(" + mComponentName + ") died. Restarting...");
-            synchronized (mLock) {
-                mIsBinding = false;
-                mIsBound = false;
-            }
-            cleanupAllFeatures();
-            cleanUpService();
-            startDelayedRebindToService();
-        }
-    }
 
     class ImsServiceConnection implements ServiceConnection {
 
@@ -95,10 +74,7 @@ public class ImsServiceController {
                 Log.d(LOG_TAG, "ImsService(" + name + "): onServiceConnected with binder: "
                         + service);
                 if (service != null) {
-                    mImsDeathRecipient = new ImsDeathRecipient(name);
                     try {
-                        service.linkToDeath(mImsDeathRecipient, 0);
-                        mImsServiceControllerBinder = service;
                         setServiceController(service);
                         notifyImsServiceReady();
                         // create all associated features in the ImsService
@@ -109,9 +85,8 @@ public class ImsServiceController {
                         mIsBound = false;
                         mIsBinding = false;
                         // Remote exception means that the binder already died.
-                        if (mImsDeathRecipient != null) {
-                            mImsDeathRecipient.binderDied();
-                        }
+                        cleanupConnection();
+                        startDelayedRebindToService();
                         Log.e(LOG_TAG, "ImsService(" + name + ") RemoteException:"
                                 + e.getMessage());
                     }
@@ -141,9 +116,6 @@ public class ImsServiceController {
         }
 
         private void cleanupConnection() {
-            if (isServiceControllerAvailable()) {
-                mImsServiceControllerBinder.unlinkToDeath(mImsDeathRecipient, 0);
-            }
             cleanupAllFeatures();
             cleanUpService();
         }
@@ -215,9 +187,7 @@ public class ImsServiceController {
     // Binder interfaces to the features set in mImsFeatures;
     private HashSet<ImsFeatureContainer> mImsFeatureBinders = new HashSet<>();
     private IImsServiceController mIImsServiceController;
-    private IBinder mImsServiceControllerBinder;
     private ImsServiceConnection mImsServiceConnection;
-    private ImsDeathRecipient mImsDeathRecipient;
     private Set<IImsServiceFeatureCallback> mImsStatusCallbacks = ConcurrentHashMap.newKeySet();
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
@@ -406,13 +376,12 @@ public class ImsServiceController {
     public void unbind() throws RemoteException {
         synchronized (mLock) {
             mBackoff.stop();
-            if (mImsServiceConnection == null || mImsDeathRecipient == null) {
+            if (mImsServiceConnection == null) {
                 return;
             }
             // Clean up all features
             changeImsServiceFeatures(new HashSet<>());
             removeImsServiceFeatureCallbacks();
-            mImsServiceControllerBinder.unlinkToDeath(mImsDeathRecipient, 0);
             Log.i(LOG_TAG, "Unbinding ImsService: " + mComponentName);
             mContext.unbindService(mImsServiceConnection);
             cleanUpService();
@@ -458,13 +427,13 @@ public class ImsServiceController {
     }
 
     @VisibleForTesting
-    public IBinder getImsServiceControllerBinder() {
-        return mImsServiceControllerBinder;
+    public long getRebindDelay() {
+        return mBackoff.getCurrentDelay();
     }
 
     @VisibleForTesting
-    public long getRebindDelay() {
-        return mBackoff.getCurrentDelay();
+    public void stopBackoffTimerForTesting() {
+        mBackoff.stop();
     }
 
     public ComponentName getComponentName() {
@@ -794,9 +763,7 @@ public class ImsServiceController {
 
     private void cleanUpService() {
         synchronized (mLock) {
-            mImsDeathRecipient = null;
             mImsServiceConnection = null;
-            mImsServiceControllerBinder = null;
             setServiceController(null);
         }
     }
