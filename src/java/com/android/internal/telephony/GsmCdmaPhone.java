@@ -175,8 +175,6 @@ public class GsmCdmaPhone extends Phone {
     public EmergencyNumberTracker mEmergencyNumberTracker;
     private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
     private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
-    // Used for identify the carrier of current subscription
-    private CarrierResolver mCarrierResolver;
 
     private int mPrecisePhoneType;
 
