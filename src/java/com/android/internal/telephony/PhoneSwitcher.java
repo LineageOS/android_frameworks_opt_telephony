@@ -157,8 +157,8 @@ public class PhoneSwitcher extends Handler {
                     if (mConnectivityManager.getNetworkCapabilities(network)
                             .hasTransport(TRANSPORT_CELLULAR)) {
                         logDataSwitchEvent(
-                                TelephonyEvent.EventState.END,
-                                TelephonyEvent.DataSwitch.Reason.UNKONWN);
+                                TelephonyEvent.EventState.EVENT_STATE_END,
+                                TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN);
                     }
                     removeDefaultNetworkChangeCallback();
                 }
@@ -333,7 +333,8 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
             case EVENT_DEFAULT_SUBSCRIPTION_CHANGED: {
-                logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.MANUAL);
+                logDataSwitchEvent(TelephonyEvent.EventState.EVENT_STATE_START,
+                        DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL);
                 onEvaluate(REQUESTS_UNCHANGED, "defaultChanged");
                 registerDefaultNetworkChangeCallback();
                 break;
@@ -372,7 +373,8 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
             case EVENT_PHONE_IN_CALL_CHANGED: {
-                logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.IN_CALL);
+                logDataSwitchEvent(TelephonyEvent.EventState.EVENT_STATE_START,
+                        DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
                 onEvaluate(REQUESTS_UNCHANGED, "EVENT_PHONE_IN_CALL_CHANGED");
                 registerDefaultNetworkChangeCallback();
                 break;
@@ -470,8 +472,8 @@ public class PhoneSwitcher extends Handler {
         if (mNumPhones > 1 && networkRequest.networkCapabilities.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMS)) {
             OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
-            onDemandDataSwitch.apn = TelephonyEvent.ApnType.MMS;
-            onDemandDataSwitch.state = TelephonyEvent.EventState.START;
+            onDemandDataSwitch.apn = TelephonyEvent.ApnType.APN_TYPE_MMS;
+            onDemandDataSwitch.state = TelephonyEvent.EventState.EVENT_STATE_START;
             TelephonyMetrics.getInstance().writeOnDemandDataSwitch(onDemandDataSwitch);
         }
     }
@@ -482,8 +484,8 @@ public class PhoneSwitcher extends Handler {
         if (mNumPhones > 1 && networkRequest.networkCapabilities.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMS)) {
             OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
-            onDemandDataSwitch.apn = TelephonyEvent.ApnType.MMS;
-            onDemandDataSwitch.state = TelephonyEvent.EventState.END;
+            onDemandDataSwitch.apn = TelephonyEvent.ApnType.APN_TYPE_MMS;
+            onDemandDataSwitch.state = TelephonyEvent.EventState.EVENT_STATE_END;
             TelephonyMetrics.getInstance().writeOnDemandDataSwitch(onDemandDataSwitch);
         }
     }
@@ -812,7 +814,8 @@ public class PhoneSwitcher extends Handler {
         // If validation feature is not supported, set it directly. Otherwise,
         // start validation on the subscription first.
         if (CellularNetworkValidator.isValidationFeatureSupported() && needValidation) {
-            logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.CBRS);
+            logDataSwitchEvent(TelephonyEvent.EventState.EVENT_STATE_START,
+                    DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
             mSetOpptSubCallback = callback;
             mValidator.validate(subId, DEFAULT_VALIDATION_EXPIRATION_TIME,
                     false, mValidationCallback);
@@ -852,7 +855,8 @@ public class PhoneSwitcher extends Handler {
     private void setPreferredSubscription(int subId) {
         if (mPreferredDataSubId != subId) {
             mPreferredDataSubId = subId;
-            logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.CBRS);
+            logDataSwitchEvent(TelephonyEvent.EventState.EVENT_STATE_START,
+                    DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
             onEvaluate(REQUESTS_UNCHANGED, "preferredDataSubscriptionIdChanged");
             notifyPreferredDataSubIdChanged();
             registerDefaultNetworkChangeCallback();

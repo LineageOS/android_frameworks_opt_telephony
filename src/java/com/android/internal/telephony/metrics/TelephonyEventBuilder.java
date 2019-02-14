@@ -147,7 +147,7 @@ public class TelephonyEventBuilder {
 
     /** Set and build SIM state change event. */
     public TelephonyEventBuilder setSimStateChange(SparseArray<Integer> simStates) {
-        mEvent.type = Type.SIM_STATE_CHANGE;
+        mEvent.type = Type.SIM_STATE_CHANGED;
         mEvent.simState = new int[simStates.size()];
         for (int i = 0; i < simStates.size(); i++) {
             int key = simStates.keyAt(i);
@@ -158,14 +158,14 @@ public class TelephonyEventBuilder {
 
     /** Set and build subscription info change event. */
     public TelephonyEventBuilder setActiveSubscriptionInfoChange(ActiveSubscriptionInfo info) {
-        mEvent.type = Type.ACTIVE_SUBSCRIPTION_INFO_CHANGE;
+        mEvent.type = Type.ACTIVE_SUBSCRIPTION_INFO_CHANGED;
         mEvent.activeSubscriptionInfo = info;
         return this;
     }
 
     /** Set and build enabled modem bitmap change event. */
     public TelephonyEventBuilder setEnabledModemBitmap(int enabledModemBitmap) {
-        mEvent.type = Type.ENABLED_MODEM_CHANGE;
+        mEvent.type = Type.ENABLED_MODEM_CHANGED;
         mEvent.enabledModemBitmap = enabledModemBitmap;
         return this;
     }

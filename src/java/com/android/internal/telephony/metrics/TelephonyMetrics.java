@@ -675,7 +675,7 @@ public class TelephonyMetrics {
             int key = mLastActiveSubscriptionInfos.keyAt(i);
             activeSubscriptionInfo[key] = mLastActiveSubscriptionInfos.get(key);
         }
-        log.activeSubscriptionInfo = activeSubscriptionInfo;
+        log.lastActiveSubscriptionInfo = activeSubscriptionInfo;
 
         return log;
     }
