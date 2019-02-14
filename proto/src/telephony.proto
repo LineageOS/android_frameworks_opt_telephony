@@ -50,6 +50,9 @@ message TelephonyLog {
 
   // Hardware revision (EVT, DVT, PVT etc.)
   optional string hardware_revision = 9;
+
+  // The active subscription info for a specific slot.
+  repeated ActiveSubscriptionInfo active_subscription_info = 10;
 }
 
 // The time information
@@ -276,9 +279,6 @@ message TelephonyServiceState {
 
   // Current data radio technology
   optional RadioAccessTechnology data_rat = 6 [default = UNKNOWN];
-
-  // All the active subscription information.
-  repeated ActiveSubscriptionInfo active_subscription_info = 7;
 }
 
 // Radio access families
@@ -619,9 +619,6 @@ message RilDataCall {
 
   // The network interface name e.g. wlan0, rmnet_data0.
   optional string iframe = 3;
-
-  // All the active subscription information.
-  repeated ActiveSubscriptionInfo active_subscription_info = 4;
 }
 
 message TelephonyEvent {
@@ -675,35 +672,41 @@ message TelephonyEvent {
     // Carrier Key Change event.
     CARRIER_KEY_CHANGED = 14;
 
-    // Phone status change event.
-    PHONE_STATUS_CHANGED = 15;
-
     // Data switch event.
-    DATA_SWITCH = 16;
+    DATA_SWITCH = 15;
 
     // Network validate event.
-    NETWORK_VALIDATE = 17;
+    NETWORK_VALIDATE = 16;
 
     // On deman data switch event.
-    ON_DEMAND_DATA_SWITCH = 18;
+    ON_DEMAND_DATA_SWITCH = 17;
+
+    // SIM state change event.
+    SIM_STATE_CHANGE = 18;
+
+    // Active subscription info change event.
+    ACTIVE_SUBSCRIPTION_INFO_CHANGE = 19;
+
+    // Enabled modem change event.
+    ENABLED_MODEM_CHANGE = 20;
   }
 
   enum ApnType {
-      DEFAULT = 0;
-      MMS = 1;
-      SUPL = 2;
-      DUN = 3;
-      HIPRI = 4;
-      FOTA = 5;
-      IMS = 6;
-      CBS = 7;
-      IA = 8;
-      EMERGENCY = 9;
+      DEFAULT = 1;
+      MMS = 2;
+      SUPL = 3;
+      DUN = 4;
+      HIPRI = 5;
+      FOTA = 6;
+      IMS = 7;
+      CBS = 8;
+      IA = 9;
+      EMERGENCY = 10;
   }
 
   enum EventState {
-      START = 0;
-      END = 1;
+      START = 1;
+      END = 2;
   }
 
   enum NetworkValidationState {
@@ -1542,17 +1545,6 @@ message TelephonyEvent {
     optional string mccmnc = 3;
   }
 
-  message PhoneStatus {
-      /** The sim state of each active slot. */
-      repeated SimState sim_state = 1;
-
-      /**
-       * The modem state represent by a bitmap, the i-th bit(LSB) indicates the i-th modem
-       * state(0 - disabled, 1 - enabled).
-       */
-      optional int32 enabled_modem_bitmap = 2;
-  }
-
   // Time when event happened on device, in milliseconds since epoch
   optional int64 timestamp_millis = 1;
 
@@ -1604,9 +1596,6 @@ message TelephonyEvent {
   // Carrier key change
   optional CarrierKeyChange carrier_key_change = 17;
 
-  // Phone status
-  optional PhoneStatus phone_status = 18;
-
   // Data switch event
   optional DataSwitch data_switch = 19;
 
@@ -1615,17 +1604,27 @@ message TelephonyEvent {
 
   // On demand data switch event
   optional OnDemandDataSwitch on_demand_data_switch = 21;
+
+  // Sim state for each slot.
+  repeated SimState sim_state = 22;
+
+  // The active subscription info for a specific slot.
+  optional ActiveSubscriptionInfo active_subscription_info = 23;
+
+  // The modem state represent by a bitmap, the i-th bit(LSB) indicates the i-th modem
+  // state(0 - disabled, 1 - enabled).
+  optional int32 enabled_modem_bitmap = 24;
 }
 
 message ActiveSubscriptionInfo {
-    /** The slot index which this subscription associated with. */
+    /** The slot index which this subscription is associated with. */
     optional int32 slot_index = 1;
 
-    /** The Carrier id of this subscription. */
+    /** The Carrier id of this subscription. -1 indicates unknown value. */
     optional int32 carrier_id = 2;
 
-    /** whether subscription is opportunistic. */
-    optional bool is_opportunistic = 3;
+    /** whether subscription is opportunistic (0 - false, 1 - true, -1 - unknown). */
+    optional int32 is_opportunistic = 3;
 };
 
 enum SimState {
@@ -2007,12 +2006,6 @@ message TelephonyCallSession {
 
   // Indicating some call events are dropped
   optional bool events_dropped = 4;
-
-  // SIM state of the active slots
-  repeated SimState sim_states = 5;
-
-  // All the active subscription information.
-  repeated ActiveSubscriptionInfo active_subscription_info = 6;
 }
 
 message SmsSession {
@@ -2227,12 +2220,6 @@ message SmsSession {
 
   // Indicating some sms session events are dropped
   optional bool events_dropped = 4;
-
-  // SIM state of the active slots.
-  repeated SimState sim_state = 5;
-
-  // All the active subscription information.
-  repeated ActiveSubscriptionInfo active_subscription_info = 6;
 }
 
 // Power stats for modem

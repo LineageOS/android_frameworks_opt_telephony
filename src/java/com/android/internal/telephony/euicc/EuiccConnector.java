@@ -676,9 +676,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                 final BaseEuiccCommandCallback callback = getCallback(message);
                 onCommandStart(callback);
                 final int cardId = message.arg1;
-                // TODO(b/122978614) restore slotId from cardId once cardId is ready
-                final int slotId = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
-                // final int slotId = getSlotIdFromCardId(cardId);
+                final int slotId = getSlotIdFromCardId(cardId);
                 try {
                     switch (message.what) {
                         case CMD_GET_EID: {
@@ -956,7 +954,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
      * Gets the slot ID from the card ID.
      */
     private int getSlotIdFromCardId(int cardId) {
-        if (cardId == TelephonyManager.INVALID_CARD_ID) {
+        if (cardId == TelephonyManager.UNSUPPORTED_CARD_ID) {
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
         TelephonyManager tm = (TelephonyManager)

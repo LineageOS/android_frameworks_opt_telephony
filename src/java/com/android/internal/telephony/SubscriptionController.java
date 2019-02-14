@@ -2771,6 +2771,8 @@ public class SubscriptionController extends ISub.Stub {
 
             refreshCachedActiveSubscriptionInfoList();
 
+            notifySubscriptionInfoChanged();
+
             return groupUUID;
         } finally {
             Binder.restoreCallingIdentity(identity);
@@ -2817,6 +2819,8 @@ public class SubscriptionController extends ISub.Stub {
             if (DBG) logdl("setSubscriptionGroup update DB result: " + result);
 
             refreshCachedActiveSubscriptionInfoList();
+
+            notifySubscriptionInfoChanged();
 
             return result != 0;
         } finally {
@@ -3329,7 +3333,8 @@ public class SubscriptionController extends ISub.Stub {
     private void deactivateSubscription(SubscriptionInfo info) {
         // TODO: b/120439488 deactivate pSIM.
         if (info.isEmbedded()) {
-            EuiccManager euiccManager = new EuiccManager(mContext);
+            EuiccManager euiccManager = (EuiccManager)
+                    mContext.getSystemService(Context.EUICC_SERVICE);
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                     PendingIntent.getService(mContext, 0, new Intent(), 0));
         }

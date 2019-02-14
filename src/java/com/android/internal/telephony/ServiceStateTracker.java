@@ -49,7 +49,6 @@ import android.os.UserHandle;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
@@ -200,25 +199,26 @@ public class ServiceStateTracker extends Handler {
     public static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
 
     /** GSM events */
-    protected static final int EVENT_RADIO_STATE_CHANGED               = 1;
-    protected static final int EVENT_NETWORK_STATE_CHANGED             = 2;
-    protected static final int EVENT_GET_SIGNAL_STRENGTH               = 3;
-    protected static final int EVENT_POLL_STATE_REGISTRATION           = 4;
-    protected static final int EVENT_POLL_STATE_GPRS                   = 5;
-    protected static final int EVENT_POLL_STATE_OPERATOR               = 6;
-    protected static final int EVENT_POLL_SIGNAL_STRENGTH              = 10;
-    protected static final int EVENT_NITZ_TIME                         = 11;
-    protected static final int EVENT_SIGNAL_STRENGTH_UPDATE            = 12;
-    protected static final int EVENT_POLL_STATE_NETWORK_SELECTION_MODE = 14;
-    protected static final int EVENT_GET_LOC_DONE                      = 15;
-    protected static final int EVENT_SIM_RECORDS_LOADED                = 16;
-    protected static final int EVENT_SIM_READY                         = 17;
-    protected static final int EVENT_LOCATION_UPDATES_ENABLED          = 18;
-    protected static final int EVENT_GET_PREFERRED_NETWORK_TYPE        = 19;
-    protected static final int EVENT_SET_PREFERRED_NETWORK_TYPE        = 20;
-    protected static final int EVENT_RESET_PREFERRED_NETWORK_TYPE      = 21;
-    protected static final int EVENT_CHECK_REPORT_GPRS                 = 22;
-    protected static final int EVENT_RESTRICTED_STATE_CHANGED          = 23;
+    protected static final int EVENT_RADIO_STATE_CHANGED                    = 1;
+    protected static final int EVENT_NETWORK_STATE_CHANGED                  = 2;
+    protected static final int EVENT_GET_SIGNAL_STRENGTH                    = 3;
+    protected static final int EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION    = 4;
+    protected static final int EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION    = 5;
+    protected static final int EVENT_POLL_STATE_PS_IWLAN_REGISTRATION       = 6;
+    protected static final int EVENT_POLL_STATE_OPERATOR                    = 7;
+    protected static final int EVENT_POLL_SIGNAL_STRENGTH                   = 10;
+    protected static final int EVENT_NITZ_TIME                              = 11;
+    protected static final int EVENT_SIGNAL_STRENGTH_UPDATE                 = 12;
+    protected static final int EVENT_POLL_STATE_NETWORK_SELECTION_MODE      = 14;
+    protected static final int EVENT_GET_LOC_DONE                           = 15;
+    protected static final int EVENT_SIM_RECORDS_LOADED                     = 16;
+    protected static final int EVENT_SIM_READY                              = 17;
+    protected static final int EVENT_LOCATION_UPDATES_ENABLED               = 18;
+    protected static final int EVENT_GET_PREFERRED_NETWORK_TYPE             = 19;
+    protected static final int EVENT_SET_PREFERRED_NETWORK_TYPE             = 20;
+    protected static final int EVENT_RESET_PREFERRED_NETWORK_TYPE           = 21;
+    protected static final int EVENT_CHECK_REPORT_GPRS                      = 22;
+    protected static final int EVENT_RESTRICTED_STATE_CHANGED               = 23;
 
     /** CDMA events */
     protected static final int EVENT_RUIM_READY                        = 26;
@@ -1125,8 +1125,9 @@ public class ServiceStateTracker extends Handler {
                 disableSingleLocationUpdate();
                 break;
 
-            case EVENT_POLL_STATE_REGISTRATION:
-            case EVENT_POLL_STATE_GPRS:
+            case EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION:
+            case EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION:
+            case EVENT_POLL_STATE_PS_IWLAN_REGISTRATION:
             case EVENT_POLL_STATE_OPERATOR:
                 ar = (AsyncResult) msg.obj;
                 handlePollStateResult(msg.what, ar);
@@ -1189,7 +1190,7 @@ public class ServiceStateTracker extends Handler {
                 ar = (AsyncResult) msg.obj;
 
                 if (ar.exception == null) {
-                    mRegStateManagers.get(AccessNetworkConstants.TransportType.WWAN)
+                    mRegStateManagers.get(TransportType.WWAN)
                             .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
                             obtainMessage(EVENT_GET_LOC_DONE, null));
                 }
@@ -1449,8 +1450,8 @@ public class ServiceStateTracker extends Handler {
                             updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS);
                     hasChanged |= updateNrStatusFromPhysicalChannelConfigs(
                             list,
-                            mSS.getNetworkRegistrationState(
-                                    NetworkRegistrationState.DOMAIN_PS, AccessNetworkType.EUTRAN));
+                            mSS.getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                                    AccessNetworkType.EUTRAN));
 
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged
@@ -1704,6 +1705,7 @@ public class ServiceStateTracker extends Handler {
 
         if (mPollingContext[0] == 0) {
             mNewSS.setEmergencyOnly(mEmergencyOnly);
+            combinePsRegistrationStates(mNewSS);
             if (mPhone.isPhoneTypeGsm()) {
                 updateRoamingState();
             } else {
@@ -1898,10 +1900,44 @@ public class ServiceStateTracker extends Handler {
         return config.getRat() == TelephonyManager.NETWORK_TYPE_NR;
     }
 
+    /**
+     * This combine PS registration states from cellular and IWLAN and generates the final data
+     * reg state and rat for backward compatibility purpose. In reality there should be two separate
+     * registration states for cellular and IWLAN, but in legacy mode, if the device camps on IWLAN,
+     * the IWLAN registration states overwrites the service states. This method is to simulate that
+     * behavior.
+     *
+     * @param serviceState The service state having combined registration states.
+     */
+    private void combinePsRegistrationStates(ServiceState serviceState) {
+        NetworkRegistrationState wlanPsRegState = serviceState.getNetworkRegistrationState(
+                NetworkRegistrationState.DOMAIN_PS, TransportType.WLAN);
+        NetworkRegistrationState wwanPsRegState = serviceState.getNetworkRegistrationState(
+                NetworkRegistrationState.DOMAIN_PS, TransportType.WWAN);
+        if (wlanPsRegState != null
+                && wlanPsRegState.getAccessNetworkTechnology()
+                == TelephonyManager.NETWORK_TYPE_IWLAN
+                && wlanPsRegState.getRegState() == NetworkRegistrationState.REG_STATE_HOME) {
+            serviceState.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
+            serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        } else if (wwanPsRegState != null) {
+            // If the device is not camped on IWLAN, then we use cellular PS registration state
+            // to compute reg state and rat.
+            int regState = wwanPsRegState.getRegState();
+            int dataRat = ServiceState.networkTypeToRilRadioTechnology(
+                    wwanPsRegState.getAccessNetworkTechnology());
+            serviceState.setDataRegState(regCodeToServiceState(regState));
+            serviceState.setRilDataRadioTechnology(dataRat);
+        }
+        if (DBG) {
+            log("combinePsRegistrationStates: " + serviceState);
+        }
+    }
+
     void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
         switch (what) {
-            case EVENT_POLL_STATE_REGISTRATION: {
+            case EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION: {
                 NetworkRegistrationState networkRegState = (NetworkRegistrationState) ar.result;
                 VoiceSpecificRegistrationStates voiceSpecificStates =
                         networkRegState.getVoiceSpecificStates();
@@ -1980,16 +2016,29 @@ public class ServiceStateTracker extends Handler {
                 break;
             }
 
-            case EVENT_POLL_STATE_GPRS: {
+            case EVENT_POLL_STATE_PS_IWLAN_REGISTRATION: {
                 NetworkRegistrationState networkRegState = (NetworkRegistrationState) ar.result;
+                mNewSS.addNetworkRegistrationState(networkRegState);
+
+                if (DBG) {
+                    log("handlPollStateResultMessage: PS IWLAN. " + networkRegState);
+                }
+                break;
+            }
+
+            case EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION: {
+                NetworkRegistrationState networkRegState = (NetworkRegistrationState) ar.result;
+                mNewSS.addNetworkRegistrationState(networkRegState);
                 DataSpecificRegistrationStates dataSpecificStates =
                         networkRegState.getDataSpecificStates();
                 int registrationState = networkRegState.getRegState();
                 int serviceState = regCodeToServiceState(registrationState);
                 int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
                         networkRegState.getAccessNetworkTechnology());
-                mNewSS.setDataRegState(serviceState);
-                mNewSS.setRilDataRadioTechnology(newDataRat);
+
+                if (DBG) {
+                    log("handlPollStateResultMessage: PS cellular. " + networkRegState);
+                }
 
                 // When we receive OOS reset the PhyChanConfig list so that non-return-to-idle
                 // implementers of PhyChanConfig unsol will not carry forward a CA report
@@ -2000,7 +2049,6 @@ public class ServiceStateTracker extends Handler {
                 }
                 updateNrStatusFromPhysicalChannelConfigs(
                         mLastPhysicalChannelConfigList, networkRegState);
-                mNewSS.addNetworkRegistrationState(networkRegState);
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 if (mPhone.isPhoneTypeGsm()) {
@@ -2008,22 +2056,10 @@ public class ServiceStateTracker extends Handler {
                     mNewReasonDataDenied = networkRegState.getRejectCause();
                     mNewMaxDataCalls = dataSpecificStates.maxDataCalls;
                     mDataRoaming = regCodeIsRoaming(registrationState);
-
-                    if (DBG) {
-                        log("handlPollStateResultMessage: GsmSST dataServiceState=" + serviceState
-                                + " regState=" + registrationState
-                                + " dataRadioTechnology=" + newDataRat);
-                    }
                 } else if (mPhone.isPhoneTypeCdma()) {
 
                     boolean isDataRoaming = regCodeIsRoaming(registrationState);
                     mNewSS.setDataRoaming(isDataRoaming);
-
-                    if (DBG) {
-                        log("handlPollStateResultMessage: cdma dataServiceState=" + serviceState
-                                + " regState=" + registrationState
-                                + " dataRadioTechnology=" + newDataRat);
-                    }
                 } else {
 
                     // If the unsolicited signal strength comes just before data RAT family changes
@@ -2044,11 +2080,6 @@ public class ServiceStateTracker extends Handler {
                     // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
                     boolean isDataRoaming = regCodeIsRoaming(registrationState);
                     mNewSS.setDataRoaming(isDataRoaming);
-                    if (DBG) {
-                        log("handlPollStateResultMessage: CdmaLteSST dataServiceState="
-                                + serviceState + " registrationState=" + registrationState
-                                + " dataRadioTechnology=" + newDataRat);
-                    }
                 }
 
                 updateServiceStateLteEarfcnBoost(mNewSS,
@@ -2869,19 +2900,25 @@ public class ServiceStateTracker extends Handler {
             default:
                 // Issue all poll-related commands at once then count down the responses, which
                 // are allowed to arrive out-of-order
-                // TODO: Add WLAN support.
                 mPollingContext[0]++;
                 mCi.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR, mPollingContext));
 
                 mPollingContext[0]++;
-                mRegStateManagers.get(AccessNetworkConstants.TransportType.WWAN)
-                        .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
-                        obtainMessage(EVENT_POLL_STATE_GPRS, mPollingContext));
+                mRegStateManagers.get(TransportType.WWAN).getNetworkRegistrationState(
+                        NetworkRegistrationState.DOMAIN_PS,
+                        obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION, mPollingContext));
 
                 mPollingContext[0]++;
-                mRegStateManagers.get(AccessNetworkConstants.TransportType.WWAN)
+                mRegStateManagers.get(TransportType.WWAN)
                         .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
-                        obtainMessage(EVENT_POLL_STATE_REGISTRATION, mPollingContext));
+                        obtainMessage(EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION, mPollingContext));
+
+                if (mRegStateManagers.get(TransportType.WLAN) != null) {
+                    mPollingContext[0]++;
+                    mRegStateManagers.get(TransportType.WLAN).getNetworkRegistrationState(
+                            NetworkRegistrationState.DOMAIN_PS,
+                            obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION, mPollingContext));
+                }
 
                 if (mPhone.isPhoneTypeGsm()) {
                     mPollingContext[0]++;
