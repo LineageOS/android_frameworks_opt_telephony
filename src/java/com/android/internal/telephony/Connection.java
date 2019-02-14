@@ -238,6 +238,12 @@ public abstract class Connection {
     private EmergencyNumber mEmergencyNumberInfo;
 
     /**
+     * Whether the call is from emergency dialer, only valid if {@link #isEmergencyCall} returns
+     * {@code true}.
+     */
+    private boolean mHasKnownUserIntentEmergency;
+
+    /**
      * When {@code true}, the network has indicated that this is an emergency call.
      */
     private boolean mIsNetworkIdentifiedEmergencyCall;
@@ -464,7 +470,21 @@ public abstract class Connection {
     }
 
     /**
-     * Set the emergency numbe information if it is an emergency call.
+     * Checks if we have known the user's intent for the call is emergency.
+     *
+     * This is only used to specify when the dialed number is ambiguous, identified as both
+     * emergency number and any other non-emergency number; e.g. in some situation, 611 could
+     * be both an emergency number in a country and a non-emergency number of a carrier's
+     * customer service hotline.
+     *
+     * @return whether the call is from emergency dialer
+     */
+    public boolean hasKnownUserIntentEmergency() {
+        return mHasKnownUserIntentEmergency;
+    }
+
+    /**
+     * Set the emergency number information if it is an emergency call.
      *
      * @hide
      */
@@ -483,6 +503,20 @@ public abstract class Connection {
                 }
             }
         }
+    }
+
+    /**
+     * Set if we have known the user's intent for the call is emergency.
+     *
+     * This is only used to specify when the dialed number is ambiguous, identified as both
+     * emergency number and any other non-emergency number; e.g. in some situation, 611 could
+     * be both an emergency number in a country and a non-emergency number of a carrier's
+     * customer service hotline.
+     *
+     * @hide
+     */
+    public void setHasKnownUserIntentEmergency(boolean hasKnownUserIntentEmergency) {
+        mHasKnownUserIntentEmergency = hasKnownUserIntentEmergency;
     }
 
     /**
