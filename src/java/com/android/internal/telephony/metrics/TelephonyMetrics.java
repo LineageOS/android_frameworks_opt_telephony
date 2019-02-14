@@ -102,6 +102,7 @@ import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.text.DecimalFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -535,6 +536,8 @@ public class TelephonyMetrics {
         pw.println("Amount of time phone spent in various cellular "
                 + "rx signal strength levels (ms): "
                 + Arrays.toString(s.timeInRxSignalStrengthLevelMs));
+        pw.println("Energy consumed across measured modem rails (mAh): "
+                + new DecimalFormat("#.##").format(s.monitoredRailEnergyConsumedMah));
         pw.decreaseIndent();
         pw.println("Hardware Version: " + SystemProperties.get("ro.boot.revision", ""));
     }
