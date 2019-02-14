@@ -3323,7 +3323,8 @@ public class SubscriptionController extends ISub.Stub {
     private void deactivateSubscription(SubscriptionInfo info) {
         // TODO: b/120439488 deactivate pSIM.
         if (info.isEmbedded()) {
-            EuiccManager euiccManager = new EuiccManager(mContext);
+            EuiccManager euiccManager = (EuiccManager)
+                    mContext.getSystemService(Context.EUICC_SERVICE);
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                     PendingIntent.getService(mContext, 0, new Intent(), 0));
         }
