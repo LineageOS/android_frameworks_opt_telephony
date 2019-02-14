@@ -40,9 +40,9 @@ import com.android.ims.internal.IImsServiceController;
  * ImsService will support.
  *
  * Compatibility interface for interacting with older implementations of ImsService. The older
- * ImsService implementation is contained within the android.telephony.ims.compat.* namspace.
+ * ImsService implementation is contained within the android.telephony.ims.compat.* namespace.
  * Newer implementations of ImsService should use the current APIs contained in
- * android.telephony.ims.compat.*.
+ * android.telephony.ims.*.
  */
 public class ImsServiceControllerCompat extends ImsServiceController {
 
