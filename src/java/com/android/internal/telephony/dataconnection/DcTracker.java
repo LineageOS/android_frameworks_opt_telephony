@@ -17,6 +17,9 @@
 package com.android.internal.telephony.dataconnection;
 
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE_CA;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_NR;
 
 import static com.android.internal.telephony.RILConstants.DATA_PROFILE_DEFAULT;
 import static com.android.internal.telephony.RILConstants.DATA_PROFILE_INVALID;
@@ -91,6 +94,7 @@ import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.TelephonyIntents;
@@ -559,7 +563,7 @@ public class DcTracker extends Handler {
 
     // When false we will not auto attach and manually attaching is required.
     private boolean mAutoAttachOnCreationConfig = false;
-    private AtomicBoolean mAutoAttachOnCreation = new AtomicBoolean(false);
+    private AtomicBoolean mAutoAttachEnabled = new AtomicBoolean(false);
 
     // State of screen
     // (TODO: Reconsider tying directly to screen, maybe this is
@@ -683,7 +687,7 @@ public class DcTracker extends Handler {
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        mAutoAttachOnCreation.set(sp.getBoolean(Phone.DATA_DISABLED_ON_BOOT_KEY, false));
+        mAutoAttachEnabled.set(sp.getBoolean(Phone.DATA_DISABLED_ON_BOOT_KEY, false));
 
         mSubscriptionManager = SubscriptionManager.from(mPhone.getContext());
         mSubscriptionManager.addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
@@ -1180,7 +1184,7 @@ public class DcTracker extends Handler {
             notifyOffApnsOfAvailability();
         }
         if (mAutoAttachOnCreationConfig) {
-            mAutoAttachOnCreation.set(true);
+            mAutoAttachEnabled.set(true);
         }
         setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED, RetryFailures.ALWAYS);
     }
@@ -1279,7 +1283,7 @@ public class DcTracker extends Handler {
             reasons.add(DataDisallowedReasonType.IN_ECBM);
         }
 
-        if (!(attachedState || mAutoAttachOnCreation.get())) {
+        if (!(attachedState || mAutoAttachEnabled.get())) {
             reasons.add(DataDisallowedReasonType.NOT_ATTACHED);
         }
         if (!recordsLoaded) {
@@ -2174,8 +2178,8 @@ public class DcTracker extends Handler {
         }
     }
 
-    public boolean getAutoAttachOnCreation() {
-        return mAutoAttachOnCreation.get();
+    public boolean getAutoAttachEnabled() {
+        return mAutoAttachEnabled.get();
     }
 
     private void onRecordsLoadedOrSubIdChanged() {
@@ -2200,7 +2204,7 @@ public class DcTracker extends Handler {
         mAllApnSettings.clear();
         mAutoAttachOnCreationConfig = false;
         // Clear auto attach as modem is expected to do a new attach once SIM is ready
-        mAutoAttachOnCreation.set(false);
+        mAutoAttachEnabled.set(false);
         mOnSubscriptionsChangedListener.mPreviousSubId.set(
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         // In no-sim case, we should still send the emergency APN to the modem, if there is any.
@@ -2672,7 +2676,7 @@ public class DcTracker extends Handler {
         mReregisterOnReconnectFailure = false;
 
         // Clear auto attach as modem is expected to do a new attach
-        mAutoAttachOnCreation.set(false);
+        mAutoAttachEnabled.set(false);
 
         if (mPhone.getSimulatedRadioControl() != null) {
             // Assume data is connected on the simulator
@@ -3890,9 +3894,32 @@ public class DcTracker extends Handler {
         log("update(): Active DDS, register for all events now!");
         onUpdateIcc();
 
-        mAutoAttachOnCreation.set(false);
+        updateAutoAttachOnCreation();
 
         mPhone.updateCurrentCarrierInProvider();
+    }
+
+    /**
+     * For non DDS phone, mAutoAttachEnabled should be true because it may be detached
+     * automatically from network only because it's idle for too long. In this case, we should
+     * try setting up data call even if it's not attached for 2G or 3G networks. And doing so will
+     * trigger PS attach if possible.
+     */
+    public void updateAutoAttachOnCreation() {
+        PhoneSwitcher phoneSwitcher = PhoneSwitcher.getInstance();
+        ServiceState serviceState = mPhone.getServiceState();
+        if (PhoneSwitcher.getInstance() == null || serviceState == null) {
+            mAutoAttachEnabled.set(false);
+            return;
+        }
+
+        // If it's non DDS phone, and voice is registered on 2G or 3G network, we set
+        // mAutoAttachEnabled to true.
+        mAutoAttachEnabled.set(mPhone.getPhoneId() != phoneSwitcher.getPreferredDataPhoneId()
+                && serviceState.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
+                && serviceState.getVoiceNetworkType() != NETWORK_TYPE_LTE
+                && serviceState.getVoiceNetworkType() != NETWORK_TYPE_LTE_CA
+                && serviceState.getVoiceNetworkType() != NETWORK_TYPE_NR);
     }
 
     private void notifyAllDataDisconnected() {
@@ -3975,7 +4002,7 @@ public class DcTracker extends Handler {
         pw.println(" mNoRecvPollCount=" + mNoRecvPollCount);
         pw.println(" mResolver=" + mResolver);
         pw.println(" mReconnectIntent=" + mReconnectIntent);
-        pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
+        pw.println(" mAutoAttachEnabled=" + mAutoAttachEnabled.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
         pw.println(" mDataServiceBound=" + mDataServiceBound);
