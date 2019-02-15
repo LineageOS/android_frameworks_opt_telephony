@@ -42,7 +42,6 @@ import com.android.ims.internal.IImsRegistrationListener;
 import com.android.ims.internal.IImsUt;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -80,15 +79,6 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
     public static final int FEATURE_UNKNOWN = -1;
     public static final int FEATURE_DISABLED = 0;
     public static final int FEATURE_ENABLED = 1;
-
-    private static final CapabilityChangeRequest.CapabilityPair VOLTE_CAPABILITY_PAIR =
-            new CapabilityChangeRequest.CapabilityPair(
-                    MmTelCapabilities.CAPABILITY_TYPE_VOICE,
-                    ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
-    private static final CapabilityChangeRequest.CapabilityPair VT_CAPABILITY_PAIR =
-            new CapabilityChangeRequest.CapabilityPair(
-                    MmTelCapabilities.CAPABILITY_TYPE_VIDEO,
-                    ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
 
     private static class ConfigListener extends ImsConfigListener.Stub {
 
@@ -358,20 +348,6 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
                         });
                 latch.await(WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             }
-            // Hack For compatibility purposes: older implementations would ignore the VT feature
-            // enabled flag when VoLTE was also enabled on the first time after sub loaded. If we
-            // did not ignore the VT feature, it would send multiple registrations to the network
-            // (first voice, then voice+video). So, we should only send voice if voice+vt is enabled
-            // because they will check to see if VT is enabled separately.
-            List<CapabilityChangeRequest.CapabilityPair> enableRequest =
-                    request.getCapabilitiesToEnable();
-            if (enableRequest.contains(VT_CAPABILITY_PAIR)
-                    && enableRequest.contains(VOLTE_CAPABILITY_PAIR)) {
-                Log.i(TAG, "changeEnabledCapabilities: VT + VoLTE enable requested - removing VT "
-                        + "request");
-                enableRequest.remove(VT_CAPABILITY_PAIR);
-            }
-
             // Enable Capabilities
             for (CapabilityChangeRequest.CapabilityPair cap : request.getCapabilitiesToEnable()) {
                 CountDownLatch latch = new CountDownLatch(1);
