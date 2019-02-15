@@ -115,6 +115,14 @@ public class CdmaSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    public void testRecipientAddress() throws Exception {
+        String pdu = "011a0000001002080d0003100160010610262d5ab500040401448888";
+        SmsMessage sms = SmsMessage.createFromEfRecord(0,
+                HexDump.hexStringToByteArray(pdu));
+        assertEquals("12222", sms.getRecipientAddress());
+    }
+
+    @SmallTest
     public void testUserData7bitGsm() throws Exception {
         String pdu = "00031040900112488ea794e074d69e1b7392c270326cde9e98";
         BearerData bearerData = BearerData.decode(HexDump.hexStringToByteArray(pdu));
