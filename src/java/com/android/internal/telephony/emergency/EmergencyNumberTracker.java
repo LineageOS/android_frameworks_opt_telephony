@@ -16,14 +16,19 @@
 
 package com.android.internal.telephony.emergency;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.location.Country;
 import android.location.CountryDetector;
 import android.location.CountryListener;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.SystemProperties;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.emergency.EmergencyNumber;
@@ -76,16 +81,19 @@ public class EmergencyNumberTracker extends Handler {
     private final Phone mPhone;
     private CountryDetector mCountryDetector;
     private String mCountryIso;
+    private String[] mEmergencyNumberPrefix = new String[0];
 
     private static final String EMERGENCY_NUMBER_DB_ASSETS_FILE = "eccdata";
 
     private List<EmergencyNumber> mEmergencyNumberListFromDatabase = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberListFromRadio = new ArrayList<>();
+    private List<EmergencyNumber> mEmergencyNumberListWithPrefix = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberListFromTestMode = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberList = new ArrayList<>();
 
     private final LocalLog mEmergencyNumberListDatabaseLocalLog = new LocalLog(20);
     private final LocalLog mEmergencyNumberListRadioLocalLog = new LocalLog(20);
+    private final LocalLog mEmergencyNumberListPrefixLocalLog = new LocalLog(20);
     private final LocalLog mEmergencyNumberListTestModeLocalLog = new LocalLog(20);
     private final LocalLog mEmergencyNumberListLocalLog = new LocalLog(20);
 
@@ -98,11 +106,38 @@ public class EmergencyNumberTracker extends Handler {
     private static final int EVENT_UPDATE_DB_COUNTRY_ISO_CHANGED = 2;
     /** Event indicating the update for the emergency number list in the testing mode. */
     private static final int EVENT_UPDATE_EMERGENCY_NUMBER_TEST_MODE = 3;
+    /** Event indicating the update for the emergency number prefix from carrier config. */
+    private static final int EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX = 4;
+
+    private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(
+                    CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                onCarrierConfigChanged();
+                return;
+            }
+        }
+    };
 
     public EmergencyNumberTracker(Phone phone, CommandsInterface ci) {
         mPhone = phone;
         mCi = ci;
         if (mPhone != null) {
+            CarrierConfigManager configMgr = (CarrierConfigManager)
+                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configMgr != null) {
+                PersistableBundle b = configMgr.getConfigForSubId(mPhone.getSubId());
+                if (b != null) {
+                    mEmergencyNumberPrefix = b.getStringArray(
+                            CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
+                }
+            }
+
+            // Receive Carrier Config changes
+            mPhone.getContext().registerReceiver(mIntentReceiver, new IntentFilter(
+                    CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+
             mCountryDetector = (CountryDetector) mPhone.getContext().getSystemService(
                     Context.COUNTRY_DETECTOR);
             if (mCountryDetector != null) {
@@ -155,6 +190,14 @@ public class EmergencyNumberTracker extends Handler {
                             msg.arg1, (EmergencyNumber) msg.obj);
                 }
                 break;
+            case EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX:
+                if (msg.obj == null) {
+                    loge("EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX: Result from"
+                            + " onCarrierConfigChanged is null.");
+                } else {
+                    updateEmergencyNumberPrefixAndNotify((String[]) msg.obj);
+                }
+
         }
     }
 
@@ -164,6 +207,26 @@ public class EmergencyNumberTracker extends Handler {
         if (mCountryIso == null) {
             mCountryIso = getInitialCountryIso().toLowerCase();
             cacheEmergencyDatabaseByCountry(mCountryIso);
+        }
+    }
+
+    private void onCarrierConfigChanged() {
+        if (mPhone != null) {
+            CarrierConfigManager configMgr = (CarrierConfigManager)
+                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configMgr != null) {
+                PersistableBundle b = configMgr.getConfigForSubId(mPhone.getSubId());
+                if (b != null) {
+                    String[] emergencyNumberPrefix = b.getStringArray(
+                            CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
+                    if (!mEmergencyNumberPrefix.equals(emergencyNumberPrefix)) {
+                        this.obtainMessage(EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX,
+                                emergencyNumberPrefix).sendToTarget();
+                    }
+                }
+            }
+        } else {
+            loge("onCarrierConfigChanged mPhone is null.");
         }
     }
 
@@ -281,7 +344,6 @@ public class EmergencyNumberTracker extends Handler {
             List<EmergencyNumber> emergencyNumberListRadio) {
         Collections.sort(emergencyNumberListRadio);
         logd("updateRadioEmergencyNumberListAndNotify(): receiving " + emergencyNumberListRadio);
-
         if (!emergencyNumberListRadio.equals(mEmergencyNumberListFromRadio)) {
             try {
                 EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberListRadio);
@@ -322,6 +384,18 @@ public class EmergencyNumberTracker extends Handler {
         notifyEmergencyNumberList();
     }
 
+    private void updateEmergencyNumberPrefixAndNotify(String[] emergencyNumberPrefix) {
+        logd("updateEmergencyNumberPrefixAndNotify(): receiving emergencyNumberPrefix: "
+                + emergencyNumberPrefix.toString());
+        mEmergencyNumberPrefix = emergencyNumberPrefix;
+        updateEmergencyNumberList();
+        if (!DBG) {
+            mEmergencyNumberListLocalLog.log("updateEmergencyNumberPrefixAndNotify:"
+                    + mEmergencyNumberList);
+        }
+        notifyEmergencyNumberList();
+    }
+
     private void notifyEmergencyNumberList() {
         try {
             if (getEmergencyNumberList() != null) {
@@ -341,6 +415,23 @@ public class EmergencyNumberTracker extends Handler {
         List<EmergencyNumber> mergedEmergencyNumberList =
                 new ArrayList<>(mEmergencyNumberListFromDatabase);
         mergedEmergencyNumberList.addAll(mEmergencyNumberListFromRadio);
+        // 'updateEmergencyNumberList' is called every time there is a change for emergency numbers
+        // from radio indication, emergency numbers from database, emergency number prefix from
+        // carrier config, or test mode emergency numbers, the emergency number prefix is changed
+        // by carrier config, the emergency number list with prefix needs to be clear, and re-apply
+        // the new prefix for the current emergency numbers.
+        mEmergencyNumberListWithPrefix.clear();
+        if (mEmergencyNumberPrefix.length != 0) {
+            mEmergencyNumberListWithPrefix.addAll(getEmergencyNumberListWithPrefix(
+                    mEmergencyNumberListFromRadio));
+            mEmergencyNumberListWithPrefix.addAll(getEmergencyNumberListWithPrefix(
+                    mEmergencyNumberListFromDatabase));
+        }
+        if (!DBG) {
+            mEmergencyNumberListPrefixLocalLog.log("updateEmergencyNumberList:"
+                    + mEmergencyNumberListWithPrefix);
+        }
+        mergedEmergencyNumberList.addAll(mEmergencyNumberListWithPrefix);
         mergedEmergencyNumberList.addAll(mEmergencyNumberListFromTestMode);
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
         mEmergencyNumberList = mergedEmergencyNumberList;
@@ -474,8 +565,29 @@ public class EmergencyNumberTracker extends Handler {
         for (String emergencyNum : emergencyNumbers.split(",")) {
             emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
         }
+        if (mEmergencyNumberPrefix.length != 0) {
+            emergencyNumberList.addAll(getEmergencyNumberListWithPrefix(emergencyNumberList));
+        }
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberList);
         return emergencyNumberList;
+    }
+
+    private List<EmergencyNumber> getEmergencyNumberListWithPrefix(
+            List<EmergencyNumber> emergencyNumberList) {
+        List<EmergencyNumber> emergencyNumberListWithPrefix = new ArrayList<>();
+        for (EmergencyNumber num : emergencyNumberList) {
+            for (String prefix : mEmergencyNumberPrefix) {
+                // If an emergency number has started with the prefix, no need to apply the prefix.
+                if (!num.getNumber().startsWith(prefix)) {
+                    emergencyNumberListWithPrefix.add(new EmergencyNumber(
+                            prefix + num.getNumber(), num.getCountryIso(),
+                            num.getMnc(), num.getEmergencyServiceCategoryBitmask(),
+                            num.getEmergencyUrns(), num.getEmergencyNumberSourceBitmask(),
+                            num.getEmergencyCallRouting()));
+                }
+            }
+        }
+        return emergencyNumberListWithPrefix;
     }
 
     private boolean isEmergencyNumberForTest(String number) {
@@ -634,6 +746,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private List<EmergencyNumber> getEmergencyNumberListFromEccListAndTest() {
         List<EmergencyNumber> mergedEmergencyNumberList = getEmergencyNumberListFromEccList();
+        mergedEmergencyNumberList.addAll(mEmergencyNumberListWithPrefix);
         mergedEmergencyNumberList.addAll(getEmergencyNumberListTestMode());
         return mergedEmergencyNumberList;
     }
@@ -676,6 +789,12 @@ public class EmergencyNumberTracker extends Handler {
         ipw.println("mEmergencyNumberListRadioLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListRadioLocalLog.dump(fd, pw, args);
+        ipw.decreaseIndent();
+        ipw.println("   -   -   -   -   -   -   -   -");
+
+        ipw.println("mEmergencyNumberListPrefixLocalLog:");
+        ipw.increaseIndent();
+        mEmergencyNumberListPrefixLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
         ipw.println("   -   -   -   -   -   -   -   -");
 
