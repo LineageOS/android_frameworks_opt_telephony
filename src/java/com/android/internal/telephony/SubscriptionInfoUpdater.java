@@ -54,6 +54,7 @@ import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
 
@@ -260,7 +261,13 @@ public class SubscriptionInfoUpdater extends Handler {
 
             case EVENT_SIM_NOT_READY:
                 handleSimNotReady(msg.arg1);
-                // intentional fall through
+                int cardId = getCardIdFromPhoneId(msg.arg1);
+                // an eUICC with no active subscriptions never becomes ready, so we need to trigger
+                // the embedded subscriptions update here
+                if (updateEmbeddedSubscriptions(cardId)) {
+                    SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+                }
+                break;
 
             case EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS:
                 if (updateEmbeddedSubscriptions(msg.arg1)) {
@@ -274,6 +281,15 @@ public class SubscriptionInfoUpdater extends Handler {
             default:
                 logd("Unknown msg:" + msg.what);
         }
+    }
+
+    private int getCardIdFromPhoneId(int phoneId) {
+        UiccController uiccController = UiccController.getInstance();
+        UiccCard card = uiccController.getUiccCardForPhone(phoneId);
+        if (card != null) {
+            return uiccController.convertToPublicCardId(card.getCardId());
+        }
+        return TelephonyManager.UNINITIALIZED_CARD_ID;
     }
 
     void requestEmbeddedSubscriptionInfoListRefresh(int cardId, @Nullable Runnable callback) {
@@ -580,7 +596,7 @@ public class SubscriptionInfoUpdater extends Handler {
             UiccSlot[] uiccSlots = uiccController.getUiccSlots();
             if (uiccSlots != null) {
                 Arrays.stream(uiccSlots)
-                        .filter(uiccSlot -> uiccSlot.isEuicc() && uiccSlot.getUiccCard() != null)
+                        .filter(uiccSlot -> uiccSlot.getUiccCard() != null)
                         .map(uiccSlot -> uiccController.convertToPublicCardId(
                                 uiccSlot.getUiccCard().getCardId()))
                         .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
