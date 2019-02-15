@@ -865,8 +865,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-                     int clirMode, Message result) {
-        dial(address, isEmergencyCall, emergencyNumberInfo, clirMode, null, result);
+                     boolean hasKnownUserIntentEmergency, int clirMode, Message result) {
+        dial(address, isEmergencyCall, emergencyNumberInfo, hasKnownUserIntentEmergency,
+                clirMode, null, result);
     }
 
     @Override
@@ -903,10 +904,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-                     int clirMode, UUSInfo uusInfo, Message result) {
+                     boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo,
+                     Message result) {
         if (isEmergencyCall && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)
                 && emergencyNumberInfo != null) {
-            emergencyDial(address, emergencyNumberInfo, clirMode, uusInfo, result);
+            emergencyDial(address, emergencyNumberInfo, hasKnownUserIntentEmergency, clirMode,
+                    uusInfo, result);
             return;
         }
 
@@ -940,7 +943,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void emergencyDial(String address, EmergencyNumber emergencyNumberInfo,
-                               int clirMode, UUSInfo uusInfo, Message result) {
+                               boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo,
+                               Message result) {
         IRadio radioProxy = getRadioProxy(result);
         // IRadio V1.4
         android.hardware.radio.V1_4.IRadio radioProxy14 =
@@ -965,12 +969,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                // TODO: populate fromEmergencyDialer correctly
                 radioProxy14.emergencyDial(rr.mSerial, dialInfo,
                         emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
                         (ArrayList) emergencyNumberInfo.getEmergencyUrns(),
                         emergencyNumberInfo.getEmergencyCallRouting(),
-                        false,
+                        hasKnownUserIntentEmergency,
                         emergencyNumberInfo.getEmergencyNumberSourceBitmask()
                                 == EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST);
             } catch (RemoteException | RuntimeException e) {
