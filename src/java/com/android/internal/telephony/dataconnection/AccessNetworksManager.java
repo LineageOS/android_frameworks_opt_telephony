@@ -16,16 +16,17 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.annotation.NonNull;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PersistableBundle;
+import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.UserHandle;
@@ -191,8 +192,7 @@ public class AccessNetworksManager {
             }
 
             if (!qualifiedNetworksList.isEmpty()) {
-                mQualifiedNetworksChangedRegistrants.notifyRegistrants(
-                        new AsyncResult(null, qualifiedNetworksList, null));
+                mQualifiedNetworksChangedRegistrants.notifyResult(qualifiedNetworksList);
             }
         }
     }
@@ -290,6 +290,17 @@ public class AccessNetworksManager {
         return packageName;
     }
 
+
+    private @NonNull List<QualifiedNetworks> getQualifiedNetworksList() {
+        List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
+        for (int i = 0; i < mAvailableNetworks.size(); i++) {
+            qualifiedNetworksList.add(new QualifiedNetworks(mAvailableNetworks.keyAt(i),
+                    mAvailableNetworks.valueAt(i)));
+        }
+
+        return qualifiedNetworksList;
+    }
+
     /**
      * Register for qualified networks changed event.
      *
@@ -298,7 +309,14 @@ public class AccessNetworksManager {
      */
     public void registerForQualifiedNetworksChanged(Handler h, int what) {
         if (h != null) {
-            mQualifiedNetworksChangedRegistrants.addUnique(h, what, null);
+            Registrant r = new Registrant(h, what, null);
+            mQualifiedNetworksChangedRegistrants.add(r);
+
+            // Notify for the first time if there is already something in the available network
+            // list.
+            if (mAvailableNetworks.size() != 0) {
+                r.notifyResult(getQualifiedNetworksList());
+            }
         }
     }
 
