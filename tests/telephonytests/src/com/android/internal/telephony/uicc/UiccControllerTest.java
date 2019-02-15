@@ -109,8 +109,9 @@ public class UiccControllerTest extends TelephonyTest {
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mSimulatedCommands.setIccCardStatus(mIccCardStatus);
-        // slotIndex should be invalid when testing with older versions (before 1.2) of hal
-        mIccCardStatus.physicalSlotIndex = UiccController.INVALID_SLOT_ID;
+        // for testing we pretend slotIndex is set. In reality it would be invalid on older versions
+        // (before 1.2) of hal
+        mIccCardStatus.physicalSlotIndex = 0;
         mUiccControllerHandlerThread = new UiccControllerHandlerThread(TAG);
         mUiccControllerHandlerThread.start();
         waitUntilReady();
@@ -235,6 +236,7 @@ public class UiccControllerTest extends TelephonyTest {
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
         ics.eid = "A1B2C3D4";
+        ics.physicalSlotIndex = 0;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
@@ -323,6 +325,7 @@ public class UiccControllerTest extends TelephonyTest {
         ics.setUniversalPinState(3 /* disabled */);
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
+        ics.physicalSlotIndex = 0;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
