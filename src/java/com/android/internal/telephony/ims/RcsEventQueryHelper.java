@@ -21,7 +21,6 @@ import static android.provider.Telephony.RcsColumns.RcsEventTypes.PARTICIPANT_AL
 import static android.provider.Telephony.RcsColumns.RcsEventTypes.PARTICIPANT_JOINED_EVENT_TYPE;
 import static android.provider.Telephony.RcsColumns.RcsEventTypes.PARTICIPANT_LEFT_EVENT_TYPE;
 import static android.provider.Telephony.RcsColumns.RcsGroupThreadColumns.RCS_GROUP_THREAD_URI;
-import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_PARTICIPANT_ID_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsParticipantColumns.RCS_PARTICIPANT_URI;
 import static android.provider.Telephony.RcsColumns.RcsParticipantEventColumns.ALIAS_CHANGE_EVENT_URI_PART;
 import static android.provider.Telephony.RcsColumns.RcsParticipantEventColumns.NEW_ALIAS_COLUMN;
@@ -188,7 +187,7 @@ class RcsEventQueryHelper {
     private RcsParticipantAliasChangedEvent createNewParticipantAliasChangedEvent(Cursor cursor) {
         return new RcsParticipantAliasChangedEvent(
                 cursor.getLong(cursor.getColumnIndex(TIMESTAMP_COLUMN)),
-                cursor.getInt(cursor.getColumnIndex(RCS_PARTICIPANT_ID_COLUMN)),
+                cursor.getInt(cursor.getColumnIndex(SOURCE_PARTICIPANT_ID_COLUMN)),
                 cursor.getString(cursor.getColumnIndex(NEW_ALIAS_COLUMN)));
     }
 }

@@ -63,6 +63,7 @@ import static android.provider.Telephony.RcsColumns.RcsThreadColumns.RCS_THREAD_
 import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.DESTINATION_PARTICIPANT_ID_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.NEW_ICON_URI_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.NEW_NAME_COLUMN;
+import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.SOURCE_PARTICIPANT_ID_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsThreadEventColumns.TIMESTAMP_COLUMN;
 import static android.provider.Telephony.RcsColumns.RcsUnifiedThreadColumns.THREAD_TYPE_GROUP;
 import static android.provider.Telephony.RcsColumns.TRANSACTION_FAILED;
@@ -210,10 +211,10 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsMessageQueryResult getMessages(RcsMessageQueryParams queryParameters)
+    public RcsMessageQueryResult getMessages(RcsMessageQueryParams queryParams)
             throws RemoteException {
         Bundle bundle = new Bundle();
-        bundle.putParcelable(MESSAGE_QUERY_PARAMETERS_KEY, queryParameters);
+        bundle.putParcelable(MESSAGE_QUERY_PARAMETERS_KEY, queryParams);
         return mMessageQueryHelper.performMessageQuery(bundle);
     }
 
@@ -910,7 +911,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
             String newAlias) throws RemoteException {
         ContentValues contentValues = new ContentValues(4);
         contentValues.put(TIMESTAMP_COLUMN, timestamp);
-        contentValues.put(RCS_PARTICIPANT_ID_COLUMN, participantId);
+        contentValues.put(SOURCE_PARTICIPANT_ID_COLUMN, participantId);
         contentValues.put(NEW_ALIAS_COLUMN, newAlias);
 
         Uri uri = mContentResolver.insert(
