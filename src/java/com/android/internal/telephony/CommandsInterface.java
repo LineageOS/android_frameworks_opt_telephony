@@ -827,7 +827,7 @@ public interface CommandsInterface {
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
     void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-              int clirMode, Message result);
+              boolean hasKnownUserIntentEmergency, int clirMode, Message result);
 
     /**
      *  returned message
@@ -841,7 +841,7 @@ public interface CommandsInterface {
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
     void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-              int clirMode, UUSInfo uusInfo, Message result);
+              boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo, Message result);
 
     /**
      *  returned message

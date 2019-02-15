@@ -28,6 +28,7 @@ import static org.mockito.Mockito.isA;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -104,7 +105,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mBackgroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         try {
-            mCTUT.dial(mDialString);
+            mCTUT.dial(mDialString, new Bundle());
             waitForMs(100);
         } catch(Exception ex) {
             ex.printStackTrace();
@@ -117,7 +118,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         /* verify the command is sent out to RIL */
         verify(mSimulatedCommandsVerifier).dial(
                 eq(PhoneNumberUtils.extractNetworkPortionAlt(mDialString)), eq(false),
-                eq(null), anyInt(), eq((UUSInfo) null), isA(Message.class));
+                eq(null), eq(false), anyInt(), eq((UUSInfo) null), isA(Message.class));
     }
 
     @Test
@@ -218,7 +219,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
         String mDialString = PhoneNumberUtils.stripSeparators("+17005554142");
         try {
-            mCTUT.dial(mDialString);
+            mCTUT.dial(mDialString, new Bundle());
         } catch(Exception ex) {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
@@ -464,7 +465,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         waitForHandlerAction(mSimulatedCommands.getHandler(), 5000);
         // Try to place another call.
         try {
-            mCTUT.dial("650-555-1212");
+            mCTUT.dial("650-555-1212", new Bundle());
         } catch (CallStateException cse) {
             assertEquals(CallStateException.ERROR_OTASP_PROVISIONING_IN_PROCESS, cse.getError());
             return;
