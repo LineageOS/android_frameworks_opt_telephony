@@ -345,7 +345,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
             Connection connection = mPhoneUT.dial("1234567890",
                     new PhoneInternalInterface.DialArgs.Builder().build());
-            verify(mCT).dial("1234567890", null, null);
+            verify(mCT).dialGsm("1234567890", null, null);
         } catch (CallStateException e) {
             fail();
         }
