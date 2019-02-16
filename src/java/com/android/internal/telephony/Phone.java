@@ -2208,10 +2208,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyMessageWaitingChanged(this);
     }
 
-    public void notifyDataConnection(String apnType, PhoneConstants.DataState state) {
-        mNotifier.notifyDataConnection(this, apnType, state);
-    }
-
     public void notifyDataConnection(String apnType) {
         mNotifier.notifyDataConnection(this, apnType, getDataConnectionState(apnType));
     }
@@ -2244,6 +2240,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void notifySignalStrength() {
         mNotifier.notifySignalStrength(this);
+    }
+
+    public PhoneConstants.DataState getDataConnectionState(String apnType) {
+        return PhoneConstants.DataState.DISCONNECTED;
     }
 
     public void notifyCellInfo(List<CellInfo> cellInfo) {
