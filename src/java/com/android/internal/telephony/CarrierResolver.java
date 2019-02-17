@@ -964,7 +964,7 @@ public class CarrierResolver extends Handler {
         ipw.println("mMnoCarrierId: " + mMnoCarrierId);
         ipw.println("mCarrierName: " + mCarrierName);
         ipw.println("mPreciseCarrierName: " + mPreciseCarrierName);
-        ipw.println("version: " + getCarrierListVersion());
+        ipw.println("carrier_list_version: " + getCarrierListVersion());
 
         ipw.println("mCarrierMatchingRules on mccmnc: "
                 + mTelephonyMgr.getSimOperatorNumericForPhone(mPhone.getPhoneId()));

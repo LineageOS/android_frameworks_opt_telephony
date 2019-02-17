@@ -1172,13 +1172,19 @@ public class EuiccController extends IEuiccController.Stub {
     // Checks whether the caller can manage the active embedded subscription on the SIM with the
     // given cardId.
     private boolean canManageActiveSubscriptionOnTargetSim(int cardId, String callingPackage) {
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager
+                .getActiveSubscriptionInfoList(/* userVisibleonly */false);
         if (subInfoList == null || subInfoList.size() == 0) {
             // No active subscription on any SIM.
             return false;
         }
         for (SubscriptionInfo subInfo : subInfoList) {
-            if (subInfo.getCardId() == cardId && subInfo.isEmbedded()
+            // If cardId == TelephonyManager.UNSUPPORTED_CARD_ID, we assume it does not support
+            // multiple eSIMs. There are older multi-active SIM devices which do not implement HAL
+            // 1.2 and if they have multiple eSIMs, we let it pass if the app can manage an active
+            // subscription on any eSIM. That's the best we can do here.
+            if ((cardId == TelephonyManager.UNSUPPORTED_CARD_ID || subInfo.getCardId() == cardId)
+                    && subInfo.isEmbedded()
                     && mSubscriptionManager.canManageSubscription(subInfo, callingPackage)) {
                 return true;
             }
@@ -1194,11 +1200,16 @@ public class EuiccController extends IEuiccController.Stub {
     // For a single-active subscription phone, checks whether the caller can manage any active
     // embedded subscription.
     private boolean canManageSubscriptionOnTargetSim(int cardId, String callingPackage) {
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager
+                .getActiveSubscriptionInfoList(/* userVisibleonly */false);
         // No active subscription on any SIM.
         if (subInfoList == null || subInfoList.size() == 0) {
             return false;
         }
+        // If it's a multi-active SIM device, we assume it's above HAL 1.2 which supports cardId.
+        // There are older multi-active SIM devices but don't implement HAL 1.2. In this case,
+        // platform can't even detect UiccCardInfo#isEuicc as true for eSIM, which won't let the
+        // below check pass. That's the best we can do here.
         if (supportMultiActiveSlots()) {
             // The target card should be an eUICC.
             List<UiccCardInfo> cardInfos = mTelephonyManager.getUiccCardsInfo();

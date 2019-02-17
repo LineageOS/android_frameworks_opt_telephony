@@ -52,6 +52,7 @@ import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccCardInfo;
 import android.telephony.euicc.DownloadableSubscription;
@@ -197,31 +198,38 @@ public class EuiccControllerTest extends TelephonyTest {
     @Test(expected = SecurityException.class)
     public void testGetEid_noPrivileges() throws Exception {
         setGetEidPermissions(false /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
-        callGetEid(true /* success */, "ABCDE" /* eid */);
+        callGetEid(true /* success */, "ABCDE" /* eid */, CARD_ID);
     }
 
     @Test
     public void testGetEid_withPhoneStatePrivileged() throws Exception {
         setGetEidPermissions(true /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
-        assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */));
+        assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */, CARD_ID));
     }
 
     @Test
     public void testGetEid_withCarrierPrivileges() throws Exception {
         setGetEidPermissions(false /* hasPhoneStatePrivileged */, true /* hasCarrierPrivileges */);
-        assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */));
+        assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */, CARD_ID));
     }
 
     @Test
     public void testGetEid_failure() throws Exception {
         setGetEidPermissions(true /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
-        assertNull(callGetEid(false /* success */, null /* eid */));
+        assertNull(callGetEid(false /* success */, null /* eid */, CARD_ID));
     }
 
     @Test
     public void testGetEid_nullReturnValue() throws Exception {
         setGetEidPermissions(true /* hasPhoneStatePrivileged */, false /* hasCarrierPrivileges */);
-        assertNull(callGetEid(true /* success */, null /* eid */));
+        assertNull(callGetEid(true /* success */, null /* eid */, CARD_ID));
+    }
+
+    @Test
+    public void testGetEid_unsupportedCardId() throws Exception {
+        setGetEidPermissions(false /* hasPhoneStatePrivileged */, true /* hasCarrierPrivileges */);
+        assertEquals("ABCDE", callGetEid(true /* success */, "ABCDE" /* eid */,
+                TelephonyManager.UNSUPPORTED_CARD_ID));
     }
 
     @Test(expected = SecurityException.class)
@@ -976,7 +984,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 false, "", false, false, 0, 0, 0);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
-        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(
+        when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(
                 Collections.singletonList(subInfo));
     }
 
@@ -1003,7 +1011,7 @@ public class EuiccControllerTest extends TelephonyTest {
         when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         ArrayList<SubscriptionInfo> subInfos = new ArrayList<>(Arrays.asList(subInfo1, subInfo2));
-        when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(subInfos);
+        when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(subInfos);
     }
 
     private void prepareOperationSubscription(boolean hasPrivileges) throws Exception {
@@ -1017,7 +1025,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 Collections.singletonList(subInfo));
     }
 
-    private String callGetEid(final boolean success, final @Nullable String eid) {
+    private String callGetEid(final boolean success, final @Nullable String eid, int cardId) {
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -1032,7 +1040,7 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).getEid(anyInt(),
                 Mockito.<EuiccConnector.GetEidCommandCallback>any());
-        return mController.getEid(CARD_ID, PACKAGE_NAME);
+        return mController.getEid(cardId, PACKAGE_NAME);
     }
 
     private int callGetOtaStatus(final boolean success, final int status) {
