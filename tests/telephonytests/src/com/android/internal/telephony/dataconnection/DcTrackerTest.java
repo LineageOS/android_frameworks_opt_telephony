@@ -1467,6 +1467,7 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier, times(0)).getDataCallList(any(Message.class));
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testNetworkStatusChangedRecoveryON() throws Exception {
@@ -1511,6 +1512,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testRecoveryStepPDPReset() throws Exception {
