@@ -24,6 +24,10 @@ import java.util.Objects;
  * HIDL versioning</a>.
  */
 public class HalVersion implements Comparable<HalVersion> {
+
+    /** The HAL Version indicating that the version is unknown or invalid */
+    public static final HalVersion UNKNOWN = new HalVersion(-1, -1);
+
     public final int major;
 
     public final int minor;
