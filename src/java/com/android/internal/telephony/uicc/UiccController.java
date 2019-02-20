@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.app.BroadcastOptions;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -807,10 +808,13 @@ public class UiccController extends Handler {
         }
 
         // broadcast slot status changed
+        final BroadcastOptions options = BroadcastOptions.makeBasic();
+        options.setAllowBackgroundActivityStarts(true);
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
         intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
-        mContext.sendBroadcast(intent, android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mContext.sendBroadcast(intent, android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+                options.toBundle());
     }
 
     private boolean slotStatusChanged(ArrayList<IccSlotStatus> slotStatusList) {
