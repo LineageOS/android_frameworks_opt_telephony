@@ -154,7 +154,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private final ClientWakelockTracker mClientWakelockTracker = new ClientWakelockTracker();
 
     /** @hide */
-    public static final HalVersion RADIO_HAL_VERSION_UNKNOWN = new HalVersion(-1, -1);
+    public static final HalVersion RADIO_HAL_VERSION_UNKNOWN = HalVersion.UNKNOWN;
 
     /** @hide */
     public static final HalVersion RADIO_HAL_VERSION_1_0 = new HalVersion(1, 0);
