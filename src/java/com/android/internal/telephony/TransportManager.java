@@ -29,6 +29,7 @@ import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager.QualifiedNetworks;
 import com.android.internal.util.ArrayUtils;
@@ -122,7 +123,11 @@ public class TransportManager extends Handler {
      */
     private final RegistrantList mHandoverNeededEventRegistrants;
 
-    static final class HandoverParams {
+    /**
+     * Handover parameters
+     */
+    @VisibleForTesting
+    public static final class HandoverParams {
         public final @ApnType int apnType;
         public final int targetTransport;
         HandoverParams(int apnType, int targetTransport) {
@@ -134,10 +139,6 @@ public class TransportManager extends Handler {
     public TransportManager(Phone phone) {
         mPhone = phone;
         mAccessNetworksManager = new AccessNetworksManager(phone);
-
-        mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
-                EVENT_QUALIFIED_NETWORKS_CHANGED);
-
         mCurrentAvailableNetworks = new ConcurrentHashMap<>();
         mCurrentTransports = new ConcurrentHashMap<>();
         mHandoverNeededEventRegistrants = new RegistrantList();
@@ -147,6 +148,8 @@ public class TransportManager extends Handler {
             // the IWLAN ones.
             mAvailableTransports = new int[]{TransportType.WWAN};
         } else {
+            mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
+                    EVENT_QUALIFIED_NETWORKS_CHANGED);
             mAvailableTransports = new int[]{TransportType.WWAN, TransportType.WLAN};
         }
     }
@@ -211,14 +214,17 @@ public class TransportManager extends Handler {
         log("updateAvailableNetworks: " + networksList);
         for (QualifiedNetworks networks : networksList) {
             if (areNetworksValid(networks)) {
-                mCurrentAvailableNetworks.put(networks.apnType, networks.qualifiedNetworks);
                 if (isHandoverNeeded(networks)) {
+                    mCurrentAvailableNetworks.put(networks.apnType, networks.qualifiedNetworks);
                     // If handover is needed, perform the handover works. For now we only pick the
                     // first element because it's the most preferred. In the future we should also
                     // consider the rest in the list, for example, the first one violates
                     // carrier/user policy.
                     int targetTransport = ACCESS_NETWORK_TRANSPORT_TYPE_MAP.get(
                             networks.qualifiedNetworks[0]);
+                    log("Handover needed for APN type: "
+                            + ApnSetting.getApnTypeString(networks.apnType) + ", target transport: "
+                            + TransportType.toString(targetTransport));
                     mHandoverNeededEventRegistrants.notifyResult(
                             new HandoverParams(networks.apnType, targetTransport));
 
@@ -227,6 +233,7 @@ public class TransportManager extends Handler {
                     // transport.
                     log("Handover not needed for APN type: "
                             + ApnSetting.getApnTypeString(networks.apnType));
+                    mCurrentAvailableNetworks.put(networks.apnType, networks.qualifiedNetworks);
                     int transport = TransportType.WWAN;
                     if (!ArrayUtils.isEmpty(networks.qualifiedNetworks)
                             && ACCESS_NETWORK_TRANSPORT_TYPE_MAP.containsKey(
