@@ -599,6 +599,9 @@ public class PhoneSwitcher extends Handler {
                 }
             }
 
+            notifyActiveDataSubIdChanged(mSubscriptionController.getSubIdUsingPhoneId(
+                    mPreferredDataPhoneId));
+
             // Notify all registrants.
             mActivePhoneRegistrants.notifyRegistrants();
         }
@@ -859,7 +862,6 @@ public class PhoneSwitcher extends Handler {
             logDataSwitchEvent(TelephonyEvent.EventState.EVENT_STATE_START,
                     DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
             onEvaluate(REQUESTS_UNCHANGED, "preferredDataSubscriptionIdChanged");
-            notifyPreferredDataSubIdChanged();
             registerDefaultNetworkChangeCallback();
         }
     }
@@ -882,16 +884,6 @@ public class PhoneSwitcher extends Handler {
                 + (needValidation ? " with " : " without ") + "validation");
         PhoneSwitcher.this.obtainMessage(EVENT_CHANGE_PREFERRED_SUBSCRIPTION,
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
-    }
-
-    private void notifyPreferredDataSubIdChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                "telephony.registry"));
-        try {
-            tr.notifyPreferredDataSubIdChanged(mPreferredDataSubId);
-        } catch (RemoteException ex) {
-            // Should never happen because TelephonyRegistry service should always be available.
-        }
     }
 
     private boolean isCallActive(Phone phone) {
@@ -926,6 +918,18 @@ public class PhoneSwitcher extends Handler {
         dataSwitch.state = state;
         dataSwitch.reason = reason;
         TelephonyMetrics.getInstance().writeDataSwitch(dataSwitch);
+
+    }
+
+    private void notifyActiveDataSubIdChanged(int activeDataSubId) {
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
+                "telephony.registry"));
+        try {
+            log("notifyActiveDataSubIdChanged to " + activeDataSubId);
+            tr.notifyActiveDataSubIdChanged(activeDataSubId);
+        } catch (RemoteException ex) {
+            // Should never happen because its always available.
+        }
     }
 
     public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {

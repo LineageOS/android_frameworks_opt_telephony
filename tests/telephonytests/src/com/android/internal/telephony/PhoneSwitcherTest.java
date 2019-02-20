@@ -642,7 +642,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(mDefaultDataSub).when(mSubscriptionController).getDefaultDataSubId();
         doAnswer(invocation -> {
             int phoneId = (int) invocation.getArguments()[0];
-            return mSlotIndexToSubId[phoneId][0];
+            if (phoneId == SubscriptionManager.INVALID_PHONE_INDEX) {
+                return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+            } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
+                return mSlotIndexToSubId[0][0];
+            } else {
+                return mSlotIndexToSubId[phoneId][0];
+            }
         }).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
 
         doAnswer(invocation -> {

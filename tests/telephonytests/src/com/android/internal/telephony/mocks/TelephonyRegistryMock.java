@@ -426,7 +426,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyPreferredDataSubIdChanged(int subId) {
+    public void notifyActiveDataSubIdChanged(int subId) {
         throw new RuntimeException("Not implemented");
     }
 
