@@ -45,13 +45,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.telephony.Rlog;
-import android.telephony.ims.RcsEvent;
-import android.telephony.ims.RcsEventQueryResult;
-import android.telephony.ims.RcsGroupThreadIconChangedEvent;
-import android.telephony.ims.RcsGroupThreadNameChangedEvent;
-import android.telephony.ims.RcsGroupThreadParticipantJoinedEvent;
-import android.telephony.ims.RcsGroupThreadParticipantLeftEvent;
-import android.telephony.ims.RcsParticipantAliasChangedEvent;
+import android.telephony.ims.RcsEventDescriptor;
+import android.telephony.ims.RcsEventQueryResultDescriptor;
+import android.telephony.ims.RcsGroupThreadIconChangedEventDescriptor;
+import android.telephony.ims.RcsGroupThreadNameChangedEventDescriptor;
+import android.telephony.ims.RcsGroupThreadParticipantJoinedEventDescriptor;
+import android.telephony.ims.RcsGroupThreadParticipantLeftEventDescriptor;
+import android.telephony.ims.RcsParticipantAliasChangedEventDescriptor;
 import android.telephony.ims.RcsQueryContinuationToken;
 
 import java.util.ArrayList;
@@ -69,9 +69,9 @@ class RcsEventQueryHelper {
                 .appendPath(ALIAS_CHANGE_EVENT_URI_PART).build();
     }
 
-    RcsEventQueryResult performEventQuery(Bundle bundle) throws RemoteException {
+    RcsEventQueryResultDescriptor performEventQuery(Bundle bundle) throws RemoteException {
         RcsQueryContinuationToken continuationToken = null;
-        List<RcsEvent> eventList = new ArrayList<>();
+        List<RcsEventDescriptor> eventList = new ArrayList<>();
 
         try (Cursor cursor = mContentResolver.query(RCS_EVENT_QUERY_URI, null, bundle, null)) {
             if (cursor == null) {
@@ -108,7 +108,7 @@ class RcsEventQueryHelper {
             }
         }
 
-        return new RcsEventQueryResult(continuationToken, eventList);
+        return new RcsEventQueryResultDescriptor(continuationToken, eventList);
     }
 
     int createGroupThreadEvent(int eventType, long timestamp, int threadId,
@@ -150,42 +150,45 @@ class RcsEventQueryHelper {
         }
     }
 
-    private RcsGroupThreadIconChangedEvent createNewGroupIconChangedEvent(Cursor cursor) {
+    private RcsGroupThreadIconChangedEventDescriptor createNewGroupIconChangedEvent(Cursor cursor) {
         String newIcon = cursor.getString(cursor.getColumnIndex(NEW_ICON_URI_COLUMN));
 
-        return new RcsGroupThreadIconChangedEvent(
+        return new RcsGroupThreadIconChangedEventDescriptor(
                 cursor.getLong(cursor.getColumnIndex(TIMESTAMP_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(RCS_THREAD_ID_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(SOURCE_PARTICIPANT_ID_COLUMN)),
                 newIcon == null ? null : Uri.parse(newIcon));
     }
 
-    private RcsGroupThreadNameChangedEvent createNewGroupNameChangedEvent(Cursor cursor) {
-        return new RcsGroupThreadNameChangedEvent(
+    private RcsGroupThreadNameChangedEventDescriptor createNewGroupNameChangedEvent(Cursor cursor) {
+        return new RcsGroupThreadNameChangedEventDescriptor(
                 cursor.getLong(cursor.getColumnIndex(TIMESTAMP_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(RCS_THREAD_ID_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(SOURCE_PARTICIPANT_ID_COLUMN)),
                 cursor.getString(cursor.getColumnIndex(NEW_NAME_COLUMN)));
     }
 
-    private RcsGroupThreadParticipantLeftEvent createNewParticipantLeftEvent(Cursor cursor) {
-        return new RcsGroupThreadParticipantLeftEvent(
+    private RcsGroupThreadParticipantLeftEventDescriptor
+            createNewParticipantLeftEvent(Cursor cursor) {
+        return new RcsGroupThreadParticipantLeftEventDescriptor(
                 cursor.getLong(cursor.getColumnIndex(TIMESTAMP_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(RCS_THREAD_ID_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(SOURCE_PARTICIPANT_ID_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(DESTINATION_PARTICIPANT_ID_COLUMN)));
     }
 
-    private RcsGroupThreadParticipantJoinedEvent createNewParticipantJoinedEvent(Cursor cursor) {
-        return new RcsGroupThreadParticipantJoinedEvent(
+    private RcsGroupThreadParticipantJoinedEventDescriptor
+            createNewParticipantJoinedEvent(Cursor cursor) {
+        return new RcsGroupThreadParticipantJoinedEventDescriptor(
                 cursor.getLong(cursor.getColumnIndex(TIMESTAMP_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(RCS_THREAD_ID_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(SOURCE_PARTICIPANT_ID_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(DESTINATION_PARTICIPANT_ID_COLUMN)));
     }
 
-    private RcsParticipantAliasChangedEvent createNewParticipantAliasChangedEvent(Cursor cursor) {
-        return new RcsParticipantAliasChangedEvent(
+    private RcsParticipantAliasChangedEventDescriptor
+            createNewParticipantAliasChangedEvent(Cursor cursor) {
+        return new RcsParticipantAliasChangedEventDescriptor(
                 cursor.getLong(cursor.getColumnIndex(TIMESTAMP_COLUMN)),
                 cursor.getInt(cursor.getColumnIndex(SOURCE_PARTICIPANT_ID_COLUMN)),
                 cursor.getString(cursor.getColumnIndex(NEW_ALIAS_COLUMN)));
