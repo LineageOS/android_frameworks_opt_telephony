@@ -272,7 +272,7 @@ public class LocaleTracker extends Handler {
     public void updateOperatorNumeric(String operatorNumeric) {
         // Check if the operator numeric changes.
         if (!Objects.equals(mOperatorNumeric, operatorNumeric)) {
-            String msg = "Operator numeric changes to " + operatorNumeric;
+            String msg = "Operator numeric changes to \"" + operatorNumeric + "\"";
             if (DBG) log(msg);
             mLocalLog.log(msg);
             mOperatorNumeric = operatorNumeric;
@@ -286,23 +286,8 @@ public class LocaleTracker extends Handler {
             return;
         }
         List<CellInfo> cellInfoList = (List<CellInfo>) ar.result;
-        String msg = "getCellInfo: cell info=" + cellInfoList;
+        String msg = "processCellInfo: cell info=" + cellInfoList;
         if (DBG) log(msg);
-        if (cellInfoList != null) {
-            // We only log when cell identity changes, otherwise the local log is flooded with cell
-            // info.
-            if (mCellInfoList == null || cellInfoList.size() != mCellInfoList.size()) {
-                mLocalLog.log(msg);
-            } else {
-                for (int i = 0; i < cellInfoList.size(); i++) {
-                    if (!Objects.equals(mCellInfoList.get(i).getCellIdentity(),
-                            cellInfoList.get(i).getCellIdentity())) {
-                        mLocalLog.log(msg);
-                        break;
-                    }
-                }
-            }
-        }
         mCellInfoList = cellInfoList;
         updateLocale();
     }
@@ -412,7 +397,7 @@ public class LocaleTracker extends Handler {
         boolean countryChanged = false;
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
             String msg = "updateLocale: Change the current country to \"" + countryIso
-                    + "\", mcc = " + mcc;
+                    + "\", mcc = " + mcc + ", mCellInfoList = " + mCellInfoList;
             log(msg);
             mLocalLog.log(msg);
             mCurrentCountryIso = countryIso;
