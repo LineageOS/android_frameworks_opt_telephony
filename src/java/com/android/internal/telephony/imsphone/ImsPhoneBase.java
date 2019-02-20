@@ -184,11 +184,6 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
-    public PhoneConstants.DataState getDataConnectionState(String apnType) {
-        return PhoneConstants.DataState.DISCONNECTED;
-    }
-
-    @Override
     public DataActivityState getDataActivityState() {
         return DataActivityState.NONE;
     }
