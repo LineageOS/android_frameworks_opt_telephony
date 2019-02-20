@@ -1163,7 +1163,7 @@ public class DcTracker extends Handler {
         if (DBG) log ("onDataConnectionDetached: stop polling and notify detached");
         stopNetStatPoll();
         stopDataStallAlarm();
-        notifyDataConnection();
+        mPhone.notifyDataConnection();
         mAttached.set(false);
     }
 
@@ -1174,10 +1174,7 @@ public class DcTracker extends Handler {
             if (DBG) log("onDataConnectionAttached: start polling notify attached");
             startNetStatPoll();
             startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
-            notifyDataConnection();
-        } else {
-            // update APN availability so that APN can be enabled.
-            notifyOffApnsOfAvailability();
+            mPhone.notifyDataConnection();
         }
         if (mAutoAttachOnCreationConfig) {
             mAutoAttachOnCreation.set(true);
@@ -1439,7 +1436,6 @@ public class DcTracker extends Handler {
                         buildWaitingApns(apnContext.getApnType(), radioTech);
                 if (waitingApns.isEmpty()) {
                     notifyNoData(DataFailCause.MISSING_UNKNOWN_APN, apnContext);
-                    notifyOffApnsOfAvailability();
                     String str = "trySetupData: X No APN found retValue=false";
                     if (DBG) log(str);
                     apnContext.requestLog(str);
@@ -1454,7 +1450,6 @@ public class DcTracker extends Handler {
             }
 
             boolean retValue = setupData(apnContext, radioTech, requestType);
-            notifyOffApnsOfAvailability();
 
             if (DBG) log("trySetupData: X retValue=" + retValue);
             return retValue;
@@ -1463,7 +1458,6 @@ public class DcTracker extends Handler {
                     && apnContext.isConnectable()) {
                 mPhone.notifyDataConnectionFailed(apnContext.getApnType());
             }
-            notifyOffApnsOfAvailability();
 
             StringBuilder str = new StringBuilder();
 
@@ -1486,22 +1480,6 @@ public class DcTracker extends Handler {
             if (DBG) log(str.toString());
             apnContext.requestLog(str.toString());
             return false;
-        }
-    }
-
-    // Disabled apn's still need avail/unavail notifications - send them out
-    private void notifyOffApnsOfAvailability() {
-        for (ApnContext apnContext : mApnContexts.values()) {
-            if (!mAttached.get() || !apnContext.isReady()) {
-                if (DBG) log("notifyOffApnOfAvailability type:" + apnContext.getApnType());
-                mPhone.notifyDataConnection(apnContext.getApnType(),
-                                            PhoneConstants.DataState.DISCONNECTED);
-            } else {
-                if (VDBG) {
-                    log("notifyOffApnsOfAvailability skipped apn due to attached && isReady " +
-                            apnContext.toString());
-                }
-            }
         }
     }
 
@@ -2186,10 +2164,7 @@ public class DcTracker extends Handler {
         createAllApnList();
         setDataProfilesAsNeeded();
         setInitialAttachApn();
-        if (mPhone.mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
-            if (DBG) log("onRecordsLoadedOrSubIdChanged: notifying data availability");
-            notifyOffApnsOfAvailability();
-        }
+        mPhone.notifyDataConnection();
         setupDataOnConnectableApns(Phone.REASON_SIM_LOADED, RetryFailures.ALWAYS);
     }
 
@@ -2583,10 +2558,9 @@ public class DcTracker extends Handler {
             // If the user did not enable data roaming, now when we transit from roaming to
             // non-roaming, we should try to reestablish the data connection.
 
-            notifyOffApnsOfAvailability();
             setupDataOnConnectableApns(Phone.REASON_ROAMING_OFF, RetryFailures.ALWAYS);
         } else {
-            notifyDataConnection();
+            mPhone.notifyDataConnection();
         }
     }
 
@@ -2617,14 +2591,13 @@ public class DcTracker extends Handler {
             if (DBG) log("onDataRoamingOnOrSettingsChanged: setup data on roaming");
 
             setupDataOnConnectableApns(Phone.REASON_ROAMING_ON, RetryFailures.ALWAYS);
-            notifyDataConnection();
+            mPhone.notifyDataConnection();
         } else {
             // If the user does not turn on data roaming, when we transit from non-roaming to
             // roaming, we need to tear down the data connection otherwise the user might be
             // charged for data roaming usage.
             if (DBG) log("onDataRoamingOnOrSettingsChanged: Tear down data connection on roaming.");
             cleanUpAllConnectionsInternal(true, Phone.REASON_ROAMING_ON);
-            notifyOffApnsOfAvailability();
         }
     }
 
@@ -2650,14 +2623,9 @@ public class DcTracker extends Handler {
             // Assume data is connected on the simulator
             // FIXME  this can be improved
             // setState(DctConstants.State.CONNECTED);
-            notifyDataConnection();
+            mPhone.notifyDataConnection();
 
             log("onRadioAvailable: We're on the simulator; assuming data is connected");
-        }
-
-        IccRecords r = mIccRecords.get();
-        if (r != null && r.getRecordsLoaded()) {
-            notifyOffApnsOfAvailability();
         }
 
         if (getOverallState() != DctConstants.State.IDLE) {
@@ -2682,7 +2650,6 @@ public class DcTracker extends Handler {
             if (DBG) log("onRadioOffOrNotAvailable: is off and clean up all connections");
             cleanUpAllConnectionsInternal(false, Phone.REASON_RADIO_TURNED_OFF);
         }
-        notifyOffApnsOfAvailability();
     }
 
     private void completeConnection(ApnContext apnContext) {
@@ -3047,7 +3014,7 @@ public class DcTracker extends Handler {
             if (DBG) log("onVoiceCallStarted stop polling");
             stopNetStatPoll();
             stopDataStallAlarm();
-            notifyDataConnection();
+            mPhone.notifyDataConnection();
         }
     }
 
@@ -3058,7 +3025,7 @@ public class DcTracker extends Handler {
             if (!mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                 startNetStatPoll();
                 startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
-                notifyDataConnection();
+                mPhone.notifyDataConnection();
             } else {
                 // clean slate after call end.
                 resetPollStats();
@@ -3088,16 +3055,6 @@ public class DcTracker extends Handler {
         }
         // All contexts were disconnected so return true
         return true;
-    }
-
-    private void notifyDataConnection() {
-        for (ApnContext apnContext : mApnContexts.values()) {
-            if (mAttached.get() && apnContext.isReady()) {
-                if (DBG) log("notifyDataConnection: type:" + apnContext.getApnType());
-                mPhone.notifyDataConnection(apnContext.getApnType());
-            }
-        }
-        notifyOffApnsOfAvailability();
     }
 
     private void setDataProfilesAsNeeded() {
