@@ -1125,6 +1125,10 @@ public class DataConnection extends StateMachine {
                         result.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
                         break;
                     }
+                    case PhoneConstants.APN_TYPE_MCX: {
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_MCX);
+                        break;
+                    }
                     default:
                 }
             }

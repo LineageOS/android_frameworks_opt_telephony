@@ -625,6 +625,10 @@ public class ApnContext {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_EMERGENCY;
         }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_MCX)) {
+            if (apnType != ApnSetting.TYPE_NONE) error = true;
+            apnType = ApnSetting.TYPE_MCX;
+        }
         if (error) {
             // TODO: If this error condition is removed, the framework's handling of
             // NET_CAPABILITY_NOT_RESTRICTED will need to be updated so requests for
