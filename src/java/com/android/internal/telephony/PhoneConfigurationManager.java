@@ -180,28 +180,6 @@ public class PhoneConfigurationManager {
     }
 
     /**
-     * Get how many sims have been activated on the phone
-     * NOTE: In order to support more than 3 sims, we need to change this method.
-     */
-    public int getNumOfActiveSims() {
-        String mSimConfig =
-                SystemProperties.get(TelephonyProperties.PROPERTY_MULTI_SIM_CONFIG);
-        int numOfSims;
-        switch (mSimConfig) {
-            case TSTS:
-                numOfSims = 3;
-                break;
-            case DSDA:
-            case DSDS:
-                numOfSims = 2;
-                break;
-            default:
-                numOfSims = 1;
-        }
-        return numOfSims;
-    }
-
-    /**
      * Get whether reboot is required or not after making changes to modem configurations.
      * Return value defaults to true
      */
