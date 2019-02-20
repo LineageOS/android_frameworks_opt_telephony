@@ -619,6 +619,24 @@ message RilDataCall {
 
   // The network interface name e.g. wlan0, rmnet_data0.
   optional string iframe = 3;
+
+  // State of the Data Call connection
+  optional State state = 4;
+
+  // Bitmask of APN types
+  optional int32 apn_type_bitmask = 5;
+
+  enum State {
+
+    // Unknown event
+    UNKNOWN = 0;
+
+    // Connected event
+    CONNECTED = 1;
+
+    // Disconnected event
+    DISCONNECTED = 2;
+  }
 }
 
 message TelephonyEvent {
