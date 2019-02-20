@@ -868,10 +868,10 @@ public class DcTrackerTest extends TelephonyTest {
 
         verifyDataConnected(FAKE_APN1);
 
-        assertTrue(mDct.getAutoAttachOnCreation());
+        assertTrue(mDct.getAutoAttachEnabled());
         mDct.update();
         // The auto attach flag should be reset after update
-        assertFalse(mDct.getAutoAttachOnCreation());
+        assertFalse(mDct.getAutoAttachEnabled());
 
         verify(mSST, times(1)).registerForDataConnectionDetached(eq(mDct),
                 intArgumentCaptor.capture(), eq(null));
@@ -1467,6 +1467,7 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier, times(0)).getDataCallList(any(Message.class));
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testNetworkStatusChangedRecoveryON() throws Exception {
@@ -1511,6 +1512,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
+    @FlakyTest
     @Test
     @SmallTest
     public void testRecoveryStepPDPReset() throws Exception {

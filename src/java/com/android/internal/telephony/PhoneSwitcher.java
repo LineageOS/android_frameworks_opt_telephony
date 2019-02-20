@@ -598,6 +598,7 @@ public class PhoneSwitcher extends Handler {
                     activate(phoneId);
                 }
             }
+
             // Notify all registrants.
             mActivePhoneRegistrants.notifyRegistrants();
         }
@@ -909,6 +910,10 @@ public class PhoneSwitcher extends Handler {
 
     public int getPreferredDataSubscriptionId() {
         return mPreferredDataSubId;
+    }
+
+    public int getPreferredDataPhoneId() {
+        return mPreferredDataPhoneId;
     }
 
     private void log(String l) {
