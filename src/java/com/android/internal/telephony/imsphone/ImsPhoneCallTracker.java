@@ -2869,7 +2869,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
          */
         @Override
         public void onCallQualityChanged(ImsCall imsCall, CallQuality callQuality) {
-            mPhone.onCallQualityChanged(callQuality);
+            mPhone.onCallQualityChanged(callQuality, imsCall.getRadioTechnology());
         }
     };
 
