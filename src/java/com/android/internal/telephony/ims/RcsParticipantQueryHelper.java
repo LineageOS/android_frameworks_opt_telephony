@@ -43,8 +43,8 @@ class RcsParticipantQueryHelper {
         RcsParticipant participant = null;
         try (Cursor cursor = mContentResolver.query(
                 Uri.withAppendedPath(RCS_PARTICIPANT_URI, Integer.toString(participantId)),
-                null, null, null)) {
-            if (cursor == null && !cursor.moveToNext()) {
+                new String[]{RCS_PARTICIPANT_ID_COLUMN}, null, null)) {
+            if (cursor == null || !cursor.moveToNext()) {
                 throw new RemoteException("Could not find participant with id: " + participantId);
             }
 
