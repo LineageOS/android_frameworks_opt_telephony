@@ -2356,8 +2356,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         || mPendingMO.getDisconnectCause() != DisconnectCause.NOT_DISCONNECTED) {
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
                     logHoldSwapState("onCallTerminated hold to dial but no pendingMo");
-                }
-                if (imsCall != mPendingMO.getImsCall()) {
+                } else if (imsCall != mPendingMO.getImsCall()) {
                     sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
                     logHoldSwapState("onCallTerminated hold to dial, dial pendingMo");
