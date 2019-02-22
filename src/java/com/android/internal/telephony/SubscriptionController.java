@@ -2268,12 +2268,30 @@ public class SubscriptionController extends ISub.Stub {
         return allSubs;
     }
 
+    private boolean isInvisibleSubscription(int subId) {
+        for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
+            if (info.getSubscriptionId() == subId) {
+                return SubscriptionManager.isInvisibleSubscription(info);
+            }
+        }
+
+        return false;
+    }
+
+
     /**
      * @return the list of subId's that are active, is never null but the length maybe 0.
      */
     @Override
-    public int[] getActiveSubIdList() {
-        ArrayList<Integer> allSubs = getActiveSubIdArrayList();
+    public int[] getActiveSubIdList(boolean visibleOnly) {
+        List<Integer> allSubs = getActiveSubIdArrayList();
+
+        if (visibleOnly) {
+            // Grouped opportunistic subscriptions should be hidden.
+            allSubs = allSubs.stream().filter(subId -> isInvisibleSubscription(subId))
+                    .collect(Collectors.toList());
+        }
+
         int[] subIdArr = new int[allSubs.size()];
         int i = 0;
         for (int sub : allSubs) {
