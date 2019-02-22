@@ -45,7 +45,7 @@ public class CellIdentityNrTest extends AndroidTestCase {
 
         // THEN the get method should return correct value
         assertThat(cellIdentityNr.getType()).isEqualTo(CellInfo.TYPE_NR);
-        assertThat(cellIdentityNr.getChannelNumber()).isEqualTo(NRARFCN);
+        assertThat(cellIdentityNr.getNrarfcn()).isEqualTo(NRARFCN);
         assertThat(cellIdentityNr.getPci()).isEqualTo(PCI);
         assertThat(cellIdentityNr.getTac()).isEqualTo(TAC);
         assertThat(cellIdentityNr.getOperatorAlphaLong()).isEqualTo(ALPHAL);
@@ -95,7 +95,7 @@ public class CellIdentityNrTest extends AndroidTestCase {
         // THEN the new object is equal to the old one
         assertThat(anotherCellIdentityNr).isEqualTo(anotherCellIdentityNr);
         assertThat(anotherCellIdentityNr.getType()).isEqualTo(CellInfo.TYPE_NR);
-        assertThat(anotherCellIdentityNr.getChannelNumber()).isEqualTo(NRARFCN);
+        assertThat(anotherCellIdentityNr.getNrarfcn()).isEqualTo(NRARFCN);
         assertThat(anotherCellIdentityNr.getPci()).isEqualTo(PCI);
         assertThat(anotherCellIdentityNr.getTac()).isEqualTo(TAC);
         assertThat(anotherCellIdentityNr.getOperatorAlphaLong()).isEqualTo(ALPHAL);
