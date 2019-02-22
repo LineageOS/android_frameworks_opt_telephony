@@ -272,10 +272,13 @@ public class ImsPhone extends ImsPhoneBase {
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
         mWakeLock.setReferenceCounted(false);
 
-        if (mDefaultPhone.getServiceStateTracker() != null) {
-            mDefaultPhone.getServiceStateTracker()
-                    .registerForDataRegStateOrRatChanged(this,
-                            EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
+        if (mDefaultPhone.getServiceStateTracker() != null
+                && mDefaultPhone.getTransportManager() != null) {
+            for (int transport : mDefaultPhone.getTransportManager().getAvailableTransports()) {
+                mDefaultPhone.getServiceStateTracker()
+                        .registerForDataRegStateOrRatChanged(transport, this,
+                                EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
+            }
         }
         // Sets the Voice reg state to STATE_OUT_OF_SERVICE and also queries the data service
         // state. We don't ever need the voice reg state to be anything other than in or out of
@@ -301,8 +304,10 @@ public class ImsPhone extends ImsPhoneBase {
 
         //Force all referenced classes to unregister their former registered events
         if (mDefaultPhone != null && mDefaultPhone.getServiceStateTracker() != null) {
-            mDefaultPhone.getServiceStateTracker().
-                    unregisterForDataRegStateOrRatChanged(this);
+            for (int transport : mDefaultPhone.getTransportManager().getAvailableTransports()) {
+                mDefaultPhone.getServiceStateTracker()
+                        .unregisterForDataRegStateOrRatChanged(transport, this);
+            }
             mDefaultPhone.unregisterForServiceStateChanged(this);
         }
     }

@@ -125,7 +125,7 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void setupDataCall(int radioTechnology, DataProfile dataProfile, boolean isRoaming,
+        public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                                   boolean allowRoaming, int reason, LinkProperties linkProperties,
                                   DataServiceCallback callback) {
             if (DBG) log("setupDataCall " + getSlotId());
@@ -138,8 +138,8 @@ public class CellularDataService extends DataService {
                 mCallbackMap.put(message, callback);
             }
 
-            mPhone.mCi.setupDataCall(radioTechnology, dataProfile, isRoaming, allowRoaming, reason,
-                    linkProperties, message);
+            mPhone.mCi.setupDataCall(accessNetworkType, dataProfile, isRoaming, allowRoaming,
+                    reason, linkProperties, message);
         }
 
         @Override
