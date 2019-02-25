@@ -387,10 +387,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyCallQualityChanged(Phone sender, CallQuality callQuality) {
+    public void notifyCallQualityChanged(Phone sender, CallQuality callQuality,
+            int callNetworkType) {
         try {
             if (mRegistry != null) {
-                mRegistry.notifyCallQualityChanged(callQuality, sender.getPhoneId());
+                mRegistry.notifyCallQualityChanged(callQuality, sender.getPhoneId(),
+                        callNetworkType);
             }
         } catch (RemoteException ex) {
             // system process is dead

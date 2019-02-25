@@ -135,8 +135,8 @@ abstract class ImsPhoneBase extends Phone {
         mTtyModeReceivedRegistrants.notifyRegistrants(result);
     }
 
-    public void onCallQualityChanged(CallQuality callQuality) {
-        mNotifier.notifyCallQualityChanged(this, callQuality);
+    public void onCallQualityChanged(CallQuality callQuality, int callNetworkType) {
+        mNotifier.notifyCallQualityChanged(this, callQuality, callNetworkType);
     }
 
     @Override
