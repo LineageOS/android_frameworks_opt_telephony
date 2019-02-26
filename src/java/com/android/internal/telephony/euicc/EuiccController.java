@@ -169,14 +169,17 @@ public class EuiccController extends IEuiccController.Stub {
      */
     @Override
     public String getEid(int cardId, String callingPackage) {
-        if (!callerCanReadPhoneStatePrivileged()
-                && !canManageActiveSubscriptionOnTargetSim(cardId, callingPackage)) {
-            throw new SecurityException(
-                    "Must have carrier privileges on active subscription to read EID for cardId="
-                    + cardId);
-        }
+        boolean callerCanReadPhoneStatePrivileged = callerCanReadPhoneStatePrivileged();
         long token = Binder.clearCallingIdentity();
         try {
+            if (!callerCanReadPhoneStatePrivileged
+                    && !canManageActiveSubscriptionOnTargetSim(cardId, callingPackage)) {
+                throw new SecurityException(
+                        "Must have carrier privileges on active subscription to read EID for "
+                                + "cardId="
+                                + cardId);
+            }
+
             return blockingGetEidFromEuiccService(cardId);
         } finally {
             Binder.restoreCallingIdentity(token);
