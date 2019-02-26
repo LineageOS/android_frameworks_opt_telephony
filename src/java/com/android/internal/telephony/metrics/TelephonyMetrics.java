@@ -198,6 +198,12 @@ public class TelephonyMetrics {
      */
     private final SparseArray<CarrierIdMatching> mLastCarrierId = new SparseArray<>();
 
+    /**
+     * Last RilDataCall Events (indexed by cid), indexed by phone id
+     */
+    private final SparseArray<SparseArray<RilDataCall>> mLastRilDataCallEvents =
+            new SparseArray<>();
+
     /** The start system time of the TelephonyLog in milliseconds*/
     private long mStartSystemTimeMs;
 
@@ -606,6 +612,16 @@ public class TelephonyMetrics {
             addTelephonyEvent(event);
         }
 
+        for (int i = 0; i < mLastRilDataCallEvents.size(); i++) {
+            final int key = mLastRilDataCallEvents.keyAt(i);
+            for (int j = 0; j < mLastRilDataCallEvents.get(key).size(); j++) {
+                final int cidKey = mLastRilDataCallEvents.get(key).keyAt(j);
+                RilDataCall[] dataCalls = new RilDataCall[1];
+                dataCalls[0] = mLastRilDataCallEvents.get(key).get(cidKey);
+                addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, key)
+                        .setDataCalls(dataCalls).build());
+            }
+        }
         addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
                 .setSimStateChange(mLastSimState).build());
 
@@ -1332,25 +1348,36 @@ public class TelephonyMetrics {
     }
 
     /**
-     * Write get data call list event
-     *
-     * @param phoneId Phone id
-     * @param dcsList Data call list
+     * Write data call list event when connected
+     * @param phoneId          Phone id
+     * @param cid              Context Id, uniquely identifies the call
+     * @param apnTypeBitmask   Bitmask of supported APN types
+     * @param state            State of the data call event
      */
-    public void writeRilDataCallList(int phoneId, ArrayList<DataCallResponse> dcsList) {
+    public void writeRilDataCallEvent(int phoneId, int cid,
+            int apnTypeBitmask, int state) {
+        RilDataCall[] dataCalls = new RilDataCall[1];
+        dataCalls[0] = new RilDataCall();
+        dataCalls[0].cid = cid;
+        dataCalls[0].apnTypeBitmask = apnTypeBitmask;
+        dataCalls[0].state = state;
 
-        RilDataCall[] dataCalls = new RilDataCall[dcsList.size()];
-
-        for (int i = 0; i < dcsList.size(); i++) {
-            dataCalls[i] = new RilDataCall();
-            dataCalls[i].cid = dcsList.get(i).getCallId();
-            if (!TextUtils.isEmpty(dcsList.get(i).getIfname())) {
-                dataCalls[i].iframe = dcsList.get(i).getIfname();
+        SparseArray<RilDataCall> dataCallList;
+        if (mLastRilDataCallEvents.get(phoneId) != null) {
+            // If the Data call event does not change, do not log it.
+            if (mLastRilDataCallEvents.get(phoneId).get(cid) != null
+                    && Arrays.equals(
+                        RilDataCall.toByteArray(mLastRilDataCallEvents.get(phoneId).get(cid)),
+                        RilDataCall.toByteArray(dataCalls[0]))) {
+                return;
             }
-
-            dataCalls[i].type = dcsList.get(i).getProtocolType() + 1;
+            dataCallList =  mLastRilDataCallEvents.get(phoneId);
+        } else {
+            dataCallList = new SparseArray<>();
         }
 
+        dataCallList.put(cid, dataCalls[0]);
+        mLastRilDataCallEvents.put(phoneId, dataCallList);
         addTelephonyEvent(new TelephonyEventBuilder(phoneId).setDataCalls(dataCalls).build());
     }
 
