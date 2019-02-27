@@ -928,6 +928,37 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void getModemStatus(Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (mRadioVersion.less(RADIO_HAL_VERSION_1_3)) {
+            if (RILJ_LOGV) riljLog("getModemStatus: not supported.");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+            return;
+        }
+
+        android.hardware.radio.V1_3.IRadio radioProxy13 =
+                (android.hardware.radio.V1_3.IRadio) radioProxy;
+        if (radioProxy13 != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_MODEM_STATUS, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                radioProxy13.getModemStackStatus(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "getModemStatus", e);
+            }
+        }
+    }
+
+    @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
                      boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo,
                      Message result) {
@@ -5337,6 +5368,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA";
             case RIL_REQUEST_ENABLE_MODEM:
                 return "RIL_REQUEST_ENABLE_MODEM";
+            case RIL_REQUEST_GET_MODEM_STATUS:
+                return "RIL_REQUEST_GET_MODEM_STATUS";
             default: return "<unknown request>";
         }
     }

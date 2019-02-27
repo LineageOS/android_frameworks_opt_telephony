@@ -22,10 +22,14 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemProperties;
+import android.os.storage.StorageManager;
 import android.telephony.PhoneCapability;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class manages phone's configuration which defines the potential capability (static) of the
@@ -40,6 +44,8 @@ public class PhoneConfigurationManager {
     public static final String SSSS = "";
     private static final String LOG_TAG = "PhoneCfgMgr";
     private static final int EVENT_SWITCH_DSDS_CONFIG_DONE = 100;
+    private static final int EVENT_GET_MODEM_STATUS = 101;
+    private static final int EVENT_GET_MODEM_STATUS_DONE = 102;
 
     private static PhoneConfigurationManager sInstance = null;
     private final Context mContext;
@@ -47,6 +53,8 @@ public class PhoneConfigurationManager {
     private PhoneCapability mCurrentCapability;
     private final RadioConfig mRadioConfig;
     private final MainThreadHandler mHandler;
+    private final Phone[] mPhones;
+    private final Map<Integer, Boolean> mPhoneStatusMap;
 
     /**
      * Init method to instantiate the object
@@ -75,8 +83,20 @@ public class PhoneConfigurationManager {
         mCurrentCapability = mStaticCapability;
         mRadioConfig = RadioConfig.getInstance(mContext);
         mHandler = new MainThreadHandler();
+        mPhoneStatusMap = new HashMap<>();
 
         notifyCapabilityChanged();
+
+        mPhones = PhoneFactory.getPhones();
+        if (!StorageManager.inCryptKeeperBounce()) {
+            for (Phone phone : mPhones) {
+                phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
+            }
+        } else {
+            for (Phone phone : mPhones) {
+                phone.mCi.registerForOn(mHandler, Phone.EVENT_RADIO_ON, phone);
+            }
+        }
     }
 
     /**
@@ -96,14 +116,40 @@ public class PhoneConfigurationManager {
     private final class MainThreadHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
+            AsyncResult ar;
+            Phone phone = null;
             switch (msg.what) {
+                case Phone.EVENT_RADIO_AVAILABLE:
+                case Phone.EVENT_RADIO_ON:
+                    log("Received EVENT_RADIO_AVAILABLE/EVENT_RADIO_ON");
+                    if (msg.obj instanceof Phone) {
+                        phone = (Phone) msg.obj;
+                    }
+                    if (phone == null) {
+                        log("Unable to add phoneStatus to cache. "
+                                + "No phone object provided for event " + msg.what);
+                    } else {
+                        updatePhoneStatus(phone);
+                    }
+                    break;
                 case EVENT_SWITCH_DSDS_CONFIG_DONE:
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     if (ar != null && ar.exception == null) {
                         int numOfLiveModems = msg.arg1;
                         setMultiSimProperties(numOfLiveModems);
                     } else {
                         log(msg.what + " failure. Not switching multi-sim config." + ar.exception);
+                    }
+                    break;
+                case EVENT_GET_MODEM_STATUS_DONE:
+                    ar = (AsyncResult) msg.obj;
+                    if (ar != null && ar.exception == null) {
+                        int phoneId = msg.arg1;
+                        boolean enabled = (boolean) ar.result;
+                        //update the cache each time getModemStatus is requested
+                        mPhoneStatusMap.put(phoneId, enabled);
+                    } else {
+                        log(msg.what + " failure. Not updating modem status." + ar.exception);
                     }
                     break;
             }
@@ -123,6 +169,48 @@ public class PhoneConfigurationManager {
             return;
         }
         phone.mCi.enableModem(enable, result);
+        updatePhoneStatus(phone);
+    }
+
+    /**
+     * Get phone status (enabled/disabled)
+     *
+     * @param phone which phone to operate on
+     */
+    public boolean getPhoneStatus(Phone phone) {
+        if (phone == null) {
+            log("getPhonetatus failed phone is null");
+            return false;
+        }
+
+        int phoneId = phone.getPhoneId();
+
+        //use cache if the status has already been updated/queried
+        if (mPhoneStatusMap.containsKey(phoneId)) {
+            return mPhoneStatusMap.get(phoneId);
+        } else {
+            //return false if modem status is not in cache
+            updatePhoneStatus(phone);
+            return false;
+        }
+    }
+
+    /**
+     * method to call RIL getM
+     */
+    private void updatePhoneStatus(Phone phone) {
+        Message callback = Message.obtain(
+                mHandler, EVENT_GET_MODEM_STATUS_DONE, phone.getPhoneId(), 0 /**dummy arg*/);
+        phone.mCi.getModemStatus(callback);
+    }
+
+    /**
+     * Add status of the phone to the status HashMap
+     * @param phoneId
+     * @param status
+     */
+    public void addToPhoneStatusCache(int phoneId, boolean status) {
+        mPhoneStatusMap.put(phoneId, status);
     }
 
     /**
