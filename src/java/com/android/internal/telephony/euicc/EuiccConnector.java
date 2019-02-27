@@ -954,7 +954,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
      * Gets the slot ID from the card ID.
      */
     private int getSlotIdFromCardId(int cardId) {
-        if (cardId == TelephonyManager.UNSUPPORTED_CARD_ID) {
+        if (cardId == TelephonyManager.UNSUPPORTED_CARD_ID
+                || cardId == TelephonyManager.UNINITIALIZED_CARD_ID) {
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
         TelephonyManager tm = (TelephonyManager)
