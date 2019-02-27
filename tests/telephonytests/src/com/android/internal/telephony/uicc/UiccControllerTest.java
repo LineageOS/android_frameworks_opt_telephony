@@ -314,6 +314,8 @@ public class UiccControllerTest extends TelephonyTest {
         doReturn(false).when(mMockSlot).isEuicc();
         doReturn(mMockCard).when(mMockSlot).getUiccCard();
         doReturn("ASDF1234").when(mMockCard).getCardId();
+        doReturn(true).when(mMockSlot).isRemovable();
+        doReturn("A1B2C3D4").when(mMockCard).getCardId();
         doReturn("123451234567890").when(mMockCard).getIccId();
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mMockCard).getCardState();
 
@@ -333,7 +335,8 @@ public class UiccControllerTest extends TelephonyTest {
                 0,         // cardId
                 null,      // eid
                 ics.iccid, // iccid is unknown
-                0);        // slotIndex
+                0,         // slotIndex
+                true);     // isRemovable
         assertEquals(uiccCardInfo, mUiccControllerUT.getAllUiccCardInfos().get(0));
     }
 

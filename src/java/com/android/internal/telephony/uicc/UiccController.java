@@ -569,7 +569,7 @@ public class UiccController extends Handler {
             mUiccSlots[slotId] = new UiccSlot(mContext, true);
         }
 
-        mUiccSlots[slotId].update(mCis[index], status, index);
+        mUiccSlots[slotId].update(mCis[index], status, index, slotId);
 
         UiccCard card = mUiccSlots[slotId].getUiccCard();
         if (card == null) {
@@ -665,6 +665,7 @@ public class UiccController extends Handler {
             }
             String iccid = card.getIccId();
             int cardId;
+            boolean isRemovable = slot.isRemovable();
             if (isEuicc) {
                 eid = card.getCardId();
                 cardId = convertToPublicCardId(eid);
@@ -672,7 +673,8 @@ public class UiccController extends Handler {
                 // leave eid null if the UICC is not embedded
                 cardId = convertToPublicCardId(iccid);
             }
-            UiccCardInfo info = new UiccCardInfo(isEuicc, cardId, eid, iccid, slotIndex);
+            UiccCardInfo info = new UiccCardInfo(isEuicc, cardId, eid, iccid, slotIndex,
+                    isRemovable);
             infos.add(info);
         }
         return infos;
@@ -763,9 +765,10 @@ public class UiccController extends Handler {
             }
 
             if (!isValidPhoneIndex(iss.logicalSlotIndex)) {
-                mUiccSlots[i].update(null, iss);
+                mUiccSlots[i].update(null, iss, i /* slotIndex */);
             } else {
-                mUiccSlots[i].update(isActive ? mCis[iss.logicalSlotIndex] : null, iss);
+                mUiccSlots[i].update(isActive ? mCis[iss.logicalSlotIndex] : null, iss,
+                        i /* slotIndex */);
             }
 
             if (mUiccSlots[i].isEuicc()) {

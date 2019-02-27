@@ -779,7 +779,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testEnableDisableSubscriptionSingleSim() throws Exception {
         testInsertSim();
         // UiccSlotInfo that maps logicalSlotIndex 0 to physicalSlotIndex 0.
-        UiccSlotInfo slotInfo = new UiccSlotInfo(true, false, "", 0, 0, false);
+        UiccSlotInfo slotInfo = new UiccSlotInfo(true, false, "", 0, 0, false, false);
         UiccSlotInfo[] slotInfos = new UiccSlotInfo[] {slotInfo};
         doReturn(slotInfos).when(mTelephonyManager).getUiccSlotsInfo();
 
