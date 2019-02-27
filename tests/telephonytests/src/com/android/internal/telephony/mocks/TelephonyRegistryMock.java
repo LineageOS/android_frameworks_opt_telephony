@@ -369,7 +369,8 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyCallQualityChanged(CallQuality callQuality, int phoneId) {
+    public void notifyCallQualityChanged(CallQuality callQuality, int phoneId,
+            int callNetworkType) {
         throw new RuntimeException("Not implemented");
     }
 

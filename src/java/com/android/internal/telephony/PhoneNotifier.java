@@ -86,5 +86,5 @@ public interface PhoneNotifier {
     void notifyEmergencyNumberList();
 
     /** Notify of a change to the call quality of an active foreground call. */
-    void notifyCallQualityChanged(Phone sender, CallQuality callQuality);
+    void notifyCallQualityChanged(Phone sender, CallQuality callQuality, int callNetworkType);
 }
