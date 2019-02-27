@@ -303,6 +303,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_REDIAL_WIFI_E911_TIMEOUT = 29;
     private static final int EVENT_ANSWER_WAITING_CALL = 30;
     private static final int EVENT_RESUME_NOW_FOREGROUND_CALL = 31;
+    private static final int EVENT_RETRY_ON_IMS_WITHOUT_RTT = 40;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
 
@@ -1132,8 +1133,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 boolean isStartRttCall = true;
                 if (intentExtras != null) {
                     isStartRttCall = intentExtras.getBoolean(
-                        android.telecom.TelecomManager.EXTRA_START_CALL_WITH_RTT, true);
+                            android.telecom.TelecomManager.EXTRA_START_CALL_WITH_RTT, true);
+
                 }
+                if (DBG) log("dialInternal: isStartRttCall = " + isStartRttCall);
                 if (isStartRttCall &&
                         (!profile.isVideoCall() || QtiImsUtils.isRttSupportedOnVtCalls(
                         mPhone.getPhoneId(),mPhone.getContext()))) {
@@ -2202,6 +2205,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case ImsReasonInfo.CODE_DIAL_VIDEO_MODIFIED_TO_USSD:
                 return DisconnectCause.DIAL_VIDEO_MODIFIED_TO_USSD;
 
+            case QtiImsUtils.CODE_RETRY_ON_IMS_WITHOUT_RTT:
+                return QtiImsUtils.RETRY_ON_IMS_WITHOUT_RTT;
+
             case ImsReasonInfo.CODE_UNOBTAINABLE_NUMBER:
                 return DisconnectCause.UNOBTAINABLE_NUMBER;
 
@@ -2444,6 +2450,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 final ConnectivityManager mgr = (ConnectivityManager) mPhone.getContext()
                         .getSystemService(Context.CONNECTIVITY_SERVICE);
                 mgr.setAirplaneMode(false);
+                return;
+            } else if (reasonInfo.getCode() == QtiImsUtils.CODE_RETRY_ON_IMS_WITHOUT_RTT) {
+                Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
+                sendMessage(obtainMessage(EVENT_RETRY_ON_IMS_WITHOUT_RTT, callInfo));
                 return;
             } else {
                 processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
@@ -3458,6 +3468,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 ImsPhoneConnection oldConnection = findConnection(callInfo.first);
                 if (oldConnection == null) {
                     sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
+                    loge("EVENT_REDIAL_WIFI_E911_CALL: null oldConnection");
                     break;
                 }
                 mForegroundCall.detach(oldConnection);
@@ -3477,6 +3488,38 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         .unregisterForNetworkAttached(this);
                 removeMessages(EVENT_REDIAL_WIFI_E911_CALL);
                 sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
+                break;
+            }
+            case EVENT_RETRY_ON_IMS_WITHOUT_RTT: {
+                Pair<ImsCall, ImsReasonInfo> callInfo = (Pair<ImsCall, ImsReasonInfo>) msg.obj;
+
+                ImsPhoneConnection oldConnection = findConnection(callInfo.first);
+                if (oldConnection == null) {
+                    sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
+                    loge("EVENT_RETRY_ON_IMS_WITHOUT_RTT: null oldConnection");
+                    return;
+                }
+                mForegroundCall.detach(oldConnection);
+                removeConnection(oldConnection);
+                try {
+                    mLastDialArgs.intentExtras.putBoolean(
+                            android.telecom.TelecomManager.EXTRA_START_CALL_WITH_RTT, false);
+                    Connection newConnection =
+                            mPhone.getDefaultPhone().dial(mLastDialString, mLastDialArgs);
+                    oldConnection.onOriginalConnectionReplaced(newConnection);
+
+                    final ImsCall imsCall = mForegroundCall.getImsCall();
+                    final ImsCallProfile callProfile = imsCall.getCallProfile();
+                    /* update EXTRA_RETRY_ON_IMS_WITHOUT_RTT for clients to infer
+                       from this extra that the call is re-dialed without RTT */
+                    callProfile.setCallExtraBoolean(
+                            QtiImsUtils.EXTRA_RETRY_ON_IMS_WITHOUT_RTT, true);
+                    ImsPhoneConnection conn = findConnection(imsCall);
+                    conn.updateExtras(imsCall);
+                } catch (CallStateException e) {
+                    sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
+                }
+
                 break;
             }
         }
