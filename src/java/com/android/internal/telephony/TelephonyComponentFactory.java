@@ -29,6 +29,7 @@ import android.system.Os;
 import android.system.OsConstants;
 import android.system.StructStatVfs;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
@@ -72,18 +73,25 @@ public class TelephonyComponentFactory {
         private static final String TAG_INJECTION = "injection";
         private static final String TAG_COMPONENTS = "components";
         private static final String TAG_COMPONENT = "component";
+        private static final String SYSTEM = "/system/";
 
         private final Set<String> mComponentNames = new HashSet<>();
         private TelephonyComponentFactory mInjectedInstance;
         private String mPackageName;
         private String mJarPath;
 
-        private boolean isInjected() {
-            return mPackageName != null && mJarPath != null;
+        /**
+         * @return if jar path is correctly configured to inject.
+         * 1) PackageName and JarPath mustn't be empty.
+         * 2) JarPath is restricted under /system only
+         */
+        private boolean isConfigValid() {
+            return !TextUtils.isEmpty(mPackageName) && !TextUtils.isEmpty(mJarPath)
+                    && mJarPath.startsWith(SYSTEM);
         }
 
         private void makeInjectedInstance() {
-            if (isInjected()) {
+            if (isConfigValid()) {
                 try {
                     StructStatVfs vfs = Os.statvfs(mJarPath);
                     if ((vfs.f_flag & OsConstants.ST_RDONLY) != 0) {
@@ -222,7 +230,7 @@ public class TelephonyComponentFactory {
             mInjectedComponents = new InjectedComponents();
             mInjectedComponents.parseXml(parser);
             mInjectedComponents.makeInjectedInstance();
-            Rlog.d(TAG, "Total components injected: " + (mInjectedComponents.isInjected()
+            Rlog.d(TAG, "Total components injected: " + (mInjectedComponents.isConfigValid()
                     ? mInjectedComponents.mComponentNames.size() : 0));
         }
     }
