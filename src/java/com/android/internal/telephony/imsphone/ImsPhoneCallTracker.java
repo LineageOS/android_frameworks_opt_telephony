@@ -113,6 +113,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
@@ -499,8 +500,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
 
     //***** Constructors
-
     public ImsPhoneCallTracker(ImsPhone phone) {
+        this(phone, phone.getContext().getMainExecutor());
+    }
+
+    @VisibleForTesting
+    public ImsPhoneCallTracker(ImsPhone phone, Executor executor) {
         this.mPhone = phone;
 
         mMetrics = TelephonyMetrics.getInstance();
@@ -523,6 +528,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mVtDataUsageSnapshot = new NetworkStats(currentTime, 1);
         mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
 
+        // Allow the executor to be specified for testing.
         mImsManagerConnector = new ImsManager.Connector(phone.getContext(), phone.getPhoneId(),
                 new ImsManager.Connector.Listener() {
                     @Override
@@ -535,7 +541,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     public void connectionUnavailable() {
                         stopListeningForCalls();
                     }
-                });
+                }, executor);
         mImsManagerConnector.connect();
     }
 

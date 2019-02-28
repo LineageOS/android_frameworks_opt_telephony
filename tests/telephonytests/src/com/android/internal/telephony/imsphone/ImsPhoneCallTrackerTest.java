@@ -110,7 +110,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
         @Override
         public void onLooperPrepared() {
-            mCTUT = new ImsPhoneCallTracker(mImsPhone);
+            mCTUT = new ImsPhoneCallTracker(mImsPhone, Runnable::run);
             mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
             mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
