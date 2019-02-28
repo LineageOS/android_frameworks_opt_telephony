@@ -53,7 +53,7 @@ public class ImsPhoneCall extends Call {
 
     /*package*/ ImsPhoneCallTracker mOwner;
 
-    private boolean mRingbackTonePlayed = false;
+    private boolean mIsRingbackTonePlaying = false;
 
     // Determines what type of ImsPhoneCall this is.  ImsPhoneCallTracker uses instances of
     // ImsPhoneCall to for fg, bg, etc calls.  This is used as a convenience for logging so that it
@@ -96,7 +96,7 @@ public class ImsPhoneCall extends Call {
     @Override
     public Phone
     getPhone() {
-        return mOwner.mPhone;
+        return mOwner.getPhone();
     }
 
     @Override
@@ -314,17 +314,17 @@ public class ImsPhoneCall extends Call {
         //ImsCall.Listener.onCallProgressing can be invoked several times
         //and ringback tone mode can be changed during the call setup procedure
         if (state == State.ALERTING) {
-            if (mRingbackTonePlayed && !isLocalTone(imsCall)) {
-                mOwner.mPhone.stopRingbackTone();
-                mRingbackTonePlayed = false;
-            } else if (!mRingbackTonePlayed && isLocalTone(imsCall)) {
-                mOwner.mPhone.startRingbackTone();
-                mRingbackTonePlayed = true;
+            if (mIsRingbackTonePlaying && !isLocalTone(imsCall)) {
+                getPhone().stopRingbackTone();
+                mIsRingbackTonePlaying = false;
+            } else if (!mIsRingbackTonePlaying && isLocalTone(imsCall)) {
+                getPhone().startRingbackTone();
+                mIsRingbackTonePlaying = true;
             }
         } else {
-            if (mRingbackTonePlayed) {
-                mOwner.mPhone.stopRingbackTone();
-                mRingbackTonePlayed = false;
+            if (mIsRingbackTonePlaying) {
+                getPhone().stopRingbackTone();
+                mIsRingbackTonePlaying = false;
             }
         }
 
@@ -358,6 +358,16 @@ public class ImsPhoneCall extends Call {
             that.takeOver(tmp);
         }
         mOwner.logState();
+    }
+
+    /**
+     * Stops ringback tone playing if it is playing.
+     */
+    public void maybeStopRingback() {
+        if (mIsRingbackTonePlaying) {
+            getPhone().stopRingbackTone();
+            mIsRingbackTonePlaying = false;
+        }
     }
 
     private void takeOver(ImsPhoneCall that) {
