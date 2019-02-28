@@ -2288,7 +2288,7 @@ public class SubscriptionController extends ISub.Stub {
 
         if (visibleOnly) {
             // Grouped opportunistic subscriptions should be hidden.
-            allSubs = allSubs.stream().filter(subId -> isInvisibleSubscription(subId))
+            allSubs = allSubs.stream().filter(subId -> !isInvisibleSubscription(subId))
                     .collect(Collectors.toList());
         }
 
