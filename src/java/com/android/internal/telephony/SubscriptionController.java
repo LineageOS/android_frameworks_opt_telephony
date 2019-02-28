@@ -2301,16 +2301,17 @@ public class SubscriptionController extends ISub.Stub {
         return allSubs;
     }
 
-    private boolean isInvisibleSubscription(int subId) {
+    private boolean isSubscriptionVisible(int subId) {
         for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
             if (info.getSubscriptionId() == subId) {
-                return SubscriptionManager.isInvisibleSubscription(info);
+                // If group UUID is null, it's stand alone opportunistic profile. So it's visible.
+                // otherwise, it's bundled opportunistic profile, and is not visible.
+                return info.getGroupUuid() == null;
             }
         }
 
-        return false;
+        return true;
     }
-
 
     /**
      * @return the list of subId's that are active, is never null but the length maybe 0.
@@ -2321,7 +2322,7 @@ public class SubscriptionController extends ISub.Stub {
 
         if (visibleOnly) {
             // Grouped opportunistic subscriptions should be hidden.
-            allSubs = allSubs.stream().filter(subId -> !isInvisibleSubscription(subId))
+            allSubs = allSubs.stream().filter(subId -> isSubscriptionVisible(subId))
                     .collect(Collectors.toList());
         }
 
