@@ -1747,8 +1747,7 @@ public class ServiceStateTracker extends Handler {
                          * Roaming Indicator shall be sent if device is registered
                          * on a CDMA or EVDO system.
                          */
-                        boolean isRoamIndForHomeSystem = isRoamIndForHomeSystem(
-                                Integer.toString(mRoamingIndicator));
+                        boolean isRoamIndForHomeSystem = isRoamIndForHomeSystem(mRoamingIndicator);
                         if (mNewSS.getDataRoaming() == isRoamIndForHomeSystem) {
                             log("isRoamIndForHomeSystem=" + isRoamIndForHomeSystem
                                     + ", override data roaming to " + !isRoamIndForHomeSystem);
@@ -1978,8 +1977,7 @@ public class ServiceStateTracker extends Handler {
                     // list of ERIs for home system, mCdmaRoaming is true.
                     boolean cdmaRoaming =
                             regCodeIsRoaming(registrationState)
-                                    && !isRoamIndForHomeSystem(
-                                            Integer.toString(roamingIndicator));
+                                    && !isRoamIndForHomeSystem(roamingIndicator);
                     mNewSS.setVoiceRoaming(cdmaRoaming);
                     mRoamingIndicator = roamingIndicator;
                     mIsInPrl = (systemIsInPrl == 0) ? false : true;
@@ -2259,20 +2257,22 @@ public class ServiceStateTracker extends Handler {
      * Determine whether a roaming indicator is in the carrier-specified list of ERIs for
      * home system
      *
-     * @param roamInd roaming indicator in String
+     * @param roamInd roaming indicator
      * @return true if the roamInd is in the carrier-specified list of ERIs for home network
      */
-    private boolean isRoamIndForHomeSystem(String roamInd) {
+    private boolean isRoamIndForHomeSystem(int roamInd) {
         // retrieve the carrier-specified list of ERIs for home system
-        String[] homeRoamIndicators = Resources.getSystem()
-                .getStringArray(com.android.internal.R.array.config_cdma_home_system);
+        final PersistableBundle config = getCarrierConfig();
+        int[] homeRoamIndicators = config.getIntArray(CarrierConfigManager
+                    .KEY_CDMA_ENHANCED_ROAMING_INDICATOR_FOR_HOME_NETWORK_INT_ARRAY);
+
         log("isRoamIndForHomeSystem: homeRoamIndicators=" + Arrays.toString(homeRoamIndicators));
 
         if (homeRoamIndicators != null) {
             // searches through the comma-separated list for a match,
             // return true if one is found.
-            for (String homeRoamInd : homeRoamIndicators) {
-                if (homeRoamInd.equals(roamInd)) {
+            for (int homeRoamInd : homeRoamIndicators) {
+                if (homeRoamInd == roamInd) {
                     return true;
                 }
             }
