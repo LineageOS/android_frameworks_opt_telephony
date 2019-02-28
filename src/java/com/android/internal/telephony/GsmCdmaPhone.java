@@ -1991,7 +1991,8 @@ public class GsmCdmaPhone extends Phone {
                 imsPhone.getCallBarring(facility, password, onComplete, serviceClass);
                 return;
             }
-            mCi.queryFacilityLock(facility, password, serviceClass, onComplete);
+            mCi.queryFacilityLock(facility, password,
+                    CommandsInterface.SERVICE_CLASS_NONE, onComplete);
         } else {
             loge("getCallBarringOption: not possible in CDMA");
         }
@@ -2006,7 +2007,8 @@ public class GsmCdmaPhone extends Phone {
                 imsPhone.setCallBarring(facility, lockState, password, onComplete, serviceClass);
                 return;
             }
-            mCi.setFacilityLock(facility, lockState, password, serviceClass, onComplete);
+            mCi.setFacilityLock(facility, lockState, password,
+                    CommandsInterface.SERVICE_CLASS_NONE, onComplete);
         } else {
             loge("setCallBarringOption: not possible in CDMA");
         }
