@@ -226,7 +226,7 @@ public class ImsRegistrationTests {
     public void testRegistrationCallbackNoCallbackIfUnknown() throws RemoteException {
         mRegBinder.addRegistrationCallback(mCallback2);
         // Verify that if we have never set the registration state, we do not callback immediately
-        // with onDeregistered.
+        // with onUnregistered.
         verify(mCallback2, never()).onDeregistered(any(ImsReasonInfo.class));
     }
 }
