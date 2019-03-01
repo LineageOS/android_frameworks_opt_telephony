@@ -131,6 +131,9 @@ public class RcsMessageStoreController extends IRcs.Stub {
         synchronized (RcsMessageStoreController.class) {
             if (sInstance == null) {
                 sInstance = new RcsMessageStoreController(context.getContentResolver());
+                if (ServiceManager.getService(RCS_SERVICE_NAME) == null) {
+                    ServiceManager.addService(RCS_SERVICE_NAME, sInstance);
+                }
             } else {
                 Rlog.e(TAG, "init() called multiple times! sInstance = " + sInstance);
             }
@@ -138,20 +141,8 @@ public class RcsMessageStoreController extends IRcs.Stub {
         return sInstance;
     }
 
-    private RcsMessageStoreController(ContentResolver contentResolver) {
-        mContentResolver = contentResolver;
-        mParticipantQueryHelper = new RcsParticipantQueryHelper(contentResolver);
-        mMessageQueryHelper = new RcsMessageQueryHelper(contentResolver);
-        mThreadQueryHelper = new RcsThreadQueryHelper(contentResolver, mParticipantQueryHelper);
-        mEventQueryHelper = new RcsEventQueryHelper(contentResolver);
-        mMessageStoreUtil = new RcsMessageStoreUtil(contentResolver);
-        if (ServiceManager.getService(RCS_SERVICE_NAME) == null) {
-            ServiceManager.addService(RCS_SERVICE_NAME, this);
-        }
-    }
-
     @VisibleForTesting
-    public RcsMessageStoreController(ContentResolver contentResolver, Void unused) {
+    public RcsMessageStoreController(ContentResolver contentResolver) {
         mContentResolver = contentResolver;
         mParticipantQueryHelper = new RcsParticipantQueryHelper(contentResolver);
         mMessageQueryHelper = new RcsMessageQueryHelper(contentResolver);
