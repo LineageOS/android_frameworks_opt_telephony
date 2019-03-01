@@ -90,7 +90,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 }
 
                 @Override
-                public void onDeregistered(ImsReasonInfo info) {
+                public void onUnregistered(ImsReasonInfo info) {
                     Rlog.d(TAG, "onImsDisconnected imsReasonInfo=" + info);
                     synchronized (mLock) {
                         mIsRegistered = false;
