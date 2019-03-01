@@ -272,7 +272,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @SmallTest
     public void testImsDeregistered() {
         // when IMS is deregistered
-        mRegistrationCallback.onDeregistered(new ImsReasonInfo());
+        mRegistrationCallback.onUnregistered(new ImsReasonInfo());
         // then service state should be OUT_OF_SERVICE and ImsPhone state set to not registered
         verify(mImsPhone).setServiceState(eq(ServiceState.STATE_OUT_OF_SERVICE));
         verify(mImsPhone).setImsRegistered(eq(false));
