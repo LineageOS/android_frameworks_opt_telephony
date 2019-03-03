@@ -2719,6 +2719,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {
+                ImsPhoneCall imsPhoneCall = conn.getCall();
+                if (imsPhoneCall != null) {
+                    // We might be playing ringback on the handover connection; we should stop
+                    // playing it at this point (otherwise it could play indefinitely).
+                    imsPhoneCall.maybeStopRingback();
+                }
                 if (conn.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                     if (isHandoverToWifi) {
                         removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
@@ -2967,7 +2973,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
 
                 @Override
-                public void onDeregistered(ImsReasonInfo imsReasonInfo) {
+                public void onUnregistered(ImsReasonInfo imsReasonInfo) {
                     if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
                     mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
                     mPhone.setImsRegistered(false);
@@ -4070,5 +4076,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public void setAlwaysPlayRemoteHoldTone(boolean shouldPlayRemoteHoldTone) {
         mAlwaysPlayRemoteHoldTone = shouldPlayRemoteHoldTone;
+    }
+
+    public ImsPhone getPhone() {
+        return mPhone;
     }
 }

@@ -2849,9 +2849,8 @@ public class DcTracker extends Handler {
                         cause, cid, mTelephonyManager.getNetworkType());
             }
             ApnSetting apn = apnContext.getApnSetting();
-            mPhone.notifyPreciseDataConnectionFailed(
-                    apnContext.getApnType(), apn != null ? apn.getApnName()
-                    : "unknown", cause);
+            mPhone.notifyPreciseDataConnectionFailed(apnContext.getApnType(),
+                    apn != null ? apn.getApnName() : null, cause);
 
             // Compose broadcast intent send to the specific carrier signaling receivers
             Intent intent = new Intent(TelephonyIntents
