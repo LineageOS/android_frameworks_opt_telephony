@@ -38,6 +38,7 @@ import android.os.Message;
 import android.os.ResultReceiver;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
+import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsSsData;
 import android.telephony.ims.ImsSsInfo;
@@ -54,6 +55,7 @@ import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.IccRecords;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1531,15 +1533,17 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 sb.append(getErrorMessage(ar));
             }
         } else {
-            ImsSsInfo[] infos = (ImsSsInfo[])ar.result;
-            if (infos.length == 0) {
+            List<ImsSsInfo> infos = (List<ImsSsInfo>) ar.result;
+            if (infos.size() == 0) {
                 sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
             } else {
-                for (int i = 0, s = infos.length; i < s ; i++) {
-                    if (infos[i].getIncomingCommunicationBarringNumber() != null) {
-                        sb.append("Num: " + infos[i].getIncomingCommunicationBarringNumber()
-                                + " status: " + infos[i].getStatus() + "\n");
-                    } else if (infos[i].getStatus() == 1) {
+                ImsSsInfo info;
+                for (int i = 0, s = infos.size(); i < s; i++) {
+                    info = infos.get(i);
+                    if (info.getIncomingCommunicationBarringNumber() != null) {
+                        sb.append("Num: " + info.getIncomingCommunicationBarringNumber()
+                                + " status: " + info.getStatus() + "\n");
+                    } else if (info.getStatus() == 1) {
                         sb.append(mContext.getText(com.android.internal
                                 .R.string.serviceEnabled));
                     } else {
@@ -1772,8 +1776,16 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     onQueryClirComplete(new AsyncResult(null, clirInfo, ex));
                 } else if (ssData.isTypeCF()) {
                     Rlog.d(LOG_TAG, "CALL FORWARD INTERROGATION");
-                    onQueryCfComplete(new AsyncResult(null, mPhone
-                            .handleCfQueryResult(ssData.getCallForwardInfo()), ex));
+                    // Have to translate to an array, since the modem still returns it in the
+                    // ImsCallForwardInfo[] format.
+                    List<ImsCallForwardInfo> mCfInfos = ssData.getCallForwardInfo();
+                    ImsCallForwardInfo[] mCfInfosCompat = null;
+                    if (mCfInfos != null) {
+                        mCfInfosCompat = new ImsCallForwardInfo[mCfInfos.size()];
+                        mCfInfosCompat = mCfInfos.toArray(mCfInfosCompat);
+                    }
+                    onQueryCfComplete(new AsyncResult(null, mPhone.handleCfQueryResult(
+                            mCfInfosCompat), ex));
                 } else if (ssData.isTypeBarring()) {
                     onSuppSvcQueryComplete(new AsyncResult(null, ssData.getSuppServiceInfoCompat(),
                             ex));
