@@ -15,7 +15,7 @@
  */
 package com.android.internal.telephony;
 
-import static android.telephony.PhoneStateListener.LISTEN_ACTIVE_DATA_SUBID_CHANGE;
+import static android.telephony.PhoneStateListener.LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE;
 import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANGE;
 import static android.telephony.PhoneStateListener.LISTEN_SRVCC_STATE_CHANGED;
 
@@ -60,7 +60,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
             setReady(true);
         }
         @Override
-        public void onActiveDataSubIdChanged(int activeSubId) {
+        public void onActiveDataSubscriptionIdChanged(int activeSubId) {
             mActiveSubId = activeSubId;
             setReady(true);
         }
@@ -128,7 +128,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyActiveDataSubIdChanged(activeSubId);
         mTelephonyRegistry.listen(mContext.getOpPackageName(),
                 mPhoneStateListener.callback,
-                LISTEN_ACTIVE_DATA_SUBID_CHANGE, true);
+                LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE, true);
         waitUntilReady();
         assertEquals(activeSubId, mActiveSubId);
 
