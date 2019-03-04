@@ -34,7 +34,9 @@ import android.telephony.SubscriptionManager;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.stub.ImsConfigImplBase;
-import android.test.suitebuilder.annotation.SmallTest;
+
+import androidx.test.filters.SmallTest;
+import androidx.test.runner.AndroidJUnit4;
 
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
@@ -44,10 +46,12 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
 import java.util.Hashtable;
 
+@RunWith(AndroidJUnit4.class)
 public class ImsManagerTest extends TelephonyTest {
     private static final String UNSET_PROVISIONED_STRING = "unset";
     private static final boolean ENHANCED_4G_MODE_DEFAULT_VAL = true;
@@ -78,6 +82,8 @@ public class ImsManagerTest extends TelephonyTest {
         super.setUp("ImsManagerTest");
         mPhoneId = mPhone.getPhoneId();
         mBundle = mContextFixture.getCarrierConfigBundle();
+        // Force MmTelFeatureConnection to create an executor using Looper.myLooper().
+        doReturn(null).when(mContext).getMainLooper();
 
         doReturn(mSubId).when(mSubscriptionController).getSubId(mPhoneId);
 
