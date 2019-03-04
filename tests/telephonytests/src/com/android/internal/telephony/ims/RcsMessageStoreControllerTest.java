@@ -65,7 +65,7 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
         mContentResolver = (MockContentResolver) mContext.getContentResolver();
         mContentResolver.addProvider("rcs", mFakeRcsProvider);
 
-        mRcsMessageStoreController = new RcsMessageStoreController(mContentResolver, null);
+        mRcsMessageStoreController = new RcsMessageStoreController(mContentResolver);
     }
 
     @After
