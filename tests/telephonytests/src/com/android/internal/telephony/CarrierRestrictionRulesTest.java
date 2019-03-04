@@ -207,7 +207,7 @@ public class CarrierRestrictionRulesTest extends AndroidTestCase {
         list.add(new CarrierIdentifier(MCC4, MNC4, null, null, null, null));
         list.add(new CarrierIdentifier(MCC5, MNC5, null, null, null, null));
 
-        List<Boolean> result = rules.isCarrierIdentifiersAllowed(list);
+        List<Boolean> result = rules.areCarrierIdentifiersAllowed(list);
 
         List<Boolean> expected =
                 Arrays.asList(true, true, true, true, true, true, true, true, true, true, true);
@@ -247,7 +247,7 @@ public class CarrierRestrictionRulesTest extends AndroidTestCase {
         list.add(new CarrierIdentifier(MCC4, MNC4, null, null, null, null));
         list.add(new CarrierIdentifier(MCC5, MNC5, null, null, null, null));
 
-        List<Boolean> result = rules.isCarrierIdentifiersAllowed(list);
+        List<Boolean> result = rules.areCarrierIdentifiersAllowed(list);
 
         List<Boolean> expected =
                 Arrays.asList(true, true, true, true, true, true, true,
@@ -282,7 +282,7 @@ public class CarrierRestrictionRulesTest extends AndroidTestCase {
         list.add(new CarrierIdentifier(MCC1, MNC3, null, null, null, null));
         list.add(new CarrierIdentifier(MCC1, MNC4, null, null, null, null));
 
-        List<Boolean> result = rules.isCarrierIdentifiersAllowed(list);
+        List<Boolean> result = rules.areCarrierIdentifiersAllowed(list);
 
         List<Boolean> expected = Arrays.asList(true, true, true, true, false, false);
         assertTrue(result.equals(expected));
@@ -309,7 +309,7 @@ public class CarrierRestrictionRulesTest extends AndroidTestCase {
         list.add(new CarrierIdentifier(MCC4, MNC4, null, null, null, null));
         list.add(new CarrierIdentifier(MCC5, MNC5, null, null, null, null));
 
-        List<Boolean> result = rules.isCarrierIdentifiersAllowed(list);
+        List<Boolean> result = rules.areCarrierIdentifiersAllowed(list);
 
         List<Boolean> expected = Arrays.asList(true, true, true, true);
         assertTrue(result.equals(expected));
@@ -335,7 +335,7 @@ public class CarrierRestrictionRulesTest extends AndroidTestCase {
         list.add(new CarrierIdentifier(MCC4, MNC4, null, null, null, null));
         list.add(new CarrierIdentifier(MCC5, MNC5, null, null, null, null));
 
-        List<Boolean> result = rules.isCarrierIdentifiersAllowed(list);
+        List<Boolean> result = rules.areCarrierIdentifiersAllowed(list);
 
         List<Boolean> expected = Arrays.asList(false, false, false);
         assertTrue(result.equals(expected));
