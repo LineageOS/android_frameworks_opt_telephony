@@ -297,6 +297,7 @@ public class PhoneSwitcher extends Handler {
         netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
         netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_MCX);
         netCap.setNetworkSpecifier(new MatchAllNetworkSpecifier());
 
         NetworkFactory networkFactory = new PhoneSwitcherNetworkRequestListener(looper, context,
