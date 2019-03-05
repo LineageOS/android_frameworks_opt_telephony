@@ -242,7 +242,8 @@ public class PhoneFactory {
 
                 sSubscriptionMonitor = new SubscriptionMonitor(tr, sContext, sc, numPhones);
 
-                sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext);
+                sPhoneConfigurationManager = PhoneConfigurationManager.init(
+                        sContext);
 
                 sCellularNetworkValidator = CellularNetworkValidator.make(sContext);
 
