@@ -285,7 +285,7 @@ public class ImsPhoneTest extends TelephonyTest {
         mImsPhoneUT.dispose();
         assertEquals(0, list.size());
         verify(mImsCT).dispose();
-        verify(mSST).unregisterForDataRegStateOrRatChanged(mImsPhoneUT);
+        verify(mSST, times(2)).unregisterForDataRegStateOrRatChanged(anyInt(), eq(mImsPhoneUT));
     }
 
     @Test
