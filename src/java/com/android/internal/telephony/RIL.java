@@ -1438,7 +1438,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                                + ",accessNetworkType=" + accessNetworkType + ",isRoaming="
+                                + ",accessNetworkType="
+                                + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile
                                 + ",addresses=" + addresses + ",dnses=" + dnses);
                     }
@@ -1456,7 +1457,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                                + ",accessNetworkType=" + accessNetworkType + ",isRoaming="
+                                + ",accessNetworkType="
+                                + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + ","
                                 + dataProfile + ",addresses=" + addresses + ",dnses=" + dnses);
                     }

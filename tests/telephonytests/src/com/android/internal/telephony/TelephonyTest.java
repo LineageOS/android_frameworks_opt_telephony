@@ -45,6 +45,7 @@ import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.NetworkRegistrationState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -142,6 +143,8 @@ public abstract class TelephonyTest {
     protected SubscriptionController mSubscriptionController;
     @Mock
     protected ServiceState mServiceState;
+    @Mock
+    protected NetworkRegistrationState mNetworkRegistrationState;
     @Mock
     protected SimulatedCommandsVerifier mSimulatedCommandsVerifier;
     @Mock
@@ -491,6 +494,8 @@ public abstract class TelephonyTest {
         doReturn(TransportType.WWAN).when(mTransportManager).getCurrentTransport(anyInt());
         doReturn(true).when(mDataEnabledSettings).isDataEnabled();
         doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
+        doReturn(mNetworkRegistrationState).when(mServiceState).getNetworkRegistrationState(
+                anyInt(), anyInt());
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
