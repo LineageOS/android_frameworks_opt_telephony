@@ -903,7 +903,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(100);
 
-        sst.registerForDataConnectionAttached(mTestHandler, EVENT_DATA_CONNECTION_ATTACHED, null);
+        sst.registerForDataConnectionAttached(TransportType.WWAN, mTestHandler,
+                EVENT_DATA_CONNECTION_ATTACHED, null);
 
         // set service state in service and trigger events to post message on handler
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationState.REG_STATE_ROAMING);
@@ -925,7 +926,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(100);
 
         // Unregister registrant
-        sst.unregisterForDataConnectionAttached(mTestHandler);
+        sst.unregisterForDataConnectionAttached(TransportType.WWAN, mTestHandler);
 
         // set service state in service
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationState.REG_STATE_ROAMING);
@@ -949,7 +950,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForMs(100);
 
-        sst.registerForDataConnectionAttached(mTestHandler, EVENT_DATA_CONNECTION_ATTACHED, null);
+        sst.registerForDataConnectionAttached(TransportType.WWAN, mTestHandler,
+                EVENT_DATA_CONNECTION_ATTACHED, null);
 
         // set service state in service and trigger events to post message on handler
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationState.REG_STATE_ROAMING);
@@ -971,7 +973,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(100);
 
         // Unregister registrant
-        sst.unregisterForDataConnectionAttached(mTestHandler);
+        sst.unregisterForDataConnectionAttached(TransportType.WWAN, mTestHandler);
 
         // set service state in service
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationState.REG_STATE_ROAMING);
@@ -993,7 +995,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(NetworkRegistrationState.REG_STATE_ROAMING);
         mSimulatedCommands.notifyNetworkStateChanged();
 
-        sst.registerForDataConnectionDetached(mTestHandler, EVENT_DATA_CONNECTION_DETACHED, null);
+        sst.registerForDataConnectionDetached(TransportType.WWAN, mTestHandler,
+                EVENT_DATA_CONNECTION_DETACHED, null);
 
         // set service state out of service and trigger events to post message on handler
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationState.REG_STATE_UNKNOWN);
@@ -1015,7 +1018,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(100);
 
         // Unregister registrant
-        sst.unregisterForDataConnectionDetached(mTestHandler);
+        sst.unregisterForDataConnectionDetached(TransportType.WWAN, mTestHandler);
 
         // set service state out of service
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationState.REG_STATE_UNKNOWN);
@@ -1050,11 +1053,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testRegisterForDataRegStateOrRatChange() {
-        int drs = NetworkRegistrationState.REG_STATE_HOME;
+        int drs = ServiceState.STATE_IN_SERVICE;
         int rat = sst.mSS.RIL_RADIO_TECHNOLOGY_LTE;
         sst.mSS.setRilDataRadioTechnology(rat);
         sst.mSS.setDataRegState(drs);
-        sst.registerForDataRegStateOrRatChanged(mTestHandler, EVENT_DATA_RAT_CHANGED, null);
+        sst.registerForDataRegStateOrRatChanged(TransportType.WWAN, mTestHandler,
+                EVENT_DATA_RAT_CHANGED, null);
 
         waitForMs(100);
 
@@ -1062,7 +1066,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
         assertEquals(EVENT_DATA_RAT_CHANGED, messageArgumentCaptor.getValue().what);
-        assertEquals(new Pair<Integer, Integer>(drs, rat),
+        assertEquals(new Pair<Integer, Integer>(ServiceState.STATE_IN_SERVICE,
+                        ServiceState.RIL_RADIO_TECHNOLOGY_LTE),
                 ((AsyncResult)messageArgumentCaptor.getValue().obj).result);
     }
 
@@ -1423,7 +1428,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         sst.registerForDataRoamingOff(mTestHandler, EVENT_DATA_ROAMING_OFF, null, true);
         sst.registerForVoiceRoamingOff(mTestHandler, EVENT_VOICE_ROAMING_OFF, null);
-        sst.registerForDataConnectionDetached(mTestHandler, EVENT_DATA_CONNECTION_DETACHED, null);
+        sst.registerForDataConnectionDetached(TransportType.WWAN, mTestHandler,
+                EVENT_DATA_CONNECTION_DETACHED, null);
 
         // Call functions which would trigger posting of message on test handler
         doReturn(false).when(mPhone).isPhoneTypeGsm();

@@ -1363,7 +1363,8 @@ public class DataConnection extends StateMachine {
             if (DBG) log("DcDefaultState: enter");
 
             // Register for DRS or RAT change
-            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(getHandler(),
+            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
+                    mDataServiceManager.getTransportType(), getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED, null);
 
             mPhone.getServiceStateTracker().registerForDataRoamingOn(getHandler(),
@@ -1379,7 +1380,8 @@ public class DataConnection extends StateMachine {
             if (DBG) log("DcDefaultState: exit");
 
             // Unregister for DRS or RAT change.
-            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(getHandler());
+            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
+                    mDataServiceManager.getTransportType(), getHandler());
 
             mPhone.getServiceStateTracker().unregisterForDataRoamingOn(getHandler());
             mPhone.getServiceStateTracker().unregisterForDataRoamingOff(getHandler());
