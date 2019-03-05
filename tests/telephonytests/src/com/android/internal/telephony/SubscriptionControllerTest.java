@@ -41,6 +41,8 @@ import android.telephony.UiccSlotInfo;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import androidx.test.filters.FlakyTest;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,6 +54,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+
 
 public class SubscriptionControllerTest extends TelephonyTest {
     private static final int SINGLE_SIM = 1;
@@ -514,7 +517,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         addAndVerifyRemoteSimAddition(4, 0);
     }
 
-
+    @FlakyTest
     @Test @SmallTest
     public void testDefaultSubIdOnMultiSimDevice() {
         makeThisDeviceMultiSimCapable();
