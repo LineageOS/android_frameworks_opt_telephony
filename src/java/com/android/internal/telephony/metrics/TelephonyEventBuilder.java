@@ -19,6 +19,7 @@ package com.android.internal.telephony.metrics;
 import static com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import static com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import static com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
+import static com.android.internal.telephony.nano.TelephonyProto.SimState;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
@@ -30,12 +31,15 @@ import static com.android.internal.telephony.nano.TelephonyProto.TelephonyServic
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 
 import android.os.SystemClock;
+import android.telephony.TelephonyManager;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.nano.TelephonyProto.ActiveSubscriptionInfo;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Type;
+
+import java.util.Arrays;
 
 public class TelephonyEventBuilder {
     private final TelephonyEvent mEvent = new TelephonyEvent();
@@ -147,11 +151,15 @@ public class TelephonyEventBuilder {
 
     /** Set and build SIM state change event. */
     public TelephonyEventBuilder setSimStateChange(SparseArray<Integer> simStates) {
+        int phoneCount = TelephonyManager.getDefault().getPhoneCount();
+        mEvent.simState = new int[phoneCount];
+        Arrays.fill(mEvent.simState, SimState.SIM_STATE_UNKNOWN);
         mEvent.type = Type.SIM_STATE_CHANGED;
-        mEvent.simState = new int[simStates.size()];
         for (int i = 0; i < simStates.size(); i++) {
             int key = simStates.keyAt(i);
-            mEvent.simState[key] = simStates.get(key);
+            if (0 <= key && key < phoneCount) {
+                mEvent.simState[key] = simStates.get(key);
+            }
         }
         return this;
     }
