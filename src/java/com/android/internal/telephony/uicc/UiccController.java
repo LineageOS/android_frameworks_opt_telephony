@@ -216,6 +216,21 @@ public class UiccController extends Handler {
         mDefaultEuiccCardId = TelephonyManager.UNINITIALIZED_CARD_ID;
     }
 
+    /**
+     * Given the slot index, return the phone ID, or -1 if no phone is associated with the given
+     * slot.
+     * @param slotId the slot index to check
+     * @return the associated phone ID or -1
+     */
+    public int getPhoneIdFromSlotId(int slotId) {
+        for (int i = 0; i < mPhoneIdToSlotId.length; i++) {
+            if (mPhoneIdToSlotId[i] == slotId) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private int getSlotIdFromPhoneId(int phoneId) {
         return mPhoneIdToSlotId[phoneId];
     }
