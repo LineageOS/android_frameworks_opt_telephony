@@ -189,8 +189,8 @@ public class ServiceStateTracker extends Handler {
     private int mPendingRadioPowerOffAfterDataOffTag = 0;
 
     // This is a flag for debug purposes only. It it set once the RUIM_RECORDS_LOADED event is
-    // received while the phone type is CDMA-LTE, and is never reset after that.
-    private boolean mRuimRecordsLoaded = false;
+    // received and RUIM is provisioned while the phone type is CDMA-LTE.
+    private boolean mRuimProvisionedRecordsLoaded = false;
 
     /** Signal strength poll rate. */
     private static final int POLL_PERIOD_MILLIS = 20 * 1000;
@@ -623,7 +623,7 @@ public class ServiceStateTracker extends Handler {
         mNitzState.handleNetworkCountryCodeUnavailable();
         mCellIdentity = null;
         mNewCellIdentity = null;
-        mRuimRecordsLoaded = false;
+        mRuimProvisionedRecordsLoaded = false;
 
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
@@ -979,6 +979,7 @@ public class ServiceStateTracker extends Handler {
                     cancelAllNotifications();
                     // clear cached values on SIM removal
                     mMdn = null;
+                    mRuimProvisionedRecordsLoaded = false;
                     logMdnChange("EVENT_ICC_CHANGED: setting mMdn to null");
                     mMin = null;
                     mIsMinInfoReady = false;
@@ -1372,9 +1373,9 @@ public class ServiceStateTracker extends Handler {
                         updateSpnDisplay();
                     } else {
                         RuimRecords ruim = (RuimRecords) mIccRecords;
-                        mRuimRecordsLoaded = true;
                         if (ruim != null) {
                             if (ruim.isProvisioned()) {
+                                mRuimProvisionedRecordsLoaded = true;
                                 mMdn = ruim.getMdn();
                                 logMdnChange("EVENT_RUIM_RECORDS_LOADED: setting mMdn to " + mMdn);
                                 mMin = ruim.getMin();
@@ -1530,16 +1531,17 @@ public class ServiceStateTracker extends Handler {
     }
 
     public String getMdnNumber() {
-        // if for CDMA-LTE phone MDN is null, and it has already been updated from RUIM, in some
-        // unknown error scenario mMdn may still have been updated to null. Detect and fix that case
-        if (mMdn == null && mRuimRecordsLoaded && mPhone.isPhoneTypeCdmaLte()) {
-            // query RuimRecords to see if it's not null and the value from there can be used. This
-            // should never be the case except in certain error scenarios/race conditions.
+        String mdn = mMdn;
+        // if for CDMA-LTE phone MDN is null, return the value from RuimRecords
+        if (mMdn == null && mPhone.isPhoneTypeCdmaLte()) {
             RuimRecords ruim = (RuimRecords) mIccRecords;
-            if (ruim != null) {
-                if (ruim.isProvisioned() && ruim.getMdn() != null) {
-                    logeMdnChange("getMdnNumber: mMdn is null when RuimRecords.getMdn() is not");
+            if (ruim != null && ruim.getMdn() != null) {
+                logeMdnChange("getMdnNumber: mMdn is null when RuimRecords.getMdn() is not");
+                mdn = ruim.getMdn();
 
+                // if mRuimProvisionedRecordsLoaded is true, then mMdn should not have been null and
+                // we should not have reached here. Update mMdn and catch the error scenario.
+                if (mRuimProvisionedRecordsLoaded) {
                     // broadcast intent to indicate an error related to Line1Number has been
                     // detected
                     Intent intent = new Intent(TelephonyIntents.ACTION_LINE1_NUMBER_ERROR_DETECTED);
@@ -1547,12 +1549,11 @@ public class ServiceStateTracker extends Handler {
                     mPhone.getContext().sendBroadcast(intent,
                             permission.READ_PRIVILEGED_PHONE_STATE);
 
-                    // update mdn
-                    mMdn = ruim.getMdn();
+                    mMdn = mdn;
                 }
             }
         }
-        return mMdn;
+        return mdn;
     }
 
     public String getCdmaMin() {
