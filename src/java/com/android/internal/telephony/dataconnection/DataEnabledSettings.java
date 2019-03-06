@@ -19,10 +19,12 @@ package com.android.internal.telephony.dataconnection;
 
 import android.annotation.IntDef;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.os.Handler;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -246,6 +248,58 @@ public class DataEnabledSettings {
                 + ", " + prov_mobile_data + ")");
 
         return retVal;
+    }
+
+    private String getRoamingDataSettingName() {
+        // For single SIM phones, this is a per phone property. Or if it's invalid subId, we
+        // read default setting.
+        int subId = mPhone.getSubId();
+        if (TelephonyManager.getDefault().getSimCount() == 1
+                || !SubscriptionManager.isValidSubscriptionId(subId)) {
+            return Settings.Global.DATA_ROAMING;
+        } else {
+            return Settings.Global.DATA_ROAMING + mPhone.getSubId();
+        }
+    }
+
+    public synchronized void setDataRoamingEnabled(boolean enabled) {
+        localLog("setDataRoamingEnabled", enabled);
+        // Make sure if value is not initialized, it gets overwritten by the target value.
+        int uninitializedValue = -1;
+        int currentValue = Settings.Global.getInt(
+                mResolver, getRoamingDataSettingName(), uninitializedValue);
+        int targetValue = (enabled ? 1 : 0);
+        int subId = mPhone.getSubId();
+
+        if (currentValue != targetValue) {
+            Settings.Global.putInt(mResolver, getRoamingDataSettingName(), targetValue);
+            SubscriptionController.getInstance().setDataRoaming(targetValue, subId);
+            // will trigger handleDataOnRoamingChange() through observer
+        }
+    }
+
+    /**
+     * Return current {@link android.provider.Settings.Global#DATA_ROAMING} value.
+     */
+    public synchronized boolean getDataRoamingEnabled() {
+        return (Settings.Global.getInt(mResolver, getMobileDataSettingName(),
+                getDefaultDataRoamingEnabled() ? 1 : 0) != 0);
+    }
+
+    /**
+     * get default values for {@link Settings.Global#DATA_ROAMING}
+     * return {@code true} if either
+     * {@link CarrierConfigManager#KEY_CARRIER_DEFAULT_DATA_ROAMING_ENABLED_BOOL} or
+     * system property ro.com.android.dataroaming is set to true. otherwise return {@code false}
+     */
+    public synchronized boolean getDefaultDataRoamingEnabled() {
+        final CarrierConfigManager configMgr = (CarrierConfigManager)
+                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        boolean isDataRoamingEnabled = "true".equalsIgnoreCase(SystemProperties.get(
+                "ro.com.android.dataroaming", "false"));
+        isDataRoamingEnabled |= configMgr.getConfigForSubId(mPhone.getSubId()).getBoolean(
+                CarrierConfigManager.KEY_CARRIER_DEFAULT_DATA_ROAMING_ENABLED_BOOL);
+        return isDataRoamingEnabled;
     }
 
     private void notifyDataEnabledChanged(boolean enabled, int reason) {

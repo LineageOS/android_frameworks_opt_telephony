@@ -67,7 +67,7 @@ public class CellularDataService extends DataService {
         private CellularDataServiceProvider(int slotId) {
             super(slotId);
 
-            mPhone = PhoneFactory.getPhone(getSlotId());
+            mPhone = PhoneFactory.getPhone(getSlotIndex());
 
             mHandlerThread = new HandlerThread(CellularDataService.class.getSimpleName());
             mHandlerThread.start();
@@ -125,10 +125,10 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void setupDataCall(int radioTechnology, DataProfile dataProfile, boolean isRoaming,
+        public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                                   boolean allowRoaming, int reason, LinkProperties linkProperties,
                                   DataServiceCallback callback) {
-            if (DBG) log("setupDataCall " + getSlotId());
+            if (DBG) log("setupDataCall " + getSlotIndex());
 
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
@@ -138,13 +138,13 @@ public class CellularDataService extends DataService {
                 mCallbackMap.put(message, callback);
             }
 
-            mPhone.mCi.setupDataCall(radioTechnology, dataProfile, isRoaming, allowRoaming, reason,
-                    linkProperties, message);
+            mPhone.mCi.setupDataCall(accessNetworkType, dataProfile, isRoaming, allowRoaming,
+                    reason, linkProperties, message);
         }
 
         @Override
         public void deactivateDataCall(int cid, int reason, DataServiceCallback callback) {
-            if (DBG) log("deactivateDataCall " + getSlotId());
+            if (DBG) log("deactivateDataCall " + getSlotIndex());
 
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
@@ -160,7 +160,7 @@ public class CellularDataService extends DataService {
         @Override
         public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming,
                                         DataServiceCallback callback) {
-            if (DBG) log("setInitialAttachApn " + getSlotId());
+            if (DBG) log("setInitialAttachApn " + getSlotIndex());
 
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
@@ -176,7 +176,7 @@ public class CellularDataService extends DataService {
         @Override
         public void setDataProfile(List<DataProfile> dps, boolean isRoaming,
                                    DataServiceCallback callback) {
-            if (DBG) log("setDataProfile " + getSlotId());
+            if (DBG) log("setDataProfile " + getSlotIndex());
 
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
@@ -191,7 +191,7 @@ public class CellularDataService extends DataService {
 
         @Override
         public void getDataCallList(DataServiceCallback callback) {
-            if (DBG) log("getDataCallList " + getSlotId());
+            if (DBG) log("getDataCallList " + getSlotIndex());
 
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
@@ -211,13 +211,13 @@ public class CellularDataService extends DataService {
     }
 
     @Override
-    public DataServiceProvider createDataServiceProvider(int slotId) {
-        log("Cellular data service created for slot " + slotId);
-        if (!SubscriptionManager.isValidSlotIndex(slotId)) {
-            loge("Tried to cellular data service with invalid slotId " + slotId);
+    public DataServiceProvider onCreateDataServiceProvider(int slotIndex) {
+        log("Cellular data service created for slot " + slotIndex);
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
+            loge("Tried to cellular data service with invalid slotId " + slotIndex);
             return null;
         }
-        return new CellularDataServiceProvider(slotId);
+        return new CellularDataServiceProvider(slotIndex);
     }
 
     private void log(String s) {

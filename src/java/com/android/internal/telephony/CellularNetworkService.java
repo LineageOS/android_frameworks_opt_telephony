@@ -71,7 +71,7 @@ public class CellularNetworkService extends NetworkService {
         CellularNetworkServiceProvider(int slotId) {
             super(slotId);
 
-            mPhone = PhoneFactory.getPhone(getSlotId());
+            mPhone = PhoneFactory.getPhone(getSlotIndex());
 
             mHandlerThread = new HandlerThread(CellularNetworkService.class.getSimpleName());
             mHandlerThread.start();
@@ -488,13 +488,13 @@ public class CellularNetworkService extends NetworkService {
     }
 
     @Override
-    protected NetworkServiceProvider createNetworkServiceProvider(int slotId) {
-        if (DBG) log("Cellular network service created for slot " + slotId);
-        if (!SubscriptionManager.isValidSlotIndex(slotId)) {
-            loge("Tried to Cellular network service with invalid slotId " + slotId);
+    public NetworkServiceProvider onCreateNetworkServiceProvider(int slotIndex) {
+        if (DBG) log("Cellular network service created for slot " + slotIndex);
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
+            loge("Tried to Cellular network service with invalid slotId " + slotIndex);
             return null;
         }
-        return new CellularNetworkServiceProvider(slotId);
+        return new CellularNetworkServiceProvider(slotIndex);
     }
 
     private void log(String s) {

@@ -85,6 +85,7 @@ import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.PrefNetworkMode;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
@@ -1494,7 +1495,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                                + ",accessNetworkType=" + accessNetworkType + ",isRoaming="
+                                + ",accessNetworkType="
+                                + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile
                                 + ",addresses=" + addresses + ",dnses=" + dnses);
                     }
@@ -1512,7 +1514,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                                + ",accessNetworkType=" + accessNetworkType + ",isRoaming="
+                                + ",accessNetworkType="
+                                + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + ","
                                 + dataProfile + ",addresses=" + addresses + ",dnses=" + dnses);
                     }
@@ -2574,7 +2577,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setPreferredNetworkType(int networkType , Message result) {
+    public void setPreferredNetworkType(@PrefNetworkMode int networkType , Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE, result,
@@ -2598,12 +2601,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         (android.hardware.radio.V1_4.IRadio) radioProxy;
                 try {
                     radioProxy14.setPreferredNetworkTypeBitmap(
-                            rr.mSerial, RadioAccessFamily.getRafFromNetworkType(networkType));
+                            rr.mSerial, convertToHalRadioAccessFamily(networkType));
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "setPreferredNetworkTypeBitmap", e);
                 }
             }
         }
+    }
+
+    private static int convertToHalRadioAccessFamily(@PrefNetworkMode int networkMode) {
+        // android.hardware.radio.V1_0.RadioAccessFamily is one bit shift
+        // from TelephonyManager.NetworkTypeBitMask
+        int networkTypeBitmask = RadioAccessFamily.getRafFromNetworkType(networkMode);
+        return networkTypeBitmask << 1;
     }
 
     @Override

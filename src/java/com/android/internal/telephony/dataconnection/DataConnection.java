@@ -41,6 +41,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.DataFailCause;
 import android.telephony.Rlog;
@@ -1196,6 +1197,27 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     * @return {@code True} if 464xlat should be skipped.
+     */
+    @VisibleForTesting
+    public boolean shouldSkip464Xlat() {
+        switch (mApnSetting.getSkip464Xlat()) {
+            case Telephony.Carriers.SKIP_464XLAT_ENABLE:
+                return true;
+            case Telephony.Carriers.SKIP_464XLAT_DISABLE:
+                return false;
+            case Telephony.Carriers.SKIP_464XLAT_DEFAULT:
+            default:
+                break;
+        }
+
+        // As default, return true if ims and no internet
+        final NetworkCapabilities nc = getNetworkCapabilities();
+        return nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && !nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    /**
      * @return {@code} true iff. {@code address} is a literal IPv4 or IPv6 address.
      */
     @VisibleForTesting
@@ -1363,7 +1385,8 @@ public class DataConnection extends StateMachine {
             if (DBG) log("DcDefaultState: enter");
 
             // Register for DRS or RAT change
-            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(getHandler(),
+            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
+                    mDataServiceManager.getTransportType(), getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED, null);
 
             mPhone.getServiceStateTracker().registerForDataRoamingOn(getHandler(),
@@ -1379,7 +1402,8 @@ public class DataConnection extends StateMachine {
             if (DBG) log("DcDefaultState: exit");
 
             // Unregister for DRS or RAT change.
-            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(getHandler());
+            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
+                    mDataServiceManager.getTransportType(), getHandler());
 
             mPhone.getServiceStateTracker().unregisterForDataRoamingOn(getHandler());
             mPhone.getServiceStateTracker().unregisterForDataRoamingOff(getHandler());
@@ -1807,6 +1831,9 @@ public class DataConnection extends StateMachine {
                 misc.provisioningNotificationDisabled = true;
             }
             misc.subscriberId = mPhone.getSubscriberId();
+
+            // set skip464xlat if it is not default otherwise
+            misc.skip464xlat = shouldSkip464Xlat();
 
             mRestrictedNetworkOverride = shouldRestrictNetwork();
             mUnmeteredUseOnly = isUnmeteredUseOnly();

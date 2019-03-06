@@ -77,6 +77,7 @@ import android.util.EventLog;
 import android.util.LocalLog;
 import android.util.Pair;
 import android.util.SparseArray;
+import android.util.SparseBooleanArray;
 import android.util.StatsLog;
 import android.util.TimestampedValue;
 
@@ -174,10 +175,10 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mVoiceRoamingOffRegistrants = new RegistrantList();
     private RegistrantList mDataRoamingOnRegistrants = new RegistrantList();
     private RegistrantList mDataRoamingOffRegistrants = new RegistrantList();
-    protected RegistrantList mAttachedRegistrants = new RegistrantList();
-    protected RegistrantList mDetachedRegistrants = new RegistrantList();
+    protected SparseArray<RegistrantList> mAttachedRegistrants = new SparseArray<>();
+    protected SparseArray<RegistrantList> mDetachedRegistrants = new SparseArray();
     private RegistrantList mVoiceRegStateOrRatChangedRegistrants = new RegistrantList();
-    private RegistrantList mDataRegStateOrRatChangedRegistrants = new RegistrantList();
+    private SparseArray<RegistrantList> mDataRegStateOrRatChangedRegistrants = new SparseArray<>();
     private RegistrantList mNetworkAttachedRegistrants = new RegistrantList();
     private RegistrantList mNetworkDetachedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
@@ -573,9 +574,9 @@ public class ServiceStateTracker extends Handler {
                 CarrierServiceStateTracker.CARRIER_EVENT_VOICE_REGISTRATION, null);
         registerForNetworkDetached(mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_VOICE_DEREGISTRATION, null);
-        registerForDataConnectionAttached(mCSST,
+        registerForDataConnectionAttached(TransportType.WWAN, mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_DATA_REGISTRATION, null);
-        registerForDataConnectionDetached(mCSST,
+        registerForDataConnectionDetached(TransportType.WWAN, mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_DATA_DEREGISTRATION, null);
         registerForImsCapabilityChanged(mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_IMS_CAPABILITIES_CHANGED, null);
@@ -602,8 +603,15 @@ public class ServiceStateTracker extends Handler {
         }
 
         // If we are previously in service, we need to notify that we are out of service now.
-        if (mSS != null && mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE) {
-            mDetachedRegistrants.notifyRegistrants();
+        for (int transport : mTransportManager.getAvailableTransports()) {
+            if (mSS != null) {
+                NetworkRegistrationState nrs = mSS.getNetworkRegistrationState(
+                        NetworkRegistrationState.DOMAIN_PS, transport);
+                if (nrs != null && nrs.isInService()
+                        && mDetachedRegistrants.get(transport) != null) {
+                    mDetachedRegistrants.get(transport).notifyRegistrants();
+                }
+            }
         }
 
         mSS = new ServiceState();
@@ -672,7 +680,9 @@ public class ServiceStateTracker extends Handler {
 
         // Tell everybody that the registration state and RAT have changed.
         notifyVoiceRegStateRilRadioTechnologyChanged();
-        notifyDataRegStateRilRadioTechnologyChanged();
+        for (int transport : mTransportManager.getAvailableTransports()) {
+            notifyDataRegStateRilRadioTechnologyChanged(transport);
+        }
     }
 
     @VisibleForTesting
@@ -738,14 +748,24 @@ public class ServiceStateTracker extends Handler {
      * AsyncResult in msg.obj where AsyncResult#result contains the
      * new RAT as an Integer Object.
      */
-    protected void notifyDataRegStateRilRadioTechnologyChanged() {
-        int rat = mSS.getRilDataRadioTechnology();
-        int drs = mSS.getDataRegState();
-        if (DBG) log("notifyDataRegStateRilRadioTechnologyChanged: drs=" + drs + " rat=" + rat);
+    protected void notifyDataRegStateRilRadioTechnologyChanged(int transport) {
+        NetworkRegistrationState nrs = mSS.getNetworkRegistrationState(
+                NetworkRegistrationState.DOMAIN_PS, transport);
+        if (nrs != null) {
+            int rat = ServiceState.networkTypeToRilRadioTechnology(
+                    nrs.getAccessNetworkTechnology());
+            int drs = regCodeToServiceState(nrs.getRegState());
+            if (DBG) {
+                log("notifyDataRegStateRilRadioTechnologyChanged: drs=" + drs + " rat=" + rat);
+            }
 
+            RegistrantList registrantList = mDataRegStateOrRatChangedRegistrants.get(transport);
+            if (registrantList != null) {
+                registrantList.notifyResult(new Pair<>(drs, rat));
+            }
+        }
         mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                ServiceState.rilRadioTechnologyToString(rat));
-        mDataRegStateOrRatChangedRegistrants.notifyResult(new Pair<Integer, Integer>(drs, rat));
+                ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
     }
 
     /**
@@ -1747,8 +1767,7 @@ public class ServiceStateTracker extends Handler {
                          * Roaming Indicator shall be sent if device is registered
                          * on a CDMA or EVDO system.
                          */
-                        boolean isRoamIndForHomeSystem = isRoamIndForHomeSystem(
-                                Integer.toString(mRoamingIndicator));
+                        boolean isRoamIndForHomeSystem = isRoamIndForHomeSystem(mRoamingIndicator);
                         if (mNewSS.getDataRoaming() == isRoamIndForHomeSystem) {
                             log("isRoamIndForHomeSystem=" + isRoamIndForHomeSystem
                                     + ", override data roaming to " + !isRoamIndForHomeSystem);
@@ -1978,8 +1997,7 @@ public class ServiceStateTracker extends Handler {
                     // list of ERIs for home system, mCdmaRoaming is true.
                     boolean cdmaRoaming =
                             regCodeIsRoaming(registrationState)
-                                    && !isRoamIndForHomeSystem(
-                                            Integer.toString(roamingIndicator));
+                                    && !isRoamIndForHomeSystem(roamingIndicator);
                     mNewSS.setVoiceRoaming(cdmaRoaming);
                     mRoamingIndicator = roamingIndicator;
                     mIsInPrl = (systemIsInPrl == 0) ? false : true;
@@ -2259,20 +2277,22 @@ public class ServiceStateTracker extends Handler {
      * Determine whether a roaming indicator is in the carrier-specified list of ERIs for
      * home system
      *
-     * @param roamInd roaming indicator in String
+     * @param roamInd roaming indicator
      * @return true if the roamInd is in the carrier-specified list of ERIs for home network
      */
-    private boolean isRoamIndForHomeSystem(String roamInd) {
+    private boolean isRoamIndForHomeSystem(int roamInd) {
         // retrieve the carrier-specified list of ERIs for home system
-        String[] homeRoamIndicators = Resources.getSystem()
-                .getStringArray(com.android.internal.R.array.config_cdma_home_system);
+        final PersistableBundle config = getCarrierConfig();
+        int[] homeRoamIndicators = config.getIntArray(CarrierConfigManager
+                    .KEY_CDMA_ENHANCED_ROAMING_INDICATOR_FOR_HOME_NETWORK_INT_ARRAY);
+
         log("isRoamIndForHomeSystem: homeRoamIndicators=" + Arrays.toString(homeRoamIndicators));
 
         if (homeRoamIndicators != null) {
             // searches through the comma-separated list for a match,
             // return true if one is found.
-            for (String homeRoamInd : homeRoamIndicators) {
-                if (homeRoamInd.equals(roamInd)) {
+            for (int homeRoamInd : homeRoamIndicators) {
+                if (homeRoamInd == roamInd) {
                     return true;
                 }
             }
@@ -2962,16 +2982,48 @@ public class ServiceStateTracker extends Handler {
                 mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
                         && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasDataAttached =
-                mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE
-                        && mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
+        SparseBooleanArray hasDataAttached = new SparseBooleanArray(
+                mTransportManager.getAvailableTransports().length);
+        SparseBooleanArray hasDataDetached = new SparseBooleanArray(
+                mTransportManager.getAvailableTransports().length);
+        SparseBooleanArray hasRilDataRadioTechnologyChanged = new SparseBooleanArray(
+                mTransportManager.getAvailableTransports().length);
+        SparseBooleanArray hasDataRegStateChanged = new SparseBooleanArray(
+                mTransportManager.getAvailableTransports().length);
+        boolean anyDataRegChanged = false;
+        boolean anyDataRatChanged = false;
+        for (int transport : mTransportManager.getAvailableTransports()) {
+            NetworkRegistrationState oldNrs = mSS.getNetworkRegistrationState(
+                    NetworkRegistrationState.DOMAIN_PS, transport);
+            NetworkRegistrationState newNrs = mNewSS.getNetworkRegistrationState(
+                    NetworkRegistrationState.DOMAIN_PS, transport);
 
-        boolean hasDataDetached =
-                mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
-                        && mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE;
+            boolean changed = (oldNrs == null || !oldNrs.isInService())
+                    && (newNrs != null && newNrs.isInService());
+            hasDataAttached.put(transport, changed);
 
-        boolean hasDataRegStateChanged =
-                mSS.getDataRegState() != mNewSS.getDataRegState();
+            changed = (oldNrs != null && oldNrs.isInService())
+                    && (newNrs == null || !newNrs.isInService());
+            hasDataDetached.put(transport, changed);
+
+            int oldRAT = oldNrs != null ? oldNrs.getAccessNetworkTechnology()
+                    : TelephonyManager.NETWORK_TYPE_UNKNOWN;
+            int newRAT = newNrs != null ? newNrs.getAccessNetworkTechnology()
+                    : TelephonyManager.NETWORK_TYPE_UNKNOWN;
+            hasRilDataRadioTechnologyChanged.put(transport, oldRAT != newRAT);
+            if (oldRAT != newRAT) {
+                anyDataRatChanged = true;
+            }
+
+            int oldRegState = oldNrs != null ? oldNrs.getRegState()
+                    : NetworkRegistrationState.REG_STATE_UNKNOWN;
+            int newRegState = newNrs != null ? newNrs.getRegState()
+                    : NetworkRegistrationState.REG_STATE_UNKNOWN;
+            hasDataRegStateChanged.put(transport, oldRegState != newRegState);
+            if (oldRegState != newRegState) {
+                anyDataRegChanged = true;
+            }
+        }
 
         boolean hasVoiceRegStateChanged =
                 mSS.getVoiceRegState() != mNewSS.getVoiceRegState();
@@ -3000,9 +3052,6 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasRilVoiceRadioTechnologyChanged =
                 mSS.getRilVoiceRadioTechnology() != mNewSS.getRilVoiceRadioTechnology();
-
-        boolean hasRilDataRadioTechnologyChanged =
-                mSS.getRilDataRadioTechnology() != mNewSS.getRilDataRadioTechnology();
 
         boolean hasChanged = !mNewSS.equals(mSS);
 
@@ -3070,7 +3119,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         // Add an event log when connection state changes
-        if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
+        if (hasVoiceRegStateChanged || anyDataRegChanged) {
             EventLog.writeEvent(mPhone.isPhoneTypeGsm() ? EventLogTags.GSM_SERVICE_STATE_CHANGE :
                             EventLogTags.CDMA_SERVICE_STATE_CHANGE,
                     mSS.getVoiceRegState(), mSS.getDataRegState(),
@@ -3127,19 +3176,13 @@ public class ServiceStateTracker extends Handler {
             updatePhoneObject();
         }
 
-        TelephonyManager tm =
-                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
-
-        if (hasRilDataRadioTechnologyChanged) {
+        TelephonyManager tm = (TelephonyManager) mPhone.getContext().getSystemService(
+                Context.TELEPHONY_SERVICE);
+        if (anyDataRatChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
             StatsLog.write(StatsLog.MOBILE_RADIO_TECHNOLOGY_CHANGED,
-                    ServiceState.rilRadioTechnologyToNetworkType(mSS.getRilDataRadioTechnology()),
-                    mPhone.getPhoneId());
-
-            if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                    == mSS.getRilDataRadioTechnology()) {
-                log("pollStateDone: IWLAN enabled");
-            }
+                    ServiceState.rilRadioTechnologyToNetworkType(
+                            mSS.getRilDataRadioTechnology()), mPhone.getPhoneId());
         }
 
         if (hasRegistered) {
@@ -3159,9 +3202,6 @@ public class ServiceStateTracker extends Handler {
             updateSpnDisplay();
 
             tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
-
-            String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
-            String prevCountryIsoCode = tm.getNetworkCountryIso(mPhone.getPhoneId());
             String operatorNumeric = mSS.getOperatorNumeric();
 
             if (!mPhone.isPhoneTypeGsm()) {
@@ -3213,32 +3253,54 @@ public class ServiceStateTracker extends Handler {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
-        if (hasDataAttached || has4gHandoff || hasDataDetached || hasRegistered
-                || hasDeregistered) {
+        boolean shouldLogAttachedChange = false;
+        boolean shouldLogRatChange = false;
+
+        if (hasRegistered || hasDeregistered) {
+            shouldLogAttachedChange = true;
+        }
+
+        if (has4gHandoff) {
+            mAttachedRegistrants.get(TransportType.WWAN).notifyRegistrants();
+            shouldLogAttachedChange = true;
+        }
+
+        if (hasRilVoiceRadioTechnologyChanged) {
+            shouldLogRatChange = true;
+            notifySignalStrength();
+        }
+
+        for (int transport : mTransportManager.getAvailableTransports()) {
+            if (hasRilDataRadioTechnologyChanged.get(transport)) {
+                shouldLogRatChange = true;
+                notifySignalStrength();
+            }
+
+            if (hasDataRegStateChanged.get(transport)
+                    || hasRilDataRadioTechnologyChanged.get(transport)) {
+                notifyDataRegStateRilRadioTechnologyChanged(transport);
+                mPhone.notifyDataConnection();
+            }
+
+            if (hasDataAttached.get(transport)) {
+                shouldLogAttachedChange = true;
+                mAttachedRegistrants.get(transport).notifyRegistrants();
+            }
+            if (hasDataDetached.get(transport)) {
+                shouldLogAttachedChange = true;
+                mDetachedRegistrants.get(transport).notifyRegistrants();
+            }
+        }
+
+        if (shouldLogAttachedChange) {
             logAttachChange();
         }
-
-        if (hasDataAttached || has4gHandoff) {
-            mAttachedRegistrants.notifyRegistrants();
-        }
-
-        if (hasDataDetached) {
-            mDetachedRegistrants.notifyRegistrants();
-        }
-
-        if (hasRilDataRadioTechnologyChanged || hasRilVoiceRadioTechnologyChanged) {
+        if (shouldLogRatChange) {
             logRatChange();
-
-            notifySignalStrength();
         }
 
         if (hasVoiceRegStateChanged || hasRilVoiceRadioTechnologyChanged) {
             notifyVoiceRegStateRilRadioTechnologyChanged();
-        }
-
-        if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
-            notifyDataRegStateRilRadioTechnologyChanged();
-            mPhone.notifyDataConnection();
         }
 
         if (hasVoiceRoamingOn || hasVoiceRoamingOff || hasDataRoamingOn || hasDataRoamingOff) {
@@ -4020,38 +4082,72 @@ public class ServiceStateTracker extends Handler {
 
     /**
      * Registration point for transition into DataConnection attached.
+     * @param transport Transport type
      * @param h handler to notify
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public void registerForDataConnectionAttached(Handler h, int what, Object obj) {
+    public void registerForDataConnectionAttached(int transport, Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
-        mAttachedRegistrants.add(r);
+        if (mAttachedRegistrants.get(transport) == null) {
+            mAttachedRegistrants.put(transport, new RegistrantList());
+        }
+        mAttachedRegistrants.get(transport).add(r);
 
-        if (getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE) {
-            r.notifyRegistrant();
+        if (mSS != null) {
+            NetworkRegistrationState netRegState = mSS.getNetworkRegistrationState(
+                    NetworkRegistrationState.DOMAIN_PS, transport);
+            if (netRegState == null || netRegState.isInService()) {
+                r.notifyRegistrant();
+            }
         }
     }
-    public void unregisterForDataConnectionAttached(Handler h) {
-        mAttachedRegistrants.remove(h);
+
+    /**
+     * Unregister for data attached event
+     *
+     * @param transport Transport type
+     * @param h Handler to notify
+     */
+    public void unregisterForDataConnectionAttached(int transport, Handler h) {
+        if (mAttachedRegistrants.get(transport) != null) {
+            mAttachedRegistrants.get(transport).remove(h);
+        }
     }
 
     /**
      * Registration point for transition into DataConnection detached.
+     * @param transport Transport type
      * @param h handler to notify
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public void registerForDataConnectionDetached(Handler h, int what, Object obj) {
+    public void registerForDataConnectionDetached(int transport, Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
-        mDetachedRegistrants.add(r);
+        if (mDetachedRegistrants.get(transport) == null) {
+            mDetachedRegistrants.put(transport, new RegistrantList());
+        }
+        mDetachedRegistrants.get(transport).add(r);
 
-        if (getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
-            r.notifyRegistrant();
+        if (mSS != null) {
+            NetworkRegistrationState netRegState = mSS.getNetworkRegistrationState(
+                    NetworkRegistrationState.DOMAIN_PS, transport);
+            if (netRegState != null && !netRegState.isInService()) {
+                r.notifyRegistrant();
+            }
         }
     }
-    public void unregisterForDataConnectionDetached(Handler h) {
-        mDetachedRegistrants.remove(h);
+
+    /**
+     * Unregister for data detatched event
+     *
+     * @param transport Transport type
+     * @param h Handler to notify
+     */
+    public void unregisterForDataConnectionDetached(int transport, Handler h) {
+        if (mDetachedRegistrants.get(transport) != null) {
+            mDetachedRegistrants.get(transport).remove(h);
+        }
     }
 
     /**
@@ -4078,17 +4174,31 @@ public class ServiceStateTracker extends Handler {
      * new radio technology will be returned AsyncResult#result as an Integer Object.
      * The AsyncResult will be in the notification Message#obj.
      *
+     * @param transport Transport
      * @param h handler to notify
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public void registerForDataRegStateOrRatChanged(Handler h, int what, Object obj) {
+    public void registerForDataRegStateOrRatChanged(int transport, Handler h, int what,
+                                                    Object obj) {
         Registrant r = new Registrant(h, what, obj);
-        mDataRegStateOrRatChangedRegistrants.add(r);
-        notifyDataRegStateRilRadioTechnologyChanged();
+        if (mDataRegStateOrRatChangedRegistrants.get(transport) == null) {
+            mDataRegStateOrRatChangedRegistrants.put(transport, new RegistrantList());
+        }
+        mDataRegStateOrRatChangedRegistrants.get(transport).add(r);
+        notifyDataRegStateRilRadioTechnologyChanged(transport);
     }
-    public void unregisterForDataRegStateOrRatChanged(Handler h) {
-        mDataRegStateOrRatChangedRegistrants.remove(h);
+
+    /**
+     * Unregister for data registration state changed or RAT changed event
+     *
+     * @param transport Transport
+     * @param h The handler
+     */
+    public void unregisterForDataRegStateOrRatChanged(int transport, Handler h) {
+        if (mDataRegStateOrRatChangedRegistrants.get(transport) != null) {
+            mDataRegStateOrRatChangedRegistrants.get(transport).remove(h);
+        }
     }
 
     /**
