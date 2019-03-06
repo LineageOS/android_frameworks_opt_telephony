@@ -44,6 +44,7 @@ import android.os.SystemProperties;
 import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.DataFailCause;
+import android.telephony.NetworkRegistrationState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -109,6 +110,9 @@ public class DataConnection extends StateMachine {
     private static final boolean VDBG = true;
 
     private static final String NETWORK_TYPE = "MOBILE";
+
+    private static final String RAT_NAME_5G = "nr";
+    private static final String RAT_NAME_EVDO = "evdo";
 
     // The data connection providing default Internet connection will have a higher score of 50.
     // Other connections will have a slightly lower score of 45. The intention is other connections
@@ -882,17 +886,25 @@ public class DataConnection extends StateMachine {
         return true;
     }
 
+    /**
+     * TCP buffer size config based on the ril technology. There are 6 parameters
+     * read_min, read_default, read_max, write_min, write_default, write_max in the TCP buffer
+     * config string and they are separated by a comma. The unit of these parameters is byte.
+     */
     private static final String TCP_BUFFER_SIZES_GPRS = "4092,8760,48000,4096,8760,48000";
     private static final String TCP_BUFFER_SIZES_EDGE = "4093,26280,70800,4096,16384,70800";
     private static final String TCP_BUFFER_SIZES_UMTS = "58254,349525,1048576,58254,349525,1048576";
-    private static final String TCP_BUFFER_SIZES_1XRTT= "16384,32768,131072,4096,16384,102400";
+    private static final String TCP_BUFFER_SIZES_1XRTT = "16384,32768,131072,4096,16384,102400";
     private static final String TCP_BUFFER_SIZES_EVDO = "4094,87380,262144,4096,16384,262144";
-    private static final String TCP_BUFFER_SIZES_EHRPD= "131072,262144,1048576,4096,16384,524288";
-    private static final String TCP_BUFFER_SIZES_HSDPA= "61167,367002,1101005,8738,52429,262114";
+    private static final String TCP_BUFFER_SIZES_EHRPD = "131072,262144,1048576,4096,16384,524288";
+    private static final String TCP_BUFFER_SIZES_HSDPA = "61167,367002,1101005,8738,52429,262114";
     private static final String TCP_BUFFER_SIZES_HSPA = "40778,244668,734003,16777,100663,301990";
-    private static final String TCP_BUFFER_SIZES_LTE  =
+    private static final String TCP_BUFFER_SIZES_LTE =
             "524288,1048576,2097152,262144,524288,1048576";
-    private static final String TCP_BUFFER_SIZES_HSPAP= "122334,734003,2202010,32040,192239,576717";
+    private static final String TCP_BUFFER_SIZES_HSPAP =
+            "122334,734003,2202010,32040,192239,576717";
+    private static final String TCP_BUFFER_SIZES_NR =
+            "2097152,6291456,16777216,512000,2097152,8388608";
 
     private void updateTcpBufferSizes(int rilRat) {
         String sizes = null;
@@ -907,7 +919,13 @@ public class DataConnection extends StateMachine {
         if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0 ||
                 rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A ||
                 rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B) {
-            ratName = "evdo";
+            ratName = RAT_NAME_EVDO;
+        }
+
+        // NR 5G Non-Standalone use LTE cell as the primary cell, the ril technology is LTE in this
+        // case. We use NR 5G TCP buffer size when connected to NR 5G Non-Standalone network.
+        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()) {
+            ratName = RAT_NAME_5G;
         }
 
         // in the form: "ratname:rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max"
@@ -955,7 +973,12 @@ public class DataConnection extends StateMachine {
                     break;
                 case ServiceState.RIL_RADIO_TECHNOLOGY_LTE:
                 case ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA:
-                    sizes = TCP_BUFFER_SIZES_LTE;
+                    // Use NR 5G TCP buffer size when connected to NR 5G Non-Standalone network.
+                    if (isNRConnected()) {
+                        sizes = TCP_BUFFER_SIZES_NR;
+                    } else {
+                        sizes = TCP_BUFFER_SIZES_LTE;
+                    }
                     break;
                 case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP:
                     sizes = TCP_BUFFER_SIZES_HSPAP;
@@ -2792,6 +2815,12 @@ public class DataConnection extends StateMachine {
     @Override
     public String toString() {
         return "{" + toStringSimple() + " mApnContexts=" + mApnContexts + "}";
+    }
+
+    /** Check if the device is connected to NR 5G Non-Standalone network. */
+    private boolean isNRConnected() {
+        return mPhone.getServiceState().getNrStatus()
+                == NetworkRegistrationState.NR_STATUS_CONNECTED;
     }
 
     private void dumpToLog() {
