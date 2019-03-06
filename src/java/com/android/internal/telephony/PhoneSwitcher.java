@@ -162,7 +162,7 @@ public class PhoneSwitcher extends Handler {
     private final LocalLog mLocalLog;
     @VisibleForTesting
     public final PhoneStateListener mPhoneStateListener;
-    private final CellularNetworkValidator mValidator;
+    protected final CellularNetworkValidator mValidator;
     @VisibleForTesting
     public final CellularNetworkValidator.ValidationCallback mValidationCallback =
             (validated, subId) -> Message.obtain(PhoneSwitcher.this,
@@ -214,7 +214,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_EMERGENCY_TOGGLE               = 105;
     private static final int EVENT_RADIO_CAPABILITY_CHANGED       = 106;
     private static final int EVENT_OPPT_DATA_SUB_CHANGED          = 107;
-    private static final int EVENT_RADIO_AVAILABLE                = 108;
+    protected static final int EVENT_RADIO_AVAILABLE                = 108;
     // A call has either started or ended. If an emergency ended and DDS is overridden using
     // mEmergencyOverride, start the countdown to remove the override using the message
     // EVENT_REMOVE_DDS_EMERGENCY_OVERRIDE. The only exception to this is if the device moves to
@@ -241,12 +241,12 @@ public class PhoneSwitcher extends Handler {
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
     // will be either HAL_COMMAND_ALLOW_DATA or HAL_COMMAND_ALLOW_DATA or HAL_COMMAND_UNKNOWN.
-    private static final int HAL_COMMAND_UNKNOWN        = 0;
-    private static final int HAL_COMMAND_ALLOW_DATA     = 1;
-    private static final int HAL_COMMAND_PREFERRED_DATA = 2;
-    private int mHalCommandToUse = HAL_COMMAND_UNKNOWN;
+    protected static final int HAL_COMMAND_UNKNOWN        = 0;
+    protected static final int HAL_COMMAND_ALLOW_DATA     = 1;
+    protected static final int HAL_COMMAND_PREFERRED_DATA = 2;
+    protected int mHalCommandToUse = HAL_COMMAND_UNKNOWN;
 
-    private RadioConfig mRadioConfig;
+    protected RadioConfig mRadioConfig;
 
     private final static int MAX_LOCAL_LOG_LINES = 30;
 
@@ -981,7 +981,7 @@ public class PhoneSwitcher extends Handler {
         return phoneId;
     }
 
-    private int getSubIdFromNetworkSpecifier(NetworkSpecifier specifier) {
+    protected int getSubIdFromNetworkSpecifier(NetworkSpecifier specifier) {
         if (specifier == null) {
             return DEFAULT_SUBSCRIPTION_ID;
         }
