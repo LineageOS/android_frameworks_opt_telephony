@@ -3207,11 +3207,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
-    public int getPreciseCarrierId() {
+    public int getSpecificCarrierId() {
         return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
-    public String getPreciseCarrierName() {
+    public String getSpecificCarrierName() {
         return null;
     }
 
