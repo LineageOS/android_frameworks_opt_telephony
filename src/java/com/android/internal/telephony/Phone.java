@@ -2440,7 +2440,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void sendDialerSpecialCode(String code) {
         if (!TextUtils.isEmpty(code)) {
             final BroadcastOptions options = BroadcastOptions.makeBasic();
-            options.setAllowBackgroundActivityStarts(true);
+            options.setBackgroundActivityStartsAllowed(true);
             Intent intent = new Intent(TelephonyIntents.SECRET_CODE_ACTION,
                     Uri.parse("android_secret_code://" + code));
             intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
