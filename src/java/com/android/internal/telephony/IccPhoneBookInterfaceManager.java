@@ -55,9 +55,9 @@ public class IccPhoneBookInterfaceManager {
     protected static final int EVENT_LOAD_DONE = 2;
     protected static final int EVENT_UPDATE_DONE = 3;
 
-    private static final class Request {
+    public static final class Request {
         AtomicBoolean mStatus = new AtomicBoolean(false);
-        Object mResult = null;
+        public Object mResult = null;
     }
 
     @UnsupportedAppUsage
@@ -256,21 +256,21 @@ public class IccPhoneBookInterfaceManager {
         if (DBG)
             logd("updateAdnRecordsWithContentValuesInEfBySearch: efid=" + efid + ", values = " +
                 values + ", pin2=" + pin2);
-        synchronized (mLock) {
-            checkThread();
-            mSuccess = false;
-            AtomicBoolean status = new AtomicBoolean(false);
-            Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
+
+        checkThread();
+        Request updateRequest = new Request();
+        synchronized (updateRequest) {
+            Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, updateRequest);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber, oldEmailArray, oldAnrArray);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
             if (mAdnCache != null) {
                 mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
-                waitForResult(status);
+                waitForResult(updateRequest);
             } else {
                 loge("Failure while trying to update by search due to uninitialised adncache");
             }
         }
-        return mSuccess;
+        return (boolean) updateRequest.mResult;
     }
 
     /**
