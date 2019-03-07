@@ -40,7 +40,7 @@ class PhoneConfigurationModels {
         List<ModemInfo> logicalModemList = new ArrayList<>();
         logicalModemList.add(modemInfo1);
         logicalModemList.add(modemInfo2);
-        DSDS_CAPABILITY = new PhoneCapability(1, 2, 0, logicalModemList, false);
+        DSDS_CAPABILITY = new PhoneCapability(1, 2, 0, logicalModemList, true);
 
         logicalModemList = new ArrayList<>();
         logicalModemList.add(modemInfo1);

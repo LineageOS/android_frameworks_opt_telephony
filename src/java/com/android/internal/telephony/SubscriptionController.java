@@ -2690,16 +2690,14 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public void setPreferredDataSubscriptionId(int subId) {
+    public void setPreferredDataSubscriptionId(int subId, boolean needValidation,
+            ISetOpportunisticDataCallback callback) {
         enforceModifyPhoneState("setPreferredDataSubscriptionId");
         final long token = Binder.clearCallingIdentity();
 
         try {
-            if (SubscriptionManager.isUsableSubscriptionId(subId)) {
-                PhoneSwitcher.getInstance().setOpportunisticDataSubscription(subId);
-            } else {
-                PhoneSwitcher.getInstance().unsetOpportunisticDataSubscription();
-            }
+            PhoneSwitcher.getInstance().trySetPreferredSubscription(
+                    subId, needValidation, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -2708,17 +2706,12 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getPreferredDataSubscriptionId() {
         enforceReadPrivilegedPhoneState("getPreferredDataSubscriptionId");
-        return mPreferredDataSubId;
-    }
+        final long token = Binder.clearCallingIdentity();
 
-    private void notifyPreferredDataSubIdChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                "telephony.registry"));
         try {
-            if (DBG) logd("notifyPreferredDataSubIdChanged:");
-            tr.notifyPreferredDataSubIdChanged(mPreferredDataSubId);
-        } catch (RemoteException ex) {
-            // Should never happen because its always available.
+            return PhoneSwitcher.getInstance().getPreferredDataSubscriptionId();
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
     }
 
