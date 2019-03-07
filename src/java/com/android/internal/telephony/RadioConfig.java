@@ -324,7 +324,7 @@ public class RadioConfig extends Handler {
      * Wrapper function for IRadioConfig.getPhoneCapability().
      */
     public void getPhoneCapability(Message result) {
-        IRadioConfig radioConfigProxy = getRadioConfigProxy(result);
+        IRadioConfig radioConfigProxy = getRadioConfigProxy(null);
         if (radioConfigProxy == null || mRadioConfigVersion.less(RADIO_CONFIG_HAL_VERSION_1_1)) {
             if (result != null) {
                 AsyncResult.forMessage(result, null,
