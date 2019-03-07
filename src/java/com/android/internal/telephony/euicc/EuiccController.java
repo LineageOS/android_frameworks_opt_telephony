@@ -578,6 +578,7 @@ public class EuiccController extends IEuiccController.Stub {
         try {
             latch.await();
         } catch (InterruptedException e) {
+            Log.e(TAG, "blockingGetEuiccInfoFromEuiccService got InterruptedException e: " + e);
             Thread.currentThread().interrupt();
         }
         return resultRef.get();
