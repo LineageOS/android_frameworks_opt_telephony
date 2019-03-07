@@ -31,6 +31,8 @@ import static com.android.internal.telephony.nano.TelephonyProto.TelephonySettin
 
 import android.os.SystemClock;
 
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.PhoneStatus;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Type;
 
@@ -39,6 +41,11 @@ public class TelephonyEventBuilder {
 
     public TelephonyEvent build() {
         return mEvent;
+    }
+
+    /** The event is not related to any phone id. */
+    public TelephonyEventBuilder() {
+        this(-1 /* phoneId */);
     }
 
     public TelephonyEventBuilder(int phoneId) {
@@ -143,6 +150,27 @@ public class TelephonyEventBuilder {
     public TelephonyEventBuilder setPhoneStatusChange(PhoneStatus phoneStatus) {
         mEvent.type = Type.PHONE_STATUS_CHANGED;
         mEvent.phoneStatus = phoneStatus;
+        return this;
+    }
+
+    /** Set and build data switch event. */
+    public TelephonyEventBuilder setDataSwitch(DataSwitch dataSwitch) {
+        mEvent.type = TelephonyEvent.Type.DATA_SWITCH;
+        mEvent.dataSwitch = dataSwitch;
+        return this;
+    }
+
+    /** Set and build network validation event. */
+    public TelephonyEventBuilder setNetworkValidate(int networkValidationState) {
+        mEvent.type = TelephonyEvent.Type.NETWORK_VALIDATE;
+        mEvent.networkValidationState = networkValidationState;
+        return this;
+    }
+
+    /** Set and build on demand data switch event. */
+    public TelephonyEventBuilder setOnDemandDataSwitch(OnDemandDataSwitch onDemandDataSwitch) {
+        mEvent.type = TelephonyEvent.Type.ON_DEMAND_DATA_SWITCH;
+        mEvent.onDemandDataSwitch = onDemandDataSwitch;
         return this;
     }
 }
