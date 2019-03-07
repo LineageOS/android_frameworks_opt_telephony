@@ -86,7 +86,9 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatchingResult;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.PhoneStatus;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall.DeactivateReason;
@@ -1706,6 +1708,32 @@ public class TelephonyMetrics {
                 writeOnSmsSolicitedResponse(phoneId, rilSerial, rilError, smsResponse);
                 break;
         }
+    }
+
+    /**
+     * Write network validation event.
+     * @param networkValidationState the network validation state.
+     */
+    public void writeNetworkValidate(int networkValidationState) {
+        addTelephonyEvent(
+                new TelephonyEventBuilder().setNetworkValidate(networkValidationState).build());
+    }
+
+    /**
+     * Write data switch event.
+     * @param dataSwitch the reason and state of data switch.
+     */
+    public void writeDataSwitch(DataSwitch dataSwitch) {
+        addTelephonyEvent(new TelephonyEventBuilder().setDataSwitch(dataSwitch).build());
+    }
+
+    /**
+     * Write on demand data switch event.
+     * @param onDemandDataSwitch the apn and state of on demand data switch.
+     */
+    public void writeOnDemandDataSwitch(OnDemandDataSwitch onDemandDataSwitch) {
+        addTelephonyEvent(
+                new TelephonyEventBuilder().setOnDemandDataSwitch(onDemandDataSwitch).build());
     }
 
     /**
