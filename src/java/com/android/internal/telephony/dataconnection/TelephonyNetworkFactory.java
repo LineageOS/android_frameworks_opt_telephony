@@ -310,11 +310,12 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         log("onDataHandoverNeeded: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", target transport=" + TransportType.toString(targetTransport));
         if (mTransportManager.getCurrentTransport(apnType) == targetTransport) {
-            log("apnType " + ApnSetting.getApnTypeString(apnType) + " is already on "
+            log("APN type " + ApnSetting.getApnTypeString(apnType) + " is already on "
                     + TransportType.toString(targetTransport));
             return;
         }
 
+        boolean handoverPending = false;
         for (HashMap.Entry<NetworkRequest, Integer> entry : mNetworkRequests.entrySet()) {
             NetworkRequest networkRequest = entry.getKey();
             int currentTransport = entry.getValue();
@@ -326,9 +327,19 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                         EVENT_DATA_HANDOVER_COMPLETED);
                 onCompleteMsg.getData().putParcelable(
                         DcTracker.DATA_COMPLETE_MSG_EXTRA_NETWORK_REQUEST, networkRequest);
+                // TODO: Need to handle the case that the request is there, but there is no actual
+                // data connections established.
                 requestNetworkInternal(networkRequest, DcTracker.REQUEST_TYPE_HANDOVER,
                         targetTransport, onCompleteMsg);
+                handoverPending = true;
             }
+        }
+
+        if (!handoverPending) {
+            log("No handover request pending. Update the transport type to "
+                    + TransportType.toString(targetTransport) + " for APN type "
+                    + ApnSetting.getApnTypeString(apnType));
+            mTransportManager.setCurrentTransport(apnType, targetTransport);
         }
     }
 
