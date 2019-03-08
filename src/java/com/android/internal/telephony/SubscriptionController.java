@@ -2706,17 +2706,12 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getPreferredDataSubscriptionId() {
         enforceReadPrivilegedPhoneState("getPreferredDataSubscriptionId");
-        return mPreferredDataSubId;
-    }
+        final long token = Binder.clearCallingIdentity();
 
-    private void notifyPreferredDataSubIdChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                "telephony.registry"));
         try {
-            if (DBG) logd("notifyPreferredDataSubIdChanged:");
-            tr.notifyPreferredDataSubIdChanged(mPreferredDataSubId);
-        } catch (RemoteException ex) {
-            // Should never happen because its always available.
+            return PhoneSwitcher.getInstance().getPreferredDataSubscriptionId();
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
     }
 
