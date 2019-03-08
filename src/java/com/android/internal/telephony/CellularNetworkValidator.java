@@ -190,9 +190,9 @@ public class CellularNetworkValidator {
                 mState = STATE_IDLE;
             }
 
-            TelephonyMetrics.getInstance().writeNetworkValidate(
-                    passed ? TelephonyEvent.NetworkValidationState.PASSED
-                            : TelephonyEvent.NetworkValidationState.FAILED);
+            TelephonyMetrics.getInstance().writeNetworkValidate(passed
+                    ? TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_PASSED
+                    : TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_FAILED);
         }
 
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
@@ -212,7 +212,7 @@ public class CellularNetworkValidator {
             logd("network onAvailable " + network);
             if (ConnectivityNetworkCallback.this.mSubId == CellularNetworkValidator.this.mSubId) {
                 TelephonyMetrics.getInstance().writeNetworkValidate(
-                        TelephonyEvent.NetworkValidationState.AVAILABLE);
+                        TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_AVAILABLE);
             }
         }
 
