@@ -54,6 +54,7 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
@@ -268,6 +269,8 @@ public class GsmCdmaPhone extends Phone {
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED),
                 EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE);
+
+        loadTtyMode();
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
     }
 
@@ -275,8 +278,17 @@ public class GsmCdmaPhone extends Phone {
         @Override
         public void onReceive(Context context, Intent intent) {
             Rlog.d(LOG_TAG, "mBroadcastReceiver: action " + intent.getAction());
-            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+            String action = intent.getAction();
+            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)) {
                 sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
+            } else if (TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED.equals(action)) {
+                int ttyMode = intent.getIntExtra(
+                        TelecomManager.EXTRA_CURRENT_TTY_MODE, TelecomManager.TTY_MODE_OFF);
+                updateTtyMode(ttyMode);
+            } else if (TelecomManager.ACTION_TTY_PREFERRED_MODE_CHANGED.equals(action)) {
+                int newPreferredTtyMode = intent.getIntExtra(
+                        TelecomManager.EXTRA_TTY_PREFERRED_MODE, TelecomManager.TTY_MODE_OFF);
+                updateUiTtyMode(newPreferredTtyMode);
             }
         }
     };
@@ -327,8 +339,12 @@ public class GsmCdmaPhone extends Phone {
 
         mCi.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mCi.registerForVoiceRadioTechChanged(this, EVENT_VOICE_RADIO_TECH_CHANGED, null);
-        mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(
-                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        IntentFilter filter = new IntentFilter(
+                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        filter.addAction(TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED);
+        filter.addAction(TelecomManager.ACTION_TTY_PREFERRED_MODE_CHANGED);
+        mContext.registerReceiver(mBroadcastReceiver, filter);
+
         mCDM = new CarrierKeyDownloadManager(this);
         mCIM = new CarrierInfoManager();
     }
@@ -3867,5 +3883,48 @@ public class GsmCdmaPhone extends Phone {
             }
         }
         return currentConfig;
+    }
+
+    private void updateTtyMode(int ttyMode) {
+        logi(String.format("updateTtyMode ttyMode=%d", ttyMode));
+        setTTYMode(telecomModeToPhoneMode(ttyMode), null);
+    }
+    private void updateUiTtyMode(int ttyMode) {
+        logi(String.format("updateUiTtyMode ttyMode=%d", ttyMode));
+        setUiTTYMode(telecomModeToPhoneMode(ttyMode), null);
+    }
+
+    /**
+     * Given a telecom TTY mode, convert to a Telephony mode equivalent.
+     * @param telecomMode Telecom TTY mode.
+     * @return Telephony phone TTY mode.
+     */
+    private static int telecomModeToPhoneMode(int telecomMode) {
+        switch (telecomMode) {
+            // AT command only has 0 and 1, so mapping VCO
+            // and HCO to FULL
+            case TelecomManager.TTY_MODE_FULL:
+            case TelecomManager.TTY_MODE_VCO:
+            case TelecomManager.TTY_MODE_HCO:
+                return Phone.TTY_MODE_FULL;
+            default:
+                return Phone.TTY_MODE_OFF;
+        }
+    }
+
+    /**
+     * Load the current TTY mode in GsmCdmaPhone based on Telecom and UI settings.
+     */
+    private void loadTtyMode() {
+        int ttyMode = TelecomManager.TTY_MODE_OFF;
+        TelecomManager telecomManager = TelecomManager.from(mContext);
+        if (telecomManager != null) {
+            ttyMode = telecomManager.getCurrentTtyMode();
+        }
+        updateTtyMode(ttyMode);
+        //Get preferred TTY mode from settings as UI Tty mode is always user preferred Tty mode.
+        ttyMode = Settings.Secure.getInt(mContext.getContentResolver(),
+                Settings.Secure.PREFERRED_TTY_MODE, TelecomManager.TTY_MODE_OFF);
+        updateUiTtyMode(ttyMode);
     }
 }
