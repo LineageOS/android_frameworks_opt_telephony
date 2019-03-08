@@ -45,6 +45,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
 import android.telephony.PreciseCallState;
@@ -854,6 +855,7 @@ public class PhoneSwitcher extends Handler {
             mPreferredDataSubId = subId;
             logDataSwitchEvent(TelephonyEvent.EventState.START, DataSwitch.Reason.CBRS);
             onEvaluate(REQUESTS_UNCHANGED, "preferredDataSubscriptionIdChanged");
+            notifyPreferredDataSubIdChanged();
             registerDefaultNetworkChangeCallback();
         }
     }
@@ -872,8 +874,20 @@ public class PhoneSwitcher extends Handler {
     // TODO b/123598154: rename preferredDataSub to opportunisticSubId.
     public void trySetPreferredSubscription(int subId, boolean needValidation,
             ISetOpportunisticDataCallback callback) {
+        log("Try set preferred subscription to subId " + subId
+                + (needValidation ? " with " : " without ") + "validation");
         PhoneSwitcher.this.obtainMessage(EVENT_CHANGE_PREFERRED_SUBSCRIPTION,
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
+    }
+
+    private void notifyPreferredDataSubIdChanged() {
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
+                "telephony.registry"));
+        try {
+            tr.notifyPreferredDataSubIdChanged(mPreferredDataSubId);
+        } catch (RemoteException ex) {
+            // Should never happen because TelephonyRegistry service should always be available.
+        }
     }
 
     private boolean isCallActive(Phone phone) {
@@ -888,6 +902,10 @@ public class PhoneSwitcher extends Handler {
     private void updateHalCommandToUse() {
         mHalCommandToUse = mRadioConfig.isSetPreferredDataCommandSupported()
                 ? HAL_COMMAND_PREFERRED_DATA : HAL_COMMAND_ALLOW_DATA;
+    }
+
+    public int getPreferredDataSubscriptionId() {
+        return mPreferredDataSubId;
     }
 
     private void log(String l) {
