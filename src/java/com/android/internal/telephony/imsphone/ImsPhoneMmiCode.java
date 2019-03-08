@@ -529,7 +529,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         mState = State.CANCELLED;
 
         if (mIsPendingUSSD) {
-            mPhone.cancelUSSD();
+            mPhone.cancelUSSD(obtainMessage(EVENT_USSD_CANCEL_COMPLETE, this));
         } else {
             mPhone.onMMIDone (this);
         }

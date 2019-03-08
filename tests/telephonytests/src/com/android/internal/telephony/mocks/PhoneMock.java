@@ -1051,7 +1051,7 @@ public class PhoneMock extends Phone {
         throw new RuntimeException("not implemented");
     }
 
-    public void cancelUSSD() {
+    public void cancelUSSD(Message msg) {
         throw new RuntimeException("not implemented");
     }
 
