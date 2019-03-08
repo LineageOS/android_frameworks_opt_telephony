@@ -51,8 +51,8 @@ message TelephonyLog {
   // Hardware revision (EVT, DVT, PVT etc.)
   optional string hardware_revision = 9;
 
-  // The active subscription info for a specific slot.
-  repeated ActiveSubscriptionInfo active_subscription_info = 10;
+  // The last active subscription info for each slot.
+  repeated ActiveSubscriptionInfo last_active_subscription_info = 10;
 }
 
 // The time information
@@ -682,75 +682,89 @@ message TelephonyEvent {
     ON_DEMAND_DATA_SWITCH = 17;
 
     // SIM state change event.
-    SIM_STATE_CHANGE = 18;
+    SIM_STATE_CHANGED = 18;
 
     // Active subscription info change event.
-    ACTIVE_SUBSCRIPTION_INFO_CHANGE = 19;
+    ACTIVE_SUBSCRIPTION_INFO_CHANGED = 19;
 
     // Enabled modem change event.
-    ENABLED_MODEM_CHANGE = 20;
+    ENABLED_MODEM_CHANGED = 20;
   }
 
   enum ApnType {
-      DEFAULT = 1;
-      MMS = 2;
-      SUPL = 3;
-      DUN = 4;
-      HIPRI = 5;
-      FOTA = 6;
-      IMS = 7;
-      CBS = 8;
-      IA = 9;
-      EMERGENCY = 10;
+    APN_TYPE_UNKNOWN = 0;
+
+    APN_TYPE_DEFAULT = 1;
+
+    APN_TYPE_MMS = 2;
+
+    APN_TYPE_SUPL = 3;
+
+    APN_TYPE_DUN = 4;
+
+    APN_TYPE_HIPRI = 5;
+
+    APN_TYPE_FOTA = 6;
+
+    APN_TYPE_IMS = 7;
+
+    APN_TYPE_CBS = 8;
+
+    APN_TYPE_IA = 9;
+
+    APN_TYPE_EMERGENCY = 10;
   }
 
   enum EventState {
-      START = 1;
-      END = 2;
+    EVENT_STATE_UNKNOWN = 0;
+
+    EVENT_STATE_START = 1;
+
+    EVENT_STATE_END = 2;
   }
 
   enum NetworkValidationState {
-      /** The network validation state is unknown. */
-      UNKOWN = 0;
+    /** The network validation state is unknown. */
+    NETWORK_VALIDATION_STATE_UNKNOWN = 0;
 
-      /** The network under validation is initial established. */
-      AVAILABLE = 1;
+    /** The network under validation is initial established. */
+    NETWORK_VALIDATION_STATE_AVAILABLE = 1;
 
-      /** The validation is failed. */
-      FAILED = 2;
+    /** The validation is failed. */
+    NETWORK_VALIDATION_STATE_FAILED = 2;
 
-      /** The validation is passed. */
-      PASSED = 3;
+    /** The validation is passed. */
+    NETWORK_VALIDATION_STATE_PASSED = 3;
   }
 
   message DataSwitch {
-      enum Reason {
-          /** Data switch caused by unkown reason. */
-          UNKONWN = 0;
+    enum Reason {
+      /** Data switch caused by unknown reason. */
+      DATA_SWITCH_REASON_UNKNOWN = 0;
 
-          /** Data switch caused by user's manual switch. */
-          MANUAL = 1;
+      /** Data switch caused by user's manual switch. */
+      DATA_SWITCH_REASON_MANUAL = 1;
 
-          /** Data switch caused by incoming/outgoing call. */
-          IN_CALL = 2;
+      /** Data switch caused by incoming/outgoing call. */
+      DATA_SWITCH_REASON_IN_CALL = 2;
 
-          /** Data switch caused by CBRS switch. */
-          CBRS = 3;
-      }
+      /** Data switch caused by CBRS switch. */
+      DATA_SWITCH_REASON_CBRS = 3;
+    }
 
-      /** The reason for data switch. */
-      optional Reason reason = 1;
+    /** The reason for data switch. */
+    optional Reason reason = 1;
 
-      /** Current state of the data switch event. */
-      optional EventState state = 2;
+    /** Current state of the data switch event. */
+    optional EventState state = 2;
   }
 
   message OnDemandDataSwitch {
-      /** The apn associated with this event. */
-      optional ApnType apn = 1;
+    /** The apn associated with this event. */
+    optional ApnType apn = 1;
 
-      /** Current state of the on demand data switch event. */
-      optional EventState state = 2;
+    /** Current state of the on demand data switch event. */
+    optional EventState state = 2;
   }
 
   // Setup a packet data connection
@@ -1612,33 +1626,33 @@ message TelephonyEvent {
   optional ActiveSubscriptionInfo active_subscription_info = 23;
 
   // The modem state represent by a bitmap, the i-th bit(LSB) indicates the i-th modem
-  // state(0 - disabled, 1 - enabled).
+  // state (0 - disabled, 1 - enabled).
   optional int32 enabled_modem_bitmap = 24;
 }
 
 message ActiveSubscriptionInfo {
-    /** The slot index which this subscription is associated with. */
-    optional int32 slot_index = 1;
+  /** The slot index which this subscription is associated with. */
+  optional int32 slot_index = 1;
 
-    /** The Carrier id of this subscription. -1 indicates unknown value. */
-    optional int32 carrier_id = 2;
+  /** The Carrier id of this subscription. -1 indicates unknown value. */
+  optional int32 carrier_id = 2;
 
-    /** whether subscription is opportunistic (0 - false, 1 - true, -1 - unknown). */
-    optional int32 is_opportunistic = 3;
+  /** whether subscription is opportunistic (0 - false, 1 - true, -1 - unknown). */
+  optional int32 is_opportunistic = 3;
 };
 
 enum SimState {
-    /**
-     * SIM card is inserted, but the state is unknown. Typically happened when the SIM is inserted
-     * but not loaded.
-     */
-    SIM_STATE_UNKNOWN = 0;
+  /**
+   * SIM card is inserted, but the state is unknown. Typically happened when the SIM is inserted
+   * but not loaded.
+   */
+  SIM_STATE_UNKNOWN = 0;
 
-    /** No SIM card is inserted in the slot. */
-    SIM_STATE_ABSENT = 1;
+  /** No SIM card is inserted in the slot. */
+  SIM_STATE_ABSENT = 1;
 
-    /** SIM card applications have been loaded. */
-    SIM_STATE_LOADED = 2;
+  /** SIM card applications have been loaded. */
+  SIM_STATE_LOADED = 2;
 };
 
 enum TimeInterval {
