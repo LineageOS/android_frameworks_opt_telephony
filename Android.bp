@@ -57,7 +57,6 @@ java_library {
     static_libs: [
         "telephony-protos",
         "ecc-protos-lite",
-        "android-support-annotations",
     ],
 
     product_variables: {
