@@ -19,6 +19,7 @@ package com.android.internal.telephony.metrics;
 import static com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import static com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import static com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
+import static com.android.internal.telephony.nano.TelephonyProto.SimState;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
@@ -30,11 +31,15 @@ import static com.android.internal.telephony.nano.TelephonyProto.TelephonyServic
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 
 import android.os.SystemClock;
+import android.telephony.TelephonyManager;
+import android.util.SparseArray;
 
+import com.android.internal.telephony.nano.TelephonyProto.ActiveSubscriptionInfo;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
-import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.PhoneStatus;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Type;
+
+import java.util.Arrays;
 
 public class TelephonyEventBuilder {
     private final TelephonyEvent mEvent = new TelephonyEvent();
@@ -144,12 +149,32 @@ public class TelephonyEventBuilder {
         return this;
     }
 
-    /**
-     * Set and build phone status changed event.
-     */
-    public TelephonyEventBuilder setPhoneStatusChange(PhoneStatus phoneStatus) {
-        mEvent.type = Type.PHONE_STATUS_CHANGED;
-        mEvent.phoneStatus = phoneStatus;
+    /** Set and build SIM state change event. */
+    public TelephonyEventBuilder setSimStateChange(SparseArray<Integer> simStates) {
+        int phoneCount = TelephonyManager.getDefault().getPhoneCount();
+        mEvent.simState = new int[phoneCount];
+        Arrays.fill(mEvent.simState, SimState.SIM_STATE_UNKNOWN);
+        mEvent.type = Type.SIM_STATE_CHANGE;
+        for (int i = 0; i < simStates.size(); i++) {
+            int key = simStates.keyAt(i);
+            if (0 <= key && key < phoneCount) {
+                mEvent.simState[key] = simStates.get(key);
+            }
+        }
+        return this;
+    }
+
+    /** Set and build subscription info change event. */
+    public TelephonyEventBuilder setActiveSubscriptionInfoChange(ActiveSubscriptionInfo info) {
+        mEvent.type = Type.ACTIVE_SUBSCRIPTION_INFO_CHANGE;
+        mEvent.activeSubscriptionInfo = info;
+        return this;
+    }
+
+    /** Set and build enabled modem bitmap change event. */
+    public TelephonyEventBuilder setEnabledModemBitmap(int enabledModemBitmap) {
+        mEvent.type = Type.ENABLED_MODEM_CHANGE;
+        mEvent.enabledModemBitmap = enabledModemBitmap;
         return this;
     }
 
