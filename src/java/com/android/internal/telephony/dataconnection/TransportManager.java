@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -104,7 +105,8 @@ public class TransportManager extends Handler {
     /** The available transports. Must be one or more of AccessNetworkConstants.TransportType.XXX */
     private final int[] mAvailableTransports;
 
-    private final AccessNetworksManager mAccessNetworksManager;
+    @Nullable
+    private AccessNetworksManager mAccessNetworksManager;
 
     /**
      * Available networks. The key is the APN type, and the value is the available network list in
@@ -138,7 +140,6 @@ public class TransportManager extends Handler {
 
     public TransportManager(Phone phone) {
         mPhone = phone;
-        mAccessNetworksManager = new AccessNetworksManager(phone);
         mCurrentAvailableNetworks = new ConcurrentHashMap<>();
         mCurrentTransports = new ConcurrentHashMap<>();
         mHandoverNeededEventRegistrants = new RegistrantList();
@@ -148,6 +149,7 @@ public class TransportManager extends Handler {
             // the IWLAN ones.
             mAvailableTransports = new int[]{TransportType.WWAN};
         } else {
+            mAccessNetworksManager = new AccessNetworksManager(phone);
             mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
                     EVENT_QUALIFIED_NETWORKS_CHANGED);
             mAvailableTransports = new int[]{TransportType.WWAN, TransportType.WLAN};
@@ -333,7 +335,9 @@ public class TransportManager extends Handler {
         pw.println("mCurrentTransports=" + mCurrentTransports);
         pw.println("isInLegacy=" + isInLegacyMode());
         pw.println("IWLAN operation mode=" + mPhone.mCi.getIwlanOperationMode());
-        mAccessNetworksManager.dump(fd, pw, args);
+        if (mAccessNetworksManager != null) {
+            mAccessNetworksManager.dump(fd, pw, args);
+        }
         pw.decreaseIndent();
         pw.flush();
     }
