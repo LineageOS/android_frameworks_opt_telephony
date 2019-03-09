@@ -25,6 +25,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -55,7 +56,7 @@ import java.util.stream.Collectors;
  * It binds to the vendor's qualified networks service and actively monitors the qualified
  * networks changes.
  */
-public class AccessNetworksManager {
+public class AccessNetworksManager extends Handler {
     private static final String TAG = AccessNetworksManager.class.getSimpleName();
     private static final boolean DBG = false;
 
@@ -69,6 +70,8 @@ public class AccessNetworksManager {
             ApnSetting.TYPE_EMERGENCY
     };
 
+    private static final int EVENT_BIND_QUALIFIED_NETWORKS_SERVICE = 1;
+
     private final Phone mPhone;
 
     private final CarrierConfigManager mCarrierConfigManager;
@@ -77,8 +80,7 @@ public class AccessNetworksManager {
 
     private AccessNetworksManagerDeathRecipient mDeathRecipient;
 
-    // The bound qualified networks service component name
-    private ComponentName mBoundQualifiedNetworksServiceComponent;
+    private String mTargetBindingPackageName;
 
     private QualifiedNetworksServiceConnection mServiceConnection;
 
@@ -94,10 +96,11 @@ public class AccessNetworksManager {
             if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)
                     && mPhone.getPhoneId() == intent.getIntExtra(
                     CarrierConfigManager.EXTRA_SLOT_INDEX, 0)) {
-                // When carrier config changes, we need to evaluate and see if we should unbind
-                // the existing service and bind to a new one.
-                if (DBG) log("Carrier config changed.");
-                bindQualifiedNetworksService();
+                // We should wait for carrier config changed event because the target binding
+                // package name can come from the carrier config. Note that we still get this event
+                // even when SIM is absent.
+                if (DBG) log("Carrier config changed. Try to bind qualified network service.");
+                sendEmptyMessage(EVENT_BIND_QUALIFIED_NETWORKS_SERVICE);
             }
         }
     };
@@ -107,7 +110,7 @@ public class AccessNetworksManager {
      */
     public static class QualifiedNetworks {
         public final @ApnType int apnType;
-        // The qualified netowrks in preferred order. Each network is a AccessNetworkType.
+        // The qualified networks in preferred order. Each network is a AccessNetworkType.
         public final int[] qualifiedNetworks;
         public QualifiedNetworks(@ApnType int apnType, int[] qualifiedNetworks) {
             this.apnType = apnType;
@@ -134,15 +137,14 @@ public class AccessNetworksManager {
         @Override
         public void binderDied() {
             // TODO: try to rebind the service.
-            loge("QualifiedNetworksService(" + mBoundQualifiedNetworksServiceComponent + ") died.");
+            loge("QualifiedNetworksService(" + mTargetBindingPackageName + ") died.");
         }
     }
 
     private final class QualifiedNetworksServiceConnection implements ServiceConnection {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            if (DBG) log("onServiceConnected");
-            mBoundQualifiedNetworksServiceComponent = name;
+            if (DBG) log("onServiceConnected " + name);
             mIQualifiedNetworksService = IQualifiedNetworksService.Stub.asInterface(service);
             mDeathRecipient = new AccessNetworksManagerDeathRecipient();
 
@@ -157,8 +159,9 @@ public class AccessNetworksManager {
         }
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            if (DBG) log("onServiceDisconnected");
+            if (DBG) log("onServiceDisconnected " + name);
             mIQualifiedNetworksService.asBinder().unlinkToDeath(mDeathRecipient, 0);
+            mTargetBindingPackageName = null;
         }
     }
 
@@ -211,11 +214,21 @@ public class AccessNetworksManager {
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         phone.getContext().registerReceiverAsUser(mConfigChangedReceiver, UserHandle.ALL,
                 intentFilter, null, null);
+    }
 
-        // Only binds to qualified network service in AP-assisted mode. For legacy mode,
-        // qualified networks service is not needed.
-        if (phone.getTransportManager() != null && !phone.getTransportManager().isInLegacyMode()) {
-            bindQualifiedNetworksService();
+    /**
+     * Handle message events
+     *
+     * @param msg The message to handle
+     */
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_BIND_QUALIFIED_NETWORKS_SERVICE:
+                bindQualifiedNetworksService();
+                break;
+            default:
+                loge("Unhandled event " + msg.what);
         }
     }
 
@@ -234,8 +247,8 @@ public class AccessNetworksManager {
 
         if (mIQualifiedNetworksService != null
                 && mIQualifiedNetworksService.asBinder().isBinderAlive()) {
-            if (mBoundQualifiedNetworksServiceComponent.getPackageName().equals(packageName)) {
-                if (DBG) log("Service " + packageName + " already bound.");
+            if (packageName.equals(mTargetBindingPackageName)) {
+                if (DBG) log("Service " + packageName + " already bound or being bound.");
                 return;
             }
 
@@ -258,7 +271,9 @@ public class AccessNetworksManager {
                     mServiceConnection,
                     Context.BIND_AUTO_CREATE)) {
                 loge("Cannot bind to the qualified networks service.");
+                return;
             }
+            mTargetBindingPackageName = packageName;
         } catch (Exception e) {
             loge("Cannot bind to the qualified networks service. Exception: " + e);
         }
