@@ -1610,6 +1610,13 @@ public class GsmCdmaPhone extends Phone {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getMsisdnNumber() : null;
         } else {
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            boolean use_usim = configManager.getConfigForSubId(getSubId()).getBoolean(
+                    CarrierConfigManager.KEY_USE_USIM_BOOL);
+            if (use_usim) {
+                return (mSimRecords != null) ? mSimRecords.getMsisdnNumber() : null;
+            }
             return mSST.getMdnNumber();
         }
     }
