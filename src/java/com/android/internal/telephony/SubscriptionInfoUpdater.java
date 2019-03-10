@@ -602,8 +602,7 @@ public class SubscriptionInfoUpdater extends Handler {
                         .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
             }
             // update default subId
-            SubscriptionController.getInstance().clearDefaultsForInactiveSubIds();
-            SubscriptionController.getInstance().updateDataEnabledSettings();
+            MultiSimSettingController.getInstance().onAllSubscriptionsLoaded();
         }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();

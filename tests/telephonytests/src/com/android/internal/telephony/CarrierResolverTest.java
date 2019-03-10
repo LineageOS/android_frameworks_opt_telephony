@@ -177,27 +177,27 @@ public class CarrierResolverTest extends TelephonyTest {
         mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
         waitForMs(200);
         assertEquals(CID_ATT, mCarrierResolver.getCarrierId());
-        assertEquals(CID_ATT, mCarrierResolver.getPreciseCarrierId());
+        assertEquals(CID_ATT, mCarrierResolver.getSpecificCarrierId());
 
         doReturn(GID_TRACFONE).when(mPhone).getGroupIdLevel1();
         mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
         waitForMs(200);
         assertEquals(CID_TRACFONE, mCarrierResolver.getCarrierId());
-        assertEquals(CID_TRACFONE_ATT, mCarrierResolver.getPreciseCarrierId());
+        assertEquals(CID_TRACFONE_ATT, mCarrierResolver.getSpecificCarrierId());
 
         doReturn(MCCMNC_TRACFONE_TMO).when(mTelephonyManager)
                 .getSimOperatorNumericForPhone(eq(phoneId));
         mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
         waitForMs(200);
         assertEquals(CID_TRACFONE, mCarrierResolver.getCarrierId());
-        assertEquals(CID_TRACFONE_TMO, mCarrierResolver.getPreciseCarrierId());
+        assertEquals(CID_TRACFONE_TMO, mCarrierResolver.getSpecificCarrierId());
 
         doReturn(MCCMNC_O2).when(mTelephonyManager)
                 .getSimOperatorNumericForPhone(eq(phoneId));
         mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
         waitForMs(200);
         assertEquals(CID_O2, mCarrierResolver.getCarrierId());
-        assertEquals(CID_O2, mCarrierResolver.getPreciseCarrierId());
+        assertEquals(CID_O2, mCarrierResolver.getSpecificCarrierId());
 
         doReturn(MCCMNC_O2).when(mTelephonyManager)
                 .getSimOperatorNumericForPhone(eq(phoneId));
@@ -205,7 +205,7 @@ public class CarrierResolverTest extends TelephonyTest {
         mCarrierResolver.sendEmptyMessage(SIM_LOAD_EVENT);
         waitForMs(200);
         assertEquals(CID_O2, mCarrierResolver.getCarrierId());
-        assertEquals(CID_O2_PREPAID, mCarrierResolver.getPreciseCarrierId());
+        assertEquals(CID_O2_PREPAID, mCarrierResolver.getSpecificCarrierId());
     }
 
     @Test
@@ -222,6 +222,7 @@ public class CarrierResolverTest extends TelephonyTest {
         mCarrierResolver.resolveSubscriptionCarrierId(IccCardConstants.INTENT_VALUE_ICC_ABSENT);
         waitForMs(200);
         assertEquals(CID_UNKNOWN, mCarrierResolver.getCarrierId());
+        assertNull(mCarrierResolver.getCarrierName());
         assertNull(mCarrierResolver.getCarrierName());
     }
 

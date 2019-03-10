@@ -46,11 +46,11 @@ public class PhoneConfigurationManager {
     private static final int EVENT_SWITCH_DSDS_CONFIG_DONE = 100;
     private static final int EVENT_GET_MODEM_STATUS = 101;
     private static final int EVENT_GET_MODEM_STATUS_DONE = 102;
+    private static final int EVENT_GET_PHONE_CAPABILITY_DONE = 103;
 
     private static PhoneConfigurationManager sInstance = null;
     private final Context mContext;
     private PhoneCapability mStaticCapability;
-    private PhoneCapability mCurrentCapability;
     private final RadioConfig mRadioConfig;
     private final MainThreadHandler mHandler;
     private final Phone[] mPhones;
@@ -79,8 +79,8 @@ public class PhoneConfigurationManager {
         mContext = context;
         // TODO: send commands to modem once interface is ready.
         TelephonyManager telephonyManager = new TelephonyManager(context);
-        mStaticCapability = PhoneConfigurationModels.DSDS_CAPABILITY;
-        mCurrentCapability = mStaticCapability;
+        //initialize with default, it'll get updated when RADIO is ON/AVAILABLE
+        mStaticCapability = getDefaultCapability();
         mRadioConfig = RadioConfig.getInstance(mContext);
         mHandler = new MainThreadHandler();
         mPhoneStatusMap = new HashMap<>();
@@ -96,6 +96,14 @@ public class PhoneConfigurationManager {
             for (Phone phone : mPhones) {
                 phone.mCi.registerForOn(mHandler, Phone.EVENT_RADIO_ON, phone);
             }
+        }
+    }
+
+    private PhoneCapability getDefaultCapability() {
+        if (getPhoneCount() > 1) {
+            return PhoneConfigurationModels.DSDS_CAPABILITY;
+        } else {
+            return PhoneConfigurationModels.SSSS_CAPABILITY;
         }
     }
 
@@ -131,6 +139,7 @@ public class PhoneConfigurationManager {
                     } else {
                         updatePhoneStatus(phone);
                     }
+                    getStaticPhoneCapability();
                     break;
                 case EVENT_SWITCH_DSDS_CONFIG_DONE:
                     ar = (AsyncResult) msg.obj;
@@ -152,6 +161,14 @@ public class PhoneConfigurationManager {
                         log(msg.what + " failure. Not updating modem status." + ar.exception);
                     }
                     break;
+                case EVENT_GET_PHONE_CAPABILITY_DONE:
+                    ar = (AsyncResult) msg.obj;
+                    if (ar != null && ar.exception == null) {
+                        mStaticCapability = (PhoneCapability) ar.result;
+                        notifyCapabilityChanged();
+                    } else {
+                        log(msg.what + " failure. Not getting phone capability." + ar.exception);
+                    }
             }
         }
     }
@@ -196,7 +213,7 @@ public class PhoneConfigurationManager {
     }
 
     /**
-     * method to call RIL getM
+     * method to call RIL getModemStatus
      */
     private void updatePhoneStatus(Phone phone) {
         Message callback = Message.obtain(
@@ -224,7 +241,13 @@ public class PhoneConfigurationManager {
     /**
      * get static overall phone capabilities for all phones.
      */
-    public PhoneCapability getStaticPhoneCapability() {
+    public synchronized PhoneCapability getStaticPhoneCapability() {
+        if (getDefaultCapability().equals(mStaticCapability)) {
+            log("getStaticPhoneCapability: sending the request for getting PhoneCapability");
+            Message callback = Message.obtain(
+                    mHandler, EVENT_GET_PHONE_CAPABILITY_DONE);
+            mRadioConfig.getPhoneCapability(callback);
+        }
         return mStaticCapability;
     }
 
@@ -232,17 +255,17 @@ public class PhoneConfigurationManager {
      * get configuration related status of each phone.
      */
     public PhoneCapability getCurrentPhoneCapability() {
-        return mCurrentCapability;
+        return getStaticPhoneCapability();
     }
 
     public int getNumberOfModemsWithSimultaneousDataConnections() {
-        return mCurrentCapability.maxActiveData;
+        return mStaticCapability.maxActiveData;
     }
 
     private void notifyCapabilityChanged() {
         PhoneNotifier notifier = new DefaultPhoneNotifier();
 
-        notifier.notifyPhoneCapabilityChanged(mCurrentCapability);
+        notifier.notifyPhoneCapabilityChanged(mStaticCapability);
     }
 
     /**

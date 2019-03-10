@@ -5688,7 +5688,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             ArrayList<android.hardware.radio.V1_0.CellInfo> records) {
         ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
 
+        final long nanotime = SystemClock.elapsedRealtimeNanos();
         for (android.hardware.radio.V1_0.CellInfo record : records) {
+            record.timeStamp = nanotime;
             response.add(CellInfo.create(record));
         }
 
@@ -5705,7 +5707,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             ArrayList<android.hardware.radio.V1_2.CellInfo> records) {
         ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
 
+        final long nanotime = SystemClock.elapsedRealtimeNanos();
         for (android.hardware.radio.V1_2.CellInfo record : records) {
+            record.timeStamp = nanotime;
             response.add(CellInfo.create(record));
         }
         return response;
@@ -5721,8 +5725,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             ArrayList<android.hardware.radio.V1_4.CellInfo> records) {
         ArrayList<CellInfo> response = new ArrayList<CellInfo>(records.size());
 
+        final long nanotime = SystemClock.elapsedRealtimeNanos();
         for (android.hardware.radio.V1_4.CellInfo record : records) {
-            response.add(CellInfo.create(record));
+            response.add(CellInfo.create(record, nanotime));
         }
         return response;
     }
