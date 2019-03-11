@@ -92,7 +92,7 @@ import java.util.stream.Collectors;
 public class SubscriptionController extends ISub.Stub {
     static final String LOG_TAG = "SubscriptionController";
     static final boolean DBG = true;
-    static final boolean VDBG = false;
+    static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     static final boolean DBG_CACHE = false;
     static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
     private static final int DEPRECATED_SETTING = -1;
@@ -611,7 +611,7 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public List<SubscriptionInfo> getAllSubInfoList(String callingPackage) {
-        if (DBG) logd("[getAllSubInfoList]+");
+        if (VDBG) logd("[getAllSubInfoList]+");
 
         // This API isn't public, so no need to provide a valid subscription ID - we're not worried
         // about carrier-privileged callers not having access.
@@ -627,9 +627,9 @@ public class SubscriptionController extends ISub.Stub {
             List<SubscriptionInfo> subList = null;
             subList = getSubInfo(null, null);
             if (subList != null) {
-                if (DBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
+                if (VDBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
             } else {
-                if (DBG) logd("[getAllSubInfoList]- no info return");
+                if (VDBG) logd("[getAllSubInfoList]- no info return");
             }
             return subList;
         } finally {
