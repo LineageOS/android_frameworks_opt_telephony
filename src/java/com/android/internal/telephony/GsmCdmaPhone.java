@@ -1655,13 +1655,13 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public int getPreciseCarrierId() {
-        return mCarrierResolver.getPreciseCarrierId();
+    public int getSpecificCarrierId() {
+        return mCarrierResolver.getSpecificCarrierId();
     }
 
     @Override
-    public String getPreciseCarrierName() {
-        return mCarrierResolver.getPreciseCarrierName();
+    public String getSpecificCarrierName() {
+        return mCarrierResolver.getSpecificCarrierName();
     }
 
     @Override
