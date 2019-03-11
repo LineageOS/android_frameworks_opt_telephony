@@ -60,12 +60,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * Cellular data service, IWLAN data service).
  */
 public class DataServiceManager {
-    private static final String TAG = DataServiceManager.class.getSimpleName();
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
 
     static final String DATA_CALL_RESPONSE = "data_call_response";
 
     private final Phone mPhone;
+
+    private final String mTag;
 
     private final CarrierConfigManager mCarrierConfigManager;
     private final AppOpsManager mAppOps;
@@ -228,9 +229,11 @@ public class DataServiceManager {
      * @param phone The phone object
      * @param transportType The transport type. Must be a
      *        {@link AccessNetworkConstants.TransportType}.
+     * @param tagSuffix Logging tag suffix
      */
-    public DataServiceManager(Phone phone, int transportType) {
+    public DataServiceManager(Phone phone, int transportType, String tagSuffix) {
         mPhone = phone;
+        mTag = "DSM" + tagSuffix;
         mTransportType = transportType;
         mBound = false;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
@@ -580,11 +583,11 @@ public class DataServiceManager {
     }
 
     private void log(String s) {
-        Rlog.d(TAG, s);
+        Rlog.d(mTag, s);
     }
 
     private void loge(String s) {
-        Rlog.e(TAG, s);
+        Rlog.e(mTag, s);
     }
 
 }
