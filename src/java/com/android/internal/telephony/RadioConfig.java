@@ -404,7 +404,7 @@ public class RadioConfig extends Handler {
             case RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG:
                 return "SWITCH_DUAL_SIM_CONFIG";
             default:
-                return "<unknown request>";
+                return "<unknown request " + request + ">";
         }
     }
 
