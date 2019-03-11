@@ -75,6 +75,7 @@ import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.data.ApnSetting;
+import android.telephony.data.ApnSetting.ApnType;
 import android.telephony.data.DataProfile;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
@@ -671,14 +672,14 @@ public class DcTracker extends Handler {
                 .createForSubscriptionId(phone.getSubId());
         // The 'C' in tag indicates cellular, and 'I' indicates IWLAN. This is to distinguish
         // between two DcTrackers, one for each.
-        String tag = "DCT-" + ((transportType == TransportType.WWAN) ? "C" : "I");
+        String tagSuffix = "-" + ((transportType == TransportType.WWAN) ? "C" : "I");
         if (mTelephonyManager.getPhoneCount() > 1) {
-            tag += "-" + mPhone.getPhoneId();
+            tagSuffix += "-" + mPhone.getPhoneId();
         }
-        mLogTag = tag;
+        mLogTag = "DCT" + tagSuffix;
 
         mTransportType = transportType;
-        mDataServiceManager = new DataServiceManager(phone, transportType);
+        mDataServiceManager = new DataServiceManager(phone, transportType, tagSuffix);
 
         mResolver = mPhone.getContext().getContentResolver();
         mUiccController = UiccController.getInstance();
@@ -711,7 +712,7 @@ public class DcTracker extends Handler {
         HandlerThread dcHandlerThread = new HandlerThread("DcHandlerThread");
         dcHandlerThread.start();
         Handler dcHandler = new Handler(dcHandlerThread.getLooper());
-        mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager, dcHandler);
+        mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager, dcHandler, tagSuffix);
         mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
 
         mDataConnectionTracker = this;
@@ -2282,7 +2283,7 @@ public class DcTracker extends Handler {
     }
 
     private void addRequestNetworkCompleteMsg(Message onCompleteMsg,
-                                              @ApnSetting.ApnType int apnType) {
+                                              @ApnType int apnType) {
         if (onCompleteMsg != null) {
             List<Message> messageList = mRequestNetworkCompletionMsgs.get(apnType);
             if (messageList == null) messageList = new ArrayList<>();
@@ -2302,13 +2303,13 @@ public class DcTracker extends Handler {
         message.sendToTarget();
     }
 
-    public void enableApn(@ApnSetting.ApnType int apnType, @RequestNetworkType int requestType,
+    public void enableApn(@ApnType int apnType, @RequestNetworkType int requestType,
                           Message onCompleteMsg) {
         sendMessage(obtainMessage(DctConstants.EVENT_ENABLE_APN, apnType, requestType,
                 onCompleteMsg));
     }
 
-    private void onEnableApn(@ApnSetting.ApnType int apnType, @RequestNetworkType int requestType,
+    private void onEnableApn(@ApnType int apnType, @RequestNetworkType int requestType,
                              Message onCompleteMsg) {
         ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext == null) {
@@ -2382,11 +2383,11 @@ public class DcTracker extends Handler {
         }
     }
 
-    public void disableApn(@ApnSetting.ApnType int apnType, @ReleaseNetworkType int releaseType) {
+    public void disableApn(@ApnType int apnType, @ReleaseNetworkType int releaseType) {
         sendMessage(obtainMessage(DctConstants.EVENT_DISABLE_APN, apnType, releaseType));
     }
 
-    private void onDisableApn(@ApnSetting.ApnType int apnType,
+    private void onDisableApn(@ApnType int apnType,
                               @ReleaseNetworkType int releaseType) {
         ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext == null) {
@@ -2674,7 +2675,7 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void completeConnection(ApnContext apnContext) {
+    private void completeConnection(ApnContext apnContext, @RequestNetworkType int type) {
 
         if (DBG) log("completeConnection: successful, notify the world apnContext=" + apnContext);
 
@@ -2701,7 +2702,10 @@ public class DcTracker extends Handler {
                     mProvisioningSpinner));
         }
 
-        mPhone.notifyDataConnection(apnContext.getApnType());
+        // Notify data is connected except for handover case.
+        if (type != REQUEST_TYPE_HANDOVER) {
+            mPhone.notifyDataConnection(apnContext.getApnType());
+        }
         startNetStatPoll();
         startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
     }
@@ -2805,7 +2809,7 @@ public class DcTracker extends Handler {
                     // Complete the connection normally notifying the world we're connected.
                     // We do this if this isn't a special provisioning apn or if we've been
                     // told its time to provision.
-                    completeConnection(apnContext);
+                    completeConnection(apnContext, requestType);
                 } else {
                     // This is a provisioning APN that we're reporting as connected. Later
                     // when the user desires to upgrade this to a "default" connection,

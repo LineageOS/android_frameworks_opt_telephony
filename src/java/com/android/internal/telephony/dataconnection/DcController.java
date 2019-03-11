@@ -121,9 +121,9 @@ public class DcController extends StateMachine {
     }
 
     public static DcController makeDcc(Phone phone, DcTracker dct,
-                                       DataServiceManager dataServiceManager, Handler handler) {
-        DcController dcc = new DcController("Dcc", phone, dct, dataServiceManager, handler);
-        return dcc;
+                                       DataServiceManager dataServiceManager, Handler handler,
+                                       String tagSuffix) {
+        return new DcController("Dcc" + tagSuffix, phone, dct, dataServiceManager, handler);
     }
 
     void dispose() {
