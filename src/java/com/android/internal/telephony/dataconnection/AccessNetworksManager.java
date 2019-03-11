@@ -245,13 +245,13 @@ public class AccessNetworksManager extends Handler {
             return;
         }
 
+        if (TextUtils.equals(packageName, mTargetBindingPackageName)) {
+            if (DBG) log("Service " + packageName + " already bound or being bound.");
+            return;
+        }
+
         if (mIQualifiedNetworksService != null
                 && mIQualifiedNetworksService.asBinder().isBinderAlive()) {
-            if (packageName.equals(mTargetBindingPackageName)) {
-                if (DBG) log("Service " + packageName + " already bound or being bound.");
-                return;
-            }
-
             // Remove the network availability updater and then unbind the service.
             try {
                 mIQualifiedNetworksService.removeNetworkAvailabilityUpdater(mPhone.getPhoneId());
