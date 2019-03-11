@@ -250,7 +250,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.DEVICE_PROVISIONED, 1);
 
-        mGsmSmsDispatcher.sendRawPdu(mSmsTracker);
+        mGsmSmsDispatcher.sendRawPdu(new SMSDispatcher.SmsTracker[] {mSmsTracker});
         waitForHandlerAction(mGsmSmsDispatcher, TIMEOUT_MS);
 
         verify(mSmsUsageMonitor, times(1)).checkDestination(any(), any());
