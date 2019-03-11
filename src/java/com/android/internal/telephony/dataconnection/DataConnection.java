@@ -141,6 +141,8 @@ public class DataConnection extends StateMachine {
 
     private String[] mPcscfAddr;
 
+    private final String mTagSuffix;
+
     /**
      * Used internally for saving connecting parameters.
      */
@@ -326,9 +328,9 @@ public class DataConnection extends StateMachine {
         String transportType = (dataServiceManager.getTransportType() == TransportType.WWAN)
                 ? "C"   // Cellular
                 : "I";  // IWLAN
-        DataConnection dc = new DataConnection(phone,
-                "DC-" + transportType + "-" + mInstanceNumber.incrementAndGet(), id, dct,
-                dataServiceManager, failBringUpAll, dcc);
+        DataConnection dc = new DataConnection(phone, transportType + "-"
+                + mInstanceNumber.incrementAndGet(), id, dct, dataServiceManager, failBringUpAll,
+                dcc);
         dc.start();
         if (DBG) dc.log("Made " + dc.getName());
         return dc;
@@ -505,10 +507,11 @@ public class DataConnection extends StateMachine {
     }
 
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
-    private DataConnection(Phone phone, String name, int id,
+    private DataConnection(Phone phone, String tagSuffix, int id,
                            DcTracker dct, DataServiceManager dataServiceManager,
                            DcTesterFailBringUpAll failBringUpAll, DcController dcc) {
-        super(name, dcc.getHandler());
+        super("DC-" + tagSuffix, dcc.getHandler());
+        mTagSuffix = tagSuffix;
         setLogRecSize(300);
         setLogOnlyTransitions(true);
         if (DBG) log("DataConnection created");
@@ -1877,6 +1880,8 @@ public class DataConnection extends StateMachine {
                 if (dc != null) {
                     mNetworkAgent = dc.getNetworkAgent();
                     if (mNetworkAgent != null) {
+                        mNetworkAgent.setTransportType(mDataServiceManager.getTransportType());
+                        log("Transfer the network agent from " + dc.getName() + " successfully.");
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities());
                         mNetworkAgent.sendLinkProperties(mLinkProperties);
                     } else {
@@ -1888,8 +1893,8 @@ public class DataConnection extends StateMachine {
             } else {
                 mScore = calculateScore();
                 mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
-                        "DcNetworkAgent", mNetworkInfo, getNetworkCapabilities(), mLinkProperties,
-                        mScore, misc);
+                        "DcNetworkAgent" + mTagSuffix, mNetworkInfo, getNetworkCapabilities(),
+                        mLinkProperties, mScore, misc);
             }
             if (mDataServiceManager.getTransportType() == TransportType.WWAN) {
                 mPhone.mCi.registerForNattKeepaliveStatus(
@@ -1923,14 +1928,7 @@ public class DataConnection extends StateMachine {
                 mPhone.mCi.unregisterForLceInfo(getHandler());
             }
             if (mNetworkAgent != null) {
-                // We do not want to update the network info if this is a handover. For all other
-                // cases we need to update connectivity service with the latest network info.
-                //
-                // For handover, the network agent is transferred to the other data connection.
-                if (mDisconnectParams == null
-                        || mDisconnectParams.mReleaseType != DcTracker.RELEASE_TYPE_HANDOVER) {
-                    mNetworkAgent.sendNetworkInfo(mNetworkInfo);
-                }
+                mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                 mNetworkAgent = null;
             }
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
@@ -2333,6 +2331,8 @@ public class DataConnection extends StateMachine {
 
     private class DcNetworkAgent extends NetworkAgent {
 
+        private final AtomicInteger mTransportType;
+
         private NetworkCapabilities mNetworkCapabilities;
 
         public final DcKeepaliveTracker keepaliveTracker = new DcKeepaliveTracker();
@@ -2342,6 +2342,11 @@ public class DataConnection extends StateMachine {
             super(l, c, TAG, ni, nc, lp, score, misc);
             mNetCapsLocalLog.log("New network agent created. capabilities=" + nc);
             mNetworkCapabilities = nc;
+            mTransportType = new AtomicInteger(mDataServiceManager.getTransportType());
+        }
+
+        public void setTransportType(int transportType) {
+            mTransportType.set(transportType);
         }
 
         @Override
@@ -2385,6 +2390,11 @@ public class DataConnection extends StateMachine {
 
         @Override
         public void sendNetworkCapabilities(NetworkCapabilities networkCapabilities) {
+            if (mTransportType.get() != mDataServiceManager.getTransportType()) {
+                log("sendNetworkCapabilities: Data connection has been handover to transport "
+                        + TransportType.toString(mTransportType.get()));
+                return;
+            }
             if (!networkCapabilities.equals(mNetworkCapabilities)) {
                 String logStr = "Changed from " + mNetworkCapabilities + " to "
                         + networkCapabilities + ", Data RAT="
@@ -2395,6 +2405,36 @@ public class DataConnection extends StateMachine {
                 mNetworkCapabilities = networkCapabilities;
             }
             super.sendNetworkCapabilities(networkCapabilities);
+        }
+
+        @Override
+        public void sendLinkProperties(LinkProperties linkProperties) {
+            if (mTransportType.get() != mDataServiceManager.getTransportType()) {
+                log("sendLinkProperties: Data connection has been handover to transport "
+                        + TransportType.toString(mTransportType.get()));
+                return;
+            }
+            super.sendLinkProperties(linkProperties);
+        }
+
+        @Override
+        public void sendNetworkScore(int score) {
+            if (mTransportType.get() != mDataServiceManager.getTransportType()) {
+                log("sendNetworkScore: Data connection has been handover to transport "
+                        + TransportType.toString(mTransportType.get()));
+                return;
+            }
+            super.sendNetworkScore(score);
+        }
+
+        @Override
+        public void sendNetworkInfo(NetworkInfo networkInfo) {
+            if (mTransportType.get() != mDataServiceManager.getTransportType()) {
+                log("sendNetworkScore: Data connection has been handover to transport "
+                        + TransportType.toString(mTransportType.get()));
+                return;
+            }
+            super.sendNetworkInfo(networkInfo);
         }
 
         @Override
@@ -2597,7 +2637,7 @@ public class DataConnection extends StateMachine {
      */
     public void tearDownAll(String reason, @ReleaseNetworkType int releaseType,
                             Message onCompletedMsg) {
-        if (DBG) log("tearDownAll: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+        if (DBG) log("tearDownAll: reason=" + reason + ", releaseType=" + releaseType);
         sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
                 new DisconnectParams(null, reason, releaseType, onCompletedMsg));
     }
