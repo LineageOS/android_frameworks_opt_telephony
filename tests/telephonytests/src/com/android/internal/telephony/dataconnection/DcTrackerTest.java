@@ -878,10 +878,10 @@ public class DcTrackerTest extends TelephonyTest {
 
         verifyDataConnected(FAKE_APN1);
 
-        assertTrue(mDct.getAutoAttachOnCreation());
+        assertTrue(mDct.getAutoAttachEnabled());
         mDct.update();
         // The auto attach flag should be reset after update
-        assertFalse(mDct.getAutoAttachOnCreation());
+        assertFalse(mDct.getAutoAttachEnabled());
 
         verify(mSST, times(1)).registerForDataConnectionDetached(eq(TransportType.WWAN), eq(mDct),
                 intArgumentCaptor.capture(), eq(null));
