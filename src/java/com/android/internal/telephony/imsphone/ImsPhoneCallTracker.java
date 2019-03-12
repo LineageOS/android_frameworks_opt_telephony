@@ -2447,6 +2447,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     // disconnected while processing hold
                     if (mPendingMO != null) {
                         dialPendingMO();
+                    } else if (mRingingCall.getState() == ImsPhoneCall.State.WAITING
+                            && mHoldSwitchingState == HoldSwapState.HOLDING_TO_ANSWER_INCOMING) {
+                        sendEmptyMessage(EVENT_ANSWER_WAITING_CALL);
                     }
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
                 } else if (mPendingMO != null && mPendingMO.isEmergency()) {
@@ -2469,6 +2472,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         mCallExpectedToResume = null;
                     }
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
+                } else if (mRingingCall.getState() == ImsPhoneCall.State.WAITING
+                        && mHoldSwitchingState == HoldSwapState.HOLDING_TO_ANSWER_INCOMING) {
+                    // If we issued a hold request in order to answer an incoming call, we need
+                    // to tell Telecom that we can't actually answer the incoming call.
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                    logHoldSwapState("onCallHoldFailed unable to answer waiting call");
+                }
+                ImsPhoneConnection conn = findConnection(imsCall);
+                if (conn != null) {
+                    conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_HOLD_FAILED, null);
                 }
                 mPhone.notifySuppServiceFailed(Phone.SuppService.HOLD);
             }
