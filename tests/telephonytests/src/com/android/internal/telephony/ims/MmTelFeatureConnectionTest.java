@@ -19,6 +19,7 @@ package com.android.internal.telephony.ims;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -193,7 +194,7 @@ public class MmTelFeatureConnectionTest extends TelephonyTest {
 
         // Simulate subscriptions changed, where testSub1 is no longer active
         doReturn(createSubscriptionInfoList(new int[] {testSub2, testSub3}))
-                .when(mSubscriptionManager).getActiveSubscriptionInfoList();
+                .when(mSubscriptionManager).getActiveSubscriptionInfoList(anyBoolean());
         mCallbackManagerUT.mSubChangedListener.onSubscriptionsChanged();
         assertFalse(mCallbackManagerUT.doesCallbackExist(testCallback1));
         // verify that the subscription changed listener is not removed, since we still have a
@@ -220,7 +221,7 @@ public class MmTelFeatureConnectionTest extends TelephonyTest {
 
         // Simulate subscriptions changed, where testSub1 is no longer active
         doReturn(createSubscriptionInfoList(new int[] {testSub2}))
-                .when(mSubscriptionManager).getActiveSubscriptionInfoList();
+                .when(mSubscriptionManager).getActiveSubscriptionInfoList(anyBoolean());
         mCallbackManagerUT.mSubChangedListener.onSubscriptionsChanged();
         assertFalse(mCallbackManagerUT.doesCallbackExist(testCallback1));
         // verify that the subscription listener is removed, since the only active callback has been
