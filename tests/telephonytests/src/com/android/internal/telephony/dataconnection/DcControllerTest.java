@@ -85,7 +85,7 @@ public class DcControllerTest extends TelephonyTest {
         @Override
         public void onLooperPrepared() {
             mHandler = new Handler();
-            mDcc = DcController.makeDcc(mPhone, mDcTracker, mDataServiceManager, mHandler);
+            mDcc = DcController.makeDcc(mPhone, mDcTracker, mDataServiceManager, mHandler, "");
             mDcc.start();
             setReady(true);
         }

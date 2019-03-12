@@ -393,12 +393,16 @@ public class RadioConfig extends Handler {
 
     static String requestToString(int request) {
         switch (request) {
+            case RIL_REQUEST_GET_PHONE_CAPABILITY:
+                return "GET_PHONE_CAPABILITY";
             case RIL_REQUEST_GET_SLOT_STATUS:
                 return "GET_SLOT_STATUS";
             case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
                 return "SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING";
+            case RIL_REQUEST_SET_PREFERRED_DATA_MODEM:
+                return "SET_PREFERRED_DATA_MODEM";
             case RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG:
-                return "RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG";
+                return "SWITCH_DUAL_SIM_CONFIG";
             default:
                 return "<unknown request>";
         }
