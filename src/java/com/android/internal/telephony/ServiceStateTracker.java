@@ -422,6 +422,7 @@ public class ServiceStateTracker extends Handler {
     public static final int CS_NORMAL_ENABLED = 1005;     // Access Control blocks normal voice/sms service
     public static final int CS_EMERGENCY_ENABLED = 1006;  // Access Control blocks emergency call service
     public static final int CS_REJECT_CAUSE_ENABLED = 2001;     // Notify MM rejection cause
+    public static final int CS_REJECT_CAUSE_DISABLED = 2002;    // Cancel MM rejection cause
     /** Notification id. */
     public static final int PS_NOTIFICATION = 888;  // Id to update and cancel PS restricted
     public static final int CS_NOTIFICATION = 999;  // Id to update and cancel CS restricted
@@ -3873,6 +3874,8 @@ public class ServiceStateTracker extends Handler {
 
         Context context = mPhone.getContext();
 
+        boolean autoCancelCsRejectNotification = false;
+
         CarrierConfigManager configManager = (CarrierConfigManager)
                 context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         if (configManager != null) {
@@ -3886,6 +3889,8 @@ public class ServiceStateTracker extends Handler {
                     if (DBG) log("Voice/emergency call barred notification disabled");
                     return;
                 }
+                autoCancelCsRejectNotification = bundle.getBoolean(
+                        CarrierConfigManager.KEY_AUTO_CANCEL_CS_REJECT_NOTIFICATION, false);
             }
         }
 
@@ -3946,8 +3951,12 @@ public class ServiceStateTracker extends Handler {
                 notificationId = CS_REJECT_CAUSE_NOTIFICATION;
                 int resId = selectResourceForRejectCode(mRejectCode, multipleSubscriptions);
                 if (0 == resId) {
-                    loge("setNotification: mRejectCode=" + mRejectCode + " is not handled.");
-                    return;
+                    if (autoCancelCsRejectNotification) {
+                        notifyType = CS_REJECT_CAUSE_DISABLED;
+                    } else {
+                        loge("setNotification: mRejectCode=" + mRejectCode + " is not handled.");
+                        return;
+                    }
                 } else {
                     icon = com.android.internal.R.drawable.stat_notify_mmcc_indication_icn;
                     // if using the single SIM resource, simNumber will be ignored
@@ -3978,7 +3987,8 @@ public class ServiceStateTracker extends Handler {
         NotificationManager notificationManager = (NotificationManager)
                 context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        if (notifyType == PS_DISABLED || notifyType == CS_DISABLED) {
+        if (notifyType == PS_DISABLED || notifyType == CS_DISABLED
+                || notifyType == CS_REJECT_CAUSE_DISABLED) {
             // cancel previous post notification
             notificationManager.cancel(Integer.toString(mSubId), notificationId);
         } else {
