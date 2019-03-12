@@ -905,6 +905,10 @@ public class PhoneSwitcher extends Handler {
         return mPreferredDataSubId;
     }
 
+    public int getPreferredDataPhoneId() {
+        return mPreferredDataPhoneId;
+    }
+
     private void log(String l) {
         Rlog.d(LOG_TAG, l);
         mLocalLog.log(l);
