@@ -31,6 +31,7 @@ package com.android.internal.telephony.util;
 import android.content.Context;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
+import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -62,13 +63,6 @@ public class QtiImsUtils {
     // RTT Off
     public static final int RTT_MODE_DISABLED = 0;
 
-    /**
-     * Whether RTT is on or off
-     * The value 1 - enable, 0 - disable
-     * This is set through ImsSettings UI
-     */
-    public static final String QTI_IMS_RTT_MODE = "rtt_mode";
- 
     /**
      * Broadcast Action: Send RTT Text Message
      */
@@ -134,8 +128,8 @@ public class QtiImsUtils {
 
     // Returns value of RTT mode
     public static int getRttMode(Context context) {
-        return (android.provider.Settings.Global.getInt(context.getContentResolver(),
-                QTI_IMS_RTT_MODE, 0));
+        return android.provider.Settings.Secure.getInt(context.getContentResolver(),
+                Settings.Secure.RTT_CALLING_MODE, RTT_MODE_DISABLED);
     }
 
     // Returns true if Carrier supports RTT for Video Calls
