@@ -151,7 +151,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 SubscriptionManager.CONTENT_URI.getAuthority(),
                 new FakeSubscriptionContentProvider());
-        doReturn(new int[]{}).when(mSubscriptionController).getActiveSubIdList();
+        doReturn(new int[]{}).when(mSubscriptionController)
+                .getActiveSubIdList(/*visibleOnly*/false);
         mIccRecord = mUiccProfile.getIccRecords();
 
         mSubscriptionInfoUpdaterHandlerThread = new SubscriptionInfoUpdaterHandlerThread(TAG);
@@ -170,7 +171,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     public void testSimAbsent() throws Exception {
         doReturn(Arrays.asList(mSubInfo)).when(mSubscriptionController)
                 .getSubInfoUsingSlotIndexPrivileged(eq(FAKE_SUB_ID_1), anyBoolean());
-        doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionController).getActiveSubIdList();
+        doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionController)
+                .getActiveSubIdList(/*visibleOnly*/false);
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, FAKE_SUB_ID_1);
 
