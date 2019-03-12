@@ -1163,7 +1163,8 @@ public class EuiccController extends IEuiccController.Stub {
     // Checks whether the caller can manage the active embedded subscription on the SIM with the
     // given cardId.
     private boolean canManageActiveSubscriptionOnTargetSim(int cardId, String callingPackage) {
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager
+                .getActiveSubscriptionInfoList(/* userVisibleonly */false);
         if (subInfoList == null || subInfoList.size() == 0) {
             // No active subscription on any SIM.
             return false;
@@ -1190,7 +1191,8 @@ public class EuiccController extends IEuiccController.Stub {
     // For a single-active subscription phone, checks whether the caller can manage any active
     // embedded subscription.
     private boolean canManageSubscriptionOnTargetSim(int cardId, String callingPackage) {
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager
+                .getActiveSubscriptionInfoList(/* userVisibleonly */false);
         // No active subscription on any SIM.
         if (subInfoList == null || subInfoList.size() == 0) {
             return false;
