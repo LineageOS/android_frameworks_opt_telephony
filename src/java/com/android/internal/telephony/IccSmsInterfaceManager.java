@@ -335,7 +335,8 @@ public class IccSmsInterfaceManager {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
-        sendDataInternal(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
+        sendDataInternal(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
+                deliveryIntent);
     }
 
     /**
@@ -348,12 +349,14 @@ public class IccSmsInterfaceManager {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
-        sendDataInternal(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
+        sendDataInternal(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
+                deliveryIntent);
     }
 
     /**
      * Send a data based SMS to a specific application port.
      *
+     * @param callingPackage the package name of the calling app
      * @param destAddr the address to send the message to
      * @param scAddr is the service center address or null to use
      *  the current default SMSC
@@ -377,7 +380,7 @@ public class IccSmsInterfaceManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      */
 
-    private void sendDataInternal(String destAddr, String scAddr,
+    private void sendDataInternal(String callingPackage, String destAddr, String scAddr,
             int destPort, byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendData: destAddr=" + destAddr + " scAddr=" + scAddr + " destPort=" +
@@ -385,8 +388,8 @@ public class IccSmsInterfaceManager {
                 sentIntent + " deliveryIntent=" + deliveryIntent);
         }
         destAddr = filterDestAddress(destAddr);
-        mDispatchersController.sendData(destAddr, scAddr, destPort, data, sentIntent,
-                deliveryIntent);
+        mDispatchersController.sendData(callingPackage, destAddr, scAddr, destPort, data,
+                sentIntent, deliveryIntent);
     }
 
     /**
