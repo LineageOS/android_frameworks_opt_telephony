@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.AsyncResult;
@@ -53,6 +54,7 @@ public class SIMRecords extends IccRecords {
 
     // ***** Instance Variables
 
+    @UnsupportedAppUsage
     VoiceMailConstants mVmConfig;
 
     // ***** Cached SIM State; cleared on channel close
@@ -72,18 +74,26 @@ public class SIMRecords extends IccRecords {
     private byte[] mCphsInfo = null;
     boolean mCspPlmnEnabled = true;
 
+    @UnsupportedAppUsage
     byte[] mEfMWIS = null;
+    @UnsupportedAppUsage
     byte[] mEfCPHS_MWI =null;
+    @UnsupportedAppUsage
     byte[] mEfCff = null;
+    @UnsupportedAppUsage
     byte[] mEfCfis = null;
 
+    @UnsupportedAppUsage
     byte[] mEfLi = null;
+    @UnsupportedAppUsage
     byte[] mEfPl = null;
 
+    @UnsupportedAppUsage
     int mSpnDisplayCondition;
     // Numeric network codes listed in TS 51.011 EF[SPDI]
     ArrayList<String> mSpdiNetworks = null;
 
+    @UnsupportedAppUsage
     UsimServiceTable mUsimServiceTable;
 
     @Override
@@ -253,6 +263,7 @@ public class SIMRecords extends IccRecords {
 
     //***** Public Methods
 
+    @UnsupportedAppUsage
     @Override
     public String getMsisdnNumber() {
         return mMsisdn;
@@ -263,6 +274,7 @@ public class SIMRecords extends IccRecords {
         return mUsimServiceTable;
     }
 
+    @UnsupportedAppUsage
     private int getExtFromEf(int ef) {
         int ext;
         switch (ef) {
@@ -318,6 +330,7 @@ public class SIMRecords extends IccRecords {
         return mMsisdnTag;
     }
 
+    @UnsupportedAppUsage
     @Override
     public String getVoiceMailNumber() {
         return mVoiceMailNum;
@@ -497,6 +510,7 @@ public class SIMRecords extends IccRecords {
     /**
      * {@inheritDoc}
      */
+    @UnsupportedAppUsage
     @Override
     public void setVoiceCallForwardingFlag(int line, boolean enable, String dialNumber) {
 
@@ -579,6 +593,7 @@ public class SIMRecords extends IccRecords {
     /**
      * {@inheritDoc}
      */
+    @UnsupportedAppUsage
     @Override
     public String getOperatorNumeric() {
         String imsi = getIMSI();
@@ -1510,6 +1525,7 @@ public class SIMRecords extends IccRecords {
         mRecordsToLoad++;
     }
 
+    @UnsupportedAppUsage
     protected void fetchSimRecords() {
         mRecordsRequested = true;
 
@@ -1696,9 +1712,13 @@ public class SIMRecords extends IccRecords {
      */
     private enum GetSpnFsmState {
         IDLE,               // No initialized
+        @UnsupportedAppUsage
         INIT,               // Start FSM
+        @UnsupportedAppUsage
         READ_SPN_3GPP,      // Load EF_SPN firstly
+        @UnsupportedAppUsage
         READ_SPN_CPHS,      // Load EF_SPN_CPHS secondly
+        @UnsupportedAppUsage
         READ_SPN_SHORT_CPHS // Load EF_SPN_SHORT_CPHS last
     }
 
@@ -1719,6 +1739,7 @@ public class SIMRecords extends IccRecords {
      *        ar.exception holds exception in error
      *        ar.result is byte[] for data in success
      */
+    @UnsupportedAppUsage
     private void getSpnFsm(boolean start, AsyncResult ar) {
         byte[] data;
 
@@ -1914,16 +1935,19 @@ public class SIMRecords extends IccRecords {
     /**
      * check to see if Mailbox Number is allocated and activated in CPHS SST
      */
+    @UnsupportedAppUsage
     private boolean isCphsMailboxEnabled() {
         if (mCphsInfo == null)  return false;
         return ((mCphsInfo[1] & CPHS_SST_MBN_MASK) == CPHS_SST_MBN_ENABLED );
     }
 
+    @UnsupportedAppUsage
     @Override
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[SIMRecords] " + s);
     }
 
+    @UnsupportedAppUsage
     @Override
     protected void loge(String s) {
         Rlog.e(LOG_TAG, "[SIMRecords] " + s);
@@ -1933,6 +1957,7 @@ public class SIMRecords extends IccRecords {
         Rlog.w(LOG_TAG, "[SIMRecords] " + s, tr);
     }
 
+    @UnsupportedAppUsage
     protected void logv(String s) {
         Rlog.v(LOG_TAG, "[SIMRecords] " + s);
     }

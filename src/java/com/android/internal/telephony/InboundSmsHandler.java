@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE;
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
+import android.annotation.UnsupportedAppUsage;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
@@ -186,13 +187,17 @@ public abstract class InboundSmsHandler extends StateMachine {
     protected static final Uri sRawUriPermanentDelete =
             Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw/permanentDelete");
 
+    @UnsupportedAppUsage
     protected final Context mContext;
+    @UnsupportedAppUsage
     private final ContentResolver mResolver;
 
     /** Special handler for WAP push messages. */
+    @UnsupportedAppUsage
     private final WapPushOverSms mWapPush;
 
     /** Wake lock to ensure device stays awake while dispatching the SMS intents. */
+    @UnsupportedAppUsage
     private final PowerManager.WakeLock mWakeLock;
 
     /** DefaultState throws an exception or logs an error for unhandled message types. */
@@ -202,12 +207,15 @@ public abstract class InboundSmsHandler extends StateMachine {
     private final StartupState mStartupState = new StartupState();
 
     /** Idle state. Waiting for messages to process. */
+    @UnsupportedAppUsage
     private final IdleState mIdleState = new IdleState();
 
     /** Delivering state. Saves the PDU in the raw table and acknowledges to SMSC. */
+    @UnsupportedAppUsage
     private final DeliveringState mDeliveringState = new DeliveringState();
 
     /** Broadcasting state. Waits for current broadcast to complete before delivering next. */
+    @UnsupportedAppUsage
     private final WaitingState mWaitingState = new WaitingState();
 
     /** Helper class to check whether storage is available for incoming messages. */
@@ -215,16 +223,20 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     private final boolean mSmsReceiveDisabled;
 
+    @UnsupportedAppUsage
     protected Phone mPhone;
 
+    @UnsupportedAppUsage
     protected CellBroadcastHandler mCellBroadcastHandler;
 
+    @UnsupportedAppUsage
     private UserManager mUserManager;
 
     protected TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
 
     private LocalLog mLocalLog = new LocalLog(64);
 
+    @UnsupportedAppUsage
     IDeviceIdleController mDeviceIdleController;
 
     // Delete permanently from raw table
@@ -301,6 +313,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     // CAF_MSIM Is this used anywhere ? if not remove it
+    @UnsupportedAppUsage
     public Phone getPhone() {
         return mPhone;
     }
@@ -572,6 +585,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
+    @UnsupportedAppUsage
     private void handleNewSms(AsyncResult ar) {
         if (ar.exception != null) {
             loge("Exception processing incoming SMS: " + ar.exception);
@@ -600,6 +614,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * This method is called when a new SMS PDU is injected into application framework.
      * @param ar is the AsyncResult that has the SMS PDU to be injected.
      */
+    @UnsupportedAppUsage
     private void handleInjectSms(AsyncResult ar) {
         int result;
         SmsDispatchersController.SmsInjectionCallback callback = null;
@@ -684,6 +699,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param result result code indicating any error
      * @param response callback message sent when operation completes.
      */
+    @UnsupportedAppUsage
     protected abstract void acknowledgeLastIncomingSms(boolean success,
             int result, Message response);
 
@@ -723,6 +739,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param sms the message to dispatch
      * @return {@link Intents#RESULT_SMS_HANDLED} if the message was accepted, or an error status
      */
+    @UnsupportedAppUsage
     protected int dispatchNormalMessage(SmsMessageBase sms) {
         SmsHeader smsHeader = sms.getUserDataHeader();
         InboundSmsTracker tracker;
@@ -791,6 +808,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param tracker the tracker containing the message segment to process
      * @return true if an ordered broadcast was sent; false if waiting for more message segments
      */
+    @UnsupportedAppUsage
     private boolean processMessagePart(InboundSmsTracker tracker) {
         int messageCount = tracker.getMessageCount();
         byte[][] pdus;
@@ -1007,6 +1025,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         return false;
     }
 
+    @UnsupportedAppUsage
     private void showNewMessageNotification() {
         // Do not show the notification on non-FBE devices.
         if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
@@ -1089,6 +1108,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param appOp app op that is being performed when dispatching to a receiver
      * @param user user to deliver the intent to
      */
+    @UnsupportedAppUsage
     public void dispatchIntent(Intent intent, String permission, int appOp,
             Bundle opts, BroadcastReceiver resultReceiver, UserHandle user) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
@@ -1145,6 +1165,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /**
      * Helper for {@link SmsBroadcastUndelivered} to delete an old message in the raw table.
      */
+    @UnsupportedAppUsage
     private void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs,
                                     int deleteType) {
         Uri uri = deleteType == DELETE_PERMANENTLY ? sRawUriPermanentDelete : sRawUri;
@@ -1156,6 +1177,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
+    @UnsupportedAppUsage
     private Bundle handleSmsWhitelisting(ComponentName target) {
         String pkgName;
         String reason;
@@ -1395,7 +1417,9 @@ public abstract class InboundSmsHandler extends StateMachine {
      * logs the broadcast duration (as an error if the other receivers were especially slow).
      */
     private final class SmsBroadcastReceiver extends BroadcastReceiver {
+        @UnsupportedAppUsage
         private final String mDeleteWhere;
+        @UnsupportedAppUsage
         private final String[] mDeleteWhereArgs;
         private long mBroadcastTimeNano;
 
@@ -1533,6 +1557,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Checks whether the flag to skip new message notification is set in the bitmask returned
      *  from the carrier app.
      */
+    @UnsupportedAppUsage
     private boolean isSkipNotifyFlagSet(int callbackResult) {
         return (callbackResult
             & RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE) > 0;
@@ -1542,6 +1567,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * Log with debug level.
      * @param s the string to log
      */
+    @UnsupportedAppUsage
     @Override
     protected void log(String s) {
         Rlog.d(getName(), s);
@@ -1551,6 +1577,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * Log with error level.
      * @param s the string to log
      */
+    @UnsupportedAppUsage
     @Override
     protected void loge(String s) {
         Rlog.e(getName(), s);
@@ -1572,6 +1599,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param intent The intent containing the received SMS
      * @return The URI of written message
      */
+    @UnsupportedAppUsage
     private Uri writeInboxMessage(Intent intent) {
         final SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
         if (messages == null || messages.length < 1) {

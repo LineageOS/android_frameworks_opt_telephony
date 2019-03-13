@@ -37,6 +37,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
+import android.annotation.UnsupportedAppUsage;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Notification;
@@ -182,9 +183,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     // Instance Variables
     Phone mDefaultPhone;
+    @UnsupportedAppUsage
     ImsPhoneCallTracker mCT;
     ImsExternalCallTracker mExternalCallTracker;
+    @UnsupportedAppUsage
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
+    @UnsupportedAppUsage
     private ServiceState mSS = new ServiceState();
 
     // To redial silently through GSM or CDMA when dialing through IMS fails
@@ -233,6 +237,7 @@ public class ImsPhone extends ImsPhoneBase {
         final Message mOnComplete;
         final boolean mIsCfu;
 
+        @UnsupportedAppUsage
         Cf(String cfNumber, boolean isCfu, Message onComplete) {
             mSetCfNumber = cfNumber;
             mIsCfu = isCfu;
@@ -312,11 +317,13 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public ServiceState getServiceState() {
         return mSS;
     }
 
+    @UnsupportedAppUsage
     @VisibleForTesting
     public void setServiceState(int state) {
         boolean isVoiceRegStateChanged = false;
@@ -401,18 +408,21 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.explicitCallTransfer();
     }
 
+    @UnsupportedAppUsage
     @Override
     public ImsPhoneCall
     getForegroundCall() {
         return mCT.mForegroundCall;
     }
 
+    @UnsupportedAppUsage
     @Override
     public ImsPhoneCall
     getBackgroundCall() {
         return mCT.mBackgroundCall;
     }
 
+    @UnsupportedAppUsage
     @Override
     public ImsPhoneCall
     getRingingCall() {
@@ -606,6 +616,7 @@ public class ImsPhone extends ImsPhoneBase {
         mSsnRegistrants.notifyRegistrants(ar);
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean handleInCallMmiCommands(String dialString) {
         if (!isInCall()) {
@@ -670,6 +681,7 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
+    @UnsupportedAppUsage
     void notifyUnknownConnection(Connection c) {
         mDefaultPhone.notifyUnknownConnectionP(c);
     }
@@ -808,11 +820,13 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.getMute();
     }
 
+    @UnsupportedAppUsage
     @Override
     public PhoneConstants.State getState() {
         return mCT.getState();
     }
 
+    @UnsupportedAppUsage
     private boolean isValidCommandInterfaceCFReason (int commandInterfaceCFReason) {
         switch (commandInterfaceCFReason) {
         case CF_REASON_UNCONDITIONAL:
@@ -827,6 +841,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     private boolean isValidCommandInterfaceCFAction (int commandInterfaceCFAction) {
         switch (commandInterfaceCFAction) {
         case CF_ACTION_DISABLE:
@@ -839,10 +854,12 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     private  boolean isCfEnable(int action) {
         return (action == CF_ACTION_ENABLE) || (action == CF_ACTION_REGISTRATION);
     }
 
+    @UnsupportedAppUsage
     private int getConditionFromCFReason(int reason) {
         switch(reason) {
             case CF_REASON_UNCONDITIONAL: return ImsUtInterface.CDIV_CF_UNCONDITIONAL;
@@ -873,6 +890,7 @@ public class ImsPhone extends ImsPhoneBase {
         return CF_REASON_NOT_REACHABLE;
     }
 
+    @UnsupportedAppUsage
     private int getActionFromCFAction(int action) {
         switch(action) {
             case CF_ACTION_DISABLE: return ImsUtInterface.ACTION_DEACTIVATION;
@@ -916,6 +934,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason,
             Message onComplete) {
@@ -946,6 +965,7 @@ public class ImsPhone extends ImsPhoneBase {
                 CommandsInterface.SERVICE_CLASS_VOICE, timerSeconds, onComplete);
     }
 
+    @UnsupportedAppUsage
     public void setCallForwardingOption(int commandInterfaceCFAction,
             int commandInterfaceCFReason,
             String dialingNumber,
@@ -980,6 +1000,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public void getCallWaiting(Message onComplete) {
         if (DBG) logd("getCallWaiting");
@@ -994,6 +1015,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public void setCallWaiting(boolean enable, Message onComplete) {
         int serviceClass = CommandsInterface.SERVICE_CLASS_VOICE;
@@ -1118,6 +1140,7 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.cancelUSSD();
     }
 
+    @UnsupportedAppUsage
     private void sendErrorResponse(Message onComplete) {
         logd("sendErrorResponse");
         if (onComplete != null) {
@@ -1127,6 +1150,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @VisibleForTesting
     public void sendErrorResponse(Message onComplete, Throwable e) {
         logd("sendErrorResponse");
@@ -1239,6 +1263,7 @@ public class ImsPhone extends ImsPhoneBase {
      * registrants that it is complete.
      * @param mmi MMI that is done
      */
+    @UnsupportedAppUsage
     public void onMMIDone(ImsPhoneMmiCode mmi) {
         /* Only notify complete if it's on the pending list.
          * Otherwise, it's already been handled (eg, previously canceled).
@@ -1556,6 +1581,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     private void handleEnterEmergencyCallbackMode() {
         if (DBG) logd("handleEnterEmergencyCallbackMode,mIsPhoneInEcmState= " + isInEcm());
         // if phone is not in Ecm mode, and it's changed to Ecm mode
@@ -1574,6 +1600,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     protected void handleExitEmergencyCallbackMode() {
         if (DBG) logd("handleExitEmergencyCallbackMode: mIsPhoneInEcmState = " + isInEcm());
@@ -1621,6 +1648,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public void setOnEcbModeExitResponse(Handler h, int what, Object obj) {
         mEcmExitRespRegistrant = new Registrant(h, what, obj);
@@ -1640,6 +1668,7 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.isImsCapabilityAvailable(capability, regTech);
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean isVolteEnabled() {
         return mCT.isVolteEnabled();
@@ -1670,6 +1699,7 @@ public class ImsPhone extends ImsPhoneBase {
         return mImsRegistered;
     }
 
+    @UnsupportedAppUsage
     public void setImsRegistered(boolean value) {
         mImsRegistered = value;
     }
@@ -1834,6 +1864,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean isUtEnabled() {
         return mCT.isUtEnabled();

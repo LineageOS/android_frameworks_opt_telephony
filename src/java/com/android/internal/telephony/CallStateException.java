@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
+
 /**
  * {@hide}
  */
@@ -39,6 +41,7 @@ public class CallStateException extends Exception
     {
     }
 
+    @UnsupportedAppUsage
     public
     CallStateException(String string)
     {

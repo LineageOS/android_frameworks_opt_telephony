@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_TEST_CSIM;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.AsyncResult;
@@ -59,13 +60,17 @@ public class RuimRecords extends IccRecords {
 
     private String mPrlVersion;
     // From CSIM application
+    @UnsupportedAppUsage
     private byte[] mEFpl = null;
+    @UnsupportedAppUsage
     private byte[] mEFli = null;
     boolean mCsimSpnDisplayCondition = false;
     private String mMdn;
+    @UnsupportedAppUsage
     private String mMin;
     private String mHomeSystemId;
     private String mHomeNetworkId;
+    @UnsupportedAppUsage
     private String mNai;
 
     @Override
@@ -160,6 +165,7 @@ public class RuimRecords extends IccRecords {
         mLoaded.set(false);
     }
 
+    @UnsupportedAppUsage
     public String getMdnNumber() {
         return mMyMobileNumber;
     }
@@ -203,6 +209,7 @@ public class RuimRecords extends IccRecords {
         }
     }
 
+    @UnsupportedAppUsage
     private int adjstMinDigits (int digits) {
         // Per C.S0005 section 2.3.1.
         digits += 111;
@@ -216,6 +223,7 @@ public class RuimRecords extends IccRecords {
      * Returns the 5 or 6 digit MCC/MNC of the operator that
      *  provided the RUIM card. Returns null of RUIM is not yet ready
      */
+    @UnsupportedAppUsage
     public String getRUIMOperatorNumeric() {
         String imsi = getIMSI();
 
@@ -451,6 +459,7 @@ public class RuimRecords extends IccRecords {
         }
     }
 
+    @UnsupportedAppUsage
     private void onGetCSimEprlDone(AsyncResult ar) {
         // C.S0065 section 5.2.57 for EFeprl encoding
         // C.S0016 section 3.5.5 for PRL format.
@@ -726,6 +735,7 @@ public class RuimRecords extends IccRecords {
      * NOTE: This array will have duplicates. If this method will be caused
      * frequently or in a tight loop, it can be rewritten for efficiency.
      */
+    @UnsupportedAppUsage
     private static String[] getAssetLanguages(Context ctx) {
         final String[] locales = ctx.getAssets().getLocales();
         final String[] localeLangs = new String[locales.length];
@@ -837,6 +847,7 @@ public class RuimRecords extends IccRecords {
         mRecordsToLoad++;
     }
 
+    @UnsupportedAppUsage
     private void fetchRuimRecords() {
         mRecordsRequested = true;
 
@@ -942,6 +953,7 @@ public class RuimRecords extends IccRecords {
         fetchRuimRecords();
     }
 
+    @UnsupportedAppUsage
     public String getMdn() {
         return mMdn;
     }
@@ -958,14 +970,17 @@ public class RuimRecords extends IccRecords {
         return mHomeNetworkId;
     }
 
+    @UnsupportedAppUsage
     public boolean getCsimSpnDisplayCondition() {
         return mCsimSpnDisplayCondition;
     }
+    @UnsupportedAppUsage
     @Override
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[RuimRecords] " + s);
     }
 
+    @UnsupportedAppUsage
     @Override
     protected void loge(String s) {
         Rlog.e(LOG_TAG, "[RuimRecords] " + s);

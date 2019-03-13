@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.UriMatcher;
@@ -41,9 +42,11 @@ import java.util.List;
  */
 public class IccProvider extends ContentProvider {
     private static final String TAG = "IccProvider";
+    @UnsupportedAppUsage
     private static final boolean DBG = true;
 
 
+    @UnsupportedAppUsage
     private static final String[] ADDRESS_BOOK_COLUMN_NAMES = new String[] {
         "name",
         "number",
@@ -512,6 +515,7 @@ public class IccProvider extends ContentProvider {
      * @param record the ADN record to load from
      * @param cursor the cursor to receive the results
      */
+    @UnsupportedAppUsage
     private void loadRecord(AdnRecord record, MatrixCursor cursor, int id) {
         if (!record.isEmpty()) {
             Object[] contact = new Object[4];
@@ -537,6 +541,7 @@ public class IccProvider extends ContentProvider {
         }
     }
 
+    @UnsupportedAppUsage
     private void log(String msg) {
         Rlog.d(TAG, "[IccProvider] " + msg);
     }

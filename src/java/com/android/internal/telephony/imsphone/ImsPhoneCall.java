@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
+import android.annotation.UnsupportedAppUsage;
 import android.telecom.ConferenceParticipant;
 import android.telephony.Rlog;
 import android.telephony.DisconnectCause;
@@ -87,6 +88,7 @@ public class ImsPhoneCall extends Call {
 
     /************************** Overridden from Call *************************/
 
+    @UnsupportedAppUsage
     @Override
     public List<Connection>
     getConnections() {
@@ -113,6 +115,7 @@ public class ImsPhoneCall extends Call {
     /** Please note: if this is the foreground call and a
      *  background call exists, the background call will be resumed.
      */
+    @UnsupportedAppUsage
     @Override
     public void
     hangup() throws CallStateException {
@@ -160,6 +163,7 @@ public class ImsPhoneCall extends Call {
         mOwner.logState();
     }
 
+    @UnsupportedAppUsage
     public void attach(Connection conn, State state) {
         if (VDBG) {
             Rlog.v(LOG_TAG, "attach : " + mCallContext + " state = " +
@@ -169,6 +173,7 @@ public class ImsPhoneCall extends Call {
         mState = state;
     }
 
+    @UnsupportedAppUsage
     public void attachFake(Connection conn, State state) {
         attach(conn, state);
     }
@@ -225,6 +230,7 @@ public class ImsPhoneCall extends Call {
     /**
      * Called when this Call is being hung up locally (eg, user pressed "end")
      */
+    @UnsupportedAppUsage
     void
     onHangupLocal() {
         for (int i = 0, s = mConnections.size(); i < s; i++) {
@@ -257,6 +263,7 @@ public class ImsPhoneCall extends Call {
         }
     }
 
+    @UnsupportedAppUsage
     /* package */ void
     merge(ImsPhoneCall that, State state) {
         // This call is the conference host and the "that" call is the one being merged in.
