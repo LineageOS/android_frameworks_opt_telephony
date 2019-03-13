@@ -214,6 +214,7 @@ public class AccessNetworksManager extends Handler {
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         phone.getContext().registerReceiverAsUser(mConfigChangedReceiver, UserHandle.ALL,
                 intentFilter, null, null);
+        sendEmptyMessage(EVENT_BIND_QUALIFIED_NETWORKS_SERVICE);
     }
 
     /**
