@@ -898,12 +898,6 @@ public class RuimRecords extends IccRecords {
     }
 
     @Override
-    public int getCarrierNameDisplayCondition() {
-        // No display rule in Ruim, return 0.
-        return 0;
-    }
-
-    @Override
     public boolean isProvisioned() {
         // If UICC card has CSIM app, look for MDN and MIN field
         // to determine if the SIM is provisioned.  Otherwise,

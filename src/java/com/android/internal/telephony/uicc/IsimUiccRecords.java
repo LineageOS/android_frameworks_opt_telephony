@@ -413,12 +413,6 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     }
 
     @Override
-    public int getCarrierNameDisplayCondition() {
-        // No display rule in Isim, return 0.
-        return 0;
-    }
-
-    @Override
     public void onReady() {
         fetchIsimRecords();
     }
