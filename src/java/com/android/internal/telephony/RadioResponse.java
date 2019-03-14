@@ -809,12 +809,14 @@ public class RadioResponse extends IRadioResponse.Stub {
     /**
      * Callback of the getPreferredNetworkTypeBitmap defined in the IRadio.hal.
      * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param networkTypeBitmap a 32-bit bitmap of
-     * {@link android.telephony.TelephonyManager.NetworkTypeBitMask}.
+     * @param halRadioAccessFamilyBitmap a 32-bit bitmap of
+     * {@link android.hardware.radio.V1_0.RadioAccessFamily}.
      */
     public void getPreferredNetworkTypeBitmapResponse(
-            RadioResponseInfo responseInfo, int networkTypeBitmap) {
-        int networkType = RadioAccessFamily.getNetworkTypeFromRaf(networkTypeBitmap);
+            RadioResponseInfo responseInfo, int halRadioAccessFamilyBitmap) {
+
+        int networkType = RadioAccessFamily.getNetworkTypeFromRaf(
+                RIL.convertToNetworkTypeBitMask(halRadioAccessFamilyBitmap));
         mRil.mPreferredNetworkType = networkType;
         responseInts(responseInfo, networkType);
     }
