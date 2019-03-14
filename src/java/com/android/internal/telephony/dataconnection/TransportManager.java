@@ -16,13 +16,14 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.StringDef;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
@@ -32,6 +33,7 @@ import android.telephony.data.ApnSetting.ApnType;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager.QualifiedNetworks;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
@@ -49,8 +51,43 @@ import java.util.stream.Collectors;
 
 /**
  * This class represents the transport manager which manages available transports (i.e. WWAN or
- * WLAN)and determine the correct transport for {@link TelephonyNetworkFactory} to handle the data
+ * WLAN) and determine the correct transport for {@link TelephonyNetworkFactory} to handle the data
  * requests.
+ *
+ * The device can operate in the following modes, which is stored in the system properties
+ * ro.telephony.iwlan_operation_mode. If the system properties is missing, then it's tied to
+ * IRadio version. For 1.4 or above, it's legacy mode. For 1.3 or below, it's
+ *
+ * Legacy mode:
+ *      Frameworks send all data requests to the default data service, which is the cellular data
+ *      service. IWLAN should be still reported as a RAT on cellular network service.
+ *
+ * AP-assisted mode:
+ *      IWLAN is handled by IWLAN data service extending {@link android.telephony.data.DataService},
+ *      IWLAN network service extending {@link android.telephony.NetworkService}, and qualified
+ *      network service extending {@link android.telephony.data.QualifiedNetworksService}.
+ *
+ *      The following settings for service package name need to be configured properly for
+ *      frameworks to bind.
+ *
+ *      Package name of data service:
+ *          The resource overlay 'config_wwan_data_service_package' or,
+ *          the carrier config
+ *          {@link CarrierConfigManager#KEY_CARRIER_DATA_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING}.
+ *          The carrier config takes precedence over the resource overlay if both exist.
+ *
+ *      Package name of network service
+ *          The resource overlay 'config_wwan_network_service_package' or
+ *          the carrier config
+ *          {@link CarrierConfigManager#KEY_CARRIER_NETWORK_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING}.
+ *          The carrier config takes precedence over the resource overlay if both exist.
+ *
+ *      Package name of qualified network service
+ *          The resource overlay 'config_qualified_networks_service_package' or
+ *          the carrier config
+ *          {@link CarrierConfigManager#
+ *          KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING}.
+ *          The carrier config takes precedence over the resource overlay if both exist.
  */
 public class TransportManager extends Handler {
     private static final String TAG = TransportManager.class.getSimpleName();
@@ -74,7 +111,7 @@ public class TransportManager extends Handler {
             "ro.telephony.iwlan_operation_mode";
 
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef(prefix = {"IWLAN_OPERATION_MODE_"},
+    @StringDef(prefix = {"IWLAN_OPERATION_MODE_"},
             value = {
                     IWLAN_OPERATION_MODE_DEFAULT,
                     IWLAN_OPERATION_MODE_LEGACY,
@@ -86,19 +123,19 @@ public class TransportManager extends Handler {
      * {@link #IWLAN_OPERATION_MODE_AP_ASSISTED}. On device that has IRadio 1.2 or below, it means
      * {@link #IWLAN_OPERATION_MODE_LEGACY}.
      */
-    public static final int IWLAN_OPERATION_MODE_DEFAULT = 0;
+    public static final String IWLAN_OPERATION_MODE_DEFAULT = "default";
 
     /**
      * IWLAN legacy mode. IWLAN is completely handled by the modem, and when the device is on
      * IWLAN, modem reports IWLAN as a RAT.
      */
-    public static final int IWLAN_OPERATION_MODE_LEGACY = 1;
+    public static final String IWLAN_OPERATION_MODE_LEGACY = "legacy";
 
     /**
      * IWLAN application processor assisted mode. IWLAN is handled by the bound IWLAN data service
      * and network service separately.
      */
-    public static final int IWLAN_OPERATION_MODE_AP_ASSISTED = 2;
+    public static final String IWLAN_OPERATION_MODE_AP_ASSISTED = "AP-assisted";
 
     private final Phone mPhone;
 
@@ -145,10 +182,12 @@ public class TransportManager extends Handler {
         mHandoverNeededEventRegistrants = new RegistrantList();
 
         if (isInLegacyMode()) {
+            log("operates in legacy mode.");
             // For legacy mode, WWAN is the only transport to handle all data connections, even
             // the IWLAN ones.
             mAvailableTransports = new int[]{TransportType.WWAN};
         } else {
+            log("operates in AP-assisted mode.");
             mAccessNetworksManager = new AccessNetworksManager(phone);
             mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
                     EVENT_QUALIFIED_NETWORKS_CHANGED);
@@ -263,20 +302,17 @@ public class TransportManager extends Handler {
     }
 
     /**
-     * @return True if in IWLAN legacy mode. Operating in legacy mode means telephony will send
-     * all data requests to the default data service, which is the cellular data service.
-     * AP-assisted mode requires properly configuring the resource overlay
-     * 'config_wwan_data_service_package' (or the carrier config
-     * {@link CarrierConfigManager#KEY_CARRIER_DATA_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING }) to
-     * the IWLAN data service package, 'config_wwan_network_service_package' (or the carrier config
-     * {@link CarrierConfigManager#KEY_CARRIER_NETWORK_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING })
-     * to the IWLAN network service package, and 'config_qualified_networks_service_package' (or the
-     * carrier config
-     * {@link CarrierConfigManager#KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING})
-     * to the qualified networks service package.
+     * @return {@code true} if the device operates in legacy mode, otherwise {@code false}.
      */
     public boolean isInLegacyMode() {
-        return (mPhone.mCi.getIwlanOperationMode() == IWLAN_OPERATION_MODE_LEGACY);
+        // Get IWLAN operation mode from the system property. If the system property is missing or
+        // misconfiged the default behavior is tied to the IRadio version. For 1.4 or above, it's
+        // AP-assisted mode, for 1.3 or below, it's legacy mode. For IRadio 1.3 or below, no matter
+        // what the configuration is, it will always be legacy mode.
+        String mode = SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE);
+
+        return mode.equals(IWLAN_OPERATION_MODE_LEGACY)
+                || mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
     }
 
     /**
@@ -334,7 +370,8 @@ public class TransportManager extends Handler {
         pw.println("mCurrentAvailableNetworks=" + mCurrentAvailableNetworks);
         pw.println("mCurrentTransports=" + mCurrentTransports);
         pw.println("isInLegacy=" + isInLegacyMode());
-        pw.println("IWLAN operation mode=" + mPhone.mCi.getIwlanOperationMode());
+        pw.println("IWLAN operation mode="
+                + SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE));
         if (mAccessNetworksManager != null) {
             mAccessNetworksManager.dump(fd, pw, args);
         }

@@ -496,6 +496,7 @@ public abstract class TelephonyTest {
         doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
         doReturn(mNetworkRegistrationState).when(mServiceState).getNetworkRegistrationState(
                 anyInt(), anyInt());
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
