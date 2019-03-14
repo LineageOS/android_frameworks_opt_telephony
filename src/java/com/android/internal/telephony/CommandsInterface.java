@@ -30,7 +30,6 @@ import android.telephony.data.DataProfile;
 import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
-import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
@@ -2275,9 +2274,5 @@ public interface CommandsInterface {
 
     default List<ClientRequestStats> getClientRequestStats() {
         return null;
-    }
-
-    default int getIwlanOperationMode() {
-        return TransportManager.IWLAN_OPERATION_MODE_DEFAULT;
     }
 }
