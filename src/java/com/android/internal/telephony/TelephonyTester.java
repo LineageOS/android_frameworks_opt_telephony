@@ -24,7 +24,7 @@ import android.net.Uri;
 import android.os.BadParcelableException;
 import android.os.Build;
 import android.os.Bundle;
-import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ims.ImsCallProfile;
@@ -149,12 +149,12 @@ public class TelephonyTester {
                 if (DBG) log("sIntentReceiver.onReceive: action=" + action);
                 if (action.equals(mPhone.getActionDetached())) {
                     log("simulate detaching");
-                    mPhone.getServiceStateTracker().mDetachedRegistrants.get(TransportType.WWAN)
-                            .notifyRegistrants();
+                    mPhone.getServiceStateTracker().mDetachedRegistrants.get(
+                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN).notifyRegistrants();
                 } else if (action.equals(mPhone.getActionAttached())) {
                     log("simulate attaching");
-                    mPhone.getServiceStateTracker().mAttachedRegistrants.get(TransportType.WWAN)
-                            .notifyRegistrants();
+                    mPhone.getServiceStateTracker().mAttachedRegistrants.get(
+                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN).notifyRegistrants();
                 } else if (action.equals(ACTION_TEST_CONFERENCE_EVENT_PACKAGE)) {
                     log("inject simulated conference event package");
                     handleTestConferenceEventPackage(context,

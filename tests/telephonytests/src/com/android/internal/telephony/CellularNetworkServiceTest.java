@@ -133,7 +133,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         waitForMs(1000);
 
         NetworkRegistrationState expectedState = new NetworkRegistrationState(
-                domain, AccessNetworkConstants.TransportType.WWAN, voiceRegState,
+                domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
                 false, availableServices, null, cssSupported,
                 roamingIndicator, systemIsInPrl, defaultRoamingIndicator);
@@ -160,7 +160,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
 
         expectedState = new NetworkRegistrationState(
-                domain, AccessNetworkConstants.TransportType.WWAN, voiceRegState,
+                domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
                 false, availableServices, null, maxDataCalls, false, false, false,
                 lteVopsSupportInfo);

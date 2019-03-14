@@ -42,7 +42,7 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telecom.VideoProfile;
-import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
@@ -2947,8 +2947,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return true if there is a matching DUN APN.
      */
     public boolean hasMatchedTetherApnSetting() {
-        if (getDcTracker(TransportType.WWAN) != null) {
-            return getDcTracker(TransportType.WWAN).hasMatchedTetherApnSetting();
+        if (getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN) != null) {
+            return getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .hasMatchedTetherApnSetting();
         }
         return false;
     }

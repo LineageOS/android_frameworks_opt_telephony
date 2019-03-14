@@ -50,6 +50,7 @@ import android.os.UserHandle;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
@@ -614,9 +615,9 @@ public class ServiceStateTracker extends Handler {
                 CarrierServiceStateTracker.CARRIER_EVENT_VOICE_REGISTRATION, null);
         registerForNetworkDetached(mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_VOICE_DEREGISTRATION, null);
-        registerForDataConnectionAttached(TransportType.WWAN, mCSST,
+        registerForDataConnectionAttached(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_DATA_REGISTRATION, null);
-        registerForDataConnectionDetached(TransportType.WWAN, mCSST,
+        registerForDataConnectionDetached(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_DATA_DEREGISTRATION, null);
         registerForImsCapabilityChanged(mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_IMS_CAPABILITIES_CHANGED, null);
@@ -1256,7 +1257,7 @@ public class ServiceStateTracker extends Handler {
                 ar = (AsyncResult) msg.obj;
 
                 if (ar.exception == null) {
-                    mRegStateManagers.get(TransportType.WWAN)
+                    mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                             .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
                             obtainMessage(EVENT_GET_LOC_DONE, null));
                 }
@@ -1908,7 +1909,7 @@ public class ServiceStateTracker extends Handler {
         int newFrequencyRange = ServiceState.FREQUENCY_RANGE_UNKNOWN;
 
         if (physicalChannelConfigs != null) {
-            DcTracker dcTracker = mPhone.getDcTracker(TransportType.WWAN);
+            DcTracker dcTracker = mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
             for (PhysicalChannelConfig config : physicalChannelConfigs) {
                 if (isNrPhysicalChannelConfig(config)) {
                     // Update the frequency range of the NR parameters if there is an internet data
@@ -1977,9 +1978,9 @@ public class ServiceStateTracker extends Handler {
      */
     private void combinePsRegistrationStates(ServiceState serviceState) {
         NetworkRegistrationState wlanPsRegState = serviceState.getNetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, TransportType.WLAN);
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
         NetworkRegistrationState wwanPsRegState = serviceState.getNetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, TransportType.WWAN);
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         if (wlanPsRegState != null
                 && wlanPsRegState.getAccessNetworkTechnology()
                 == TelephonyManager.NETWORK_TYPE_IWLAN
@@ -2978,20 +2979,22 @@ public class ServiceStateTracker extends Handler {
                 mCi.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR, mPollingContext));
 
                 mPollingContext[0]++;
-                mRegStateManagers.get(TransportType.WWAN).getNetworkRegistrationState(
-                        NetworkRegistrationState.DOMAIN_PS,
-                        obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION, mPollingContext));
+                mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                                obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                                        mPollingContext));
 
                 mPollingContext[0]++;
-                mRegStateManagers.get(TransportType.WWAN)
+                mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
                         obtainMessage(EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION, mPollingContext));
 
-                if (mRegStateManagers.get(TransportType.WLAN) != null) {
+                if (mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN) != null) {
                     mPollingContext[0]++;
-                    mRegStateManagers.get(TransportType.WLAN).getNetworkRegistrationState(
-                            NetworkRegistrationState.DOMAIN_PS,
-                            obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION, mPollingContext));
+                    mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                            .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                                    obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
+                                            mPollingContext));
                 }
 
                 if (mPhone.isPhoneTypeGsm()) {
@@ -3315,7 +3318,8 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (has4gHandoff) {
-            mAttachedRegistrants.get(TransportType.WWAN).notifyRegistrants();
+            mAttachedRegistrants.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .notifyRegistrants();
             shouldLogAttachedChange = true;
         }
 
@@ -4155,7 +4159,8 @@ public class ServiceStateTracker extends Handler {
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public void registerForDataConnectionAttached(int transport, Handler h, int what, Object obj) {
+    public void registerForDataConnectionAttached(@TransportType int transport, Handler h, int what,
+                                                  Object obj) {
         Registrant r = new Registrant(h, what, obj);
         if (mAttachedRegistrants.get(transport) == null) {
             mAttachedRegistrants.put(transport, new RegistrantList());
@@ -4177,7 +4182,7 @@ public class ServiceStateTracker extends Handler {
      * @param transport Transport type
      * @param h Handler to notify
      */
-    public void unregisterForDataConnectionAttached(int transport, Handler h) {
+    public void unregisterForDataConnectionAttached(@TransportType int transport, Handler h) {
         if (mAttachedRegistrants.get(transport) != null) {
             mAttachedRegistrants.get(transport).remove(h);
         }
@@ -4190,7 +4195,8 @@ public class ServiceStateTracker extends Handler {
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public void registerForDataConnectionDetached(int transport, Handler h, int what, Object obj) {
+    public void registerForDataConnectionDetached(@TransportType int transport, Handler h, int what,
+                                                  Object obj) {
         Registrant r = new Registrant(h, what, obj);
         if (mDetachedRegistrants.get(transport) == null) {
             mDetachedRegistrants.put(transport, new RegistrantList());
@@ -4212,7 +4218,7 @@ public class ServiceStateTracker extends Handler {
      * @param transport Transport type
      * @param h Handler to notify
      */
-    public void unregisterForDataConnectionDetached(int transport, Handler h) {
+    public void unregisterForDataConnectionDetached(@TransportType int transport, Handler h) {
         if (mDetachedRegistrants.get(transport) != null) {
             mDetachedRegistrants.get(transport).remove(h);
         }
@@ -4247,8 +4253,8 @@ public class ServiceStateTracker extends Handler {
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public void registerForDataRegStateOrRatChanged(int transport, Handler h, int what,
-                                                    Object obj) {
+    public void registerForDataRegStateOrRatChanged(@TransportType int transport, Handler h,
+                                                    int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
         if (mDataRegStateOrRatChangedRegistrants.get(transport) == null) {
             mDataRegStateOrRatChangedRegistrants.put(transport, new RegistrantList());
@@ -4263,7 +4269,7 @@ public class ServiceStateTracker extends Handler {
      * @param transport Transport
      * @param h The handler
      */
-    public void unregisterForDataRegStateOrRatChanged(int transport, Handler h) {
+    public void unregisterForDataRegStateOrRatChanged(@TransportType int transport, Handler h) {
         if (mDataRegStateOrRatChangedRegistrants.get(transport) != null) {
             mDataRegStateOrRatChangedRegistrants.get(transport).remove(h);
         }

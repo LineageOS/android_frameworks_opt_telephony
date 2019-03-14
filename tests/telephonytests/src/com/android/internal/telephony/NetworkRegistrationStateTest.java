@@ -19,7 +19,7 @@ package com.android.internal.telephony;
 import static junit.framework.Assert.assertEquals;
 
 import android.os.Parcel;
-import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentityLte;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.TelephonyManager;
@@ -36,7 +36,7 @@ public class NetworkRegistrationStateTest {
     public void testParcel() {
         NetworkRegistrationState nrs = new NetworkRegistrationState(
                 NetworkRegistrationState.DOMAIN_CS,
-                TransportType.WWAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationState.REG_STATE_HOME,
                 TelephonyManager.NETWORK_TYPE_LTE,
                 0,
