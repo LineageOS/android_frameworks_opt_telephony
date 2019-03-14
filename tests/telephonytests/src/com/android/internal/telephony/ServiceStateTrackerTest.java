@@ -1811,14 +1811,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mRuimRecords).isProvisioned();
         assertEquals(null, sst.getMdnNumber());
 
-        // if ruim is not provisioned, and mdn is non null, sst should still return null
+        // if ruim is not provisioned, and mdn is non null, sst should still return the correct
+        // value
         doReturn(false).when(mRuimRecords).isProvisioned();
         String mockMdn = "mockMdn";
         doReturn(mockMdn).when(mRuimRecords).getMdn();
-        assertEquals(null, sst.getMdnNumber());
-
-        // if ruim is provisioned, and mdn is non null, sst should also return the correct value
-        doReturn(true).when(mRuimRecords).isProvisioned();
         assertEquals(mockMdn, sst.getMdnNumber());
     }
 
