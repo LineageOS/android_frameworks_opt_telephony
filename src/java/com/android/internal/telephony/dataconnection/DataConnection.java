@@ -74,6 +74,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
@@ -1901,6 +1902,8 @@ public class DataConnection extends StateMachine {
                 mPhone.mCi.registerForLceInfo(
                         getHandler(), DataConnection.EVENT_LINK_CAPACITY_CHANGED, null);
             }
+            TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
+                    mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.CONNECTED);
         }
 
         @Override
@@ -1928,6 +1931,8 @@ public class DataConnection extends StateMachine {
                 mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                 mNetworkAgent = null;
             }
+            TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
+                    mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
         }
 
         @Override
