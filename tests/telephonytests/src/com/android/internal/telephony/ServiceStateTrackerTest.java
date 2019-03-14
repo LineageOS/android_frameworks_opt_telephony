@@ -224,6 +224,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSSTTestHandler.start();
         waitUntilReady();
         waitForMs(600);
+
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
+        mContext.sendBroadcast(intent);
+        waitForMs(100);
+
         logd("ServiceStateTrackerTest -Setup!");
     }
 
@@ -1053,10 +1059,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testRegisterForDataRegStateOrRatChange() {
-        int drs = ServiceState.STATE_IN_SERVICE;
-        int rat = sst.mSS.RIL_RADIO_TECHNOLOGY_LTE;
-        sst.mSS.setRilDataRadioTechnology(rat);
-        sst.mSS.setDataRegState(drs);
+        NetworkRegistrationState nrs = new NetworkRegistrationState.Builder()
+                .setDomain(NetworkRegistrationState.DOMAIN_PS)
+                .setTransportType(TransportType.WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegState(NetworkRegistrationState.REG_STATE_HOME)
+                .build();
+        sst.mSS.addNetworkRegistrationState(nrs);
         sst.registerForDataRegStateOrRatChanged(TransportType.WWAN, mTestHandler,
                 EVENT_DATA_RAT_CHANGED, null);
 
