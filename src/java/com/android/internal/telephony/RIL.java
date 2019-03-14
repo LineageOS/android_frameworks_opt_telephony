@@ -99,8 +99,6 @@ import com.android.internal.telephony.cat.ComprehensionTlv;
 import com.android.internal.telephony.cat.ComprehensionTlvTag;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
-import com.android.internal.telephony.dataconnection.TransportManager;
-import com.android.internal.telephony.dataconnection.TransportManager.IwlanOperationMode;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
@@ -5966,29 +5964,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
             response.add(convertDataCallResult(obj));
         }
         return response;
-    }
-
-    /**
-     * @return The {@link IwlanOperationMode IWLAN operation mode}
-     */
-    public @IwlanOperationMode int getIwlanOperationMode() {
-        // Get IWLAN operation mode from the system property. If the system property is missing,
-        // use the default mode.
-        int mode = SystemProperties.getInt(TransportManager.SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE,
-                TransportManager.IWLAN_OPERATION_MODE_DEFAULT);
-
-        // If the operation mode is default, then we use the HAL version to determine it.
-        // On 1.4 or later version of IRadio, it is expected the device to support
-        // IWLAN AP-assisted mode.
-        if (mode == TransportManager.IWLAN_OPERATION_MODE_DEFAULT) {
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
-                return TransportManager.IWLAN_OPERATION_MODE_AP_ASSISTED;
-            } else {
-                return TransportManager.IWLAN_OPERATION_MODE_LEGACY;
-            }
-        }
-
-        return mode;
     }
 
     /**
