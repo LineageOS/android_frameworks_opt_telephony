@@ -490,6 +490,11 @@ public class DcTrackerTest extends TelephonyTest {
         mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
         mDcTrackerTestHandler.start();
         waitUntilReady();
+
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
+        mContext.sendBroadcast(intent);
+
         waitForMs(600);
         logd("DcTrackerTest -Setup!");
     }
