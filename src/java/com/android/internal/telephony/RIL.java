@@ -2601,7 +2601,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         (android.hardware.radio.V1_4.IRadio) radioProxy;
                 try {
                     radioProxy14.setPreferredNetworkTypeBitmap(
-                            rr.mSerial, convertToHalRadioAccessFamily(networkType));
+                            rr.mSerial, convertToHalRadioAccessFamily(
+                                    RadioAccessFamily.getRafFromNetworkType(networkType)));
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "setPreferredNetworkTypeBitmap", e);
                 }
@@ -2609,11 +2610,145 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    private static int convertToHalRadioAccessFamily(@PrefNetworkMode int networkMode) {
-        // android.hardware.radio.V1_0.RadioAccessFamily is one bit shift
-        // from TelephonyManager.NetworkTypeBitMask
-        int networkTypeBitmask = RadioAccessFamily.getRafFromNetworkType(networkMode);
-        return networkTypeBitmask << 1;
+    /**
+     * convert RAF from {@link android.hardware.radio.V1_0.RadioAccessFamily} to
+     * {@link TelephonyManager.NetworkTypeBitMask}, the bitmask represented by
+     * {@link TelephonyManager.NetworkType}.
+     *
+     * @param raf {@link android.hardware.radio.V1_0.RadioAccessFamily}
+     * @return {@link TelephonyManager.NetworkTypeBitMask}
+     */
+    @TelephonyManager.NetworkTypeBitMask
+    public static int convertToNetworkTypeBitMask(int raf) {
+        int networkTypeRaf = 0;
+
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.GSM) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_GSM;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.GPRS) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_GPRS;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.EDGE) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_EDGE;
+        }
+        // convert both IS95A/IS95B to CDMA as network mode doesn't support CDMA
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.IS95A) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_CDMA;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.IS95B) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_CDMA;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.ONE_X_RTT) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.EVDO_0) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_0;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.EVDO_A) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_A;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.EVDO_B) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_B;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.EHRPD) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_EHRPD;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.HSUPA) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_HSUPA;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.HSDPA) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_HSDPA;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.HSPA) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_HSPA;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.HSPAP) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_HSPAP;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.UMTS) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_UMTS;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.TD_SCDMA) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_TD_SCDMA;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.LTE) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_LTE;
+        }
+        if ((raf & android.hardware.radio.V1_0.RadioAccessFamily.LTE_CA) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_LTE_CA;
+        }
+        if ((raf & android.hardware.radio.V1_4.RadioAccessFamily.NR) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_NR;
+        }
+        // TODO: need hal definition
+        if ((raf & (1 << ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)) != 0) {
+            networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN;
+        }
+        return (networkTypeRaf == 0) ? TelephonyManager.NETWORK_TYPE_UNKNOWN : networkTypeRaf;
+    }
+
+    // convert to android.hardware.radio.V1_0.RadioAccessFamily
+    private static int convertToHalRadioAccessFamily(
+            @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask) {
+        int raf = 0;
+
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_GSM) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.GSM;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_GPRS) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.GPRS;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EDGE) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.EDGE;
+        }
+        // convert CDMA to IS95A, consistent with ServiceState.networkTypeToRilRadioTechnology
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_CDMA) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.IS95A;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.ONE_X_RTT;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_0) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.EVDO_0;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_A) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.EVDO_A;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_B) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.EVDO_B;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EHRPD) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.EHRPD;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSUPA) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.HSUPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSDPA) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.HSDPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSPA) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.HSPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSPAP) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.HSPAP;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_UMTS) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.UMTS;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_TD_SCDMA) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.TD_SCDMA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.LTE;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE_CA) != 0) {
+            raf |= android.hardware.radio.V1_0.RadioAccessFamily.LTE_CA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0) {
+            raf |= android.hardware.radio.V1_4.RadioAccessFamily.NR;
+        }
+        // TODO: need hal definition for IWLAN
+        return (raf == 0) ? android.hardware.radio.V1_4.RadioAccessFamily.UNKNOWN : raf;
     }
 
     @Override
@@ -5644,7 +5779,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         int session = rcRil.session;
         int phase = rcRil.phase;
         // convert to public bitmask {@link TelephonyManager.NetworkTypeBitMask}
-        int rat = RadioAccessFamily.convertToNetworkTypeBitMask(rcRil.raf);
+        int rat = convertToNetworkTypeBitMask(rcRil.raf);
         String logicModemUuid = rcRil.logicalModemUuid;
         int status = rcRil.status;
 
