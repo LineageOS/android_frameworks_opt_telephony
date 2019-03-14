@@ -306,13 +306,16 @@ public class UiccSlot extends Handler {
             String message = (isAdded) ? r.getString(R.string.sim_added_message) :
                     r.getString(R.string.sim_removed_message);
             String buttonTxt = r.getString(R.string.sim_restart_button);
+            String buttonCancelTxt = r.getString(R.string.cancel);
 
             AlertDialog dialog = new AlertDialog.Builder(mContext)
                     .setTitle(title)
                     .setMessage(message)
                     .setPositiveButton(buttonTxt, listener)
+                    .setNegativeButton(buttonCancelTxt, null)
                     .create();
             dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
+            dialog.setCanceledOnTouchOutside(false);
             dialog.show();
         }
     }
