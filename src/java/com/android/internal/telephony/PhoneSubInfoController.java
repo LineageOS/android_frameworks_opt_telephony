@@ -21,6 +21,7 @@ package com.android.internal.telephony;
 import static android.Manifest.permission.MODIFY_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 
+import android.annotation.UnsupportedAppUsage;
 import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -41,7 +42,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true
 
+    @UnsupportedAppUsage
     private final Phone[] mPhone;
+    @UnsupportedAppUsage
     private final Context mContext;
     private final AppOpsManager mAppOps;
 
@@ -192,6 +195,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     /**
      * get Phone object based on subId.
      **/
+    @UnsupportedAppUsage
     private Phone getPhone(int subId) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
@@ -226,6 +230,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                 "Requires MODIFY_PHONE_STATE");
     }
 
+    @UnsupportedAppUsage
     private int getDefaultSubscription() {
         return  PhoneFactory.getDefaultSubscription();
     }
@@ -454,6 +459,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Rlog.d(TAG, s);
     }
 
+    @UnsupportedAppUsage
     private void loge(String s) {
         Rlog.e(TAG, s);
     }

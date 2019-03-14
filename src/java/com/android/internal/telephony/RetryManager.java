@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.Build;
 import android.os.PersistableBundle;
@@ -134,12 +135,14 @@ public class RetryManager {
     /**
      * The delay (in milliseconds) between APN trying within the same round
      */
+    @UnsupportedAppUsage
     private long mInterApnDelay;
 
     /**
      * The delay (in milliseconds) between APN trying within the same round when we are in
      * fail fast mode
      */
+    @UnsupportedAppUsage
     private long mFailFastInterApnDelay;
 
     /**
@@ -176,6 +179,7 @@ public class RetryManager {
      */
     private ArrayList<RetryRec> mRetryArray = new ArrayList<RetryRec>();
 
+    @UnsupportedAppUsage
     private Phone mPhone;
 
     /**
@@ -218,6 +222,7 @@ public class RetryManager {
     /**
      * Apn context type. Could be "default, "mms", "supl", etc...
      */
+    @UnsupportedAppUsage
     private String mApnType;
 
     /**
@@ -237,6 +242,7 @@ public class RetryManager {
      *
      * @return true if successful
      */
+    @UnsupportedAppUsage
     private boolean configure(String configStr) {
         // Strip quotes if present.
         if ((configStr.startsWith("\"") && configStr.endsWith("\""))) {
@@ -404,6 +410,7 @@ public class RetryManager {
     /**
      * Return the timer that should be used to trigger the data reconnection
      */
+    @UnsupportedAppUsage
     private int getRetryTimer() {
         int index;
         if (mRetryCount < mRetryArray.size()) {
@@ -677,6 +684,7 @@ public class RetryManager {
                 + " mConfig={" + mConfig + "}";
     }
 
+    @UnsupportedAppUsage
     private void log(String s) {
         Rlog.d(LOG_TAG, "[" + mApnType + "] " + s);
     }

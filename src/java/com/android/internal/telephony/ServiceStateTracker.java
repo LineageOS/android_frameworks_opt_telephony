@@ -22,6 +22,7 @@ import static android.provider.Telephony.ServiceStateTable.getUriForSubscription
 import static com.android.internal.telephony.CarrierActionAgent.CARRIER_ACTION_SET_RADIO_ENABLED;
 
 import android.Manifest.permission;
+import android.annotation.UnsupportedAppUsage;
 import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -121,14 +122,20 @@ public class ServiceStateTracker extends Handler {
 
     private static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
 
+    @UnsupportedAppUsage
     private CommandsInterface mCi;
+    @UnsupportedAppUsage
     private UiccController mUiccController = null;
+    @UnsupportedAppUsage
     private UiccCardApplication mUiccApplcation = null;
+    @UnsupportedAppUsage
     private IccRecords mIccRecords = null;
 
     private boolean mVoiceCapable;
 
+    @UnsupportedAppUsage
     public ServiceState mSS;
+    @UnsupportedAppUsage
     private ServiceState mNewSS;
 
     // This is the minimum interval at which CellInfo requests will be serviced by the modem.
@@ -150,6 +157,7 @@ public class ServiceStateTracker extends Handler {
     private List<CellInfo> mLastCellInfoList = null;
     private List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = null;
 
+    @UnsupportedAppUsage
     private SignalStrength mSignalStrength;
 
     // TODO - this should not be public, right now used externally GsmConnetion.
@@ -162,6 +170,7 @@ public class ServiceStateTracker extends Handler {
      */
     @VisibleForTesting
     public int[] mPollingContext;
+    @UnsupportedAppUsage
     private boolean mDesiredPowerState;
 
     /**
@@ -171,14 +180,19 @@ public class ServiceStateTracker extends Handler {
      */
     private boolean mDontPollSignalStrength = false;
 
+    @UnsupportedAppUsage
     private RegistrantList mVoiceRoamingOnRegistrants = new RegistrantList();
+    @UnsupportedAppUsage
     private RegistrantList mVoiceRoamingOffRegistrants = new RegistrantList();
+    @UnsupportedAppUsage
     private RegistrantList mDataRoamingOnRegistrants = new RegistrantList();
+    @UnsupportedAppUsage
     private RegistrantList mDataRoamingOffRegistrants = new RegistrantList();
     protected SparseArray<RegistrantList> mAttachedRegistrants = new SparseArray<>();
     protected SparseArray<RegistrantList> mDetachedRegistrants = new SparseArray();
     private RegistrantList mVoiceRegStateOrRatChangedRegistrants = new RegistrantList();
     private SparseArray<RegistrantList> mDataRegStateOrRatChangedRegistrants = new SparseArray<>();
+    @UnsupportedAppUsage
     private RegistrantList mNetworkAttachedRegistrants = new RegistrantList();
     private RegistrantList mNetworkDetachedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
@@ -263,22 +277,33 @@ public class ServiceStateTracker extends Handler {
     private PendingIntent mRadioOffIntent = null;
     private static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     private boolean mPowerOffDelayNeed = true;
+    @UnsupportedAppUsage
     private boolean mDeviceShuttingDown = false;
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
+    @UnsupportedAppUsage
     private boolean mSpnUpdatePending = false;
+    @UnsupportedAppUsage
     private String mCurSpn = null;
+    @UnsupportedAppUsage
     private String mCurDataSpn = null;
+    @UnsupportedAppUsage
     private String mCurPlmn = null;
+    @UnsupportedAppUsage
     private boolean mCurShowPlmn = false;
+    @UnsupportedAppUsage
     private boolean mCurShowSpn = false;
+    @UnsupportedAppUsage
     @VisibleForTesting
     public int mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private int mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     private boolean mImsRegistered = false;
 
+    @UnsupportedAppUsage
     private SubscriptionManager mSubscriptionManager;
+    @UnsupportedAppUsage
     private SubscriptionController mSubscriptionController;
+    @UnsupportedAppUsage
     private final SstSubscriptionsChangedListener mOnSubscriptionsChangedListener =
         new SstSubscriptionsChangedListener();
 
@@ -368,19 +393,26 @@ public class ServiceStateTracker extends Handler {
     };
 
     //Common
+    @UnsupportedAppUsage
     private final GsmCdmaPhone mPhone;
 
     private CellIdentity mCellIdentity;
     private CellIdentity mNewCellIdentity;
     private static final int MS_PER_HOUR = 60 * 60 * 1000;
     private final NitzStateMachine mNitzState;
+    @UnsupportedAppUsage
     private final ContentResolver mCr;
 
     //GSM
+    @UnsupportedAppUsage
     private int mPreferredNetworkType;
+    @UnsupportedAppUsage
     private int mMaxDataCalls = 1;
+    @UnsupportedAppUsage
     private int mNewMaxDataCalls = 1;
+    @UnsupportedAppUsage
     private int mReasonDataDenied = -1;
+    @UnsupportedAppUsage
     private int mNewReasonDataDenied = -1;
 
     /**
@@ -403,10 +435,13 @@ public class ServiceStateTracker extends Handler {
     /**
      * Mark when service state is in emergency call only mode
      */
+    @UnsupportedAppUsage
     private boolean mEmergencyOnly = false;
     /** Started the recheck process after finding gprs should registered but not. */
+    @UnsupportedAppUsage
     private boolean mStartedGprsRegCheck;
     /** Already sent the event-log for no gprs register. */
+    @UnsupportedAppUsage
     private boolean mReportedGprsNoReg;
 
     private CarrierServiceStateTracker mCSST;
@@ -432,6 +467,7 @@ public class ServiceStateTracker extends Handler {
     /** To identify whether EVENT_SIM_READY is received or not */
     private boolean mIsSimReady = false;
 
+    @UnsupportedAppUsage
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -462,8 +498,10 @@ public class ServiceStateTracker extends Handler {
     public static final String UNACTIVATED_MIN_VALUE = "1111110111";
     // Current Otasp value
     private int mCurrentOtaspMode = TelephonyManager.OTASP_UNINITIALIZED;
+    @UnsupportedAppUsage
     private int mRoamingIndicator;
     private boolean mIsInPrl;
+    @UnsupportedAppUsage
     private int mDefaultRoamingIndicator;
     /**
      * Initially assume no data connection.
@@ -477,6 +515,7 @@ public class ServiceStateTracker extends Handler {
     private String mPrlVersion;
     private boolean mIsMinInfoReady = false;
     private boolean mIsEriTextLoaded = false;
+    @UnsupportedAppUsage
     private boolean mIsSubscriptionFromRuim = false;
     private CdmaSubscriptionSourceManager mCdmaSSM;
     public static final String INVALID_MCC = "000";
@@ -710,12 +749,14 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    @UnsupportedAppUsage
     public boolean getDesiredPowerState() {
         return mDesiredPowerState;
     }
     public boolean getPowerStateFromCarrier() { return !mRadioDisabledByCarrier; }
 
     private SignalStrength mLastSignalStrength = null;
+    @UnsupportedAppUsage
     protected boolean notifySignalStrength() {
         boolean notified = false;
         if (!mSignalStrength.equals(mLastSignalStrength)) {
@@ -773,6 +814,7 @@ public class ServiceStateTracker extends Handler {
      * Some operators have been known to report registration failure
      * data only devices, to fix that use DataRegState.
      */
+    @UnsupportedAppUsage
     protected void useDataRegStateForDataOnlyDevices() {
         if (mVoiceCapable == false) {
             if (DBG) {
@@ -784,6 +826,7 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    @UnsupportedAppUsage
     protected void updatePhoneObject() {
         if (mPhone.getContext().getResources().
                 getBoolean(com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
@@ -892,6 +935,7 @@ public class ServiceStateTracker extends Handler {
      * an AsyncResult, and onComplete.obj.exception will be non-null
      * on failure.
      */
+    @UnsupportedAppUsage
     public void reRegisterNetwork(Message onComplete) {
         mCi.getPreferredNetworkType(
                 obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE, onComplete));
@@ -1673,6 +1717,7 @@ public class ServiceStateTracker extends Handler {
         if (DBG) log("CDMA_SUBSCRIPTION: NID=" + nidStr);
     }
 
+    @UnsupportedAppUsage
     protected void updateOtaspState() {
         int otaspMode = getOtasp();
         int oldOtaspMode = mCurrentOtaspMode;
@@ -2311,6 +2356,7 @@ public class ServiceStateTracker extends Handler {
      * Query the carrier configuration to determine if there any network overrides
      * for roaming or not roaming for the current service state.
      */
+    @UnsupportedAppUsage
     protected void updateRoamingState() {
         if (mPhone.isPhoneTypeGsm()) {
             /**
@@ -2435,6 +2481,7 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    @UnsupportedAppUsage
     protected void updateSpnDisplay() {
         updateOperatorNameFromEri();
         // carrier config gets a priority over ERI
@@ -2806,10 +2853,12 @@ public class ServiceStateTracker extends Handler {
         loge(msg);
     }
 
+    @UnsupportedAppUsage
     protected final void log(String s) {
         Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + s);
     }
 
+    @UnsupportedAppUsage
     protected final void loge(String s) {
         Rlog.e(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + s);
     }
@@ -2818,6 +2867,7 @@ public class ServiceStateTracker extends Handler {
      * @return The current GPRS state. IN_SERVICE is the same as "attached"
      * and OUT_OF_SERVICE is the same as detached.
      */
+    @UnsupportedAppUsage
     public int getCurrentDataConnectionState() {
         return mSS.getDataRegState();
     }
@@ -2826,6 +2876,7 @@ public class ServiceStateTracker extends Handler {
      * @return true if phone is camping on a technology (eg UMTS)
      * that could support voice and data simultaneously.
      */
+    @UnsupportedAppUsage
     public boolean isConcurrentVoiceAndDataAllowed() {
         if (mSS.getCssIndicator() == 1) {
             // Checking the Concurrent Service Supported flag first for all phone types.
@@ -2877,6 +2928,7 @@ public class ServiceStateTracker extends Handler {
      * and start over again if the radio notifies us that some
      * event has changed
      */
+    @UnsupportedAppUsage
     public void pollState() {
         pollState(false);
     }
@@ -3416,6 +3468,7 @@ public class ServiceStateTracker extends Handler {
      *
      * @return true if provided sid/nid pair belongs to operator's home network.
      */
+    @UnsupportedAppUsage
     private boolean isInHomeSidNid(int sid, int nid) {
         // if SID/NID is not available, assume this is home network.
         if (isSidsAllZeros()) return true;
@@ -3438,6 +3491,7 @@ public class ServiceStateTracker extends Handler {
         return false;
     }
 
+    @UnsupportedAppUsage
     protected void setOperatorIdd(String operatorNumeric) {
         // Retrieve the current country information
         // with the MCC got from opeatorNumeric.
@@ -3452,11 +3506,13 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    @UnsupportedAppUsage
     private boolean isInvalidOperatorNumeric(String operatorNumeric) {
         return operatorNumeric == null || operatorNumeric.length() < 5 ||
                 operatorNumeric.startsWith(INVALID_MCC);
     }
 
+    @UnsupportedAppUsage
     private String fixUnknownMcc(String operatorNumeric, int sid) {
         if (sid <= 0) {
             // no cdma information is available, do nothing
@@ -3507,6 +3563,7 @@ public class ServiceStateTracker extends Handler {
      * @param voiceRegState i.e. CREG in GSM
      * @return false if device only register to voice but not gprs
      */
+    @UnsupportedAppUsage
     private boolean isGprsConsistent(int dataRegState, int voiceRegState) {
         return !((voiceRegState == ServiceState.STATE_IN_SERVICE) &&
                 (dataRegState != ServiceState.STATE_IN_SERVICE));
@@ -4576,6 +4633,7 @@ public class ServiceStateTracker extends Handler {
         return iccCardExist;
     }
 
+    @UnsupportedAppUsage
     public String getSystemProperty(String property, String defValue) {
         return TelephonyManager.getTelephonyProperty(mPhone.getPhoneId(), property, defValue);
     }
@@ -4836,6 +4894,7 @@ public class ServiceStateTracker extends Handler {
         mNitzState.dumpLogs(fd, ipw, args);
     }
 
+    @UnsupportedAppUsage
     public boolean isImsRegistered() {
         return mImsRegistered;
     }
@@ -4899,6 +4958,7 @@ public class ServiceStateTracker extends Handler {
      * Set both voice and data roaming type,
      * judging from the ISO country of SIM VS network.
      */
+    @UnsupportedAppUsage
     protected void setRoamingType(ServiceState currentServiceState) {
         final boolean isVoiceInService =
                 (currentServiceState.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
@@ -4989,6 +5049,7 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    @UnsupportedAppUsage
     private void setSignalStrengthDefaultValues() {
         mSignalStrength = new SignalStrength();
     }
@@ -5003,6 +5064,7 @@ public class ServiceStateTracker extends Handler {
         return numeric;
     }
 
+    @UnsupportedAppUsage
     protected int getPhoneId() {
         return mPhone.getPhoneId();
     }
@@ -5010,6 +5072,7 @@ public class ServiceStateTracker extends Handler {
     /* Reset Service state when IWLAN is enabled as polling in airplane mode
      * causes state to go to OUT_OF_SERVICE state instead of STATE_OFF
      */
+    @UnsupportedAppUsage
     protected void resetServiceStateInIwlanMode() {
         if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
             boolean resetIwlanRatVal = false;

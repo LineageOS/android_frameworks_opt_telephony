@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.Nullable;
+import android.annotation.UnsupportedAppUsage;
 import android.app.BroadcastOptions;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -263,6 +264,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /* Instance Variables */
+    @UnsupportedAppUsage
     public CommandsInterface mCi;
     protected int mVmCount = 0;
     private boolean mDnsCheckDisabled;
@@ -288,10 +290,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // Variable to cache the video capability. When RAT changes, we lose this info and are unable
     // to recover from the state. We cache it and notify listeners when they register.
     protected boolean mIsVideoCapable = false;
+    @UnsupportedAppUsage
     protected UiccController mUiccController = null;
+    @UnsupportedAppUsage
     protected final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
+    @UnsupportedAppUsage
     public SmsStorageMonitor mSmsStorageMonitor;
     public SmsUsageMonitor mSmsUsageMonitor;
+    @UnsupportedAppUsage
     protected AtomicReference<UiccCardApplication> mUiccApplication =
             new AtomicReference<UiccCardApplication>();
     TelephonyTester mTelephonyTester;
@@ -304,9 +310,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // Used for identify the carrier of current subscription
     protected CarrierResolver mCarrierResolver;
 
+    @UnsupportedAppUsage
     protected int mPhoneId;
 
     private boolean mImsServiceReady = false;
+    @UnsupportedAppUsage
     protected Phone mImsPhone = null;
 
     private final AtomicReference<RadioCapability> mRadioCapability =
@@ -343,6 +351,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     protected final RegistrantList mMmiCompleteRegistrants = new RegistrantList();
 
+    @UnsupportedAppUsage
     protected final RegistrantList mMmiRegistrants = new RegistrantList();
 
     protected final RegistrantList mUnknownConnectionRegistrants = new RegistrantList();
@@ -365,6 +374,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private Looper mLooper; /* to insure registrants are in correct thread*/
 
+    @UnsupportedAppUsage
     protected final Context mContext;
 
     /**
@@ -372,6 +382,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * state change notification. DefaultPhoneNotifier is
      * used here unless running we're inside a unit test.
      */
+    @UnsupportedAppUsage
     protected PhoneNotifier mNotifier;
 
     protected SimulatedRadioControl mSimulatedRadioControl;
@@ -387,6 +398,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *  outside the phone app process.
      *  @return The string name.
      */
+    @UnsupportedAppUsage
     public String getPhoneName() {
         return mName;
     }
@@ -398,6 +410,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Retrieves Nai for phones. Returns null if Nai is not set.
      */
+    @UnsupportedAppUsage
     public String getNai(){
          return null;
     }
@@ -449,6 +462,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Set a system property, unless we're in unit test mode
      */
     // CAF_MSIM TODO this need to be replated with TelephonyManager API ?
+    @UnsupportedAppUsage
     public String getSystemProperty(String property, String defValue) {
         if(getUnitTestMode()) {
             return null;
@@ -797,6 +811,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Gets the context for the phone, as set at initialization time.
      */
+    @UnsupportedAppUsage
     public Context getContext() {
         return mContext;
     }
@@ -833,6 +848,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * AsyncResult.userData will be set to the obj argument here.
      * The <em>h</em> parameter is held only by a weak reference.
      */
+    @UnsupportedAppUsage
     public void registerForPreciseCallStateChanged(Handler h, int what, Object obj) {
         checkCorrectThread(h);
 
@@ -843,6 +859,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregisters for voice call state change notifications.
      * Extraneous calls are tolerated silently.
      */
+    @UnsupportedAppUsage
     public void unregisterForPreciseCallStateChanged(Handler h) {
         mPreciseCallStateRegistrants.remove(h);
     }
@@ -928,6 +945,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Notifies when a previously untracked non-ringing/waiting connection has appeared.
      * This is likely due to some other entity (eg, SIM card application) initiating a call.
      */
+    @UnsupportedAppUsage
     public void registerForUnknownConnection(Handler h, int what, Object obj) {
         checkCorrectThread(h);
 
@@ -937,6 +955,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Unregisters for unknown connection notifications.
      */
+    @UnsupportedAppUsage
     public void unregisterForUnknownConnection(Handler h) {
         mUnknownConnectionRegistrants.remove(h);
     }
@@ -953,6 +972,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *  If Connection.isRinging() is true, then
      *   Connection.getCall() == Phone.getRingingCall()
      */
+    @UnsupportedAppUsage
     public void registerForNewRingingConnection(
             Handler h, int what, Object obj) {
         checkCorrectThread(h);
@@ -964,6 +984,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregisters for new ringing connection notification.
      * Extraneous calls are tolerated silently
      */
+    @UnsupportedAppUsage
     public void unregisterForNewRingingConnection(Handler h) {
         mNewRingingConnectionRegistrants.remove(h);
     }
@@ -1042,6 +1063,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *  AsyncResult.userObj = obj
      *  AsyncResult.result = a Connection. <p>
      */
+    @UnsupportedAppUsage
     public void registerForIncomingRing(
             Handler h, int what, Object obj) {
         checkCorrectThread(h);
@@ -1053,6 +1075,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregisters for ring notification.
      * Extraneous calls are tolerated silently
      */
+    @UnsupportedAppUsage
     public void unregisterForIncomingRing(Handler h) {
         mIncomingRingRegistrants.remove(h);
     }
@@ -1067,6 +1090,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *  <li>AsyncResult.result = a Connection object that is
      *  no longer connected.</li></ul>
      */
+    @UnsupportedAppUsage
     public void registerForDisconnect(Handler h, int what, Object obj) {
         checkCorrectThread(h);
 
@@ -1077,6 +1101,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregisters for voice disconnection notification.
      * Extraneous calls are tolerated silently
      */
+    @UnsupportedAppUsage
     public void unregisterForDisconnect(Handler h) {
         mDisconnectRegistrants.remove(h);
     }
@@ -1116,6 +1141,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * <code>obj.result</code> will be an "MmiCode" object.
      */
+    @UnsupportedAppUsage
     public void registerForMmiInitiate(Handler h, int what, Object obj) {
         checkCorrectThread(h);
 
@@ -1126,6 +1152,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregisters for new MMI initiate notification.
      * Extraneous calls are tolerated silently
      */
+    @UnsupportedAppUsage
     public void unregisterForMmiInitiate(Handler h) {
         mMmiRegistrants.remove(h);
     }
@@ -1138,6 +1165,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * <code>Message.obj</code> will contain an AsyncResult.
      * <code>obj.result</code> will be an "MmiCode" object
      */
+    @UnsupportedAppUsage
     public void registerForMmiComplete(Handler h, int what, Object obj) {
         checkCorrectThread(h);
 
@@ -1148,6 +1176,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregisters for MMI complete notification.
      * Extraneous calls are tolerated silently
      */
+    @UnsupportedAppUsage
     public void unregisterForMmiComplete(Handler h) {
         checkCorrectThread(h);
 
@@ -1160,6 +1189,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
+    @UnsupportedAppUsage
     public void registerForSimRecordsLoaded(Handler h, int what, Object obj) {
     }
 
@@ -1167,6 +1197,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregister for notifications for Sim records loaded
      * @param h Handler to be removed from the registrant list.
      */
+    @UnsupportedAppUsage
     public void unregisterForSimRecordsLoaded(Handler h) {
     }
 
@@ -1200,6 +1231,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @see #selectNetworkManually(OperatorInfo, boolean, android.os.Message)
      */
+    @UnsupportedAppUsage
     public void setNetworkSelectionModeAutomatic(Message response) {
         Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic, querying current mode");
         // we don't want to do this unecesarily - it acutally causes
@@ -1275,6 +1307,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @see #setNetworkSelectionModeAutomatic(Message)
      */
+    @UnsupportedAppUsage
     public void selectNetworkManually(OperatorInfo network, boolean persistSelection,
             Message response) {
         // wrap the response message in our own message along with
@@ -1443,6 +1476,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Message.obj will contain an AsyncResult.
      * AsyncResult.result will be a ServiceState instance
      */
+    @UnsupportedAppUsage
     public void registerForServiceStateChanged(
             Handler h, int what, Object obj) {
         mServiceStateRegistrants.add(h, what, obj);
@@ -1452,6 +1486,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregisters for ServiceStateChange notification.
      * Extraneous calls are tolerated silently
      */
+    @UnsupportedAppUsage
     public void unregisterForServiceStateChanged(Handler h) {
         mServiceStateRegistrants.remove(h);
     }
@@ -1465,6 +1500,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *  AsyncResult.result = boolean, true to start play ringback tone
      *                       and false to stop. <p>
      */
+    @UnsupportedAppUsage
     public void registerForRingbackTone(Handler h, int what, Object obj) {
         mCi.registerForRingbackTone(h, what, obj);
     }
@@ -1472,6 +1508,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Unregisters for ringback tone notification.
      */
+    @UnsupportedAppUsage
     public void unregisterForRingbackTone(Handler h) {
         mCi.unregisterForRingbackTone(h);
     }
@@ -1602,11 +1639,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * This registration point provides notification of finer-grained
      * changes.<p>
      */
+    @UnsupportedAppUsage
     public abstract PhoneConstants.State getState();
 
     /**
      * Retrieves the IccFileHandler of the Phone instance
      */
+    @UnsupportedAppUsage
     public IccFileHandler getIccFileHandler(){
         UiccCardApplication uiccApplication = mUiccApplication.get();
         IccFileHandler fh;
@@ -1640,6 +1679,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
     * Retrieves the ServiceStateTracker of the phone instance.
     */
+    @UnsupportedAppUsage
     public ServiceStateTracker getServiceStateTracker() {
         return null;
     }
@@ -1654,6 +1694,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
     * Get call tracker
     */
+    @UnsupportedAppUsage
     public CallTracker getCallTracker() {
         return null;
     }
@@ -1710,6 +1751,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Returns the ICC card interface for this phone, or null
      * if not applicable to underlying technology.
      */
+    @UnsupportedAppUsage
     public IccCard getIccCard() {
         return null;
         //throw new Exception("getIccCard Shouldn't be called from Phone");
@@ -1719,6 +1761,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Retrieves the serial number of the ICC, if applicable. Returns only the decimal digits before
      * the first hex digit in the ICC ID.
      */
+    @UnsupportedAppUsage
     public String getIccSerialNumber() {
         IccRecords r = mIccRecords.get();
         return (r != null) ? r.getIccId() : null;
@@ -1768,6 +1811,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * @return the current cell location if known
      */
+    @UnsupportedAppUsage
     public CellLocation getCellLocation() {
         return getServiceStateTracker().getCellLocation();
     }
@@ -1965,6 +2009,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param networkType one of  NT_*_TYPE
      * @param response is callback message
      */
+    @UnsupportedAppUsage
     public void setPreferredNetworkType(int networkType, Message response) {
         // Only set preferred network types to that which the modem supports
         int modemRaf = getRadioAccessFamily();
@@ -2009,6 +2054,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @param result Callback message contains the SMSC address.
      */
+    @UnsupportedAppUsage
     public void getSmscAddress(Message result) {
         mCi.getSmscAddress(result);
     }
@@ -2019,6 +2065,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param address new SMSC address
      * @param result Callback message is empty on completion
      */
+    @UnsupportedAppUsage
     public void setSmscAddress(String address, Message result) {
         mCi.setSmscAddress(address, result);
     }
@@ -2115,6 +2162,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @see #invokeOemRilRequestRaw(byte[], android.os.Message)
      * @deprecated OEM needs a vendor-extension hal and their apps should use that instead
      */
+    @UnsupportedAppUsage
     @Deprecated
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
         mCi.invokeOemRilRequestRaw(data, response);
@@ -2135,6 +2183,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @see #invokeOemRilRequestStrings(java.lang.String[], android.os.Message)
      * @deprecated OEM needs a vendor-extension hal and their apps should use that instead
      */
+    @UnsupportedAppUsage
     @Deprecated
     public void invokeOemRilRequestStrings(String[] strings, Message response) {
         mCi.invokeOemRilRequestStrings(strings, response);
@@ -2225,6 +2274,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
+    @UnsupportedAppUsage
     public void notifyOtaspChanged(int otaspMode) {
         mNotifier.notifyOtaspChanged(this, otaspMode);
     }
@@ -2300,6 +2350,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mIsPhoneInEcmState = isInEcm;
     }
 
+    @UnsupportedAppUsage
     private static int getVideoState(Call call) {
         int videoState = VideoProfile.STATE_AUDIO_ONLY;
         Connection conn = call.getEarliestConnection();
@@ -2349,6 +2400,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Return a numerical identifier for the phone radio interface.
      * @return PHONE_TYPE_XXX as defined above.
      */
+    @UnsupportedAppUsage
     public abstract int getPhoneType();
 
     /**
@@ -2553,6 +2605,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Only one post dial character handler may be set. <p>
      * Calling this method with "h" equal to null unsets this handler.<p>
      */
+    @UnsupportedAppUsage
     public void setOnPostDialCharacter(Handler h, int what, Object obj) {
         mPostDialHandler = new Registrant(h, what, obj);
     }
@@ -2566,6 +2619,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * the caller should use setOnECMModeExitResponse
      * to receive the emergency callback mode exit response
      */
+    @UnsupportedAppUsage
     public void exitEmergencyCallbackMode() {
     }
 
@@ -2605,6 +2659,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Returns true if OTA Service Provisioning needs to be performed.
      */
+    @UnsupportedAppUsage
     public boolean needsOtaServiceProvisioning() {
         return false;
     }
@@ -2641,6 +2696,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param what user-defined message code
      * @param obj placed in Message.obj
      */
+    @UnsupportedAppUsage
     public void registerForEcmTimerReset(Handler h, int what, Object obj) {
     }
 
@@ -2648,6 +2704,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Unregister for notification for Ecm timer reset
      * @param h Handler to be removed from the registrant list.
      */
+    @UnsupportedAppUsage
     public void unregisterForEcmTimerReset(Handler h) {
     }
 
@@ -2828,6 +2885,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param what User-defined message code.
      * @param obj User object.
      */
+    @UnsupportedAppUsage
     public void setOnEcbModeExitResponse(Handler h, int what, Object obj){
     }
 
@@ -2836,6 +2894,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @param h Handler to be removed from the registrant list.
      */
+    @UnsupportedAppUsage
     public void unsetOnEcbModeExitResponse(Handler h){
     }
 
@@ -2865,6 +2924,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @return The string array of APN types. Return null if no active APN types.
      */
+    @UnsupportedAppUsage
     @Nullable
     public String[] getActiveApnTypes() {
         if (mTransportManager != null) {
@@ -3063,6 +3123,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return true if this bit is set or EF_CSP data is unavailable,
      * false otherwise
      */
+    @UnsupportedAppUsage
     public boolean isCspPlmnEnabled() {
         return false;
     }
@@ -3071,6 +3132,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Return an interface to retrieve the ISIM records for IMS, if available.
      * @return the interface to retrieve the ISIM records, or null if not supported
      */
+    @UnsupportedAppUsage
     public IsimRecords getIsimRecords() {
         Rlog.e(LOG_TAG, "getIsimRecords() is only supported on LTE devices");
         return null;
@@ -3081,6 +3143,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * {@link #getLine1Number()}. For CDMA phones, {@link #getLine1Number()} returns
      * the MDN, so this method is provided to return the MSISDN on CDMA/LTE phones.
      */
+    @UnsupportedAppUsage
     public String getMsisdn() {
         return null;
     }
@@ -3097,6 +3160,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * exists at this interface -- use
      * {@link android.telephony.PhoneStateListener} instead.
      */
+    @UnsupportedAppUsage
     public PhoneConstants.DataState getDataConnectionState() {
         return getDataConnectionState(PhoneConstants.APN_TYPE_DEFAULT);
     }
@@ -3150,6 +3214,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Gets the Uicc card corresponding to this phone.
      * @return the UiccCard object corresponding to the phone ID.
      */
+    @UnsupportedAppUsage
     public UiccCard getUiccCard() {
         return mUiccController.getUiccCard(mPhoneId);
     }
@@ -3179,6 +3244,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Return an instance of a IMS phone
      */
+    @UnsupportedAppUsage
     public Phone getImsPhone() {
         return mImsPhone;
     }
@@ -3244,6 +3310,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Return if UT capability of ImsPhone is enabled or not
      */
+    @UnsupportedAppUsage
     public boolean isUtEnabled() {
         if (mImsPhone != null) {
             return mImsPhone.isUtEnabled();
@@ -3251,6 +3318,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return false;
     }
 
+    @UnsupportedAppUsage
     public void dispose() {
     }
 
@@ -3293,6 +3361,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /*
      * Returns the subscription id.
      */
+    @UnsupportedAppUsage
     public int getSubId() {
         if (SubscriptionController.getInstance() == null) {
             // TODO b/78359408 getInstance sometimes returns null in Treehugger tests, which causes
@@ -3307,6 +3376,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Returns the phone id.
      */
+    @UnsupportedAppUsage
     public int getPhoneId() {
         return mPhoneId;
     }
@@ -3407,6 +3477,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Get Wifi Calling Feature Availability
      */
+    @UnsupportedAppUsage
     public boolean isWifiCallingEnabled() {
         Phone imsPhone = mImsPhone;
         boolean isWifiCallingEnabled = false;
@@ -3434,6 +3505,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Get Volte Feature Availability
      */
+    @UnsupportedAppUsage
     public boolean isVolteEnabled() {
         Phone imsPhone = mImsPhone;
         boolean isVolteEnabled = false;
@@ -3636,6 +3708,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @return {@code true} if video calling is enabled, {@code false} otherwise.
      */
+    @UnsupportedAppUsage
     public boolean isVideoEnabled() {
         Phone imsPhone = mImsPhone;
         if (imsPhone != null) {
@@ -3753,6 +3826,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return mDataEnabledSettings;
     }
 
+    @UnsupportedAppUsage
     public IccSmsInterfaceManager getIccSmsInterfaceManager(){
         return null;
     }

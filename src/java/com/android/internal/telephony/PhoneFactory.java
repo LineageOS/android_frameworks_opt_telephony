@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.Nullable;
+import android.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -76,11 +77,15 @@ public class PhoneFactory {
     private static @Nullable EuiccController sEuiccController;
     private static @Nullable EuiccCardController sEuiccCardController;
 
+    @UnsupportedAppUsage
     static private CommandsInterface sCommandsInterface = null;
     static private SubscriptionInfoUpdater sSubInfoRecordUpdater = null;
 
+    @UnsupportedAppUsage
     static private boolean sMadeDefaults = false;
+    @UnsupportedAppUsage
     static private PhoneNotifier sPhoneNotifier;
+    @UnsupportedAppUsage
     static private Context sContext;
     static private PhoneConfigurationManager sPhoneConfigurationManager;
     static private PhoneSwitcher sPhoneSwitcher;
@@ -102,6 +107,7 @@ public class PhoneFactory {
      * FIXME replace this with some other way of making these
      * instances
      */
+    @UnsupportedAppUsage
     public static void makeDefaultPhone(Context context) {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
@@ -269,6 +275,7 @@ public class PhoneFactory {
         }
     }
 
+    @UnsupportedAppUsage
     public static Phone getDefaultPhone() {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
@@ -278,6 +285,7 @@ public class PhoneFactory {
         }
     }
 
+    @UnsupportedAppUsage
     public static Phone getPhone(int phoneId) {
         Phone phone;
         String dbgInfo = "";
@@ -303,6 +311,7 @@ public class PhoneFactory {
         }
     }
 
+    @UnsupportedAppUsage
     public static Phone[] getPhones() {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
@@ -336,6 +345,7 @@ public class PhoneFactory {
      * @return the preferred network mode that should be set.
      */
     // TODO: Fix when we "properly" have TelephonyDevController/SubscriptionController ..
+    @UnsupportedAppUsage
     public static int calculatePreferredNetworkType(Context context, int phoneSubId) {
         int networkType = android.provider.Settings.Global.getInt(context.getContentResolver(),
                 android.provider.Settings.Global.PREFERRED_NETWORK_MODE + phoneSubId,
@@ -359,6 +369,7 @@ public class PhoneFactory {
     }
 
     /* Gets the default subscription */
+    @UnsupportedAppUsage
     public static int getDefaultSubscription() {
         return SubscriptionController.getInstance().getDefaultSubId();
     }

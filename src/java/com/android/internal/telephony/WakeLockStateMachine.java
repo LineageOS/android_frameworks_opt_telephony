@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -50,8 +51,10 @@ public abstract class WakeLockStateMachine extends StateMachine {
     /** Release wakelock after a short timeout when returning to idle state. */
     static final int EVENT_RELEASE_WAKE_LOCK = 3;
 
+    @UnsupportedAppUsage
     protected Phone mPhone;
 
+    @UnsupportedAppUsage
     protected Context mContext;
 
     protected AtomicInteger mReceiverCount = new AtomicInteger(0);
@@ -60,6 +63,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
     private static final int WAKE_LOCK_TIMEOUT = 3000;
 
     private final DefaultState mDefaultState = new DefaultState();
+    @UnsupportedAppUsage
     private final IdleState mIdleState = new IdleState();
     private final WaitingState mWaitingState = new WaitingState();
 
@@ -223,6 +227,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
      * Log with debug level.
      * @param s the string to log
      */
+    @UnsupportedAppUsage
     @Override
     protected void log(String s) {
         Rlog.d(getName(), s);
