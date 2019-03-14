@@ -366,6 +366,9 @@ public class EmergencyNumberTracker extends Handler {
      * @return {@code true} if it is; {@code false} otherwise.
      */
     public boolean isEmergencyNumber(String number, boolean exactMatch) {
+        if (number == null) {
+            return false;
+        }
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
             for (EmergencyNumber num : mEmergencyNumberList) {
                 // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
