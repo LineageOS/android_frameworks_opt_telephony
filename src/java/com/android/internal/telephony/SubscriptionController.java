@@ -546,6 +546,20 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Get a single subscription info record for a given subscription.
+     *
+     * @param subId the subId to query.
+     *
+     * @hide
+     */
+    public SubscriptionInfo getSubscriptionInfo(int subId) {
+        List<SubscriptionInfo> subInfoList = getSubInfo(
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+        if (subInfoList == null || subInfoList.isEmpty()) return null;
+        return subInfoList.get(0);
+    }
+
+    /**
      * Get the active SubscriptionInfo associated with the iccId
      * @param iccId the IccId of SIM card
      * @param callingPackage The package making the IPC.
