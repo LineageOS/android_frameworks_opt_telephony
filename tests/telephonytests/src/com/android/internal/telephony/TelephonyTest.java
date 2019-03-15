@@ -45,7 +45,7 @@ import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -144,7 +144,7 @@ public abstract class TelephonyTest {
     @Mock
     protected ServiceState mServiceState;
     @Mock
-    protected NetworkRegistrationState mNetworkRegistrationState;
+    protected NetworkRegistrationInfo mNetworkRegistrationInfo;
     @Mock
     protected SimulatedCommandsVerifier mSimulatedCommandsVerifier;
     @Mock
@@ -496,7 +496,7 @@ public abstract class TelephonyTest {
                 .getCurrentTransport(anyInt());
         doReturn(true).when(mDataEnabledSettings).isDataEnabled();
         doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
-        doReturn(mNetworkRegistrationState).when(mServiceState).getNetworkRegistrationState(
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());
         doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
 
