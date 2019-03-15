@@ -29,8 +29,8 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -121,7 +121,7 @@ public class TransportManagerTest extends TelephonyTest {
         AsyncResult ar = (AsyncResult) message.obj;
         HandoverParams params = (HandoverParams) ar.result;
         assertEquals(ApnSetting.TYPE_IMS, params.apnType);
-        assertEquals(TransportType.WLAN, params.targetTransport);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, params.targetTransport);
 
         // Now change the order of qualified networks by putting UTRAN first
         networkList = new ArrayList<>(Arrays.asList(
@@ -142,7 +142,7 @@ public class TransportManagerTest extends TelephonyTest {
         ar = (AsyncResult) message.obj;
         params = (HandoverParams) ar.result;
         assertEquals(ApnSetting.TYPE_IMS, params.apnType);
-        assertEquals(TransportType.WWAN, params.targetTransport);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, params.targetTransport);
     }
 
     @Test
