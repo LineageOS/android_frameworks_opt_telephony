@@ -2163,19 +2163,6 @@ public class SubscriptionController extends ISub.Stub {
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
-    @Override
-    public void clearDefaultsForInactiveSubIds() {
-        enforceModifyPhoneState("clearDefaultsForInactiveSubIds");
-
-        // Now that all security checks passes, perform the operation as ourselves.
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            MultiSimSettingController.getInstance().updateDefaults();
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
-    }
-
     /**
      * Whether a subscription is opportunistic or not.
      */
