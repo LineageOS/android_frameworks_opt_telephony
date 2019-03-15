@@ -678,6 +678,7 @@ public abstract class SMSDispatcher extends Handler {
                 deliveryPendingList.add(tracker);
             }
             tracker.onSent(mContext);
+            mPhone.notifySmsSent(tracker.mDestAddress);
         } else {
             if (DBG) Rlog.d(TAG, "SMS send failed");
 
