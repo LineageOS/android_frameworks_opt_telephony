@@ -329,6 +329,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         PENDING_RESUME_FOREGROUND_AFTER_FAILURE,
         // Pending holding a call to dial another outgoing call
         HOLDING_TO_DIAL_OUTGOING,
+        // Pending ending a call to dial another outgoing call (possibly emergency call)
+        ENDING_TO_DIAL_OUTGOING,
     }
 
     //***** Instance Variables
@@ -835,7 +837,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 hangupBeforeDial = true;
                 /* hangup active call and let onCallTerminated() to dial
                    the pending MO Call */
-                log("dial, hangingup active call");
+                mHoldSwitchingState = HoldSwapState.ENDING_TO_DIAL_OUTGOING;
                 mForegroundCall.hangup();
             } else {
                 holdActiveCallForPendingMo();
@@ -2505,17 +2507,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     logHoldSwapState("onCallTerminated hold to answer case");
                     sendEmptyMessage(EVENT_RESUME_NOW_FOREGROUND_CALL);
                 }
-            } else if (mHoldSwitchingState == HoldSwapState.HOLDING_TO_DIAL_OUTGOING) {
-                // The call that we were gonna hold might've gotten terminated. If that's the case,
-                // dial mPendingMo if present.
+            } else if (mHoldSwitchingState == HoldSwapState.HOLDING_TO_DIAL_OUTGOING ||
+                    mHoldSwitchingState == HoldSwapState.ENDING_TO_DIAL_OUTGOING) {
+                // The call that we were gonna hold or end might've gotten terminated.
+                // If that's the case, dial mPendingMo if present.
                 if (mPendingMO == null
                         || mPendingMO.getDisconnectCause() != DisconnectCause.NOT_DISCONNECTED) {
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
-                    logHoldSwapState("onCallTerminated hold to dial but no pendingMo");
+                    logHoldSwapState("onCallTerminated hold/end to dial but no pendingMo");
                 } else if (imsCall != mPendingMO.getImsCall()) {
                     sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
-                    logHoldSwapState("onCallTerminated hold to dial, dial pendingMo");
+                    logHoldSwapState("onCallTerminated hold/end to dial, dial pendingMo");
                 }
             }
 
