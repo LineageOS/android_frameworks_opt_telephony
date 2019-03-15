@@ -27,7 +27,7 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.DataFailCause;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
@@ -192,7 +192,7 @@ public class DcController extends StateMachine {
         @Override
         public void enter() {
             if (mPhone != null && mDataServiceManager.getTransportType()
-                    == TransportType.WWAN) {
+                    == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.registerForRilConnected(getHandler(),
                         DataConnection.EVENT_RIL_CONNECTED, null);
             }
@@ -208,7 +208,7 @@ public class DcController extends StateMachine {
         @Override
         public void exit() {
             if (mPhone != null & mDataServiceManager.getTransportType()
-                    == TransportType.WWAN) {
+                    == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.unregisterForRilConnected(getHandler());
             }
             mDataServiceManager.unregisterForDataCallListChanged(getHandler());

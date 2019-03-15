@@ -57,7 +57,7 @@ import android.provider.Settings;
 import android.provider.Telephony;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
-import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ImsiEncryptionInfo;
@@ -640,8 +640,8 @@ public class GsmCdmaPhone extends Phone {
         DataActivityState ret = DataActivityState.NONE;
 
         if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE
-                && getDcTracker(TransportType.WWAN) != null) {
-            switch (getDcTracker(TransportType.WWAN).getActivity()) {
+                && getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN) != null) {
+            switch (getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).getActivity()) {
                 case DATAIN:
                     ret = DataActivityState.DATAIN;
                 break;
@@ -2145,16 +2145,17 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public boolean getDataRoamingEnabled() {
-        if (getDcTracker(TransportType.WWAN) != null) {
-            return getDcTracker(TransportType.WWAN).getDataRoamingEnabled();
+        if (getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN) != null) {
+            return getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).getDataRoamingEnabled();
         }
         return false;
     }
 
     @Override
     public void setDataRoamingEnabled(boolean enable) {
-        if (getDcTracker(TransportType.WWAN) != null) {
-            getDcTracker(TransportType.WWAN).setDataRoamingEnabledByUser(enable);
+        if (getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN) != null) {
+            getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .setDataRoamingEnabledByUser(enable);
         }
     }
 

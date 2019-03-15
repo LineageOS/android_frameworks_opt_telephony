@@ -52,8 +52,8 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.data.ApnSetting;
@@ -254,7 +254,8 @@ public class DataConnectionTest extends TelephonyTest {
         public void onLooperPrepared() {
             Handler h = new Handler();
 
-            DataServiceManager manager = new DataServiceManager(mPhone, TransportType.WWAN, "");
+            DataServiceManager manager = new DataServiceManager(mPhone,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN, "");
             mDcc = DcController.makeDcc(mPhone, mDcTracker, manager, h, "");
             mDcc.start();
             mDc = DataConnection.makeDataConnection(mPhone, 0, mDcTracker, manager,
@@ -728,7 +729,7 @@ public class DataConnectionTest extends TelephonyTest {
         waitForMs(200);
 
         DataServiceManager mockDsm = mock(DataServiceManager.class);
-        doReturn(TransportType.WLAN).when(mockDsm).getTransportType();
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mockDsm).getTransportType();
         replaceInstance(DataConnection.class, "mDataServiceManager", mDc, mockDsm);
 
         final int sessionHandle = 0xF00;
