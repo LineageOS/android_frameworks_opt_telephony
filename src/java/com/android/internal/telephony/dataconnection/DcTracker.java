@@ -65,6 +65,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.provider.Telephony;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
@@ -667,7 +668,7 @@ public class DcTracker extends Handler {
     private final Map<Integer, List<Message>> mRequestNetworkCompletionMsgs = new HashMap<>();
 
     //***** Constructor
-    public DcTracker(Phone phone, int transportType) {
+    public DcTracker(Phone phone, @TransportType int transportType) {
         super();
         mPhone = phone;
         if (DBG) log("DCT.constructor");
@@ -675,7 +676,8 @@ public class DcTracker extends Handler {
                 .createForSubscriptionId(phone.getSubId());
         // The 'C' in tag indicates cellular, and 'I' indicates IWLAN. This is to distinguish
         // between two DcTrackers, one for each.
-        String tagSuffix = "-" + ((transportType == TransportType.WWAN) ? "C" : "I");
+        String tagSuffix = "-" + ((transportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                ? "C" : "I");
         if (mTelephonyManager.getPhoneCount() > 1) {
             tagSuffix += "-" + mPhone.getPhoneId();
         }
@@ -786,7 +788,7 @@ public class DcTracker extends Handler {
     }
 
     private void registerForAllEvents() {
-        if (mTransportType == TransportType.WWAN) {
+        if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
             mPhone.mCi.registerForAvailable(this, DctConstants.EVENT_RADIO_AVAILABLE, null);
             mPhone.mCi.registerForOffOrNotAvailable(this,
                     DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
@@ -842,7 +844,7 @@ public class DcTracker extends Handler {
 
     private void unregisterForAllEvents() {
          //Unregister for all events
-        if (mTransportType == TransportType.WWAN) {
+        if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
             mPhone.mCi.unregisterForAvailable(this);
             mPhone.mCi.unregisterForOffOrNotAvailable(this);
             mPhone.mCi.unregisterForPcoData(this);
@@ -2295,7 +2297,8 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void sendRequestNetworkCompleteMsg(Message message, boolean success, int transport,
+    private void sendRequestNetworkCompleteMsg(Message message, boolean success,
+                                               @TransportType int transport,
                                                @RequestNetworkType int requestType) {
         if (message == null) return;
 
@@ -2948,7 +2951,7 @@ public class DcTracker extends Handler {
                 if (DBG) log("Skip data stall recovery on network status change with in threshold");
                 return;
             }
-            if (mTransportType != TransportType.WWAN) {
+            if (mTransportType != AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 if (DBG) log("Skip data stall recovery on non WWAN");
                 return;
             }

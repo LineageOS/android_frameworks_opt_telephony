@@ -44,7 +44,7 @@ import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
 import android.provider.Settings;
-import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkRegistrationState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -489,9 +489,11 @@ public abstract class TelephonyTest {
         mSST.mSS = mServiceState;
         mSST.mRestrictedState = mRestrictedState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
-        doReturn(new int[]{TransportType.WWAN, TransportType.WLAN})
+        doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN})
                 .when(mTransportManager).getAvailableTransports();
-        doReturn(TransportType.WWAN).when(mTransportManager).getCurrentTransport(anyInt());
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mTransportManager)
+                .getCurrentTransport(anyInt());
         doReturn(true).when(mDataEnabledSettings).isDataEnabled();
         doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
         doReturn(mNetworkRegistrationState).when(mServiceState).getNetworkRegistrationState(

@@ -85,9 +85,9 @@ public class ImsMmTelManagerTests extends TelephonyTest {
         IImsRegistrationCallback cbBinder = callbackCaptor.getValue();
         // Ensure the transport types are correct
         cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
-        assertEquals(AccessNetworkConstants.TransportType.WWAN, cb.mRegResult);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, cb.mRegResult);
         cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
-        assertEquals(AccessNetworkConstants.TransportType.WLAN, cb.mRegResult);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, cb.mRegResult);
         cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
         assertEquals(-1, cb.mRegResult);
         // Wacky value

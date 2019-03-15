@@ -24,8 +24,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
@@ -97,12 +97,18 @@ public class TransportManager extends Handler {
 
     static {
         ACCESS_NETWORK_TRANSPORT_TYPE_MAP = new HashMap<>();
-        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.UNKNOWN, TransportType.WWAN);
-        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.GERAN, TransportType.WWAN);
-        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.UTRAN, TransportType.WWAN);
-        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.EUTRAN, TransportType.WWAN);
-        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.CDMA2000, TransportType.WWAN);
-        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.IWLAN, TransportType.WLAN);
+        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.UNKNOWN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.GERAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.UTRAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.EUTRAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.CDMA2000,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        ACCESS_NETWORK_TRANSPORT_TYPE_MAP.put(AccessNetworkType.IWLAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
     }
 
     private static final int EVENT_QUALIFIED_NETWORKS_CHANGED = 1;
@@ -185,13 +191,14 @@ public class TransportManager extends Handler {
             log("operates in legacy mode.");
             // For legacy mode, WWAN is the only transport to handle all data connections, even
             // the IWLAN ones.
-            mAvailableTransports = new int[]{TransportType.WWAN};
+            mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN};
         } else {
             log("operates in AP-assisted mode.");
             mAccessNetworksManager = new AccessNetworksManager(phone);
             mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
                     EVENT_QUALIFIED_NETWORKS_CHANGED);
-            mAvailableTransports = new int[]{TransportType.WWAN, TransportType.WLAN};
+            mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WLAN};
         }
     }
 
@@ -265,7 +272,7 @@ public class TransportManager extends Handler {
                             networks.qualifiedNetworks[0]);
                     log("Handover needed for APN type: "
                             + ApnSetting.getApnTypeString(networks.apnType) + ", target transport: "
-                            + TransportType.toString(targetTransport));
+                            + AccessNetworkConstants.transportTypeToString(targetTransport));
                     mHandoverNeededEventRegistrants.notifyResult(
                             new HandoverParams(networks.apnType, targetTransport));
 
@@ -275,7 +282,7 @@ public class TransportManager extends Handler {
                     log("Handover not needed for APN type: "
                             + ApnSetting.getApnTypeString(networks.apnType));
                     mCurrentAvailableNetworks.put(networks.apnType, networks.qualifiedNetworks);
-                    int transport = TransportType.WWAN;
+                    int transport = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
                     if (!ArrayUtils.isEmpty(networks.qualifiedNetworks)
                             && ACCESS_NETWORK_TRANSPORT_TYPE_MAP.containsKey(
                                     networks.qualifiedNetworks[0])) {
@@ -324,12 +331,12 @@ public class TransportManager extends Handler {
     public int getCurrentTransport(@ApnType int apnType) {
         // In legacy mode, always route to cellular.
         if (isInLegacyMode()) {
-            return TransportType.WWAN;
+            return AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
         }
 
         // If we can't find the corresponding transport, always route to cellular.
         return mCurrentTransports.get(apnType) == null
-                ? TransportType.WWAN : mCurrentTransports.get(apnType);
+                ? AccessNetworkConstants.TRANSPORT_TYPE_WWAN : mCurrentTransports.get(apnType);
     }
 
     /**
@@ -365,7 +372,7 @@ public class TransportManager extends Handler {
         pw.println("TransportManager:");
         pw.increaseIndent();
         pw.println("mAvailableTransports=[" + Arrays.stream(mAvailableTransports)
-                .mapToObj(type -> TransportType.toString(type))
+                .mapToObj(type -> AccessNetworkConstants.transportTypeToString(type))
                 .collect(Collectors.joining(",")) + "]");
         pw.println("mCurrentAvailableNetworks=" + mCurrentAvailableNetworks);
         pw.println("mCurrentTransports=" + mCurrentTransports);
