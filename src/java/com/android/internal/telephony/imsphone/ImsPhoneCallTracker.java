@@ -2461,6 +2461,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                     // Leave mHoldSwitchingState as is for now -- we'll reset it
                     // in onCallTerminated, which will also dial the outgoing emergency call.
+                } else if (mRingingCall.getState() == ImsPhoneCall.State.WAITING
+                        && mHoldSwitchingState == HoldSwapState.HOLDING_TO_ANSWER_INCOMING) {
+                    // If we issued a hold request in order to answer an incoming call, we need
+                    // to tell Telecom that we can't actually answer the incoming call.
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                    mForegroundCall.switchWith(mBackgroundCall);
+                    logHoldSwapState("onCallHoldFailed unable to answer waiting call");
                 } else if (bgState == ImsPhoneCall.State.ACTIVE) {
                     mForegroundCall.switchWith(mBackgroundCall);
 
@@ -2472,12 +2479,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         mCallExpectedToResume = null;
                     }
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
-                } else if (mRingingCall.getState() == ImsPhoneCall.State.WAITING
-                        && mHoldSwitchingState == HoldSwapState.HOLDING_TO_ANSWER_INCOMING) {
-                    // If we issued a hold request in order to answer an incoming call, we need
-                    // to tell Telecom that we can't actually answer the incoming call.
-                    mHoldSwitchingState = HoldSwapState.INACTIVE;
-                    logHoldSwapState("onCallHoldFailed unable to answer waiting call");
                 }
                 ImsPhoneConnection conn = findConnection(imsCall);
                 if (conn != null) {
