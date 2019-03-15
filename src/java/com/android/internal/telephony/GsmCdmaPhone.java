@@ -1700,7 +1700,9 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void setCarrierTestOverride(String mccmnc, String imsi, String iccid, String gid1,
-            String gid2, String pnn, String spn) {
+            String gid2, String pnn, String spn, String carrierPrivilegeRules, String apn) {
+        mCarrierResolver.setTestOverrideApn(apn);
+        mCarrierResolver.setTestOverrideCarrierPriviledgeRule(carrierPrivilegeRules);
         IccRecords r = null;
         if (isPhoneTypeGsm()) {
             r = mIccRecords.get();

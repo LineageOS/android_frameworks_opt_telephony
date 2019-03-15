@@ -3929,7 +3929,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void setCarrierTestOverride(String mccmnc, String imsi, String iccid, String gid1,
-            String gid2, String pnn, String spn) {
+            String gid2, String pnn, String spn, String carrierPrivilegeRules, String apn) {
     }
 
     /**
