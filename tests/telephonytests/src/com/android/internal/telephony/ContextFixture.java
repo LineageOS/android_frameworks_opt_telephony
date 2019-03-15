@@ -508,6 +508,9 @@ public class ContextFixture implements TestFixture<Context> {
         public Context getApplicationContext() {
             return null;
         }
+
+        @Override
+        public void startActivity(Intent intent) {}
     }
 
     private final Multimap<String, ComponentName> mComponentNamesByAction =
