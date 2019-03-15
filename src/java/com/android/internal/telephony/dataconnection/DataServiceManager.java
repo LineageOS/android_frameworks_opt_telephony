@@ -16,9 +16,6 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import static android.telephony.AccessNetworkConstants.TransportType.WLAN;
-import static android.telephony.AccessNetworkConstants.TransportType.WWAN;
-
 import android.annotation.NonNull;
 import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
@@ -40,6 +37,8 @@ import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.data.DataCallResponse;
@@ -140,7 +139,7 @@ public class DataServiceManager extends Handler {
     private void revokePermissionsFromUnusedDataServices() {
         // Except the current data services from having their permissions removed.
         Set<String> dataServices = getAllDataServicePackageNames();
-        for (int transportType : new int[] {WWAN, WLAN}) {
+        for (int transportType : mPhone.getTransportManager().getAvailableTransports()) {
             dataServices.remove(getDataServicePackageName(transportType));
         }
 
@@ -249,11 +248,10 @@ public class DataServiceManager extends Handler {
      * Constructor
      *
      * @param phone The phone object
-     * @param transportType The transport type. Must be a
-     *        {@link AccessNetworkConstants.TransportType}.
+     * @param transportType The transport type
      * @param tagSuffix Logging tag suffix
      */
-    public DataServiceManager(Phone phone, int transportType, String tagSuffix) {
+    public DataServiceManager(Phone phone, @TransportType int transportType, String tagSuffix) {
         mPhone = phone;
         mTag = "DSM" + tagSuffix;
         mTransportType = transportType;
@@ -364,28 +362,28 @@ public class DataServiceManager extends Handler {
      * packages; we need to exclude data packages for all transport types, so we need to
      * to be able to query by transport type.
      *
-     * @param transportType either WWAN or WLAN
+     * @param transportType The transport type
      * @return package name of the data service package for the specified transportType.
      */
-    private String getDataServicePackageName(int transportType) {
+    private String getDataServicePackageName(@TransportType int transportType) {
         String packageName;
         int resourceId;
         String carrierConfig;
 
         switch (transportType) {
-            case WWAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
                 resourceId = com.android.internal.R.string.config_wwan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WWAN_PACKAGE_OVERRIDE_STRING;
                 break;
-            case WLAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
                 resourceId = com.android.internal.R.string.config_wlan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING;
                 break;
             default:
                 throw new IllegalStateException("Transport type not WWAN or WLAN. type="
-                        + mTransportType);
+                        + AccessNetworkConstants.transportTypeToString(mTransportType));
         }
 
         // Read package name from resource overlay
@@ -637,7 +635,7 @@ public class DataServiceManager extends Handler {
     }
 
     /**
-     * Get the transport type. Must be a {@link AccessNetworkConstants.TransportType}.
+     * Get the transport type. Must be a {@link TransportType}.
      *
      * @return
      */

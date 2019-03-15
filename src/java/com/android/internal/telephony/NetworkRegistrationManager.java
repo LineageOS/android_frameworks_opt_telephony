@@ -30,6 +30,7 @@ import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.INetworkService;
@@ -85,11 +86,12 @@ public class NetworkRegistrationManager extends Handler {
         }
     };
 
-    public NetworkRegistrationManager(int transportType, Phone phone) {
+    public NetworkRegistrationManager(@TransportType int transportType, Phone phone) {
         mTransportType = transportType;
         mPhone = phone;
 
-        String tagSuffix = "-" + ((transportType == TransportType.WWAN) ? "C" : "I");
+        String tagSuffix = "-" + ((transportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                ? "C" : "I");
         if (TelephonyManager.getDefault().getPhoneCount() > 1) {
             tagSuffix += "-" + mPhone.getPhoneId();
         }
@@ -181,7 +183,8 @@ public class NetworkRegistrationManager extends Handler {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             logd("service " + name + " for transport "
-                    + TransportType.toString(mTransportType) + " is now connected.");
+                    + AccessNetworkConstants.transportTypeToString(mTransportType)
+                    + " is now connected.");
             mINetworkService = INetworkService.Stub.asInterface(service);
             mDeathRecipient = new RegManagerDeathRecipient(name);
             try {
@@ -199,7 +202,8 @@ public class NetworkRegistrationManager extends Handler {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             logd("service " + name + " for transport "
-                    + TransportType.toString(mTransportType) + " is now disconnected.");
+                    + AccessNetworkConstants.transportTypeToString(mTransportType)
+                    + " is now disconnected.");
             mTargetBindingPackageName = null;
             if (mINetworkService != null) {
                 mINetworkService.asBinder().unlinkToDeath(mDeathRecipient, 0);
@@ -260,7 +264,7 @@ public class NetworkRegistrationManager extends Handler {
             // We bind this as a foreground service because it is operating directly on the SIM,
             // and we do not want it subjected to power-savings restrictions while doing so.
             logd("Trying to bind " + getPackageName() + " for transport "
-                    + TransportType.toString(mTransportType));
+                    + AccessNetworkConstants.transportTypeToString(mTransportType));
             mServiceConnection = new NetworkServiceConnection();
             if (!mPhone.getContext().bindService(intent, mServiceConnection,
                     Context.BIND_AUTO_CREATE)) {
@@ -279,12 +283,12 @@ public class NetworkRegistrationManager extends Handler {
         String carrierConfig;
 
         switch (mTransportType) {
-            case TransportType.WWAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
                 resourceId = com.android.internal.R.string.config_wwan_network_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_NETWORK_SERVICE_WWAN_PACKAGE_OVERRIDE_STRING;
                 break;
-            case TransportType.WLAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
                 resourceId = com.android.internal.R.string.config_wlan_network_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_NETWORK_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING;
