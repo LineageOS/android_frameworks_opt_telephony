@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -43,8 +44,11 @@ public class RILRequest {
     private static final int MAX_POOL_SIZE = 4;
 
     //***** Instance Variables
+    @UnsupportedAppUsage
     int mSerial;
+    @UnsupportedAppUsage
     int mRequest;
+    @UnsupportedAppUsage
     Message mResult;
     RILRequest mNext;
     int mWakeLockType;
@@ -72,6 +76,7 @@ public class RILRequest {
      * @param result sent when operation completes
      * @return a RILRequest instance from the pool.
      */
+    @UnsupportedAppUsage
     private static RILRequest obtain(int request, Message result) {
         RILRequest rr = null;
 
@@ -154,6 +159,7 @@ public class RILRequest {
      *
      * Note: This should only be called once per use.
      */
+    @UnsupportedAppUsage
     void release() {
         synchronized (sPoolSync) {
             if (sPoolSize < MAX_POOL_SIZE) {
@@ -181,6 +187,7 @@ public class RILRequest {
         sNextSerial.set(sRandom.nextInt(Integer.MAX_VALUE));
     }
 
+    @UnsupportedAppUsage
     String serialString() {
         //Cheesy way to do %04d
         StringBuilder sb = new StringBuilder(8);
@@ -201,6 +208,7 @@ public class RILRequest {
         return sb.toString();
     }
 
+    @UnsupportedAppUsage
     void onError(int error, Object ret) {
         CommandException ex;
 

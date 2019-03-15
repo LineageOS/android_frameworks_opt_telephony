@@ -21,6 +21,7 @@ package com.android.internal.telephony;
 import static com.android.internal.util.DumpUtils.checkDumpPermission;
 
 import android.annotation.Nullable;
+import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityThread;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -63,6 +64,7 @@ public class UiccSmsController extends ISmsImplBase {
         return phone;
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean updateMessageOnIccEfForSubscriber(int subId, String callingPackage, int index,
             int status, byte[] pdu) {
@@ -76,6 +78,7 @@ public class UiccSmsController extends ISmsImplBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean copyMessageToIccEfForSubscriber(int subId, String callingPackage, int status,
             byte[] pdu, byte[] smsc) {
@@ -89,6 +92,7 @@ public class UiccSmsController extends ISmsImplBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public List<SmsRawData> getAllMessagesFromIccEfForSubscriber(int subId, String callingPackage) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
@@ -101,6 +105,7 @@ public class UiccSmsController extends ISmsImplBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public void sendDataForSubscriber(int subId, String callingPackage, String destAddr,
             String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
@@ -210,12 +215,14 @@ public class UiccSmsController extends ISmsImplBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean enableCellBroadcastForSubscriber(int subId, int messageIdentifier, int ranType) {
         return enableCellBroadcastRangeForSubscriber(subId, messageIdentifier, messageIdentifier,
                 ranType);
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean enableCellBroadcastRangeForSubscriber(int subId, int startMessageId,
             int endMessageId, int ranType) {
@@ -229,6 +236,7 @@ public class UiccSmsController extends ISmsImplBase {
         return false;
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean disableCellBroadcastForSubscriber(int subId,
             int messageIdentifier, int ranType) {
@@ -236,6 +244,7 @@ public class UiccSmsController extends ISmsImplBase {
                 ranType);
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean disableCellBroadcastRangeForSubscriber(int subId, int startMessageId,
             int endMessageId, int ranType) {
@@ -281,6 +290,7 @@ public class UiccSmsController extends ISmsImplBase {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public boolean isImsSmsSupportedForSubscriber(int subId) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
@@ -325,6 +335,7 @@ public class UiccSmsController extends ISmsImplBase {
         return false;
     }
 
+    @UnsupportedAppUsage
     @Override
     public String getImsSmsFormatForSubscriber(int subId) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
@@ -353,6 +364,7 @@ public class UiccSmsController extends ISmsImplBase {
      * Get User preferred SMS subscription
      * @return User preferred SMS subscription
      */
+    @UnsupportedAppUsage
     @Override
     public int getPreferredSmsSubscription() {
         return SubscriptionController.getInstance().getDefaultSmsSubId();
@@ -434,6 +446,7 @@ public class UiccSmsController extends ISmsImplBase {
                 true /* persistMessageForNonDefaultSmsApp */);
     }
 
+    @UnsupportedAppUsage
     private void sendErrorInPendingIntent(@Nullable PendingIntent intent, int errorCode) {
         if (intent != null) {
             try {
@@ -443,6 +456,7 @@ public class UiccSmsController extends ISmsImplBase {
         }
     }
 
+    @UnsupportedAppUsage
     private void sendErrorInPendingIntents(List<PendingIntent> intents, int errorCode) {
         if (intents == null) {
             return;
@@ -457,6 +471,7 @@ public class UiccSmsController extends ISmsImplBase {
      * Get sms interface manager object based on subscription.
      * @return ICC SMS manager
      */
+    @UnsupportedAppUsage
     private @Nullable IccSmsInterfaceManager getIccSmsInterfaceManager(int subId) {
         return getPhone(subId).getIccSmsInterfaceManager();
     }

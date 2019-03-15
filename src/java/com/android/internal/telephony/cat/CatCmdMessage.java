@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
+import android.annotation.UnsupportedAppUsage;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -26,12 +27,17 @@ import android.os.Parcelable;
  */
 public class CatCmdMessage implements Parcelable {
     // members
+    @UnsupportedAppUsage
     CommandDetails mCmdDet;
+    @UnsupportedAppUsage
     private TextMessage mTextMsg;
+    @UnsupportedAppUsage
     private Menu mMenu;
+    @UnsupportedAppUsage
     private Input mInput;
     private BrowserSettings mBrowserSettings = null;
     private ToneSettings mToneSettings = null;
+    @UnsupportedAppUsage
     private CallSettings mCallSettings = null;
     private SetupEventListSettings mSetupEventListSettings = null;
     private boolean mLoadIconFailed = false;
@@ -48,11 +54,14 @@ public class CatCmdMessage implements Parcelable {
      * Container for Call Setup command settings.
      */
     public class CallSettings {
+        @UnsupportedAppUsage
         public TextMessage confirmMsg;
+        @UnsupportedAppUsage
         public TextMessage callMsg;
     }
 
     public class SetupEventListSettings {
+        @UnsupportedAppUsage
         public int[] eventList;
     }
 
@@ -206,6 +215,7 @@ public class CatCmdMessage implements Parcelable {
     }
 
     /* external API to be used by application */
+    @UnsupportedAppUsage
     public AppInterface.CommandType getCmdType() {
         return AppInterface.CommandType.fromInt(mCmdDet.typeOfCommand);
     }
@@ -218,6 +228,7 @@ public class CatCmdMessage implements Parcelable {
         return mInput;
     }
 
+    @UnsupportedAppUsage
     public TextMessage geTextMessage() {
         return mTextMsg;
     }
@@ -230,10 +241,12 @@ public class CatCmdMessage implements Parcelable {
         return mToneSettings;
     }
 
+    @UnsupportedAppUsage
     public CallSettings getCallSettings() {
         return mCallSettings;
     }
 
+    @UnsupportedAppUsage
     public SetupEventListSettings getSetEventList() {
         return mSetupEventListSettings;
     }
@@ -242,6 +255,7 @@ public class CatCmdMessage implements Parcelable {
      * API to be used by application to check if loading optional icon
      * has failed
      */
+    @UnsupportedAppUsage
     public boolean hasIconLoadFailed() {
         return mLoadIconFailed;
     }
