@@ -41,7 +41,9 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.content.res.AssetManager;
@@ -556,6 +558,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final BatteryManager mBatteryManager = mock(BatteryManager.class);
     private final EuiccManager mEuiccManager = mock(EuiccManager.class);
     private final TelecomManager mTelecomManager = mock(TelecomManager.class);
+    private final PackageInfo mPackageInfo = mock(PackageInfo.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
@@ -585,6 +588,12 @@ public class ContextFixture implements TestFixture<Context> {
                         (Integer) invocation.getArguments()[1]);
             }
         }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), anyInt());
+
+        try {
+            doReturn(mPackageInfo).when(mPackageManager).getPackageInfoAsUser(any(), anyInt(),
+                    anyInt());
+        } catch (NameNotFoundException e) {
+        }
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         //doReturn(mBundle).when(mCarrierConfigManager).getConfig(anyInt());
