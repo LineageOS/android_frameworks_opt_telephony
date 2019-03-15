@@ -1781,10 +1781,12 @@ public class TelephonyMetrics {
 
     /**
      * Write data switch event.
+     * @param subId data switch to the subscription with this id.
      * @param dataSwitch the reason and state of data switch.
      */
-    public void writeDataSwitch(DataSwitch dataSwitch) {
-        addTelephonyEvent(new TelephonyEventBuilder().setDataSwitch(dataSwitch).build());
+    public void writeDataSwitch(int subId, DataSwitch dataSwitch) {
+        int phoneId = SubscriptionManager.getPhoneId(subId);
+        addTelephonyEvent(new TelephonyEventBuilder(phoneId).setDataSwitch(dataSwitch).build());
     }
 
     /**
