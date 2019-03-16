@@ -23,8 +23,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
@@ -210,7 +210,7 @@ public class CellularNetworkService extends NetworkService {
         }
 
         private NetworkRegistrationState createRegistrationStateFromVoiceRegState(Object result) {
-            int transportType = TransportType.WWAN;
+            int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
             int domain = NetworkRegistrationState.DOMAIN_CS;
 
             if (result instanceof android.hardware.radio.V1_0.VoiceRegStateResult) {
@@ -260,7 +260,7 @@ public class CellularNetworkService extends NetworkService {
 
         private NetworkRegistrationState createRegistrationStateFromDataRegState(Object result) {
             int domain = NetworkRegistrationState.DOMAIN_PS;
-            int transportType = TransportType.WWAN;
+            int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
 
             if (result instanceof android.hardware.radio.V1_0.DataRegStateResult) {
                 android.hardware.radio.V1_0.DataRegStateResult dataRegState =

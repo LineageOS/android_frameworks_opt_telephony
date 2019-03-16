@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -39,9 +40,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class IccPhoneBookInterfaceManager {
     static final String LOG_TAG = "IccPhoneBookIM";
+    @UnsupportedAppUsage
     protected static final boolean DBG = true;
 
+    @UnsupportedAppUsage
     protected Phone mPhone;
+    @UnsupportedAppUsage
     protected AdnRecordCache mAdnCache;
 
     protected static final int EVENT_GET_SIZE_DONE = 1;
@@ -53,6 +57,7 @@ public class IccPhoneBookInterfaceManager {
         Object mResult = null;
     }
 
+    @UnsupportedAppUsage
     protected Handler mBaseHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -125,10 +130,12 @@ public class IccPhoneBookInterfaceManager {
         }
     }
 
+    @UnsupportedAppUsage
     protected void logd(String msg) {
         Rlog.d(LOG_TAG, "[IccPbInterfaceManager] " + msg);
     }
 
+    @UnsupportedAppUsage
     protected void loge(String msg) {
         Rlog.e(LOG_TAG, "[IccPbInterfaceManager] " + msg);
     }
@@ -301,6 +308,7 @@ public class IccPhoneBookInterfaceManager {
         return (List<AdnRecord>) loadRequest.mResult;
     }
 
+    @UnsupportedAppUsage
     protected void checkThread() {
         // Make sure this isn't the UI thread, since it will block
         if (mBaseHandler.getLooper().equals(Looper.myLooper())) {
@@ -322,6 +330,7 @@ public class IccPhoneBookInterfaceManager {
         }
     }
 
+    @UnsupportedAppUsage
     private int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
         if (efid == IccConstants.EF_ADN) {

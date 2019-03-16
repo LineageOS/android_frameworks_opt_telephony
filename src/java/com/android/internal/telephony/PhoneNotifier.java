@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
@@ -39,8 +40,10 @@ public interface PhoneNotifier {
     /** Notify registrants of the current CellLocation */
     void notifyCellLocation(Phone sender, CellLocation cl);
 
+    @UnsupportedAppUsage
     void notifySignalStrength(Phone sender);
 
+    @UnsupportedAppUsage
     void notifyMessageWaitingChanged(Phone sender);
 
     void notifyCallForwardingChanged(Phone sender);

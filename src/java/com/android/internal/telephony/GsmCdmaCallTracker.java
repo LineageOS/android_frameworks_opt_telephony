@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -79,18 +80,24 @@ public class GsmCdmaCallTracker extends CallTracker {
     private ArrayList<GsmCdmaConnection> mDroppedDuringPoll =
             new ArrayList<GsmCdmaConnection>(MAX_CONNECTIONS_GSM);
 
+    @UnsupportedAppUsage
     public GsmCdmaCall mRingingCall = new GsmCdmaCall(this);
     // A call that is ringing or (call) waiting
+    @UnsupportedAppUsage
     public GsmCdmaCall mForegroundCall = new GsmCdmaCall(this);
+    @UnsupportedAppUsage
     public GsmCdmaCall mBackgroundCall = new GsmCdmaCall(this);
 
+    @UnsupportedAppUsage
     private GsmCdmaConnection mPendingMO;
     private boolean mHangupPendingMO;
 
+    @UnsupportedAppUsage
     private GsmCdmaPhone mPhone;
 
     private boolean mDesiredMute = false;    // false = mute off
 
+    @UnsupportedAppUsage
     public PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
@@ -251,6 +258,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         mCallWaitingRegistrants.remove(h);
     }
 
+    @UnsupportedAppUsage
     private void fakeHoldForegroundBeforeDial() {
         List<Connection> connCopy;
 
@@ -357,6 +365,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     /**
      * Handle Ecm timer to be canceled or re-started
      */
+    @UnsupportedAppUsage
     private void handleEcmTimer(int action) {
         mPhone.handleTimerInEmergencyCallbackMode(action);
         switch(action) {
@@ -371,6 +380,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     /**
      * Disable data call when emergency call is connected
      */
+    @UnsupportedAppUsage
     private void disableDataCallInEmergencyCall(String dialString) {
         if (PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(), dialString)) {
             if (Phone.DEBUG_PHONE) log("disableDataCallInEmergencyCall");
@@ -589,6 +599,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         mPhone.notifyPreciseCallStateChanged();
     }
 
+    @UnsupportedAppUsage
     public void switchWaitingOrHoldingAndActive() throws CallStateException {
         // Should we bother with this check?
         if (mRingingCall.getState() == GsmCdmaCall.State.INCOMING) {
@@ -624,6 +635,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         mCi.explicitCallTransfer(obtainCompleteMessage(EVENT_ECT_RESULT));
     }
 
+    @UnsupportedAppUsage
     public void clearDisconnected() {
         internalClearDisconnected();
 
@@ -708,6 +720,7 @@ public class GsmCdmaCallTracker extends CallTracker {
      * Obtain a message to use for signalling "invoke getCurrentCalls() when
      * this operation and all other pending operations are complete
      */
+    @UnsupportedAppUsage
     private Message obtainCompleteMessage() {
         return obtainCompleteMessage(EVENT_OPERATION_COMPLETE);
     }
@@ -716,6 +729,7 @@ public class GsmCdmaCallTracker extends CallTracker {
      * Obtain a message to use for signalling "invoke getCurrentCalls() when
      * this operation and all other pending operations are complete
      */
+    @UnsupportedAppUsage
     private Message obtainCompleteMessage(int what) {
         mPendingOperations++;
         mLastRelevantPoll = null;
@@ -743,6 +757,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
     }
 
+    @UnsupportedAppUsage
     private void updatePhoneState() {
         PhoneConstants.State oldState = mState;
         if (mRingingCall.isRinging()) {
@@ -1251,6 +1266,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
     //***** Called from GsmCdmaPhone
 
+    @UnsupportedAppUsage
     public void setMute(boolean mute) {
         mDesiredMute = mute;
         mCi.setMute(mDesiredMute, null);
@@ -1720,14 +1736,17 @@ public class GsmCdmaCallTracker extends CallTracker {
                 .count() > 0);
     }
 
+    @UnsupportedAppUsage
     private boolean isPhoneTypeGsm() {
         return mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM;
     }
 
+    @UnsupportedAppUsage
     public GsmCdmaPhone getPhone() {
         return mPhone;
     }
 
+    @UnsupportedAppUsage
     @Override
     protected void log(String msg) {
         Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);

@@ -26,6 +26,7 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INVALID_P
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -89,7 +90,9 @@ public class PhoneSwitcher extends Handler {
     private final CommandsInterface[] mCommandsInterfaces;
     private final Context mContext;
     private final PhoneState[] mPhoneStates;
+    @UnsupportedAppUsage
     private final int mNumPhones;
+    @UnsupportedAppUsage
     private final Phone[] mPhones;
     private final LocalLog mLocalLog;
     @VisibleForTesting
@@ -98,6 +101,7 @@ public class PhoneSwitcher extends Handler {
     private final CellularNetworkValidator.ValidationCallback mValidationCallback =
             (validated, subId) -> Message.obtain(PhoneSwitcher.this,
                     EVENT_NETWORK_VALIDATION_DONE, subId, validated ? 1 : 0).sendToTarget();
+    @UnsupportedAppUsage
     private int mMaxActivePhones;
     private static PhoneSwitcher sPhoneSwitcher = null;
 
@@ -613,10 +617,12 @@ public class PhoneSwitcher extends Handler {
         public long lastRequested = 0;
     }
 
+    @UnsupportedAppUsage
     private void activate(int phoneId) {
         switchPhone(phoneId, true);
     }
 
+    @UnsupportedAppUsage
     private void deactivate(int phoneId) {
         switchPhone(phoneId, false);
     }
@@ -909,6 +915,7 @@ public class PhoneSwitcher extends Handler {
         return mPreferredDataPhoneId;
     }
 
+    @UnsupportedAppUsage
     private void log(String l) {
         Rlog.d(LOG_TAG, l);
         mLocalLog.log(l);

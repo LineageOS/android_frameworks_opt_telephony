@@ -19,10 +19,12 @@ package android.telephony.ims;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
-import android.os.IBinder;
+import android.content.pm.IPackageManager;
+import android.content.pm.PackageManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -40,9 +42,9 @@ import org.mockito.Mock;
 public class ImsMmTelManagerTests extends TelephonyTest {
 
     @Mock
-    IBinder mMockBinder;
+    ITelephony.Stub mMockTelephonyInterface;
     @Mock
-    ITelephony mMockTelephonyInterface;
+    IPackageManager.Stub mMockPackageManager;
 
     public class LocalCallback extends ImsMmTelManager.RegistrationCallback {
         int mRegResult = -1;
@@ -56,8 +58,13 @@ public class ImsMmTelManagerTests extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp("ImsMmTelManagerTests");
-        doReturn(mMockTelephonyInterface).when(mMockBinder).queryLocalInterface(anyString());
-        mServiceManagerMockedServices.put("phone", mMockBinder);
+        doReturn(mMockTelephonyInterface).when(mMockTelephonyInterface).queryLocalInterface(
+                anyString());
+        doReturn(mMockPackageManager).when(mMockPackageManager).queryLocalInterface(anyString());
+        doReturn(true).when(mMockPackageManager).hasSystemFeature(
+                eq(PackageManager.FEATURE_TELEPHONY_IMS), anyInt());
+        mServiceManagerMockedServices.put("phone", mMockTelephonyInterface);
+        mServiceManagerMockedServices.put("package", mMockPackageManager);
     }
 
     @After
@@ -85,9 +92,9 @@ public class ImsMmTelManagerTests extends TelephonyTest {
         IImsRegistrationCallback cbBinder = callbackCaptor.getValue();
         // Ensure the transport types are correct
         cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
-        assertEquals(AccessNetworkConstants.TransportType.WWAN, cb.mRegResult);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, cb.mRegResult);
         cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
-        assertEquals(AccessNetworkConstants.TransportType.WLAN, cb.mRegResult);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, cb.mRegResult);
         cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
         assertEquals(-1, cb.mRegResult);
         // Wacky value

@@ -28,6 +28,7 @@ import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
 import android.system.StructStatVfs;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 
@@ -53,6 +54,8 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
+
+
 
 /**
  * This class has one-line methods to instantiate objects only. The purpose is to make code
@@ -290,7 +293,7 @@ public class TelephonyComponentFactory {
         return new SimActivationTracker(phone);
     }
 
-    public DcTracker makeDcTracker(Phone phone, int transportType) {
+    public DcTracker makeDcTracker(Phone phone, @TransportType int transportType) {
         return new DcTracker(phone, transportType);
     }
 

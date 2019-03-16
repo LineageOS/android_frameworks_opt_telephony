@@ -16,14 +16,13 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import static android.telephony.AccessNetworkConstants.TransportType.WLAN;
-import static android.telephony.AccessNetworkConstants.TransportType.WWAN;
-
 import android.annotation.NonNull;
 import android.app.AppOpsManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
@@ -37,6 +36,9 @@ import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.UserHandle;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.data.DataCallResponse;
@@ -59,10 +61,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * Data service manager manages handling data requests and responses on data services (e.g.
  * Cellular data service, IWLAN data service).
  */
-public class DataServiceManager {
+public class DataServiceManager extends Handler {
     private static final boolean DBG = true;
 
     static final String DATA_CALL_RESPONSE = "data_call_response";
+
+    private static final int EVENT_BIND_DATA_SERVICE = 1;
 
     private final Phone mPhone;
 
@@ -86,15 +90,32 @@ public class DataServiceManager {
 
     private final RegistrantList mDataCallListChangedRegistrants = new RegistrantList();
 
-    // not final because it is set by the onServiceConnected method
-    private ComponentName mComponentName;
+    private String mTargetBindingPackageName;
+
+    private CellularDataServiceConnection mServiceConnection;
+
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)
+                    && mPhone.getPhoneId() == intent.getIntExtra(
+                    CarrierConfigManager.EXTRA_SLOT_INDEX, 0)) {
+                // We should wait for carrier config changed event because the target binding
+                // package name can come from the carrier config. Note that we still get this event
+                // even when SIM is absent.
+                if (DBG) log("Carrier config changed. Try to bind data service.");
+                sendEmptyMessage(EVENT_BIND_DATA_SERVICE);
+            }
+        }
+    };
 
     private class DataServiceManagerDeathRecipient implements IBinder.DeathRecipient {
         @Override
         public void binderDied() {
             // TODO: try to rebind the service.
-            loge("DataService(" + mComponentName +  " transport type " + mTransportType
-                    + ") died.");
+            loge("DataService " + mTargetBindingPackageName +  ", transport type " + mTransportType
+                    + " died.");
         }
     }
 
@@ -118,7 +139,7 @@ public class DataServiceManager {
     private void revokePermissionsFromUnusedDataServices() {
         // Except the current data services from having their permissions removed.
         Set<String> dataServices = getAllDataServicePackageNames();
-        for (int transportType : new int[] {WWAN, WLAN}) {
+        for (int transportType : mPhone.getTransportManager().getAvailableTransports()) {
             dataServices.remove(getDataServicePackageName(transportType));
         }
 
@@ -142,7 +163,6 @@ public class DataServiceManager {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             if (DBG) log("onServiceConnected");
-            mComponentName = name;
             mIDataService = IDataService.Stub.asInterface(service);
             mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
@@ -167,6 +187,7 @@ public class DataServiceManager {
             mIDataService = null;
             mBound = false;
             mServiceBindingChangedRegistrants.notifyResult(false);
+            mTargetBindingPackageName = null;
         }
     }
 
@@ -227,11 +248,10 @@ public class DataServiceManager {
      * Constructor
      *
      * @param phone The phone object
-     * @param transportType The transport type. Must be a
-     *        {@link AccessNetworkConstants.TransportType}.
+     * @param transportType The transport type
      * @param tagSuffix Logging tag suffix
      */
-    public DataServiceManager(Phone phone, int transportType, String tagSuffix) {
+    public DataServiceManager(Phone phone, @TransportType int transportType, String tagSuffix) {
         mPhone = phone;
         mTag = "DSM" + tagSuffix;
         mTransportType = transportType;
@@ -240,28 +260,69 @@ public class DataServiceManager {
                 Context.CARRIER_CONFIG_SERVICE);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
-        bindDataService();
+
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        phone.getContext().registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL,
+                intentFilter, null, null);
+        sendEmptyMessage(EVENT_BIND_DATA_SERVICE);
+    }
+
+    /**
+     * Handle message events
+     *
+     * @param msg The message to handle
+     */
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_BIND_DATA_SERVICE:
+                bindDataService();
+                break;
+            default:
+                loge("Unhandled event " + msg.what);
+        }
     }
 
     private void bindDataService() {
-        // Start by cleaning up all packages that *shouldn't* have permissions.
-        revokePermissionsFromUnusedDataServices();
-
         String packageName = getDataServicePackageName();
         if (TextUtils.isEmpty(packageName)) {
             loge("Can't find the binding package");
             return;
         }
+
+        if (TextUtils.equals(packageName, mTargetBindingPackageName)) {
+            if (DBG) log("Service " + packageName + " already bound or being bound.");
+            return;
+        }
+
+        // Start by cleaning up all packages that *shouldn't* have permissions.
+        revokePermissionsFromUnusedDataServices();
+
+        if (mIDataService != null && mIDataService.asBinder().isBinderAlive()) {
+            // Remove the network availability updater and then unbind the service.
+            try {
+                mIDataService.removeDataServiceProvider(mPhone.getPhoneId());
+            } catch (RemoteException e) {
+                loge("Cannot remove data service provider. " + e);
+            }
+
+            mPhone.getContext().unbindService(mServiceConnection);
+        }
+
         // Then pre-emptively grant the permissions to the package we will bind.
         grantPermissionsToService(packageName);
 
         try {
+            mServiceConnection = new CellularDataServiceConnection();
             if (!mPhone.getContext().bindService(
                     new Intent(DataService.DATA_SERVICE_INTERFACE).setPackage(packageName),
-                    new CellularDataServiceConnection(),
+                    mServiceConnection,
                     Context.BIND_AUTO_CREATE)) {
                 loge("Cannot bind to the data service.");
+                return;
             }
+            mTargetBindingPackageName = packageName;
         } catch (Exception e) {
             loge("Cannot bind to the data service. Exception: " + e);
         }
@@ -301,28 +362,28 @@ public class DataServiceManager {
      * packages; we need to exclude data packages for all transport types, so we need to
      * to be able to query by transport type.
      *
-     * @param transportType either WWAN or WLAN
+     * @param transportType The transport type
      * @return package name of the data service package for the specified transportType.
      */
-    private String getDataServicePackageName(int transportType) {
+    private String getDataServicePackageName(@TransportType int transportType) {
         String packageName;
         int resourceId;
         String carrierConfig;
 
         switch (transportType) {
-            case WWAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
                 resourceId = com.android.internal.R.string.config_wwan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WWAN_PACKAGE_OVERRIDE_STRING;
                 break;
-            case WLAN:
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
                 resourceId = com.android.internal.R.string.config_wlan_data_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_DATA_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING;
                 break;
             default:
                 throw new IllegalStateException("Transport type not WWAN or WLAN. type="
-                        + mTransportType);
+                        + AccessNetworkConstants.transportTypeToString(mTransportType));
         }
 
         // Read package name from resource overlay
@@ -574,7 +635,7 @@ public class DataServiceManager {
     }
 
     /**
-     * Get the transport type. Must be a {@link AccessNetworkConstants.TransportType}.
+     * Get the transport type. Must be a {@link TransportType}.
      *
      * @return
      */

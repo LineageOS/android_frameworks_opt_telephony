@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
+import android.annotation.UnsupportedAppUsage;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -55,6 +56,7 @@ public interface PhoneInternalInterface {
                                      but physical link is down</li>
          * </ul>
          */
+        @UnsupportedAppUsage
         NONE, DATAIN, DATAOUT, DATAINANDOUT, DORMANT;
     }
 
@@ -176,6 +178,7 @@ public interface PhoneInternalInterface {
     static final int BM_US_2500M    = RILConstants.BAND_MODE_USA_2500M;
     static final int BM_NUM_BAND_MODES = 19; //Total number of band modes
 
+    @UnsupportedAppUsage
     int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
 
     // Used for CDMA roaming mode

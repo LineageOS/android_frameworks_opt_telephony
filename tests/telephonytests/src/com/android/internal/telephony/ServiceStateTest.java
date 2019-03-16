@@ -38,7 +38,7 @@ public class ServiceStateTest extends TestCase {
         ServiceState ss = new ServiceState();
         // add data registration state
         ss.addNetworkRegistrationState(new NetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationState.REG_STATE_ROAMING,
                 TelephonyManager.NETWORK_TYPE_UNKNOWN, 0,
                 false, null, null));
@@ -285,7 +285,7 @@ public class ServiceStateTest extends TestCase {
     @SmallTest
     public void testNetworkRegistrationState() {
         NetworkRegistrationState wwanVoiceRegState = new NetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_CS, AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 0, 0, 0, false,
                 null, null, true, 0, 0, 0);
 
@@ -293,12 +293,12 @@ public class ServiceStateTest extends TestCase {
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
         NetworkRegistrationState wwanDataRegState = new NetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 0, 0, 0, false, null, null, 0, false, false, false,
                 lteVopsSupportInfo);
 
         NetworkRegistrationState wlanRegState = new NetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WLAN,
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
                 0, 0, 0, false,
                 null, null);
 
@@ -309,18 +309,18 @@ public class ServiceStateTest extends TestCase {
         ss.addNetworkRegistrationState(wlanRegState);
 
         assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_CS,
-                AccessNetworkConstants.TransportType.WWAN), wwanVoiceRegState);
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN), wwanVoiceRegState);
         assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
-                AccessNetworkConstants.TransportType.WWAN), wwanDataRegState);
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN), wwanDataRegState);
         assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
-                AccessNetworkConstants.TransportType.WLAN), wlanRegState);
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN), wlanRegState);
 
         wwanDataRegState = new NetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TransportType.WWAN,
+                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 0, 0, 0, true, null, null, 0, false, false, false, lteVopsSupportInfo);
         ss.addNetworkRegistrationState(wwanDataRegState);
         assertEquals(ss.getNetworkRegistrationStates(NetworkRegistrationState.DOMAIN_PS,
-                AccessNetworkConstants.TransportType.WWAN), wwanDataRegState);
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN), wwanDataRegState);
     }
 
     @SmallTest
