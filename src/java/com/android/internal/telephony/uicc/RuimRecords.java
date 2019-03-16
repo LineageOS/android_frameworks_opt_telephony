@@ -399,7 +399,7 @@ public class RuimRecords extends IccRecords {
                 builder.append(String.format(Locale.US, "%d", digit7));
                 builder.append(String.format(Locale.US, "%03d", last3digits));
                 mMin = builder.toString();
-                if (DBG) log("min present=" + mMin);
+                if (DBG) log("min present=" + Rlog.pii(LOG_TAG, mMin));
             } else {
                 if (DBG) log("min not present");
             }
