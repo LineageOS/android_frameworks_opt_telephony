@@ -2877,8 +2877,8 @@ public class DataConnection extends StateMachine {
 
     /** Check if the device is connected to NR 5G Non-Standalone network. */
     private boolean isNRConnected() {
-        return mPhone.getServiceState().getNrStatus()
-                == NetworkRegistrationInfo.NR_STATUS_CONNECTED;
+        return mPhone.getServiceState().getNrState()
+                == NetworkRegistrationInfo.NR_STATE_CONNECTED;
     }
 
     private void dumpToLog() {
