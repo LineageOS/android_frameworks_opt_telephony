@@ -64,6 +64,7 @@ import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -429,8 +430,6 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
                 .getRilDataRadioTechnology();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mNetworkRegistrationInfo)
-                .getAccessNetworkTechnology();
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
                 sNetworkAttributes);
@@ -1145,8 +1144,12 @@ public class DcTrackerTest extends TelephonyTest {
     @SmallTest
     public void testTrySetupDefaultOnIWLAN() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
-        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mNetworkRegistrationInfo)
-                .getAccessNetworkTechnology();
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT});
@@ -1198,8 +1201,12 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testUpdateWaitingApnListOnDataRatChange() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationInfo)
-                .getAccessNetworkTechnology();
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_EHRPD)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT});
         mDct.enableApn(ApnSetting.TYPE_DEFAULT, DcTracker.REQUEST_TYPE_NORMAL, null);
@@ -1224,8 +1231,12 @@ public class DcTrackerTest extends TelephonyTest {
 
         //data rat change from ehrpd to lte
         logd("Sending EVENT_DATA_RAT_CHANGED");
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mNetworkRegistrationInfo)
-                .getAccessNetworkTechnology();
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForMs(200);
 
@@ -1317,8 +1328,13 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testDataRatChangeOOS() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationInfo)
-                .getAccessNetworkTechnology();
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_EHRPD)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT});
         mDct.enableApn(ApnSetting.TYPE_DEFAULT, DcTracker.REQUEST_TYPE_NORMAL, null);
@@ -1343,8 +1359,12 @@ public class DcTrackerTest extends TelephonyTest {
 
         // Data rat change from ehrpd to unknown due to OOS
         logd("Sending EVENT_DATA_RAT_CHANGED");
-        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mNetworkRegistrationInfo)
-                .getAccessNetworkTechnology();
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UNKNOWN)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForMs(200);
 
@@ -1354,8 +1374,12 @@ public class DcTrackerTest extends TelephonyTest {
                 any(Message.class));
 
         // Data rat resume from unknown to ehrpd
-        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationInfo)
-                .getAccessNetworkTechnology();
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_EHRPD)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForMs(200);
 

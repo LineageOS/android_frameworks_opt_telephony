@@ -143,8 +143,12 @@ public abstract class TelephonyTest {
     protected SubscriptionController mSubscriptionController;
     @Mock
     protected ServiceState mServiceState;
-    @Mock
-    protected NetworkRegistrationInfo mNetworkRegistrationInfo;
+
+    protected NetworkRegistrationInfo mNetworkRegistrationInfo =
+            new NetworkRegistrationInfo.Builder()
+            .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+            .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+            .build();
     @Mock
     protected SimulatedCommandsVerifier mSimulatedCommandsVerifier;
     @Mock
