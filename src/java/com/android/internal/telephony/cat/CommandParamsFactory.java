@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
+import android.annotation.UnsupportedAppUsage;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Message;
@@ -45,6 +46,7 @@ import static com.android.internal.telephony.cat.CatCmdMessage
  */
 class CommandParamsFactory extends Handler {
     private static CommandParamsFactory sInstance = null;
+    @UnsupportedAppUsage
     private IconLoader mIconLoader;
     private CommandParams mCmdParams = null;
     private int mIconLoadState = LOAD_NO_ICON;
@@ -289,6 +291,7 @@ class CommandParamsFactory extends Handler {
      * @return A ComprehensionTlv object that has the tag value of {@code tag}.
      *         If no object is found with the tag, null is returned.
      */
+    @UnsupportedAppUsage
     private ComprehensionTlv searchForTag(ComprehensionTlvTag tag,
             List<ComprehensionTlv> ctlvs) {
         Iterator<ComprehensionTlv> iter = ctlvs.iterator();
@@ -307,6 +310,7 @@ class CommandParamsFactory extends Handler {
      * @return A ComprehensionTlv object that has the tag value of {@code tag}.
      *         If no object is found with the tag, null is returned.
      */
+    @UnsupportedAppUsage
     private ComprehensionTlv searchForNextTag(ComprehensionTlvTag tag,
             Iterator<ComprehensionTlv> iter) {
         int tagValue = tag.value();
@@ -1101,6 +1105,7 @@ class CommandParamsFactory extends Handler {
         return false;
     }
 
+    @UnsupportedAppUsage
     public void dispose() {
         mIconLoader.dispose();
         mIconLoader = null;

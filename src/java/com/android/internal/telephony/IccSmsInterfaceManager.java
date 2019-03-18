@@ -21,6 +21,7 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
 import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
 
 import android.Manifest;
+import android.annotation.UnsupportedAppUsage;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
@@ -65,10 +66,14 @@ public class IccSmsInterfaceManager {
     static final String LOG_TAG = "IccSmsInterfaceManager";
     static final boolean DBG = true;
 
+    @UnsupportedAppUsage
     protected final Object mLock = new Object();
+    @UnsupportedAppUsage
     protected boolean mSuccess;
+    @UnsupportedAppUsage
     private List<SmsRawData> mSms;
 
+    @UnsupportedAppUsage
     private CellBroadcastRangeManager mCellBroadcastRangeManager =
             new CellBroadcastRangeManager();
     private CdmaBroadcastRangeManager mCdmaBroadcastRangeManager =
@@ -83,14 +88,18 @@ public class IccSmsInterfaceManager {
     public static final int SMS_MESSAGE_PRIORITY_NOT_SPECIFIED = -1;
     public static final int SMS_MESSAGE_PERIOD_NOT_SPECIFIED = -1;
 
+    @UnsupportedAppUsage
     protected Phone mPhone;
+    @UnsupportedAppUsage
     final protected Context mContext;
+    @UnsupportedAppUsage
     final protected AppOpsManager mAppOps;
     @VisibleForTesting
     public SmsDispatchersController mDispatchersController;
 
     private final LocalLog mCellBroadcastLocalLog = new LocalLog(100);
 
+    @UnsupportedAppUsage
     protected Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -183,6 +192,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
+    @UnsupportedAppUsage
     protected void enforceReceiveAndSend(String message) {
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.RECEIVE_SMS, message);
@@ -202,6 +212,7 @@ public class IccSmsInterfaceManager {
      *
      */
 
+    @UnsupportedAppUsage
     public boolean
     updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu) {
         if (DBG) log("updateMessageOnIccEf: index=" + index +
@@ -256,6 +267,7 @@ public class IccSmsInterfaceManager {
      * @return success or not
      *
      */
+    @UnsupportedAppUsage
     public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu, byte[] smsc) {
         //NOTE smsc not used in RUIM
         if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
@@ -294,6 +306,7 @@ public class IccSmsInterfaceManager {
      * @return list of SmsRawData of all sms on Icc
      */
 
+    @UnsupportedAppUsage
     public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage) {
         if (DBG) log("getAllMessagesFromEF");
 
@@ -343,6 +356,7 @@ public class IccSmsInterfaceManager {
      * A permissions check before passing to {@link IccSmsInterfaceManager#sendDataInternal}.
      * This method checks only if the calling package has the permission to send the data sms.
      */
+    @UnsupportedAppUsage
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (!checkCallingSendSmsPermission(callingPackage, "Sending SMS message")) {
@@ -556,6 +570,7 @@ public class IccSmsInterfaceManager {
      *  android application framework. This intent is broadcasted at
      *  the same time an SMS received from radio is acknowledged back.
      */
+    @UnsupportedAppUsage
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -725,11 +740,13 @@ public class IccSmsInterfaceManager {
         }
     }
 
+    @UnsupportedAppUsage
     public int getPremiumSmsPermission(String packageName) {
         return mDispatchersController.getPremiumSmsPermission(packageName);
     }
 
 
+    @UnsupportedAppUsage
     public void setPremiumSmsPermission(String packageName, int permission) {
         mDispatchersController.setPremiumSmsPermission(packageName, permission);
     }
@@ -815,6 +832,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
+    @UnsupportedAppUsage
     synchronized public boolean enableGsmBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(
@@ -845,6 +863,7 @@ public class IccSmsInterfaceManager {
         return true;
     }
 
+    @UnsupportedAppUsage
     synchronized public boolean disableGsmBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(
@@ -875,6 +894,7 @@ public class IccSmsInterfaceManager {
         return true;
     }
 
+    @UnsupportedAppUsage
     synchronized public boolean enableCdmaBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(
@@ -904,6 +924,7 @@ public class IccSmsInterfaceManager {
         return true;
     }
 
+    @UnsupportedAppUsage
     synchronized public boolean disableCdmaBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(
@@ -1013,6 +1034,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
+    @UnsupportedAppUsage
     private boolean setCellBroadcastConfig(SmsBroadcastConfigInfo[] configs) {
         if (DBG)
             log("Calling setGsmBroadcastConfig with " + configs.length + " configurations");
@@ -1053,6 +1075,7 @@ public class IccSmsInterfaceManager {
         return mSuccess;
     }
 
+    @UnsupportedAppUsage
     private boolean setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs) {
         if (DBG)
             log("Calling setCdmaBroadcastConfig with " + configs.length + " configurations");
@@ -1093,18 +1116,22 @@ public class IccSmsInterfaceManager {
         return mSuccess;
     }
 
+    @UnsupportedAppUsage
     protected void log(String msg) {
         Log.d(LOG_TAG, "[IccSmsInterfaceManager] " + msg);
     }
 
+    @UnsupportedAppUsage
     public boolean isImsSmsSupported() {
         return mDispatchersController.isIms();
     }
 
+    @UnsupportedAppUsage
     public String getImsSmsFormat() {
         return mDispatchersController.getImsSmsFormat();
     }
 
+    @UnsupportedAppUsage
     public void sendStoredText(String callingPkg, Uri messageUri, String scAddress,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (!checkCallingSendSmsPermission(callingPkg, "Sending SMS message")) {
@@ -1134,6 +1161,7 @@ public class IccSmsInterfaceManager {
                 false /* expectMore */, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
     }
 
+    @UnsupportedAppUsage
     public void sendStoredMultipartText(String callingPkg, Uri messageUri, String scAddress,
             List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
         if (!checkCallingSendSmsPermission(callingPkg, "Sending SMS message")) {
@@ -1371,6 +1399,7 @@ public class IccSmsInterfaceManager {
         TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(mPhone.getSubId(), message);
     }
 
+    @UnsupportedAppUsage
     private String filterDestAddress(String destAddr) {
         String result  = null;
         result = SmsNumberUtils.filterDestAddr(mPhone, destAddr);

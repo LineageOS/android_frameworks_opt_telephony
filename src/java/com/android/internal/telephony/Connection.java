@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -173,11 +174,17 @@ public abstract class Connection {
     private String mTelecomCallId;
 
     //Caller Name Display
+    @UnsupportedAppUsage
     protected String mCnapName;
+    @UnsupportedAppUsage
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
+    @UnsupportedAppUsage
     protected String mAddress;     // MAY BE NULL!!!
+    @UnsupportedAppUsage
     protected String mDialString;          // outgoing calls only
+    @UnsupportedAppUsage
     protected int mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
+    @UnsupportedAppUsage
     protected boolean mIsIncoming;
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
@@ -191,6 +198,7 @@ public abstract class Connection {
      * calculating deltas.
      */
     protected long mConnectTimeReal;
+    @UnsupportedAppUsage
     protected long mDuration;
     protected long mHoldingStartTime;  // The time when the Connection last transitioned
                             // into HOLDING
@@ -207,6 +215,7 @@ public abstract class Connection {
     protected int mCause = DisconnectCause.NOT_DISCONNECTED;
     protected PostDialState mPostDialState = PostDialState.NOT_STARTED;
 
+    @UnsupportedAppUsage
     private static String LOG_TAG = "Connection";
 
     Object mUserData;
@@ -261,6 +270,7 @@ public abstract class Connection {
      */
     private int mPulledDialogId;
 
+    @UnsupportedAppUsage
     protected Connection(int phoneType) {
         mPhoneType = phoneType;
     }
@@ -291,6 +301,7 @@ public abstract class Connection {
      * @return address or null if unavailable
      */
 
+    @UnsupportedAppUsage
     public String getAddress() {
         return mAddress;
     }
@@ -323,6 +334,7 @@ public abstract class Connection {
     /**
      * @return Call that owns this Connection, or null if none
      */
+    @UnsupportedAppUsage
     public abstract Call getCall();
 
     /**
@@ -331,6 +343,7 @@ public abstract class Connection {
      * Effectively, when an incoming call starts ringing or an
      * outgoing call starts dialing
      */
+    @UnsupportedAppUsage
     public long getCreateTime() {
         return mCreateTime;
     }
@@ -341,6 +354,7 @@ public abstract class Connection {
      * For incoming calls: Begins at (INCOMING|WAITING) -> ACTIVE transition.
      * Returns 0 before then.
      */
+    @UnsupportedAppUsage
     public long getConnectTime() {
         return mConnectTime;
     }
@@ -378,6 +392,7 @@ public abstract class Connection {
      * The time when this Connection makes a transition into ENDED or FAIL.
      * Returns 0 before then.
      */
+    @UnsupportedAppUsage
     public abstract long getDisconnectTime();
 
     /**
@@ -386,6 +401,7 @@ public abstract class Connection {
      * If the call is still connected, then returns the elapsed
      * time since connect.
      */
+    @UnsupportedAppUsage
     public long getDurationMillis() {
         if (mConnectTimeReal == 0) {
             return 0;
@@ -418,6 +434,7 @@ public abstract class Connection {
      * {@link android.telephony.DisconnectCause}. If the call is not yet
      * disconnected, NOT_DISCONNECTED is returned.
      */
+    @UnsupportedAppUsage
     public int getDisconnectCause() {
         return mCause;
     }
@@ -436,6 +453,7 @@ public abstract class Connection {
      * ("MT" or mobile terminated; another party called this terminal)
      * or false if this call originated here (MO or mobile originated).
      */
+    @UnsupportedAppUsage
     public boolean isIncoming() {
         return mIsIncoming;
     }
@@ -526,6 +544,7 @@ public abstract class Connection {
      * Returns getCall().getState() or Call.State.IDLE if not
      * connected
      */
+    @UnsupportedAppUsage
     public Call.State getState() {
         Call c;
 
@@ -568,6 +587,7 @@ public abstract class Connection {
      * @return true if the connection isn't disconnected
      * (could be active, holding, ringing, dialing, etc)
      */
+    @UnsupportedAppUsage
     public boolean
     isAlive() {
         return getState().isAlive();
@@ -585,6 +605,7 @@ public abstract class Connection {
      *
      * @return the userdata set in setUserData()
      */
+    @UnsupportedAppUsage
     public Object getUserData() {
         return mUserData;
     }
@@ -605,6 +626,7 @@ public abstract class Connection {
     /**
      * Hangup individual Connection
      */
+    @UnsupportedAppUsage
     public abstract void hangup() throws CallStateException;
 
     /**
@@ -615,15 +637,21 @@ public abstract class Connection {
     public abstract void separate() throws CallStateException;
 
     public enum PostDialState {
+        @UnsupportedAppUsage
         NOT_STARTED,    /* The post dial string playback hasn't
                            been started, or this call is not yet
                            connected, or this is an incoming call */
+        @UnsupportedAppUsage
         STARTED,        /* The post dial string playback has begun */
+        @UnsupportedAppUsage
         WAIT,           /* The post dial string playback is waiting for a
                            call to proceedAfterWaitChar() */
+        @UnsupportedAppUsage
         WILD,           /* The post dial string playback is waiting for a
                            call to proceedAfterWildChar() */
+        @UnsupportedAppUsage
         COMPLETE,       /* The post dial string playback is complete */
+        @UnsupportedAppUsage
         CANCELLED,       /* The post dial string playback was cancelled
                            with cancelPostDial() */
         PAUSE           /* The post dial string playback is pausing for a
@@ -900,6 +928,7 @@ public abstract class Connection {
      *
      * @return The video state.
      */
+    @UnsupportedAppUsage
     public void setVideoState(int videoState) {
         mVideoState = videoState;
         for (Listener l : mListeners) {
