@@ -64,7 +64,7 @@ public class PhoneFactory {
 
     //***** Class Variables
 
-    // lock sLockProxyPhones protects both sPhones and sPhone
+    // lock sLockProxyPhones protects sPhones, sPhone and sTelephonyNetworkFactories
     final static Object sLockProxyPhones = new Object();
     static private Phone[] sPhones = null;
     static private Phone sPhone = null;
@@ -339,6 +339,36 @@ public class PhoneFactory {
      */
     public static @Nullable ImsResolver getImsResolver() {
         return sImsResolver;
+    }
+
+    /**
+     * Get the network factory associated with a given phone ID.
+     * @param phoneId the phone id
+     * @return a factory for this phone ID, or null if none.
+     */
+    public static TelephonyNetworkFactory getNetworkFactory(int phoneId) {
+        synchronized (sLockProxyPhones) {
+            if (!sMadeDefaults) {
+                throw new IllegalStateException("Default phones haven't been made yet!");
+            }
+            final String dbgInfo;
+            if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
+                dbgInfo = "getNetworkFactory with DEFAULT_PHONE_ID => factory for sPhone";
+                phoneId = sPhone.getSubId();
+            } else {
+                dbgInfo = "getNetworkFactory with non-default, return factory for passed id";
+            }
+            // sTelephonyNetworkFactories is null in tests because in tests makeDefaultPhones()
+            // is not called.
+            final TelephonyNetworkFactory factory = (sTelephonyNetworkFactories != null
+                            && (phoneId >= 0 && phoneId < sTelephonyNetworkFactories.length))
+                            ? sTelephonyNetworkFactories[phoneId] : null;
+            if (DBG) {
+                Rlog.d(LOG_TAG, "getNetworkFactory:-" + dbgInfo + " phoneId=" + phoneId
+                        + " factory=" + factory);
+            }
+            return factory;
+        }
     }
 
     /**
