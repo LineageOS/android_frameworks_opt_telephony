@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
+import android.annotation.UnsupportedAppUsage;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.Bundle;
@@ -45,6 +46,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     private static final String LOG_TAG = "DefaultPhoneNotifier";
     private static final boolean DBG = false; // STOPSHIP if true
 
+    @UnsupportedAppUsage
     protected ITelephonyRegistry mRegistry;
 
     public DefaultPhoneNotifier() {

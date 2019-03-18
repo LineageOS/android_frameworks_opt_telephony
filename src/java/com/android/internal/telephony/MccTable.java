@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.res.Configuration;
@@ -51,6 +52,7 @@ public final class MccTable {
 
     static class MccEntry implements Comparable<MccEntry> {
         final int mMcc;
+        @UnsupportedAppUsage
         final String mIso;
         final int mSmallestDigitsMnc;
 
@@ -69,6 +71,7 @@ public final class MccTable {
         }
     }
 
+    @UnsupportedAppUsage
     private static MccEntry entryForMcc(int mcc) {
         MccEntry m = new MccEntry(mcc, "", 0);
 
@@ -86,6 +89,7 @@ public final class MccTable {
      * @param mcc Mobile Country Code
      * @return default TimeZone ID, or null if not specified
      */
+    @UnsupportedAppUsage
     public static String defaultTimeZoneForMcc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
         if (entry == null) {
@@ -100,6 +104,7 @@ public final class MccTable {
      * an ISO two-character country code if available.
      * Returns "" if unavailable.
      */
+    @UnsupportedAppUsage
     public static String countryCodeForMcc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
 
@@ -128,6 +133,7 @@ public final class MccTable {
      * an ISO 2-3 character language code if available.
      * Returns null if unavailable.
      */
+    @UnsupportedAppUsage
     public static String defaultLanguageForMcc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
         if (entry == null) {
@@ -155,6 +161,7 @@ public final class MccTable {
      * the smallest number of digits that M if available.
      * Returns 2 if unavailable.
      */
+    @UnsupportedAppUsage
     public static int smallestDigitsMccForMnc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
 
@@ -261,6 +268,7 @@ public final class MccTable {
      *
      * @return Locale or null if no appropriate value
      */
+    @UnsupportedAppUsage
     private static Locale getLocaleForLanguageCountry(Context context, String language,
             String country) {
         if (language == null) {

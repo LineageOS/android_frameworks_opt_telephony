@@ -15,6 +15,7 @@
  */
 
 package com.android.internal.telephony;
+import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -49,11 +50,13 @@ public class GsmCdmaConnection extends Connection {
 
     //***** Instance Variables
 
+    @UnsupportedAppUsage
     GsmCdmaCallTracker mOwner;
     GsmCdmaCall mParent;
 
     boolean mDisconnected;
 
+    @UnsupportedAppUsage
     int mIndex;          // index in GsmCdmaCallTracker.connections[], -1 if unassigned
                         // The GsmCdma index is 1 + this
 
@@ -264,6 +267,7 @@ public class GsmCdmaConnection extends Connection {
      *    If consecutive PAUSE/WAIT sequence in the middle of the string,
      *    and if there is any WAIT in PAUSE/WAIT sequence, treat them like WAIT.
      */
+    @UnsupportedAppUsage
     public static String formatDialString(String phoneNumber) {
         /**
          * TODO(cleanup): This function should move to PhoneNumberUtils, and
@@ -353,6 +357,7 @@ public class GsmCdmaConnection extends Connection {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public GsmCdmaCall.State getState() {
         if (mDisconnected) {
@@ -446,6 +451,7 @@ public class GsmCdmaConnection extends Connection {
      * @param causeCode RIL disconnect code
      * @return the corresponding value from {@link DisconnectCause}
      */
+    @UnsupportedAppUsage
     int disconnectCauseFromCode(int causeCode) {
         /**
          * See 22.001 Annex F.4 for mapping of cause codes
@@ -758,6 +764,7 @@ public class GsmCdmaConnection extends Connection {
     /**
      * An incoming or outgoing call has connected
      */
+    @UnsupportedAppUsage
     void
     onConnectedInOrOut() {
         mConnectTime = System.currentTimeMillis();
@@ -860,6 +867,7 @@ public class GsmCdmaConnection extends Connection {
     }
 
     //CDMA
+    @UnsupportedAppUsage
     public void updateParent(GsmCdmaCall oldParent, GsmCdmaCall newParent){
         if (newParent != oldParent) {
             if (oldParent != null) {
@@ -1015,11 +1023,13 @@ public class GsmCdmaConnection extends Connection {
         notifyPostDialListeners();
     }
 
+    @UnsupportedAppUsage
     private void createWakeLock(Context context) {
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mPartialWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
     }
 
+    @UnsupportedAppUsage
     private void acquireWakeLock() {
         if (mPartialWakeLock != null) {
             synchronized (mPartialWakeLock) {
@@ -1050,10 +1060,12 @@ public class GsmCdmaConnection extends Connection {
         }
     }
 
+    @UnsupportedAppUsage
     private static boolean isPause(char c) {
         return c == PhoneNumberUtils.PAUSE;
     }
 
+    @UnsupportedAppUsage
     private static boolean isWait(char c) {
         return c == PhoneNumberUtils.WAIT;
     }
@@ -1066,6 +1078,7 @@ public class GsmCdmaConnection extends Connection {
     // This function is to find the next PAUSE character index if
     // multiple pauses in a row. Otherwise it finds the next non PAUSE or
     // non WAIT character index.
+    @UnsupportedAppUsage
     private static int findNextPCharOrNonPOrNonWCharIndex(String phoneNumber, int currIndex) {
         boolean wMatched = isWait(phoneNumber.charAt(currIndex));
         int index = currIndex + 1;
@@ -1097,6 +1110,7 @@ public class GsmCdmaConnection extends Connection {
     // This function returns either PAUSE or WAIT character to append.
     // It is based on the next non PAUSE/WAIT character in the phoneNumber and the
     // index for the current PAUSE/WAIT character
+    @UnsupportedAppUsage
     private static char findPOrWCharToAppend(String phoneNumber, int currPwIndex,
                                              int nextNonPwCharIndex) {
         char c = phoneNumber.charAt(currPwIndex);
@@ -1117,6 +1131,7 @@ public class GsmCdmaConnection extends Connection {
         return ret;
     }
 
+    @UnsupportedAppUsage
     private String maskDialString(String dialString) {
         if (VDBG) {
             return dialString;
@@ -1125,6 +1140,7 @@ public class GsmCdmaConnection extends Connection {
         return "<MASKED>";
     }
 
+    @UnsupportedAppUsage
     private void fetchDtmfToneDelay(GsmCdmaPhone phone) {
         CarrierConfigManager configMgr = (CarrierConfigManager)
                 phone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -1134,10 +1150,12 @@ public class GsmCdmaConnection extends Connection {
         }
     }
 
+    @UnsupportedAppUsage
     private boolean isPhoneTypeGsm() {
         return mOwner.getPhone().getPhoneType() == PhoneConstants.PHONE_TYPE_GSM;
     }
 
+    @UnsupportedAppUsage
     private void log(String msg) {
         Rlog.d(LOG_TAG, "[GsmCdmaConn] " + msg);
     }

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -49,13 +50,18 @@ public class UiccCard {
 
     // The lock object is created by UiccSlot that owns this UiccCard - this is to share the lock
     // between UiccSlot, UiccCard, EuiccCard, and UiccProfile for now.
+    @UnsupportedAppUsage
     protected final Object mLock;
+    @UnsupportedAppUsage
     private CardState mCardState;
     private String mIccid;
     protected String mCardId;
     private UiccProfile mUiccProfile;
+    @UnsupportedAppUsage
     private Context mContext;
+    @UnsupportedAppUsage
     private CommandsInterface mCi;
+    @UnsupportedAppUsage
     private final int mPhoneId;
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
@@ -149,6 +155,7 @@ public class UiccCard {
     /**
      * @deprecated Please use {@link UiccProfile#isApplicationOnIcc(AppType)} instead.
      */
+    @UnsupportedAppUsage
     @Deprecated
     public boolean isApplicationOnIcc(IccCardApplicationStatus.AppType type) {
         synchronized (mLock) {
@@ -160,6 +167,7 @@ public class UiccCard {
         }
     }
 
+    @UnsupportedAppUsage
     public CardState getCardState() {
         synchronized (mLock) {
             return mCardState;
@@ -183,6 +191,7 @@ public class UiccCard {
     /**
      * @deprecated Please use {@link UiccProfile#getApplication(int)} instead.
      */
+    @UnsupportedAppUsage
     @Deprecated
     public UiccCardApplication getApplication(int family) {
         synchronized (mLock) {
@@ -197,6 +206,7 @@ public class UiccCard {
     /**
      * @deprecated Please use {@link UiccProfile#getApplicationIndex(int)} instead.
      */
+    @UnsupportedAppUsage
     @Deprecated
     public UiccCardApplication getApplicationIndex(int index) {
         synchronized (mLock) {
@@ -216,6 +226,7 @@ public class UiccCard {
      *
      * @deprecated Please use {@link UiccProfile#getApplicationByType(int)} instead.
      */
+    @UnsupportedAppUsage
     @Deprecated
     public UiccCardApplication getApplicationByType(int type) {
         synchronized (mLock) {
@@ -338,6 +349,7 @@ public class UiccCard {
      * Returns number of applications on this card
      * @deprecated Please use {@link UiccProfile#getNumApplications()} instead.
      */
+    @UnsupportedAppUsage
     @Deprecated
     public int getNumApplications() {
         if (mUiccProfile != null) {
@@ -441,6 +453,7 @@ public class UiccCard {
      * @deprecated Please use
      * {@link UiccProfile#getCarrierPackageNamesForIntent(PackageManager, Intent)} instead.
      */
+    @UnsupportedAppUsage
     @Deprecated
     public List<String> getCarrierPackageNamesForIntent(
             PackageManager packageManager, Intent intent) {
@@ -466,6 +479,7 @@ public class UiccCard {
     /**
      * @deprecated Please use {@link UiccProfile#getOperatorBrandOverride()} instead.
      */
+    @UnsupportedAppUsage
     @Deprecated
     public String getOperatorBrandOverride() {
         if (mUiccProfile != null) {
@@ -475,6 +489,7 @@ public class UiccCard {
         }
     }
 
+    @UnsupportedAppUsage
     public String getIccId() {
         if (mIccid != null) {
             return mIccid;
@@ -499,10 +514,12 @@ public class UiccCard {
         }
     }
 
+    @UnsupportedAppUsage
     private void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
 
+    @UnsupportedAppUsage
     private void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
     }

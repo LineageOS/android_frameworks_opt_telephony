@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.UnsupportedAppUsage;
 import android.telephony.TelephonyManager;
 
 /**
@@ -180,6 +181,7 @@ public class RadioCapability {
      *
      * @return radio access family
      */
+    @UnsupportedAppUsage
     public int getRadioAccessFamily() {
         return mRadioAccessFamily;
     }
