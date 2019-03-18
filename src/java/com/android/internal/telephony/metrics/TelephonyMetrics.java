@@ -1626,15 +1626,15 @@ public class TelephonyMetrics {
         RilDataCall dataCall = new RilDataCall();
 
         if (response != null) {
-            setupDataCallResponse.status = (response.getStatus() == 0
-                    ? RilDataCallFailCause.PDP_FAIL_NONE : response.getStatus());
+            setupDataCallResponse.status = (response.getCause() == 0
+                    ? RilDataCallFailCause.PDP_FAIL_NONE : response.getCause());
             setupDataCallResponse.suggestedRetryTimeMillis = response.getSuggestedRetryTime();
 
-            dataCall.cid = response.getCallId();
+            dataCall.cid = response.getId();
             dataCall.type = response.getProtocolType() + 1;
 
-            if (!TextUtils.isEmpty(response.getIfname())) {
-                dataCall.iframe = response.getIfname();
+            if (!TextUtils.isEmpty(response.getInterfaceName())) {
+                dataCall.iframe = response.getInterfaceName();
             }
         }
         setupDataCallResponse.call = dataCall;

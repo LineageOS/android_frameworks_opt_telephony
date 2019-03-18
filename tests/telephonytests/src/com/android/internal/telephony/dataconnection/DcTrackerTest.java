@@ -167,7 +167,7 @@ public class DcTrackerTest extends TelephonyTest {
         serviceInfo.permission = "android.permission.BIND_TELEPHONY_DATA_SERVICE";
         IntentFilter filter = new IntentFilter();
         mContextFixture.addService(
-                DataService.DATA_SERVICE_INTERFACE,
+                DataService.SERVICE_INTERFACE,
                 null,
                 "com.android.phone",
                 cellularDataService.mBinder,
@@ -528,16 +528,16 @@ public class DcTrackerTest extends TelephonyTest {
                                    int supportedApnTypesBitmap, int type, int bearerBitmask) {
         assertEquals(profileId, dp.getProfileId());
         assertEquals(apn, dp.getApn());
-        assertEquals(ApnSetting.PROTOCOL_IP, dp.getProtocol());
+        assertEquals(ApnSetting.PROTOCOL_IP, dp.getProtocolType());
         assertEquals(0, dp.getAuthType());
         assertEquals("", dp.getUserName());
         assertEquals("", dp.getPassword());
         assertEquals(type, dp.getType());
         assertEquals(0, dp.getWaitTime());
         assertTrue(dp.isEnabled());
-        assertEquals(supportedApnTypesBitmap, dp.getSupportedApnTypesBitmap());
-        assertEquals(ApnSetting.PROTOCOL_IP, dp.getRoamingProtocol());
-        assertEquals(bearerBitmask, dp.getBearerBitmap());
+        assertEquals(supportedApnTypesBitmap, dp.getSupportedApnTypesBitmask());
+        assertEquals(ApnSetting.PROTOCOL_IP, dp.getRoamingProtocolType());
+        assertEquals(bearerBitmask, dp.getBearerBitmask());
         assertEquals(0, dp.getMtu());
         assertTrue(dp.isPersistent());
         assertFalse(dp.isPreferred());
