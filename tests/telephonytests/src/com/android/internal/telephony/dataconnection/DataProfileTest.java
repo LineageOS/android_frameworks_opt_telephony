@@ -112,7 +112,7 @@ public class DataProfileTest extends TestCase {
         DataProfile dp = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
         assertEquals(mApn1.getProfileId(), dp.getProfileId());
         assertEquals(mApn1.getApnName(), dp.getApn());
-        assertEquals(mApn1.getProtocol(), dp.getProtocol());
+        assertEquals(mApn1.getProtocol(), dp.getProtocolType());
         assertEquals(RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dp.getAuthType());
         assertEquals(mApn1.getUser(), dp.getUserName());
         assertEquals(mApn1.getPassword(), dp.getPassword());
@@ -128,7 +128,7 @@ public class DataProfileTest extends TestCase {
         DataProfile dp = DcTracker.createDataProfile(mApn3, mApn3.getProfileId(), false);
         assertEquals(mApn3.getProfileId(), dp.getProfileId());
         assertEquals(mApn3.getApnName(), dp.getApn());
-        assertEquals(mApn3.getProtocol(), dp.getProtocol());
+        assertEquals(mApn3.getProtocol(), dp.getProtocolType());
         assertEquals(RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dp.getAuthType());
         assertEquals(mApn3.getUser(), dp.getUserName());
         assertEquals(mApn3.getPassword(), dp.getPassword());
@@ -136,7 +136,7 @@ public class DataProfileTest extends TestCase {
         assertEquals(mApn3.getWaitTime(), dp.getWaitTime());
         assertEquals(mApn3.isEnabled(), dp.isEnabled());
         int expectedBearerBitmap = mApn3.getNetworkTypeBitmask();
-        assertEquals(expectedBearerBitmap, dp.getBearerBitmap());
+        assertEquals(expectedBearerBitmap, dp.getBearerBitmask());
     }
 
     @SmallTest

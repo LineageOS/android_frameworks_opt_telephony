@@ -230,9 +230,9 @@ public class DataServiceManager extends Handler {
         }
 
         @Override
-        public void onGetDataCallListComplete(@DataServiceCallback.ResultCode int resultCode,
+        public void onRequestDataCallListComplete(@DataServiceCallback.ResultCode int resultCode,
                                               List<DataCallResponse> dataCallList) {
-            if (DBG) log("onGetDataCallListComplete. resultCode = " + resultCode);
+            if (DBG) log("onRequestDataCallListComplete. resultCode = " + resultCode);
             Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
@@ -316,7 +316,7 @@ public class DataServiceManager extends Handler {
         try {
             mServiceConnection = new CellularDataServiceConnection();
             if (!mPhone.getContext().bindService(
-                    new Intent(DataService.DATA_SERVICE_INTERFACE).setPackage(packageName),
+                    new Intent(DataService.SERVICE_INTERFACE).setPackage(packageName),
                     mServiceConnection,
                     Context.BIND_AUTO_CREATE)) {
                 loge("Cannot bind to the data service.");
@@ -336,7 +336,7 @@ public class DataServiceManager extends Handler {
         // to be updated.
         List<ResolveInfo> dataPackages =
                 mPhone.getContext().getPackageManager().queryIntentServices(
-                        new Intent(DataService.DATA_SERVICE_INTERFACE),
+                        new Intent(DataService.SERVICE_INTERFACE),
                                 PackageManager.MATCH_SYSTEM_ONLY);
         HashSet<String> packageNames = new HashSet<>();
         for (ResolveInfo info : dataPackages) {
@@ -433,9 +433,8 @@ public class DataServiceManager extends Handler {
             return;
         }
 
-        CellularDataServiceCallback callback = null;
+        CellularDataServiceCallback callback = new CellularDataServiceCallback();
         if (onCompleteMessage != null) {
-            callback = new CellularDataServiceCallback();
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
@@ -443,9 +442,7 @@ public class DataServiceManager extends Handler {
                     isRoaming, allowRoaming, reason, linkProperties, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke setupDataCall on data service.");
-            if (callback != null) {
-                mMessageMap.remove(callback.asBinder());
-            }
+            mMessageMap.remove(callback.asBinder());
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
     }
@@ -471,18 +468,15 @@ public class DataServiceManager extends Handler {
             return;
         }
 
-        CellularDataServiceCallback callback = null;
+        CellularDataServiceCallback callback = new CellularDataServiceCallback();
         if (onCompleteMessage != null) {
-            callback = new CellularDataServiceCallback();
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
             mIDataService.deactivateDataCall(mPhone.getPhoneId(), cid, reason, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke deactivateDataCall on data service.");
-            if (callback != null) {
-                mMessageMap.remove(callback.asBinder());
-            }
+            mMessageMap.remove(callback.asBinder());
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
     }
@@ -504,9 +498,8 @@ public class DataServiceManager extends Handler {
             return;
         }
 
-        CellularDataServiceCallback callback = null;
+        CellularDataServiceCallback callback = new CellularDataServiceCallback();
         if (onCompleteMessage != null) {
-            callback = new CellularDataServiceCallback();
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
@@ -514,9 +507,7 @@ public class DataServiceManager extends Handler {
                     callback);
         } catch (RemoteException e) {
             loge("Cannot invoke setInitialAttachApn on data service.");
-            if (callback != null) {
-                mMessageMap.remove(callback.asBinder());
-            }
+            mMessageMap.remove(callback.asBinder());
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
     }
@@ -540,18 +531,15 @@ public class DataServiceManager extends Handler {
             return;
         }
 
-        CellularDataServiceCallback callback = null;
+        CellularDataServiceCallback callback = new CellularDataServiceCallback();
         if (onCompleteMessage != null) {
-            callback = new CellularDataServiceCallback();
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
             mIDataService.setDataProfile(mPhone.getPhoneId(), dps, isRoaming, callback);
         } catch (RemoteException e) {
             loge("Cannot invoke setDataProfile on data service.");
-            if (callback != null) {
-                mMessageMap.remove(callback.asBinder());
-            }
+            mMessageMap.remove(callback.asBinder());
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
     }
@@ -562,23 +550,22 @@ public class DataServiceManager extends Handler {
      * @param onCompleteMessage The result message for this request. Null if the client does not
      *        care about the result.
      */
-    public void getDataCallList(Message onCompleteMessage) {
-        if (DBG) log("getDataCallList");
+    public void requestDataCallList(Message onCompleteMessage) {
+        if (DBG) log("requestDataCallList");
         if (!mBound) {
             loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
         }
 
-        CellularDataServiceCallback callback = null;
+        CellularDataServiceCallback callback = new CellularDataServiceCallback();
         if (onCompleteMessage != null) {
-            callback = new CellularDataServiceCallback();
             mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
         try {
-            mIDataService.getDataCallList(mPhone.getPhoneId(), callback);
+            mIDataService.requestDataCallList(mPhone.getPhoneId(), callback);
         } catch (RemoteException e) {
-            loge("Cannot invoke getDataCallList on data service.");
+            loge("Cannot invoke requestDataCallList on data service.");
             if (callback != null) {
                 mMessageMap.remove(callback.asBinder());
             }

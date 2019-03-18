@@ -653,7 +653,7 @@ public class DataConnection extends StateMachine {
                 linkProperties,
                 msg);
         TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
-                dp.getProfileId(), dp.getApn(), dp.getProtocol());
+                dp.getProfileId(), dp.getApn(), dp.getProtocolType());
         return DataFailCause.NONE;
     }
 
@@ -855,19 +855,20 @@ public class DataConnection extends StateMachine {
         } else if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
             result.mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
-        } else if (response.getStatus() != 0) {
-            if (response.getStatus() == DataFailCause.RADIO_NOT_AVAILABLE) {
+        } else if (response.getCause() != 0) {
+            if (response.getCause() == DataFailCause.RADIO_NOT_AVAILABLE) {
                 result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
                 result.mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
             } else {
                 result = SetupResult.ERROR_DATA_SERVICE_SPECIFIC_ERROR;
-                result.mFailCause = DataFailCause.getFailCause(response.getStatus());
+                result.mFailCause = DataFailCause.getFailCause(response.getCause());
             }
         } else {
             if (DBG) log("onSetupConnectionCompleted received successful DataCallResponse");
-            mCid = response.getCallId();
+            mCid = response.getId();
 
-            mPcscfAddr = response.getPcscfs().toArray(new String[response.getPcscfs().size()]);
+            mPcscfAddr = response.getPcscfAddresses().stream()
+                    .map(InetAddress::getHostAddress).toArray(String[]::new);
 
             result = updateLinkProperty(response).setupResult;
         }
@@ -1261,7 +1262,7 @@ public class DataConnection extends StateMachine {
     private SetupResult setLinkProperties(DataCallResponse response,
             LinkProperties linkProperties) {
         // Check if system property dns usable
-        String propertyPrefix = "net." + response.getIfname() + ".";
+        String propertyPrefix = "net." + response.getInterfaceName() + ".";
         String dnsServers[] = new String[2];
         dnsServers[0] = SystemProperties.get(propertyPrefix + "dns1");
         dnsServers[1] = SystemProperties.get(propertyPrefix + "dns2");
@@ -1273,10 +1274,10 @@ public class DataConnection extends StateMachine {
         // a failure we'll clear again at the bottom of this code.
         linkProperties.clear();
 
-        if (response.getStatus() == DataFailCause.NONE) {
+        if (response.getCause() == DataFailCause.NONE) {
             try {
                 // set interface name
-                linkProperties.setInterfaceName(response.getIfname());
+                linkProperties.setInterfaceName(response.getInterfaceName());
 
                 // set link addresses
                 if (response.getAddresses().size() > 0) {
@@ -1290,12 +1291,13 @@ public class DataConnection extends StateMachine {
                         }
                     }
                 } else {
-                    throw new UnknownHostException("no address for ifname=" + response.getIfname());
+                    throw new UnknownHostException("no address for ifname="
+                            + response.getInterfaceName());
                 }
 
                 // set dns servers
-                if (response.getDnses().size() > 0) {
-                    for (InetAddress dns : response.getDnses()) {
+                if (response.getDnsAddresses().size() > 0) {
+                    for (InetAddress dns : response.getDnsAddresses()) {
                         if (!dns.isAnyLocalAddress()) {
                             linkProperties.addDnsServer(dns);
                         }
@@ -1319,26 +1321,13 @@ public class DataConnection extends StateMachine {
                 }
 
                 // set pcscf
-                if (response.getPcscfs().size() > 0) {
-                    for (String pcscf : response.getPcscfs()) {
-                        if (pcscf == null) continue;
-                        pcscf = pcscf.trim();
-                        if (pcscf.isEmpty()) continue;
-                        InetAddress ia;
-                        try {
-                            ia = NetworkUtils.numericToInetAddress(pcscf);
-                        } catch (IllegalArgumentException e) {
-                            throw new UnknownHostException("Non-numeric pcscf addr=" + pcscf);
-                        }
-                        if (!ia.isAnyLocalAddress()) {
-                            linkProperties.addPcscfServer(ia);
-                        } else {
-                            log("bad address in PCSCF");
-                        }
+                if (response.getPcscfAddresses().size() > 0) {
+                    for (InetAddress pcscf : response.getPcscfAddresses()) {
+                        linkProperties.addPcscfServer(pcscf);
                     }
                 }
 
-                for (InetAddress gateway : response.getGateways()) {
+                for (InetAddress gateway : response.getGatewayAddresses()) {
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
                     linkProperties.addRoute(new RouteInfo(gateway));
@@ -1361,7 +1350,7 @@ public class DataConnection extends StateMachine {
         if (result != SetupResult.SUCCESS) {
             if (DBG) {
                 log("setLinkProperties: error clearing LinkProperties status="
-                        + response.getStatus() + " result=" + result);
+                        + response.getCause() + " result=" + result);
             }
             linkProperties.clear();
         }

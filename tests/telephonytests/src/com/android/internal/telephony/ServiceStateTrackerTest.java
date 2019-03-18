@@ -161,7 +161,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         CellularServiceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
         IntentFilter cellularIntentfilter = new IntentFilter();
         mContextFixture.addService(
-                NetworkService.NETWORK_SERVICE_INTERFACE,
+                NetworkService.SERVICE_INTERFACE,
                 new ComponentName("com.android.phone",
                         "com.android.internal.telephony.CellularNetworkService"),
                 "com.android.phone",
@@ -175,7 +175,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         iwlanServiceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
         IntentFilter iwlanIntentFilter = new IntentFilter();
         mContextFixture.addService(
-                NetworkService.NETWORK_SERVICE_INTERFACE,
+                NetworkService.SERVICE_INTERFACE,
                 new ComponentName("com.xyz.iwlan.networkservice",
                         "com.xyz.iwlan.IwlanNetworkService"),
                 "com.xyz.iwlan.networkservice",
