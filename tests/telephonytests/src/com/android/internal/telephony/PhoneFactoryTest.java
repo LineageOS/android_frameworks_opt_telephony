@@ -16,11 +16,12 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.fail;
+
+import android.net.NetworkFactory;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.Test;
-
-import static org.junit.Assert.fail;
 
 public class PhoneFactoryTest {
     @Test
@@ -40,6 +41,12 @@ public class PhoneFactoryTest {
 
         try {
             Phone[] phone = PhoneFactory.getPhones();
+            fail("Expecting IllegalStateException");
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            NetworkFactory factory = PhoneFactory.getNetworkFactory(0);
             fail("Expecting IllegalStateException");
         } catch (IllegalStateException e) {
         }
