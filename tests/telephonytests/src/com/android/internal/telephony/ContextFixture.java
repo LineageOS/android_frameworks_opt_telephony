@@ -530,6 +530,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final Multimap<Intent, BroadcastReceiver> mOrderedBroadcastReceivers =
             ArrayListMultimap.create();
     private final HashSet<String> mPermissionTable = new HashSet<>();
+    private final HashSet<String> mSystemFeatures = new HashSet<>();
 
 
 
@@ -594,6 +595,10 @@ public class ContextFixture implements TestFixture<Context> {
                     anyInt());
         } catch (NameNotFoundException e) {
         }
+
+        doAnswer((Answer<Boolean>)
+                invocation -> mSystemFeatures.contains((String) invocation.getArgument(0)))
+                .when(mPackageManager).hasSystemFeature(any());
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         //doReturn(mBundle).when(mCarrierConfigManager).getConfig(anyInt());
@@ -704,6 +709,10 @@ public class ContextFixture implements TestFixture<Context> {
                 mPermissionTable.remove(permission);
             }
         }
+    }
+
+    public void addSystemFeature(String feature) {
+        mSystemFeatures.add(feature);
     }
 
     private static void logd(String s) {
