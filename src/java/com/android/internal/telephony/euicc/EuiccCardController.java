@@ -153,7 +153,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         }
         for (int i = 0; i < slots.length; ++i) {
             UiccSlot slotInfo = slots[i];
-            if (slotInfo.isEuicc() && slotInfo.isActive()) {
+            if (!slotInfo.isRemovable() && slotInfo.isActive()) {
                 return true;
             }
         }
