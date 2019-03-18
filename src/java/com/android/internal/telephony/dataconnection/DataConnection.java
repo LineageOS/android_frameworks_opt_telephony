@@ -45,7 +45,7 @@ import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.DataFailCause;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -2872,7 +2872,7 @@ public class DataConnection extends StateMachine {
     /** Check if the device is connected to NR 5G Non-Standalone network. */
     private boolean isNRConnected() {
         return mPhone.getServiceState().getNrStatus()
-                == NetworkRegistrationState.NR_STATUS_CONNECTED;
+                == NetworkRegistrationInfo.NR_STATUS_CONNECTED;
     }
 
     private void dumpToLog() {

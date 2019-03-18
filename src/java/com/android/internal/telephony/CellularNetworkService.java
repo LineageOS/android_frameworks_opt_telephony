@@ -32,7 +32,7 @@ import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.LteVopsSupportInfo;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
 import android.telephony.Rlog;
@@ -88,9 +88,9 @@ public class CellularNetworkService extends NetworkService {
                             if (callback == null) return;
                             ar = (AsyncResult) message.obj;
                             int domain = (message.what == GET_CS_REGISTRATION_STATE_DONE)
-                                    ? NetworkRegistrationState.DOMAIN_CS
-                                    : NetworkRegistrationState.DOMAIN_PS;
-                            NetworkRegistrationState netState =
+                                    ? NetworkRegistrationInfo.DOMAIN_CS
+                                    : NetworkRegistrationInfo.DOMAIN_PS;
+                            NetworkRegistrationInfo netState =
                                     getRegistrationStateFromResult(ar.result, domain);
 
                             int resultCode;
@@ -102,18 +102,18 @@ public class CellularNetworkService extends NetworkService {
 
                             try {
                                 if (DBG) {
-                                    log("Calling callback.onGetNetworkRegistrationStateComplete."
+                                    log("Calling callback.onGetNetworkRegistrationInfoComplete."
                                             + "resultCode = " + resultCode
                                             + ", netState = " + netState);
                                 }
-                                callback.onGetNetworkRegistrationStateComplete(
+                                callback.onGetNetworkRegistrationInfoComplete(
                                          resultCode, netState);
                             } catch (Exception e) {
                                 loge("Exception: " + e);
                             }
                             break;
                         case NETWORK_REGISTRATION_STATE_CHANGED:
-                            notifyNetworkRegistrationStateChanged();
+                            notifyNetworkRegistrationInfoChanged();
                             break;
                         default:
                             return;
@@ -129,22 +129,22 @@ public class CellularNetworkService extends NetworkService {
             switch (halRegState) {
                 case RegState.NOT_REG_MT_NOT_SEARCHING_OP:
                 case RegState.NOT_REG_MT_NOT_SEARCHING_OP_EM:
-                    return NetworkRegistrationState.REG_STATE_NOT_REG_NOT_SEARCHING;
+                    return NetworkRegistrationInfo.REG_STATE_NOT_REG_NOT_SEARCHING;
                 case RegState.REG_HOME:
-                    return NetworkRegistrationState.REG_STATE_HOME;
+                    return NetworkRegistrationInfo.REG_STATE_HOME;
                 case RegState.NOT_REG_MT_SEARCHING_OP:
                 case RegState.NOT_REG_MT_SEARCHING_OP_EM:
-                    return NetworkRegistrationState.REG_STATE_NOT_REG_SEARCHING;
+                    return NetworkRegistrationInfo.REG_STATE_NOT_REG_SEARCHING;
                 case RegState.REG_DENIED:
                 case RegState.REG_DENIED_EM:
-                    return NetworkRegistrationState.REG_STATE_DENIED;
+                    return NetworkRegistrationInfo.REG_STATE_DENIED;
                 case RegState.UNKNOWN:
                 case RegState.UNKNOWN_EM:
-                    return NetworkRegistrationState.REG_STATE_UNKNOWN;
+                    return NetworkRegistrationInfo.REG_STATE_UNKNOWN;
                 case RegState.REG_ROAMING:
-                    return NetworkRegistrationState.REG_STATE_ROAMING;
+                    return NetworkRegistrationInfo.REG_STATE_ROAMING;
                 default:
-                    return NetworkRegistrationState.REG_STATE_NOT_REG_NOT_SEARCHING;
+                    return NetworkRegistrationInfo.REG_STATE_NOT_REG_NOT_SEARCHING;
             }
         }
 
@@ -173,16 +173,16 @@ public class CellularNetworkService extends NetworkService {
             // Otherwise, certain services are available only if it's registered on home or roaming
             // network.
             if (emergencyOnly) {
-                availableServices = new int[] {NetworkRegistrationState.SERVICE_TYPE_EMERGENCY};
-            } else if (regState == NetworkRegistrationState.REG_STATE_ROAMING
-                    || regState == NetworkRegistrationState.REG_STATE_HOME) {
-                if (domain == NetworkRegistrationState.DOMAIN_PS) {
-                    availableServices = new int[] {NetworkRegistrationState.SERVICE_TYPE_DATA};
-                } else if (domain == NetworkRegistrationState.DOMAIN_CS) {
+                availableServices = new int[] {NetworkRegistrationInfo.SERVICE_TYPE_EMERGENCY};
+            } else if (regState == NetworkRegistrationInfo.REG_STATE_ROAMING
+                    || regState == NetworkRegistrationInfo.REG_STATE_HOME) {
+                if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
+                    availableServices = new int[] {NetworkRegistrationInfo.SERVICE_TYPE_DATA};
+                } else if (domain == NetworkRegistrationInfo.DOMAIN_CS) {
                     availableServices = new int[] {
-                            NetworkRegistrationState.SERVICE_TYPE_VOICE,
-                            NetworkRegistrationState.SERVICE_TYPE_SMS,
-                            NetworkRegistrationState.SERVICE_TYPE_VIDEO
+                            NetworkRegistrationInfo.SERVICE_TYPE_VOICE,
+                            NetworkRegistrationInfo.SERVICE_TYPE_SMS,
+                            NetworkRegistrationInfo.SERVICE_TYPE_VIDEO
                     };
                 }
             }
@@ -194,24 +194,24 @@ public class CellularNetworkService extends NetworkService {
             return ServiceState.rilRadioTechnologyToNetworkType(rilRat);
         }
 
-        private NetworkRegistrationState getRegistrationStateFromResult(Object result, int domain) {
+        private NetworkRegistrationInfo getRegistrationStateFromResult(Object result, int domain) {
             if (result == null) {
                 return null;
             }
 
             // TODO: unify when voiceRegStateResult and DataRegStateResult are unified.
-            if (domain == NetworkRegistrationState.DOMAIN_CS) {
+            if (domain == NetworkRegistrationInfo.DOMAIN_CS) {
                 return createRegistrationStateFromVoiceRegState(result);
-            } else if (domain == NetworkRegistrationState.DOMAIN_PS) {
+            } else if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
                 return createRegistrationStateFromDataRegState(result);
             } else {
                 return null;
             }
         }
 
-        private NetworkRegistrationState createRegistrationStateFromVoiceRegState(Object result) {
+        private NetworkRegistrationInfo createRegistrationStateFromVoiceRegState(Object result) {
             int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
-            int domain = NetworkRegistrationState.DOMAIN_CS;
+            int domain = NetworkRegistrationInfo.DOMAIN_CS;
 
             if (result instanceof android.hardware.radio.V1_0.VoiceRegStateResult) {
                 android.hardware.radio.V1_0.VoiceRegStateResult voiceRegState =
@@ -229,7 +229,7 @@ public class CellularNetworkService extends NetworkService {
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(voiceRegState.cellIdentity);
 
-                return new NetworkRegistrationState(domain, transportType, regState,
+                return new NetworkRegistrationInfo(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, cssSupported, roamingIndicator, systemIsInPrl,
                         defaultRoamingIndicator);
@@ -249,7 +249,7 @@ public class CellularNetworkService extends NetworkService {
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(voiceRegState.cellIdentity);
 
-                return new NetworkRegistrationState(domain, transportType, regState,
+                return new NetworkRegistrationInfo(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, cssSupported, roamingIndicator, systemIsInPrl,
                         defaultRoamingIndicator);
@@ -258,8 +258,8 @@ public class CellularNetworkService extends NetworkService {
             return null;
         }
 
-        private NetworkRegistrationState createRegistrationStateFromDataRegState(Object result) {
-            int domain = NetworkRegistrationState.DOMAIN_PS;
+        private NetworkRegistrationInfo createRegistrationStateFromDataRegState(Object result) {
+            int domain = NetworkRegistrationInfo.DOMAIN_PS;
             int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
 
             if (result instanceof android.hardware.radio.V1_0.DataRegStateResult) {
@@ -276,7 +276,7 @@ public class CellularNetworkService extends NetworkService {
                 LteVopsSupportInfo lteVopsSupportInfo =
                         new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
-                return new NetworkRegistrationState(domain, transportType, regState,
+                return new NetworkRegistrationInfo(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
                         false /* isNrAvailable */, false /* isEnDcAvailable */, lteVopsSupportInfo);
@@ -295,7 +295,7 @@ public class CellularNetworkService extends NetworkService {
                 LteVopsSupportInfo lteVopsSupportInfo =
                         new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
-                return new NetworkRegistrationState(domain, transportType, regState,
+                return new NetworkRegistrationInfo(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
                         false /* isNrAvailable */, false /* isEnDcAvailable */, lteVopsSupportInfo);
@@ -324,7 +324,7 @@ public class CellularNetworkService extends NetworkService {
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
                 }
 
-                return new NetworkRegistrationState(domain, transportType, regState,
+                return new NetworkRegistrationInfo(domain, transportType, regState,
                         accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
                         cellIdentity, maxDataCalls, nrIndicators.isDcNrRestricted,
                         nrIndicators.isNrAvailable, nrIndicators.isEndcAvailable,
@@ -460,21 +460,21 @@ public class CellularNetworkService extends NetworkService {
         }
 
         @Override
-        public void getNetworkRegistrationState(int domain, NetworkServiceCallback callback) {
-            if (DBG) log("getNetworkRegistrationState for domain " + domain);
+        public void getNetworkRegistrationInfo(int domain, NetworkServiceCallback callback) {
+            if (DBG) log("getNetworkRegistrationInfo for domain " + domain);
             Message message = null;
 
-            if (domain == NetworkRegistrationState.DOMAIN_CS) {
+            if (domain == NetworkRegistrationInfo.DOMAIN_CS) {
                 message = Message.obtain(mHandler, GET_CS_REGISTRATION_STATE_DONE);
                 mCallbackMap.put(message, callback);
                 mPhone.mCi.getVoiceRegistrationState(message);
-            } else if (domain == NetworkRegistrationState.DOMAIN_PS) {
+            } else if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
                 message = Message.obtain(mHandler, GET_PS_REGISTRATION_STATE_DONE);
                 mCallbackMap.put(message, callback);
                 mPhone.mCi.getDataRegistrationState(message);
             } else {
-                loge("getNetworkRegistrationState invalid domain " + domain);
-                callback.onGetNetworkRegistrationStateComplete(
+                loge("getNetworkRegistrationInfo invalid domain " + domain);
+                callback.onGetNetworkRegistrationInfoComplete(
                         NetworkServiceCallback.RESULT_ERROR_INVALID_ARG, null);
             }
         }

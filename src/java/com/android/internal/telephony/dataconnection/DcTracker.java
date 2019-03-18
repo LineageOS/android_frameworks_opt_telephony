@@ -70,7 +70,7 @@ import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DataFailCause;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -4748,8 +4748,8 @@ public class DcTracker extends Handler {
 
     private int getDataRat() {
         ServiceState ss = mPhone.getServiceState();
-        NetworkRegistrationState nrs = ss.getNetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, mTransportType);
+        NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
         if (nrs != null) {
             return ServiceState.networkTypeToRilRadioTechnology(nrs.getAccessNetworkTechnology());
         }

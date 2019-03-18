@@ -429,7 +429,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
                 .getRilDataRadioTechnology();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mNetworkRegistrationState)
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mNetworkRegistrationInfo)
                 .getAccessNetworkTechnology();
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
@@ -1145,7 +1145,7 @@ public class DcTrackerTest extends TelephonyTest {
     @SmallTest
     public void testTrySetupDefaultOnIWLAN() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
-        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mNetworkRegistrationState)
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mNetworkRegistrationInfo)
                 .getAccessNetworkTechnology();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
@@ -1198,7 +1198,7 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testUpdateWaitingApnListOnDataRatChange() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationState)
+        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationInfo)
                 .getAccessNetworkTechnology();
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT});
@@ -1224,7 +1224,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         //data rat change from ehrpd to lte
         logd("Sending EVENT_DATA_RAT_CHANGED");
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mNetworkRegistrationState)
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mNetworkRegistrationInfo)
                 .getAccessNetworkTechnology();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForMs(200);
@@ -1317,7 +1317,7 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testDataRatChangeOOS() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationState)
+        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationInfo)
                 .getAccessNetworkTechnology();
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT});
@@ -1343,7 +1343,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         // Data rat change from ehrpd to unknown due to OOS
         logd("Sending EVENT_DATA_RAT_CHANGED");
-        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mNetworkRegistrationState)
+        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mNetworkRegistrationInfo)
                 .getAccessNetworkTechnology();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForMs(200);
@@ -1354,7 +1354,7 @@ public class DcTrackerTest extends TelephonyTest {
                 any(Message.class));
 
         // Data rat resume from unknown to ehrpd
-        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationState)
+        doReturn(TelephonyManager.NETWORK_TYPE_EHRPD).when(mNetworkRegistrationInfo)
                 .getAccessNetworkTechnology();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForMs(200);
