@@ -17,6 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.annotation.Nullable;
+import android.annotation.UnsupportedAppUsage;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -124,7 +125,9 @@ public class UiccCarrierPrivilegeRules extends Handler {
         // Bytes for the length field, in ASCII HEX string form.
         private String lengthBytes;
         // Decoded length as integer.
+        @UnsupportedAppUsage
         private Integer length;
+        @UnsupportedAppUsage
         private String value;
 
         public TLV(String tag) {
@@ -182,9 +185,11 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
     private UiccProfile mUiccProfile;  // Parent
     private UiccPkcs15 mUiccPkcs15; // ARF fallback
+    @UnsupportedAppUsage
     private AtomicInteger mState;
     private List<UiccAccessRule> mAccessRules;
     private String mRules;
+    @UnsupportedAppUsage
     private Message mLoadedCallback;
     // LocalLog buffer to hold important status messages for debugging.
     private LocalLog mStatusMessage = new LocalLog(100);

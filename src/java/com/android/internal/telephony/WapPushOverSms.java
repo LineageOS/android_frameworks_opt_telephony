@@ -20,6 +20,7 @@ import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_DELIVERY_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_READ_ORIG_IND;
 
+import android.annotation.UnsupportedAppUsage;
 import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
@@ -71,12 +72,15 @@ public class WapPushOverSms implements ServiceConnection {
     private static final String TAG = "WAP PUSH";
     private static final boolean DBG = false;
 
+    @UnsupportedAppUsage
     private final Context mContext;
+    @UnsupportedAppUsage
     private IDeviceIdleController mDeviceIdleController;
 
     private String mWapPushManagerPackage;
 
     /** Assigned from ServiceConnection callback on main threaad. */
+    @UnsupportedAppUsage
     private volatile IWapPushManager mWapPushManager;
 
     /** Broadcast receiver that binds to WapPushManager when the user unlocks the phone for the
@@ -326,6 +330,7 @@ public class WapPushOverSms implements ServiceConnection {
      *         {@link Activity#RESULT_OK} if the message has been broadcast
      *         to applications
      */
+    @UnsupportedAppUsage
     public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler) {
         return dispatchWapPdu(pdu, receiver, handler, null);
     }
@@ -443,6 +448,7 @@ public class WapPushOverSms implements ServiceConnection {
     /**
      * Check whether the pdu is a MMS WAP push pdu that should be dispatched to the SMS app.
      */
+    @UnsupportedAppUsage
     public boolean isWapPushForMms(byte[] pdu, InboundSmsHandler handler) {
         DecodedResult result = decodeWapPdu(pdu, handler);
         return result.statusCode == Activity.RESULT_OK
@@ -546,6 +552,7 @@ public class WapPushOverSms implements ServiceConnection {
     private static final String THREAD_ID_SELECTION =
             Telephony.Mms.MESSAGE_ID + "=? AND " + Telephony.Mms.MESSAGE_TYPE + "=?";
 
+    @UnsupportedAppUsage
     private static long getDeliveryOrReadReportThreadId(Context context, GenericPdu pdu) {
         String messageId;
         if (pdu instanceof DeliveryInd) {
@@ -586,6 +593,7 @@ public class WapPushOverSms implements ServiceConnection {
     private static final String LOCATION_SELECTION =
             Telephony.Mms.MESSAGE_TYPE + "=? AND " + Telephony.Mms.CONTENT_LOCATION + " =?";
 
+    @UnsupportedAppUsage
     private static boolean isDuplicateNotification(Context context, NotificationInd nInd) {
         final byte[] rawLocation = nInd.getContentLocation();
         if (rawLocation != null) {

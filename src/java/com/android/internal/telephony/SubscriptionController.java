@@ -20,6 +20,7 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 import android.Manifest;
 import android.annotation.Nullable;
+import android.annotation.UnsupportedAppUsage;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
@@ -156,11 +157,13 @@ public class SubscriptionController extends ISub.Stub {
                 return flag;
             };
 
+    @UnsupportedAppUsage
     protected final Object mLock = new Object();
 
     /** The singleton instance. */
     private static SubscriptionController sInstance = null;
     protected static Phone[] sPhones;
+    @UnsupportedAppUsage
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
 
@@ -169,8 +172,10 @@ public class SubscriptionController extends ISub.Stub {
     // Each slot can have multiple subs.
     private static Map<Integer, ArrayList<Integer>> sSlotIndexToSubIds = new ConcurrentHashMap<>();
     private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    @UnsupportedAppUsage
     private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
+    @UnsupportedAppUsage
     private int[] colorArr;
     private long mLastISubServiceRegTime;
     private int mPreferredDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
@@ -197,6 +202,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    @UnsupportedAppUsage
     public static SubscriptionController getInstance() {
         if (sInstance == null)
         {
@@ -225,6 +231,7 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
 
+    @UnsupportedAppUsage
     private boolean isSubInfoReady() {
         if (VDBG) {
             // make sure sSlotIndexToSubIds is consistent with cached subinfo list
@@ -260,6 +267,7 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[SubscriptionController] init by Phone");
     }
 
+    @UnsupportedAppUsage
     private void enforceModifyPhoneState(String message) {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE, message);
@@ -284,6 +292,7 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * Notify the changed of subscription info.
      */
+    @UnsupportedAppUsage
     public void notifySubscriptionInfoChanged() {
         ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
                 "telephony.registry"));
@@ -306,6 +315,7 @@ public class SubscriptionController extends ISub.Stub {
      * @param cursor
      * @return the query result of desired SubInfoRecord
      */
+    @UnsupportedAppUsage
     private SubscriptionInfo getSubInfoRecord(Cursor cursor) {
         int id = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
@@ -393,6 +403,7 @@ public class SubscriptionController extends ISub.Stub {
      * @param queryKey query key content
      * @return Array list of queried result from database
      */
+     @UnsupportedAppUsage
      private List<SubscriptionInfo> getSubInfo(String selection, Object queryKey) {
         if (VDBG) logd("selection:" + selection + ", querykey: " + queryKey);
         String[] selectionArgs = null;
@@ -460,6 +471,7 @@ public class SubscriptionController extends ISub.Stub {
      * @param callingPackage The package making the IPC.
      * @return SubscriptionInfo, maybe null if its not active
      */
+    @UnsupportedAppUsage
     @Override
     public SubscriptionInfo getActiveSubscriptionInfo(int subId, String callingPackage) {
         if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
@@ -643,6 +655,7 @@ public class SubscriptionController extends ISub.Stub {
      * @param callingPackage The package making the IPC.
      * @return Array list of currently inserted SubInfoRecord(s)
      */
+    @UnsupportedAppUsage
     @Override
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
         return getSubscriptionInfoListFromCacheHelper(callingPackage, mCacheActiveSubInfoList);
@@ -702,6 +715,7 @@ public class SubscriptionController extends ISub.Stub {
      * @param callingPackage The package making the IPC.
      * @return active SIM count
      */
+    @UnsupportedAppUsage
     @Override
     public int getActiveSubInfoCount(String callingPackage) {
         // Let getActiveSubscriptionInfoList perform permission checks / filtering.
@@ -1381,6 +1395,7 @@ public class SubscriptionController extends ISub.Stub {
      * @param spn spn to be included in carrier text
      * @return true if carrier text is set, false otherwise
      */
+    @UnsupportedAppUsage
     public boolean setPlmnSpn(int slotIndex, boolean showPlmn, String plmn, boolean showSpn,
                               String spn) {
         synchronized (mLock) {
@@ -1754,6 +1769,7 @@ public class SubscriptionController extends ISub.Stub {
      * Return the subId for specified slot Id.
      * @deprecated
      */
+    @UnsupportedAppUsage
     @Override
     @Deprecated
     public int[] getSubId(int slotIndex) {
@@ -1802,6 +1818,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    @UnsupportedAppUsage
     @Override
     public int getPhoneId(int subId) {
         if (VDBG) printStackTrace("[getPhoneId] subId=" + subId);
@@ -1880,6 +1897,7 @@ public class SubscriptionController extends ISub.Stub {
         Rlog.v(LOG_TAG, msg);
     }
 
+    @UnsupportedAppUsage
     private void logdl(String msg) {
         logd(msg);
         mLocalLog.log(msg);
@@ -1889,6 +1907,7 @@ public class SubscriptionController extends ISub.Stub {
         Rlog.d(LOG_TAG, msg);
     }
 
+    @UnsupportedAppUsage
     private void logd(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
@@ -1898,10 +1917,12 @@ public class SubscriptionController extends ISub.Stub {
         mLocalLog.log(msg);
     }
 
+    @UnsupportedAppUsage
     private void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
     }
 
+    @UnsupportedAppUsage
     @Override
     public int getDefaultSubId() {
         int subId;
@@ -1922,6 +1943,7 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    @UnsupportedAppUsage
     @Override
     public void setDefaultSmsSubId(int subId) {
         enforceModifyPhoneState("setDefaultSmsSubId");
@@ -1946,6 +1968,7 @@ public class SubscriptionController extends ISub.Stub {
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
+    @UnsupportedAppUsage
     @Override
     public int getDefaultSmsSubId() {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
@@ -1955,6 +1978,7 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    @UnsupportedAppUsage
     @Override
     public void setDefaultVoiceSubId(int subId) {
         enforceModifyPhoneState("setDefaultVoiceSubId");
@@ -1984,6 +2008,7 @@ public class SubscriptionController extends ISub.Stub {
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
+    @UnsupportedAppUsage
     @Override
     public int getDefaultVoiceSubId() {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
@@ -1993,6 +2018,7 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    @UnsupportedAppUsage
     @Override
     public int getDefaultDataSubId() {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
@@ -2002,6 +2028,7 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    @UnsupportedAppUsage
     @Override
     public void setDefaultDataSubId(int subId) {
         enforceModifyPhoneState("setDefaultDataSubId");
@@ -2049,6 +2076,7 @@ public class SubscriptionController extends ISub.Stub {
         broadcastDefaultDataSubIdChanged(subId);
     }
 
+    @UnsupportedAppUsage
     private void updateAllDataConnectionTrackers() {
         // Tell Phone Proxies to update data connection tracker
         int len = sPhones.length;
@@ -2059,6 +2087,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    @UnsupportedAppUsage
     private void broadcastDefaultDataSubIdChanged(int subId) {
         // Broadcast an Intent for default data sub change
         if (DBG) logdl("[broadcastDefaultDataSubIdChanged] subId=" + subId);
@@ -2074,6 +2103,7 @@ public class SubscriptionController extends ISub.Stub {
      * sub is set as default subId. If two or more  sub's are active
      * the first sub is set as default subscription
      */
+    @UnsupportedAppUsage
     private void setDefaultFallbackSubId(int subId, int subscriptionType) {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultSubId called with DEFAULT_SUB_ID");
@@ -2187,6 +2217,7 @@ public class SubscriptionController extends ISub.Stub {
 
     // FIXME: We need we should not be assuming phoneId == slotIndex as it will not be true
     // when there are multiple subscriptions per sim and probably for other reasons.
+    @UnsupportedAppUsage
     public int getSubIdUsingPhoneId(int phoneId) {
         int[] subIds = getSubId(phoneId);
         if (subIds == null || subIds.length == 0) {
@@ -2239,6 +2270,7 @@ public class SubscriptionController extends ISub.Stub {
         return subList;
     }
 
+    @UnsupportedAppUsage
     private void validateSubId(int subId) {
         if (DBG) logd("validateSubId subId: " + subId);
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -2320,6 +2352,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    @UnsupportedAppUsage
     @Deprecated // This should be moved into isActiveSubId(int, String)
     public boolean isActiveSubId(int subId) {
         boolean retVal = SubscriptionManager.isValidSubscriptionId(subId)

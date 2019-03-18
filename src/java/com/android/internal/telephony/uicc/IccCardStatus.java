@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.UnsupportedAppUsage;
 import android.telephony.SubscriptionInfo;
 
 /**
@@ -27,11 +28,15 @@ public class IccCardStatus {
     public static final int CARD_MAX_APPS = 8;
 
     public enum CardState {
+        @UnsupportedAppUsage
         CARDSTATE_ABSENT,
+        @UnsupportedAppUsage
         CARDSTATE_PRESENT,
+        @UnsupportedAppUsage
         CARDSTATE_ERROR,
         CARDSTATE_RESTRICTED;
 
+        @UnsupportedAppUsage
         boolean isCardPresent() {
             return this == CARDSTATE_PRESENT ||
                 this == CARDSTATE_RESTRICTED;
@@ -42,8 +47,11 @@ public class IccCardStatus {
         PINSTATE_UNKNOWN,
         PINSTATE_ENABLED_NOT_VERIFIED,
         PINSTATE_ENABLED_VERIFIED,
+        @UnsupportedAppUsage
         PINSTATE_DISABLED,
+        @UnsupportedAppUsage
         PINSTATE_ENABLED_BLOCKED,
+        @UnsupportedAppUsage
         PINSTATE_ENABLED_PERM_BLOCKED;
 
         boolean isPermBlocked() {
@@ -59,16 +67,22 @@ public class IccCardStatus {
         }
     }
 
+    @UnsupportedAppUsage
     public CardState  mCardState;
+    @UnsupportedAppUsage
     public PinState   mUniversalPinState;
+    @UnsupportedAppUsage
     public int        mGsmUmtsSubscriptionAppIndex;
+    @UnsupportedAppUsage
     public int        mCdmaSubscriptionAppIndex;
+    @UnsupportedAppUsage
     public int        mImsSubscriptionAppIndex;
     public int        physicalSlotIndex = UiccController.INVALID_SLOT_ID;
     public String     atr;
     public String     iccid;
     public String     eid;
 
+    @UnsupportedAppUsage
     public IccCardApplicationStatus[] mApplications;
 
     public void setCardState(int state) {
