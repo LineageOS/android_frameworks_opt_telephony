@@ -50,7 +50,6 @@ import android.util.Slog;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.net.LegacyVpnInfo;
 import com.android.internal.net.VpnConfig;
-import com.android.internal.net.VpnInfo;
 import com.android.internal.net.VpnProfile;
 import com.android.internal.util.AsyncChannel;
 import com.android.server.connectivity.NetworkAgentInfo;
@@ -632,11 +631,6 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
 
     @Override
     public LegacyVpnInfo getLegacyVpnInfo(int userId) {
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public VpnInfo[] getAllVpnInfo() {
         throw new RuntimeException("not implemented");
     }
 
