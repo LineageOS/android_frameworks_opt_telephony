@@ -35,7 +35,7 @@ import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.INetworkService;
 import android.telephony.INetworkServiceCallback;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
@@ -127,24 +127,24 @@ public class NetworkRegistrationManager extends Handler {
         return (mINetworkService != null) && (mINetworkService.asBinder().isBinderAlive());
     }
 
-    public void unregisterForNetworkRegistrationStateChanged(Handler h) {
+    public void unregisterForNetworkRegistrationInfoChanged(Handler h) {
         mRegStateChangeRegistrants.remove(h);
     }
 
-    public void registerForNetworkRegistrationStateChanged(Handler h, int what, Object obj) {
-        logd("registerForNetworkRegistrationStateChanged");
+    public void registerForNetworkRegistrationInfoChanged(Handler h, int what, Object obj) {
+        logd("registerForNetworkRegistrationInfoChanged");
         mRegStateChangeRegistrants.addUnique(h, what, obj);
     }
 
     private final Map<NetworkRegStateCallback, Message> mCallbackTable = new Hashtable();
 
-    public void getNetworkRegistrationState(@NetworkRegistrationState.Domain int domain,
-                                            Message onCompleteMessage) {
+    public void getNetworkRegistrationInfo(@NetworkRegistrationInfo.Domain int domain,
+                                           Message onCompleteMessage) {
         if (onCompleteMessage == null) return;
 
         if (!isServiceConnected()) {
             loge("service not connected. Domain = "
-                    + ((domain == NetworkRegistrationState.DOMAIN_CS) ? "CS" : "PS"));
+                    + ((domain == NetworkRegistrationInfo.DOMAIN_CS) ? "CS" : "PS"));
             onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, null,
                     new IllegalStateException("Service not connected."));
             onCompleteMessage.sendToTarget();
@@ -154,9 +154,9 @@ public class NetworkRegistrationManager extends Handler {
         NetworkRegStateCallback callback = new NetworkRegStateCallback();
         try {
             mCallbackTable.put(callback, onCompleteMessage);
-            mINetworkService.getNetworkRegistrationState(mPhone.getPhoneId(), domain, callback);
+            mINetworkService.getNetworkRegistrationInfo(mPhone.getPhoneId(), domain, callback);
         } catch (RemoteException e) {
-            loge("getNetworkRegistrationState RemoteException " + e);
+            loge("getNetworkRegistrationInfo RemoteException " + e);
             mCallbackTable.remove(callback);
             onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, null, e);
             onCompleteMessage.sendToTarget();
@@ -190,7 +190,7 @@ public class NetworkRegistrationManager extends Handler {
             try {
                 service.linkToDeath(mDeathRecipient, 0);
                 mINetworkService.createNetworkServiceProvider(mPhone.getPhoneId());
-                mINetworkService.registerForNetworkRegistrationStateChanged(mPhone.getPhoneId(),
+                mINetworkService.registerForNetworkRegistrationInfoChanged(mPhone.getPhoneId(),
                         new NetworkRegStateCallback());
             } catch (RemoteException exception) {
                 // Remote exception means that the binder already died.
@@ -213,9 +213,9 @@ public class NetworkRegistrationManager extends Handler {
 
     private class NetworkRegStateCallback extends INetworkServiceCallback.Stub {
         @Override
-        public void onGetNetworkRegistrationStateComplete(
-                int result, NetworkRegistrationState state) {
-            logd("onGetNetworkRegistrationStateComplete result "
+        public void onGetNetworkRegistrationInfoComplete(
+                int result, NetworkRegistrationInfo state) {
+            logd("onGetNetworkRegistrationInfoComplete result "
                     + result + " state " + state);
             Message onCompleteMessage = mCallbackTable.remove(this);
             if (onCompleteMessage != null) {

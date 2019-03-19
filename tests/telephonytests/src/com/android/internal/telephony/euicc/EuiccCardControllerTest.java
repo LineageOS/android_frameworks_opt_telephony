@@ -98,8 +98,10 @@ public class EuiccCardControllerTest extends TelephonyTest {
         when(mActivatedEsimSlot.isActive()).thenReturn(true);
         when(mInactivatedEsimSlot.isEuicc()).thenReturn(true);
         when(mInactivatedEsimSlot.isActive()).thenReturn(false);
+        when(mInactivatedEsimSlot.isRemovable()).thenReturn(false);
         when(mActivatedRemovableSlot.isEuicc()).thenReturn(false);
         when(mActivatedRemovableSlot.isActive()).thenReturn(true);
+        when(mActivatedRemovableSlot.isRemovable()).thenReturn(true);
     }
 
     @After

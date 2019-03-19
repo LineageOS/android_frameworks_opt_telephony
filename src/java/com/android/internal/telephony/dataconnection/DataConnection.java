@@ -28,6 +28,7 @@ import android.net.LinkProperties;
 import android.net.NattKeepalivePacketData;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
+import android.net.NetworkFactory;
 import android.net.NetworkInfo;
 import android.net.NetworkMisc;
 import android.net.NetworkRequest;
@@ -45,7 +46,7 @@ import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.DataFailCause;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -68,6 +69,7 @@ import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.LinkCapacityEstimate;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
@@ -1895,9 +1897,12 @@ public class DataConnection extends StateMachine {
                 }
             } else {
                 mScore = calculateScore();
+                final NetworkFactory factory = PhoneFactory.getNetworkFactory(mPhone.getPhoneId());
+                final int factorySerialNumber = (null == factory)
+                        ? NetworkFactory.SerialNumber.NONE : factory.getSerialNumber();
                 mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
                         "DcNetworkAgent" + mTagSuffix, mNetworkInfo, getNetworkCapabilities(),
-                        mLinkProperties, mScore, misc);
+                        mLinkProperties, mScore, misc, factorySerialNumber);
             }
             if (mDataServiceManager.getTransportType()
                     == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
@@ -2344,8 +2349,9 @@ public class DataConnection extends StateMachine {
         public final DcKeepaliveTracker keepaliveTracker = new DcKeepaliveTracker();
 
         public DcNetworkAgent(Looper l, Context c, String TAG, NetworkInfo ni,
-                NetworkCapabilities nc, LinkProperties lp, int score, NetworkMisc misc) {
-            super(l, c, TAG, ni, nc, lp, score, misc);
+                NetworkCapabilities nc, LinkProperties lp, int score, NetworkMisc misc,
+                int factorySerialNumber) {
+            super(l, c, TAG, ni, nc, lp, score, misc, factorySerialNumber);
             mNetCapsLocalLog.log("New network agent created. capabilities=" + nc);
             mNetworkCapabilities = nc;
             mTransportType = new AtomicInteger(mDataServiceManager.getTransportType());
@@ -2872,7 +2878,7 @@ public class DataConnection extends StateMachine {
     /** Check if the device is connected to NR 5G Non-Standalone network. */
     private boolean isNRConnected() {
         return mPhone.getServiceState().getNrStatus()
-                == NetworkRegistrationState.NR_STATUS_CONNECTED;
+                == NetworkRegistrationInfo.NR_STATUS_CONNECTED;
     }
 
     private void dumpToLog() {
