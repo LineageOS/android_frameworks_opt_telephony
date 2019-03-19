@@ -128,9 +128,9 @@ public class SimulatedCommands extends BaseCommands
     int mNetworkType;
     String mPin2Code;
     boolean mSsnNotifyOn = false;
-    private int mVoiceRegState = NetworkRegistrationInfo.REG_STATE_HOME;
+    private int mVoiceRegState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
     private int mVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_UMTS;
-    private int mDataRegState = NetworkRegistrationInfo.REG_STATE_HOME;
+    private int mDataRegState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
     private int mDataRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_UMTS;
     public boolean mCssSupported;
     public int mRoamingIndicator;
