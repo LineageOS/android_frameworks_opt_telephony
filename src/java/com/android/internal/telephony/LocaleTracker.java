@@ -408,8 +408,16 @@ public class LocaleTracker extends Handler {
             // Set the country code for wifi. This sets allowed wifi channels based on the
             // country of the carrier we see. If we can't see any, reset to 0 so we don't
             // broadcast on forbidden channels.
-            ((WifiManager) mPhone.getContext().getSystemService(Context.WIFI_SERVICE))
-                    .setCountryCode(countryIso);
+            WifiManager wifiManager = (WifiManager) mPhone.getContext()
+                    .getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager != null) {
+                wifiManager.setCountryCode(countryIso);
+            } else {
+                msg = "Wifi manager is not available.";
+                log(msg);
+                mLocalLog.log(msg);
+            }
+
 
             Intent intent = new Intent(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
             intent.putExtra(TelephonyManager.EXTRA_NETWORK_COUNTRY, countryIso);
