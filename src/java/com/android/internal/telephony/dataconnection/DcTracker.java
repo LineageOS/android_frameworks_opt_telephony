@@ -412,6 +412,9 @@ public class DcTracker extends Handler {
         mSettingsObserver.observe(
                 Settings.Global.getUriFor(Settings.Global.DATA_ROAMING + simSuffix),
                 DctConstants.EVENT_ROAMING_SETTING_CHANGE);
+        mSettingsObserver.observe(
+                Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
+                DctConstants.EVENT_DEVICE_PROVISIONED_CHANGE);
     }
 
     /**
