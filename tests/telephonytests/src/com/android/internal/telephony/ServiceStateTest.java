@@ -37,11 +37,13 @@ public class ServiceStateTest extends TestCase {
     public void testRoaming() {
         ServiceState ss = new ServiceState();
         // add data registration state
-        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                NetworkRegistrationInfo.REG_STATE_ROAMING,
-                TelephonyManager.NETWORK_TYPE_UNKNOWN, 0,
-                false, null, null));
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        ss.addNetworkRegistrationInfo(nri);
+
         assertTrue(ss.getDataRoamingFromRegistration());
 
         ss.setCdmaDefaultRoamingIndicator(1);
@@ -292,15 +294,16 @@ public class ServiceStateTest extends TestCase {
         LteVopsSupportInfo lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
-        NetworkRegistrationInfo wwanDataRegState = new NetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                0, 0, 0, false, null, null, 0, false, false, false,
-                lteVopsSupportInfo);
 
-        NetworkRegistrationInfo wlanRegState = new NetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                0, 0, 0, false,
-                null, null);
+        NetworkRegistrationInfo wwanDataRegState = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .build();
+
+        NetworkRegistrationInfo wlanRegState = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                .build();
 
         ServiceState ss = new ServiceState();
 
