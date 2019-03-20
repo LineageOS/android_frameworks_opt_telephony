@@ -45,6 +45,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class CellularNetworkServiceTest extends TelephonyTest {
     CellularNetworkService mCellularNetworkService;
 
@@ -93,8 +97,8 @@ public class CellularNetworkServiceTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testGetNetworkRegistrationInfo() {
-        int voiceRegState = NetworkRegistrationInfo.REG_STATE_HOME;
-        int dataRegState = NetworkRegistrationInfo.REG_STATE_HOME;
+        int voiceRegState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
+        int dataRegState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
         int voiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_HSPA;
         int dataRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_HSPA;
         int domain = NetworkRegistrationInfo.DOMAIN_CS;
@@ -105,11 +109,11 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         int defaultRoamingIndicator = 3;
         int reasonForDenial = 0;
         int maxDataCalls = 4;
-        int[] availableServices = new int[] {
+        List<Integer> availableServices = new ArrayList<>(Arrays.asList(new Integer[] {
                 NetworkRegistrationInfo.SERVICE_TYPE_VOICE,
                 NetworkRegistrationInfo.SERVICE_TYPE_SMS,
                 NetworkRegistrationInfo.SERVICE_TYPE_VIDEO
-        };
+        }));
 
         mSimulatedCommands.setVoiceRegState(voiceRegState);
         mSimulatedCommands.setVoiceRadioTech(voiceRadioTech);
@@ -146,7 +150,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         }
 
         domain = NetworkRegistrationInfo.DOMAIN_PS;
-        availableServices = new int[] {NetworkRegistrationInfo.SERVICE_TYPE_DATA};
+        availableServices = Arrays.asList(NetworkRegistrationInfo.SERVICE_TYPE_DATA);
         try {
             mBinder.getNetworkRegistrationInfo(0, domain, mCallback);
         } catch (RemoteException e) {
