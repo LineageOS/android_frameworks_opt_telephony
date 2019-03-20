@@ -39,6 +39,8 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -129,22 +131,22 @@ public class CellularNetworkService extends NetworkService {
             switch (halRegState) {
                 case RegState.NOT_REG_MT_NOT_SEARCHING_OP:
                 case RegState.NOT_REG_MT_NOT_SEARCHING_OP_EM:
-                    return NetworkRegistrationInfo.REG_STATE_NOT_REG_NOT_SEARCHING;
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
                 case RegState.REG_HOME:
-                    return NetworkRegistrationInfo.REG_STATE_HOME;
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
                 case RegState.NOT_REG_MT_SEARCHING_OP:
                 case RegState.NOT_REG_MT_SEARCHING_OP_EM:
-                    return NetworkRegistrationInfo.REG_STATE_NOT_REG_SEARCHING;
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_SEARCHING;
                 case RegState.REG_DENIED:
                 case RegState.REG_DENIED_EM:
-                    return NetworkRegistrationInfo.REG_STATE_DENIED;
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_DENIED;
                 case RegState.UNKNOWN:
                 case RegState.UNKNOWN_EM:
-                    return NetworkRegistrationInfo.REG_STATE_UNKNOWN;
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
                 case RegState.REG_ROAMING:
-                    return NetworkRegistrationInfo.REG_STATE_ROAMING;
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
                 default:
-                    return NetworkRegistrationInfo.REG_STATE_NOT_REG_NOT_SEARCHING;
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
             }
         }
 
@@ -166,24 +168,23 @@ public class CellularNetworkService extends NetworkService {
             }
         }
 
-        private int[] getAvailableServices(int regState, int domain, boolean emergencyOnly) {
-            int[] availableServices = null;
+        private List<Integer> getAvailableServices(int regState, int domain,
+                                                   boolean emergencyOnly) {
+            List<Integer> availableServices = new ArrayList<>();
 
             // In emergency only states, only SERVICE_TYPE_EMERGENCY is available.
             // Otherwise, certain services are available only if it's registered on home or roaming
             // network.
             if (emergencyOnly) {
-                availableServices = new int[] {NetworkRegistrationInfo.SERVICE_TYPE_EMERGENCY};
-            } else if (regState == NetworkRegistrationInfo.REG_STATE_ROAMING
-                    || regState == NetworkRegistrationInfo.REG_STATE_HOME) {
+                availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_EMERGENCY);
+            } else if (regState == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING
+                    || regState == NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
                 if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
-                    availableServices = new int[] {NetworkRegistrationInfo.SERVICE_TYPE_DATA};
+                    availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_DATA);
                 } else if (domain == NetworkRegistrationInfo.DOMAIN_CS) {
-                    availableServices = new int[] {
-                            NetworkRegistrationInfo.SERVICE_TYPE_VOICE,
-                            NetworkRegistrationInfo.SERVICE_TYPE_SMS,
-                            NetworkRegistrationInfo.SERVICE_TYPE_VIDEO
-                    };
+                    availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_VOICE);
+                    availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_SMS);
+                    availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_VIDEO);
                 }
             }
 
@@ -224,7 +225,7 @@ public class CellularNetworkService extends NetworkService {
                 int roamingIndicator = voiceRegState.roamingIndicator;
                 int systemIsInPrl = voiceRegState.systemIsInPrl;
                 int defaultRoamingIndicator = voiceRegState.defaultRoamingIndicator;
-                int[] availableServices = getAvailableServices(
+                List<Integer> availableServices = getAvailableServices(
                         regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(voiceRegState.cellIdentity);
@@ -244,7 +245,7 @@ public class CellularNetworkService extends NetworkService {
                 int roamingIndicator = voiceRegState.roamingIndicator;
                 int systemIsInPrl = voiceRegState.systemIsInPrl;
                 int defaultRoamingIndicator = voiceRegState.defaultRoamingIndicator;
-                int[] availableServices = getAvailableServices(
+                List<Integer> availableServices = getAvailableServices(
                         regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(voiceRegState.cellIdentity);
@@ -270,15 +271,16 @@ public class CellularNetworkService extends NetworkService {
                 int reasonForDenial = dataRegState.reasonDataDenied;
                 boolean emergencyOnly = isEmergencyOnly(dataRegState.regState);
                 int maxDataCalls = dataRegState.maxDataCalls;
-                int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
+                List<Integer> availableServices = getAvailableServices(
+                        regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.cellIdentity);
                 LteVopsSupportInfo lteVopsSupportInfo =
                         new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
                 return new NetworkRegistrationInfo(domain, transportType, regState,
-                        accessNetworkTechnology, reasonForDenial, emergencyOnly, availableServices,
-                        cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
+                        accessNetworkTechnology, reasonForDenial, emergencyOnly,
+                        availableServices, cellIdentity, maxDataCalls, false /* isDcNrRestricted */,
                         false /* isNrAvailable */, false /* isEnDcAvailable */, lteVopsSupportInfo);
 
             } else if (result instanceof android.hardware.radio.V1_2.DataRegStateResult) {
@@ -289,7 +291,8 @@ public class CellularNetworkService extends NetworkService {
                 int reasonForDenial = dataRegState.reasonDataDenied;
                 boolean emergencyOnly = isEmergencyOnly(dataRegState.regState);
                 int maxDataCalls = dataRegState.maxDataCalls;
-                int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
+                List<Integer> availableServices = getAvailableServices(
+                        regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.cellIdentity);
                 LteVopsSupportInfo lteVopsSupportInfo =
@@ -309,7 +312,8 @@ public class CellularNetworkService extends NetworkService {
                 int reasonForDenial = dataRegState.base.reasonDataDenied;
                 boolean emergencyOnly = isEmergencyOnly(dataRegState.base.regState);
                 int maxDataCalls = dataRegState.base.maxDataCalls;
-                int[] availableServices = getAvailableServices(regState, domain, emergencyOnly);
+                List<Integer> availableServices = getAvailableServices(
+                        regState, domain, emergencyOnly);
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.base.cellIdentity);
                 android.hardware.radio.V1_4.NrIndicators nrIndicators = dataRegState.nrIndicators;

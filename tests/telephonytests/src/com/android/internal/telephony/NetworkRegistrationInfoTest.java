@@ -28,27 +28,28 @@ import androidx.test.filters.SmallTest;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
 /** Unit tests for {@link NetworkRegistrationInfo}. */
 public class NetworkRegistrationInfoTest {
 
     @Test
     @SmallTest
     public void testParcel() {
-        NetworkRegistrationInfo nrs = new NetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_CS,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                NetworkRegistrationInfo.REG_STATE_HOME,
-                TelephonyManager.NETWORK_TYPE_LTE,
-                0,
-                false,
-                new int[]{NetworkRegistrationInfo.SERVICE_TYPE_DATA},
-                new CellIdentityLte());
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setAvailableServices(Arrays.asList(NetworkRegistrationInfo.SERVICE_TYPE_DATA))
+                .setCellIdentity(new CellIdentityLte())
+                .build();
 
         Parcel p = Parcel.obtain();
-        nrs.writeToParcel(p, 0);
+        nri.writeToParcel(p, 0);
         p.setDataPosition(0);
 
         NetworkRegistrationInfo newNrs = NetworkRegistrationInfo.CREATOR.createFromParcel(p);
-        assertEquals(nrs, newNrs);
+        assertEquals(nri, newNrs);
     }
 }
