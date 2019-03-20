@@ -21,34 +21,34 @@ import static junit.framework.Assert.assertEquals;
 import android.os.Parcel;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentityLte;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.TelephonyManager;
 
 import androidx.test.filters.SmallTest;
 
 import org.junit.Test;
 
-/** Unit tests for {@link NetworkRegistrationState}. */
-public class NetworkRegistrationStateTest {
+/** Unit tests for {@link NetworkRegistrationInfo}. */
+public class NetworkRegistrationInfoTest {
 
     @Test
     @SmallTest
     public void testParcel() {
-        NetworkRegistrationState nrs = new NetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_CS,
+        NetworkRegistrationInfo nrs = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                NetworkRegistrationState.REG_STATE_HOME,
+                NetworkRegistrationInfo.REG_STATE_HOME,
                 TelephonyManager.NETWORK_TYPE_LTE,
                 0,
                 false,
-                new int[]{NetworkRegistrationState.SERVICE_TYPE_DATA},
+                new int[]{NetworkRegistrationInfo.SERVICE_TYPE_DATA},
                 new CellIdentityLte());
 
         Parcel p = Parcel.obtain();
         nrs.writeToParcel(p, 0);
         p.setDataPosition(0);
 
-        NetworkRegistrationState newNrs = NetworkRegistrationState.CREATOR.createFromParcel(p);
+        NetworkRegistrationInfo newNrs = NetworkRegistrationInfo.CREATOR.createFromParcel(p);
         assertEquals(nrs, newNrs);
     }
 }
