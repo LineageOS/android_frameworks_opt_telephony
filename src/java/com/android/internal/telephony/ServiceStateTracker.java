@@ -63,7 +63,7 @@ import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.DataSpecificRegistrationStates;
-import android.telephony.NetworkRegistrationState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -567,7 +567,7 @@ public class ServiceStateTracker extends Handler {
         for (int transportType : mTransportManager.getAvailableTransports()) {
             mRegStateManagers.append(transportType, new NetworkRegistrationManager(
                     transportType, phone));
-            mRegStateManagers.get(transportType).registerForNetworkRegistrationStateChanged(
+            mRegStateManagers.get(transportType).registerForNetworkRegistrationInfoChanged(
                     this, EVENT_NETWORK_STATE_CHANGED, null);
         }
         mLocaleTracker = TelephonyComponentFactory.getInstance()
@@ -646,8 +646,8 @@ public class ServiceStateTracker extends Handler {
         // If we are previously in service, we need to notify that we are out of service now.
         for (int transport : mTransportManager.getAvailableTransports()) {
             if (mSS != null) {
-                NetworkRegistrationState nrs = mSS.getNetworkRegistrationState(
-                        NetworkRegistrationState.DOMAIN_PS, transport);
+                NetworkRegistrationInfo nrs = mSS.getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_PS, transport);
                 if (nrs != null && nrs.isInService()
                         && mDetachedRegistrants.get(transport) != null) {
                     mDetachedRegistrants.get(transport).notifyRegistrants();
@@ -792,8 +792,8 @@ public class ServiceStateTracker extends Handler {
      * new RAT as an Integer Object.
      */
     protected void notifyDataRegStateRilRadioTechnologyChanged(int transport) {
-        NetworkRegistrationState nrs = mSS.getNetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, transport);
+        NetworkRegistrationInfo nrs = mSS.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, transport);
         if (nrs != null) {
             int rat = ServiceState.networkTypeToRilRadioTechnology(
                     nrs.getAccessNetworkTechnology());
@@ -1181,7 +1181,7 @@ public class ServiceStateTracker extends Handler {
             case EVENT_GET_LOC_DONE:
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
-                    CellIdentity cellIdentity = ((NetworkRegistrationState) ar.result)
+                    CellIdentity cellIdentity = ((NetworkRegistrationInfo) ar.result)
                             .getCellIdentity();
                     mCellIdentity = cellIdentity;
                     mPhone.notifyLocationChanged(getCellLocation());
@@ -1258,7 +1258,7 @@ public class ServiceStateTracker extends Handler {
 
                 if (ar.exception == null) {
                     mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                            .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
+                            .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
                             obtainMessage(EVENT_GET_LOC_DONE, null));
                 }
                 break;
@@ -1517,7 +1517,7 @@ public class ServiceStateTracker extends Handler {
                             updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS);
                     hasChanged |= updateNrStatusFromPhysicalChannelConfigs(
                             list,
-                            mSS.getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                            mSS.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                                     AccessNetworkType.EUTRAN));
 
                     // Notify NR frequency, NR connection status or bandwidths changed.
@@ -1896,7 +1896,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     private boolean isNrStatusChanged(
-            NetworkRegistrationState oldRegState, NetworkRegistrationState newRegState) {
+            NetworkRegistrationInfo oldRegState, NetworkRegistrationInfo newRegState) {
         if (oldRegState == null || newRegState == null) {
             return oldRegState != newRegState;
         }
@@ -1934,7 +1934,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     private boolean updateNrStatusFromPhysicalChannelConfigs(
-            List<PhysicalChannelConfig> configs, NetworkRegistrationState regState) {
+            List<PhysicalChannelConfig> configs, NetworkRegistrationInfo regState) {
 
         if (regState == null || configs == null) return false;
 
@@ -1949,12 +1949,12 @@ public class ServiceStateTracker extends Handler {
 
         int newNrStatus = regState.getNrStatus();
         if (hasNrSecondaryServingCell) {
-            if (regState.getNrStatus() == NetworkRegistrationState.NR_STATUS_NOT_RESTRICTED) {
-                newNrStatus = NetworkRegistrationState.NR_STATUS_CONNECTED;
+            if (regState.getNrStatus() == NetworkRegistrationInfo.NR_STATUS_NOT_RESTRICTED) {
+                newNrStatus = NetworkRegistrationInfo.NR_STATUS_CONNECTED;
             }
         } else {
-            if (regState.getNrStatus() == NetworkRegistrationState.NR_STATUS_CONNECTED) {
-                newNrStatus = NetworkRegistrationState.NR_STATUS_NOT_RESTRICTED;
+            if (regState.getNrStatus() == NetworkRegistrationInfo.NR_STATUS_CONNECTED) {
+                newNrStatus = NetworkRegistrationInfo.NR_STATUS_NOT_RESTRICTED;
             }
         }
 
@@ -1977,14 +1977,14 @@ public class ServiceStateTracker extends Handler {
      * @param serviceState The service state having combined registration states.
      */
     private void combinePsRegistrationStates(ServiceState serviceState) {
-        NetworkRegistrationState wlanPsRegState = serviceState.getNetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-        NetworkRegistrationState wwanPsRegState = serviceState.getNetworkRegistrationState(
-                NetworkRegistrationState.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        NetworkRegistrationInfo wlanPsRegState = serviceState.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        NetworkRegistrationInfo wwanPsRegState = serviceState.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         if (wlanPsRegState != null
                 && wlanPsRegState.getAccessNetworkTechnology()
                 == TelephonyManager.NETWORK_TYPE_IWLAN
-                && wlanPsRegState.getRegState() == NetworkRegistrationState.REG_STATE_HOME) {
+                && wlanPsRegState.getRegState() == NetworkRegistrationInfo.REG_STATE_HOME) {
             serviceState.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
             serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
         } else if (wwanPsRegState != null) {
@@ -2005,7 +2005,7 @@ public class ServiceStateTracker extends Handler {
         int ints[];
         switch (what) {
             case EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION: {
-                NetworkRegistrationState networkRegState = (NetworkRegistrationState) ar.result;
+                NetworkRegistrationInfo networkRegState = (NetworkRegistrationInfo) ar.result;
                 VoiceSpecificRegistrationStates voiceSpecificStates =
                         networkRegState.getVoiceSpecificStates();
 
@@ -2017,7 +2017,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setRilVoiceRadioTechnology(newVoiceRat);
-                mNewSS.addNetworkRegistrationState(networkRegState);
+                mNewSS.addNetworkRegistrationInfo(networkRegState);
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 //Denial reason if registrationState = 3
@@ -2083,8 +2083,8 @@ public class ServiceStateTracker extends Handler {
             }
 
             case EVENT_POLL_STATE_PS_IWLAN_REGISTRATION: {
-                NetworkRegistrationState networkRegState = (NetworkRegistrationState) ar.result;
-                mNewSS.addNetworkRegistrationState(networkRegState);
+                NetworkRegistrationInfo networkRegState = (NetworkRegistrationInfo) ar.result;
+                mNewSS.addNetworkRegistrationInfo(networkRegState);
 
                 if (DBG) {
                     log("handlPollStateResultMessage: PS IWLAN. " + networkRegState);
@@ -2093,8 +2093,8 @@ public class ServiceStateTracker extends Handler {
             }
 
             case EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION: {
-                NetworkRegistrationState networkRegState = (NetworkRegistrationState) ar.result;
-                mNewSS.addNetworkRegistrationState(networkRegState);
+                NetworkRegistrationInfo networkRegState = (NetworkRegistrationInfo) ar.result;
+                mNewSS.addNetworkRegistrationInfo(networkRegState);
                 DataSpecificRegistrationStates dataSpecificStates =
                         networkRegState.getDataSpecificStates();
                 int registrationState = networkRegState.getRegState();
@@ -2980,19 +2980,19 @@ public class ServiceStateTracker extends Handler {
 
                 mPollingContext[0]++;
                 mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                                 obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                                         mPollingContext));
 
                 mPollingContext[0]++;
                 mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_CS,
+                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
                         obtainMessage(EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION, mPollingContext));
 
                 if (mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN) != null) {
                     mPollingContext[0]++;
                     mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
-                            .getNetworkRegistrationState(NetworkRegistrationState.DOMAIN_PS,
+                            .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                                     obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
                                             mPollingContext));
                 }
@@ -3050,10 +3050,10 @@ public class ServiceStateTracker extends Handler {
         boolean anyDataRegChanged = false;
         boolean anyDataRatChanged = false;
         for (int transport : mTransportManager.getAvailableTransports()) {
-            NetworkRegistrationState oldNrs = mSS.getNetworkRegistrationState(
-                    NetworkRegistrationState.DOMAIN_PS, transport);
-            NetworkRegistrationState newNrs = mNewSS.getNetworkRegistrationState(
-                    NetworkRegistrationState.DOMAIN_PS, transport);
+            NetworkRegistrationInfo oldNrs = mSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, transport);
+            NetworkRegistrationInfo newNrs = mNewSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, transport);
 
             boolean changed = (oldNrs == null || !oldNrs.isInService())
                     && (newNrs != null && newNrs.isInService());
@@ -3073,9 +3073,9 @@ public class ServiceStateTracker extends Handler {
             }
 
             int oldRegState = oldNrs != null ? oldNrs.getRegState()
-                    : NetworkRegistrationState.REG_STATE_UNKNOWN;
+                    : NetworkRegistrationInfo.REG_STATE_UNKNOWN;
             int newRegState = newNrs != null ? newNrs.getRegState()
-                    : NetworkRegistrationState.REG_STATE_UNKNOWN;
+                    : NetworkRegistrationInfo.REG_STATE_UNKNOWN;
             hasDataRegStateChanged.put(transport, oldRegState != newRegState);
             if (oldRegState != newRegState) {
                 anyDataRegChanged = true;
@@ -3089,10 +3089,10 @@ public class ServiceStateTracker extends Handler {
                 mSS.getNrFrequencyRange() != mNewSS.getNrFrequencyRange();
 
         boolean hasNrStatusChanged = isNrStatusChanged(
-                mSS.getNetworkRegistrationState(
-                        NetworkRegistrationState.DOMAIN_PS, AccessNetworkType.EUTRAN),
-                mNewSS.getNetworkRegistrationState(
-                        NetworkRegistrationState.DOMAIN_PS, AccessNetworkType.EUTRAN));
+                mSS.getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkType.EUTRAN),
+                mNewSS.getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkType.EUTRAN));
 
         // TODO: loosen this restriction to exempt fields that are provided through system
         // information; otherwise, we will get false positives when things like the operator
@@ -3578,8 +3578,8 @@ public class ServiceStateTracker extends Handler {
      * to service state */
     private int regCodeToServiceState(int code) {
         switch (code) {
-            case NetworkRegistrationState.REG_STATE_HOME:
-            case NetworkRegistrationState.REG_STATE_ROAMING:
+            case NetworkRegistrationInfo.REG_STATE_HOME:
+            case NetworkRegistrationInfo.REG_STATE_ROAMING:
                 return ServiceState.STATE_IN_SERVICE;
             default:
                 return ServiceState.STATE_OUT_OF_SERVICE;
@@ -3591,7 +3591,7 @@ public class ServiceStateTracker extends Handler {
      * returns true if registered roam, false otherwise
      */
     private boolean regCodeIsRoaming (int code) {
-        return NetworkRegistrationState.REG_STATE_ROAMING == code;
+        return NetworkRegistrationInfo.REG_STATE_ROAMING == code;
     }
 
     private boolean isSameOperatorNameFromSimAndSS(ServiceState s) {
@@ -4168,8 +4168,8 @@ public class ServiceStateTracker extends Handler {
         mAttachedRegistrants.get(transport).add(r);
 
         if (mSS != null) {
-            NetworkRegistrationState netRegState = mSS.getNetworkRegistrationState(
-                    NetworkRegistrationState.DOMAIN_PS, transport);
+            NetworkRegistrationInfo netRegState = mSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, transport);
             if (netRegState == null || netRegState.isInService()) {
                 r.notifyRegistrant();
             }
@@ -4204,8 +4204,8 @@ public class ServiceStateTracker extends Handler {
         mDetachedRegistrants.get(transport).add(r);
 
         if (mSS != null) {
-            NetworkRegistrationState netRegState = mSS.getNetworkRegistrationState(
-                    NetworkRegistrationState.DOMAIN_PS, transport);
+            NetworkRegistrationInfo netRegState = mSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, transport);
             if (netRegState != null && !netRegState.isInService()) {
                 r.notifyRegistrant();
             }
