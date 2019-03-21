@@ -46,7 +46,6 @@ import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
-import android.telephony.Rlog;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -65,8 +64,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class RadioResponse extends IRadioResponse.Stub {
-    private static final String TAG = RadioResponse.class.getSimpleName();
-
     // The number of the required config values for broadcast SMS stored in the C struct
     // RIL_CDMA_BroadcastServiceInfo
     private static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
@@ -1017,7 +1014,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getDeviceIdentityResponse(RadioResponseInfo responseInfo, String imei,
                                           String imeisv, String esn, String meid) {
-        responseStrings(responseInfo, Rlog.pii(TAG, imei), imeisv, esn, meid);
+        responseStrings(responseInfo, imei, imeisv, esn, meid);
     }
 
     /**
