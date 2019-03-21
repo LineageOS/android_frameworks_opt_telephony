@@ -28,6 +28,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -43,6 +44,7 @@ import org.mockito.Mock;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 public class MultiSimSettingControllerTest extends TelephonyTest {
     private static final int SINGLE_SIM = 1;
@@ -60,25 +62,27 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
     private DataEnabledSettings mDataEnabledSettingsMock2;
     private Phone[] mPhones;
 
+    ParcelUuid mGroupUuid1 = new ParcelUuid(UUID.randomUUID());
+
     private SubscriptionInfo mSubInfo1 = new SubscriptionInfo(1, "subInfo1 IccId", 0, "T-mobile",
             "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null);
 
     private SubscriptionInfo mSubInfo2 = new SubscriptionInfo(2, "subInfo2 IccId", 1, "T-mobile",
             "T-mobile", 0, 255, "12345", 0, null, "310", "260",
-            "156", false, null, null, -1, false, "group1", false,
+            "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
 
     private SubscriptionInfo mSubInfo3 = new SubscriptionInfo(3, "subInfo3 IccId", -1, "T-mobile",
             "T-mobile", 0, 255, "12345", 0, null, "310", "260",
-            "156", false, null, null, -1, false, "group1", false,
+            "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
 
     private SubscriptionInfo mSubInfo4 = new SubscriptionInfo(4, "subInfo4 IccId", -1, "T-mobile",
             "T-mobile", 0, 255, "12345", 0, null, "310", "260",
-            "156", false, null, null, -1, false, "group1", false,
+            "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
 
@@ -171,7 +175,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
 
         // Create subscription grouping.
         doReturn(Arrays.asList(mSubInfo2, mSubInfo3, mSubInfo4)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(eq(2), anyString());
+                .getSubscriptionsInGroup(any(), anyString());
         mMultiSimSettingControllerUT.onSubscriptionGroupCreated(new int[] {2, 3, 4});
         // This should result in setting sync.
         assertTrue(GlobalSettingsHelper.getBoolean(
@@ -201,6 +205,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(2).when(mSubControllerMock).getDefaultSmsSubId();
         doReturn(1).when(mSubControllerMock).getDefaultVoiceSubId();
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1, mSubInfo3);
+        doReturn(mGroupUuid1).when(mSubControllerMock).getGroupUuid(2);
         doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
         mMultiSimSettingControllerUT.updateDefaults();
         verify(mSubControllerMock).setDefaultDataSubId(3);
@@ -243,7 +248,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
     public void testGroupedCbrs() throws Exception {
         // Mark sub 1 as opportunistic.
         replaceInstance(SubscriptionInfo.class, "mIsOpportunistic", mSubInfo1, true);
-        replaceInstance(SubscriptionInfo.class, "mGroupUUID", mSubInfo1, "group1");
+        replaceInstance(SubscriptionInfo.class, "mGroupUUID", mSubInfo1, mGroupUuid1);
         doReturn(true).when(mSubControllerMock).isOpportunistic(1);
         // Make opportunistic sub 1 and sub 2 data enabled.
         doReturn(true).when(mPhoneMock1).isUserDataEnabled();
@@ -259,9 +264,9 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         GlobalSettingsHelper.setBoolean(mContext, Settings.Global.MOBILE_DATA, 2, false);
         // Group sub 1 with sub 2.
         doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(eq(1), anyString());
+                .getSubscriptionsInGroup(any(), anyString());
         doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(eq(2), anyString());
+                .getSubscriptionsInGroup(any(), anyString());
         mMultiSimSettingControllerUT.onSubscriptionGroupCreated(new int[] {1, 2});
         // This should result in setting sync.
         verify(mDataEnabledSettingsMock1).setUserDataEnabled(false);
