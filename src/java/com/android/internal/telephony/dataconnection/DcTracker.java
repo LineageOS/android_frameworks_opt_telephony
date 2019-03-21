@@ -1961,18 +1961,21 @@ public class DcTracker extends Handler {
     private void setInitialAttachApn() {
         ApnSetting iaApnSetting = null;
         ApnSetting defaultApnSetting = null;
-        ApnSetting firstApnSetting = null;
+        ApnSetting firstNonEmergencyApnSetting = null;
 
         log("setInitialApn: E mPreferredApn=" + mPreferredApn);
 
         if (mPreferredApn != null && mPreferredApn.canHandleType(ApnSetting.TYPE_IA)) {
               iaApnSetting = mPreferredApn;
         } else if (!mAllApnSettings.isEmpty()) {
-            firstApnSetting = mAllApnSettings.get(0);
-            log("setInitialApn: firstApnSetting=" + firstApnSetting);
-
             // Search for Initial APN setting and the first apn that can handle default
             for (ApnSetting apn : mAllApnSettings) {
+                if (firstNonEmergencyApnSetting == null
+                        && !apn.canHandleType(ApnSetting.TYPE_EMERGENCY)) {
+                    firstNonEmergencyApnSetting = apn;
+                    log("setInitialApn: firstNonEmergencyApnSetting="
+                            + firstNonEmergencyApnSetting);
+                }
                 if (apn.canHandleType(ApnSetting.TYPE_IA)) {
                     // The Initial Attach APN is highest priority so use it if there is one
                     log("setInitialApn: iaApnSetting=" + apn);
@@ -2003,9 +2006,9 @@ public class DcTracker extends Handler {
         } else if (defaultApnSetting != null) {
             if (DBG) log("setInitialAttachApn: using defaultApnSetting");
             initialAttachApnSetting = defaultApnSetting;
-        } else if (firstApnSetting != null) {
-            if (DBG) log("setInitialAttachApn: using firstApnSetting");
-            initialAttachApnSetting = firstApnSetting;
+        } else if (firstNonEmergencyApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using firstNonEmergencyApnSetting");
+            initialAttachApnSetting = firstNonEmergencyApnSetting;
         }
 
         if (initialAttachApnSetting == null) {
