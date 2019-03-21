@@ -1166,7 +1166,8 @@ public class SimulatedCommands extends BaseCommands
                 mSetupDataCallResult.addresses = "12.34.56.78";
                 mSetupDataCallResult.dnses = "98.76.54.32";
                 mSetupDataCallResult.gateways = "11.22.33.44";
-                mSetupDataCallResult.pcscf = "";
+                mSetupDataCallResult.pcscf =
+                        "fd00:976a:c305:1d::8 fd00:976a:c202:1d::7 fd00:976a:c305:1d::5";
                 mSetupDataCallResult.mtu = 1440;
             } catch (Exception e) {
 

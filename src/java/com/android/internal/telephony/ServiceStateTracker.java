@@ -1258,7 +1258,7 @@ public class ServiceStateTracker extends Handler {
 
                 if (ar.exception == null) {
                     mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                            .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+                            .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
                             obtainMessage(EVENT_GET_LOC_DONE, null));
                 }
                 break;
@@ -2981,19 +2981,19 @@ public class ServiceStateTracker extends Handler {
 
                 mPollingContext[0]++;
                 mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                                 obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                                         mPollingContext));
 
                 mPollingContext[0]++;
                 mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+                        .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
                         obtainMessage(EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION, mPollingContext));
 
                 if (mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN) != null) {
                     mPollingContext[0]++;
                     mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
-                            .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                            .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                                     obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
                                             mPollingContext));
                 }

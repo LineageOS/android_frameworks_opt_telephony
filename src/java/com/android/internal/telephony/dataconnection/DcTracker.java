@@ -4439,7 +4439,7 @@ public class DcTracker extends Handler {
                         EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,
                             mSentSinceLastRecv);
                         if (DBG) log("doRecovery() get data call list");
-                        mDataServiceManager.getDataCallList(obtainMessage());
+                        mDataServiceManager.requestDataCallList(obtainMessage());
                         putRecoveryAction(RECOVERY_ACTION_CLEANUP);
                         break;
                     case RECOVERY_ACTION_CLEANUP:
@@ -4716,11 +4716,25 @@ public class DcTracker extends Handler {
             profileType = DataProfile.TYPE_3GPP;
         }
 
-        return new DataProfile(profileId, apn.getApnName(), apn.getProtocol(), apn.getAuthType(),
-                apn.getUser(), apn.getPassword(), profileType, apn.getMaxConnsTime(),
-                apn.getMaxConns(),  apn.getWaitTime(), apn.isEnabled(), apn.getApnTypeBitmask(),
-                apn.getRoamingProtocol(), networkTypeBitmask, apn.getMtu(), apn.isPersistent(),
-                isPreferred);
+        return new DataProfile.Builder()
+                .setProfileId(profileId)
+                .setApn(apn.getApnName())
+                .setProtocolType(apn.getProtocol())
+                .setAuthType(apn.getAuthType())
+                .setUserName(apn.getUser())
+                .setPassword(apn.getPassword())
+                .setType(profileType)
+                .setMaxConnectionsTime(apn.getMaxConnsTime())
+                .setMaxConnections(apn.getMaxConns())
+                .setWaitTime(apn.getWaitTime())
+                .enable(apn.isEnabled())
+                .setSupportedApnTypesBitmask(apn.getApnTypeBitmask())
+                .setRoamingProtocolType(apn.getRoamingProtocol())
+                .setBearerBitmask(networkTypeBitmask)
+                .setMtu(apn.getMtu())
+                .setPersistent(apn.isPersistent())
+                .setPreferred(isPreferred)
+                .build();
     }
 
     private void onDataServiceBindingChanged(boolean bound) {

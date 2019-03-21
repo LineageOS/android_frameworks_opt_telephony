@@ -150,7 +150,7 @@ public class AccessNetworksManager extends Handler {
 
             try {
                 service.linkToDeath(mDeathRecipient, 0 /* flags */);
-                mIQualifiedNetworksService.createNetworkAvailabilityUpdater(mPhone.getPhoneId(),
+                mIQualifiedNetworksService.createNetworkAvailabilityProvider(mPhone.getPhoneId(),
                         new QualifiedNetworksServiceCallback());
             } catch (RemoteException e) {
                 mDeathRecipient.binderDied();
@@ -255,7 +255,7 @@ public class AccessNetworksManager extends Handler {
                 && mIQualifiedNetworksService.asBinder().isBinderAlive()) {
             // Remove the network availability updater and then unbind the service.
             try {
-                mIQualifiedNetworksService.removeNetworkAvailabilityUpdater(mPhone.getPhoneId());
+                mIQualifiedNetworksService.removeNetworkAvailabilityProvider(mPhone.getPhoneId());
             } catch (RemoteException e) {
                 loge("Cannot remove network availability updater. " + e);
             }
