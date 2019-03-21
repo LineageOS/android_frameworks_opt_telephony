@@ -306,13 +306,13 @@ public class CarrierSignalAgent extends Handler {
                     PackageManager.MATCH_DEFAULT_ONLY).isEmpty()) {
                 loge("Carrier signal receivers are configured but unavailable: "
                         + signal.getComponent());
-                return;
+                continue;
             }
             if (!wakeup && !packageManager.queryBroadcastReceivers(signal,
                     PackageManager.MATCH_DEFAULT_ONLY).isEmpty()) {
                 loge("Runtime signals shouldn't be configured in Manifest: "
                         + signal.getComponent());
-                return;
+                continue;
             }
 
             signal.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
