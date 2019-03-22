@@ -311,7 +311,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOADED, null, FAKE_SUB_ID_1);
 
-        waitForMs(100);
+        waitForMs(300);
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
         verify(mTelephonyManager).getSimOperatorNumeric(FAKE_SUB_ID_1);
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(
