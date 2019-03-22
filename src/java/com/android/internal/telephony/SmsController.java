@@ -23,6 +23,7 @@ import static com.android.internal.util.DumpUtils.checkDumpPermission;
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityThread;
+import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.net.Uri;
@@ -62,6 +63,13 @@ public class SmsController extends ISmsImplBase {
             phone = PhoneFactory.getDefaultPhone();
         }
         return phone;
+    }
+
+    private SmsPermissions getSmsPermissions(int subId) {
+        Phone phone = getPhone(subId);
+
+        return new SmsPermissions(phone, mContext,
+                (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE));
     }
 
     @UnsupportedAppUsage
@@ -142,6 +150,12 @@ public class SmsController extends ISmsImplBase {
     public void sendTextForSubscriber(int subId, String callingPackage, String destAddr,
             String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
             boolean persistMessageForNonDefaultSmsApp) {
+        if (!getSmsPermissions(subId).checkCallingCanSendText(persistMessageForNonDefaultSmsApp,
+                callingPackage, "Sending SMS message")) {
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+            return;
+        }
+
         SubscriptionInfo info = getSubscriptionInfo(subId);
         if (isBluetoothSubscription(info)) {
             sendBluetoothText(info, destAddr, text, sentIntent, deliveryIntent);
