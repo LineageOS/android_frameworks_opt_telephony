@@ -359,6 +359,33 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testEmergencySmsMode() {
+        String emergencyNumber = "111";
+        String nonEmergencyNumber = "222";
+        mContextFixture.getCarrierConfigBundle().putInt(
+                CarrierConfigManager.KEY_EMERGENCY_SMS_MODE_TIMER_MS_INT, 200);
+        doReturn(true).when(mTelephonyManager).isEmergencyNumber(emergencyNumber);
+
+        mPhoneUT.notifySmsSent(nonEmergencyNumber);
+        waitForMs(50);
+        assertFalse(mPhoneUT.isInEmergencySmsMode());
+
+        mPhoneUT.notifySmsSent(emergencyNumber);
+        waitForMs(50);
+        assertTrue(mPhoneUT.isInEmergencySmsMode());
+        waitForMs(200);
+        assertFalse(mPhoneUT.isInEmergencySmsMode());
+
+        // Feature not supported
+        mContextFixture.getCarrierConfigBundle().putInt(
+                CarrierConfigManager.KEY_EMERGENCY_SMS_MODE_TIMER_MS_INT, 0);
+        mPhoneUT.notifySmsSent(emergencyNumber);
+        waitForMs(50);
+        assertFalse(mPhoneUT.isInEmergencySmsMode());
+    }
+
+    @Test
+    @SmallTest
     public void testSendBurstDtmf() {
         //Should do nothing for GSM
         mPhoneUT.sendBurstDtmf("1234567890", 0, 0, null);
