@@ -405,7 +405,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
                        NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)), /* addresses */
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)), /* dnses */
                 Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)), /* gateways */
-                Arrays.asList(FAKE_PCSCF_ADDRESS), /* pcscfs */
+                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_PCSCF_ADDRESS)), /* pcscfs */
                 1440 /* mtu */);
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,

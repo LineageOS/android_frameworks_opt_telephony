@@ -49,7 +49,7 @@ public class CellularDataService extends DataService {
     private static final int DEACTIVATE_DATA_ALL_COMPLETE           = 2;
     private static final int SET_INITIAL_ATTACH_APN_COMPLETE        = 3;
     private static final int SET_DATA_PROFILE_COMPLETE              = 4;
-    private static final int GET_DATA_CALL_LIST_COMPLETE            = 5;
+    private static final int REQUEST_DATA_CALL_LIST_COMPLETE        = 5;
     private static final int DATA_CALL_LIST_CHANGED                 = 6;
 
     private class CellularDataServiceProvider extends DataService.DataServiceProvider {
@@ -101,8 +101,8 @@ public class CellularDataService extends DataService {
                                     ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
                                     : DataServiceCallback.RESULT_SUCCESS);
                             break;
-                        case GET_DATA_CALL_LIST_COMPLETE:
-                            callback.onGetDataCallListComplete(
+                        case REQUEST_DATA_CALL_LIST_COMPLETE:
+                            callback.onRequestDataCallListComplete(
                                     ar.exception != null
                                             ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
                                             : DataServiceCallback.RESULT_SUCCESS,
@@ -190,14 +190,14 @@ public class CellularDataService extends DataService {
         }
 
         @Override
-        public void getDataCallList(DataServiceCallback callback) {
-            if (DBG) log("getDataCallList " + getSlotIndex());
+        public void requestDataCallList(DataServiceCallback callback) {
+            if (DBG) log("requestDataCallList " + getSlotIndex());
 
             Message message = null;
             // Only obtain the message when the caller wants a callback. If the caller doesn't care
             // the request completed or results, then no need to pass the message down.
             if (callback != null) {
-                message = Message.obtain(mHandler, GET_DATA_CALL_LIST_COMPLETE);
+                message = Message.obtain(mHandler, REQUEST_DATA_CALL_LIST_COMPLETE);
                 mCallbackMap.put(message, callback);
             }
             mPhone.mCi.getDataCallList(message);
