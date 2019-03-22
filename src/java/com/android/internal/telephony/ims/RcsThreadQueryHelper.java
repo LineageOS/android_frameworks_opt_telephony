@@ -35,7 +35,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.telephony.ims.RcsQueryContinuationToken;
-import android.telephony.ims.RcsThreadQueryResult;
+import android.telephony.ims.RcsThreadQueryResultParcelable;
 
 import com.android.ims.RcsTypeIdPair;
 
@@ -60,7 +60,7 @@ class RcsThreadQueryHelper {
         mParticipantQueryHelper = participantQueryHelper;
     }
 
-    RcsThreadQueryResult performThreadQuery(Bundle bundle) throws RemoteException {
+    RcsThreadQueryResultParcelable performThreadQuery(Bundle bundle) throws RemoteException {
         RcsQueryContinuationToken continuationToken = null;
         List<RcsTypeIdPair> rcsThreadIdList = new ArrayList<>();
         try (Cursor cursor = mContentResolver.query(RCS_THREAD_URI, null, bundle, null)) {
@@ -87,7 +87,7 @@ class RcsThreadQueryHelper {
                 continuationToken = cursorExtras.getParcelable(QUERY_CONTINUATION_TOKEN);
             }
         }
-        return new RcsThreadQueryResult(continuationToken, rcsThreadIdList);
+        return new RcsThreadQueryResultParcelable(continuationToken, rcsThreadIdList);
     }
 
     int create1To1Thread(int participantId) throws RemoteException {
