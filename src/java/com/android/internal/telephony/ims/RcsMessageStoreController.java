@@ -94,7 +94,7 @@ import android.telephony.ims.RcsEventQueryResultDescriptor;
 import android.telephony.ims.RcsFileTransferCreationParams;
 import android.telephony.ims.RcsIncomingMessageCreationParams;
 import android.telephony.ims.RcsMessageQueryParams;
-import android.telephony.ims.RcsMessageQueryResult;
+import android.telephony.ims.RcsMessageQueryResultParcelable;
 import android.telephony.ims.RcsMessageSnippet;
 import android.telephony.ims.RcsMessageStore;
 import android.telephony.ims.RcsOutgoingMessageCreationParams;
@@ -200,7 +200,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsMessageQueryResult getMessages(RcsMessageQueryParams queryParams)
+    public RcsMessageQueryResultParcelable getMessages(RcsMessageQueryParams queryParams)
             throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(MESSAGE_QUERY_PARAMETERS_KEY, queryParams);
@@ -208,7 +208,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsMessageQueryResult getMessagesWithToken(
+    public RcsMessageQueryResultParcelable getMessagesWithToken(
             RcsQueryContinuationToken continuationToken) throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(QUERY_CONTINUATION_TOKEN, continuationToken);
