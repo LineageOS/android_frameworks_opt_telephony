@@ -34,14 +34,14 @@ import java.io.UnsupportedEncodingException;
 public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
 
     @Mock
-    UiccSmsController mUiccSmsController;
+    SmsController mSmsController;
 
     @Before
     public void setUp() throws Exception {
         logd("+Setup!");
         super.setUp(getClass().getSimpleName());
-        mServiceManagerMockedServices.put("isms", mUiccSmsController);
-        doReturn(false).when(mUiccSmsController).isImsSmsSupportedForSubscriber(anyInt());
+        mServiceManagerMockedServices.put("isms", mSmsController);
+        doReturn(false).when(mSmsController).isImsSmsSupportedForSubscriber(anyInt());
         logd("-Setup!");
     }
 
