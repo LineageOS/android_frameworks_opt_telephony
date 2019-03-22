@@ -27,6 +27,13 @@ filegroup {
     ],
 }
 
+filegroup {
+    name: "opt-telephony-common-srcs",
+    srcs: [
+        "src/java/**/*.java",
+    ],
+}
+
 java_library {
     name: "telephony-common",
     installable: true,
@@ -35,7 +42,7 @@ java_library {
         local_include_dirs: ["src/java"],
     },
     srcs: [
-        "src/java/**/*.java",
+        ":opt-telephony-common-srcs",
         "src/java/**/I*.aidl",
         "src/java/**/*.logtags",
     ],
