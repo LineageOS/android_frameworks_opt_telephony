@@ -716,6 +716,12 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
+    @Override
+    public boolean isInEmergencySmsMode() {
+        return super.isInEmergencySmsMode()
+                || (mImsPhone != null && mImsPhone.isInEmergencySmsMode());
+    }
+
     //CDMA
     private void sendEmergencyCallbackModeChange(){
         //Send an Intent
