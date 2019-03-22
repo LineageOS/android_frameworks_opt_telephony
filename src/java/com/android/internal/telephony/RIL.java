@@ -1363,22 +1363,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         dpi.profileId = dp.getProfileId();
         dpi.apn = dp.getApn();
-        dpi.protocol = ApnSetting.getProtocolStringFromInt(dp.getProtocol());
-        dpi.roamingProtocol = ApnSetting.getProtocolStringFromInt(dp.getRoamingProtocol());
+        dpi.protocol = ApnSetting.getProtocolStringFromInt(dp.getProtocolType());
+        dpi.roamingProtocol = ApnSetting.getProtocolStringFromInt(dp.getRoamingProtocolType());
         dpi.authType = dp.getAuthType();
         dpi.user = dp.getUserName();
         dpi.password = dp.getPassword();
         dpi.type = dp.getType();
-        dpi.maxConnsTime = dp.getMaxConnsTime();
-        dpi.maxConns = dp.getMaxConns();
+        dpi.maxConnsTime = dp.getMaxConnectionsTime();
+        dpi.maxConns = dp.getMaxConnections();
         dpi.waitTime = dp.getWaitTime();
         dpi.enabled = dp.isEnabled();
-        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmask();
         // Shift by 1 bit due to the discrepancy between
         // android.hardware.radio.V1_0.RadioAccessFamily and the bitmask version of
         // ServiceState.RIL_RADIO_TECHNOLOGY_XXXX.
         dpi.bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
-                dp.getBearerBitmap()) << 1;
+                dp.getBearerBitmask()) << 1;
         dpi.mtu = dp.getMtu();
         dpi.mvnoType = MvnoType.NONE;
         dpi.mvnoMatchData = "";
@@ -1397,22 +1397,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 new android.hardware.radio.V1_4.DataProfileInfo();
 
         dpi.apn = dp.getApn();
-        dpi.protocol = dp.getProtocol();
-        dpi.roamingProtocol = dp.getRoamingProtocol();
+        dpi.protocol = dp.getProtocolType();
+        dpi.roamingProtocol = dp.getRoamingProtocolType();
         dpi.authType = dp.getAuthType();
         dpi.user = dp.getUserName();
         dpi.password = dp.getPassword();
         dpi.type = dp.getType();
-        dpi.maxConnsTime = dp.getMaxConnsTime();
-        dpi.maxConns = dp.getMaxConns();
+        dpi.maxConnsTime = dp.getMaxConnectionsTime();
+        dpi.maxConns = dp.getMaxConnections();
         dpi.waitTime = dp.getWaitTime();
         dpi.enabled = dp.isEnabled();
-        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmap();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmask();
         // Shift by 1 bit due to the discrepancy between
         // android.hardware.radio.V1_0.RadioAccessFamily and the bitmask version of
         // ServiceState.RIL_RADIO_TECHNOLOGY_XXXX.
         dpi.bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
-                dp.getBearerBitmap()) << 1;
+                dp.getBearerBitmask()) << 1;
         dpi.mtu = dp.getMtu();
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
@@ -5871,17 +5871,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public static DataCallResponse convertDataCallResult(Object dcResult) {
         if (dcResult == null) return null;
 
-        int status, suggestedRetryTime, cid, active, mtu;
+        int cause, suggestedRetryTime, cid, active, mtu;
         String ifname;
         int protocolType;
         String[] addresses = null;
         String[] dnses = null;
         String[] gateways = null;
-        List<String> pcscfs;
+        String[] pcscfs = null;
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
             final android.hardware.radio.V1_0.SetupDataCallResult result =
                     (android.hardware.radio.V1_0.SetupDataCallResult) dcResult;
-            status = result.status;
+            cause = result.status;
             suggestedRetryTime = result.suggestedRetryTime;
             cid = result.cid;
             active = result.active;
@@ -5896,12 +5896,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (!TextUtils.isEmpty(result.gateways)) {
                 gateways = result.gateways.split("\\s+");
             }
-            pcscfs = new ArrayList<>(Arrays.asList(result.pcscf.trim().split("\\s+")));
+            if (!TextUtils.isEmpty(result.pcscf)) {
+                pcscfs = result.pcscf.split("\\s+");
+            }
             mtu = result.mtu;
         } else if (dcResult instanceof android.hardware.radio.V1_4.SetupDataCallResult) {
             final android.hardware.radio.V1_4.SetupDataCallResult result =
                     (android.hardware.radio.V1_4.SetupDataCallResult) dcResult;
-            status = result.cause;
+            cause = result.cause;
             suggestedRetryTime = result.suggestedRetryTime;
             cid = result.cid;
             active = result.active;
@@ -5910,7 +5912,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             addresses = result.addresses.stream().toArray(String[]::new);
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
-            pcscfs = result.pcscf;
+            pcscfs = result.pcscf.stream().toArray(String[]::new);
             mtu = result.mtu;
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
@@ -5972,8 +5974,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
         }
 
-        return new DataCallResponse(status, suggestedRetryTime, cid, active, protocolType, ifname,
-                laList, dnsList, gatewayList, pcscfs, mtu);
+        // Process gateway
+        List<InetAddress> pcscfList = new ArrayList<>();
+        if (pcscfs != null) {
+            for (String pcscf : pcscfs) {
+                pcscf = pcscf.trim();
+                InetAddress ia;
+                try {
+                    ia = NetworkUtils.numericToInetAddress(pcscf);
+                    pcscfList.add(ia);
+                } catch (IllegalArgumentException e) {
+                    Rlog.e(RILJ_LOG_TAG, "Unknown pcscf: " + pcscf, e);
+                }
+            }
+        }
+
+        return new DataCallResponse(cause, suggestedRetryTime, cid, active, protocolType, ifname,
+                laList, dnsList, gatewayList, pcscfList, mtu);
     }
 
     /**

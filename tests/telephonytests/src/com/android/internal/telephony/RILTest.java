@@ -233,9 +233,9 @@ public class RILTest extends TelephonyTest {
     private static final int MAX_CONNS = 3;
     private static final int WAIT_TIME = 10;
     private static final boolean APN_ENABLED = true;
-    private static final int SUPPORTED_APNT_YPES_BITMAP = 123456;
+    private static final int SUPPORTED_APNT_YPES_BITMAK = 123456;
     private static final int ROAMING_PROTOCOL = ApnSetting.PROTOCOL_IPV6;
-    private static final int BEARER_BITMAP = 123123;
+    private static final int BEARER_BITMASK = 123123;
     private static final int MTU = 1234;
     private static final boolean PERSISTENT = true;
 
@@ -1554,9 +1554,9 @@ public class RILTest extends TelephonyTest {
                         NetworkUtils.numericToInetAddress("fd00:976a::9")),
                 Arrays.asList(NetworkUtils.numericToInetAddress("10.0.2.15"),
                         NetworkUtils.numericToInetAddress("fe80::2")),
-                Arrays.asList("fd00:976a:c206:20::6", "fd00:976a:c206:20::9",
-                        "fd00:976a:c202:1d::9"),
-                1500);
+                Arrays.asList(NetworkUtils.numericToInetAddress("fd00:976a:c206:20::6"),
+                        NetworkUtils.numericToInetAddress("fd00:976a:c206:20::9"),
+                        NetworkUtils.numericToInetAddress("fd00:976a:c202:1d::9")), 1500);
 
         assertEquals(response, RIL.convertDataCallResult(result10));
 
@@ -1791,10 +1791,26 @@ public class RILTest extends TelephonyTest {
     @Test
     @FlakyTest
     public void testSetupDataCall() throws Exception {
+        DataProfile dp = new DataProfile.Builder()
+                .setProfileId(PROFILE_ID)
+                .setApn(APN)
+                .setProtocolType(PROTOCOL)
+                .setAuthType(AUTH_TYPE)
+                .setUserName(USER_NAME)
+                .setPassword(PASSWORD)
+                .setType(TYPE)
+                .setMaxConnectionsTime(MAX_CONNS_TIME)
+                .setMaxConnections(MAX_CONNS)
+                .setWaitTime(WAIT_TIME)
+                .enable(APN_ENABLED)
+                .setSupportedApnTypesBitmask(SUPPORTED_APNT_YPES_BITMAK)
+                .setRoamingProtocolType(ROAMING_PROTOCOL)
+                .setBearerBitmask(BEARER_BITMASK)
+                .setMtu(MTU)
+                .setPersistent(PERSISTENT)
+                .setPreferred(false)
+                .build();
 
-        DataProfile dp = new DataProfile(PROFILE_ID, APN, PROTOCOL, AUTH_TYPE, USER_NAME, PASSWORD,
-                TYPE, MAX_CONNS_TIME, MAX_CONNS, WAIT_TIME, APN_ENABLED, SUPPORTED_APNT_YPES_BITMAP,
-                ROAMING_PROTOCOL, BEARER_BITMAP, MTU, PERSISTENT, false);
         mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
                 false, 0, null, obtainMessage());
         ArgumentCaptor<DataProfileInfo> dpiCaptor = ArgumentCaptor.forClass(DataProfileInfo.class);
@@ -1815,9 +1831,9 @@ public class RILTest extends TelephonyTest {
         assertEquals(MAX_CONNS, dpi.maxConns);
         assertEquals(WAIT_TIME, dpi.waitTime);
         assertEquals(APN_ENABLED, dpi.enabled);
-        assertEquals(SUPPORTED_APNT_YPES_BITMAP, dpi.supportedApnTypesBitmap);
+        assertEquals(SUPPORTED_APNT_YPES_BITMAK, dpi.supportedApnTypesBitmap);
         assertEquals(ROAMING_PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
-        assertEquals(BEARER_BITMAP, dpi.bearerBitmap);
+        assertEquals(BEARER_BITMASK, dpi.bearerBitmap);
         assertEquals(MTU, dpi.mtu);
     }
 
