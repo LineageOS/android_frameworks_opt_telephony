@@ -53,7 +53,7 @@ public class CarrierServicesSmsFilter {
     public static final int EVENT_ON_FILTER_COMPLETE_NOT_CALLED = 1;
 
     /** onFilterComplete timeout. */
-    public static final int FILTER_COMPLETE_TIMEOUT_MS = 60000; //10 minutes
+    public static final int FILTER_COMPLETE_TIMEOUT_MS = 10 * 60 * 1000; //10 minutes
 
     private final Context mContext;
     private final Phone mPhone;

@@ -138,8 +138,8 @@ public class NetworkRegistrationManager extends Handler {
 
     private final Map<NetworkRegStateCallback, Message> mCallbackTable = new Hashtable();
 
-    public void getNetworkRegistrationInfo(@NetworkRegistrationInfo.Domain int domain,
-                                           Message onCompleteMessage) {
+    public void requestNetworkRegistrationInfo(@NetworkRegistrationInfo.Domain int domain,
+                                               Message onCompleteMessage) {
         if (onCompleteMessage == null) return;
 
         if (!isServiceConnected()) {
@@ -154,9 +154,9 @@ public class NetworkRegistrationManager extends Handler {
         NetworkRegStateCallback callback = new NetworkRegStateCallback();
         try {
             mCallbackTable.put(callback, onCompleteMessage);
-            mINetworkService.getNetworkRegistrationInfo(mPhone.getPhoneId(), domain, callback);
+            mINetworkService.requestNetworkRegistrationInfo(mPhone.getPhoneId(), domain, callback);
         } catch (RemoteException e) {
-            loge("getNetworkRegistrationInfo RemoteException " + e);
+            loge("requestNetworkRegistrationInfo RemoteException " + e);
             mCallbackTable.remove(callback);
             onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, null, e);
             onCompleteMessage.sendToTarget();
@@ -213,9 +213,9 @@ public class NetworkRegistrationManager extends Handler {
 
     private class NetworkRegStateCallback extends INetworkServiceCallback.Stub {
         @Override
-        public void onGetNetworkRegistrationInfoComplete(
+        public void onRequestNetworkRegistrationInfoComplete(
                 int result, NetworkRegistrationInfo state) {
-            logd("onGetNetworkRegistrationInfoComplete result "
+            logd("onRequestNetworkRegistrationInfoComplete result "
                     + result + " state " + state);
             Message onCompleteMessage = mCallbackTable.remove(this);
             if (onCompleteMessage != null) {
@@ -257,7 +257,7 @@ public class NetworkRegistrationManager extends Handler {
             mPhone.getContext().unbindService(mServiceConnection);
         }
 
-        Intent intent = new Intent(NetworkService.NETWORK_SERVICE_INTERFACE);
+        Intent intent = new Intent(NetworkService.SERVICE_INTERFACE);
         intent.setPackage(getPackageName());
 
         try {

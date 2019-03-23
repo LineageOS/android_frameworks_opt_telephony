@@ -104,11 +104,11 @@ public class CellularNetworkService extends NetworkService {
 
                             try {
                                 if (DBG) {
-                                    log("Calling callback.onGetNetworkRegistrationInfoComplete."
+                                    log("Calling onRequestNetworkRegistrationInfoComplete."
                                             + "resultCode = " + resultCode
                                             + ", netState = " + netState);
                                 }
-                                callback.onGetNetworkRegistrationInfoComplete(
+                                callback.onRequestNetworkRegistrationInfoComplete(
                                          resultCode, netState);
                             } catch (Exception e) {
                                 loge("Exception: " + e);
@@ -464,8 +464,8 @@ public class CellularNetworkService extends NetworkService {
         }
 
         @Override
-        public void getNetworkRegistrationInfo(int domain, NetworkServiceCallback callback) {
-            if (DBG) log("getNetworkRegistrationInfo for domain " + domain);
+        public void requestNetworkRegistrationInfo(int domain, NetworkServiceCallback callback) {
+            if (DBG) log("requestNetworkRegistrationInfo for domain " + domain);
             Message message = null;
 
             if (domain == NetworkRegistrationInfo.DOMAIN_CS) {
@@ -477,8 +477,8 @@ public class CellularNetworkService extends NetworkService {
                 mCallbackMap.put(message, callback);
                 mPhone.mCi.getDataRegistrationState(message);
             } else {
-                loge("getNetworkRegistrationInfo invalid domain " + domain);
-                callback.onGetNetworkRegistrationInfoComplete(
+                loge("requestNetworkRegistrationInfo invalid domain " + domain);
+                callback.onRequestNetworkRegistrationInfoComplete(
                         NetworkServiceCallback.RESULT_ERROR_INVALID_ARG, null);
             }
         }

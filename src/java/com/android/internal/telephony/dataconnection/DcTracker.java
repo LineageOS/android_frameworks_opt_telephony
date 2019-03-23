@@ -1962,18 +1962,21 @@ public class DcTracker extends Handler {
     private void setInitialAttachApn() {
         ApnSetting iaApnSetting = null;
         ApnSetting defaultApnSetting = null;
-        ApnSetting firstApnSetting = null;
+        ApnSetting firstNonEmergencyApnSetting = null;
 
         log("setInitialApn: E mPreferredApn=" + mPreferredApn);
 
         if (mPreferredApn != null && mPreferredApn.canHandleType(ApnSetting.TYPE_IA)) {
               iaApnSetting = mPreferredApn;
         } else if (!mAllApnSettings.isEmpty()) {
-            firstApnSetting = mAllApnSettings.get(0);
-            log("setInitialApn: firstApnSetting=" + firstApnSetting);
-
             // Search for Initial APN setting and the first apn that can handle default
             for (ApnSetting apn : mAllApnSettings) {
+                if (firstNonEmergencyApnSetting == null
+                        && !apn.canHandleType(ApnSetting.TYPE_EMERGENCY)) {
+                    firstNonEmergencyApnSetting = apn;
+                    log("setInitialApn: firstNonEmergencyApnSetting="
+                            + firstNonEmergencyApnSetting);
+                }
                 if (apn.canHandleType(ApnSetting.TYPE_IA)) {
                     // The Initial Attach APN is highest priority so use it if there is one
                     log("setInitialApn: iaApnSetting=" + apn);
@@ -2004,9 +2007,9 @@ public class DcTracker extends Handler {
         } else if (defaultApnSetting != null) {
             if (DBG) log("setInitialAttachApn: using defaultApnSetting");
             initialAttachApnSetting = defaultApnSetting;
-        } else if (firstApnSetting != null) {
-            if (DBG) log("setInitialAttachApn: using firstApnSetting");
-            initialAttachApnSetting = firstApnSetting;
+        } else if (firstNonEmergencyApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using firstNonEmergencyApnSetting");
+            initialAttachApnSetting = firstNonEmergencyApnSetting;
         }
 
         if (initialAttachApnSetting == null) {
@@ -4439,7 +4442,7 @@ public class DcTracker extends Handler {
                         EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,
                             mSentSinceLastRecv);
                         if (DBG) log("doRecovery() get data call list");
-                        mDataServiceManager.getDataCallList(obtainMessage());
+                        mDataServiceManager.requestDataCallList(obtainMessage());
                         putRecoveryAction(RECOVERY_ACTION_CLEANUP);
                         break;
                     case RECOVERY_ACTION_CLEANUP:
@@ -4716,11 +4719,25 @@ public class DcTracker extends Handler {
             profileType = DataProfile.TYPE_3GPP;
         }
 
-        return new DataProfile(profileId, apn.getApnName(), apn.getProtocol(), apn.getAuthType(),
-                apn.getUser(), apn.getPassword(), profileType, apn.getMaxConnsTime(),
-                apn.getMaxConns(),  apn.getWaitTime(), apn.isEnabled(), apn.getApnTypeBitmask(),
-                apn.getRoamingProtocol(), networkTypeBitmask, apn.getMtu(), apn.isPersistent(),
-                isPreferred);
+        return new DataProfile.Builder()
+                .setProfileId(profileId)
+                .setApn(apn.getApnName())
+                .setProtocolType(apn.getProtocol())
+                .setAuthType(apn.getAuthType())
+                .setUserName(apn.getUser())
+                .setPassword(apn.getPassword())
+                .setType(profileType)
+                .setMaxConnectionsTime(apn.getMaxConnsTime())
+                .setMaxConnections(apn.getMaxConns())
+                .setWaitTime(apn.getWaitTime())
+                .enable(apn.isEnabled())
+                .setSupportedApnTypesBitmask(apn.getApnTypeBitmask())
+                .setRoamingProtocolType(apn.getRoamingProtocol())
+                .setBearerBitmask(networkTypeBitmask)
+                .setMtu(apn.getMtu())
+                .setPersistent(apn.isPersistent())
+                .setPreferred(isPreferred)
+                .build();
     }
 
     private void onDataServiceBindingChanged(boolean bound) {
