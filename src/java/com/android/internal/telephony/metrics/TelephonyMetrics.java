@@ -241,13 +241,23 @@ public class TelephonyMetrics {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (args != null && args.length > 0) {
+            boolean reset = true;
+            if (args.length > 1 && "--keep".equals(args[1])) {
+                reset = false;
+            }
+
             switch (args[0]) {
                 case "--metrics":
                     printAllMetrics(pw);
                     break;
                 case "--metricsproto":
                     pw.println(convertProtoToBase64String(buildProto()));
-                    reset();
+                    if (reset) {
+                        reset();
+                    }
+                    break;
+                case "--metricsprototext":
+                    pw.println(buildProto().toString());
                     break;
             }
         }
