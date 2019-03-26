@@ -307,7 +307,8 @@ public class SubscriptionController extends ISub.Stub {
         broadcastSimInfoContentChanged();
 
         TelephonyMetrics metrics = TelephonyMetrics.getInstance();
-        metrics.updateActiveSubscriptionInfoList(mCacheActiveSubInfoList);
+        metrics.updateActiveSubscriptionInfoList(
+                Collections.unmodifiableList(mCacheActiveSubInfoList));
     }
 
     /**
