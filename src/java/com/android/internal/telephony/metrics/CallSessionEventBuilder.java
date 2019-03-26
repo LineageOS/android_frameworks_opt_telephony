@@ -21,6 +21,8 @@ import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.ImsReasonInfo;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.CallQuality;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.CallQualitySummary;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.RilCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
@@ -134,6 +136,18 @@ public class CallSessionEventBuilder {
     /** Set the audio codec. */
     public CallSessionEventBuilder setAudioCodec(int audioCodec) {
         mEvent.audioCodec = audioCodec;
+        return this;
+    }
+
+    /** Set the call quality. */
+    public CallSessionEventBuilder setCallQuality(CallQuality callQuality) {
+        mEvent.callQuality = callQuality;
+        return this;
+    }
+
+    /** Set the signal strength. */
+    public CallSessionEventBuilder setCallQualitySummary(CallQualitySummary callQualitySummary) {
+        mEvent.callQualitySummary = callQualitySummary;
         return this;
     }
 }
