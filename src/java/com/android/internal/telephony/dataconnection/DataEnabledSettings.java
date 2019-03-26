@@ -27,6 +27,7 @@ import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.util.LocalLog;
 import android.util.Pair;
 
@@ -97,11 +98,28 @@ public class DataEnabledSettings {
 
     private final Phone mPhone;
 
+    private int mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+
     private ContentResolver mResolver = null;
 
     private final RegistrantList mOverallDataEnabledChangedRegistrants = new RegistrantList();
 
     private final LocalLog mSettingChangeLocalLog = new LocalLog(50);
+
+    // for msim, user data enabled setting depends on subId.
+    private final SubscriptionManager.OnSubscriptionsChangedListener
+            mOnSubscriptionsChangeListener =
+            new SubscriptionManager.OnSubscriptionsChangedListener() {
+                @Override
+                public void onSubscriptionsChanged() {
+                    if (mSubId != mPhone.getSubId()) {
+                        log("onSubscriptionsChanged subId: " + mSubId + " to: "
+                                + mPhone.getSubId());
+                        mSubId = mPhone.getSubId();
+                        updateDataEnabledAndNotify(REASON_USER_DATA_ENABLED);
+                    }
+                }
+            };
 
     @Override
     public String toString() {
@@ -115,6 +133,9 @@ public class DataEnabledSettings {
     public DataEnabledSettings(Phone phone) {
         mPhone = phone;
         mResolver = mPhone.getContext().getContentResolver();
+        SubscriptionManager subscriptionManager = (SubscriptionManager) mPhone.getContext()
+                .getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        subscriptionManager.addOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
         updateDataEnabled();
     }
 
