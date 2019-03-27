@@ -105,12 +105,12 @@ public class PhoneSwitcher extends Handler {
     private int mMaxActivePhones;
     private static PhoneSwitcher sPhoneSwitcher = null;
 
-    // Which non-opportunistic subscription is set as data subscription among all non-oppt
+    // Which primary (non-opportunistic) subscription is set as data subscription among all primary
     // subscriptions. This value usually comes from user setting, and it's the subscription used for
     // Internet data if mOpptDataSubId is not set.
-    private int mNonOpptDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    private int mPrimaryDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
-    // mOpptDataSubId must be an active subscription. If it's set, it overrides mNonOpptDataSubId
+    // mOpptDataSubId must be an active subscription. If it's set, it overrides mPrimaryDataSubId
     // to be used for Internet data.
     private int mOpptDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 
@@ -123,7 +123,7 @@ public class PhoneSwitcher extends Handler {
     // 1. In modem layer, which modem is DDS (preferred to have data traffic on)
     // 2. In TelephonyNetworkFactory, which subscription will apply default network requests, which
     //    are requests without specifying a subId.
-    // Corresponding phoneId after considering mOpptDataSubId, mNonOpptDataSubId and
+    // Corresponding phoneId after considering mOpptDataSubId, mPrimaryDataSubId and
     // mPhoneIdInVoiceCall above.
     protected int mPreferredDataPhoneId = SubscriptionManager.INVALID_PHONE_INDEX;
 
@@ -132,13 +132,13 @@ public class PhoneSwitcher extends Handler {
 
     private ISetOpportunisticDataCallback mSetOpptSubCallback;
 
-    private static final int EVENT_NON_OPPT_SUBSCRIPTION_CHANGED  = 101;
+    private static final int EVENT_PRIMARY_DATA_SUB_CHANGED       = 101;
     private static final int EVENT_SUBSCRIPTION_CHANGED           = 102;
     private static final int EVENT_REQUEST_NETWORK                = 103;
     private static final int EVENT_RELEASE_NETWORK                = 104;
     private static final int EVENT_EMERGENCY_TOGGLE               = 105;
     private static final int EVENT_RADIO_CAPABILITY_CHANGED       = 106;
-    private static final int EVENT_OPPT_SUBSCRIPTION_CHANGED      = 107;
+    private static final int EVENT_OPPT_DATA_SUB_CHANGED          = 107;
     private static final int EVENT_RADIO_AVAILABLE                = 108;
     private static final int EVENT_PHONE_IN_CALL_CHANGED          = 109;
     private static final int EVENT_NETWORK_VALIDATION_DONE        = 110;
@@ -329,7 +329,7 @@ public class PhoneSwitcher extends Handler {
     private final BroadcastReceiver mDefaultDataChangedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Message msg = PhoneSwitcher.this.obtainMessage(EVENT_NON_OPPT_SUBSCRIPTION_CHANGED);
+            Message msg = PhoneSwitcher.this.obtainMessage(EVENT_PRIMARY_DATA_SUB_CHANGED);
             msg.sendToTarget();
         }
     };
@@ -350,8 +350,8 @@ public class PhoneSwitcher extends Handler {
                 onEvaluate(REQUESTS_UNCHANGED, "subChanged");
                 break;
             }
-            case EVENT_NON_OPPT_SUBSCRIPTION_CHANGED: {
-                if (onEvaluate(REQUESTS_UNCHANGED, "non-oppt data subId changed")) {
+            case EVENT_PRIMARY_DATA_SUB_CHANGED: {
+                if (onEvaluate(REQUESTS_UNCHANGED, "primary data subId changed")) {
                     logDataSwitchEvent(mOpptDataSubId,
                             TelephonyEvent.EventState.EVENT_STATE_START,
                             DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL);
@@ -375,7 +375,7 @@ public class PhoneSwitcher extends Handler {
                 resendRilCommands(msg);
                 break;
             }
-            case EVENT_OPPT_SUBSCRIPTION_CHANGED: {
+            case EVENT_OPPT_DATA_SUB_CHANGED: {
                 int subId = msg.arg1;
                 boolean needValidation = (msg.arg2 == 1);
                 ISetOpportunisticDataCallback callback =
@@ -534,11 +534,11 @@ public class PhoneSwitcher extends Handler {
         boolean diffDetected = mHalCommandToUse != HAL_COMMAND_PREFERRED_DATA && requestsChanged;
 
         // Check if user setting of default non-opportunistic data sub is changed.
-        final int nonOpptDataSubId = mSubscriptionController.getDefaultDataSubId();
-        if (nonOpptDataSubId != mNonOpptDataSubId) {
-            sb.append(" mNonOpptDataSubId ").append(mNonOpptDataSubId).append("->")
-                .append(nonOpptDataSubId);
-            mNonOpptDataSubId = nonOpptDataSubId;
+        final int primaryDataSubId = mSubscriptionController.getDefaultDataSubId();
+        if (primaryDataSubId != mPrimaryDataSubId) {
+            sb.append(" mPrimaryDataSubId ").append(mPrimaryDataSubId).append("->")
+                .append(primaryDataSubId);
+            mPrimaryDataSubId = primaryDataSubId;
         }
 
         // Check if phoneId to subId mapping is changed.
@@ -601,7 +601,7 @@ public class PhoneSwitcher extends Handler {
                 }
 
                 if (VDBG) {
-                    log("mNonOpptDataSubId = " + mNonOpptDataSubId);
+                    log("mPrimaryDataSubId = " + mPrimaryDataSubId);
                     log("mOpptDataSubId = " + mOpptDataSubId);
                     for (int i = 0; i < mNumPhones; i++) {
                         log(" phone[" + i + "] using sub[" + mPhoneSubscriptions[i] + "]");
@@ -749,7 +749,7 @@ public class PhoneSwitcher extends Handler {
         if (mSubscriptionController.isActiveSubId(mOpptDataSubId)) {
             return mOpptDataSubId;
         } else {
-            return mNonOpptDataSubId;
+            return mPrimaryDataSubId;
         }
     }
 
@@ -866,7 +866,7 @@ public class PhoneSwitcher extends Handler {
         }
 
         // Set mOpptDataSubId back to DEFAULT_SUBSCRIPTION_ID. This will trigger
-        // data switch to mNonOpptDataSubId.
+        // data switch to mPrimaryDataSubId.
         setOpportunisticSubscriptionInternal(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
         sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
     }
@@ -913,7 +913,7 @@ public class PhoneSwitcher extends Handler {
             ISetOpportunisticDataCallback callback) {
         log("Try set opportunistic data subscription to subId " + subId
                 + (needValidation ? " with " : " without ") + "validation");
-        PhoneSwitcher.this.obtainMessage(EVENT_OPPT_SUBSCRIPTION_CHANGED,
+        PhoneSwitcher.this.obtainMessage(EVENT_OPPT_DATA_SUB_CHANGED,
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
     }
 
@@ -946,7 +946,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void logDataSwitchEvent(int subId, int state, int reason) {
-        subId = subId == DEFAULT_SUBSCRIPTION_ID ? mNonOpptDataSubId : subId;
+        subId = subId == DEFAULT_SUBSCRIPTION_ID ? mPrimaryDataSubId : subId;
         DataSwitch dataSwitch = new DataSwitch();
         dataSwitch.state = state;
         dataSwitch.reason = reason;
