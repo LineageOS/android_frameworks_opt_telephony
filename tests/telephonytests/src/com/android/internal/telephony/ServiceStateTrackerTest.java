@@ -1869,7 +1869,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 sst.mSS.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                         AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         assertEquals(lteVopsSupportInfo,
-                sSnetworkRegistrationInfo.getDataSpecificStates().getLteVopsSupportInfo());
+                sSnetworkRegistrationInfo.getDataSpecificInfo().getLteVopsSupportInfo());
 
         lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
@@ -1888,6 +1888,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sSnetworkRegistrationInfo =
                 sst.mSS.getNetworkRegistrationInfo(2, 1);
         assertEquals(lteVopsSupportInfo,
-                sSnetworkRegistrationInfo.getDataSpecificStates().getLteVopsSupportInfo());
+                sSnetworkRegistrationInfo.getDataSpecificInfo().getLteVopsSupportInfo());
     }
 }
