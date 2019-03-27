@@ -62,7 +62,7 @@ import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
-import android.telephony.DataSpecificRegistrationStates;
+import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
@@ -71,7 +71,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
-import android.telephony.VoiceSpecificRegistrationStates;
+import android.telephony.VoiceSpecificRegistrationInfo;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
@@ -2007,8 +2007,8 @@ public class ServiceStateTracker extends Handler {
         switch (what) {
             case EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION: {
                 NetworkRegistrationInfo networkRegState = (NetworkRegistrationInfo) ar.result;
-                VoiceSpecificRegistrationStates voiceSpecificStates =
-                        networkRegState.getVoiceSpecificStates();
+                VoiceSpecificRegistrationInfo voiceSpecificStates =
+                        networkRegState.getVoiceSpecificInfo();
 
                 int registrationState = networkRegState.getRegistrationState();
                 int cssIndicator = voiceSpecificStates.cssSupported ? 1 : 0;
@@ -2096,8 +2096,8 @@ public class ServiceStateTracker extends Handler {
             case EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION: {
                 NetworkRegistrationInfo networkRegState = (NetworkRegistrationInfo) ar.result;
                 mNewSS.addNetworkRegistrationInfo(networkRegState);
-                DataSpecificRegistrationStates dataSpecificStates =
-                        networkRegState.getDataSpecificStates();
+                DataSpecificRegistrationInfo dataSpecificStates =
+                        networkRegState.getDataSpecificInfo();
                 int registrationState = networkRegState.getRegistrationState();
                 int serviceState = regCodeToServiceState(registrationState);
                 int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
