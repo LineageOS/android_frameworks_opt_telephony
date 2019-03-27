@@ -40,6 +40,7 @@ import android.net.NetworkFactory;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.net.StringNetworkSpecifier;
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -82,6 +83,7 @@ public class PhoneSwitcher extends Handler {
     private static final boolean VDBG = false;
 
     private static final int DEFAULT_NETWORK_CHANGE_TIMEOUT_MS = 5000;
+    private static final int MODEM_COMMAND_RETRY_PERIOD_MS     = 5000;
 
     private final List<DcRequest> mPrioritizedDcRequests = new ArrayList<DcRequest>();
     private final RegistrantList mActivePhoneRegistrants;
@@ -143,6 +145,8 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_PHONE_IN_CALL_CHANGED          = 109;
     private static final int EVENT_NETWORK_VALIDATION_DONE        = 110;
     private static final int EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK = 111;
+    private static final int EVENT_MODEM_COMMAND_DONE             = 112;
+    private static final int EVENT_MODEM_COMMAND_RETRY            = 113;
 
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
@@ -372,7 +376,8 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
             case EVENT_RADIO_CAPABILITY_CHANGED: {
-                resendRilCommands(msg);
+                final int phoneId = msg.arg1;
+                sendRilCommands(phoneId);
                 break;
             }
             case EVENT_OPPT_DATA_SUB_CHANGED: {
@@ -410,6 +415,21 @@ public class PhoneSwitcher extends Handler {
             case EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK: {
                 removeDefaultNetworkChangeCallback();
                 break;
+            }
+            case EVENT_MODEM_COMMAND_DONE: {
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar != null && ar.exception != null) {
+                    int phoneId = (int) ar.userObj;
+                    log("Modem command failed. with exception " + ar.exception);
+                    sendMessageDelayed(Message.obtain(this, EVENT_MODEM_COMMAND_RETRY,
+                            phoneId), MODEM_COMMAND_RETRY_PERIOD_MS);
+                }
+                break;
+            }
+            case EVENT_MODEM_COMMAND_RETRY: {
+                int phoneId = (int) msg.obj;
+                log("Resend modem command on phone " + phoneId);
+                sendRilCommands(phoneId);
             }
         }
     }
@@ -565,13 +585,12 @@ public class PhoneSwitcher extends Handler {
             log("evaluating due to " + sb.toString());
             if (mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA) {
                 // With HAL_COMMAND_PREFERRED_DATA, all phones are assumed to allow PS attach.
-                // So marking all phone as active.
+                // So marking all phone as active, and the phone with mPreferredDataPhoneId
+                // will send radioConfig command.
                 for (int phoneId = 0; phoneId < mNumPhones; phoneId++) {
-                    activate(phoneId);
+                    mPhoneStates[phoneId].active = true;
                 }
-                if (SubscriptionManager.isUsableSubIdValue(mPreferredDataPhoneId)) {
-                    mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, null);
-                }
+                sendRilCommands(mPreferredDataPhoneId);
             } else {
                 List<Integer> newActivePhones = new ArrayList<Integer>();
 
@@ -651,12 +670,7 @@ public class PhoneSwitcher extends Handler {
         state.active = active;
         log((active ? "activate " : "deactivate ") + phoneId);
         state.lastRequested = System.currentTimeMillis();
-        if (mHalCommandToUse == HAL_COMMAND_ALLOW_DATA || mHalCommandToUse == HAL_COMMAND_UNKNOWN) {
-            // Skip ALLOW_DATA for single SIM device
-            if (mNumPhones > 1) {
-                mCommandsInterfaces[phoneId].setDataAllowed(active, null);
-            }
-        }
+        sendRilCommands(phoneId);
     }
 
     /**
@@ -670,15 +684,18 @@ public class PhoneSwitcher extends Handler {
         msg.sendToTarget();
     }
 
-    private void resendRilCommands(Message msg) {
-        final int phoneId = msg.arg1;
+    private void sendRilCommands(int phoneId) {
+        if (!SubscriptionManager.isValidPhoneId(phoneId) || phoneId >= mNumPhones) return;
+
+        Message message = Message.obtain(this, EVENT_MODEM_COMMAND_DONE, phoneId);
         if (mHalCommandToUse == HAL_COMMAND_ALLOW_DATA || mHalCommandToUse == HAL_COMMAND_UNKNOWN) {
             // Skip ALLOW_DATA for single SIM device
             if (mNumPhones > 1) {
-                mCommandsInterfaces[phoneId].setDataAllowed(isPhoneActive(phoneId), null);
+                mCommandsInterfaces[phoneId].setDataAllowed(isPhoneActive(phoneId), message);
             }
-        } else {
-            mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, null);
+        } else if (phoneId == mPreferredDataPhoneId) {
+            // Only setPreferredDataModem if the phoneId equals to current mPreferredDataPhoneId.
+            mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, message);
         }
     }
 
