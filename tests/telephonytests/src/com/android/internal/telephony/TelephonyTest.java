@@ -400,6 +400,8 @@ public abstract class TelephonyTest {
                         nullable(Looper.class));
         doReturn(mDataEnabledSettings).when(mTelephonyComponentFactory)
                 .makeDataEnabledSettings(nullable(Phone.class));
+        doReturn(mEriManager).when(mTelephonyComponentFactory)
+                .makeEriManager(nullable(Phone.class), anyInt());
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
@@ -422,7 +424,6 @@ public abstract class TelephonyTest {
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
-        mPhone.mEriManager = mEriManager;
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
