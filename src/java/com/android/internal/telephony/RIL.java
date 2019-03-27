@@ -5110,7 +5110,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             sb = new StringBuilder("{");
             if (length > 0) {
                 int i = 0;
-                sb.append(strings[i++]);
+                // position 0 is IMEI in RIL_REQUEST_DEVICE_IDENTITY
+                if (req == RIL_REQUEST_DEVICE_IDENTITY) {
+                    sb.append(Rlog.pii(RILJ_LOG_TAG, strings[i++]));
+                } else {
+                    sb.append(strings[i++]);
+                }
                 while (i < length) {
                     sb.append(", ").append(strings[i++]);
                 }

@@ -1217,7 +1217,7 @@ public abstract class SMSDispatcher extends Handler {
             return true;            // app is pre-approved to send to short codes
         } else {
             int rule = mPremiumSmsRule.get();
-            int smsCategory = SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE;
+            int smsCategory = SmsManager.SMS_CATEGORY_NOT_SHORT_CODE;
             if (rule == PREMIUM_RULE_USE_SIM || rule == PREMIUM_RULE_USE_BOTH) {
                 String simCountryIso =
                         mTelephonyManager.getSimCountryIsoForPhone(mPhone.getPhoneId());
@@ -1244,9 +1244,9 @@ public abstract class SMSDispatcher extends Handler {
                                 tracker.mDestAddress, networkCountryIso));
             }
 
-            if (smsCategory == SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE
-                    || smsCategory == SmsUsageMonitor.CATEGORY_FREE_SHORT_CODE
-                    || smsCategory == SmsUsageMonitor.CATEGORY_STANDARD_SHORT_CODE) {
+            if (smsCategory == SmsManager.SMS_CATEGORY_NOT_SHORT_CODE
+                    || smsCategory == SmsManager.SMS_CATEGORY_FREE_SHORT_CODE
+                    || smsCategory == SmsManager.SMS_CATEGORY_STANDARD_SHORT_CODE) {
                 return true;    // not a premium short code
             }
 
@@ -1281,7 +1281,7 @@ public abstract class SMSDispatcher extends Handler {
                 case SmsUsageMonitor.PREMIUM_SMS_PERMISSION_ASK_USER:
                 default:
                     int event;
-                    if (smsCategory == SmsUsageMonitor.CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE) {
+                    if (smsCategory == SmsManager.SMS_CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE) {
                         event = EVENT_CONFIRM_SEND_TO_POSSIBLE_PREMIUM_SHORT_CODE;
                     } else {
                         event = EVENT_CONFIRM_SEND_TO_PREMIUM_SHORT_CODE;

@@ -309,7 +309,8 @@ public class SubscriptionController extends ISub.Stub {
 
         MultiSimSettingController.getInstance().onSubscriptionsChanged();
         TelephonyMetrics metrics = TelephonyMetrics.getInstance();
-        metrics.updateActiveSubscriptionInfoList(mCacheActiveSubInfoList);
+        metrics.updateActiveSubscriptionInfoList(
+                Collections.unmodifiableList(mCacheActiveSubInfoList));
     }
 
     /**
@@ -2668,7 +2669,7 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
 
         try {
-            PhoneSwitcher.getInstance().trySetPreferredSubscription(
+            PhoneSwitcher.getInstance().trySetOpportunisticDataSubscription(
                     subId, needValidation, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
@@ -2681,7 +2682,7 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
 
         try {
-            return PhoneSwitcher.getInstance().getPreferredDataSubscriptionId();
+            return PhoneSwitcher.getInstance().getOpportunisticDataSubscriptionId();
         } finally {
             Binder.restoreCallingIdentity(token);
         }
