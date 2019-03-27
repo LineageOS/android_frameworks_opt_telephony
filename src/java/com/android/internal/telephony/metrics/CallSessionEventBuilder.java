@@ -145,9 +145,15 @@ public class CallSessionEventBuilder {
         return this;
     }
 
-    /** Set the signal strength. */
-    public CallSessionEventBuilder setCallQualitySummary(CallQualitySummary callQualitySummary) {
-        mEvent.callQualitySummary = callQualitySummary;
+    /** Set the downlink call quality summary. */
+    public CallSessionEventBuilder setCallQualitySummaryDl(CallQualitySummary callQualitySummary) {
+        mEvent.callQualitySummaryDl = callQualitySummary;
+        return this;
+    }
+
+    /** Set the uplink call quality summary. */
+    public CallSessionEventBuilder setCallQualitySummaryUl(CallQualitySummary callQualitySummary) {
+        mEvent.callQualitySummaryUl = callQualitySummary;
         return this;
     }
 }
