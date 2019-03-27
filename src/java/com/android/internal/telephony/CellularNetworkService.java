@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.hardware.radio.V1_0.CellInfoType;
 import android.hardware.radio.V1_0.RegState;
+import android.hardware.radio.V1_4.DataRegStateResult.VopsInfo.hidl_discriminator;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -317,7 +318,11 @@ public class CellularNetworkService extends NetworkService {
                 CellIdentity cellIdentity =
                         convertHalCellIdentityToCellIdentity(dataRegState.base.cellIdentity);
                 android.hardware.radio.V1_4.NrIndicators nrIndicators = dataRegState.nrIndicators;
-                if (AccessNetworkType.EUTRAN == accessNetworkTechnology) {
+
+                // Check for lteVopsInfo only if its initialized and RAT is EUTRAN
+                if (dataRegState.vopsInfo.getDiscriminator() == hidl_discriminator.lteVopsInfo
+                        && ServiceState.rilRadioTechnologyToAccessNetworkType(dataRegState.base.rat)
+                            == AccessNetworkType.EUTRAN) {
                     android.hardware.radio.V1_4.LteVopsInfo vopsSupport =
                             dataRegState.vopsInfo.lteVopsInfo();
                     lteVopsSupportInfo = convertHalLteVopsSupportInfo(vopsSupport.isVopsSupported,
