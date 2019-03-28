@@ -668,6 +668,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 true, "11111111-2222-3333-4444-555555555555");
         String carrierPackageName = "FakeCarrierPackageName";
 
+        doReturn(true).when(mSubscriptionController).canPackageManageGroup(
+                ParcelUuid.fromString("11111111-2222-3333-4444-555555555555"), carrierPackageName);
         doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
         doReturn(mSubInfo).when(mSubscriptionController).getSubscriptionInfo(eq(FAKE_SUB_ID_1));
         doReturn(Collections.singletonList(carrierPackageName)).when(mTelephonyManager)
@@ -687,7 +689,9 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 SubscriptionManager.IS_OPPORTUNISTIC).intValue());
         assertEquals("11111111-2222-3333-4444-555555555555",
                 cvCaptor.getValue().getAsString(SubscriptionManager.GROUP_UUID));
-        assertEquals(2, cvCaptor.getValue().size());
+        assertEquals(carrierPackageName,
+                cvCaptor.getValue().getAsString(SubscriptionManager.GROUP_OWNER));
+        assertEquals(3, cvCaptor.getValue().size());
     }
 
     @Test
@@ -698,6 +702,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 true, "00000000-0000-0000-0000-000000000000");
         String carrierPackageName = "FakeCarrierPackageName";
 
+        doReturn(true).when(mSubscriptionController).canPackageManageGroup(
+                ParcelUuid.fromString("11111111-2222-3333-4444-555555555555"), carrierPackageName);
         doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
         doReturn(mSubInfo).when(mSubscriptionController).getSubscriptionInfo(eq(FAKE_SUB_ID_1));
         doReturn(ParcelUuid.fromString("11111111-2222-3333-4444-555555555555"))
