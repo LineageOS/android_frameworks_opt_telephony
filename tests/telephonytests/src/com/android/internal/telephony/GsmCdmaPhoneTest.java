@@ -158,24 +158,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleActionCarrierConfigChanged() {
-        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mContext.sendBroadcast(intent);
-        waitForMs(50);
-        verify(mSST, times(1)).pollState();
-
-        // set voice radio tech in RIL to 1xRTT. ACTION_CARRIER_CONFIG_CHANGED should trigger a
-        // query and change phone type
-        mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
-        assertTrue(mPhoneUT.isPhoneTypeGsm());
-        mContext.sendBroadcast(intent);
-        waitForMs(50);
-        assertTrue(mPhoneUT.isPhoneTypeCdmaLte());
-        verify(mSST, times(2)).pollState();
-    }
-
-    @Test
-    @SmallTest
     public void testGetServiceState() {
         ServiceState serviceState = new ServiceState();
         mSST.mSS = serviceState;
@@ -902,16 +884,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         editor.remove(Phone.CF_STATUS + subId1);
         editor.remove(Phone.CF_STATUS + subId2);
         editor.apply();
-    }
-
-    @Test
-    @SmallTest
-    public void testEriLoading() {
-        mPhoneUT.mEriManager = mEriManager;
-        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_CARRIER_CONFIG_CHANGED,
-                null));
-        waitForMs(100);
-        verify(mEriManager, times(1)).loadEriFile();
     }
 
     @Test
