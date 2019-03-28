@@ -1890,4 +1890,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(lteVopsSupportInfo,
                 sSnetworkRegistrationInfo.getDataSpecificInfo().getLteVopsSupportInfo());
     }
+
+    @Test
+    @SmallTest
+    public void testEriLoading() {
+        sst.obtainMessage(GsmCdmaPhone.EVENT_CARRIER_CONFIG_CHANGED, null).sendToTarget();
+        waitForMs(100);
+        verify(mEriManager, times(1)).loadEriFile();
+    }
 }
