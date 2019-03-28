@@ -343,8 +343,8 @@ public class TelephonyComponentFactory {
         return new UiccProfile(context, ci, ics, phoneId, uiccCard, lock);
     }
 
-    public EriManager makeEriManager(Phone phone, Context context, int eriFileSource) {
-        return new EriManager(phone, context, eriFileSource);
+    public EriManager makeEriManager(Phone phone, int eriFileSource) {
+        return new EriManager(phone, eriFileSource);
     }
 
     public WspTypeDecoder makeWspTypeDecoder(byte[] pdu) {
