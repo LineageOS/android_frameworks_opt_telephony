@@ -2453,30 +2453,11 @@ public class DcTracker extends Handler {
      * Modify {@link android.provider.Settings.Global#DATA_ROAMING} value for user modification only
      */
     public void setDataRoamingEnabledByUser(boolean enabled) {
-        final int phoneSubId = mPhone.getSubId();
-        if (getDataRoamingEnabled() != enabled) {
-            int roaming = enabled ? 1 : 0;
-
-            // For single SIM phones, this is a per phone property.
-            if (mTelephonyManager.getSimCount() == 1) {
-                Settings.Global.putInt(mResolver, Settings.Global.DATA_ROAMING, roaming);
-                setDataRoamingFromUserAction(true);
-            } else {
-                Settings.Global.putInt(mResolver, Settings.Global.DATA_ROAMING +
-                         phoneSubId, roaming);
-            }
-
-            mSubscriptionManager.setDataRoaming(roaming, phoneSubId);
-            // will trigger handleDataOnRoamingChange() through observer
-            if (DBG) {
-                log("setDataRoamingEnabledByUser: set phoneSubId=" + phoneSubId
-                        + " isRoaming=" + enabled);
-            }
-        } else {
-            if (DBG) {
-                log("setDataRoamingEnabledByUser: unchanged phoneSubId=" + phoneSubId
-                        + " isRoaming=" + enabled);
-             }
+        mDataEnabledSettings.setDataRoamingEnabled(enabled);
+        setDataRoamingFromUserAction(true);
+        if (DBG) {
+            log("setDataRoamingEnabledByUser: set phoneSubId=" + mPhone.getSubId()
+                    + " isRoaming=" + enabled);
         }
     }
 
@@ -2484,40 +2465,12 @@ public class DcTracker extends Handler {
      * Return current {@link android.provider.Settings.Global#DATA_ROAMING} value.
      */
     public boolean getDataRoamingEnabled() {
-        boolean isDataRoamingEnabled;
-        final int phoneSubId = mPhone.getSubId();
-
-        // For single SIM phones, this is a per phone property.
-        if (mTelephonyManager.getSimCount() == 1) {
-            isDataRoamingEnabled = Settings.Global.getInt(mResolver,
-                    Settings.Global.DATA_ROAMING,
-                    getDefaultDataRoamingEnabled() ? 1 : 0) != 0;
-        } else {
-            isDataRoamingEnabled = Settings.Global.getInt(mResolver,
-                    Settings.Global.DATA_ROAMING + phoneSubId,
-                    getDefaultDataRoamingEnabled() ? 1 : 0) != 0;
-        }
+        boolean isDataRoamingEnabled = mDataEnabledSettings.getDataRoamingEnabled();
 
         if (VDBG) {
-            log("getDataRoamingEnabled: phoneSubId=" + phoneSubId
+            log("getDataRoamingEnabled: phoneSubId=" + mPhone.getSubId()
                     + " isDataRoamingEnabled=" + isDataRoamingEnabled);
         }
-        return isDataRoamingEnabled;
-    }
-
-    /**
-     * get default values for {@link Settings.Global#DATA_ROAMING}
-     * return {@code true} if either
-     * {@link CarrierConfigManager#KEY_CARRIER_DEFAULT_DATA_ROAMING_ENABLED_BOOL} or
-     * system property ro.com.android.dataroaming is set to true. otherwise return {@code false}
-     */
-    private boolean getDefaultDataRoamingEnabled() {
-        final CarrierConfigManager configMgr = (CarrierConfigManager)
-                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        boolean isDataRoamingEnabled = "true".equalsIgnoreCase(SystemProperties.get(
-                "ro.com.android.dataroaming", "false"));
-        isDataRoamingEnabled |= configMgr.getConfigForSubId(mPhone.getSubId()).getBoolean(
-                CarrierConfigManager.KEY_CARRIER_DEFAULT_DATA_ROAMING_ENABLED_BOOL);
         return isDataRoamingEnabled;
     }
 
@@ -2543,10 +2496,8 @@ public class DcTracker extends Handler {
             useCarrierSpecificDefault = true;
         }
         if (useCarrierSpecificDefault) {
-            boolean defaultVal = getDefaultDataRoamingEnabled();
-            log("setDefaultDataRoamingEnabled: " + setting + "default value: " + defaultVal);
-            Settings.Global.putInt(mResolver, setting, defaultVal ? 1 : 0);
-            mSubscriptionManager.setDataRoaming(defaultVal ? 1 : 0, mPhone.getSubId());
+            boolean defaultVal = mDataEnabledSettings.getDefaultDataRoamingEnabled();
+            mDataEnabledSettings.setDataRoamingEnabled(defaultVal);
         }
     }
 
