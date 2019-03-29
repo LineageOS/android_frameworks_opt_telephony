@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 import android.os.HandlerThread;
 import android.os.ServiceManager;
@@ -124,6 +125,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
     public void testActiveDataSubChanged() {
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
         setReady(false);
+        int[] activeSubs = {0, 1, 2};
+        when(mSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(activeSubs);
         int activeSubId = 0;
         mTelephonyRegistry.notifyActiveDataSubIdChanged(activeSubId);
         mTelephonyRegistry.listen(mContext.getOpPackageName(),
