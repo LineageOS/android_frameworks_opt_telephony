@@ -141,6 +141,8 @@ public class EmergencyNumberTracker extends Handler {
                     mEmergencyNumberPrefix = b.getStringArray(
                             CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
                 }
+            } else {
+                loge("CarrierConfigManager is null.");
             }
 
             // Receive Carrier Config Changes
@@ -150,7 +152,10 @@ public class EmergencyNumberTracker extends Handler {
             filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
 
             mPhone.getContext().registerReceiver(mIntentReceiver, filter);
+        } else {
+            loge("mPhone is null.");
         }
+
         initializeDatabaseEmergencyNumberList();
         mCi.registerForEmergencyNumberList(this, EVENT_UNSOL_EMERGENCY_NUMBER_LIST, null);
     }
@@ -242,6 +247,9 @@ public class EmergencyNumberTracker extends Handler {
                     return lt.getCurrentCountry();
                 }
             }
+        } else {
+            loge("getInitialCountryIso mPhone is null.");
+
         }
         return "";
     }
@@ -826,34 +834,49 @@ public class EmergencyNumberTracker extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
+        ipw.println(" Hal Version:" + mPhone.getHalVersion());
+        ipw.println(" ========================================= ");
+
         ipw.println("mEmergencyNumberListDatabaseLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListDatabaseLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
         ipw.println("mEmergencyNumberListRadioLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListRadioLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
         ipw.println("mEmergencyNumberListPrefixLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListPrefixLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
         ipw.println("mEmergencyNumberListTestModeLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListTestModeLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
-        ipw.println("mEmergencyNumberListLocalLog:");
+        ipw.println("mEmergencyNumberListLocalLog (valid >= 1.4 HAL):");
         ipw.increaseIndent();
         mEmergencyNumberListLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
+        ipw.println(" ========================================= ");
+
+        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
+        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
+        ipw.println(" ril.ecclist: " + SystemProperties.get(ecclist, ""));
+        ipw.println(" ========================================= ");
+
+        ipw.println("Emergency Number List for Phone" + "(" + mPhone.getPhoneId() + ")");
+        ipw.increaseIndent();
+        ipw.println(getEmergencyNumberList());
+        ipw.decreaseIndent();
+        ipw.println(" ========================================= ");
 
         ipw.flush();
     }
