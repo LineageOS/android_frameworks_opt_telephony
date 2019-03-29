@@ -957,7 +957,7 @@ public class EuiccControllerTest extends TelephonyTest {
         doReturn(hasPhoneStatePrivileged
                 ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED)
                 .when(mContext)
-                .checkCallingPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+                .checkCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         when(mTelephonyManager.getPhoneCount()).thenReturn(1);
         setHasCarrierPrivilegesOnActiveSubscription(hasCarrierPrivileges);
     }
@@ -966,7 +966,7 @@ public class EuiccControllerTest extends TelephonyTest {
         doReturn(hasPermission
                 ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED)
                 .when(mContext)
-                .checkCallingPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
+                .checkCallingOrSelfPermission(Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS);
     }
 
     private void setHasMasterClearPermission(boolean hasPermission) {
