@@ -445,6 +445,7 @@ public class TelephonyMetrics {
                     for (RilCall call : event.calls) {
                         pw.println(call.index + ". Type = " + call.type + " State = "
                                 + call.state + " End Reason " + call.callEndReason
+                                + " Precise Disconnect Cause " + call.preciseDisconnectCause
                                 + " isMultiparty = " + call.isMultiparty);
                     }
                     pw.decreaseIndent();
@@ -1474,6 +1475,7 @@ public class TelephonyMetrics {
         }
         call.callEndReason = conn.getDisconnectCause();
         call.isMultiparty = conn.isMultiparty();
+        call.preciseDisconnectCause = conn.getPreciseDisconnectCause();
     }
 
     /**
