@@ -403,7 +403,7 @@ public class UiccSlot extends Handler {
                     mContext, IccCardConstants.State.UNKNOWN, null, mPhoneId);
         }
 
-        mCardState = CardState.CARDSTATE_ABSENT;
+        mCardState = null;
         mLastRadioState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
     }
 
