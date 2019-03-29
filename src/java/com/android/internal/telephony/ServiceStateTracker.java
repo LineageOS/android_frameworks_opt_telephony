@@ -62,7 +62,7 @@ import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
-import android.telephony.DataSpecificRegistrationStates;
+import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
@@ -71,7 +71,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
-import android.telephony.VoiceSpecificRegistrationStates;
+import android.telephony.VoiceSpecificRegistrationInfo;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
@@ -1258,7 +1258,7 @@ public class ServiceStateTracker extends Handler {
 
                 if (ar.exception == null) {
                     mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                            .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+                            .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
                             obtainMessage(EVENT_GET_LOC_DONE, null));
                 }
                 break;
@@ -2007,8 +2007,8 @@ public class ServiceStateTracker extends Handler {
         switch (what) {
             case EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION: {
                 NetworkRegistrationInfo networkRegState = (NetworkRegistrationInfo) ar.result;
-                VoiceSpecificRegistrationStates voiceSpecificStates =
-                        networkRegState.getVoiceSpecificStates();
+                VoiceSpecificRegistrationInfo voiceSpecificStates =
+                        networkRegState.getVoiceSpecificInfo();
 
                 int registrationState = networkRegState.getRegistrationState();
                 int cssIndicator = voiceSpecificStates.cssSupported ? 1 : 0;
@@ -2096,8 +2096,8 @@ public class ServiceStateTracker extends Handler {
             case EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION: {
                 NetworkRegistrationInfo networkRegState = (NetworkRegistrationInfo) ar.result;
                 mNewSS.addNetworkRegistrationInfo(networkRegState);
-                DataSpecificRegistrationStates dataSpecificStates =
-                        networkRegState.getDataSpecificStates();
+                DataSpecificRegistrationInfo dataSpecificStates =
+                        networkRegState.getDataSpecificInfo();
                 int registrationState = networkRegState.getRegistrationState();
                 int serviceState = regCodeToServiceState(registrationState);
                 int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
@@ -2981,19 +2981,19 @@ public class ServiceStateTracker extends Handler {
 
                 mPollingContext[0]++;
                 mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                                 obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                                         mPollingContext));
 
                 mPollingContext[0]++;
                 mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+                        .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
                         obtainMessage(EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION, mPollingContext));
 
                 if (mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN) != null) {
                     mPollingContext[0]++;
                     mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
-                            .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                            .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                                     obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
                                             mPollingContext));
                 }

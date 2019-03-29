@@ -125,6 +125,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             switch(status) {
                 case ImsSmsImplBase.SEND_STATUS_OK:
                     tracker.onSent(mContext);
+                    mPhone.notifySmsSent(tracker.mDestAddress);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR:
                     tracker.onFailed(mContext, reason, 0 /* errorCode */);

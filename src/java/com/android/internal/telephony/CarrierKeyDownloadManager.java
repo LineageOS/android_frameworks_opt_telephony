@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.preference.PreferenceManager.getDefaultSharedPreferences;
+import static android.telephony.CarrierConfigManager.KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -111,6 +112,7 @@ public class CarrierKeyDownloadManager {
     private final Context mContext;
     public final DownloadManager mDownloadManager;
     private String mURL;
+    private boolean mAllowedOverMeteredNetwork = false;
 
     public CarrierKeyDownloadManager(Phone phone) {
         mPhone = phone;
@@ -370,6 +372,8 @@ public class CarrierKeyDownloadManager {
         }
         mKeyAvailability = b.getInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT);
         mURL = b.getString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING);
+        mAllowedOverMeteredNetwork = b.getBoolean(
+                KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL);
         if (TextUtils.isEmpty(mURL) || mKeyAvailability == 0) {
             Log.d(LOG_TAG, "Carrier not enabled or invalid values");
             return false;
@@ -520,7 +524,10 @@ public class CarrierKeyDownloadManager {
         }
         try {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(mURL));
-            request.setAllowedOverMetered(false);
+
+            // TODO(b/128550341): Implement the logic to minimize using metered network such as
+            // LTE for downloading a certificate.
+            request.setAllowedOverMetered(mAllowedOverMeteredNetwork);
             request.setVisibleInDownloadsUi(false);
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
             Long carrierKeyDownloadRequestId = mDownloadManager.enqueue(request);

@@ -241,13 +241,23 @@ public class TelephonyMetrics {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (args != null && args.length > 0) {
+            boolean reset = true;
+            if (args.length > 1 && "--keep".equals(args[1])) {
+                reset = false;
+            }
+
             switch (args[0]) {
                 case "--metrics":
                     printAllMetrics(pw);
                     break;
                 case "--metricsproto":
                     pw.println(convertProtoToBase64String(buildProto()));
-                    reset();
+                    if (reset) {
+                        reset();
+                    }
+                    break;
+                case "--metricsprototext":
+                    pw.println(buildProto().toString());
                     break;
             }
         }
@@ -1626,15 +1636,15 @@ public class TelephonyMetrics {
         RilDataCall dataCall = new RilDataCall();
 
         if (response != null) {
-            setupDataCallResponse.status = (response.getStatus() == 0
-                    ? RilDataCallFailCause.PDP_FAIL_NONE : response.getStatus());
+            setupDataCallResponse.status = (response.getCause() == 0
+                    ? RilDataCallFailCause.PDP_FAIL_NONE : response.getCause());
             setupDataCallResponse.suggestedRetryTimeMillis = response.getSuggestedRetryTime();
 
-            dataCall.cid = response.getCallId();
+            dataCall.cid = response.getId();
             dataCall.type = response.getProtocolType() + 1;
 
-            if (!TextUtils.isEmpty(response.getIfname())) {
-                dataCall.iframe = response.getIfname();
+            if (!TextUtils.isEmpty(response.getInterfaceName())) {
+                dataCall.iframe = response.getInterfaceName();
             }
         }
         setupDataCallResponse.call = dataCall;
@@ -1781,10 +1791,12 @@ public class TelephonyMetrics {
 
     /**
      * Write data switch event.
+     * @param subId data switch to the subscription with this id.
      * @param dataSwitch the reason and state of data switch.
      */
-    public void writeDataSwitch(DataSwitch dataSwitch) {
-        addTelephonyEvent(new TelephonyEventBuilder().setDataSwitch(dataSwitch).build());
+    public void writeDataSwitch(int subId, DataSwitch dataSwitch) {
+        int phoneId = SubscriptionManager.getPhoneId(subId);
+        addTelephonyEvent(new TelephonyEventBuilder(phoneId).setDataSwitch(dataSwitch).build());
     }
 
     /**
