@@ -366,8 +366,6 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.IS_OPPORTUNISTIC)) == 1;
         String groupUUID = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.GROUP_UUID));
-        boolean isMetered = cursor.getInt(cursor.getColumnIndexOrThrow(
-                SubscriptionManager.IS_METERED)) == 1;
         int profileClass = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.PROFILE_CLASS));
         int subType = cursor.getInt(cursor.getColumnIndexOrThrow(
@@ -384,8 +382,7 @@ public class SubscriptionController extends ISub.Stub {
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
                     + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
-                    + " isMetered:" + isMetered + " profileClass:" + profileClass
-                    + " subscriptionType: " + subType);
+                    + " profileClass:" + profileClass + " subscriptionType: " + subType);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -396,7 +393,7 @@ public class SubscriptionController extends ISub.Stub {
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
             nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
             isEmbedded, accessRules, cardId, publicCardId, isOpportunistic, groupUUID,
-            isMetered, false /* isGroupDisabled */, carrierId, profileClass, subType);
+            false /* isGroupDisabled */, carrierId, profileClass, subType);
     }
 
     /**
@@ -2417,7 +2414,6 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.CB_OPT_OUT_DIALOG:
             case SubscriptionManager.ENHANCED_4G_MODE_ENABLED:
             case SubscriptionManager.IS_OPPORTUNISTIC:
-            case SubscriptionManager.IS_METERED:
             case SubscriptionManager.VT_IMS_ENABLED:
             case SubscriptionManager.WFC_IMS_ENABLED:
             case SubscriptionManager.WFC_IMS_MODE:
@@ -2478,7 +2474,6 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                         case SubscriptionManager.IS_OPPORTUNISTIC:
                         case SubscriptionManager.GROUP_UUID:
-                        case SubscriptionManager.IS_METERED:
                             resultValue = cursor.getInt(0) + "";
                             break;
                         default:
@@ -2643,41 +2638,6 @@ public class SubscriptionController extends ISub.Stub {
         try {
             int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
                     String.valueOf(opportunistic ? 1 : 0));
-
-            if (ret != 0) notifySubscriptionInfoChanged();
-
-            return ret;
-        } finally {
-            Binder.restoreCallingIdentity(token);
-        }
-    }
-
-    /**
-     * Set whether a subscription is metered
-     *
-     * Throws SecurityException if doesn't have required permission.
-     *
-     * @param isMetered whether it’s a metered subscription.
-     * @param subId the unique SubscriptionInfo index in database
-     * @param callingPackage The package making the IPC.
-     * @return the number of records updated
-     */
-    @Override
-    public int setMetered(boolean isMetered, int subId, String callingPackage) {
-        try {
-            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
-                    mContext, subId, callingPackage);
-        } catch (SecurityException e) {
-            // The subscription may be inactive eSIM profile. If so, check the access rule in
-            // database.
-            enforceCarrierPrivilegeOnInactiveSub(subId, callingPackage,
-                    "Caller requires permission on sub " + subId);
-        }
-
-        long token = Binder.clearCallingIdentity();
-        try {
-            int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_METERED,
-                    String.valueOf(isMetered ? 1 : 0));
 
             if (ret != 0) notifySubscriptionInfoChanged();
 
