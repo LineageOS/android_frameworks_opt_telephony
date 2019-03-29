@@ -101,9 +101,9 @@ public class PhoneConfigurationManager {
 
     private PhoneCapability getDefaultCapability() {
         if (getPhoneCount() > 1) {
-            return PhoneConfigurationModels.DSDS_CAPABILITY;
+            return PhoneCapability.DEFAULT_DSDS_CAPABILITY;
         } else {
-            return PhoneConfigurationModels.SSSS_CAPABILITY;
+            return PhoneCapability.DEFAULT_SSSS_CAPABILITY;
         }
     }
 
