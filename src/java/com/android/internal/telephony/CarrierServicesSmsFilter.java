@@ -238,6 +238,7 @@ public class CarrierServicesSmsFilter {
         @Override
         protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
             try {
+                log("onServiceReady: calling filterSms");
                 carrierMessagingService.filterSms(
                         new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
                         mPhone.getSubId(), mSmsFilterCallback);
@@ -270,6 +271,7 @@ public class CarrierServicesSmsFilter {
          */
         @Override
         public void onFilterComplete(int result) {
+            log("onFilterComplete called with result: " + result);
             // in the case that timeout has already passed and triggered, but the initial callback
             // is run afterwards, we should not follow through
             if (!mIsOnFilterCompleteCalled) {
@@ -328,8 +330,10 @@ public class CarrierServicesSmsFilter {
                     }
                     //all onFilterCompletes called before timeout has triggered
                     //remove the pending message
-                    log("onFilterComplete called successfully with result = " + result);
+                    log("onFilterComplete: called successfully with result = " + result);
                     mCallbackTimeoutHandler.removeMessages(EVENT_ON_FILTER_COMPLETE_NOT_CALLED);
+                } else {
+                    log("onFilterComplete: waiting for pending filters " + mNumPendingFilters);
                 }
             }
         }
@@ -365,6 +369,7 @@ public class CarrierServicesSmsFilter {
 
         private void handleFilterCallbacksTimeout() {
             for (CarrierSmsFilterCallback callback : mFilterAggregator.mCallbacks) {
+                log("handleFilterCallbacksTimeout: calling onFilterComplete");
                 callback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             }
         }
