@@ -275,7 +275,10 @@ public class PhoneSwitcher extends Handler {
 
         mCommandsInterfaces = cis;
 
-        mCommandsInterfaces[0].registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+        if (numPhones > 0) {
+            mCommandsInterfaces[0].registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+        }
+
         try {
             tr.addOnSubscriptionsChangedListener(context.getOpPackageName(),
                     mSubscriptionsChangedListener);
