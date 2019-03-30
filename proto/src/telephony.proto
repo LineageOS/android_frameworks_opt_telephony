@@ -279,6 +279,9 @@ message TelephonyServiceState {
 
   // Current data radio technology
   optional RadioAccessTechnology data_rat = 6 [default = UNKNOWN];
+
+  // Current Channel Number
+  optional int32 channel_number = 7;
 }
 
 // Radio access families
