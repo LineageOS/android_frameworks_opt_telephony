@@ -1035,10 +1035,6 @@ public class SubscriptionController extends ISub.Stub {
                             value.put(SubscriptionManager.SIM_SLOT_INDEX, slotIndex);
                         }
 
-                        if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                            setDisplayName = true;
-                        }
-
                         if (oldIccId != null && oldIccId.length() < uniqueId.length()
                                 && (oldIccId.equals(IccUtils.getDecimalSubstring(uniqueId)))) {
                             value.put(SubscriptionManager.ICC_ID, uniqueId);
