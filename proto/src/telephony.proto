@@ -279,6 +279,9 @@ message TelephonyServiceState {
 
   // Current data radio technology
   optional RadioAccessTechnology data_rat = 6 [default = UNKNOWN];
+
+  // Current Channel Number
+  optional int32 channel_number = 7;
 }
 
 // Radio access families
@@ -1945,6 +1948,10 @@ message TelephonyCallSession {
 
       // This field is true for Conference Calls
       optional bool is_multiparty = 5;
+
+      // Detailed cause code for CS Call failures
+      // frameworks/base/telephony/java/android/telephony/PreciseDisconnectCause.java
+      optional int32 precise_disconnect_cause = 6;
     }
 
     // Single Radio Voice Call Continuity(SRVCC) progress state
