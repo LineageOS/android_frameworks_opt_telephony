@@ -2153,6 +2153,8 @@ public class ServiceStateTracker extends Handler {
 
                 updateServiceStateLteEarfcnBoost(mNewSS,
                         getLteEarfcn(networkRegState.getCellIdentity()));
+
+                mNewSS.setIsUsingCarrierAggregation(dataSpecificStates.isUsingCarrierAggregation);
                 break;
             }
 
