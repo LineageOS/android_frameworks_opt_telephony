@@ -171,6 +171,7 @@ public class ServiceStateTest extends TestCase {
         rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_GSM, false));
         rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_TD_SCDMA, false));
         rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_NR, false));
 
         for (Pair<Integer, Boolean> rat : rats) {
             boolean isCdma = rat.second;
@@ -410,5 +411,42 @@ public class ServiceStateTest extends TestCase {
         ss.setChannelNumber(36000); // band 33
 
         assertEquals(ss.getDuplexMode(), ServiceState.DUPLEX_MODE_TDD);
+    }
+
+    @SmallTest
+    public void testIsPsTech() {
+        ArrayList<Pair<Integer, Boolean>> rats = new ArrayList<Pair<Integer, Boolean>>();
+
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_IS95A, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_IS95B, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_HSUPA, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_GSM, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_TD_SCDMA, false));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, false));
+
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_LTE, true));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA, true));
+        rats.add(new Pair<Integer, Boolean>(ServiceState.RIL_RADIO_TECHNOLOGY_NR, true));
+
+        for (Pair<Integer, Boolean> rat : rats) {
+            boolean isPsTech = rat.second;
+            if (isPsTech) {
+                assertTrue("RAT " + rat + " should be PsTech", ServiceState.isPsTech(rat.first));
+            } else {
+                assertFalse("RAT " + rat + " should not be PsTech",
+                        ServiceState.isPsTech(rat.first));
+            }
+        }
     }
 }
