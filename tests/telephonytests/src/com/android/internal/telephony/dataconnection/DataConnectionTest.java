@@ -35,7 +35,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -741,9 +740,9 @@ public class DataConnectionTest extends TelephonyTest {
         testConnectEvent();
         waitForMs(200);
 
-        DataServiceManager mockDsm = mock(DataServiceManager.class);
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mockDsm).getTransportType();
-        replaceInstance(DataConnection.class, "mDataServiceManager", mDc, mockDsm);
+        Field field = DataConnection.class.getDeclaredField("mTransportType");
+        field.setAccessible(true);
+        field.setInt(mDc, AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
 
         final int sessionHandle = 0xF00;
         final int slotId = 3;
