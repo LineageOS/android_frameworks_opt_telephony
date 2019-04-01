@@ -167,7 +167,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                 domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
                 false, availableServices, null, maxDataCalls, false, false, false,
-                lteVopsSupportInfo);
+                lteVopsSupportInfo, false);
 
         try {
             verify(mCallback, times(1)).onRequestNetworkRegistrationInfoComplete(
