@@ -154,7 +154,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo2);
         doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
         mMultiSimSettingControllerUT.updateDefaults();
-        verify(mSubControllerMock).setDefaultDataSubId(2);
+        verify(mSubControllerMock).setDefaultDataSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         verify(mSubControllerMock).setDefaultSmsSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         verify(mSubControllerMock, never()).setDefaultVoiceSubId(anyInt());
     }

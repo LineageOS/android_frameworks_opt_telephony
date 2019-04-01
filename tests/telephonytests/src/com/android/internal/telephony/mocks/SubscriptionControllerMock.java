@@ -251,10 +251,6 @@ public class SubscriptionControllerMock extends SubscriptionController {
         }
     }
     @Override
-    public void clearDefaultsForInactiveSubIds() {
-        throw new RuntimeException("not implemented");
-    }
-    @Override
     public void updatePhonesAvailability(Phone[] phones) {
         throw new RuntimeException("not implemented");
     }
