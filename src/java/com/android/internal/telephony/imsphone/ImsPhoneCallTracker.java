@@ -2925,7 +2925,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
          */
         @Override
         public void onCallQualityChanged(ImsCall imsCall, CallQuality callQuality) {
-            mPhone.onCallQualityChanged(callQuality, imsCall.getRadioTechnology());
+            // convert ServiceState.radioTech to TelephonyManager.NetworkType constant
+            mPhone.onCallQualityChanged(callQuality,
+                    ServiceState.rilRadioTechnologyToNetworkType(imsCall.getRadioTechnology()));
         }
     };
 
