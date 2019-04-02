@@ -167,6 +167,7 @@ public class SubscriptionController extends ISub.Stub {
     @UnsupportedAppUsage
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
+    protected UiccController mUiccController;
 
     private AppOpsManager mAppOps;
 
@@ -221,6 +222,13 @@ public class SubscriptionController extends ISub.Stub {
     protected void init(Context c) {
         mContext = c;
         mTelephonyManager = TelephonyManager.from(mContext);
+
+        try {
+            mUiccController = UiccController.getInstance();
+        } catch(RuntimeException ex) {
+            throw new RuntimeException(
+                    "UiccController has to be initialised before SubscriptionController init");
+        }
 
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
 
@@ -351,7 +359,7 @@ public class SubscriptionController extends ISub.Stub {
         String countryIso = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.ISO_COUNTRY_CODE));
         // publicCardId is the publicly exposed int card ID
-        int publicCardId = UiccController.getInstance().convertToPublicCardId(cardId);
+        int publicCardId = mUiccController.convertToPublicCardId(cardId);
         boolean isEmbedded = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_EMBEDDED)) == 1;
         int carrierId = cursor.getInt(cursor.getColumnIndexOrThrow(
@@ -1041,7 +1049,7 @@ public class SubscriptionController extends ISub.Stub {
                             value.put(SubscriptionManager.ICC_ID, uniqueId);
                         }
 
-                        UiccCard card = UiccController.getInstance().getUiccCardForPhone(slotIndex);
+                        UiccCard card = mUiccController.getUiccCardForPhone(slotIndex);
                         if (card != null) {
                             String cardId = card.getCardId();
                             if (cardId != null && cardId != oldCardId) {
@@ -1366,7 +1374,7 @@ public class SubscriptionController extends ISub.Stub {
         if (isSubscriptionForRemoteSim(subscriptionType)) {
             value.put(SubscriptionManager.DISPLAY_NAME, displayName);
         } else {
-            UiccCard card = UiccController.getInstance().getUiccCardForPhone(slotIndex);
+            UiccCard card = mUiccController.getUiccCardForPhone(slotIndex);
             if (card != null) {
                 String cardId = card.getCardId();
                 if (cardId != null) {
