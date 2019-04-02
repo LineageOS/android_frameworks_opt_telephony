@@ -127,6 +127,7 @@ public class RadioBugDetector {
             mRadioBugStatus = isSystemError ? RADIO_BUG_REPETITIVE_SYSTEM_ERROR :
                     RADIO_BUG_REPETITIVE_WAKELOCK_TIMEOUT_ERROR;
             Intent intent = new Intent(TelephonyIntents.ACTION_REPORT_RADIO_BUG);
+            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             intent.putExtra(TelephonyIntents.EXTRA_SLOT_ID, mSlotId);
             intent.putExtra(TelephonyIntents.EXTRA_RADIO_BUG_TYPE, mRadioBugStatus);
             mContext.sendBroadcast(intent, android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
