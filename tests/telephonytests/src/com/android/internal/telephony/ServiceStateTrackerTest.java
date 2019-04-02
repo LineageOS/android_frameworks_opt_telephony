@@ -1600,7 +1600,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 state, dataRat, 0, false,
-                null, cid, 1, false, false, false, lteVopsSupportInfo);
+                null, cid, 1, false, false, false, lteVopsSupportInfo, false);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
         sst.sendMessage(sst.obtainMessage(
@@ -1700,7 +1700,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
-                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo);
+                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo, false);
         NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
@@ -1772,7 +1772,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
                 TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, 1, false, false,
-                false, lteVopsSupportInfo);
+                false, lteVopsSupportInfo, false);
         NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
@@ -1848,7 +1848,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
-                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo);
+                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo, false);
         sst.mPollingContext[0] = 2;
 
         sst.sendMessage(sst.obtainMessage(
@@ -1878,7 +1878,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
                 TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1, false, false, false,
-                lteVopsSupportInfo);
+                lteVopsSupportInfo, false);
         sst.mPollingContext[0] = 1;
         sst.sendMessage(sst.obtainMessage(
                 ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
