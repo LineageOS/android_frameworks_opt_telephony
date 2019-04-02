@@ -21,13 +21,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
-import android.telephony.ServiceState;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -118,7 +119,13 @@ public class RatRatcheter {
         if (mVoiceRatchetEnabled) {
             int newVoiceRat = ratchetRat(oldSS.getRilVoiceRadioTechnology(),
                     newSS.getRilVoiceRadioTechnology());
-            newSS.setRilVoiceRadioTechnology(newVoiceRat);
+            NetworkRegistrationInfo nri = newSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null) {
+                nri.setAccessNetworkTechnology(
+                        ServiceState.rilRadioTechnologyToNetworkType(newVoiceRat));
+                newSS.addNetworkRegistrationInfo(nri);
+            }
         } else if (oldSS.getRilVoiceRadioTechnology() != newSS.getRilVoiceRadioTechnology()) {
             // resume rat ratchet on following rat change within the same location
             mVoiceRatchetEnabled = true;
@@ -127,7 +134,13 @@ public class RatRatcheter {
         if (mDataRatchetEnabled) {
             int newDataRat = ratchetRat(oldSS.getRilDataRadioTechnology(),
                     newSS.getRilDataRadioTechnology());
-            newSS.setRilDataRadioTechnology(newDataRat);
+            NetworkRegistrationInfo nri = newSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null) {
+                nri.setAccessNetworkTechnology(
+                        ServiceState.rilRadioTechnologyToNetworkType(newDataRat));
+                newSS.addNetworkRegistrationInfo(nri);
+            }
         } else if (oldSS.getRilDataRadioTechnology() != newSS.getRilDataRadioTechnology()) {
             // resume rat ratchet on following rat change within the same location
             mDataRatchetEnabled = true;

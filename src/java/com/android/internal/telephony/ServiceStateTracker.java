@@ -1988,7 +1988,6 @@ public class ServiceStateTracker extends Handler {
                 == TelephonyManager.NETWORK_TYPE_IWLAN
                 && wlanPsRegState.getRegistrationState()
                 == NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
-            serviceState.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
             serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
         } else if (wwanPsRegState != null) {
             // If the device is not camped on IWLAN, then we use cellular PS registration state
@@ -1997,7 +1996,6 @@ public class ServiceStateTracker extends Handler {
             int dataRat = ServiceState.networkTypeToRilRadioTechnology(
                     wwanPsRegState.getAccessNetworkTechnology());
             serviceState.setDataRegState(regCodeToServiceState(regState));
-            serviceState.setRilDataRadioTechnology(dataRat);
         }
         if (DBG) {
             log("combinePsRegistrationStates: " + serviceState);
@@ -2019,7 +2017,6 @@ public class ServiceStateTracker extends Handler {
 
                 mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
                 mNewSS.setCssIndicator(cssIndicator);
-                mNewSS.setRilVoiceRadioTechnology(newVoiceRat);
                 mNewSS.addNetworkRegistrationInfo(networkRegState);
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
@@ -2153,8 +2150,6 @@ public class ServiceStateTracker extends Handler {
 
                 updateServiceStateLteEarfcnBoost(mNewSS,
                         getLteEarfcn(networkRegState.getCellIdentity()));
-
-                mNewSS.setIsUsingCarrierAggregation(dataSpecificStates.isUsingCarrierAggregation);
                 break;
             }
 
@@ -2671,7 +2666,7 @@ public class ServiceStateTracker extends Handler {
                 plmn = String.format(wfcVoiceSpnFormat, originalPlmn);
             } else if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
                 // todo: temporary hack; should have a better fix. This is to avoid using operator
-                // name from ServiceState (populated in resetServiceStateInIwlanMode()) until
+                // name from ServiceState (populated in processIwlanRegistrationInfo()) until
                 // wifi calling is actually enabled
                 log("updateSpnDisplay: overwriting plmn from " + plmn + " to null as radio " +
                         "state is off");
@@ -2992,7 +2987,7 @@ public class ServiceStateTracker extends Handler {
             mNewSS.setDataRoaming(true);
         }
         useDataRegStateForDataOnlyDevices();
-        resetServiceStateInIwlanMode();
+        processIwlanRegistrationInfo();
 
         if (Build.IS_DEBUGGABLE && mPhone.mTelephonyTester != null) {
             mPhone.mTelephonyTester.overrideServiceState(mNewSS);
@@ -5044,13 +5039,18 @@ public class ServiceStateTracker extends Handler {
     /* Reset Service state when IWLAN is enabled as polling in airplane mode
      * causes state to go to OUT_OF_SERVICE state instead of STATE_OFF
      */
-    @UnsupportedAppUsage
-    protected void resetServiceStateInIwlanMode() {
+
+
+    /**
+     * This method adds IWLAN registration info for legacy mode devices camped on IWLAN. It also
+     * makes some adjustments when the device camps on IWLAN in airplane mode.
+     */
+    private void processIwlanRegistrationInfo() {
         if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
             boolean resetIwlanRatVal = false;
             log("set service state as POWER_OFF");
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                        == mNewSS.getRilDataRadioTechnology()) {
+                    == mNewSS.getRilDataRadioTechnology()) {
                 log("pollStateDone: mNewSS = " + mNewSS);
                 log("pollStateDone: reset iwlan RAT value");
                 resetIwlanRatVal = true;
@@ -5059,10 +5059,53 @@ public class ServiceStateTracker extends Handler {
             String operator = mNewSS.getOperatorAlphaLong();
             mNewSS.setStateOff();
             if (resetIwlanRatVal) {
-                mNewSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
                 mNewSS.setDataRegState(ServiceState.STATE_IN_SERVICE);
+                NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                        .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                        .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                        .build();
+                mNewSS.addNetworkRegistrationInfo(nri);
+                if (mTransportManager.isInLegacyMode()) {
+                    // If in legacy mode, simulate the behavior that IWLAN registration info
+                    // is reported through WWAN transport.
+                    nri = new NetworkRegistrationInfo.Builder()
+                            .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                            .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                            .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                            .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                            .build();
+                    mNewSS.addNetworkRegistrationInfo(nri);
+                }
                 mNewSS.setOperatorAlphaLong(operator);
                 log("pollStateDone: mNewSS = " + mNewSS);
+            }
+            return;
+        }
+
+        // If the device operates in legacy mode and camps on IWLAN, modem reports IWLAN as a RAT
+        // through WWAN registration info. To be consistent with the behavior with AP-assisted mode,
+        // we manually make a WLAN registration info for clients to consume. In this scenario,
+        // both WWAN and WLAN registration info are the IWLAN registration info and that's the
+        // unfortunate limitation we have when the device operates in legacy mode. In AP-assisted
+        // mode, the WWAN registration will correctly report the actual cellular registration info
+        // when the device camps on IWLAN.
+        if (mTransportManager.isInLegacyMode()) {
+            NetworkRegistrationInfo wwanNri = mSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (wwanNri != null && wwanNri.getAccessNetworkTechnology()
+                    == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                NetworkRegistrationInfo wlanNri = new NetworkRegistrationInfo.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                        .setRegistrationState(wwanNri.getRegistrationState())
+                        .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                        .setRejectCause(wwanNri.getRejectCause())
+                        .setEmergencyOnly(wwanNri.isEmergencyEnabled())
+                        .setAvailableServices(wwanNri.getAvailableServices())
+                        .build();
+                mSS.addNetworkRegistrationInfo(wlanNri);
             }
         }
     }
