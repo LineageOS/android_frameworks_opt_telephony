@@ -61,6 +61,7 @@ import android.os.ResultReceiver;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -1422,7 +1423,12 @@ public class ImsPhone extends ImsPhoneBase {
                 && mDefaultPhone.getServiceStateTracker().mSS != null) {
             ServiceState ss = mDefaultPhone.getServiceStateTracker().mSS;
             mSS.setDataRegState(ss.getDataRegState());
-            mSS.setRilDataRadioTechnology(ss.getRilDataRadioTechnology());
+            List<NetworkRegistrationInfo> nriList =
+                    ss.getNetworkRegistrationInfoListForDomain(NetworkRegistrationInfo.DOMAIN_PS);
+            for (NetworkRegistrationInfo nri : nriList) {
+                mSS.addNetworkRegistrationInfo(nri);
+            }
+
             logd("updateDataServiceState: defSs = " + ss + " imsSs = " + mSS);
         }
     }
