@@ -26,6 +26,7 @@ import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELE
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.SubscriptionInfo;
@@ -299,7 +300,7 @@ public class MultiSimSettingController {
     private synchronized void setUserDataEnabledForGroup(int subId, boolean enable) {
         log("setUserDataEnabledForGroup subId " + subId + " enable " + enable);
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
-                subId, mContext.getOpPackageName());
+                mSubController.getGroupUuid(subId), mContext.getOpPackageName());
 
         if (infoList == null) return;
 
@@ -339,7 +340,7 @@ public class MultiSimSettingController {
     private synchronized void setRoamingDataEnabledForGroup(int subId, boolean enable) {
         SubscriptionController subController = SubscriptionController.getInstance();
         List<SubscriptionInfo> infoList = subController.getSubscriptionsInGroup(
-                subId, mContext.getOpPackageName());
+                mSubController.getGroupUuid(subId), mContext.getOpPackageName());
 
         if (infoList == null) return;
 
@@ -348,20 +349,6 @@ public class MultiSimSettingController {
             GlobalSettingsHelper.setBoolean(
                     mContext, Settings.Global.DATA_ROAMING, info.getSubscriptionId(), enable);
         }
-    }
-
-    private String getGroupUuid(int subId) {
-        String groupUuid;
-        List<SubscriptionInfo> subInfo = mSubController.getSubInfo(
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                        + "=" + subId, null);
-        if (subInfo == null || subInfo.size() == 0) {
-            groupUuid = null;
-        } else {
-            groupUuid = subInfo.get(0).getGroupUuid();
-        }
-
-        return groupUuid;
     }
 
     private interface UpdateDefaultAction {
@@ -375,7 +362,7 @@ public class MultiSimSettingController {
 
         if (subInfos.size() > 0) {
             // Get groupUuid of old
-            String groupUuid = getGroupUuid(oldValue);
+            ParcelUuid groupUuid = mSubController.getGroupUuid(oldValue);
 
             for (SubscriptionInfo info : subInfos) {
                 int id = info.getSubscriptionId();
