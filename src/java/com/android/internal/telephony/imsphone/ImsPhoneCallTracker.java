@@ -1759,6 +1759,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         try {
             if (mUssdSession != null) {
+                // Doesn't need mPendingUssd here. Listeners would use it if not null.
+                mPendingUssd = null;
                 mUssdSession.sendUssd(ussdString);
                 AsyncResult.forMessage(response, null, null);
                 response.sendToTarget();
@@ -1778,6 +1780,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             mUssdSession = mImsManager.makeCall(profile, callees, mImsUssdListener);
             mPendingUssd = response;
+            if (DBG) log("pending ussd updated, " + mPendingUssd);
         } catch (ImsException e) {
             loge("sendUSSD : " + e);
             mPhone.sendErrorResponse(response, e);

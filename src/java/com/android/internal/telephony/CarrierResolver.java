@@ -439,10 +439,13 @@ public class CarrierResolver extends Handler {
             cv.put(CarrierId.CARRIER_NAME, mCarrierName);
             mContext.getContentResolver().update(
                     Telephony.CarrierId.getUriForSubscriptionId(mPhone.getSubId()), cv, null, null);
-            if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
-                // only persist carrier id to simInfo db when subId is valid.
-                SubscriptionController.getInstance().setCarrierId(mCarrierId, mPhone.getSubId());
-            }
+        }
+        // during esim profile switch, there is no sim absent thus carrier id will persist and
+        // might not trigger an update if switch profiles for the same carrier. thus always update
+        // subscriptioninfo db to make sure we have correct carrier id set.
+        if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
+            // only persist carrier id to simInfo db when subId is valid.
+            SubscriptionController.getInstance().setCarrierId(mCarrierId, mPhone.getSubId());
         }
     }
 

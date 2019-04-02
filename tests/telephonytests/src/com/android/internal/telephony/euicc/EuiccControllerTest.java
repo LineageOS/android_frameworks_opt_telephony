@@ -502,7 +502,7 @@ public class EuiccControllerTest extends TelephonyTest {
         // In this case we go with the potentially stronger NO_PRIVILEGES consent dialog to avoid
         // double prompting.
         verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
-                EuiccOperation.ACTION_DOWNLOAD_NO_PRIVILEGES);
+                EuiccOperation.ACTION_DOWNLOAD_NO_PRIVILEGES_CHECK_METADATA);
     }
 
     @Test

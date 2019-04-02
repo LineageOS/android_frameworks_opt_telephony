@@ -422,7 +422,10 @@ public class TelephonyMetrics {
             pw.print("T=");
             if (event.type == TelephonyEvent.Type.RIL_SERVICE_STATE_CHANGED) {
                 pw.print(telephonyEventToString(event.type)
-                        + "(" + event.serviceState.dataRat + ")");
+                        + "(" + "Data RAT " + event.serviceState.dataRat
+                        + " Voice RAT " + event.serviceState.voiceRat
+                        + " Channel Number " + event.serviceState.channelNumber
+                        + ")");
             } else {
                 pw.print(telephonyEventToString(event.type));
             }
@@ -438,23 +441,27 @@ public class TelephonyMetrics {
             pw.print("Start time in minutes: " + callSession.startTimeMinutes);
             pw.print(", phone: " + callSession.phoneId);
             if (callSession.eventsDropped) {
-                pw.println("Events dropped: " + callSession.eventsDropped);
+                pw.println(" Events dropped: " + callSession.eventsDropped);
             }
 
-            pw.println("Events: ");
+            pw.println(" Events: ");
             pw.increaseIndent();
             for (TelephonyCallSession.Event event : callSession.events) {
                 pw.print(event.delay);
                 pw.print(" T=");
                 if (event.type == TelephonyCallSession.Event.Type.RIL_SERVICE_STATE_CHANGED) {
                     pw.println(callSessionEventToString(event.type)
-                            + "(" + event.serviceState.dataRat + ")");
+                            + "(" + "Data RAT " + event.serviceState.dataRat
+                            + " Voice RAT " + event.serviceState.voiceRat
+                            + " Channel Number " + event.serviceState.channelNumber
+                            + ")");
                 } else if (event.type == TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED) {
                     pw.println(callSessionEventToString(event.type));
                     pw.increaseIndent();
                     for (RilCall call : event.calls) {
                         pw.println(call.index + ". Type = " + call.type + " State = "
                                 + call.state + " End Reason " + call.callEndReason
+                                + " Precise Disconnect Cause " + call.preciseDisconnectCause
                                 + " isMultiparty = " + call.isMultiparty);
                     }
                     pw.decreaseIndent();
@@ -724,14 +731,14 @@ public class TelephonyMetrics {
     }
 
     /** Update active subscription info list. */
-    public void updateActiveSubscriptionInfoList(List<SubscriptionInfo> subInfos) {
+    public synchronized void updateActiveSubscriptionInfoList(List<SubscriptionInfo> subInfos) {
         List<Integer> inActivePhoneList = new ArrayList<>();
         for (int i = 0; i < mLastActiveSubscriptionInfos.size(); i++) {
             inActivePhoneList.add(mLastActiveSubscriptionInfos.keyAt(i));
         }
 
         for (SubscriptionInfo info : subInfos) {
-            int phoneId = SubscriptionManager.getPhoneId(info.getSubscriptionId());
+            int phoneId = info.getSimSlotIndex();
             inActivePhoneList.removeIf(value -> value.equals(phoneId));
             ActiveSubscriptionInfo activeSubscriptionInfo = new ActiveSubscriptionInfo();
             activeSubscriptionInfo.slotIndex = phoneId;
@@ -891,6 +898,7 @@ public class TelephonyMetrics {
 
         ssProto.voiceRat = serviceState.getRilVoiceRadioTechnology();
         ssProto.dataRat = serviceState.getRilDataRadioTechnology();
+        ssProto.channelNumber = serviceState.getChannelNumber();
         return ssProto;
     }
 
@@ -1484,6 +1492,7 @@ public class TelephonyMetrics {
         }
         call.callEndReason = conn.getDisconnectCause();
         call.isMultiparty = conn.isMultiparty();
+        call.preciseDisconnectCause = conn.getPreciseDisconnectCause();
     }
 
     /**

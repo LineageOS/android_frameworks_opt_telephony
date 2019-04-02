@@ -279,6 +279,9 @@ message TelephonyServiceState {
 
   // Current data radio technology
   optional RadioAccessTechnology data_rat = 6 [default = UNKNOWN];
+
+  // Current Channel Number
+  optional int32 channel_number = 7;
 }
 
 // Radio access families
@@ -1775,6 +1778,9 @@ message TelephonyCallSession {
 
       // Change of audio codec
       AUDIO_CODEC = 22;
+
+      // Notification that the call quality has changed
+      CALL_QUALITY_CHANGED = 23;
     }
 
     enum RilRequest {
@@ -1942,6 +1948,10 @@ message TelephonyCallSession {
 
       // This field is true for Conference Calls
       optional bool is_multiparty = 5;
+
+      // Detailed cause code for CS Call failures
+      // frameworks/base/telephony/java/android/telephony/PreciseDisconnectCause.java
+      optional int32 precise_disconnect_cause = 6;
     }
 
     // Single Radio Voice Call Continuity(SRVCC) progress state
@@ -1957,6 +1967,135 @@ message TelephonyCallSession {
       HANDOVER_FAILED = 3;
 
       HANDOVER_CANCELED = 4;
+    }
+
+    message SignalStrength {
+
+      // signal to noise ratio for LTE signal strength
+      optional int32 lte_snr = 1;
+
+      // in the future we may include more measures of signal strength, or
+      // measurements for other RATs
+    }
+
+    // CallQuality information. (This proto class corresponds to
+    // android.telephony.CallQuality)
+    message CallQuality {
+
+      enum CallQualityLevel {
+
+        // leaving the first value explicitly as unspecified avoids breaking
+        // clients if the desired default behavior changes
+        UNDEFINED = 0;
+
+        EXCELLENT = 1;
+
+        GOOD = 2;
+
+        FAIR = 3;
+
+        POOR = 4;
+
+        BAD = 5;
+
+        // this typically indicates a failure in the modem
+        NOT_AVAILABLE = 6;
+      }
+
+      // the downlink CallQualityLevel for a given ongoing call
+      optional CallQualityLevel downlink_level = 1;
+
+      // the uplink CallQualityLevel for a given ongoing call
+      optional CallQualityLevel uplink_level = 2;
+
+      // the duration of the call, in seconds
+      optional int32 duration_in_seconds = 3;
+
+      // the total number of RTP packets transmitted by this device for an
+      // ongoing call
+      optional int32 rtp_packets_transmitted = 4;
+
+      // the total number of RTP packets received by this device for an ongoing
+      // call
+      optional int32 rtp_packets_received = 5;
+
+      // the number of RTP packets which were sent by this device but were lost
+      // in the network before reaching the other party
+      optional int32 rtp_packets_transmitted_lost = 6;
+
+      // the number of RTP packets which were sent by the other party but were
+      // lost in the network before reaching this device
+      optional int32 rtp_packets_not_received = 7;
+
+      // the average relative jitter in milliseconds. Jitter represents the
+      // amount of variance in interarrival time of packets, for example, if two
+      // packets are sent 2 milliseconds apart but received 3 milliseconds
+      // apart, the relative jitter between those packets is 1 millisecond.
+      //
+      // See RFC 3550 for more information on jitter calculations
+      optional int32 average_relative_jitter_millis = 8;
+
+      // the maximum relative jitter for a given ongoing call. Jitter represents
+      // the amount of variance in interarrival time of packets, for example, if
+      // two packets are sent 2 milliseconds apart but received 3 milliseconds
+      // apart, the relative jitter between those packets is 1 millisecond.
+      //
+      // See RFC 3550 for more information on jitter calculations.
+      optional int32 max_relative_jitter_millis = 9;
+
+      // the average round trip time of RTP packets in an ongoing call, in milliseconds
+      optional int32 average_round_trip_time = 10;
+
+      // the codec type of an ongoing call
+      optional AudioCodec codec_type = 11;
+    }
+
+    message CallQualitySummary {
+
+      // Total duration of good call quality reported at the end of a call
+      optional int32 total_good_quality_duration_in_seconds = 1;
+
+      // Total duration of bad call quality reported at the end of a call
+      optional int32 total_bad_quality_duration_in_seconds = 2;
+
+      // Total duration of the call for which we have call quality
+      // information, reported at the end of a call. For example, if an IMS call
+      // is converted to a CS call, which doesn't report call quality information,
+      // this value is the duration of the IMS component.
+      optional int32 total_duration_with_quality_information_in_seconds = 3;
+
+      // Snapshot of the CallQuality when signal strength is worst within good
+      // quality section
+      optional CallQuality snapshot_of_worst_ss_with_good_quality = 4;
+
+      // Snapshot of the CallQuality when signal strength is best within good
+      // quality section
+      optional CallQuality snapshot_of_best_ss_with_good_quality = 5;
+
+      // Snapshot of the CallQuality when signal strength is worst within bad
+      // quality section
+      optional CallQuality snapshot_of_worst_ss_with_bad_quality = 6;
+
+      // Snapshot of the CallQuality when signal strength is best within bad
+      // quality section
+      optional CallQuality snapshot_of_best_ss_with_bad_quality = 7;
+
+      // The worst SignalStrength in any good quality section
+      optional SignalStrength worst_ss_with_good_quality = 8;
+
+      // The best SignalStrength in any good quality section
+      optional SignalStrength best_ss_with_good_quality = 9;
+
+      // The worst SignalStrength in any bad quality section
+      optional SignalStrength worst_ss_with_bad_quality = 10;
+
+      // The best SignalStrength in any bad quality section
+      optional SignalStrength best_ss_with_bad_quality = 11;
+
+      // Snapshot of the CallQuality at the end of a call. This includes
+      // cumulative statistics like total duration and total RTP packets.
+      optional CallQuality snapshot_of_end = 12;
+
     }
 
     // Event type
@@ -2024,6 +2163,16 @@ message TelephonyCallSession {
 
     // Audio codec at the beginning of the session or when changed
     optional AudioCodec audio_codec = 22;
+
+    // Call quality when changed
+    optional CallQuality call_quality = 23;
+
+    // Downlink call quality summary at the end of a call
+    optional CallQualitySummary call_quality_summary_dl = 24;
+
+    // Uplink call quality summary at the end of a call
+    optional CallQualitySummary call_quality_summary_ul = 25;
+
   }
 
   // Time when call has started, in minutes since epoch,

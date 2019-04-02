@@ -101,9 +101,9 @@ public class EriManager {
     private EriFile mEriFile;
     private final Phone mPhone;
 
-    public EriManager(Phone phone, Context context, int eriFileSource) {
+    public EriManager(Phone phone, int eriFileSource) {
         mPhone = phone;
-        mContext = context;
+        mContext = mPhone.getContext();
         mEriFileSource = eriFileSource;
         mEriFile = new EriFile();
     }
