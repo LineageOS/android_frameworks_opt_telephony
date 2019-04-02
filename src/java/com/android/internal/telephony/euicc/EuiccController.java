@@ -350,7 +350,7 @@ public class EuiccController extends IEuiccController.Stub {
                     forceDeactivateSim,
                     new DownloadSubscriptionGetMetadataCommandCallback(token, subscription,
                             switchAfterDownload, callingPackage, forceDeactivateSim,
-                            callbackIntent));
+                            callbackIntent, false /* withUserConsent */));
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -359,66 +359,65 @@ public class EuiccController extends IEuiccController.Stub {
     class DownloadSubscriptionGetMetadataCommandCallback extends GetMetadataCommandCallback {
         private final boolean mSwitchAfterDownload;
         private final boolean mForceDeactivateSim;
+        private final boolean mWithUserConsent;
 
         DownloadSubscriptionGetMetadataCommandCallback(long callingToken,
                 DownloadableSubscription subscription, boolean switchAfterDownload,
                 String callingPackage, boolean forceDeactivateSim,
-                PendingIntent callbackIntent) {
+                PendingIntent callbackIntent, boolean withUserConsent) {
             super(callingToken, subscription, callingPackage, callbackIntent);
             mSwitchAfterDownload = switchAfterDownload;
             mForceDeactivateSim = forceDeactivateSim;
+            mWithUserConsent = withUserConsent;
         }
 
         @Override
         public void onGetMetadataComplete(int cardId,
                 GetDownloadableSubscriptionMetadataResult result) {
-            if (result.getResult() == EuiccService.RESULT_MUST_DEACTIVATE_SIM) {
-                // If we need to deactivate the current SIM to even check permissions, go ahead and
-                // require that the user resolve the stronger permission dialog.
-                Intent extrasIntent = new Intent();
-                addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+            DownloadableSubscription subscription = result.getDownloadableSubscription();
+            if (mWithUserConsent) {
+                // We won't get RESULT_MUST_DEACTIVATE_SIM for the case with user consent.
+                if (result.getResult() != EuiccService.RESULT_OK) {
+                    // Just propagate the error as normal.
+                    super.onGetMetadataComplete(cardId, result);
+                    return;
+                }
+
+                if (checkCarrierPrivilegeInMetadata(subscription, mCallingPackage)) {
+                    // Caller can download this profile. Since we already have the user's consent,
+                    // proceed to download.
+                    downloadSubscriptionPrivileged(cardId,
+                            mCallingToken, subscription, mSwitchAfterDownload,  mForceDeactivateSim,
+                            mCallingPackage, null /* resolvedBundle */,
+                            mCallbackIntent);
+                } else {
+                    Log.e(TAG, "Caller does not have carrier privilege in metadata.");
+                    sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
+                }
+            } else { // !mWithUserConsent
+                if (result.getResult() == EuiccService.RESULT_MUST_DEACTIVATE_SIM) {
+                    // If we need to deactivate the current SIM to even check permissions, go ahead
+                    // and require that the user resolve the stronger permission dialog.
+                    Intent extrasIntent = new Intent();
+                    addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                             mCallingPackage,
                             0 /* resolvableErrors */,
                             false /* confirmationCodeRetried */,
-                            EuiccOperation.forDownloadNoPrivileges(
+                            EuiccOperation.forDownloadNoPrivilegesCheckMetadata(
                                     mCallingToken, mSubscription, mSwitchAfterDownload,
                                     mCallingPackage),
                             cardId);
-                sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
-                return;
-            }
+                    sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
+                    return;
+                }
 
-            if (result.getResult() != EuiccService.RESULT_OK) {
-                // Just propagate the error as normal.
-                super.onGetMetadataComplete(cardId, result);
-                return;
-            }
+                if (result.getResult() != EuiccService.RESULT_OK) {
+                    // Just propagate the error as normal.
+                    super.onGetMetadataComplete(cardId, result);
+                    return;
+                }
 
-            DownloadableSubscription subscription = result.getDownloadableSubscription();
-            UiccAccessRule[] rules = null;
-            List<UiccAccessRule> rulesList = subscription.getAccessRules();
-            if (rulesList != null) {
-                rules = rulesList.toArray(new UiccAccessRule[rulesList.size()]);
-            }
-            if (rules == null) {
-                Log.e(TAG, "No access rules but caller is unprivileged");
-                sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
-                return;
-            }
-
-            final PackageInfo info;
-            try {
-                info = mPackageManager.getPackageInfo(
-                        mCallingPackage, PackageManager.GET_SIGNATURES);
-            } catch (PackageManager.NameNotFoundException e) {
-                Log.e(TAG, "Calling package valid but gone");
-                sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
-                return;
-            }
-
-            for (int i = 0; i < rules.length; i++) {
-                if (rules[i].getCarrierPrivilegeStatus(info)
-                        == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
+                if (checkCarrierPrivilegeInMetadata(subscription, mCallingPackage)) {
                     // Caller can download this profile.
                     // On a multi-active SIM device, if the caller can manage the active
                     // subscription on the target SIM, or there is no active subscription on the
@@ -435,7 +434,7 @@ public class EuiccController extends IEuiccController.Stub {
                         return;
                     }
 
-                    // Switch might still be permitted, but the user must consent first.
+                    // Download might still be permitted, but the user must consent first.
                     Intent extrasIntent = new Intent();
                     addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                             mCallingPackage,
@@ -446,20 +445,26 @@ public class EuiccController extends IEuiccController.Stub {
                                     mCallingPackage),
                             cardId);
                     sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
-                    return;
+                } else {
+                    Log.e(TAG, "Caller is not permitted to download this profile per metadata");
+                    sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
                 }
             }
-            Log.e(TAG, "Caller is not permitted to download this profile");
-            sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
-        }
-
-        @Override
-        protected EuiccOperation getOperationForDeactivateSim() {
-            return EuiccOperation.forDownloadDeactivateSim(
-                    mCallingToken, mSubscription, mSwitchAfterDownload, mCallingPackage);
         }
     }
 
+    // Already have user consent. Check metadata first before proceed to download.
+    void downloadSubscriptionPrivilegedCheckMetadata(int cardId, final long callingToken,
+            DownloadableSubscription subscription, boolean switchAfterDownload,
+            boolean forceDeactivateSim, final String callingPackage, Bundle resolvedBundle,
+            final PendingIntent callbackIntent) {
+        mConnector.getDownloadableSubscriptionMetadata(cardId, subscription, forceDeactivateSim,
+                new DownloadSubscriptionGetMetadataCommandCallback(callingToken, subscription,
+                        switchAfterDownload, callingPackage, forceDeactivateSim, callbackIntent,
+                        true /* withUserConsent */));
+    }
+
+    // Continue to download subscription without checking anything.
     void downloadSubscriptionPrivileged(int cardId, final long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
             boolean forceDeactivateSim, final String callingPackage, Bundle resolvedBundle,
@@ -1164,6 +1169,38 @@ public class EuiccController extends IEuiccController.Stub {
             Thread.currentThread().interrupt();
         }
         return resultRef.get();
+    }
+
+    // Returns whether the caller has carrier privilege on the given subscription.
+    private boolean checkCarrierPrivilegeInMetadata(DownloadableSubscription subscription,
+            String callingPackage) {
+        UiccAccessRule[] rules = null;
+        List<UiccAccessRule> rulesList = subscription.getAccessRules();
+        if (rulesList != null) {
+            rules = rulesList.toArray(new UiccAccessRule[rulesList.size()]);
+        }
+        if (rules == null) {
+            Log.e(TAG, "No access rules but caller is unprivileged");
+            return false;
+        }
+
+        final PackageInfo info;
+        try {
+            info = mPackageManager.getPackageInfo(callingPackage, PackageManager.GET_SIGNATURES);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e(TAG, "Calling package valid but gone");
+            return false;
+        }
+
+        for (int i = 0; i < rules.length; i++) {
+            if (rules[i].getCarrierPrivilegeStatus(info)
+                    == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
+                Log.i(TAG, "Calling package has carrier privilege to this profile");
+                return true;
+            }
+        }
+        Log.e(TAG, "Calling package doesn't have carrier privilege to this profile");
+        return false;
     }
 
     private boolean supportMultiActiveSlots() {

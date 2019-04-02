@@ -123,7 +123,8 @@ public class InProgressCallSessionTest extends TelephonyTest {
 
         CallSessionEventBuilder builder = new CallSessionEventBuilder(
                 TelephonyProto.TelephonyCallSession.Event.Type.CALL_QUALITY_CHANGED)
-                .setCallQualitySummary(cqs);
+                .setCallQualitySummaryDl(cqs)
+                .setCallQualitySummaryUl(cqs);
         mCallSession.addEvent(builder);
         assertEquals(builder.build(), mCallSession.events.getFirst());
     }
