@@ -2988,89 +2988,97 @@ public class SubscriptionController extends ISub.Stub {
         return groupUuid;
     }
 
+
+    /**
+     * Enable/Disable a subscription
+     * @param enable true if enabling, false if disabling
+     * @param subId the unique SubInfoRecord index in database
+     *
+     * @return true if success, false if fails or the further action is
+     * needed hence it's redirected to Euicc.
+     */
     @Override
     public boolean setSubscriptionEnabled(boolean enable, int subId) {
-        // TODO: b/123314365 support multi-eSIM and removable eSIM.
         enforceModifyPhoneState("setSubscriptionEnabled");
 
-        long identity = Binder.clearCallingIdentity();
+        final long identity = Binder.clearCallingIdentity();
         try {
+            logd("setSubscriptionEnabled" + (enable ? " enable " : " disable ")
+                    + " subId " + subId);
+
             // Error checking.
-            if (!SubscriptionManager.isUsableSubIdValue(subId)) {
+            if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
                 throw new IllegalArgumentException(
-                        "setUserSelectedSubscription with invalid subId " + subId);
+                        "setSubscriptionEnabled not usable subId " + subId);
             }
-            if (mTelephonyManager.getPhoneCount() <= 1) {
-                loge("setSubscriptionEnabled not supported in single SIM modem.");
-                return false;
-            }
-            List<SubscriptionInfo> infoList = getSubInfo(
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
-            if (infoList == null || infoList.isEmpty()) {
-                loge("setUserSelectedSubscription can't find subId " + subId);
+
+            SubscriptionInfo info = SubscriptionController.getInstance()
+                    .getAvailableSubscriptionInfoList(mContext.getOpPackageName())
+                    .stream()
+                    .filter(subInfo -> subInfo.getSubscriptionId() == subId)
+                    .findFirst()
+                    .get();
+
+            if (info == null) {
                 return false;
             }
 
-            // For eSIM, inactive can still be enabled. Because user maybe enabled an embedded
-            // subscription while system switched to another one temporarily.
-            // But for pSIM, inactive means it's unplugged. So it can no longer be enabled or
-            // disabled.
-            if (!infoList.get(0).isEmbedded() && !isActiveSubId(subId)) {
-                return false;
+            if (info.isEmbedded()) {
+                return enableEmbeddedSubscription(info, enable);
+            } else {
+                return enablePhysicalSubscription(info, enable);
             }
-
-            // Error checking done.
-            return setSubscriptionEnabledInternal(infoList.get(0), enable);
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
     }
 
-    private boolean setSubscriptionEnabledInternal(SubscriptionInfo info, boolean enable) {
-        int physicalSlotIndex = getPhysicalSlotIndex(info.isEmbedded(),
-                info.getSubscriptionId());
-        logd("setSubscriptionEnabledInternal setting subId " + info.getSubscriptionId()
-                + " at physicalSlotIndex " + physicalSlotIndex
-                + (enable ? " enabled." : " disabled."));
+    private boolean enableEmbeddedSubscription(SubscriptionInfo info, boolean enable) {
+        // We need to send intents to Euicc for operations:
 
-        int subId = info.getSubscriptionId();
+        // 1) In single SIM mode, turning on a eSIM subscription while pSIM is the active slot.
+        //    Euicc will ask user to switch to DSDS if supported or to confirm SIM slot
+        //    switching.
+        // 2) In DSDS mode, turning on / off an eSIM profile. Euicc can ask user whether
+        //    to turn on DSDS, or whether to switch from current active eSIM profile to it, or
+        //    to simply show a progress dialog.
+        // 3) In future, similar operations on triple SIM devices.
+        enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable);
+        // returning false to indicate state is not changed. If changed, a subscriptionInfo
+        // change will be filed separately.
+        return false;
 
-        if (info.isEmbedded()) {
-            return setSubscriptionOnEmbeddedSlot(subId, enable, physicalSlotIndex);
-        } else {
-            return setSubscriptionOnPhysicalSlot(subId, enable, physicalSlotIndex);
-        }
+        // TODO: uncomment or clean up if we decide whether to support standalone CBRS for Q.
+        // subId = enable ? subId : SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        // updateEnabledSubscriptionGlobalSetting(subId, physicalSlotIndex);
     }
 
-    private boolean setSubscriptionOnEmbeddedSlot(int subId, boolean enable,
-            int physicalSlotIndex) {
-        subId = enable ? subId : SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-        // Switch eSIM profile and keep it in global settings.
-        EuiccManager euiccManager = (EuiccManager)
-                mContext.getSystemService(Context.EUICC_SERVICE);
-        euiccManager.switchToSubscription(subId, PendingIntent.getService(
-                mContext, 0, new Intent(), 0));
-        updateEnabledSubscriptionGlobalSetting(subId, physicalSlotIndex);
-        refreshCachedActiveSubscriptionInfoList();
-        return true;
-    }
-
-    private boolean setSubscriptionOnPhysicalSlot(int subId, boolean enable,
-            int physicalSlotIndex) {
-        // Enable / disable pSIM modem and keep the value in global settings.
-        if (mTelephonyManager.enableModemForSlot(getPhoneId(subId), enable)) {
-            // For physical slot, in addition to which subscription is enabled in the slot,
-            // we also store whether the modem stack is enabled or not.
-            updateEnabledSubscriptionGlobalSetting(
-                    enable ? subId : SubscriptionManager.INVALID_SUBSCRIPTION_ID,
-                    physicalSlotIndex);
-            updateModemStackEnabledGlobalSetting(enable, physicalSlotIndex);
-            refreshCachedActiveSubscriptionInfoList();
-            return true;
-        } else {
-            // Operation failed. Do nothing.
+    private boolean enablePhysicalSubscription(SubscriptionInfo info, boolean enable) {
+        if (enable && info.getSimSlotIndex() == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
+            // We need to send intents to Euicc if we are turning on an inactive pSIM.
+            // Euicc will decide whether to ask user to switch to DSDS, or change SIM slot mapping.
+            enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable);
+            // returning false to indicate state is not changed. If changed, a subscriptionInfo
+            // change will be filed separately.
             return false;
+        } else {
+            return mTelephonyManager.enableModemForSlot(info.getSimSlotIndex(), enable);
         }
+
+        // TODO: uncomment or clean up if we decide whether to support standalone CBRS for Q.
+        // updateEnabledSubscriptionGlobalSetting(
+        //        enable ? subId : SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+        //        physicalSlotIndex);
+        // updateModemStackEnabledGlobalSetting(enable, physicalSlotIndex);
+        // refreshCachedActiveSubscriptionInfoList();
+    }
+
+    private void enableSubscriptionOverEuiccManager(int subId, boolean enable) {
+        Intent intent = new Intent(EuiccManager.ACTION_TOGGLE_SUBSCRIPTION_PRIVILEGED);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.putExtra(EuiccManager.EXTRA_SUBSCRIPTION_ID, subId);
+        intent.putExtra(EuiccManager.EXTRA_ENABLE_SUBSCRIPTION, enable);
+        mContext.startActivity(intent);
     }
 
     private void updateEnabledSubscriptionGlobalSetting(int subId, int physicalSlotIndex) {
@@ -3127,46 +3135,27 @@ public class SubscriptionController extends ISub.Stub {
 
         long identity = Binder.clearCallingIdentity();
         try {
-            // Subscription enable / disable shouldn't matter for single SIM devices.
-            if (mTelephonyManager.getPhoneCount() <= 1) {
-                return isActiveSubId(subId);
-            }
             // Error checking.
-            if (!SubscriptionManager.isUsableSubIdValue(subId)) {
+            if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
                 throw new IllegalArgumentException(
-                        "setUserSelectedSubscription with invalid subId " + subId);
+                        "isSubscriptionEnabled not usable subId " + subId);
             }
+
             List<SubscriptionInfo> infoList = getSubInfo(
                     SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
             if (infoList == null || infoList.isEmpty()) {
-                loge("setUserSelectedSubscription can't find subId " + subId);
+                // Subscription doesn't exist.
                 return false;
             }
 
             boolean isEmbedded = infoList.get(0).isEmbedded();
-            boolean isActiveSub = isActiveSubId(subId);
-            int physicalSlotIndex = getPhysicalSlotIndex(isEmbedded, subId);
-            // DEFAULT_SUBSCRIPTION_ID if not set.
-            int enabledSubId = Settings.Global.getInt(mContext.getContentResolver(),
-                    Settings.Global.ENABLED_SUBSCRIPTION_FOR_SLOT + physicalSlotIndex,
-                    SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
-            boolean modemStackEnabled = Settings.Global.getInt(mContext.getContentResolver(),
-                    Settings.Global.MODEM_STACK_ENABLED_FOR_SLOT
-                            + physicalSlotIndex, 1) == 1;
-            boolean enabledSubIdNotSet =
-                    (enabledSubId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
-            boolean enabledSubIdMatch = (enabledSubId == subId);
 
             if (isEmbedded) {
-                // For eSIM, enabled means means modem stack is enabled and it either 1) matches
-                // what was set enabled in global setting, or 2) global setting is never set but
-                // it's the currently active subscription.
-                return modemStackEnabled && (enabledSubIdMatch
-                        || (enabledSubIdNotSet && isActiveSub));
+                return isActiveSubId(subId);
             } else {
-                // For pSIM, enabled means modem stack is enabled and it's the currently active
-                // subscription.
-                return modemStackEnabled && isActiveSub;
+                // For pSIM, we also need to check if modem is disabled or not.
+                return isActiveSubId(subId) && PhoneConfigurationManager.getInstance()
+                        .getPhoneStatus(PhoneFactory.getPhone(getPhoneId(subId)));
             }
 
         } finally {
