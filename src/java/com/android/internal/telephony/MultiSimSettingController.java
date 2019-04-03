@@ -18,11 +18,11 @@ package com.android.internal.telephony;
 
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 import static android.telephony.TelephonyManager.ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED;
-import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_ID;
-import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_FOR_ALL_TYPES;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE;
+import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
+import static android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID;
 
 import android.content.Context;
 import android.content.Intent;
@@ -31,6 +31,7 @@ import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -246,6 +247,7 @@ public class MultiSimSettingController {
 
     private void showSimSelectDialogIfNeeded(List<SubscriptionInfo> prevPrimarySubs,
             boolean dataSelected, boolean voiceSelected, boolean smsSelected) {
+        @TelephonyManager.DefaultSubscriptionSelectType
         int dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
         int preferredSubId = INVALID_SUBSCRIPTION_ID;
         boolean primarySubRemoved = prevPrimarySubs != null
@@ -259,7 +261,7 @@ public class MultiSimSettingController {
         // user to select default for data as it's most important.
         if (mPrimarySubList.size() == 1 && primarySubRemoved
                 && (!dataSelected || !smsSelected || !voiceSelected)) {
-            dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_FOR_ALL_TYPES;
+            dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
             preferredSubId = mPrimarySubList.get(0).getSubscriptionId();
         } else if (mPrimarySubList.size() > 1 && (!dataSelected || primarySubAdded)) {
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
@@ -272,8 +274,8 @@ public class MultiSimSettingController {
                     "com.android.settings.sim.SimSelectNotification");
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra(EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE, dialogType);
-            if (dialogType == EXTRA_DEFAULT_SUBSCRIPTION_SELECT_FOR_ALL_TYPES) {
-                intent.putExtra(EXTRA_DEFAULT_SUBSCRIPTION_ID, preferredSubId);
+            if (dialogType == EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL) {
+                intent.putExtra(EXTRA_SUBSCRIPTION_ID, preferredSubId);
             }
             mContext.sendBroadcast(intent);
         }
