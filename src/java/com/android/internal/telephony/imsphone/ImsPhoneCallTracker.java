@@ -1252,7 +1252,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     /**
-     * Unhold the currently held call, possibly putting the already-active call on hold if present.
+     * Unhold the currently held call.
      */
     void unholdHeldCall() throws CallStateException {
         try {
@@ -1265,6 +1265,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (imsCall != null) {
                 mCallExpectedToResume = imsCall;
                 mHoldSwitchingState = HoldSwapState.PENDING_SINGLE_CALL_UNHOLD;
+                mForegroundCall.switchWith(mBackgroundCall);
                 logHoldSwapState("unholdCurrentCall");
                 imsCall.resume();
                 mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
@@ -2557,8 +2558,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallResumeFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (mHoldSwitchingState == HoldSwapState.SWAPPING_ACTIVE_AND_HELD
-                    || mHoldSwitchingState == HoldSwapState.PENDING_RESUME_FOREGROUND_AFTER_FAILURE
-                    || mHoldSwitchingState == HoldSwapState.PENDING_SINGLE_CALL_UNHOLD) {
+                    || mHoldSwitchingState
+                    == HoldSwapState.PENDING_RESUME_FOREGROUND_AFTER_FAILURE) {
                 // If we are in the midst of swapping the FG and BG calls and
                 // we got a resume fail, we need to swap back the FG and BG calls.
                 // Since the FG call was held, will also try to resume the same.
@@ -2576,7 +2577,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 //Call swap is done, reset the relevant variables
                 mCallExpectedToResume = null;
                 mHoldSwitchingState = HoldSwapState.INACTIVE;
-                logHoldSwapState("onCallResumeFailed");
+                logHoldSwapState("onCallResumeFailed: multi calls");
+            } else if (mHoldSwitchingState == HoldSwapState.PENDING_SINGLE_CALL_UNHOLD) {
+                if (imsCall == mCallExpectedToResume) {
+                    if (DBG) {
+                        log("onCallResumeFailed: single call unhold case");
+                    }
+                    mForegroundCall.switchWith(mBackgroundCall);
+
+                    mCallExpectedToResume = null;
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                    logHoldSwapState("onCallResumeFailed: single call");
+                } else {
+                    Rlog.w(LOG_TAG, "onCallResumeFailed: got a resume failed for a different call"
+                            + " in the single call unhold case");
+                }
             }
             mPhone.notifySuppServiceFailed(Phone.SuppService.RESUME);
             mMetrics.writeOnImsCallResumeFailed(mPhone.getPhoneId(), imsCall.getCallSession(),
