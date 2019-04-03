@@ -18,7 +18,6 @@ package com.android.internal.telephony.dataconnection;
 
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE_CA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_NR;
 
 import static com.android.internal.telephony.RILConstants.DATA_PROFILE_DEFAULT;
@@ -3852,7 +3851,6 @@ public class DcTracker extends Handler {
         mAutoAttachEnabled.set(mPhone.getPhoneId() != phoneSwitcher.getPreferredDataPhoneId()
                 && serviceState.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
                 && serviceState.getVoiceNetworkType() != NETWORK_TYPE_LTE
-                && serviceState.getVoiceNetworkType() != NETWORK_TYPE_LTE_CA
                 && serviceState.getVoiceNetworkType() != NETWORK_TYPE_NR);
     }
 
