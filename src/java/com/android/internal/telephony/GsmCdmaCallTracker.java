@@ -1532,9 +1532,9 @@ public class GsmCdmaCallTracker extends CallTracker {
                     CellLocation loc = mPhone.getCellLocation();
                     int cid = -1;
                     if (loc != null) {
-                        if (isPhoneTypeGsm()) {
+                        if (loc instanceof GsmCellLocation) {
                             cid = ((GsmCellLocation)loc).getCid();
-                        } else {
+                        } else if (loc instanceof CdmaCellLocation) {
                             cid = ((CdmaCellLocation)loc).getBaseStationId();
                         }
                     }
