@@ -344,13 +344,35 @@ public class EuiccController extends IEuiccController.Stub {
                         forceDeactivateSim, callingPackage, resolvedBundle, callbackIntent);
                 return;
             }
-            // Without WRITE_EMBEDDED_SUBSCRIPTIONS, the caller *must* be whitelisted per the
-            // metadata of the profile to be downloaded, so check the metadata first.
-            mConnector.getDownloadableSubscriptionMetadata(cardId, subscription,
+
+            // Without WRITE_EMBEDDED_SUBSCRIPTIONS, we first check whether the caller can manage
+            // subscription on the target SIM (see comments below). If yes, the caller *must* be
+            // whitelisted per the metadata of the profile to be downloaded, so check the metadata;
+            // If no, ask the user's consent before proceed.
+            // On a multi-active SIM device, if the caller can manage the active subscription on the
+            // target SIM, or there is no active subscription on the target SIM and the caller can
+            // manage any active subscription on other SIMs, we perform the download silently.
+            // Otherwise, the user must provide consent. If it's a single-active SIM device,
+            // determine whether the caller can manage the current profile; if so, we can perform
+            // the download silently; if not, the user must provide consent.
+            if (canManageSubscriptionOnTargetSim(cardId, callingPackage)) {
+                mConnector.getDownloadableSubscriptionMetadata(cardId, subscription,
                     forceDeactivateSim,
                     new DownloadSubscriptionGetMetadataCommandCallback(token, subscription,
-                            switchAfterDownload, callingPackage, forceDeactivateSim,
-                            callbackIntent, false /* withUserConsent */));
+                        switchAfterDownload, callingPackage, forceDeactivateSim,
+                        callbackIntent, false /* withUserConsent */));
+            } else {
+                Log.i(TAG, "Caller can't manage subscription on target SIM. "
+                        + "Ask user's consent first");
+                Intent extrasIntent = new Intent();
+                addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                        callingPackage,
+                        0 /* resolvableErrors */,
+                        false /* confirmationCodeRetried */,
+                        EuiccOperation.forDownloadNoPrivilegesOrDeactivateSimCheckMetadata(token,
+                                subscription, switchAfterDownload, callingPackage), cardId);
+                sendResult(callbackIntent, RESOLVABLE_ERROR, extrasIntent);
+            }
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -396,14 +418,14 @@ public class EuiccController extends IEuiccController.Stub {
                 }
             } else { // !mWithUserConsent
                 if (result.getResult() == EuiccService.RESULT_MUST_DEACTIVATE_SIM) {
-                    // If we need to deactivate the current SIM to even check permissions, go ahead
-                    // and require that the user resolve the stronger permission dialog.
+                    // The caller can manage the target SIM. Ask the user's consent to deactivate
+                    // the current SIM.
                     Intent extrasIntent = new Intent();
-                    addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
+                    addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_DEACTIVATE_SIM,
                             mCallingPackage,
                             0 /* resolvableErrors */,
                             false /* confirmationCodeRetried */,
-                            EuiccOperation.forDownloadNoPrivilegesCheckMetadata(
+                            EuiccOperation.forDownloadNoPrivilegesOrDeactivateSimCheckMetadata(
                                     mCallingToken, mSubscription, mSwitchAfterDownload,
                                     mCallingPackage),
                             cardId);
@@ -418,33 +440,12 @@ public class EuiccController extends IEuiccController.Stub {
                 }
 
                 if (checkCarrierPrivilegeInMetadata(subscription, mCallingPackage)) {
-                    // Caller can download this profile.
-                    // On a multi-active SIM device, if the caller can manage the active
-                    // subscription on the target SIM, or there is no active subscription on the
-                    // target SIM and the caller can manage any active subscription on other SIMs,
-                    // we perform the download silently. Otherwise, the user must provide consent.
-                    // If it's a single-active SIM device, determine whether the caller can manage
-                    // the current profile; if so, we can perform the download silently; if not,
-                    // the user must provide consent.
-                    if (canManageSubscriptionOnTargetSim(cardId, mCallingPackage)) {
-                        downloadSubscriptionPrivileged(cardId,
-                                mCallingToken, subscription, mSwitchAfterDownload,
-                                mForceDeactivateSim, mCallingPackage, null /* resolvedBundle */,
-                                mCallbackIntent);
-                        return;
-                    }
-
-                    // Download might still be permitted, but the user must consent first.
-                    Intent extrasIntent = new Intent();
-                    addResolutionIntent(extrasIntent, EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
-                            mCallingPackage,
-                            0 /* resolvableErrors */,
-                            false /* confirmationCodeRetried */,
-                            EuiccOperation.forDownloadNoPrivileges(
-                                    mCallingToken, subscription, mSwitchAfterDownload,
-                                    mCallingPackage),
-                            cardId);
-                    sendResult(mCallbackIntent, RESOLVABLE_ERROR, extrasIntent);
+                    // Caller can download this profile per profile metadata. Also, caller can
+                    // manage the subscription on the target SIM, which is already checked.
+                    downloadSubscriptionPrivileged(cardId,
+                            mCallingToken, subscription, mSwitchAfterDownload, mForceDeactivateSim,
+                            mCallingPackage, null /* resolvedBundle */,
+                            mCallbackIntent);
                 } else {
                     Log.e(TAG, "Caller is not permitted to download this profile per metadata");
                     sendResult(mCallbackIntent, ERROR, null /* extrasIntent */);
