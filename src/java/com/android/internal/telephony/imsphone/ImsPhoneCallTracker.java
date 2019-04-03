@@ -2272,7 +2272,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (videoProvider instanceof ImsVideoCallProviderWrapper) {
                     ImsVideoCallProviderWrapper wrapper = (ImsVideoCallProviderWrapper)
                             videoProvider;
-
+                    wrapper.unregisterForDataUsageUpdate(ImsPhoneCallTracker.this);
                     wrapper.removeImsVideoProviderCallback(conn);
                 }
             }
