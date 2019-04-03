@@ -515,7 +515,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 }
             }
         } catch (NoSuchElementException e) {
-            mRadioProxy = null;
+            mOemHookProxy = null;
             riljLoge("IOemHook service is not on the device HAL: " + e);
         }  catch (RemoteException e) {
             mOemHookProxy = null;
