@@ -3154,6 +3154,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
         call.mConnections.clear();
         call.mState = ImsPhoneCall.State.IDLE;
+        if (mPendingMO != null) {
+            // If the call is handed over before moving to alerting (i.e. e911 CSFB redial), clear
+            // pending MO here.
+            logi("pending MO on handover, clearing...");
+            mPendingMO = null;
+        }
     }
 
     /* package */
