@@ -37,6 +37,8 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.telecom.PhoneAccountHandle;
+import android.telecom.TelecomManager;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
@@ -2008,9 +2010,31 @@ public class SubscriptionController extends ISub.Stub {
             throw new RuntimeException("setDefaultVoiceSubId called with DEFAULT_SUB_ID");
         }
         if (DBG) logdl("[setDefaultVoiceSubId] subId=" + subId);
+
+        int previousSetting = Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, subId);
         broadcastDefaultVoiceSubIdChanged(subId);
+
+        if (previousSetting != subId) {
+            PhoneAccountHandle newHandle =
+                    subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                            ? null : mTelephonyManager.getPhoneAccountHandleForSubscriptionId(
+                            subId);
+
+            TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
+            PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
+
+            if (!Objects.equals(currentHandle, newHandle)) {
+                telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
+                logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
+            } else {
+                logd("[setDefaultVoiceSubId] default phone account not changed");
+            }
+        }
     }
 
     /**
