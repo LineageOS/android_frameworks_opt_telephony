@@ -3923,7 +3923,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void callEndCleanupHandOverCallIfAny() {
     }
 
-    public void cancelUSSD() {
+    /**
+     * Cancel USSD session.
+     *
+     * @param msg The message to dispatch when the USSD session terminated.
+     */
+    public void cancelUSSD(Message msg) {
     }
 
     /**

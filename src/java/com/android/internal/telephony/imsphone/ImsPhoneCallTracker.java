@@ -1788,9 +1788,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
-    public void cancelUSSD() {
+    /**
+     * Cancel USSD session.
+     *
+     * @param msg The message to dispatch when the USSD session terminated.
+     */
+    public void cancelUSSD(Message msg) {
         if (mUssdSession == null) return;
-
+        mPendingUssd = msg;
         mUssdSession.terminate(ImsReasonInfo.CODE_USER_TERMINATED);
     }
 
