@@ -363,7 +363,10 @@ public class TelephonyTester {
             log("Service state override reset");
             return;
         }
-        if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_REG_STATE)) {
+
+        // TODO: Fix this with modifing NetworkRegistrationInfo inside ServiceState. Do not call
+        // ServiceState's set methods directly.
+        /*if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_REG_STATE)) {
             ss.setVoiceRegState(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_REG_STATE,
                     ServiceState.STATE_OUT_OF_SERVICE));
             log("Override voice service state with " + ss.getVoiceRegState());
@@ -382,7 +385,7 @@ public class TelephonyTester {
             ss.setRilDataRadioTechnology(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_RAT,
                     ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
             log("Override data rat with " + ss.getRilDataRadioTechnology());
-        }
+        }*/
         if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_ROAMING_TYPE)) {
             ss.setVoiceRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_ROAMING_TYPE,
                     ServiceState.ROAMING_TYPE_UNKNOWN));
