@@ -86,7 +86,7 @@ public class ImsPhoneConnection extends Connection implements
 
     private UUSInfo mUusInfo;
     private Handler mHandler;
-    private Messenger mHandlerMessenger;
+    private final Messenger mHandlerMessenger;
 
     private PowerManager.WakeLock mPartialWakeLock;
 
@@ -228,6 +228,7 @@ public class ImsPhoneConnection extends Connection implements
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
+        mHandlerMessenger = new Messenger(mHandler);
 
         mDialString = dialString;
 
