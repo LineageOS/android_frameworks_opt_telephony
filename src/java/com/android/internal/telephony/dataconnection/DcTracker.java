@@ -2916,9 +2916,17 @@ public class DcTracker extends Handler {
     private void onDisconnectDone(ApnContext apnContext) {
         if(DBG) log("onDisconnectDone: EVENT_DISCONNECT_DONE apnContext=" + apnContext);
         apnContext.setState(DctConstants.State.IDLE);
-
-        mPhone.notifyDataConnection(apnContext.getApnType());
-
+        final DataConnection dc = apnContext.getDataConnection();
+        // when data connection is gone and not for handover, notify all apn types which
+        // this data connection can handle. Note, this might not work if one apn type served for
+        // multiple data connection.
+        if (dc != null && dc.isInactive() && !dc.hasBeenTransferred()) {
+            String[] types = ApnSetting.getApnTypesStringFromBitmask(
+                    apnContext.getApnSetting().getApnTypeBitmask()).split(",");
+            for (String type : types) {
+                mPhone.notifyDataConnection(type);
+            }
+        }
         // if all data connection are gone, check whether Airplane mode request was
         // pending.
         if (isDisconnected()) {
