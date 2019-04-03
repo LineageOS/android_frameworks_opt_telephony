@@ -1128,8 +1128,8 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void cancelUSSD() {
-        mCT.cancelUSSD();
+    public void cancelUSSD(Message msg) {
+        mCT.cancelUSSD(msg);
     }
 
     @UnsupportedAppUsage
