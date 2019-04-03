@@ -49,10 +49,13 @@ import android.os.Message;
 import android.os.Process;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -950,22 +953,26 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // vrs in-service, vrat umts, expected umts
         ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
-        ss.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                .build();
+        ss.addNetworkRegistrationInfo(nri);
         assertEquals(mPhoneUT.getCsCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
 
         // vrs oos, vrat umts, expected unknown
         ss.setVoiceRegState(ServiceState.STATE_OUT_OF_SERVICE);
-        ss.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         assertEquals(mPhoneUT.getCsCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
 
         // vrs in-service, vrat lte, expected unknown
         ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
-        ss.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
-        assertEquals(mPhoneUT.getCsCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
-
-        // vrs in-service, vrat iwlan, expected unknown
-        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
-        ss.setRilVoiceRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
+        nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .build();
+        ss.addNetworkRegistrationInfo(nri);
         assertEquals(mPhoneUT.getCsCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
     }
 }
