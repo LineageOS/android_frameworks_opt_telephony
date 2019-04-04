@@ -1050,10 +1050,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testRegisterForVoiceRegStateOrRatChange() {
-        int vrs = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
-        int vrat = sst.mSS.RIL_RADIO_TECHNOLOGY_LTE;
-        sst.mSS.setRilVoiceRadioTechnology(vrat);
-        sst.mSS.setVoiceRegState(vrs);
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .build();
+        sst.mSS.addNetworkRegistrationInfo(nri);
+
         sst.registerForVoiceRegStateOrRatChanged(mTestHandler, EVENT_VOICE_RAT_CHANGED, null);
 
         waitForMs(100);
@@ -1062,7 +1065,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
         assertEquals(EVENT_VOICE_RAT_CHANGED, messageArgumentCaptor.getValue().what);
-        assertEquals(new Pair<Integer, Integer>(vrs, vrat),
+        assertEquals(new Pair<Integer, Integer>(ServiceState.STATE_IN_SERVICE,
+                        ServiceState.RIL_RADIO_TECHNOLOGY_LTE),
                 ((AsyncResult)messageArgumentCaptor.getValue().obj).result);
     }
 
@@ -1508,9 +1512,19 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(false, sst.isConcurrentVoiceAndDataAllowed());
 
         doReturn(true).when(mPhone).isPhoneTypeGsm();
-        sst.mSS.setRilDataRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_HSPA);
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_HSPA)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .build();
+        sst.mSS.addNetworkRegistrationInfo(nri);
         assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
-        sst.mSS.setRilDataRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_GPRS);
+        nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_GPRS)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .build();
+        sst.mSS.addNetworkRegistrationInfo(nri);
         assertEquals(false, sst.isConcurrentVoiceAndDataAllowed());
         sst.mSS.setCssIndicator(1);
         assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
