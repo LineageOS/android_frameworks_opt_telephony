@@ -237,6 +237,12 @@ public class SubscriptionController extends ISub.Stub {
             mLastISubServiceRegTime = System.currentTimeMillis();
         }
 
+        /**
+         * Switching between DSDS and single sim mode needs to clear the slot index of
+         * subscription info.
+         */
+        clearSlotIndexForSubInfoRecords();
+
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
 
@@ -263,6 +269,25 @@ public class SubscriptionController extends ISub.Stub {
         return sSlotIndexToSubIds.size() > 0;
     }
 
+    /**
+     * Switching between DSDS and single sim mode needs to update the slot index of subscription
+     * info into invalid if the slot index is not active.
+     */
+    private void clearSlotIndexForSubInfoRecords() {
+        if (mTelephonyManager == null || mContext == null) {
+            logel("[clearSlotIndexForSubInfoRecords] TelephonyManager or mContext is null");
+            return;
+        }
+        int phoneCount = mTelephonyManager.getPhoneCount();
+
+        // Update simInfo db with invalid slot index
+        ContentResolver resolver = mContext.getContentResolver();
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, SubscriptionManager.SIM_SLOT_INDEX + ">=" + phoneCount, null);
+    }
+
     private SubscriptionController(Phone phone) {
         mContext = phone.getContext();
         mAppOps = mContext.getSystemService(AppOpsManager.class);
@@ -272,6 +297,12 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         migrateImsSettings();
+
+        /**
+         * Switching between DSDS and single sim mode needs to clear the slot index of
+         * subscription info.
+         */
+        clearSlotIndexForSubInfoRecords();
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
     }
