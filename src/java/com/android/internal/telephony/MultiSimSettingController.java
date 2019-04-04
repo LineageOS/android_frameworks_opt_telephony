@@ -16,11 +16,22 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+import static android.telephony.TelephonyManager.ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED;
+import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE;
+import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
+import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
+import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
+import static android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID;
+
 import android.content.Context;
+import android.content.Intent;
+import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -39,13 +50,14 @@ import java.util.stream.Collectors;
  * 3) For primary subscriptions, only default data subscription will have MOBILE_DATA on.
  */
 public class MultiSimSettingController {
-    static final String LOG_TAG = "MultiSimSettingController";
-    static final boolean DBG = true;
+    private static final String LOG_TAG = "MultiSimSettingController";
+    private static final boolean DBG = true;
 
     private final Context mContext;
     private final Phone[] mPhones;
     private final SubscriptionController mSubController;
     private boolean mIsAllSubscriptionsLoaded;
+    private List<SubscriptionInfo> mPrimarySubList;
 
     /** The singleton instance. */
     private static MultiSimSettingController sInstance = null;
@@ -136,7 +148,7 @@ public class MultiSimSettingController {
         if (DBG) log("onSubscriptionGroupCreated");
         if (subGroup == null || subGroup.length == 0) return;
 
-        // Get a referece subscription from which all subscriptions in the group will copy settings.
+        // Get a reference subscription to copy settings from.
         // TODO: the reference sub should be passed in from external caller.
         int refSubId = subGroup[0];
         for (int subId : subGroup) {
@@ -177,35 +189,96 @@ public class MultiSimSettingController {
      *    not a user settable value anymore.
      * 4) If non above is met, clear the default value to INVALID.
      */
+    @VisibleForTesting
     public synchronized void updateDefaults() {
         if (DBG) log("updateDefaults");
-        List<SubscriptionInfo> subInfos = mSubController
+
+        if (!mIsAllSubscriptionsLoaded) return;
+
+        List<SubscriptionInfo> activeSubInfos = mSubController
                 .getActiveSubscriptionInfoList(mContext.getOpPackageName());
         // If subscription controller is not ready, do nothing.
-        if (subInfos == null) return;
+        if (activeSubInfos == null) return;
+
+        List<SubscriptionInfo> prevPrimarySubList = mPrimarySubList;
 
         // Opportunistic subscriptions can't be default data / voice / sms subscription.
-        subInfos = subInfos.stream()
-                .filter(info -> !info.isOpportunistic())
+        mPrimarySubList = activeSubInfos.stream().filter(info -> !info.isOpportunistic())
                 .collect(Collectors.toList());
 
-        if (DBG) log("[updateDefaultValues] records: " + subInfos);
+        // If there's only one primary subscription active, we trigger PREFERRED_PICK_DIALOG
+        // dialog if and only if there were multiple primary SIM cards and one is removed.
+        // Otherwise, if user just inserted their first SIM, or there's one primary and one
+        // opportunistic subscription active (activeSubInfos.size() > 1), we automatically
+        // set the primary to be default SIM and return.
+        if (mPrimarySubList.size() == 1 && (activeSubInfos.size() > 1
+                || (prevPrimarySubList != null && prevPrimarySubList.isEmpty()))) {
+            int subId = mPrimarySubList.get(0).getSubscriptionId();
+            if (DBG) log("[updateDefaultValues] to only primary sub " + subId);
+            mSubController.setDefaultDataSubId(subId);
+            mSubController.setDefaultVoiceSubId(subId);
+            mSubController.setDefaultSmsSubId(subId);
+            return;
+        }
+
+        if (DBG) log("[updateDefaultValues] records: " + mPrimarySubList);
 
         // TODO: b/121394765 update logic once confirmed the behaviors.
         // Update default data subscription.
         if (DBG) log("[updateDefaultValues] Update default data subscription");
-        updateDefaultValue(subInfos, mSubController.getDefaultDataSubId(), true, true,
+        boolean dataSelected = updateDefaultValue(mPrimarySubList,
+                mSubController.getDefaultDataSubId(),
                 (newValue -> mSubController.setDefaultDataSubId(newValue)));
 
         // Update default voice subscription.
         if (DBG) log("[updateDefaultValues] Update default voice subscription");
-        updateDefaultValue(subInfos, mSubController.getDefaultVoiceSubId(), true, false,
+        boolean voiceSelected = updateDefaultValue(mPrimarySubList,
+                mSubController.getDefaultVoiceSubId(),
                 (newValue -> mSubController.setDefaultVoiceSubId(newValue)));
 
         // Update default sms subscription.
         if (DBG) log("[updateDefaultValues] Update default sms subscription");
-        updateDefaultValue(subInfos, mSubController.getDefaultSmsSubId(), true, false,
+        boolean smsSelected = updateDefaultValue(mPrimarySubList,
+                mSubController.getDefaultSmsSubId(),
                 (newValue -> mSubController.setDefaultSmsSubId(newValue)));
+
+        showSimSelectDialogIfNeeded(prevPrimarySubList, dataSelected, voiceSelected, smsSelected);
+    }
+
+    private void showSimSelectDialogIfNeeded(List<SubscriptionInfo> prevPrimarySubs,
+            boolean dataSelected, boolean voiceSelected, boolean smsSelected) {
+        @TelephonyManager.DefaultSubscriptionSelectType
+        int dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
+        int preferredSubId = INVALID_SUBSCRIPTION_ID;
+        boolean primarySubRemoved = prevPrimarySubs != null
+                && mPrimarySubList.size() < prevPrimarySubs.size();
+        boolean primarySubAdded = prevPrimarySubs != null
+                && mPrimarySubList.size() > prevPrimarySubs.size();
+
+        // If a primary subscription is removed and only one is left active, ask user
+        // for preferred sub selection if any default setting is not set.
+        // If another primary subscription is added or default data is not selected, ask
+        // user to select default for data as it's most important.
+        if (mPrimarySubList.size() == 1 && primarySubRemoved
+                && (!dataSelected || !smsSelected || !voiceSelected)) {
+            dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
+            preferredSubId = mPrimarySubList.get(0).getSubscriptionId();
+        } else if (mPrimarySubList.size() > 1 && (!dataSelected || primarySubAdded)) {
+            dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
+        }
+
+        if (dialogType != EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE) {
+            Intent intent = new Intent();
+            intent.setAction(ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED);
+            intent.setClassName("com.android.settings",
+                    "com.android.settings.sim.SimSelectNotification");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra(EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE, dialogType);
+            if (dialogType == EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL) {
+                intent.putExtra(EXTRA_SUBSCRIPTION_ID, preferredSubId);
+            }
+            mContext.sendBroadcast(intent);
+        }
     }
 
     private void disableDataForNonDefaultNonOpportunisticSubscriptions() {
@@ -229,7 +302,7 @@ public class MultiSimSettingController {
     private synchronized void setUserDataEnabledForGroup(int subId, boolean enable) {
         log("setUserDataEnabledForGroup subId " + subId + " enable " + enable);
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
-                subId, mContext.getOpPackageName());
+                mSubController.getGroupUuid(subId), mContext.getOpPackageName());
 
         if (infoList == null) return;
 
@@ -269,7 +342,7 @@ public class MultiSimSettingController {
     private synchronized void setRoamingDataEnabledForGroup(int subId, boolean enable) {
         SubscriptionController subController = SubscriptionController.getInstance();
         List<SubscriptionInfo> infoList = subController.getSubscriptionsInGroup(
-                subId, mContext.getOpPackageName());
+                mSubController.getGroupUuid(subId), mContext.getOpPackageName());
 
         if (infoList == null) return;
 
@@ -280,41 +353,26 @@ public class MultiSimSettingController {
         }
     }
 
-    private String getGroupUuid(int subId) {
-        String groupUuid;
-        List<SubscriptionInfo> subInfo = mSubController.getSubInfo(
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                        + "=" + subId, null);
-        if (subInfo == null || subInfo.size() == 0) {
-            groupUuid = null;
-        } else {
-            groupUuid = subInfo.get(0).getGroupUuid();
-        }
-
-        return groupUuid;
-    }
-
     private interface UpdateDefaultAction {
         void update(int newValue);
     }
 
-    private void updateDefaultValue(List<SubscriptionInfo> subInfos, int oldValue,
-            boolean inheritWithinGroup, boolean setToOnlyCandidate, UpdateDefaultAction action) {
-        int newValue = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    // Returns whether the new default value is valid.
+    private boolean updateDefaultValue(List<SubscriptionInfo> subInfos, int oldValue,
+            UpdateDefaultAction action) {
+        int newValue = INVALID_SUBSCRIPTION_ID;
 
-        if (subInfos.size() == 1 && setToOnlyCandidate) {
-            newValue = subInfos.get(0).getSubscriptionId();
-        } else if (subInfos.size() > 0) {
+        if (subInfos.size() > 0) {
             // Get groupUuid of old
-            String groupUuid = getGroupUuid(oldValue);
+            ParcelUuid groupUuid = mSubController.getGroupUuid(oldValue);
 
             for (SubscriptionInfo info : subInfos) {
                 int id = info.getSubscriptionId();
                 if (DBG) log("[updateDefaultValue] Record.id: " + id);
                 // If the old subId is still active, or there's another active primary subscription
                 // that is in the same group, that should become the new default subscription.
-                if (id == oldValue || (groupUuid != null && groupUuid.equals(info.getGroupUuid())
-                        && inheritWithinGroup)) {
+                if (id == oldValue || (groupUuid != null && groupUuid.equals(
+                        info.getGroupUuid()))) {
                     log("[updateDefaultValue] updates to subId=" + id);
                     newValue = id;
                     break;
@@ -326,6 +384,8 @@ public class MultiSimSettingController {
             if (DBG) log("[updateDefaultValue: subId] from " + oldValue + " to " + newValue);
             action.update(newValue);
         }
+
+        return SubscriptionManager.isValidSubscriptionId(newValue);
     }
 
     private void log(String msg) {

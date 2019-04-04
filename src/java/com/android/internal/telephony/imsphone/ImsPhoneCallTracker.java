@@ -1252,7 +1252,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     /**
-     * Unhold the currently held call, possibly putting the already-active call on hold if present.
+     * Unhold the currently held call.
      */
     void unholdHeldCall() throws CallStateException {
         try {
@@ -1265,6 +1265,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (imsCall != null) {
                 mCallExpectedToResume = imsCall;
                 mHoldSwitchingState = HoldSwapState.PENDING_SINGLE_CALL_UNHOLD;
+                mForegroundCall.switchWith(mBackgroundCall);
                 logHoldSwapState("unholdCurrentCall");
                 imsCall.resume();
                 mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
@@ -1759,6 +1760,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         try {
             if (mUssdSession != null) {
+                // Doesn't need mPendingUssd here. Listeners would use it if not null.
+                mPendingUssd = null;
                 mUssdSession.sendUssd(ussdString);
                 AsyncResult.forMessage(response, null, null);
                 response.sendToTarget();
@@ -1778,6 +1781,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             mUssdSession = mImsManager.makeCall(profile, callees, mImsUssdListener);
             mPendingUssd = response;
+            if (DBG) log("pending ussd updated, " + mPendingUssd);
         } catch (ImsException e) {
             loge("sendUSSD : " + e);
             mPhone.sendErrorResponse(response, e);
@@ -1785,9 +1789,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
-    public void cancelUSSD() {
+    /**
+     * Cancel USSD session.
+     *
+     * @param msg The message to dispatch when the USSD session terminated.
+     */
+    public void cancelUSSD(Message msg) {
         if (mUssdSession == null) return;
-
+        mPendingUssd = msg;
         mUssdSession.terminate(ImsReasonInfo.CODE_USER_TERMINATED);
     }
 
@@ -2264,7 +2273,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (videoProvider instanceof ImsVideoCallProviderWrapper) {
                     ImsVideoCallProviderWrapper wrapper = (ImsVideoCallProviderWrapper)
                             videoProvider;
-
+                    wrapper.unregisterForDataUsageUpdate(ImsPhoneCallTracker.this);
                     wrapper.removeImsVideoProviderCallback(conn);
                 }
             }
@@ -2549,8 +2558,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallResumeFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (mHoldSwitchingState == HoldSwapState.SWAPPING_ACTIVE_AND_HELD
-                    || mHoldSwitchingState == HoldSwapState.PENDING_RESUME_FOREGROUND_AFTER_FAILURE
-                    || mHoldSwitchingState == HoldSwapState.PENDING_SINGLE_CALL_UNHOLD) {
+                    || mHoldSwitchingState
+                    == HoldSwapState.PENDING_RESUME_FOREGROUND_AFTER_FAILURE) {
                 // If we are in the midst of swapping the FG and BG calls and
                 // we got a resume fail, we need to swap back the FG and BG calls.
                 // Since the FG call was held, will also try to resume the same.
@@ -2568,7 +2577,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 //Call swap is done, reset the relevant variables
                 mCallExpectedToResume = null;
                 mHoldSwitchingState = HoldSwapState.INACTIVE;
-                logHoldSwapState("onCallResumeFailed");
+                logHoldSwapState("onCallResumeFailed: multi calls");
+            } else if (mHoldSwitchingState == HoldSwapState.PENDING_SINGLE_CALL_UNHOLD) {
+                if (imsCall == mCallExpectedToResume) {
+                    if (DBG) {
+                        log("onCallResumeFailed: single call unhold case");
+                    }
+                    mForegroundCall.switchWith(mBackgroundCall);
+
+                    mCallExpectedToResume = null;
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                    logHoldSwapState("onCallResumeFailed: single call");
+                } else {
+                    Rlog.w(LOG_TAG, "onCallResumeFailed: got a resume failed for a different call"
+                            + " in the single call unhold case");
+                }
             }
             mPhone.notifySuppServiceFailed(Phone.SuppService.RESUME);
             mMetrics.writeOnImsCallResumeFailed(mPhone.getPhoneId(), imsCall.getCallSession(),
@@ -2922,7 +2945,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
          */
         @Override
         public void onCallQualityChanged(ImsCall imsCall, CallQuality callQuality) {
-            mPhone.onCallQualityChanged(callQuality, imsCall.getRadioTechnology());
+            // convert ServiceState.radioTech to TelephonyManager.NetworkType constant
+            mPhone.onCallQualityChanged(callQuality,
+                    ServiceState.rilRadioTechnologyToNetworkType(imsCall.getRadioTechnology()));
         }
     };
 
@@ -3144,6 +3169,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
         call.mConnections.clear();
         call.mState = ImsPhoneCall.State.IDLE;
+        if (mPendingMO != null) {
+            // If the call is handed over before moving to alerting (i.e. e911 CSFB redial), clear
+            // pending MO here.
+            logi("pending MO on handover, clearing...");
+            mPendingMO = null;
+        }
     }
 
     /* package */

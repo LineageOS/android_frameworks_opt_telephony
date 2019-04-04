@@ -161,7 +161,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         CellularServiceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
         IntentFilter cellularIntentfilter = new IntentFilter();
         mContextFixture.addService(
-                NetworkService.NETWORK_SERVICE_INTERFACE,
+                NetworkService.SERVICE_INTERFACE,
                 new ComponentName("com.android.phone",
                         "com.android.internal.telephony.CellularNetworkService"),
                 "com.android.phone",
@@ -175,7 +175,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         iwlanServiceInfo.permission = "android.permission.BIND_TELEPHONY_NETWORK_SERVICE";
         IntentFilter iwlanIntentFilter = new IntentFilter();
         mContextFixture.addService(
-                NetworkService.NETWORK_SERVICE_INTERFACE,
+                NetworkService.SERVICE_INTERFACE,
                 new ComponentName("com.xyz.iwlan.networkservice",
                         "com.xyz.iwlan.IwlanNetworkService"),
                 "com.xyz.iwlan.networkservice",
@@ -1050,10 +1050,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testRegisterForVoiceRegStateOrRatChange() {
-        int vrs = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
-        int vrat = sst.mSS.RIL_RADIO_TECHNOLOGY_LTE;
-        sst.mSS.setRilVoiceRadioTechnology(vrat);
-        sst.mSS.setVoiceRegState(vrs);
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .build();
+        sst.mSS.addNetworkRegistrationInfo(nri);
+
         sst.registerForVoiceRegStateOrRatChanged(mTestHandler, EVENT_VOICE_RAT_CHANGED, null);
 
         waitForMs(100);
@@ -1062,7 +1065,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
         assertEquals(EVENT_VOICE_RAT_CHANGED, messageArgumentCaptor.getValue().what);
-        assertEquals(new Pair<Integer, Integer>(vrs, vrat),
+        assertEquals(new Pair<Integer, Integer>(ServiceState.STATE_IN_SERVICE,
+                        ServiceState.RIL_RADIO_TECHNOLOGY_LTE),
                 ((AsyncResult)messageArgumentCaptor.getValue().obj).result);
     }
 
@@ -1508,9 +1512,19 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(false, sst.isConcurrentVoiceAndDataAllowed());
 
         doReturn(true).when(mPhone).isPhoneTypeGsm();
-        sst.mSS.setRilDataRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_HSPA);
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_HSPA)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .build();
+        sst.mSS.addNetworkRegistrationInfo(nri);
         assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
-        sst.mSS.setRilDataRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_GPRS);
+        nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_GPRS)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .build();
+        sst.mSS.addNetworkRegistrationInfo(nri);
         assertEquals(false, sst.isConcurrentVoiceAndDataAllowed());
         sst.mSS.setCssIndicator(1);
         assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
@@ -1600,7 +1614,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 state, dataRat, 0, false,
-                null, cid, 1, false, false, false, lteVopsSupportInfo);
+                null, cid, 1, false, false, false, lteVopsSupportInfo, false);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
         sst.sendMessage(sst.obtainMessage(
@@ -1700,7 +1714,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
-                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo);
+                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo, false);
         NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
@@ -1772,7 +1786,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
                 TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, 1, false, false,
-                false, lteVopsSupportInfo);
+                false, lteVopsSupportInfo, false);
         NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
@@ -1848,7 +1862,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
-                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo);
+                0, false, null, cellId, 1, false, false, false, lteVopsSupportInfo, false);
         sst.mPollingContext[0] = 2;
 
         sst.sendMessage(sst.obtainMessage(
@@ -1869,7 +1883,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 sst.mSS.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                         AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         assertEquals(lteVopsSupportInfo,
-                sSnetworkRegistrationInfo.getDataSpecificStates().getLteVopsSupportInfo());
+                sSnetworkRegistrationInfo.getDataSpecificInfo().getLteVopsSupportInfo());
 
         lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
@@ -1878,7 +1892,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
                 TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, 1, false, false, false,
-                lteVopsSupportInfo);
+                lteVopsSupportInfo, false);
         sst.mPollingContext[0] = 1;
         sst.sendMessage(sst.obtainMessage(
                 ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
@@ -1888,6 +1902,14 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sSnetworkRegistrationInfo =
                 sst.mSS.getNetworkRegistrationInfo(2, 1);
         assertEquals(lteVopsSupportInfo,
-                sSnetworkRegistrationInfo.getDataSpecificStates().getLteVopsSupportInfo());
+                sSnetworkRegistrationInfo.getDataSpecificInfo().getLteVopsSupportInfo());
+    }
+
+    @Test
+    @SmallTest
+    public void testEriLoading() {
+        sst.obtainMessage(GsmCdmaPhone.EVENT_CARRIER_CONFIG_CHANGED, null).sendToTarget();
+        waitForMs(100);
+        verify(mEriManager, times(1)).loadEriFile();
     }
 }

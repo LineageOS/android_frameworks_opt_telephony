@@ -88,6 +88,11 @@ public class EuiccOperation implements Parcelable {
     @VisibleForTesting
     @Deprecated
     static final int ACTION_DOWNLOAD_CONFIRMATION_CODE = 8;
+    /**
+     * ACTION_DOWNLOAD_CHECK_METADATA can be used for either NO_PRIVILEGES or DEACTIVATE_SIM.
+     */
+    @VisibleForTesting
+    static final int ACTION_DOWNLOAD_NO_PRIVILEGES_OR_DEACTIVATE_SIM_CHECK_METADATA = 9;
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public final @Action int mAction;
@@ -107,7 +112,7 @@ public class EuiccOperation implements Parcelable {
      * {@link EuiccManager#getDownloadableSubscriptionMetadata} failed with
      * {@link EuiccService#RESULT_MUST_DEACTIVATE_SIM}.
      */
-    public static EuiccOperation forGetMetadataDeactivateSim(long callingToken,
+    static EuiccOperation forGetMetadataDeactivateSim(long callingToken,
             DownloadableSubscription subscription, String callingPackage) {
         return new EuiccOperation(ACTION_GET_METADATA_DEACTIVATE_SIM, callingToken,
                 subscription, 0 /* subscriptionId */, false /* switchAfterDownload */,
@@ -119,7 +124,7 @@ public class EuiccOperation implements Parcelable {
      * be used for privileged callers; for unprivileged callers, use
      * {@link #forDownloadNoPrivileges} to avoid a double prompt.
      */
-    public static EuiccOperation forDownloadDeactivateSim(long callingToken,
+    static EuiccOperation forDownloadDeactivateSim(long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
             String callingPackage) {
         return new EuiccOperation(ACTION_DOWNLOAD_DEACTIVATE_SIM, callingToken,
@@ -128,14 +133,25 @@ public class EuiccOperation implements Parcelable {
 
     /**
      * {@link EuiccManager#downloadSubscription} failed because the calling app does not have
-     * permission to manage the current active subscription, or because we cannot determine the
-     * privileges without deactivating the current SIM first.
+     * permission to manage the current active subscription.
      */
-    public static EuiccOperation forDownloadNoPrivileges(long callingToken,
+    static EuiccOperation forDownloadNoPrivileges(long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
             String callingPackage) {
         return new EuiccOperation(ACTION_DOWNLOAD_NO_PRIVILEGES, callingToken,
                 subscription,  0 /* subscriptionId */, switchAfterDownload, callingPackage);
+    }
+
+    /**
+     * {@link EuiccManager#downloadSubscription} failed because the caller can't manage the target
+     * SIM, or we cannot determine the privileges without deactivating the current SIM first.
+     */
+    static EuiccOperation forDownloadNoPrivilegesOrDeactivateSimCheckMetadata(long callingToken,
+            DownloadableSubscription subscription, boolean switchAfterDownload,
+            String callingPackage) {
+        return new EuiccOperation(ACTION_DOWNLOAD_NO_PRIVILEGES_OR_DEACTIVATE_SIM_CHECK_METADATA,
+                callingToken, subscription,  0 /* subscriptionId */,
+                switchAfterDownload, callingPackage);
     }
 
     /**
@@ -158,7 +174,7 @@ public class EuiccOperation implements Parcelable {
      * {@link EuiccManager#downloadSubscription} failed with
      * {@link EuiccService#RESULT_RESOLVABLE_ERRORS} error.
      */
-    public static EuiccOperation forDownloadResolvableErrors(long callingToken,
+    static EuiccOperation forDownloadResolvableErrors(long callingToken,
             DownloadableSubscription subscription, boolean switchAfterDownload,
             String callingPackage, int resolvableErrors) {
         return new EuiccOperation(ACTION_DOWNLOAD_RESOLVABLE_ERRORS, callingToken,
@@ -268,6 +284,11 @@ public class EuiccOperation implements Parcelable {
                         resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
                         callbackIntent);
                 break;
+            case ACTION_DOWNLOAD_NO_PRIVILEGES_OR_DEACTIVATE_SIM_CHECK_METADATA:
+                resolvedDownloadNoPrivilegesOrDeactivateSimCheckMetadata(cardId,
+                        resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
+                        callbackIntent);
+                break;
             case ACTION_DOWNLOAD_CONFIRMATION_CODE: // Deprecated case
                 resolvedDownloadConfirmationCode(cardId,
                         resolutionExtras.getString(EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE),
@@ -344,6 +365,34 @@ public class EuiccOperation implements Parcelable {
                 // the privilege prompt makes it clear that we're switching from the current
                 // carrier.
                 EuiccController.get().downloadSubscriptionPrivileged(
+                        cardId,
+                        token,
+                        mDownloadableSubscription,
+                        mSwitchAfterDownload,
+                        true /* forceDeactivateSim */,
+                        mCallingPackage,
+                        null /* resolvedBundle */,
+                        callbackIntent);
+            } finally {
+                Binder.restoreCallingIdentity(token);
+            }
+        } else {
+            // User has not consented; fail the operation.
+            fail(callbackIntent);
+        }
+    }
+
+    private void resolvedDownloadNoPrivilegesOrDeactivateSimCheckMetadata(int cardId,
+            boolean consent, PendingIntent callbackIntent) {
+        if (consent) {
+            // User has consented; perform the download with full privileges.
+            long token = Binder.clearCallingIdentity();
+            try {
+                // Note: We turn on "forceDeactivateSim" here under the assumption that the
+                // privilege prompt should also cover permission to deactivate an active SIM, as
+                // the privilege prompt makes it clear that we're switching from the current
+                // carrier.
+                EuiccController.get().downloadSubscriptionPrivilegedCheckMetadata(
                         cardId,
                         token,
                         mDownloadableSubscription,

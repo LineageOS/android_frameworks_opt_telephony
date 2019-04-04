@@ -32,6 +32,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.ParcelUuid;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
@@ -166,6 +167,7 @@ public class SubscriptionController extends ISub.Stub {
     @UnsupportedAppUsage
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
+    protected UiccController mUiccController;
 
     private AppOpsManager mAppOps;
 
@@ -220,6 +222,13 @@ public class SubscriptionController extends ISub.Stub {
     protected void init(Context c) {
         mContext = c;
         mTelephonyManager = TelephonyManager.from(mContext);
+
+        try {
+            mUiccController = UiccController.getInstance();
+        } catch(RuntimeException ex) {
+            throw new RuntimeException(
+                    "UiccController has to be initialised before SubscriptionController init");
+        }
 
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
 
@@ -308,7 +317,8 @@ public class SubscriptionController extends ISub.Stub {
 
         MultiSimSettingController.getInstance().onSubscriptionsChanged();
         TelephonyMetrics metrics = TelephonyMetrics.getInstance();
-        metrics.updateActiveSubscriptionInfoList(mCacheActiveSubInfoList);
+        metrics.updateActiveSubscriptionInfoList(
+                Collections.unmodifiableList(mCacheActiveSubInfoList));
     }
 
     /**
@@ -349,7 +359,7 @@ public class SubscriptionController extends ISub.Stub {
         String countryIso = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.ISO_COUNTRY_CODE));
         // publicCardId is the publicly exposed int card ID
-        int publicCardId = UiccController.getInstance().convertToPublicCardId(cardId);
+        int publicCardId = mUiccController.convertToPublicCardId(cardId);
         boolean isEmbedded = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_EMBEDDED)) == 1;
         int carrierId = cursor.getInt(cursor.getColumnIndexOrThrow(
@@ -1034,16 +1044,12 @@ public class SubscriptionController extends ISub.Stub {
                             value.put(SubscriptionManager.SIM_SLOT_INDEX, slotIndex);
                         }
 
-                        if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                            setDisplayName = true;
-                        }
-
                         if (oldIccId != null && oldIccId.length() < uniqueId.length()
                                 && (oldIccId.equals(IccUtils.getDecimalSubstring(uniqueId)))) {
                             value.put(SubscriptionManager.ICC_ID, uniqueId);
                         }
 
-                        UiccCard card = UiccController.getInstance().getUiccCardForPhone(slotIndex);
+                        UiccCard card = mUiccController.getUiccCardForPhone(slotIndex);
                         if (card != null) {
                             String cardId = card.getCardId();
                             if (cardId != null && cardId != oldCardId) {
@@ -1368,7 +1374,7 @@ public class SubscriptionController extends ISub.Stub {
         if (isSubscriptionForRemoteSim(subscriptionType)) {
             value.put(SubscriptionManager.DISPLAY_NAME, displayName);
         } else {
-            UiccCard card = UiccController.getInstance().getUiccCardForPhone(slotIndex);
+            UiccCard card = mUiccController.getUiccCardForPhone(slotIndex);
             if (card != null) {
                 String cardId = card.getCardId();
                 if (cardId != null) {
@@ -1641,7 +1647,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private int databaseUpdateHelper(ContentValues value, int subId, boolean updateEntireGroup) {
-        List<SubscriptionInfo> infoList = getSubscriptionsInGroup(subId,
+        List<SubscriptionInfo> infoList = getSubscriptionsInGroup(getGroupUuid(subId),
                 mContext.getOpPackageName());
         if (!updateEntireGroup || infoList == null || infoList.size() == 0) {
             // Only update specified subscriptions.
@@ -2048,47 +2054,53 @@ public class SubscriptionController extends ISub.Stub {
     public void setDefaultDataSubId(int subId) {
         enforceModifyPhoneState("setDefaultDataSubId");
 
-        if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
-            throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
-        }
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+                throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
+            }
 
-        ProxyController proxyController = ProxyController.getInstance();
-        int len = sPhones.length;
-        logdl("[setDefaultDataSubId] num phones=" + len + ", subId=" + subId);
+            ProxyController proxyController = ProxyController.getInstance();
+            int len = sPhones.length;
+            logdl("[setDefaultDataSubId] num phones=" + len + ", subId=" + subId);
 
-        if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            // Only re-map modems if the new default data sub is valid
-            RadioAccessFamily[] rafs = new RadioAccessFamily[len];
-            boolean atLeastOneMatch = false;
-            for (int phoneId = 0; phoneId < len; phoneId++) {
-                Phone phone = sPhones[phoneId];
-                int raf;
-                int id = phone.getSubId();
-                if (id == subId) {
-                    // TODO Handle the general case of N modems and M subscriptions.
-                    raf = proxyController.getMaxRafSupported();
-                    atLeastOneMatch = true;
-                } else {
-                    // TODO Handle the general case of N modems and M subscriptions.
-                    raf = proxyController.getMinRafSupported();
+            if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                // Only re-map modems if the new default data sub is valid
+                RadioAccessFamily[] rafs = new RadioAccessFamily[len];
+                boolean atLeastOneMatch = false;
+                for (int phoneId = 0; phoneId < len; phoneId++) {
+                    Phone phone = sPhones[phoneId];
+                    int raf;
+                    int id = phone.getSubId();
+                    if (id == subId) {
+                        // TODO Handle the general case of N modems and M subscriptions.
+                        raf = proxyController.getMaxRafSupported();
+                        atLeastOneMatch = true;
+                    } else {
+                        // TODO Handle the general case of N modems and M subscriptions.
+                        raf = proxyController.getMinRafSupported();
+                    }
+                    logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF="
+                            + raf);
+                    rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
                 }
-                logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
-                rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
+                if (atLeastOneMatch) {
+                    proxyController.setRadioCapability(rafs);
+                } else {
+                    if (DBG) logdl("[setDefaultDataSubId] no valid subId's found - not updating.");
+                }
             }
-            if (atLeastOneMatch) {
-                proxyController.setRadioCapability(rafs);
-            } else {
-                if (DBG) logdl("[setDefaultDataSubId] no valid subId's found - not updating.");
-            }
+
+            // FIXME is this still needed?
+            updateAllDataConnectionTrackers();
+
+            Settings.Global.putInt(mContext.getContentResolver(),
+                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+            MultiSimSettingController.getInstance().onDefaultDataSettingChanged();
+            broadcastDefaultDataSubIdChanged(subId);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-
-        // FIXME is this still needed?
-        updateAllDataConnectionTrackers();
-
-        Settings.Global.putInt(mContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
-        MultiSimSettingController.getInstance().onDefaultDataSettingChanged();
-        broadcastDefaultDataSubIdChanged(subId);
     }
 
     @UnsupportedAppUsage
@@ -2161,19 +2173,6 @@ public class SubscriptionController extends ISub.Stub {
                     + phoneId + " subId=" + subId);
         }
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-    }
-
-    @Override
-    public void clearDefaultsForInactiveSubIds() {
-        enforceModifyPhoneState("clearDefaultsForInactiveSubIds");
-
-        // Now that all security checks passes, perform the operation as ourselves.
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            MultiSimSettingController.getInstance().updateDefaults();
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
     }
 
     /**
@@ -2680,7 +2679,7 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
 
         try {
-            PhoneSwitcher.getInstance().trySetPreferredSubscription(
+            PhoneSwitcher.getInstance().trySetOpportunisticDataSubscription(
                     subId, needValidation, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
@@ -2693,7 +2692,7 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
 
         try {
-            return PhoneSwitcher.getInstance().getPreferredDataSubscriptionId();
+            return PhoneSwitcher.getInstance().getOpportunisticDataSubscriptionId();
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -2727,7 +2726,7 @@ public class SubscriptionController extends ISub.Stub {
      *
      */
     @Override
-    public String setSubscriptionGroup(int[] subIdList, String callingPackage) {
+    public ParcelUuid createSubscriptionGroup(int[] subIdList, String callingPackage) {
         if (subIdList == null || subIdList.length == 0) {
             return null;
         }
@@ -2744,14 +2743,14 @@ public class SubscriptionController extends ISub.Stub {
 
         try {
             // Generate a UUID.
-            String groupUUID = UUID.randomUUID().toString();
+            ParcelUuid groupUUID = new ParcelUuid(UUID.randomUUID());
 
             ContentValues value = new ContentValues();
-            value.put(SubscriptionManager.GROUP_UUID, groupUUID);
+            value.put(SubscriptionManager.GROUP_UUID, groupUUID.toString());
             int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, getSelectionForSubIdList(subIdList), null);
 
-            if (DBG) logdl("setSubscriptionGroup update DB result: " + result);
+            if (DBG) logdl("createSubscriptionGroup update DB result: " + result);
 
             refreshCachedActiveSubscriptionInfoList();
 
@@ -2765,25 +2764,33 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    @Override
+    public void addSubscriptionsIntoGroup(int[] subIdList, ParcelUuid groupUuid,
+            String callingPackage) {
+        // TODO: implement it.
+    }
+
     /**
      * Remove a list of subscriptions from their subscription group.
-     * See {@link #setSubscriptionGroup(int[], String)} for more details.
+     * See {@link SubscriptionManager#createSubscriptionGroup(List<Integer>)} for more details.
      *
      * Caller will either have {@link android.Manifest.permission#MODIFY_PHONE_STATE}
      * permission or had carrier privilege permission on the subscriptions:
-     * {@link TelephonyManager#hasCarrierPrivileges(int)} or
+     * {@link TelephonyManager#hasCarrierPrivileges()} or
      * {@link SubscriptionManager#canManageSubscription(SubscriptionInfo)}
      *
      * @throws SecurityException if the caller doesn't meet the requirements
      *             outlined above.
+     * @throws IllegalArgumentException if the some subscriptions in the list doesn't belong
+     *             the specified group.
      *
      * @param subIdList list of subId that need removing from their groups.
-     * @return whether the operation succeeds.
      *
      */
-    public boolean removeSubscriptionsFromGroup(int[] subIdList, String callingPackage) {
+    public void removeSubscriptionsFromGroup(int[] subIdList, ParcelUuid groupUuid,
+            String callingPackage) {
         if (subIdList == null || subIdList.length == 0) {
-            return false;
+            return;
         }
         // If it doesn't have modify phone state permission, or carrier privilege permission,
         // a SecurityException will be thrown. If it's due to invalid parameter or internal state,
@@ -2791,24 +2798,30 @@ public class SubscriptionController extends ISub.Stub {
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
                 != PERMISSION_GRANTED && !checkCarrierPrivilegeOnSubList(
                 subIdList, callingPackage)) {
-            return false;
+            return;
         }
 
         long identity = Binder.clearCallingIdentity();
 
         try {
+            List<SubscriptionInfo> subInfoList = getSubInfo(getSelectionForSubIdList(subIdList),
+                    null);
+            for (SubscriptionInfo info : subInfoList) {
+                if (!groupUuid.equals(info.getGroupUuid())) {
+                    throw new IllegalArgumentException("Subscription " + info.getSubscriptionId()
+                        + " doesn't belong to group " + groupUuid);
+                }
+            }
             ContentValues value = new ContentValues();
             value.put(SubscriptionManager.GROUP_UUID, (String) null);
             int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, getSelectionForSubIdList(subIdList), null);
 
-            if (DBG) logdl("setSubscriptionGroup update DB result: " + result);
+            if (DBG) logdl("removeSubscriptionsFromGroup update DB result: " + result);
 
             refreshCachedActiveSubscriptionInfoList();
 
             notifySubscriptionInfoChanged();
-
-            return result != 0;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -2893,7 +2906,7 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get subscriptionInfo list of subscriptions that are in the same group of given subId.
-     * See {@link #setSubscriptionGroup(int[], String)} for more details.
+     * See {@link #createSubscriptionGroup(int[], String)} for more details.
      *
      * Caller will either have {@link android.Manifest.permission#READ_PHONE_STATE}
      * permission or had carrier privilege permission on the subscription.
@@ -2902,40 +2915,46 @@ public class SubscriptionController extends ISub.Stub {
      * @throws SecurityException if the caller doesn't meet the requirements
      *             outlined above.
      *
-     * @param subId of which list of subInfo from the same group will be returned.
+     * @param groupUuid of which list of subInfo will be returned.
      * @return list of subscriptionInfo that belong to the same group, including the given
-     * subscription itself. It will return null if the subscription doesn't exist or it
-     * doesn't belong to any group.
+     * subscription itself. It will return an empty list if no subscription belongs to the group.
      *
      */
-    public List<SubscriptionInfo> getSubscriptionsInGroup(int subId, String callingPackage) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                mContext, subId, callingPackage, "getSubscriptionsInGroup")) {
-            return null;
-        }
-
+    @Override
+    public List<SubscriptionInfo> getSubscriptionsInGroup(ParcelUuid groupUuid,
+            String callingPackage) {
         long identity = Binder.clearCallingIdentity();
+        List<SubscriptionInfo> subInfoList;
 
         try {
-            SubscriptionInfo info = getActiveSubscriptionInfo(subId, callingPackage);
-            if (info == null || TextUtils.isEmpty(info.getGroupUuid())) {
-                return null;
+            subInfoList = getAllSubInfoList(mContext.getOpPackageName());
+            if (groupUuid == null || subInfoList == null || subInfoList.isEmpty()) {
+                return new ArrayList<>();
             }
-
-            String groupUuid = info.getGroupUuid();
-            List<SubscriptionInfo> infoList = getAvailableSubscriptionInfoList(callingPackage);
-
-            // Shouldn't happen because we've verified the subId belongs to an active subscription.
-            if (infoList == null) {
-                return null;
-            }
-
-            return infoList.stream().filter(
-                    subscriptionInfo -> groupUuid.equals(subscriptionInfo.getGroupUuid()))
-                    .collect(Collectors.toList());
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+
+        return subInfoList.stream().filter(info -> {
+            if (!groupUuid.equals(info.getGroupUuid())) return false;
+            int subId = info.getSubscriptionId();
+            return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
+                    callingPackage, "getSubscriptionsInGroup")
+                    || (info.isEmbedded() && info.canManageSubscription(mContext, callingPackage));
+        }).collect(Collectors.toList());
+    }
+
+    public ParcelUuid getGroupUuid(int subId) {
+        ParcelUuid groupUuid;
+        List<SubscriptionInfo> subInfo = getSubInfo(SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                        + "=" + subId, null);
+        if (subInfo == null || subInfo.size() == 0) {
+            groupUuid = null;
+        } else {
+            groupUuid = subInfo.get(0).getGroupUuid();
+        }
+
+        return groupUuid;
     }
 
     @Override
@@ -3304,7 +3323,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private boolean shouldDisableSubGroup(String groupUuid) {
+    private boolean shouldDisableSubGroup(ParcelUuid groupUuid) {
         if (groupUuid == null) return false;
 
         for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {

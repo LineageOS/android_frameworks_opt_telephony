@@ -141,6 +141,8 @@ public class EmergencyNumberTracker extends Handler {
                     mEmergencyNumberPrefix = b.getStringArray(
                             CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
                 }
+            } else {
+                loge("CarrierConfigManager is null.");
             }
 
             // Receive Carrier Config Changes
@@ -150,7 +152,10 @@ public class EmergencyNumberTracker extends Handler {
             filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
 
             mPhone.getContext().registerReceiver(mIntentReceiver, filter);
+        } else {
+            loge("mPhone is null.");
         }
+
         initializeDatabaseEmergencyNumberList();
         mCi.registerForEmergencyNumberList(this, EVENT_UNSOL_EMERGENCY_NUMBER_LIST, null);
     }
@@ -242,6 +247,9 @@ public class EmergencyNumberTracker extends Handler {
                     return lt.getCurrentCountry();
                 }
             }
+        } else {
+            loge("getInitialCountryIso mPhone is null.");
+
         }
         return "";
     }
@@ -455,6 +463,7 @@ public class EmergencyNumberTracker extends Handler {
         if (number == null) {
             return false;
         }
+        number = PhoneNumberUtils.stripSeparators(number);
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
             for (EmergencyNumber num : mEmergencyNumberList) {
                 // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
@@ -490,6 +499,7 @@ public class EmergencyNumberTracker extends Handler {
      * @return the {@link EmergencyNumber} for the corresponding emergency number address.
      */
     public EmergencyNumber getEmergencyNumber(String emergencyNumber) {
+        emergencyNumber = PhoneNumberUtils.stripSeparators(emergencyNumber);
         for (EmergencyNumber num : getEmergencyNumberList()) {
             if (num.getNumber().equals(emergencyNumber)) {
                 return num;
@@ -508,6 +518,7 @@ public class EmergencyNumberTracker extends Handler {
      * @return the emergency service categories for the corresponding emergency number.
      */
     public @EmergencyServiceCategories int getEmergencyServiceCategories(String emergencyNumber) {
+        emergencyNumber = PhoneNumberUtils.stripSeparators(emergencyNumber);
         for (EmergencyNumber num : getEmergencyNumberList()) {
             if (num.getNumber().equals(emergencyNumber)) {
                 if (num.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING)
@@ -527,6 +538,7 @@ public class EmergencyNumberTracker extends Handler {
      * @return the emergency call routing for the corresponding emergency number.
      */
     public @EmergencyCallRouting int getEmergencyCallRouting(String emergencyNumber) {
+        emergencyNumber = PhoneNumberUtils.stripSeparators(emergencyNumber);
         for (EmergencyNumber num : getEmergencyNumberList()) {
             if (num.getNumber().equals(emergencyNumber)) {
                 if (num.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
@@ -589,6 +601,7 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     private boolean isEmergencyNumberForTest(String number) {
+        number = PhoneNumberUtils.stripSeparators(number);
         for (EmergencyNumber num : mEmergencyNumberListFromTestMode) {
             if (num.getNumber().equals(number)) {
                 return true;
@@ -598,6 +611,7 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     private EmergencyNumber getLabeledEmergencyNumberForEcclist(String number) {
+        number = PhoneNumberUtils.stripSeparators(number);
         for (EmergencyNumber num : mEmergencyNumberListFromDatabase) {
             if (num.getNumber().equals(number)) {
                 return new EmergencyNumber(number, mCountryIso.toLowerCase(), "",
@@ -661,10 +675,22 @@ public class EmergencyNumberTracker extends Handler {
                 if (useExactMatch || "br".equalsIgnoreCase(mCountryIso)) {
                     if (number.equals(emergencyNum)) {
                         return true;
+                    } else {
+                        for (String prefix : mEmergencyNumberPrefix) {
+                            if (number.equals(prefix + emergencyNum)) {
+                                return true;
+                            }
+                        }
                     }
                 } else {
                     if (number.startsWith(emergencyNum)) {
                         return true;
+                    } else {
+                        for (String prefix : mEmergencyNumberPrefix) {
+                            if (number.equals(prefix + emergencyNum)) {
+                                return true;
+                            }
+                        }
                     }
                 }
             }
@@ -684,10 +710,22 @@ public class EmergencyNumberTracker extends Handler {
             if (useExactMatch) {
                 if (number.equals(emergencyNum)) {
                     return true;
+                } else {
+                    for (String prefix : mEmergencyNumberPrefix) {
+                        if (number.equals(prefix + emergencyNum)) {
+                            return true;
+                        }
+                    }
                 }
             } else {
                 if (number.startsWith(emergencyNum)) {
                     return true;
+                } else {
+                    for (String prefix : mEmergencyNumberPrefix) {
+                        if (number.equals(prefix + emergencyNum)) {
+                            return true;
+                        }
+                    }
                 }
             }
         }
@@ -696,9 +734,28 @@ public class EmergencyNumberTracker extends Handler {
         if (mCountryIso != null) {
             ShortNumberInfo info = ShortNumberInfo.getInstance();
             if (useExactMatch) {
-                return info.isEmergencyNumber(number, mCountryIso.toUpperCase());
+                if (info.isEmergencyNumber(number, mCountryIso.toUpperCase())) {
+                    return true;
+                } else {
+                    for (String prefix : mEmergencyNumberPrefix) {
+                        if (info.isEmergencyNumber(prefix + number, mCountryIso.toUpperCase())) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             } else {
-                return info.connectsToEmergencyNumber(number, mCountryIso.toUpperCase());
+                if (info.connectsToEmergencyNumber(number, mCountryIso.toUpperCase())) {
+                    return true;
+                } else {
+                    for (String prefix : mEmergencyNumberPrefix) {
+                        if (info.connectsToEmergencyNumber(prefix + number,
+                                mCountryIso.toUpperCase())) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
         }
 
@@ -777,34 +834,49 @@ public class EmergencyNumberTracker extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
+        ipw.println(" Hal Version:" + mPhone.getHalVersion());
+        ipw.println(" ========================================= ");
+
         ipw.println("mEmergencyNumberListDatabaseLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListDatabaseLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
         ipw.println("mEmergencyNumberListRadioLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListRadioLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
         ipw.println("mEmergencyNumberListPrefixLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListPrefixLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
         ipw.println("mEmergencyNumberListTestModeLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListTestModeLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
-        ipw.println("   -   -   -   -   -   -   -   -");
+        ipw.println(" ========================================= ");
 
-        ipw.println("mEmergencyNumberListLocalLog:");
+        ipw.println("mEmergencyNumberListLocalLog (valid >= 1.4 HAL):");
         ipw.increaseIndent();
         mEmergencyNumberListLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
+        ipw.println(" ========================================= ");
+
+        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
+        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
+        ipw.println(" ril.ecclist: " + SystemProperties.get(ecclist, ""));
+        ipw.println(" ========================================= ");
+
+        ipw.println("Emergency Number List for Phone" + "(" + mPhone.getPhoneId() + ")");
+        ipw.increaseIndent();
+        ipw.println(getEmergencyNumberList());
+        ipw.decreaseIndent();
+        ipw.println(" ========================================= ");
 
         ipw.flush();
     }
