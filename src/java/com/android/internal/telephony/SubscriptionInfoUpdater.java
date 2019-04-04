@@ -860,6 +860,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     .getUriForSubscriptionId(currentSubId), cv, null, null) > 0) {
             sc.refreshCachedActiveSubscriptionInfoList();
             sc.notifySubscriptionInfoChanged();
+            MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupId);
         }
     }
 
