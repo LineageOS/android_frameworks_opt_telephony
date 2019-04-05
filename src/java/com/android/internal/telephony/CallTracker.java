@@ -291,6 +291,18 @@ public abstract class CallTracker extends Handler {
         return ret;
     }
 
+    /**
+     * Get the ringing connections which during SRVCC handover.
+     */
+    public Connection getRingingHandoverConnection() {
+        for (Connection hoConn : mHandoverConnections) {
+            if (hoConn.getCall().isRinging()) {
+                return hoConn;
+            }
+        }
+        return null;
+    }
+
     //***** Overridden from Handler
     @Override
     public abstract void handleMessage (Message msg);

@@ -929,6 +929,13 @@ public class GsmCdmaPhone extends Phone {
         if ( imsPhone != null && imsPhone.getRingingCall().isRinging()) {
             return imsPhone.getRingingCall();
         }
+        //It returns the ringing connections which during SRVCC handover
+        if (!mCT.mRingingCall.isRinging()
+                && mCT.getRingingHandoverConnection() != null
+                && mCT.getRingingHandoverConnection().getCall() != null
+                && mCT.getRingingHandoverConnection().getCall().isRinging()) {
+            return mCT.getRingingHandoverConnection().getCall();
+        }
         return mCT.mRingingCall;
     }
 
