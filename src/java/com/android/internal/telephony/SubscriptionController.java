@@ -2375,7 +2375,12 @@ public class SubscriptionController extends ISub.Stub {
             simState = IccCardConstants.State.UNKNOWN;
             err = "invalid slotIndex";
         } else {
-            Phone phone = PhoneFactory.getPhone(slotIndex);
+            Phone phone = null;
+            try {
+                phone = PhoneFactory.getPhone(slotIndex);
+            } catch (IllegalStateException e) {
+                // ignore
+            }
             if (phone == null) {
                 simState = IccCardConstants.State.UNKNOWN;
                 err = "phone == null";
