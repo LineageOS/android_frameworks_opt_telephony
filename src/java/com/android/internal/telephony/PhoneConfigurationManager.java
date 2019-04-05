@@ -130,14 +130,14 @@ public class PhoneConfigurationManager {
                 case Phone.EVENT_RADIO_AVAILABLE:
                 case Phone.EVENT_RADIO_ON:
                     log("Received EVENT_RADIO_AVAILABLE/EVENT_RADIO_ON");
-                    if (msg.obj instanceof Phone) {
-                        phone = (Phone) msg.obj;
-                    }
-                    if (phone == null) {
+                    ar = (AsyncResult) msg.obj;
+                    if (ar.userObj != null && ar.userObj instanceof Phone) {
+                        phone = (Phone) ar.userObj;
+                        updatePhoneStatus(phone);
+                    } else {
+                        // phone is null
                         log("Unable to add phoneStatus to cache. "
                                 + "No phone object provided for event " + msg.what);
-                    } else {
-                        updatePhoneStatus(phone);
                     }
                     getStaticPhoneCapability();
                     break;
@@ -196,7 +196,7 @@ public class PhoneConfigurationManager {
      */
     public boolean getPhoneStatus(Phone phone) {
         if (phone == null) {
-            log("getPhonetatus failed phone is null");
+            log("getPhoneStatus failed phone is null");
             return false;
         }
 
@@ -206,9 +206,11 @@ public class PhoneConfigurationManager {
         if (mPhoneStatusMap.containsKey(phoneId)) {
             return mPhoneStatusMap.get(phoneId);
         } else {
-            //return false if modem status is not in cache
             updatePhoneStatus(phone);
-            return false;
+            // Return true if modem status is not in cache. For most of case, modem status
+            // is on. And for older version modems, GET_MODEM_STATUS and disable modem are not
+            // supported. Modem is always on.
+            return true;
         }
     }
 
