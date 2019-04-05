@@ -17,7 +17,6 @@
 package android.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
@@ -39,14 +38,12 @@ import android.util.SparseArray;
 
 import androidx.test.runner.AndroidJUnit4;
 
-import com.android.ims.ImsManager;
 import com.android.ims.internal.IImsFeatureStatusCallback;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for ImsService
@@ -126,50 +123,6 @@ public class ImsServiceTest {
     }
 
     /**
-     * Tests that the new ImsService still sends the IMS_SERVICE_UP broadcast when the feature is
-     * set to ready.
-     */
-    @Test
-    @SmallTest
-    public void testImsServiceUpSentCompat() throws RemoteException {
-        mTestImsServiceBinder.createMmTelFeature(TEST_SLOT_0, mTestCallback);
-
-        mTestImsService.mSpyMmTelFeature.sendSetFeatureState(ImsFeature.STATE_READY);
-
-        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mMockContext).sendBroadcast(intentCaptor.capture());
-        try {
-            // Verify IMS_SERVICE_UP is sent
-            assertNotNull(intentCaptor.getValue());
-            verifyServiceUpSent(intentCaptor.getValue());
-        } catch (IndexOutOfBoundsException e) {
-            fail("Did not receive all intents");
-        }
-    }
-
-    /**
-     * Tests that the new ImsService still sends the IMS_SERVICE_DOWN broadcast when the feature is
-     * set to initializing.
-     */
-    @Test
-    @SmallTest
-    public void testImsServiceDownSentCompatInitializing() throws RemoteException {
-        mTestImsServiceBinder.createMmTelFeature(TEST_SLOT_0, mTestCallback);
-
-        mTestImsService.mSpyMmTelFeature.sendSetFeatureState(ImsFeature.STATE_INITIALIZING);
-
-        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mMockContext).sendBroadcast(intentCaptor.capture());
-        try {
-            // IMS_SERVICE_DOWN is sent when the service is STATE_INITIALIZING.
-            assertNotNull(intentCaptor.getValue());
-            verifyServiceDownSent(intentCaptor.getValue());
-        } catch (IndexOutOfBoundsException e) {
-            fail("Did not receive all intents");
-        }
-    }
-
-    /**
      * Tests that the ImsService will return the correct ImsFeatureConfiguration when queried.
      */
     @Test
@@ -184,15 +137,5 @@ public class ImsServiceTest {
         ImsFeatureConfiguration result = mTestImsServiceBinder.querySupportedImsFeatures();
 
         assertEquals(config, result);
-    }
-
-    private void verifyServiceDownSent(Intent testIntent) {
-        assertEquals(ImsManager.ACTION_IMS_SERVICE_DOWN, testIntent.getAction());
-        assertEquals(TEST_SLOT_0, testIntent.getIntExtra(ImsManager.EXTRA_PHONE_ID, -1));
-    }
-
-    private void verifyServiceUpSent(Intent testIntent) {
-        assertEquals(ImsManager.ACTION_IMS_SERVICE_UP, testIntent.getAction());
-        assertEquals(TEST_SLOT_0, testIntent.getIntExtra(ImsManager.EXTRA_PHONE_ID, -1));
     }
 }
