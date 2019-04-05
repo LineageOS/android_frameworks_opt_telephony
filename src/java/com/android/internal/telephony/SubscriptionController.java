@@ -1091,9 +1091,6 @@ public class SubscriptionController extends ISub.Stub {
                         if (value.size() > 0) {
                             resolver.update(SubscriptionManager.getUriForSubscriptionId(subId),
                                     value, null, null);
-
-                            // Refresh the Cache of Active Subscription Info List
-                            refreshCachedActiveSubscriptionInfoList();
                         }
 
                         if (DBG) logdl("[addSubInfoRecord] Record already exists");
@@ -1176,8 +1173,11 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
+            // Refresh the Cache of Active Subscription Info List. This should be done after
+            // updating sSlotIndexToSubIds which is done through addToSubIdList() above.
+            refreshCachedActiveSubscriptionInfoList();
+
             if (isSubscriptionForRemoteSim(subscriptionType)) {
-                refreshCachedActiveSubscriptionInfoList();
                 notifySubscriptionInfoChanged();
             } else {  // Handle Local SIM devices
                 // Set Display name after sub id is set above so as to get valid simCarrierName
