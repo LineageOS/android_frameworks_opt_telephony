@@ -5627,19 +5627,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @UnsupportedAppUsage
     void riljLog(String msg) {
-        Rlog.d(RILJ_LOG_TAG, msg + (" [SUB" + mPhoneId + "]"));
+        Rlog.d(RILJ_LOG_TAG, msg + (" [PHONE" + mPhoneId + "]"));
     }
 
     void riljLoge(String msg) {
-        Rlog.e(RILJ_LOG_TAG, msg + (" [SUB" + mPhoneId + "]"));
+        Rlog.e(RILJ_LOG_TAG, msg + (" [PHONE" + mPhoneId + "]"));
     }
 
     void riljLoge(String msg, Exception e) {
-        Rlog.e(RILJ_LOG_TAG, msg + (" [SUB" + mPhoneId + "]"), e);
+        Rlog.e(RILJ_LOG_TAG, msg + (" [PHONE" + mPhoneId + "]"), e);
     }
 
     void riljLogv(String msg) {
-        Rlog.v(RILJ_LOG_TAG, msg + (" [SUB" + mPhoneId + "]"));
+        Rlog.v(RILJ_LOG_TAG, msg + (" [PHONE" + mPhoneId + "]"));
     }
 
     @UnsupportedAppUsage
