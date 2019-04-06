@@ -307,13 +307,16 @@ public class PhoneFactory {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
             } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
-                if (DBG) dbgInfo = "phoneId == DEFAULT_PHONE_ID return sPhone";
+                if (DBG) {
+                    dbgInfo = "phoneId == DEFAULT_PHONE_ID return sPhone";
+                }
                 phone = sPhone;
             } else {
-                if (DBG) dbgInfo = "phoneId != DEFAULT_PHONE_ID return sPhones[phoneId]";
-                phone = (((phoneId >= 0)
-                                && (phoneId < TelephonyManager.getDefault().getPhoneCount()))
-                        ? sPhones[phoneId] : null);
+                if (DBG) {
+                    dbgInfo = "phoneId != DEFAULT_PHONE_ID return sPhones[phoneId]";
+                }
+                phone = (phoneId >= 0 && phoneId < sPhones.length)
+                            ? sPhones[phoneId] : null;
             }
             if (DBG) {
                 Rlog.d(LOG_TAG, "getPhone:- " + dbgInfo + " phoneId=" + phoneId +
