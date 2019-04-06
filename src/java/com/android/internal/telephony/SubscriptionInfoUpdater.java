@@ -32,12 +32,15 @@ import android.os.Handler;
 import android.os.IRemoteCallback;
 import android.os.Looper;
 import android.os.Message;
+import android.os.ParcelUuid;
+import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.Global;
 import android.provider.Settings.SettingNotFoundException;
+import android.service.carrier.CarrierService;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
@@ -90,6 +93,9 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private static final String ICCID_STRING_FOR_NO_SIM = "";
 
+    private static final ParcelUuid REMOVE_GROUP_UUID =
+            ParcelUuid.fromString(CarrierConfigManager.REMOVE_GROUP_UUID_STRING);
+
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
     public static final String CURR_SUBID = "curr_subid";
 
@@ -111,6 +117,8 @@ public class SubscriptionInfoUpdater extends Handler {
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
 
+    // TODO: The SubscriptionController instance should be passed in here from PhoneFactory
+    // rather than invoking the static getter all over the place.
     public SubscriptionInfoUpdater(
             Looper looper, Context context, Phone[] phone, CommandsInterface[] ci) {
         this(looper, context, phone, ci,
@@ -512,8 +520,8 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     private void updateCarrierServices(int slotId, String simState) {
-        CarrierConfigManager configManager = (CarrierConfigManager)
-                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        CarrierConfigManager configManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         configManager.updateConfigForPhoneId(slotId, simState);
         mCarrierServiceBindHelper.updateForPhoneId(slotId, simState);
     }
@@ -751,6 +759,108 @@ public class SubscriptionInfoUpdater extends Handler {
 
         if (DBG) logd("updateEmbeddedSubscriptions done hasChanges=" + hasChanges);
         return hasChanges;
+    }
+
+    /**
+     * Called by CarrierConfigLoader to update the subscription before sending a broadcast.
+     */
+    public void updateSubscriptionByCarrierConfigAndNotifyComplete(int phoneId,
+            String configPackageName, PersistableBundle config, Message onComplete) {
+        post(() -> {
+            updateSubscriptionByCarrierConfig(phoneId, configPackageName, config);
+            onComplete.sendToTarget();
+        });
+    }
+
+    private String getDefaultCarrierServicePackageName() {
+        CarrierConfigManager configManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        return configManager.getDefaultCarrierServicePackageName();
+    }
+
+    private boolean isCarrierServicePackage(int phoneId, String pkgName) {
+        if (pkgName.equals(getDefaultCarrierServicePackageName())) return false;
+
+        List<String> carrierPackageNames = TelephonyManager.from(mContext)
+                .getCarrierPackageNamesForIntentAndPhone(
+                        new Intent(CarrierService.CARRIER_SERVICE_INTERFACE), phoneId);
+        if (DBG) logd("Carrier Packages For Subscription = " + carrierPackageNames);
+        return carrierPackageNames != null && carrierPackageNames.contains(pkgName);
+    }
+
+    /**
+     * Update the currently active Subscription based on information from CarrierConfig
+     */
+    @VisibleForTesting
+    public void updateSubscriptionByCarrierConfig(
+            int phoneId, String configPackageName, PersistableBundle config) {
+        if (!SubscriptionManager.isValidPhoneId(phoneId)
+                || TextUtils.isEmpty(configPackageName) || config == null) {
+            if (DBG) {
+                logd("In updateSubscriptionByCarrierConfig(): phoneId=" + phoneId
+                        + " configPackageName=" + configPackageName + " config="
+                        + ((config == null) ? "null" : config.hashCode()));
+            }
+            return;
+        }
+
+        SubscriptionController sc = SubscriptionController.getInstance();
+        if (sc == null) {
+            loge("SubscriptionController was null");
+            return;
+        }
+
+        int currentSubId = sc.getSubIdUsingPhoneId(phoneId);
+        if (!SubscriptionManager.isValidSubscriptionId(currentSubId)
+                || currentSubId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+            if (DBG) logd("No subscription is active for phone being updated");
+            return;
+        }
+
+        SubscriptionInfo currentSubInfo = sc.getSubscriptionInfo(currentSubId);
+        if (currentSubInfo == null) {
+            loge("Couldn't retrieve subscription info for current subscription");
+            return;
+        }
+
+        if (!isCarrierServicePackage(phoneId, configPackageName)) {
+            loge("Cannot manage subId=" + currentSubId + ", carrierPackage=" + configPackageName);
+            return;
+        }
+
+        ContentValues cv = new ContentValues();
+        boolean isOpportunistic = config.getBoolean(
+                CarrierConfigManager.KEY_IS_OPPORTUNISTIC_SUBSCRIPTION_BOOL, false);
+        if (currentSubInfo.isOpportunistic() != isOpportunistic) {
+            if (DBG) logd("Set SubId=" + currentSubId + " isOpportunistic=" + isOpportunistic);
+            cv.put(SubscriptionManager.IS_OPPORTUNISTIC, isOpportunistic ? "1" : "0");
+        }
+
+        String groupUuidString =
+                config.getString(CarrierConfigManager.KEY_SUBSCRIPTION_GROUP_UUID_STRING, "");
+        ParcelUuid groupId = null;
+        if (!TextUtils.isEmpty(groupUuidString)) {
+            try {
+                // Update via a UUID Structure to ensure consistent formatting
+                ParcelUuid groupUuid = ParcelUuid.fromString(groupUuidString);
+                if (groupUuid.equals(REMOVE_GROUP_UUID)
+                            && currentSubInfo.getGroupUuid() != null) {
+                    cv.put(SubscriptionManager.GROUP_UUID, (String) null);
+                    if (DBG) logd("Group Removed for" + currentSubId);
+                } else {
+                    // TODO: validate and update group owner information once feasible.
+                    cv.put(SubscriptionManager.GROUP_UUID, groupUuid.toString());
+                    if (DBG) logd("Group Added for" + currentSubId);
+                }
+            } catch (IllegalArgumentException e) {
+                loge("Invalid Group UUID=" + groupUuidString);
+            }
+        }
+        if (cv.size() > 0 && mContext.getContentResolver().update(SubscriptionManager
+                    .getUriForSubscriptionId(currentSubId), cv, null, null) > 0) {
+            sc.refreshCachedActiveSubscriptionInfoList();
+            sc.notifySubscriptionInfoChanged();
+        }
     }
 
     private static int findSubscriptionInfoForIccid(List<SubscriptionInfo> list, String iccid) {
