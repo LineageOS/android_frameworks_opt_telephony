@@ -237,6 +237,12 @@ public class SubscriptionController extends ISub.Stub {
             mLastISubServiceRegTime = System.currentTimeMillis();
         }
 
+        /**
+         * Switching between DSDS and single sim mode needs to clear the slot index of
+         * subscription info.
+         */
+        clearSlotIndexForSubInfoRecords();
+
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
 
@@ -263,6 +269,25 @@ public class SubscriptionController extends ISub.Stub {
         return sSlotIndexToSubIds.size() > 0;
     }
 
+    /**
+     * Switching between DSDS and single sim mode needs to update the slot index of subscription
+     * info into invalid if the slot index is not active.
+     */
+    private void clearSlotIndexForSubInfoRecords() {
+        if (mTelephonyManager == null || mContext == null) {
+            logel("[clearSlotIndexForSubInfoRecords] TelephonyManager or mContext is null");
+            return;
+        }
+        int phoneCount = mTelephonyManager.getPhoneCount();
+
+        // Update simInfo db with invalid slot index
+        ContentResolver resolver = mContext.getContentResolver();
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, SubscriptionManager.SIM_SLOT_INDEX + ">=" + phoneCount, null);
+    }
+
     private SubscriptionController(Phone phone) {
         mContext = phone.getContext();
         mAppOps = mContext.getSystemService(AppOpsManager.class);
@@ -272,6 +297,12 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         migrateImsSettings();
+
+        /**
+         * Switching between DSDS and single sim mode needs to clear the slot index of
+         * subscription info.
+         */
+        clearSlotIndexForSubInfoRecords();
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
     }
@@ -512,6 +543,20 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         return null;
+    }
+
+    /**
+     * Get a single subscription info record for a given subscription.
+     *
+     * @param subId the subId to query.
+     *
+     * @hide
+     */
+    public SubscriptionInfo getSubscriptionInfo(int subId) {
+        List<SubscriptionInfo> subInfoList = getSubInfo(
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+        if (subInfoList == null || subInfoList.isEmpty()) return null;
+        return subInfoList.get(0);
     }
 
     /**
@@ -1060,9 +1105,6 @@ public class SubscriptionController extends ISub.Stub {
                         if (value.size() > 0) {
                             resolver.update(SubscriptionManager.getUriForSubscriptionId(subId),
                                     value, null, null);
-
-                            // Refresh the Cache of Active Subscription Info List
-                            refreshCachedActiveSubscriptionInfoList();
                         }
 
                         if (DBG) logdl("[addSubInfoRecord] Record already exists");
@@ -1145,8 +1187,11 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
+            // Refresh the Cache of Active Subscription Info List. This should be done after
+            // updating sSlotIndexToSubIds which is done through addToSubIdList() above.
+            refreshCachedActiveSubscriptionInfoList();
+
             if (isSubscriptionForRemoteSim(subscriptionType)) {
-                refreshCachedActiveSubscriptionInfoList();
                 notifySubscriptionInfoChanged();
             } else {  // Handle Local SIM devices
                 // Set Display name after sub id is set above so as to get valid simCarrierName
@@ -2344,7 +2389,12 @@ public class SubscriptionController extends ISub.Stub {
             simState = IccCardConstants.State.UNKNOWN;
             err = "invalid slotIndex";
         } else {
-            Phone phone = PhoneFactory.getPhone(slotIndex);
+            Phone phone = null;
+            try {
+                phone = PhoneFactory.getPhone(slotIndex);
+            } catch (IllegalStateException e) {
+                // ignore
+            }
             if (phone == null) {
                 simState = IccCardConstants.State.UNKNOWN;
                 err = "phone == null";
