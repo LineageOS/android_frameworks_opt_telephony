@@ -147,6 +147,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK = 111;
     private static final int EVENT_MODEM_COMMAND_DONE             = 112;
     private static final int EVENT_MODEM_COMMAND_RETRY            = 113;
+    private static final int EVENT_DATA_ENABLED_CHANGED           = 114;
 
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
@@ -264,6 +265,21 @@ public class PhoneSwitcher extends Handler {
                 if (mPhoneIdInVoiceCall != oldPhoneIdInVoiceCall) {
                     log("mPhoneIdInVoiceCall changed from" + oldPhoneIdInVoiceCall
                             + " to " + mPhoneIdInVoiceCall);
+
+                    // Switches and listens to the updated voice phone.
+                    Phone dataPhone = findPhoneById(mPhoneIdInVoiceCall);
+                    if (dataPhone != null && dataPhone.getDataEnabledSettings() != null) {
+                        dataPhone.getDataEnabledSettings()
+                                .registerForDataEnabledChanged(getInstance(),
+                                        EVENT_DATA_ENABLED_CHANGED, null);
+                    }
+
+                    Phone oldDataPhone = findPhoneById(oldPhoneIdInVoiceCall);
+                    if (oldDataPhone != null && oldDataPhone.getDataEnabledSettings() != null) {
+                        oldDataPhone.getDataEnabledSettings()
+                                .unregisterForDataEnabledChanged(getInstance());
+                    }
+
                     Message msg = PhoneSwitcher.this.obtainMessage(EVENT_PHONE_IN_CALL_CHANGED);
                     msg.sendToTarget();
                 }
@@ -397,7 +413,9 @@ public class PhoneSwitcher extends Handler {
                 onEvaluate(REQUESTS_UNCHANGED, "EVENT_RADIO_AVAILABLE");
                 break;
             }
-            case EVENT_PHONE_IN_CALL_CHANGED: {
+            // fall through
+            case EVENT_DATA_ENABLED_CHANGED:
+            case EVENT_PHONE_IN_CALL_CHANGED:
                 if (onEvaluate(REQUESTS_UNCHANGED, "EVENT_PHONE_IN_CALL_CHANGED")) {
                     logDataSwitchEvent(mOpptDataSubId,
                             TelephonyEvent.EventState.EVENT_STATE_START,
@@ -405,7 +423,6 @@ public class PhoneSwitcher extends Handler {
                     registerDefaultNetworkChangeCallback();
                 }
                 break;
-            }
             case EVENT_NETWORK_VALIDATION_DONE: {
                 int subId = msg.arg1;
                 boolean passed = (msg.arg2 == 1);
@@ -770,15 +787,15 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
-    // This updates mPreferredDataPhoneId which decides which phone should
-    // handle default network requests.
+    // This updates mPreferredDataPhoneId which decides which phone should handle default network
+    // requests.
     private void updatePreferredDataPhoneId() {
-        if (SubscriptionManager.isValidPhoneId(mPhoneIdInVoiceCall)) {
+        Phone voicePhone = findPhoneById(mPhoneIdInVoiceCall);
+        if (voicePhone != null && voicePhone.isUserDataEnabled()) {
             // If a phone is in call and user enabled its mobile data, we
             // should switch internet connection to it. Because the other modem
             // will lose data connection anyway.
             // TODO: validate network first.
-
             mPreferredDataPhoneId = mPhoneIdInVoiceCall;
         } else {
             int subId = getSubIdForDefaultNetworkRequests();
@@ -797,6 +814,13 @@ public class PhoneSwitcher extends Handler {
         }
 
         mPreferredDataSubId = mSubscriptionController.getSubIdUsingPhoneId(mPreferredDataPhoneId);
+    }
+
+    private Phone findPhoneById(final int phoneId) {
+        if (phoneId < 0 || phoneId >= mNumPhones) {
+            return null;
+        }
+        return mPhones[phoneId];
     }
 
     public boolean shouldApplyNetworkRequest(NetworkRequest networkRequest, int phoneId) {
