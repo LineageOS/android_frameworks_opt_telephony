@@ -64,6 +64,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private FakeTelephonyProvider mFakeTelephonyProvider;
     @Mock
     private ITelephonyRegistry.Stub mTelephonyRegisteryMock;
+    @Mock
+    private MultiSimSettingController mMultiSimSettingControllerMock;
 
     private static final String MAC_ADDRESS_PREFIX = "mac_";
     private static final String DISPLAY_NAME_PREFIX = "my_phone_";
@@ -79,6 +81,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mMockContentResolver.addProvider(SubscriptionManager.CONTENT_URI.getAuthority(),
                 mFakeTelephonyProvider);
         replaceInstance(SubscriptionController.class, "sInstance", null, null);
+        replaceInstance(MultiSimSettingController.class, "sInstance", null,
+                mMultiSimSettingControllerMock);
 
         SubscriptionController.init(mContext, null);
         mSubscriptionControllerUT = SubscriptionController.getInstance();
@@ -605,7 +609,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSetSubscriptionGroupWithCarrierPrivilegePermission() throws Exception {
+    public void testCreateSubscriptionGroupWithCarrierPrivilegePermission() throws Exception {
         testInsertSim();
         // Adding a second profile and mark as embedded.
         // TODO b/123300875 slot index 1 is not expected to be valid
@@ -661,6 +665,38 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 subIdList, mContext.getOpPackageName());
         assertNotEquals(null, newGroupId);
         assertNotEquals(groupId, newGroupId);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateSubscriptionGroupWithCarrierPrivilegePermission() throws Exception {
+        testInsertSim();
+        // Adding a second profile and mark as embedded.
+        // TODO b/123300875 slot index 1 is not expected to be valid
+        mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
+        ContentValues values = new ContentValues();
+        values.put(SubscriptionManager.IS_EMBEDDED, 1);
+        mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + 2, null);
+        mSubscriptionControllerUT.refreshCachedActiveSubscriptionInfoList();
+
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+
+        int[] subIdList = new int[] {1};
+
+        doReturn(true).when(mTelephonyManager).hasCarrierPrivileges(1);
+        doReturn(true).when(mTelephonyManager).hasCarrierPrivileges(2);
+
+        ParcelUuid groupId = mSubscriptionControllerUT.createSubscriptionGroup(
+                subIdList, mContext.getOpPackageName());
+        assertNotEquals(null, groupId);
+
+        mSubscriptionControllerUT.addSubscriptionsIntoGroup(
+                new int[] {2}, groupId, mContext.getOpPackageName());
+
+        mSubscriptionControllerUT.removeSubscriptionsFromGroup(
+                new int[] {2}, groupId, mContext.getOpPackageName());
     }
 
     @Test
