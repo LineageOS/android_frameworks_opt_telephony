@@ -194,11 +194,12 @@ public final class NetworkScanRequestTracker {
 
         if (result != null) {
             if (what == TelephonyScanManager.CALLBACK_RESTRICTED_SCAN_RESULTS) {
-                List<String> allowedMccMncs =
-                        getAllowedMccMncsForLocationRestrictedScan(nsri.mPhone.getContext());
+                //List<String> allowedMccMncs =
+                //        getAllowedMccMncsForLocationRestrictedScan(nsri.mPhone.getContext());
 
                 result = result.stream().map(CellInfo::sanitizeLocationInfo)
-                        .filter(ci -> doesCellInfoCorrespondToKnownMccMnc(ci, allowedMccMncs))
+                        // STOPSHIP Revisit PLMN check (b/130253962).
+                        //.filter(ci -> doesCellInfoCorrespondToKnownMccMnc(ci, allowedMccMncs))
                         .collect(Collectors.toList());
             }
 
