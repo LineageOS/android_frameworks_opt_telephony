@@ -176,7 +176,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // Create subscription grouping.
         doReturn(Arrays.asList(mSubInfo2, mSubInfo3, mSubInfo4)).when(mSubControllerMock)
                 .getSubscriptionsInGroup(any(), anyString());
-        mMultiSimSettingControllerUT.onSubscriptionGroupCreated(new int[] {2, 3, 4});
+        mMultiSimSettingControllerUT.onSubscriptionGroupChanged(mGroupUuid1);
         // This should result in setting sync.
         assertTrue(GlobalSettingsHelper.getBoolean(
                 mContext, Settings.Global.MOBILE_DATA, 3, false));
@@ -265,9 +265,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // Group sub 1 with sub 2.
         doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
                 .getSubscriptionsInGroup(any(), anyString());
-        doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(any(), anyString());
-        mMultiSimSettingControllerUT.onSubscriptionGroupCreated(new int[] {1, 2});
+        mMultiSimSettingControllerUT.onSubscriptionGroupChanged(mGroupUuid1);
         // This should result in setting sync.
         verify(mDataEnabledSettingsMock1).setUserDataEnabled(false);
         assertFalse(GlobalSettingsHelper.getBoolean(
