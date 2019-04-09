@@ -2008,14 +2008,20 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     private boolean isAscii7bitSupportedForLongMessage() {
-        CarrierConfigManager configManager = (CarrierConfigManager)mContext.getSystemService(
-                Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle pb = null;
-        pb = configManager.getConfigForSubId(mPhone.getSubId());
-        if (pb != null) {
-            return pb.getBoolean(CarrierConfigManager
-                    .KEY_ASCII_7_BIT_SUPPORT_FOR_LONG_MESSAGE_BOOL);
+        //TODO: Do not rely on calling identity here, we should store UID & clear identity earlier.
+        long token = Binder.clearCallingIdentity();
+        try {
+            CarrierConfigManager configManager = (CarrierConfigManager) mContext.getSystemService(
+                    Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle pb = null;
+            pb = configManager.getConfigForSubId(mPhone.getSubId());
+            if (pb != null) {
+                return pb.getBoolean(CarrierConfigManager
+                        .KEY_ASCII_7_BIT_SUPPORT_FOR_LONG_MESSAGE_BOOL);
+            }
+            return false;
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
-        return false;
     }
 }
