@@ -25,6 +25,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.gsm.SimTlv;
 //import com.android.internal.telephony.gsm.VoiceMailConstants;
 
@@ -362,7 +363,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     private void broadcastRefresh() {
         Intent intent = new Intent(INTENT_ISIM_REFRESH);
         log("send ISim REFRESH: " + INTENT_ISIM_REFRESH);
-        intent.putExtra("PHONE_ID", mParentApp.getPhoneId());
+        intent.putExtra(PhoneConstants.PHONE_KEY, mParentApp.getPhoneId());
         mContext.sendBroadcast(intent);
     }
 
