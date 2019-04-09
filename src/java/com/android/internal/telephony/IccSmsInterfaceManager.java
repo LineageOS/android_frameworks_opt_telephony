@@ -690,50 +690,47 @@ public class IccSmsInterfaceManager {
             }
         }
 
-        final long ident = Binder.clearCallingIdentity();
-        try {
-            destAddr = filterDestAddress(destAddr);
+        destAddr = filterDestAddress(destAddr);
 
-            if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
-                for (int i = 0; i < parts.size(); i++) {
-                    // If EMS is not supported, we have to break down EMS into single segment SMS
-                    // and add page info " x/y".
-                    String singlePart = parts.get(i);
-                    if (SmsMessage.shouldAppendPageNumberAsPrefix()) {
-                        singlePart = String.valueOf(i + 1) + '/' + parts.size() + ' ' + singlePart;
-                    } else {
-                        singlePart = singlePart.concat(' ' + String.valueOf(i + 1) + '/' + parts.size());
-                    }
-
-                    PendingIntent singleSentIntent = null;
-                    if (sentIntents != null && sentIntents.size() > i) {
-                        singleSentIntent = sentIntents.get(i);
-                    }
-
-                    PendingIntent singleDeliveryIntent = null;
-                    if (deliveryIntents != null && deliveryIntents.size() > i) {
-                        singleDeliveryIntent = deliveryIntents.get(i);
-                    }
-
-                    mDispatchersController.sendText(destAddr, scAddr, singlePart,
-                            singleSentIntent, singleDeliveryIntent,
-                            null/*messageUri*/, callingPackage,
-                            persistMessageForNonDefaultSmsApp,
-                            priority, expectMore, validityPeriod);
+        if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
+            for (int i = 0; i < parts.size(); i++) {
+                // If EMS is not supported, we have to break down EMS into single segment SMS
+                // and add page info " x/y".
+                String singlePart = parts.get(i);
+                if (SmsMessage.shouldAppendPageNumberAsPrefix()) {
+                    singlePart = String.valueOf(i + 1) + '/' + parts.size() + ' ' + singlePart;
+                } else {
+                    singlePart = singlePart.concat(' ' + String.valueOf(i + 1) + '/'
+                            + parts.size());
                 }
-                return;
-            }
 
-            mDispatchersController.sendMultipartText(destAddr,
-                                          scAddr,
-                                          (ArrayList<String>) parts,
-                                          (ArrayList<PendingIntent>) sentIntents,
-                                          (ArrayList<PendingIntent>) deliveryIntents,
-                                          null, callingPackage, persistMessageForNonDefaultSmsApp,
-                                          priority, expectMore, validityPeriod);
-        } finally {
-            Binder.restoreCallingIdentity(ident);
+                PendingIntent singleSentIntent = null;
+                if (sentIntents != null && sentIntents.size() > i) {
+                    singleSentIntent = sentIntents.get(i);
+                }
+
+                PendingIntent singleDeliveryIntent = null;
+                if (deliveryIntents != null && deliveryIntents.size() > i) {
+                    singleDeliveryIntent = deliveryIntents.get(i);
+                }
+
+                mDispatchersController.sendText(destAddr, scAddr, singlePart,
+                        singleSentIntent, singleDeliveryIntent,
+                        null/*messageUri*/, callingPackage,
+                        persistMessageForNonDefaultSmsApp,
+                        priority, expectMore, validityPeriod);
+            }
+            return;
         }
+
+        mDispatchersController.sendMultipartText(destAddr,
+                                      scAddr,
+                                      (ArrayList<String>) parts,
+                                      (ArrayList<PendingIntent>) sentIntents,
+                                      (ArrayList<PendingIntent>) deliveryIntents,
+                                      null, callingPackage, persistMessageForNonDefaultSmsApp,
+                                          priority, expectMore, validityPeriod);
+
     }
 
     @UnsupportedAppUsage
@@ -1183,56 +1180,51 @@ public class IccSmsInterfaceManager {
             returnUnspecifiedFailure(sentIntents);
             return;
         }
+        textAndAddress[1] = filterDestAddress(textAndAddress[1]);
 
-        final long ident = Binder.clearCallingIdentity();
-        try {
-            textAndAddress[1] = filterDestAddress(textAndAddress[1]);
-
-            if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
-                for (int i = 0; i < parts.size(); i++) {
-                    // If EMS is not supported, we have to break down EMS into single segment SMS
-                    // and add page info " x/y".
-                    String singlePart = parts.get(i);
-                    if (SmsMessage.shouldAppendPageNumberAsPrefix()) {
-                        singlePart = String.valueOf(i + 1) + '/' + parts.size() + ' ' + singlePart;
-                    } else {
-                        singlePart = singlePart.concat(' ' + String.valueOf(i + 1) + '/' + parts.size());
-                    }
-
-                    PendingIntent singleSentIntent = null;
-                    if (sentIntents != null && sentIntents.size() > i) {
-                        singleSentIntent = sentIntents.get(i);
-                    }
-
-                    PendingIntent singleDeliveryIntent = null;
-                    if (deliveryIntents != null && deliveryIntents.size() > i) {
-                        singleDeliveryIntent = deliveryIntents.get(i);
-                    }
-
-                    mDispatchersController.sendText(textAndAddress[1], scAddress, singlePart,
-                            singleSentIntent, singleDeliveryIntent, messageUri, callingPkg,
-                            true  /* persistMessageForNonDefaultSmsApp */,
-                            SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                            false /* expectMore */, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+        if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
+            for (int i = 0; i < parts.size(); i++) {
+                // If EMS is not supported, we have to break down EMS into single segment SMS
+                // and add page info " x/y".
+                String singlePart = parts.get(i);
+                if (SmsMessage.shouldAppendPageNumberAsPrefix()) {
+                    singlePart = String.valueOf(i + 1) + '/' + parts.size() + ' ' + singlePart;
+                } else {
+                    singlePart = singlePart.concat(' ' + String.valueOf(i + 1) + '/'
+                            + parts.size());
                 }
-                return;
-            }
 
-            mDispatchersController.sendMultipartText(
-                    textAndAddress[1], // destAddress
-                    scAddress,
-                    parts,
-                    (ArrayList<PendingIntent>) sentIntents,
-                    (ArrayList<PendingIntent>) deliveryIntents,
-                    messageUri,
-                    callingPkg,
-                    true  /* persistMessageForNonDefaultSmsApp */,
-                    SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /* expectMore */,
-                    SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
-        } finally {
-            Binder.restoreCallingIdentity(ident);
+                PendingIntent singleSentIntent = null;
+                if (sentIntents != null && sentIntents.size() > i) {
+                    singleSentIntent = sentIntents.get(i);
+                }
+
+                PendingIntent singleDeliveryIntent = null;
+                if (deliveryIntents != null && deliveryIntents.size() > i) {
+                    singleDeliveryIntent = deliveryIntents.get(i);
+                }
+
+                mDispatchersController.sendText(textAndAddress[1], scAddress, singlePart,
+                        singleSentIntent, singleDeliveryIntent, messageUri, callingPkg,
+                        true  /* persistMessageForNonDefaultSmsApp */,
+                        SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
+                        false /* expectMore */, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+            }
+            return;
         }
+
+        mDispatchersController.sendMultipartText(
+                textAndAddress[1], // destAddress
+                scAddress,
+                parts,
+                (ArrayList<PendingIntent>) sentIntents,
+                (ArrayList<PendingIntent>) deliveryIntents,
+                messageUri,
+                callingPkg,
+                true  /* persistMessageForNonDefaultSmsApp */,
+                SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
+                false /* expectMore */,
+                SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
     }
 
     private boolean isFailedOrDraft(ContentResolver resolver, Uri messageUri) {
