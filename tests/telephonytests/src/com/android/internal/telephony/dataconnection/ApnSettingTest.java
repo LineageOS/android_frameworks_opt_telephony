@@ -715,11 +715,23 @@ public class ApnSettingTest extends TelephonyTest {
                 .canHandleType(ApnSetting.TYPE_SUPL));
 
         // special IA case - doesn't match wildcards
-        assertFalse(createApnSetting(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS)
+        assertFalse(createApnSetting(ApnSetting.TYPE_ALL)
                 .canHandleType(ApnSetting.TYPE_IA));
         assertTrue(createApnSetting(
                 ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS | ApnSetting.TYPE_IA)
                 .canHandleType(ApnSetting.TYPE_IA));
+
+        // same for emergency and mcx
+        assertFalse(createApnSetting(ApnSetting.TYPE_ALL)
+                .canHandleType(ApnSetting.TYPE_EMERGENCY));
+        assertTrue(createApnSetting(
+                ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS | ApnSetting.TYPE_EMERGENCY)
+                .canHandleType(ApnSetting.TYPE_EMERGENCY));
+        assertFalse(createApnSetting(ApnSetting.TYPE_ALL)
+                .canHandleType(ApnSetting.TYPE_MCX));
+        assertTrue(createApnSetting(
+                ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS | ApnSetting.TYPE_MCX)
+                .canHandleType(ApnSetting.TYPE_MCX));
 
         // check carrier disabled
         assertFalse(createDisabledApnSetting(ApnSetting.TYPE_ALL)
