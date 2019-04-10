@@ -102,7 +102,7 @@ import android.telephony.ims.RcsParticipantQueryParams;
 import android.telephony.ims.RcsParticipantQueryResult;
 import android.telephony.ims.RcsQueryContinuationToken;
 import android.telephony.ims.RcsThreadQueryParams;
-import android.telephony.ims.RcsThreadQueryResult;
+import android.telephony.ims.RcsThreadQueryResultParcelable;
 import android.telephony.ims.aidl.IRcs;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -168,7 +168,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsThreadQueryResult getRcsThreads(RcsThreadQueryParams queryParameters)
+    public RcsThreadQueryResultParcelable getRcsThreads(RcsThreadQueryParams queryParameters)
             throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(THREAD_QUERY_PARAMETERS_KEY, queryParameters);
@@ -176,7 +176,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @Override
-    public RcsThreadQueryResult getRcsThreadsWithToken(
+    public RcsThreadQueryResultParcelable getRcsThreadsWithToken(
             RcsQueryContinuationToken continuationToken) throws RemoteException {
         Bundle bundle = new Bundle();
         bundle.putParcelable(QUERY_CONTINUATION_TOKEN, continuationToken);
