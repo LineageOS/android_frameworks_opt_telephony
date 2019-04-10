@@ -427,6 +427,11 @@ public final class NetworkScanRequestTracker {
                         ? TelephonyScanManager.CALLBACK_SCAN_RESULTS
                         : TelephonyScanManager.CALLBACK_RESTRICTED_SCAN_RESULTS;
                 if (nsr.scanError == NetworkScan.SUCCESS) {
+                    if (nsri.mPhone.getServiceStateTracker() != null) {
+                        nsri.mPhone.getServiceStateTracker().updateOperatorNameForCellInfo(
+                                nsr.networkInfos);
+                    }
+
                     notifyMessenger(nsri, notifyMsg,
                             rilErrorToScanError(nsr.scanError), nsr.networkInfos);
                     if (nsr.scanStatus == NetworkScanResult.SCAN_STATUS_COMPLETE) {
