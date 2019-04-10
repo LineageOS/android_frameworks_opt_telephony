@@ -143,6 +143,8 @@ public class MultiSimSettingController {
     /**
      * When a subscription group is created or new subscriptions are added in the group, make
      * sure the settings among them are synced.
+     * TODO: b/130258159 have a separate database table for grouped subscriptions so we don't
+     * manually sync each setting.
      */
     public synchronized void onSubscriptionGroupChanged(ParcelUuid groupUuid) {
         if (DBG) log("onSubscriptionGroupChanged");
@@ -186,6 +188,9 @@ public class MultiSimSettingController {
                     mContext, Settings.Global.DATA_ROAMING, INVALID_SUBSCRIPTION_ID, enable);
             onRoamingDataEnabled(refSubId, enable);
         }
+
+        // Sync settings in subscription database..
+        mSubController.syncGroupedSetting(refSubId);
     }
 
     /**
