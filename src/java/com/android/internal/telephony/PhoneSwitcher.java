@@ -183,7 +183,7 @@ public class PhoneSwitcher extends Handler {
 
     // The phone ID that has an active voice call. If set, and its mobile data setting is on,
     // it will become the mPreferredDataPhoneId.
-    private int mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
+    protected int mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
 
     @VisibleForTesting
     // It decides:
@@ -1239,7 +1239,7 @@ public class PhoneSwitcher extends Handler {
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
     }
 
-    private boolean isCallActive(Phone phone) {
+    protected boolean isCallActive(Phone phone) {
         if (phone == null) {
             return false;
         }
@@ -1278,7 +1278,7 @@ public class PhoneSwitcher extends Handler {
     /**
      * See {@link PhoneStateListener#LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE}.
      */
-    private void notifyPreferredDataSubIdChanged() {
+    protected void notifyPreferredDataSubIdChanged() {
         ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
                 "telephony.registry"));
         try {
