@@ -24,37 +24,21 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.telephony.ims.RcsParticipant;
-import android.telephony.ims.RcsParticipantQueryResult;
+import android.telephony.ims.RcsParticipantQueryResultParcelable;
 import android.telephony.ims.RcsQueryContinuationToken;
 
 import java.util.ArrayList;
 import java.util.List;
 
 class RcsParticipantQueryHelper {
-    static final Uri CANONICAL_ADDRESSES_URI = Uri.parse("content://mms-sms/canonical-addresses");
     private final ContentResolver mContentResolver;
 
     RcsParticipantQueryHelper(ContentResolver contentResolver) {
         mContentResolver = contentResolver;
     }
 
-    RcsParticipant getParticipantFromId(int participantId) throws RemoteException {
-        RcsParticipant participant = null;
-        try (Cursor cursor = mContentResolver.query(
-                Uri.withAppendedPath(RCS_PARTICIPANT_URI, Integer.toString(participantId)),
-                new String[]{RCS_PARTICIPANT_ID_COLUMN}, null, null)) {
-            if (cursor == null || !cursor.moveToNext()) {
-                throw new RemoteException("Could not find participant with id: " + participantId);
-            }
-
-            participant = new RcsParticipant(
-                    cursor.getInt(cursor.getColumnIndex(RCS_PARTICIPANT_ID_COLUMN)));
-        }
-        return participant;
-    }
-
-    RcsParticipantQueryResult performParticipantQuery(Bundle bundle) throws RemoteException {
+    RcsParticipantQueryResultParcelable performParticipantQuery(Bundle bundle)
+            throws RemoteException {
         RcsQueryContinuationToken continuationToken = null;
         List<Integer> participantList = new ArrayList<>();
 
@@ -74,7 +58,7 @@ class RcsParticipantQueryHelper {
             }
         }
 
-        return new RcsParticipantQueryResult(continuationToken, participantList);
+        return new RcsParticipantQueryResultParcelable(continuationToken, participantList);
     }
 
     static Uri getUriForParticipant(int participantId) {
