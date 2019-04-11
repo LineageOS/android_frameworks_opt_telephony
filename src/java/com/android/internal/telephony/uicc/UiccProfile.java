@@ -405,7 +405,8 @@ public class UiccProfile extends IccCard {
 
         if (!TextUtils.isEmpty(newCarrierName) && !newCarrierName.equals(oldSubName)) {
             log("sim name[" + mPhoneId + "] = " + newCarrierName);
-            subCon.setDisplayName(newCarrierName, subId);
+            subCon.setDisplayNameUsingSrc(newCarrierName, subId,
+                    SubscriptionManager.NAME_SOURCE_SIM_SOURCE);
         }
     }
 

@@ -1551,26 +1551,15 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Set display name by simInfo index
-     * @param displayName the display name of SIM card
-     * @param subId the unique SubInfoRecord index in database
-     * @return the number of records updated
-     */
-    @Override
-    public int setDisplayName(String displayName, int subId) {
-        return setDisplayNameUsingSrc(displayName, subId, -1);
-    }
-
-    /**
      * Set display name by simInfo index with name source
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
      * @param nameSource 0: NAME_SOURCE_DEFAULT_SOURCE, 1: NAME_SOURCE_SIM_SOURCE,
-     *                   2: NAME_SOURCE_USER_INPUT, -1 NAME_SOURCE_UNDEFINED
+     *                   2: NAME_SOURCE_USER_INPUT
      * @return the number of records updated
      */
     @Override
-    public int setDisplayNameUsingSrc(String displayName, int subId, long nameSource) {
+    public int setDisplayNameUsingSrc(String displayName, int subId, int nameSource) {
         if (DBG) {
             logd("[setDisplayName]+  displayName:" + displayName + " subId:" + subId
                 + " nameSource:" + nameSource);
