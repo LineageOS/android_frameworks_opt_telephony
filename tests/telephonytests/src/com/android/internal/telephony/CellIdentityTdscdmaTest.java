@@ -32,8 +32,8 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
     private static final int PCI = 503;
     // Tracking area code ranges from 0 to 65535.
     private static final int TAC = 65535;
-    // Absolute RF Channel Number ranges from 0 to 262140.
-    private static final int UARFCN = 262140;
+    // Absolute RF Channel Number ranges from 0 to 16383.
+    private static final int UARFCN = 16383;
     private static final int MCC = 120;
     private static final int MNC = 260;
     private static final String MCC_STR = "120";
@@ -46,7 +46,7 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
     // UMTS Cell Identity ranges from 0 to 268435455.
     private static final int CID = 268435455;
 
-    private static final int CPID = 12345;
+    private static final int CPID = 127;
 
     @SmallTest
     public void testDefaultConstructor() {
