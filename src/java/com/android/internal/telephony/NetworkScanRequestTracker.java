@@ -38,13 +38,16 @@ import android.telephony.LocationAccessPolicy;
 import android.telephony.NetworkScan;
 import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyScanManager;
 import android.util.Log;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Manages radio access network scan requests.
@@ -172,15 +175,22 @@ public final class NetworkScanRequestTracker {
     }
 
     /**
-     * @return S list of MCC/MNC ids that apps should be allowed to see as results from a network
+     * @return A list of MCC/MNC ids that apps should be allowed to see as results from a network
      * scan when scan results are restricted due to location privacy.
      */
-    public static List<String> getAllowedMccMncsForLocationRestrictedScan(Context context) {
+    public static Set<String> getAllowedMccMncsForLocationRestrictedScan(Context context) {
         return withCleanCallingIdentity(() -> SubscriptionController.getInstance()
-                .getAllSubInfoList(context.getOpPackageName()).stream()
-                .filter(subInfo -> subInfo.getMccString() != null)
-                .map(subInfo -> subInfo.getMccString() + subInfo.getMncString())
-                .collect(Collectors.toList()));
+            .getAvailableSubscriptionInfoList(context.getOpPackageName()).stream()
+            .flatMap(NetworkScanRequestTracker::getAllowableMccMncsFromSubscriptionInfo)
+            .collect(Collectors.toSet()));
+    }
+
+    private static Stream<String> getAllowableMccMncsFromSubscriptionInfo(SubscriptionInfo info) {
+        Stream<String> plmns = Stream.of(info.getEhplmns(), info.getHplmns()).flatMap(List::stream);
+        if (info.getMccString() != null && info.getMncString() != null) {
+            plmns = Stream.concat(plmns, Stream.of(info.getMccString() + info.getMncString()));
+        }
+        return plmns;
     }
 
     /** Sends a message back to the application via its callback. */
@@ -194,12 +204,11 @@ public final class NetworkScanRequestTracker {
 
         if (result != null) {
             if (what == TelephonyScanManager.CALLBACK_RESTRICTED_SCAN_RESULTS) {
-                //List<String> allowedMccMncs =
-                //        getAllowedMccMncsForLocationRestrictedScan(nsri.mPhone.getContext());
+                Set<String> allowedMccMncs =
+                        getAllowedMccMncsForLocationRestrictedScan(nsri.mPhone.getContext());
 
                 result = result.stream().map(CellInfo::sanitizeLocationInfo)
-                        // STOPSHIP Revisit PLMN check (b/130253962).
-                        //.filter(ci -> doesCellInfoCorrespondToKnownMccMnc(ci, allowedMccMncs))
+                        .filter(ci -> doesCellInfoCorrespondToKnownMccMnc(ci, allowedMccMncs))
                         .collect(Collectors.toList());
             }
 
