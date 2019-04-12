@@ -308,7 +308,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private static final int HANDOVER_TO_WIFI_TIMEOUT_MS = 60000; // ms
 
-    private static final int TIMEOUT_REDIAL_WIFI_E911_MS = 10000;
+    private static final int TIMEOUT_REDIAL_WIFI_E911_MS = 20000;
 
     private static final int TIMEOUT_PARTICIPANT_CONNECT_TIME_CACHE_MS = 60000; //ms
 
@@ -2393,10 +2393,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             pruneCallQualityMetricsHistory();
             mPhone.notifyImsReason(reasonInfo);
 
+            boolean isEmergencySrvCategoryPresent = !TextUtils.isEmpty(imsCall.getCallProfile()
+                    .getCallExtra(QtiImsUtils.EXTRA_EMERGENCY_SERVICE_CATEGORY));
+
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
-                    && mAutoRetryFailedWifiEmergencyCall
-                    && imsCall.getCallProfile().getEmergencyServiceCategories()
-                    != EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED) {
+                    && mAutoRetryFailedWifiEmergencyCall && isEmergencySrvCategoryPresent) {
                 Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
                 mPhone.getDefaultPhone().getServiceStateTracker().registerForNetworkAttached(
                         ImsPhoneCallTracker.this, EVENT_REDIAL_WIFI_E911_CALL, callInfo);
