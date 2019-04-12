@@ -20,8 +20,11 @@ import static android.provider.Telephony.ServiceStateTable.getContentValuesForSe
 import static android.provider.Telephony.ServiceStateTable.getUriForSubscriptionId;
 
 import static com.android.internal.telephony.CarrierActionAgent.CARRIER_ACTION_SET_RADIO_ENABLED;
+import static com.android.internal.telephony.uicc.IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN;
+import static com.android.internal.telephony.uicc.IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN;
 
 import android.Manifest.permission;
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.UnsupportedAppUsage;
 import android.app.AlarmManager;
@@ -96,16 +99,18 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
-import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -266,6 +271,19 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_PHYSICAL_CHANNEL_CONFIG           = 55;
     protected static final int EVENT_CELL_LOCATION_RESPONSE            = 56;
     protected static final int EVENT_CARRIER_CONFIG_CHANGED            = 57;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"CARRIER_NAME_DISPLAY_BITMASK"},
+            value = {CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN,
+                    CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN},
+            flag = true)
+    public @interface CarrierNameDisplayBitmask {}
+
+    // Show SPN only and only if this bit is set.
+    public static final int CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN = 1 << 0;
+
+    // Show PLMN only and only if this bit is set.
+    public static final int CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN = 1 << 1;
 
     private List<Message> mPendingCellInfoRequests = new LinkedList<Message>();
     // @GuardedBy("mPendingCellInfoRequests")
@@ -2550,7 +2568,7 @@ public class ServiceStateTracker extends Handler {
             IccRecords iccRecords = mIccRecords;
             String plmn = null;
             boolean showPlmn = false;
-            int rule = (iccRecords != null) ? iccRecords.getDisplayRule(mSS) : 0;
+            int rule = getCarrierNameDisplayBitmask(mSS);
             boolean noService = false;
             if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE
                     || combinedRegState == ServiceState.STATE_EMERGENCY_ONLY) {
@@ -2576,8 +2594,8 @@ public class ServiceStateTracker extends Handler {
                 // In either home or roaming service
                 plmn = mSS.getOperatorAlpha();
                 showPlmn = !TextUtils.isEmpty(plmn) &&
-                        ((rule & SIMRecords.SPN_RULE_SHOW_PLMN)
-                                == SIMRecords.SPN_RULE_SHOW_PLMN);
+                        ((rule & CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN)
+                                == CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
             } else {
                 // Power off state, such as airplane mode, show plmn as "No service"
                 showPlmn = true;
@@ -2591,11 +2609,11 @@ public class ServiceStateTracker extends Handler {
             //    EXTRA_SHOW_SPN = depending on IccRecords rule and radio/IMS state
             //    EXTRA_SPN = spn
             //    EXTRA_DATA_SPN = dataSpn
-            String spn = (iccRecords != null) ? iccRecords.getServiceProviderName() : "";
+            String spn = getServiceProviderName();
             String dataSpn = spn;
             boolean showSpn = !noService && !TextUtils.isEmpty(spn)
-                    && ((rule & SIMRecords.SPN_RULE_SHOW_SPN)
-                    == SIMRecords.SPN_RULE_SHOW_SPN);
+                    && ((rule & CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN)
+                    == CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
 
             if (!TextUtils.isEmpty(spn) && !TextUtils.isEmpty(wfcVoiceSpnFormat) &&
                     !TextUtils.isEmpty(wfcDataSpnFormat)) {
@@ -3413,7 +3431,7 @@ public class ServiceStateTracker extends Handler {
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
                 } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
-                    eriText = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : null;
+                    eriText = getServiceProviderName();
                     if (TextUtils.isEmpty(eriText)) {
                         // Sets operator alpha property by retrieving from
                         // build-time system property
@@ -3441,10 +3459,95 @@ public class ServiceStateTracker extends Handler {
                 if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF)
                         && isInHomeSidNid(mSS.getCdmaSystemId(), mSS.getCdmaNetworkId())
                         && mIccRecords != null) {
-                    mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
+                    mSS.setOperatorAlphaLong(getServiceProviderName());
                 }
             }
         }
+    }
+
+    /**
+     * Get the service provider name with highest priority among various source.
+     * @return service provider name.
+     */
+    public String getServiceProviderName() {
+        // BrandOverride has higher priority than the carrier config
+        String operatorBrandOverride = getOperatorBrandOverride();
+        if (!TextUtils.isEmpty(operatorBrandOverride)) {
+            return operatorBrandOverride;
+        }
+
+        PersistableBundle config = getCarrierConfig();
+        if (config != null && config.getBoolean(
+                CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, false)) {
+            return config.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+        }
+
+        return mIccRecords != null ? mIccRecords.getServiceProviderName() : "";
+    }
+
+    /**
+     * Get the resolved carrier name display condition bitmask.
+     *
+     * <p> Show service provider name if only if {@link #CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN}
+     * is set.
+     *
+     * <p> Show PLMN network name if only if {@link #CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN} is set.
+     *
+     * @param ss service state
+     * @return carrier name display bitmask.
+     */
+    @CarrierNameDisplayBitmask
+    public int getCarrierNameDisplayBitmask(ServiceState ss) {
+        PersistableBundle config = getCarrierConfig();
+        if (!TextUtils.isEmpty(getOperatorBrandOverride())) {
+            // If the operator has been overridden, all PLMNs will be considered HOME PLMNs, only
+            // show SPN.
+            return CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN;
+        } else {
+            boolean useRoamingFromServiceState = config != null && config.getBoolean(
+                    CarrierConfigManager.KEY_SPN_DISPLAY_RULE_USE_ROAMING_FROM_SERVICE_STATE_BOOL);
+            int carrierDisplayNameConditionFromSim =
+                    mIccRecords == null ? 0 : mIccRecords.getCarrierNameDisplayCondition();
+
+            boolean isRoaming;
+            if (useRoamingFromServiceState) {
+                isRoaming = ss.getRoaming();
+            } else {
+                String[] hplmns = mIccRecords != null ? mIccRecords.getHomePlmns() : null;
+                isRoaming = ArrayUtils.contains(hplmns, ss.getOperatorNumeric());
+            }
+            int rule;
+            if (isRoaming) {
+                // Show PLMN when roaming.
+                rule = CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN;
+
+                // Check if show SPN is required when roaming.
+                if ((carrierDisplayNameConditionFromSim
+                        & CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN)
+                        == CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN) {
+                    rule |= CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN;
+                }
+            } else {
+                // Show SPN when not roaming.
+                rule = CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN;
+
+                // Check if show PLMN is required when not roaming.
+                if ((carrierDisplayNameConditionFromSim
+                        & CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN)
+                        == CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN) {
+                    rule |= CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN;
+                }
+            }
+            return rule;
+        }
+    }
+
+    private String getOperatorBrandOverride() {
+        UiccCard card = mPhone.getUiccCard();
+        if (card == null) return null;
+        UiccProfile profile = card.getUiccProfile();
+        if (profile == null) return null;
+        return profile.getOperatorBrandOverride();
     }
 
     /**
