@@ -162,11 +162,7 @@ public class SubscriptionControllerMock extends SubscriptionController {
         throw new RuntimeException("not implemented");
     }
     @Override
-    public int setDisplayName(String displayName, int subId) {
-        throw new RuntimeException("not implemented");
-    }
-    @Override
-    public int setDisplayNameUsingSrc(String displayName, int subId, long nameSource) {
+    public int setDisplayNameUsingSrc(String displayName, int subId, int nameSource) {
         throw new RuntimeException("not implemented");
     }
     @Override
