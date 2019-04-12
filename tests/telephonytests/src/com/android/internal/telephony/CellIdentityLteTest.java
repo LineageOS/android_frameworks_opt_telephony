@@ -26,8 +26,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 public class CellIdentityLteTest extends AndroidTestCase {
 
-    // Cell identity ranges from 0 to 268435456.
-    private static final int CI = 268435456;
+    // Cell identity ranges from 0 to 268435455.
+    private static final int CI = 268435455;
     // Physical cell id ranges from 0 to 503.
     private static final int PCI = 503;
     // Tracking area code ranges from 0 to 65535.
