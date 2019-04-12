@@ -59,6 +59,7 @@ public class QtiImsUtils {
     //value of below constant needs to have same value as QtiCallConstants.java
     public static final int CODE_RETRY_ON_IMS_WITHOUT_RTT = 3001;
     public static final String EXTRA_RETRY_ON_IMS_WITHOUT_RTT = "retryOnImsWithoutRTT";
+    public static final String EXTRA_EMERGENCY_SERVICE_CATEGORY = "EmergencyServiceCategory";
 
     // RTT Off
     public static final int RTT_MODE_DISABLED = 0;
