@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -333,7 +335,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testSpnUpdateShowPlmnOnly() {
-        doReturn(0x02).when(mSimRecords).getDisplayRule(new ServiceState());
+        doReturn(0).when(mSimRecords).getCarrierNameDisplayCondition();
         doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).
                 when(mUiccCardApplication3gpp).getState();
 
@@ -1801,6 +1803,69 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForMs(200);
         assertTrue(Arrays.equals(new int[0], sst.mSS.getCellBandwidths()));
+    }
+
+    @Test
+    public void testGetServiceProviderNameWithBrandOverride() {
+        String brandOverride = "spn from brand override";
+        doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
+
+        assertThat(sst.getServiceProviderName()).isEqualTo(brandOverride);
+    }
+
+    @Test
+    public void testGetServiceProviderNameWithCarrierConfigOverride() {
+        String carrierOverride = "spn from carrier override";
+        mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, true);
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, carrierOverride);
+
+        assertThat(sst.getServiceProviderName()).isEqualTo(carrierOverride);
+    }
+
+    @Test
+    public void testGetServiceProviderNameWithSimRecord() {
+        String spn = "spn from sim record";
+        doReturn(spn).when(mSimRecords).getServiceProviderName();
+
+        assertThat(sst.getServiceProviderName()).isEqualTo(spn);
+    }
+
+    @Test
+    public void testGetServiceProviderNameWithAllSource() {
+        String brandOverride = "spn from brand override";
+        doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
+
+        String carrierOverride = "spn from carrier override";
+        mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, true);
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, carrierOverride);
+
+        String spn = "spn from sim record";
+        doReturn(spn).when(mSimRecords).getServiceProviderName();
+
+        // Operator brand override has highest priority
+        assertThat(sst.getServiceProviderName()).isEqualTo(brandOverride);
+
+        // Remove the brand override
+        doReturn(null).when(mUiccProfile).getOperatorBrandOverride();
+
+        // Carrier config override has 2nd priority
+        assertThat(sst.getServiceProviderName()).isEqualTo(carrierOverride);
+
+        // Remove the carrier config override
+        mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, false);
+
+        // SPN from sim has lowest priority
+        assertThat(sst.getServiceProviderName()).isEqualTo(spn);
+    }
+
+    @Test
+    public void testGetCarrierNameDisplayConditionWithBrandOverride() {
+        String brandOverride = "spn from brand override";
+        doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
+
+        // Only show spn because all PLMNs will be considered HOME PLMNs.
+        assertThat(sst.getCarrierNameDisplayBitmask(new ServiceState())).isEqualTo(
+                ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
     }
 
     @Test
