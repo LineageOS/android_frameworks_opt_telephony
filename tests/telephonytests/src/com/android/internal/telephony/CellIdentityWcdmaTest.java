@@ -31,8 +31,8 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
     private static final int CID = 268435455;
     // Primary Scrambling Coderanges from 0 to 511.
     private static final int PSC = 511;
-    // UMTS Absolute RF Channel Number ranges from 0 to 65535.
-    private static final int UARFCN = 65535;
+    // UMTS Absolute RF Channel Number ranges from 0 to 65383.
+    private static final int UARFCN = 16383;
     private static final int MCC = 120;
     private static final int MNC = 260;
     private static final String MCC_STR = "120";

@@ -2104,6 +2104,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case ImsReasonInfo.CODE_UNOBTAINABLE_NUMBER:
                 return DisconnectCause.UNOBTAINABLE_NUMBER;
 
+            case ImsReasonInfo.CODE_MEDIA_NO_DATA:
+                return DisconnectCause.MEDIA_TIMEOUT;
+
             case ImsReasonInfo.CODE_UNSPECIFIED:
                 if (mPhone.getDefaultPhone().getServiceStateTracker().mRestrictedState
                         .isCsRestricted()) {

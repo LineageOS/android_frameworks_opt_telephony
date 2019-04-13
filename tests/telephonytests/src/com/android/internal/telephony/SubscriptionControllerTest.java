@@ -162,7 +162,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 .getActiveSubscriptionInfo(subID, mCallingPackage);
 
         /* Setting */
-        mSubscriptionControllerUT.setDisplayName(disName, subID);
+        mSubscriptionControllerUT.setDisplayNameUsingSrc(disName, subID,
+                SubscriptionManager.NAME_SOURCE_USER_INPUT);
         mSubscriptionControllerUT.setDataRoaming(dataRoaming, subID);
         mSubscriptionControllerUT.setDisplayNumber(disNum, subID);
         mSubscriptionControllerUT.setIconTint(iconTint, subID);
@@ -196,7 +197,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         /* Setting */
         String disName = "TESTING";
-        long nameSource = 1;
+        int nameSource = SubscriptionManager.NAME_SOURCE_SIM_SOURCE;
         mSubscriptionControllerUT.setDisplayNameUsingSrc(disName, subID, nameSource);
         SubscriptionInfo subInfo = mSubscriptionControllerUT
                 .getActiveSubscriptionInfo(subID, mCallingPackage);
@@ -406,11 +407,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertEquals("test2", opptSubList.get(0).getIccId());
 
         // Changing non-opportunistic sub1 shouldn't trigger callback.
-        mSubscriptionControllerUT.setDisplayName("DisplayName", 1);
+        mSubscriptionControllerUT.setDisplayNameUsingSrc("DisplayName", 1,
+                SubscriptionManager.NAME_SOURCE_SIM_SOURCE);
         verify(mTelephonyRegisteryMock, times(1))
                 .notifyOpportunisticSubscriptionInfoChanged();
 
-        mSubscriptionControllerUT.setDisplayName("DisplayName", 2);
+        mSubscriptionControllerUT.setDisplayNameUsingSrc("DisplayName", 2,
+                SubscriptionManager.NAME_SOURCE_SIM_SOURCE);
         verify(mTelephonyRegisteryMock, times(2))
                 .notifyOpportunisticSubscriptionInfoChanged();
     }
