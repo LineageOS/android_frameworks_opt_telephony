@@ -38,7 +38,6 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
-import android.telephony.UiccSlotInfo;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -55,7 +54,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-
 
 public class SubscriptionControllerTest extends TelephonyTest {
     private static final int SINGLE_SIM = 1;
@@ -769,36 +767,21 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         // Non existing subId.
         assertFalse(mSubscriptionControllerUT.isSubscriptionEnabled(2));
-        assertFalse(mSubscriptionControllerUT.isSubscriptionEnabled(-1));
 
         // Test invalid arguments.
+        try {
+            assertFalse(mSubscriptionControllerUT.isSubscriptionEnabled(-1));
+            fail("Should throw IllegalArgumentException with invalid subId.");
+        } catch (IllegalArgumentException exception) {
+            // Expected.
+        }
+
         try {
             mSubscriptionControllerUT.getEnabledSubscriptionId(3);
             fail("Should throw IllegalArgumentException with invalid subId.");
         } catch (IllegalArgumentException exception) {
             // Expected.
         }
-    }
-
-    @Test
-    @SmallTest
-    public void testEnableDisableSubscriptionSingleSim() throws Exception {
-        testInsertSim();
-        // UiccSlotInfo that maps logicalSlotIndex 0 to physicalSlotIndex 0.
-        UiccSlotInfo slotInfo = new UiccSlotInfo(true, false, "", 0, 0, false, false);
-        UiccSlotInfo[] slotInfos = new UiccSlotInfo[] {slotInfo};
-        doReturn(slotInfos).when(mTelephonyManager).getUiccSlotsInfo();
-
-        // Current active subscription should be the enabled one.
-        assertTrue(mSubscriptionControllerUT.isSubscriptionEnabled(1));
-        assertEquals(1, mSubscriptionControllerUT.getEnabledSubscriptionId(0));
-        // SetSubscriptionEnabled should fail (no-op) on single SIM device.
-        assertFalse(mSubscriptionControllerUT.setSubscriptionEnabled(false, 1));
-
-        // Current active subscription should be the enabled one.
-        assertTrue(mSubscriptionControllerUT.isSubscriptionEnabled(1));
-        assertEquals(1, mSubscriptionControllerUT.getEnabledSubscriptionId(0));
-        // TODO: test dual SIM case when SubscriptionControllerTest supports dual SIM config.
     }
 
     @Test
