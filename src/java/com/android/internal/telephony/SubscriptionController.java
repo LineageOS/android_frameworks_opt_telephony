@@ -2655,6 +2655,9 @@ public class SubscriptionController extends ISub.Stub {
     private void migrateImsSettingHelper(String settingGlobal, String subscriptionProperty) {
         ContentResolver resolver = mContext.getContentResolver();
         int defaultSubId = getDefaultVoiceSubId();
+        if (defaultSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            return;
+        }
         try {
             int prevSetting = Settings.Global.getInt(resolver, settingGlobal);
 
