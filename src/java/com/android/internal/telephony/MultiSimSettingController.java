@@ -163,20 +163,28 @@ public class MultiSimSettingController {
         }
         if (DBG) log("refSubId is " + refSubId);
 
+        boolean enable = false;
         try {
-            boolean enable = GlobalSettingsHelper.getBoolean(
+            enable = GlobalSettingsHelper.getBoolean(
                     mContext, Settings.Global.MOBILE_DATA, refSubId);
             onUserDataEnabled(refSubId, enable);
         } catch (SettingNotFoundException exception) {
-            // Do nothing if it's never set.
+            //pass invalid refSubId to fetch the single-sim setting
+            enable = GlobalSettingsHelper.getBoolean(
+                    mContext, Settings.Global.MOBILE_DATA, INVALID_SUBSCRIPTION_ID, enable);
+            onUserDataEnabled(refSubId, enable);
         }
 
+        enable = false;
         try {
-            boolean enable = GlobalSettingsHelper.getBoolean(
+            enable = GlobalSettingsHelper.getBoolean(
                     mContext, Settings.Global.DATA_ROAMING, refSubId);
             onRoamingDataEnabled(refSubId, enable);
         } catch (SettingNotFoundException exception) {
-            // Do nothing if it's never set.
+            //pass invalid refSubId to fetch the single-sim setting
+            enable = GlobalSettingsHelper.getBoolean(
+                    mContext, Settings.Global.DATA_ROAMING, INVALID_SUBSCRIPTION_ID, enable);
+            onRoamingDataEnabled(refSubId, enable);
         }
     }
 
@@ -312,7 +320,6 @@ public class MultiSimSettingController {
 
         for (SubscriptionInfo info : infoList) {
             int currentSubId = info.getSubscriptionId();
-            if (currentSubId == subId) continue;
             // TODO: simplify when setUserDataEnabled becomes singleton
             if (mSubController.isActiveSubId(currentSubId)) {
                 // If we end up enabling two active primary subscriptions, don't enable the
