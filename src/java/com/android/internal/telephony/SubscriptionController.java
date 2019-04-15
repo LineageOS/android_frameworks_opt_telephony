@@ -39,6 +39,7 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
+import android.telephony.CarrierConfigManager;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
@@ -100,6 +101,8 @@ public class SubscriptionController extends ISub.Stub {
     static final boolean DBG_CACHE = false;
     static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
     private static final int DEPRECATED_SETTING = -1;
+    private static final ParcelUuid INVALID_GROUP_UUID =
+            ParcelUuid.fromString(CarrierConfigManager.REMOVE_GROUP_UUID_STRING);
     private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
 
     // Lock that both mCacheActiveSubInfoList and mCacheOpportunisticSubInfoList use.
@@ -2822,6 +2825,8 @@ public class SubscriptionController extends ISub.Stub {
      *
      * @throws SecurityException if the caller doesn't meet the requirements
      *             outlined above.
+     * @throws IllegalArgumentException if the some subscriptions in the list doesn't exist.
+     * @throws IllegalStateException if Telephony service is in bad state.
      *
      * @param subIdList list of subId that will be in the same group
      * @return groupUUID a UUID assigned to the subscription group. It returns
@@ -2831,15 +2836,15 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public ParcelUuid createSubscriptionGroup(int[] subIdList, String callingPackage) {
         if (subIdList == null || subIdList.length == 0) {
-            return null;
+            throw new IllegalArgumentException("Invalid subIdList " + subIdList);
         }
         // If it doesn't have modify phone state permission, or carrier privilege permission,
-        // a SecurityException will be thrown. If it's due to invalid parameter or internal state,
-        // it will return null.
+        // a SecurityException will be thrown.
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
                 != PERMISSION_GRANTED && !checkCarrierPrivilegeOnSubList(
                         subIdList, callingPackage)) {
-            return null;
+            throw new SecurityException("CreateSubscriptionGroup needs MODIFY_PHONE_STATE or"
+                    + " carrier privilege permission on all specified subscriptions");
         }
 
         long identity = Binder.clearCallingIdentity();
@@ -2859,7 +2864,7 @@ public class SubscriptionController extends ISub.Stub {
 
             notifySubscriptionInfoChanged();
 
-            MultiSimSettingController.getInstance().onSubscriptionGroupCreated(subIdList);
+            MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupUUID);
 
             return groupUUID;
         } finally {
@@ -2867,10 +2872,78 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    // TODO: when having a group owner or packageName for subscription, use that to check.
+    // Currently for this method to return false, all subscriptions in the group needs to have
+    // carrier privilege rules loaded, which means active or available.
+    private boolean canPackageManageGroup(ParcelUuid groupUuid, String callingPackage) {
+        if (groupUuid == null) {
+            throw new IllegalArgumentException("Invalid groupUuid");
+        }
+
+        List<SubscriptionInfo> infoList;
+
+        // Getting all subscriptions in the group.
+        long identity = Binder.clearCallingIdentity();
+        try {
+            infoList = getSubInfo(SubscriptionManager.GROUP_UUID
+                    + "=\'" + groupUuid.toString() + "\'", null);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+
+        if (infoList == null || infoList.isEmpty()) {
+            throw new IllegalArgumentException("No subscription in group " + groupUuid);
+        }
+
+        // Check carrier privilege for all subscriptions in the group.
+        int[] subIdArray = infoList.stream().mapToInt(info -> info.getSubscriptionId()).toArray();
+        return checkCarrierPrivilegeOnSubList(subIdArray, callingPackage);
+    }
+
     @Override
     public void addSubscriptionsIntoGroup(int[] subIdList, ParcelUuid groupUuid,
             String callingPackage) {
-        // TODO: implement it.
+        if (subIdList == null || subIdList.length == 0) {
+            throw new IllegalArgumentException("Invalid subId list");
+        }
+
+        if (groupUuid == null || groupUuid.equals(INVALID_GROUP_UUID)) {
+            throw new IllegalArgumentException("Invalid groupUuid");
+        }
+
+        // If it doesn't have modify phone state permission, or carrier privilege permission,
+        // a SecurityException will be thrown.
+        if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
+                != PERMISSION_GRANTED && !(checkCarrierPrivilegeOnSubList(subIdList, callingPackage)
+                && canPackageManageGroup(groupUuid, callingPackage))) {
+            throw new SecurityException("Requires MODIFY_PHONE_STATE or carrier privilege"
+                    + " permissions on subscriptions and the group.");
+        }
+
+        long identity = Binder.clearCallingIdentity();
+
+        try {
+            if (DBG) {
+                logdl("addSubscriptionsIntoGroup sub list "
+                        + Arrays.toString(subIdList) + " into group " + groupUuid);
+            }
+
+            ContentValues value = new ContentValues();
+            value.put(SubscriptionManager.GROUP_UUID, groupUuid.toString());
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, getSelectionForSubIdList(subIdList), null);
+
+            if (DBG) logdl("addSubscriptionsIntoGroup update DB result: " + result);
+
+            if (result > 0) {
+                refreshCachedActiveSubscriptionInfoList();
+                notifySubscriptionInfoChanged();
+                MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupUuid);
+            }
+
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -2901,7 +2974,8 @@ public class SubscriptionController extends ISub.Stub {
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
                 != PERMISSION_GRANTED && !checkCarrierPrivilegeOnSubList(
                 subIdList, callingPackage)) {
-            return;
+            throw new SecurityException("removeSubscriptionsFromGroup needs MODIFY_PHONE_STATE or"
+                    + " carrier privilege permission on all specified subscriptions");
         }
 
         long identity = Binder.clearCallingIdentity();
@@ -2935,10 +3009,10 @@ public class SubscriptionController extends ISub.Stub {
      *  The check can either be processed against access rules on currently active SIM cards, or
      *  the access rules we keep in our database for currently inactive eSIMs.
      *
-     *  Throws {@link SecurityException} if it fails.
+     * @throws IllegalArgumentException if the some subId is invalid or doesn't exist.
+     * @throws IllegalStateException if Telephony is in bad state.
      *
-     *  @return true if checking passes on all subId. false if subId is invalid or doesn't exist,
-     *  or sub controller is not ready yet.
+     *  @return true if checking passes on all subId, false otherwise.
      */
     private boolean checkCarrierPrivilegeOnSubList(int[] subIdList, String callingPackage) {
         mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
@@ -2949,7 +3023,7 @@ public class SubscriptionController extends ISub.Stub {
         for (int subId : subIdList) {
             if (isActiveSubId(subId)) {
                 if (!mTelephonyManager.hasCarrierPrivileges(subId)) {
-                    throw new SecurityException("Need carrier privilege on subId " + subId);
+                    return false;
                 }
             } else {
                 checkSubList.add(subId);
@@ -2964,22 +3038,27 @@ public class SubscriptionController extends ISub.Stub {
 
         try {
             if (!isSubInfoReady()) {
-                if (DBG) logdl("[getSubscriptionInfoList] Sub Controller not ready");
-                return false;
+                throw new IllegalStateException("Sub Controller not ready");
             }
 
             // Check access rules for each sub info.
             SubscriptionManager subscriptionManager = (SubscriptionManager)
                     mContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
-            List<SubscriptionInfo> subList = getSubInfo(getSelectionForSubIdList(subIdList), null);
-            for (SubscriptionInfo subInfo : subList) {
+            List<SubscriptionInfo> subInfoList = getSubInfo(
+                    getSelectionForSubIdList(subIdList), null);
+
+            // Didn't find all the subscriptions specified in subIdList.
+            if (subInfoList == null || subInfoList.size() != subIdList.length) {
+                throw new IllegalArgumentException("Invalid subInfoList.");
+            }
+
+            for (SubscriptionInfo subInfo : subInfoList) {
                 if (checkSubList.contains(subInfo.getSubscriptionId())) {
                     if (subInfo.isEmbedded() && subscriptionManager.canManageSubscription(
                             subInfo, callingPackage)) {
                         checkSubList.remove(subInfo.getSubscriptionId());
                     } else {
-                        throw new SecurityException("Need carrier privilege on subId "
-                                + subInfo.getSubscriptionId());
+                        return false;
                     }
                 }
             }
