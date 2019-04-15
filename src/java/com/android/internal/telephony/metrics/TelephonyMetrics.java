@@ -41,6 +41,7 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.CallQuality;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
@@ -1989,6 +1990,53 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Convert CallQuality to proto.
+     *
+     * @param callQuality call quality to convert
+     * @return Coverted proto
+     */
+    public static TelephonyCallSession.Event.CallQuality toCallQualityProto(
+            CallQuality callQuality) {
+        TelephonyCallSession.Event.CallQuality cq = new TelephonyCallSession.Event.CallQuality();
+        if (callQuality != null) {
+            cq.downlinkLevel = callQualityLevelToProtoEnum(callQuality
+                    .getDownlinkCallQualityLevel());
+            cq.uplinkLevel = callQualityLevelToProtoEnum(callQuality.getUplinkCallQualityLevel());
+            // callDuration is reported in millis, so convert to seconds
+            cq.durationInSeconds = callQuality.getCallDuration() / 1000;
+            cq.rtpPacketsTransmitted = callQuality.getNumRtpPacketsTransmitted();
+            cq.rtpPacketsReceived = callQuality.getNumRtpPacketsReceived();
+            cq.rtpPacketsTransmittedLost = callQuality.getNumRtpPacketsTransmittedLost();
+            cq.rtpPacketsNotReceived = callQuality.getNumRtpPacketsNotReceived();
+            cq.averageRelativeJitterMillis = callQuality.getAverageRelativeJitter();
+            cq.maxRelativeJitterMillis = callQuality.getMaxRelativeJitter();
+            cq.codecType = convertImsCodec(callQuality.getCodecType());
+        }
+        return cq;
+    }
+
+    /**
+     * Convert Call quality level into proto defined value.
+     */
+    private static int callQualityLevelToProtoEnum(int level) {
+        if (level == CallQuality.CALL_QUALITY_EXCELLENT) {
+            return TelephonyCallSession.Event.CallQuality.CallQualityLevel.EXCELLENT;
+        } else if (level == CallQuality.CALL_QUALITY_GOOD) {
+            return TelephonyCallSession.Event.CallQuality.CallQualityLevel.GOOD;
+        } else if (level == CallQuality.CALL_QUALITY_FAIR) {
+            return TelephonyCallSession.Event.CallQuality.CallQualityLevel.FAIR;
+        } else if (level == CallQuality.CALL_QUALITY_POOR) {
+            return TelephonyCallSession.Event.CallQuality.CallQualityLevel.POOR;
+        } else if (level == CallQuality.CALL_QUALITY_BAD) {
+            return TelephonyCallSession.Event.CallQuality.CallQualityLevel.BAD;
+        } else if (level == CallQuality.CALL_QUALITY_NOT_AVAILABLE) {
+            return TelephonyCallSession.Event.CallQuality.CallQualityLevel.NOT_AVAILABLE;
+        } else {
+            return TelephonyCallSession.Event.CallQuality.CallQualityLevel.UNDEFINED;
+        }
+    }
+
+    /**
      * Write IMS call end event
      *
      * @param phoneId Phone id
@@ -1996,15 +2044,26 @@ public class TelephonyMetrics {
      * @param reasonInfo Call end reason
      */
     public void writeOnImsCallTerminated(int phoneId, ImsCallSession session,
-                                         ImsReasonInfo reasonInfo) {
+                                         ImsReasonInfo reasonInfo, CallQualityMetrics cqm) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
             Rlog.e(TAG, "Call session is missing");
         } else {
-            callSession.addEvent(
-                    new CallSessionEventBuilder(TelephonyCallSession.Event.Type.IMS_CALL_TERMINATED)
-                            .setCallIndex(getCallId(session))
-                            .setImsReasonInfo(toImsReasonInfoProto(reasonInfo)));
+            if (cqm != null) {
+                callSession.addEvent(
+                        new CallSessionEventBuilder(
+                                TelephonyCallSession.Event.Type.IMS_CALL_TERMINATED)
+                        .setCallIndex(getCallId(session))
+                        .setImsReasonInfo(toImsReasonInfoProto(reasonInfo))
+                        .setCallQualitySummaryDl(cqm.getCallQualitySummaryDl())
+                        .setCallQualitySummaryUl(cqm.getCallQualitySummaryUl()));
+            } else {
+                callSession.addEvent(
+                        new CallSessionEventBuilder(
+                                TelephonyCallSession.Event.Type.IMS_CALL_TERMINATED)
+                        .setCallIndex(getCallId(session))
+                        .setImsReasonInfo(toImsReasonInfoProto(reasonInfo)));
+            }
         }
     }
 
@@ -2394,7 +2453,7 @@ public class TelephonyMetrics {
      * @param c IMS codec value
      * @return Codec value defined in call session proto
      */
-    private int convertImsCodec(int c) {
+    private static int convertImsCodec(int c) {
         switch (c) {
             case ImsStreamMediaProfile.AUDIO_QUALITY_AMR:
                 return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_AMR;

@@ -174,6 +174,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }).when(imsCall).hold();
 
         imsCall.attachSession(mImsCallSession);
+        doReturn("1").when(mImsCallSession).getCallId();
     }
 
     @Before
