@@ -839,8 +839,10 @@ public class UiccController extends Handler {
                     isDefaultEuiccCardIdSet = true;
                     // TODO(b/122738148) the default eUICC should not be removable
                     mDefaultEuiccCardId = convertToPublicCardId(eid);
-                    log("Using eid=" + eid + " in slot=" + i + " to set mDefaultEuiccCardId="
-                            + mDefaultEuiccCardId);
+                    String logStr = "Using eid=" + eid + " in slot=" + i
+                            + " to set mDefaultEuiccCardId=" + mDefaultEuiccCardId;
+                    sLocalLog.log(logStr);
+                    log(logStr);
                 }
             }
         }
@@ -978,8 +980,10 @@ public class UiccController extends Handler {
                 || mDefaultEuiccCardId == TEMPORARILY_UNSUPPORTED_CARD_ID) {
             // TODO(b/122738148) the default eUICC should not be removable
             mDefaultEuiccCardId = convertToPublicCardId(eid);
-            log("onEidReady: eid=" + eid + " slot=" + slotId + " mDefaultEuiccCardId="
-                    + mDefaultEuiccCardId);
+            String logStr = "onEidReady: eid=" + eid + " slot=" + slotId + " mDefaultEuiccCardId="
+                    + mDefaultEuiccCardId;
+            sLocalLog.log(logStr);
+            log(logStr);
         }
         ((EuiccCard) card).unregisterForEidReady(this);
     }
