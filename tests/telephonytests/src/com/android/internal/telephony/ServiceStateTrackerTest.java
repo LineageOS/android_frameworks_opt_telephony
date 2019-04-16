@@ -1332,7 +1332,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test1", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.PS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.PS_NOTIFICATION);
     }
 
     @Test
@@ -1360,7 +1360,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test2", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.CS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.CS_NOTIFICATION);
     }
 
     @Test
@@ -1387,7 +1387,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test3", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.CS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.CS_NOTIFICATION);
     }
 
     @Test
@@ -1415,7 +1415,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test4", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.CS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.CS_NOTIFICATION);
         sst.setNotification(ServiceStateTracker.CS_REJECT_CAUSE_ENABLED);
     }
 
