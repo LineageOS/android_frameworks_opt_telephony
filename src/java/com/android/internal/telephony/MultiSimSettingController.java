@@ -144,14 +144,18 @@ public class MultiSimSettingController {
      * When a subscription group is created or new subscriptions are added in the group, make
      * sure the settings among them are synced.
      */
-    public synchronized void onSubscriptionGroupCreated(int[] subGroup) {
-        if (DBG) log("onSubscriptionGroupCreated");
-        if (subGroup == null || subGroup.length == 0) return;
+    public synchronized void onSubscriptionGroupChanged(ParcelUuid groupUuid) {
+        if (DBG) log("onSubscriptionGroupChanged");
+
+        List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
+                groupUuid, mContext.getOpPackageName());
+        if (infoList == null || infoList.isEmpty()) return;
 
         // Get a reference subscription to copy settings from.
         // TODO: the reference sub should be passed in from external caller.
-        int refSubId = subGroup[0];
-        for (int subId : subGroup) {
+        int refSubId = infoList.get(0).getSubscriptionId();
+        for (SubscriptionInfo info : infoList) {
+            int subId = info.getSubscriptionId();
             if (mSubController.isActiveSubId(subId) && !mSubController.isOpportunistic(subId)) {
                 refSubId = subId;
                 break;
