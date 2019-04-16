@@ -57,6 +57,8 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     private CarrierServiceStateTracker mCarrierSST;
     private CarrierServiceStateTrackerTestHandler mCarrierServiceStateTrackerTestHandler;
 
+    private static final int SUB_ID = 1;
+
     NotificationManager mNotificationManager;
     PersistableBundle mBundle;
 
@@ -79,7 +81,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         logd(LOG_TAG + "Setup!");
         super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
-        when(mPhone.getSubId()).thenReturn(1);
+        when(mPhone.getSubId()).thenReturn(SUB_ID);
         mCarrierServiceStateTrackerTestHandler =
                 new CarrierServiceStateTrackerTestHandler(getClass().getSimpleName());
         mCarrierServiceStateTrackerTestHandler.start();
@@ -115,9 +117,10 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         mSpyCarrierSST.handleMessage(notificationMsg);
         waitForHandlerAction(mSpyCarrierSST, TEST_TIMEOUT);
         verify(mNotificationManager).cancel(
-                CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
+                CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG, SUB_ID);
         verify(mNotificationManager).cancel(
-                CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK);
+                CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG, SUB_ID);
+
     }
 
     @Test
@@ -135,9 +138,11 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         mSpyCarrierSST.handleMessage(notificationMsg);
         waitForHandlerAction(mSpyCarrierSST, TEST_TIMEOUT);
         verify(mNotificationManager).notify(
-                eq(CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK), isA(Notification.class));
+                eq(CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG),
+                eq(SUB_ID), isA(Notification.class));
         verify(mNotificationManager).notify(
-                eq(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK), any());
+                eq(CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG),
+                eq(SUB_ID), any());
     }
 
     @Test
@@ -169,7 +174,9 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
                 Settings.Global.getUriFor(prefNetworkMode));
         waitForMs(500);
         verify(mNotificationManager, atLeast(1)).notify(
-                eq(CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK), isA(Notification.class));
+                eq(CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG),
+                eq(SUB_ID), isA(Notification.class));
+
 
         Settings.Global.putInt(mContext.getContentResolver(), prefNetworkMode,
                 RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA);
@@ -177,7 +184,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
                 Settings.Global.getUriFor(prefNetworkMode));
         waitForMs(500);
         verify(mNotificationManager, atLeast(1)).cancel(
-                CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK);
+                CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG, SUB_ID);
     }
 
     @Test
@@ -207,13 +214,13 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         mSpyCarrierSST.handleMessage(notificationMsg);
         waitForHandlerAction(mSpyCarrierSST, TEST_TIMEOUT);
         verify(mNotificationManager).notify(
-                eq(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK),
-                isA(Notification.class));
+                eq(CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG),
+                eq(SUB_ID), isA(Notification.class));
 
         doReturn(false).when(mPhone).isWifiCallingEnabled();
         mSpyCarrierSST.handleMessage(notificationMsg);
         waitForHandlerAction(mSpyCarrierSST, TEST_TIMEOUT);
         verify(mNotificationManager, atLeast(2)).cancel(
-                CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
+                CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG, SUB_ID);
     }
 }
