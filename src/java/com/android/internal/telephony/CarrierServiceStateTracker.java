@@ -23,6 +23,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.os.Handler;
 import android.os.Message;
@@ -63,6 +64,12 @@ public class CarrierServiceStateTracker extends Handler {
     private int mPreviousSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     public static final int NOTIFICATION_PREF_NETWORK = 1000;
     public static final int NOTIFICATION_EMERGENCY_NETWORK = 1001;
+
+    @VisibleForTesting
+    public static final String EMERGENCY_NOTIFICATION_TAG = "EmergencyNetworkNotification";
+
+    @VisibleForTesting
+    public static final String PREF_NETWORK_NOTIFICATION_TAG = "PrefNetworkNotification";
 
     public CarrierServiceStateTracker(Phone phone, ServiceStateTracker sst) {
         this.mPhone = phone;
@@ -238,7 +245,7 @@ public class CarrierServiceStateTracker extends Handler {
             Rlog.i(LOG_TAG, "starting timer for notifications." + notificationType.getTypeId());
             sendMessageDelayed(notificationMsg, getDelay(notificationType));
         } else {
-            cancelNotification(notificationType.getTypeId());
+            cancelNotification(notificationType);
             Rlog.i(LOG_TAG, "canceling notifications: " + notificationType.getTypeId());
         }
     }
@@ -307,17 +314,18 @@ public class CarrierServiceStateTracker extends Handler {
                 .setSmallIcon(com.android.internal.R.drawable.stat_sys_warning)
                 .setColor(context.getResources().getColor(
                        com.android.internal.R.color.system_notification_accent_color));
-
-        getNotificationManager(context).notify(notificationType.getTypeId(), builder.build());
+        getNotificationManager(context).notify(notificationType.getNotificationTag(),
+                notificationType.getNotificationId(), builder.build());
     }
 
     /**
      * Cancel notifications if a registration is pending or has been sent.
      **/
-    public void cancelNotification(int notificationId) {
+    public void cancelNotification(NotificationType notificationType) {
         Context context = mPhone.getContext();
-        removeMessages(notificationId);
-        getNotificationManager(context).cancel(notificationId);
+        removeMessages(notificationType.getTypeId());
+        getNotificationManager(context).cancel(
+                notificationType.getNotificationTag(), notificationType.getNotificationId());
     }
 
     /**
@@ -351,6 +359,16 @@ public class CarrierServiceStateTracker extends Handler {
          * returns notification type id.
          **/
         int getTypeId();
+
+        /**
+         * returns notification id.
+         **/
+        int getNotificationId();
+
+        /**
+         * returns notification tag.
+         **/
+        String getNotificationTag();
 
         /**
          * returns the notification builder, for the notification to be displayed.
@@ -392,6 +410,14 @@ public class CarrierServiceStateTracker extends Handler {
             return mTypeId;
         }
 
+        public int getNotificationId() {
+            return mPhone.getSubId();
+        }
+
+        public String getNotificationTag() {
+            return PREF_NETWORK_NOTIFICATION_TAG;
+        }
+
         /**
          * Contains logic on sending notifications.
          */
@@ -415,9 +441,10 @@ public class CarrierServiceStateTracker extends Handler {
             notificationIntent.putExtra("expandable", true);
             PendingIntent settingsIntent = PendingIntent.getActivity(context, 0, notificationIntent,
                     PendingIntent.FLAG_ONE_SHOT);
-            CharSequence title = context.getText(
+            Resources res = SubscriptionManager.getResourcesForSubId(context, mPhone.getSubId());
+            CharSequence title = res.getText(
                     com.android.internal.R.string.NetworkPreferenceSwitchTitle);
-            CharSequence details = context.getText(
+            CharSequence details = res.getText(
                     com.android.internal.R.string.NetworkPreferenceSwitchSummary);
             return new Notification.Builder(context)
                     .setContentTitle(title)
@@ -462,6 +489,14 @@ public class CarrierServiceStateTracker extends Handler {
             return mTypeId;
         }
 
+        public int getNotificationId() {
+            return mPhone.getSubId();
+        }
+
+        public String getNotificationTag() {
+            return EMERGENCY_NOTIFICATION_TAG;
+        }
+
         /**
          * Contains logic on sending notifications,
          */
@@ -481,9 +516,10 @@ public class CarrierServiceStateTracker extends Handler {
          */
         public Notification.Builder getNotificationBuilder() {
             Context context = mPhone.getContext();
-            CharSequence title = context.getText(
+            Resources res = SubscriptionManager.getResourcesForSubId(context, mPhone.getSubId());
+            CharSequence title = res.getText(
                     com.android.internal.R.string.EmergencyCallWarningTitle);
-            CharSequence details = context.getText(
+            CharSequence details = res.getText(
                     com.android.internal.R.string.EmergencyCallWarningSummary);
             return new Notification.Builder(context)
                     .setContentTitle(title)
