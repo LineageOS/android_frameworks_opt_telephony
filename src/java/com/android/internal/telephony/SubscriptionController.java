@@ -389,6 +389,13 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.MCC_STRING));
         String mnc = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.MNC_STRING));
+        String ehplmnsRaw = cursor.getString(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.EHPLMNS));
+        String hplmnsRaw = cursor.getString(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.HPLMNS));
+        String[] ehplmns = ehplmnsRaw == null ? null : ehplmnsRaw.split(",");
+        String[] hplmns = hplmnsRaw == null ? null : hplmnsRaw.split(",");
+
         // cardId is the private ICCID/EID string, also known as the card string
         String cardId = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.CARD_ID));
@@ -435,10 +442,12 @@ public class SubscriptionController extends ISub.Stub {
         if (!TextUtils.isEmpty(line1Number) && !line1Number.equals(number)) {
             number = line1Number;
         }
-        return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
-            nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-            isEmbedded, accessRules, cardId, publicCardId, isOpportunistic, groupUUID,
-            false /* isGroupDisabled */, carrierId, profileClass, subType);
+        SubscriptionInfo info = new SubscriptionInfo(id, iccId, simSlotIndex, displayName,
+                carrierName, nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc,
+                countryIso, isEmbedded, accessRules, cardId, publicCardId, isOpportunistic,
+                groupUUID, false /* isGroupDisabled */, carrierId, profileClass, subType);
+        info.setAssociatedPlmns(ehplmns, hplmns);
+        return info;
     }
 
     /**
@@ -1646,6 +1655,37 @@ public class SubscriptionController extends ISub.Stub {
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+    }
+
+    /**
+     * Set the EHPLMNs and HPLMNs associated with the subscription.
+     */
+    public void setAssociatedPlmns(String[] ehplmns, String[] hplmns, int subId) {
+        if (DBG) logd("[setAssociatedPlmns]+ subId:" + subId);
+
+        validateSubId(subId);
+        int phoneId = getPhoneId(subId);
+
+        if (phoneId < 0 || phoneId >= mTelephonyManager.getPhoneCount()) {
+            if (DBG) logd("[setAssociatedPlmns]- fail");
+            return;
+        }
+
+        String formattedEhplmns = ehplmns == null ? "" : String.join(",", ehplmns);
+        String formattedHplmns = hplmns == null ? "" : String.join(",", hplmns);
+
+        ContentValues value = new ContentValues(2);
+        value.put(SubscriptionManager.EHPLMNS, formattedEhplmns);
+        value.put(SubscriptionManager.HPLMNS, formattedHplmns);
+
+        int count = mContext.getContentResolver().update(
+                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+
+        // Refresh the Cache of Active Subscription Info List
+        refreshCachedActiveSubscriptionInfoList();
+
+        if (DBG) logd("[setAssociatedPlmns]- update result :" + count);
+        notifySubscriptionInfoChanged();
     }
 
     /**
