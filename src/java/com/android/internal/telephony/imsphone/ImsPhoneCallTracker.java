@@ -648,6 +648,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (mCarrierConfigLoaded) {
             mImsManager.updateImsServiceConfig(true);
         }
+        // For compatibility with apps that still use deprecated intent
+        sendImsServiceStateIntent(ImsManager.ACTION_IMS_SERVICE_UP);
     }
 
     private void stopListeningForCalls() {
@@ -661,6 +663,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 Log.w(LOG_TAG, "stopListeningForCalls: unable to remove config callback.");
             }
             mImsManager.close();
+        }
+        // For compatibility with apps that still use deprecated intent
+        sendImsServiceStateIntent(ImsManager.ACTION_IMS_SERVICE_DOWN);
+    }
+
+    private void sendImsServiceStateIntent(String intentAction) {
+        Intent intent = new Intent(intentAction);
+        intent.putExtra(ImsManager.EXTRA_PHONE_ID, mPhone.getPhoneId());
+        if (mPhone != null && mPhone.getContext() != null) {
+            mPhone.getContext().sendBroadcast(intent);
         }
     }
 
