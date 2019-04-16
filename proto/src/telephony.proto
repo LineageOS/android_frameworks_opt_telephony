@@ -2167,8 +2167,11 @@ message TelephonyCallSession {
     // Call quality when changed
     optional CallQuality call_quality = 23;
 
-    // Call quality summary at the end of a call
-    optional CallQualitySummary call_quality_summary = 24;
+    // Downlink call quality summary at the end of a call
+    optional CallQualitySummary call_quality_summary_dl = 24;
+
+    // Uplink call quality summary at the end of a call
+    optional CallQualitySummary call_quality_summary_ul = 25;
 
   }
 
