@@ -989,6 +989,25 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected abstract void loge(String s);
 
     /**
+     * @return String array containing EHPLMNs associated with the card.
+     */
+    public String[] getEhplmns() {
+        return mEhplmns;
+    }
+
+    /**
+     * @return String array containing HPLMNs associated with the card.
+     */
+    public String[] getHplmns() {
+        if (mHplmnActRecords == null) return null;
+        String[] hplmns = new String[mHplmnActRecords.length];
+        for (int i = 0; i < mHplmnActRecords.length; i++) {
+            hplmns[i] = mHplmnActRecords[i].plmn;
+        }
+        return hplmns;
+    }
+
+    /**
      * Return an interface to retrieve the ISIM records for IMS, if available.
      * @return the interface to retrieve the ISIM records, or null if not supported
      */

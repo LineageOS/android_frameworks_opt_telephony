@@ -439,6 +439,12 @@ public class SubscriptionInfoUpdater extends Handler {
                     SubscriptionController.getInstance().setDisplayNumber(msisdn, subId);
                 }
 
+                String[] ehplmns = records.getEhplmns();
+                String[] hplmns = records.getHplmns();
+                if (ehplmns != null || hplmns != null) {
+                    SubscriptionController.getInstance().setAssociatedPlmns(ehplmns, hplmns, subId);
+                }
+
                 SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
                 String nameToSet;
                 String simCarrierName = tm.getSimOperatorName(subId);
