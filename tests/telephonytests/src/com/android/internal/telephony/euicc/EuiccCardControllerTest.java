@@ -34,6 +34,7 @@ import android.telephony.euicc.EuiccManager;
 import androidx.test.runner.AndroidJUnit4;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
 
@@ -61,6 +62,8 @@ public class EuiccCardControllerTest extends TelephonyTest {
     private UiccSlot mInactivatedEsimSlot;
     @Mock
     private UiccSlot mActivatedEsimSlot;
+    @Mock
+    private UiccSlot mNotPresentEsimSlot;
     @Mock
     private UiccSlot mActivatedRemovableSlot;
     @Mock
@@ -96,6 +99,10 @@ public class EuiccCardControllerTest extends TelephonyTest {
         when(mTelephonyManager.getPhoneCount()).thenReturn(1);
         when(mActivatedEsimSlot.isEuicc()).thenReturn(true);
         when(mActivatedEsimSlot.isActive()).thenReturn(true);
+        when(mActivatedEsimSlot.getCardState()).thenReturn(CardState.CARDSTATE_PRESENT);
+        when(mNotPresentEsimSlot.isEuicc()).thenReturn(true);
+        when(mNotPresentEsimSlot.isActive()).thenReturn(true);
+        when(mNotPresentEsimSlot.getCardState()).thenReturn(CardState.CARDSTATE_ERROR);
         when(mInactivatedEsimSlot.isEuicc()).thenReturn(true);
         when(mInactivatedEsimSlot.isActive()).thenReturn(false);
         when(mInactivatedEsimSlot.isRemovable()).thenReturn(false);
@@ -164,7 +171,34 @@ public class EuiccCardControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testStartOtaUpdatingIfNecessary_onEmbeddedSlot() {
+    public void testIsEmbeddedCardPresent() {
+        mEuiccCardController =
+                new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        when(mUiccController.getUiccSlots())
+                .thenReturn(new UiccSlot[] {mActivatedRemovableSlot});
+        assertFalse(mEuiccCardController.isEmbeddedCardPresent());
+
+        when(mUiccController.getUiccSlots())
+                .thenReturn(new UiccSlot[] {mActivatedEsimSlot});
+        assertTrue(mEuiccCardController.isEmbeddedCardPresent());
+
+        when(mUiccController.getUiccSlots())
+                .thenReturn(new UiccSlot[] {mNotPresentEsimSlot});
+        assertFalse(mEuiccCardController.isEmbeddedCardPresent());
+
+        when(mUiccController.getUiccSlots())
+                .thenReturn(new UiccSlot[] {
+                        mActivatedEsimSlot, mNotPresentEsimSlot, mActivatedRemovableSlot});
+        assertTrue(mEuiccCardController.isEmbeddedCardPresent());
+
+        when(mUiccController.getUiccSlots())
+                .thenReturn(new UiccSlot[] {
+                        mNotPresentEsimSlot, mActivatedEsimSlot, mActivatedRemovableSlot});
+        assertTrue(mEuiccCardController.isEmbeddedCardPresent());
+    }
+
+    @Test
+    public void testStartOtaUpdatingIfNecessary_onEmbeddedSlot_Present() {
         // isBootUp = true
         mSp.edit().remove(KEY_LAST_BOOT_COUNT);
         Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.BOOT_COUNT, 0);
@@ -176,6 +210,22 @@ public class EuiccCardControllerTest extends TelephonyTest {
         try {
             mOtaLatch.await(5000, TimeUnit.MILLISECONDS);
             assertTrue(mOtaStarted);
+        } catch (InterruptedException ignore) { }
+    }
+
+    @Test
+    public void testStartOtaUpdatingIfNecessary_onEmbeddedSlot_NotPresent() {
+        // isBootUp = true
+        mSp.edit().remove(KEY_LAST_BOOT_COUNT);
+        Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.BOOT_COUNT, 0);
+        when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[] {mNotPresentEsimSlot});
+
+        mEuiccCardController =
+            new EuiccCardController(mContext, null, mEuiccController, mUiccController);
+        mContext.sendBroadcast(new Intent(TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED));
+        try {
+            mOtaLatch.await(5000, TimeUnit.MILLISECONDS);
+            assertFalse(mOtaStarted);
         } catch (InterruptedException ignore) { }
     }
 
